@@ -2,14 +2,23 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
 from pathlib import Path
 
 import pytest
 import yaml
 
 from ..base import RaftTestCase, write_inventory
-from raft.models.contract import ServiceContract, load_contract
-from raft.models.inventory import load_inventory, load_stack
+from raft.models.contract import (
+    ServiceContract,
+    delete_registry_app,
+    load_app_file,
+    load_contract,
+    parse_app_document,
+    write_registry_app,
+)
+from raft.models.inventory import find_repo_root, load_inventory, load_stack
 from raft.services.render import StackRenderer
 
 
@@ -298,11 +307,6 @@ spec:
         assert c.extra_hosts == ()
 
     def test_registry_write_delete_and_stem_mismatch(self) -> None:
-        from raft.models.contract import (
-            delete_registry_app,
-            write_registry_app,
-        )
-
         doc = {
             "apiVersion": "raft/v1",
             "kind": "App",
@@ -612,11 +616,6 @@ services:
         assert stack.generated_dir() == self.tmp_path / ".generated"
 
     def test_find_repo_root_walks_package(self) -> None:
-        import os
-        import tempfile
-
-        from raft.models.inventory import find_repo_root
-
         orphan = Path(tempfile.mkdtemp(prefix="raft-orphan-"))
         try:
             found = find_repo_root(start=orphan)
@@ -626,8 +625,6 @@ services:
             os.rmdir(orphan)
 
     def test_expect_name_and_null_spec(self) -> None:
-        from raft.models.contract import load_app_file, parse_app_document
-
         path = self.tmp_path / "state" / "apps" / "web.yaml"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(

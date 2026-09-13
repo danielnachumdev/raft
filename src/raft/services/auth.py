@@ -62,10 +62,7 @@ def parse_ssh_git_url(url: str) -> SshGitUrl:
     if not match:
         raise ValueError(f"cannot parse SSH git URL: {url!r}")
     host = match.group("host")
-    path = match.group("path")
-    if path.endswith(".git"):
-        path = path[: -len(".git")]
-    path = path.strip("/")
+    path = match.group("path").strip("/")
     if not path or "/" not in path:
         raise ValueError(f"SSH git URL must include owner/repo: {url!r}")
     return SshGitUrl(host=host, path=path)

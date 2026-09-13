@@ -1,5 +1,8 @@
 """Doctor diagnostics (docker/auth/sync mocked)."""
 
+from __future__ import annotations
+
+import io
 from unittest.mock import MagicMock, patch
 
 from ..base import make_app, make_git_app, make_stack
@@ -112,8 +115,6 @@ class TestDoctor(ServicesTestCase):
         assert "\033[33m" in out
 
     def test_report_respects_no_color_and_isatty(self, monkeypatch) -> None:
-        import io
-
         d = self._doctor()
 
         class Tty(io.StringIO):
@@ -129,6 +130,17 @@ class TestDoctor(ServicesTestCase):
         buf2 = Tty()
         assert d.report([CheckResult(INFRA, "docker", "ok", "fine")], out=buf2) == 0
         assert "\033[" not in buf2.getvalue()
+
+        monkeypatch.delenv("NO_COLOR", raising=False)
+
+        class NoTty:
+            def write(self, s: str) -> int:
+                return len(s)
+
+            def flush(self) -> None:
+                return None
+
+        assert d.report([CheckResult(INFRA, "docker", "ok", "fine")], out=NoTty()) == 0
 
     def test_local_app_path_and_upstream(self) -> None:
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")

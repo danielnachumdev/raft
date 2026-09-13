@@ -11,6 +11,7 @@ from typing import Literal, Optional, TextIO
 
 from ..adapters import DockerStack, Shell
 from ..models import Stack
+from ..models.contract import registry_path
 from .auth import GitAuthManager, parse_ssh_git_url, real_git_host
 
 Status = Literal["ok", "warn", "fail"]
@@ -383,8 +384,6 @@ class Doctor:
         return results
 
     def _check_contract(self, app) -> list[CheckResult]:
-        from ..models.contract import registry_path
-
         path = registry_path(self.stack.root, app.name)
         if not path.is_file():
             return [

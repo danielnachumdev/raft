@@ -83,14 +83,14 @@ class TestAppApply(RaftTestCase):
 
         orch = MagicMock()
         orch.docker.running_services.return_value = ["web"]
-        with patch("raft.services.orchestrator.Orchestrator", return_value=orch):
+        with patch("raft.services.apply.Orchestrator", return_value=orch):
             with patch("raft.services.apply.load_stack", return_value=stack):
                 applier.apply_file(path, deploy=True)
         orch.redeploy_app.assert_called_once()
 
         orch2 = MagicMock()
         orch2.docker.running_services.return_value = []
-        with patch("raft.services.orchestrator.Orchestrator", return_value=orch2):
+        with patch("raft.services.apply.Orchestrator", return_value=orch2):
             with patch("raft.services.apply.load_stack", return_value=stack):
                 applier.apply_file(path, deploy=True, force_sync=True)
         orch2.sync.assert_called_once_with(
@@ -236,7 +236,7 @@ class TestAppApply(RaftTestCase):
         shell.git.side_effect = clone_image_app
         orch = MagicMock()
         orch.docker.running_services.return_value = []
-        with patch("raft.services.orchestrator.Orchestrator", return_value=orch):
+        with patch("raft.services.apply.Orchestrator", return_value=orch):
             with patch("raft.services.apply.load_stack", return_value=stack):
                 name = AppApply(stack, shell=shell).apply_git(
                     "git@github.com:org/img.git", deploy=True

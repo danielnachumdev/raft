@@ -50,7 +50,7 @@ Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 
 ## Operator loop
 
-1. `uv sync` (Python **3.11+** only).
+1. `uv sync` (Python **3.8+**).
 2. Private git apps: `raft auth setup <service>` → paste pubkey as read-only deploy key (`~/.ssh/raft/`).
 3. `raft apply --file …` or `raft apply --git …` → writes `state/apps/<name>.yaml`, optionally syncs + renders.
 4. Origin PEMs in place → `raft up` (refuses if stack already up; `down` first).
@@ -60,7 +60,7 @@ Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 
 Useful checks: `curl -H 'Host: <publicHost>' http://127.0.0.1/`. Optional local hosts: `sudo python3 scripts/hosts_manager.py hold` (reads applied `publicHost` values; errors if none applied).
 
-Logging: `raft.toml` `[logging]`; default `logs/raft.log`; override dir with `RAFT_LOG_DIR`. Terminal stays plain; file is structured.
+Logging: `raft.yaml` `logging:`; default `logs/raft.log`; override dir with `RAFT_LOG_DIR`. Terminal stays plain; file is structured.
 
 ---
 
@@ -109,7 +109,7 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `uv run raft …`.
 | `src/raft/models/` | `App` / `Stack`, contract load/validate, registry paths |
 | `src/raft/adapters/` | shell, docker, nginx upstreams, HTTP probe |
 | `src/raft/services/` | apply, auth, sync, render, cutover, orchestrator, doctor |
-| `src/raft/config/` | `raft.toml` + logging setup |
+| `src/raft/config/` | `raft.yaml` + logging setup |
 | `tests/` | Mirrors packages (`test_*`); class-based; **`--cov-fail-under=100`** |
 
 Compose mounts `.generated/nginx/upstreams` into the router. Upstream files are written by `NginxUpstreams` under `.generated/nginx/upstreams/`.
@@ -120,7 +120,7 @@ Compose mounts `.generated/nginx/upstreams` into the router. Upstream files are 
 
 | Repo | Role |
 |------|------|
-| **raft** (this) | Product + **Test** CI (Py 3.11–3.13). No Terraform here. |
+| **raft** (this) | Product + **Test** CI (Py 3.8–3.13). No Terraform here. |
 | **Private ops** | GCP/VM + SSH job that pulls this repo onto the VPS |
 | **Service repos** | Own `.raft/app.yaml` + their CI (apply/redeploy against the VPS) |
 

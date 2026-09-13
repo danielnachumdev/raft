@@ -100,7 +100,7 @@ class Stack:
 
     def contract_for(self, app: App):
         """Load runtime contract from the applied registry document."""
-        from .contract import load_app_file, registry_path
+        from .contract import load_app_file, registry_path  # deferred: circular import
 
         path = registry_path(self.root, app.name)
         _, contract = load_app_file(path, expect_name=app.name)
@@ -128,7 +128,7 @@ def find_repo_root(start: Optional[Path] = None) -> Path:
 
 def load_inventory(root: Path) -> tuple[App, ...]:
     """Compatibility alias: load applied apps from the on-VPS registry."""
-    from .contract import load_registry
+    from .contract import load_registry  # deferred: circular import
 
     return load_registry(root)
 

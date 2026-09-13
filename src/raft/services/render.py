@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from ..models.contract import ServiceContract
+from ..models.contract import ServiceContract, load_app_file, registry_path
 from ..models.inventory import App, Stack
 
 logger = logging.getLogger(__name__)
@@ -34,8 +34,6 @@ class StackRenderer:
         return self.generated_root / "nginx" / "gate-tls"
 
     def load_all_contracts(self) -> dict[str, ServiceContract]:
-        from ..models.contract import load_app_file, registry_path
-
         out: dict[str, ServiceContract] = {}
         for app in self.stack.apps:
             _, contract = load_app_file(

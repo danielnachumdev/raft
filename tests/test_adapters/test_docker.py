@@ -2,6 +2,7 @@
 
 import pytest
 
+from ..base import make_app
 from .base import AdapterTestCase
 
 
@@ -36,8 +37,6 @@ class TestDockerStack(AdapterTestCase):
         self.shell.compose.assert_any_call("up", "-d", "--build", "--no-deps", "app")
 
     def test_recreate_pulled_service_tags_then_up(self) -> None:
-        from ..base import make_app
-
         self.shell.compose.return_value = self.ok()
         self.shell.docker.return_value = self.ok()
         app = make_app(
@@ -53,8 +52,6 @@ class TestDockerStack(AdapterTestCase):
         )
 
     def test_recreate_pulled_service_skips_tag_when_pin(self) -> None:
-        from ..base import make_app
-
         self.shell.compose.return_value = self.ok()
         self.shell.docker.return_value = self.ok()
         app = make_app(

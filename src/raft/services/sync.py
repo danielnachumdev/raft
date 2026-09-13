@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import shutil
 from pathlib import Path
 from typing import Optional
 
@@ -107,8 +108,6 @@ class SourceSync:
                         app.name,
                         dest,
                     )
-                    import shutil
-
                     shutil.rmtree(dest)
                 else:
                     raise RuntimeError(

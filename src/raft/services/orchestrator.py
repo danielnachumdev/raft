@@ -11,6 +11,7 @@ from ..adapters.http import HttpProbe
 from ..models.inventory import Stack
 from ..adapters.nginx import NginxUpstreams
 from ..adapters.shell import Shell
+from .render import StackRenderer
 from .sync import SourceSync
 from ..ui import say
 
@@ -41,8 +42,6 @@ class Orchestrator:
         self.render()
 
     def render(self) -> None:
-        from .render import StackRenderer
-
         StackRenderer(self.stack).render()
         say("rendered .generated/ from inventory + service contracts")
 

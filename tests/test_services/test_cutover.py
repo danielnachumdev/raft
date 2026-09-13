@@ -4,7 +4,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from ..base import make_app, make_stack
 from .base import ServicesTestCase
+from raft.services import CutoverSession
 
 
 class TestCutoverSession(ServicesTestCase):
@@ -44,9 +46,6 @@ class TestCutoverSession(ServicesTestCase):
             ).read_text(encoding="utf-8")
 
     def test_rebuild_stable_docker_pulls(self) -> None:
-        from ..base import make_app, make_stack
-        from raft.services import CutoverSession
-
         app = make_app(
             "hub", source="docker", image="ghcr.io/org/hub", ref="main"
         )
@@ -76,9 +75,6 @@ class TestCutoverSession(ServicesTestCase):
         docker.rebuild_service.assert_not_called()
 
     def test_rebuild_stable_docker_defaults_ref(self) -> None:
-        from ..base import make_app, make_stack
-        from raft.services import CutoverSession
-
         app = make_app(
             "hub", source="docker", image="ghcr.io/org/hub", ref="main"
         )
@@ -104,9 +100,6 @@ class TestCutoverSession(ServicesTestCase):
         )
 
     def test_rebuild_stable_docker_empty_requested_keeps_ref(self) -> None:
-        from ..base import make_app, make_stack
-        from raft.services import CutoverSession
-
         app = make_app(
             "hub", source="docker", image="ghcr.io/org/hub", ref="main"
         )
@@ -135,9 +128,6 @@ class TestCutoverSession(ServicesTestCase):
         )
 
     def test_rebuild_stable_docker_state_without_requested(self) -> None:
-        from ..base import make_app, make_stack
-        from raft.services import CutoverSession
-
         app = make_app(
             "hub", source="docker", image="ghcr.io/org/hub", ref="main"
         )

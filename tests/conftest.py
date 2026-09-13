@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from raft.config import reset_logging_for_tests
+from raft.config import default_config, reset_logging_for_tests
 
 
 @pytest.fixture(autouse=True)
@@ -28,8 +28,6 @@ def isolated_logging(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 @pytest.fixture(autouse=True)
 def stub_cli_logging_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Avoid FileHandlers in CLI unit tests; keep logger propagating for caplog."""
-    from raft.config import default_config
-
     monkeypatch.setattr("raft.cli.deps.load_config", lambda *_a, **_k: default_config())
     monkeypatch.setattr(
         "raft.cli.deps.setup_logging",

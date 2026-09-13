@@ -29,7 +29,8 @@ Apps own their contract (`.raft/app.yaml`). The VPS stores applied desired state
 
 ## Requirements
 
-- **Python 3.11+ only** (CI: 3.11 / 3.12 / 3.13)
+- **Python 3.8+** (CI: 3.8–3.13)
+- Runtime config: `raft.yaml` (logging); PyYAML
 - Docker + Compose on the host
 - For HTTPS: Cloudflare Origin PEMs per app under `certs/<name>/` (missing PEMs break the gate for HTTP too)
 

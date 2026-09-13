@@ -1,5 +1,6 @@
 """Shared helpers for services tests."""
 
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -54,8 +55,6 @@ class ServicesTestCase(RaftTestCase):
 
         def run(args, **kwargs):
             if args and args[0] == "ssh-keygen":
-                from pathlib import Path
-
                 key = Path(args[args.index("-f") + 1])
                 key.parent.mkdir(parents=True, exist_ok=True)
                 key.write_text("PRIVATE", encoding="utf-8")

@@ -24,7 +24,7 @@ class TestOrchestrator(ServicesTestCase):
         assert self.orch.syncer.sync.call_args.args[0] == list(self.orch.stack.apps)
 
     def test_render_invokes_stack_renderer(self) -> None:
-        with patch("raft.services.render.StackRenderer") as renderer_cls:
+        with patch("raft.services.orchestrator.StackRenderer") as renderer_cls:
             instance = renderer_cls.return_value
             self.orch.render()
             renderer_cls.assert_called_once_with(self.orch.stack)

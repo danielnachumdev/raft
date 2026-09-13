@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import logging
 import runpy
 import subprocess
@@ -165,8 +166,7 @@ class TestCli(RaftTestCase):
             runpy.run_module("raft.__main__", run_name="__main__")
         run.assert_called_once_with()
 
-        import raft.__main__ as main_mod
-
+        main_mod = importlib.import_module("raft.__main__")
         assert main_mod.run is cli.run
 
     def test_run_maps_called_process_error(self) -> None:

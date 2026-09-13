@@ -17,6 +17,8 @@ from ..models.contract import (
     write_registry_app,
 )
 from ..models.inventory import Stack, load_stack
+from .orchestrator import Orchestrator
+from .render import StackRenderer
 from ..ui import say
 
 logger = logging.getLogger(__name__)
@@ -108,8 +110,6 @@ class AppApply:
             shutil.rmtree(tmp, ignore_errors=True)
 
     def delete(self, name: str) -> None:
-        from .render import StackRenderer
-
         if not delete_registry_app(self.stack.root, name):
             raise KeyError(f"app {name!r} is not applied")
         say(f"deleted {name} from registry")
@@ -129,8 +129,6 @@ class AppApply:
         ref_override: Optional[str],
         force_sync: bool,
     ) -> None:
-        from .orchestrator import Orchestrator
-
         orch = Orchestrator(load_stack(self.stack.root))
         running = orch.docker.running_services()
         if name in running:
