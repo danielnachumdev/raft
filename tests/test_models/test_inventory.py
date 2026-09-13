@@ -263,6 +263,6 @@ class TestFindPackageRoot(RaftTestCase):
 
 class TestApp(RaftTestCase):
     def test_abs_path(self) -> None:
-        app = make_app("d", public_host="d.com", path="apps/d")
+        app = make_app("d", public_host="d.example.com", path="apps/d")
         (self.tmp_path / "apps" / "d").mkdir(parents=True)
         assert app.abs_path(self.tmp_path) == (self.tmp_path / "apps" / "d").resolve()
