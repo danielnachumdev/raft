@@ -1,10 +1,4 @@
-"""Kubernetes-shaped App manifests (service-owned) and on-VPS registry.
-
-Canonical path in a service repo: ``.raft/app.yaml``.
-
-Applied desired state on the VPS: ``~/.raft/state/apps/<name>.yaml``.
-There is no per-service inventory.toml — ``raft apply`` registers apps.
-"""
+"""Kubernetes-shaped App manifests (service-owned) and on-VPS registry."""
 
 from __future__ import annotations
 
@@ -14,7 +8,7 @@ from typing import Any, Optional
 
 import yaml
 
-from .inventory import App
+from .app import App
 
 CONTRACT_API_VERSION = "raft/v1"
 CONTRACT_KINDS = frozenset({"App", "Service"})
@@ -25,11 +19,8 @@ CONTRACT_REL_CANDIDATES = (
 CONTRACT_REL_PATH = CONTRACT_REL_CANDIDATES[0]
 REGISTRY_DIR = Path("state") / "apps"
 
-
 @dataclass(frozen=True)
 class ServiceContract:
-    """Runtime/build slice of an App manifest."""
-
     port: int = 80
     www: bool = True
     extra_hosts: tuple[str, ...] = ()
@@ -58,7 +49,6 @@ class ServiceContract:
                 out.append(name)
         return tuple(out)
 
-
 def contract_path(checkout: Path) -> Path:
     for rel in CONTRACT_REL_CANDIDATES:
         path = checkout / rel
@@ -66,14 +56,11 @@ def contract_path(checkout: Path) -> Path:
             return path
     return checkout / CONTRACT_REL_PATH
 
-
 def registry_dir(root: Path) -> Path:
     return root / REGISTRY_DIR
 
-
 def registry_path(root: Path, name: str) -> Path:
     return registry_dir(root) / f"{name}.yaml"
-
 
 def _parse_cpu(value: Any, *, default: str) -> str:
     if value is None:
@@ -88,7 +75,6 @@ def _parse_cpu(value: Any, *, default: str) -> str:
         return f"{millis / 1000.0:g}"
     return text
 
-
 def _parse_memory(value: Any, *, default: str) -> str:
     if value is None:
         return default
@@ -101,7 +87,6 @@ def _parse_memory(value: Any, *, default: str) -> str:
     if lower.endswith("gi"):
         return f"{text[:-2]}G"
     return text
-
 
 def _port_from_spec(spec: dict[str, Any], path: Path) -> int:
     if "port" in spec and "ports" not in spec:
@@ -123,7 +108,6 @@ def _port_from_spec(spec: dict[str, Any], path: Path) -> int:
         raise ValueError(f"{path}: containerPort out of range: {port}")
     return port
 
-
 def _extra_hosts(spec: dict[str, Any], path: Path) -> tuple[str, ...]:
     extra_raw = spec.get("extraHosts", spec.get("extra_hosts")) or []
     if isinstance(extra_raw, str):
@@ -131,7 +115,6 @@ def _extra_hosts(spec: dict[str, Any], path: Path) -> tuple[str, ...]:
     if isinstance(extra_raw, list):
         return tuple(str(x).strip() for x in extra_raw if str(x).strip())
     raise ValueError(f"{path}: spec.extraHosts must be a string or array")
-
 
 def _probe_path(spec: dict[str, Any], path: Path) -> str:
     probe = spec.get("readinessProbe") or spec.get("probe") or {}
@@ -141,7 +124,6 @@ def _probe_path(spec: dict[str, Any], path: Path) -> str:
     if not isinstance(http_get, dict):
         raise ValueError(f"{path}: readinessProbe.httpGet must be an object")
     return str(http_get.get("path", "/")).strip() or "/"
-
 
 def _resources(spec: dict[str, Any], path: Path) -> tuple[str, str, str, str]:
     resources = spec.get("resources") or {}
@@ -164,7 +146,6 @@ def _resources(spec: dict[str, Any], path: Path) -> tuple[str, str, str, str]:
         ),
     )
 
-
 def _load_yaml_mapping(path: Path) -> dict[str, Any]:
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -174,14 +155,12 @@ def _load_yaml_mapping(path: Path) -> dict[str, Any]:
         raise ValueError(f"{path}: document must be a mapping")
     return data
 
-
 def parse_app_document(
     data: dict[str, Any],
     *,
     path: Path,
     expect_name: Optional[str] = None,
 ) -> tuple[App, ServiceContract]:
-    """Parse a full App manifest into ``App`` + ``ServiceContract``."""
     api = str(data.get("apiVersion", "")).strip()
     kind = str(data.get("kind", "")).strip()
     if api != CONTRACT_API_VERSION:
@@ -295,7 +274,6 @@ def parse_app_document(
     )
     return app, contract
 
-
 def load_app_file(
     path: Path,
     *,
@@ -304,13 +282,11 @@ def load_app_file(
     data = _load_yaml_mapping(path)
     return parse_app_document(data, path=path, expect_name=expect_name)
 
-
 def load_contract(
     checkout: Path,
     *,
     expect_name: Optional[str] = None,
 ) -> ServiceContract:
-    """Load runtime contract from a service checkout's ``.raft/app.yaml``."""
     path = contract_path(checkout)
     if not path.is_file():
         raise FileNotFoundError(
@@ -320,9 +296,7 @@ def load_contract(
     _, contract = load_app_file(path, expect_name=expect_name)
     return contract
 
-
 def load_registry(root: Path) -> tuple[App, ...]:
-    """Load applied apps from ``~/.raft/state/apps/*.yaml``."""
     directory = registry_dir(root)
     if not directory.is_dir():
         return ()
@@ -339,15 +313,12 @@ def load_registry(root: Path) -> tuple[App, ...]:
         raise ValueError("registry: publicHost values must be unique across applied apps")
     return tuple(apps)
 
-
 def write_registry_app(root: Path, document: dict[str, Any]) -> Path:
-    """Persist an App document into the on-VPS registry."""
     path_hint = Path("<apply>")
     app, _ = parse_app_document(document, path=path_hint)
     directory = registry_dir(root)
     directory.mkdir(parents=True, exist_ok=True)
     dest = registry_path(root, app.name)
-    # Re-check host uniqueness against other apps
     for other in directory.glob("*.yaml"):
         if other.stem == app.name:
             continue
@@ -360,7 +331,6 @@ def write_registry_app(root: Path, document: dict[str, Any]) -> Path:
     text = yaml.safe_dump(document, sort_keys=False, default_flow_style=False)
     dest.write_text(text, encoding="utf-8")
     return dest
-
 
 def delete_registry_app(root: Path, name: str) -> bool:
     path = registry_path(root, name)

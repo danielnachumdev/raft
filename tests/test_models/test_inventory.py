@@ -4,9 +4,15 @@ from pathlib import Path
 
 import pytest
 
-from ..base import RaftTestCase, make_app, write_inventory
-from raft.models import load_inventory, load_stack
+import raft.config.paths as paths
+from raft.models import (
+    find_package_root,
+    find_repo_root,
+    load_inventory,
+    load_stack,
+)
 
+from ..base import RaftTestCase, make_app, write_inventory
 
 class TestLoadInventory(RaftTestCase):
     def test_local_and_git(self) -> None:
@@ -163,7 +169,6 @@ services:
     def test_rejects_empty_services(self) -> None:
         assert load_inventory(self.tmp_path) == ()
 
-
 class TestStack(RaftTestCase):
     @pytest.fixture(autouse=True)
     def _stack_setup(self, _raft_base) -> None:
@@ -223,17 +228,11 @@ services:
         assert stack.root == isolated_raft_data_home.resolve()
         assert stack.app("app").name == "app"
 
-
 class TestFindPackageRoot(RaftTestCase):
     def test_find_repo_root_alias(self) -> None:
-        from raft.models import find_package_root, find_repo_root
-
         assert find_repo_root() == find_package_root()
 
     def test_via_start_walk(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        import raft.config.paths as paths
-        from raft.models import find_package_root
-
         fake = self.tmp_path / "pkg"
         (fake / "nginx").mkdir(parents=True)
         (fake / "compose.yaml").write_text("name: raft\n", encoding="utf-8")
@@ -243,9 +242,6 @@ class TestFindPackageRoot(RaftTestCase):
         assert find_package_root(nested) == fake.resolve()
 
     def test_via_package_parents(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        import raft.config.paths as paths
-        from raft.models import find_package_root
-
         pkg_root = self.tmp_path / "pkgroot"
         (pkg_root / "nginx").mkdir(parents=True)
         (pkg_root / "compose.yaml").write_text("name: raft\n", encoding="utf-8")
@@ -259,15 +255,11 @@ class TestFindPackageRoot(RaftTestCase):
         assert find_package_root(orphan) == pkg_root.resolve()
 
     def test_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        import raft.config.paths as paths
-        from raft.models import find_package_root
-
         monkeypatch.setattr(paths, "_bundled_share", lambda: self.tmp_path / "nope")
         nested = self.tmp_path / "empty"
         nested.mkdir()
         with pytest.raises(FileNotFoundError, match="package templates"):
             find_package_root(nested)
-
 
 class TestApp(RaftTestCase):
     def test_abs_path(self) -> None:

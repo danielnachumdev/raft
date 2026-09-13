@@ -1,5 +1,7 @@
 """Inventory-backed stack model."""
 
+from ..config.paths import ensure_raft_home, find_package_root, raft_home
+from .app import COMPOSE_PROJECT, App
 from .contract import (
     CONTRACT_API_VERSION,
     CONTRACT_KINDS,
@@ -12,14 +14,11 @@ from .contract import (
     registry_path,
 )
 from .inventory import (
-    COMPOSE_PROJECT,
-    App,
     Stack,
     find_repo_root,
     load_inventory,
     load_stack,
 )
-from ..config.paths import ensure_raft_home, find_package_root, raft_home
 
 __all__ = [
     "COMPOSE_PROJECT",

@@ -14,55 +14,20 @@ from ..config.paths import (
     find_package_root,
     raft_home,
 )
+from .app import COMPOSE_PROJECT, App
+from .contract import load_app_file, load_registry, registry_path
 
-# Docker Compose project name (containers, networks, tmp names).
-COMPOSE_PROJECT = "raft"
-
-
-@dataclass(frozen=True)
-class App:
-    """One public site backed by one Compose service name."""
-
-    name: str
-    public_host: str
-    source: str  # "local" | "git" | "docker"
-    path: str  # relative to data home (git/local); unused for docker without repo
-    repo: Optional[str] = None
-    ref: str = "main"
-    image: Optional[str] = None  # registry/repo without tag (source=docker)
-
-    @property
-    def tmp_alias(self) -> str:
-        return f"{self.name}_tmp"
-
-    @property
-    def tmp_container(self) -> str:
-        return f"{COMPOSE_PROJECT}-{self.name}_tmp"
-
-    def abs_path(self, root: Path) -> Path:
-        return (root / self.path).resolve()
-
-    def image_ref(self, tag: Optional[str] = None) -> str:
-        """Full image reference for pulls: ``repo:tag`` or ``repo@sha256:…``."""
-        if not self.image:
-            raise ValueError(f"app {self.name!r} has no image (source={self.source})")
-        t = (tag if tag is not None else self.ref).strip()
-        if not t:
-            raise ValueError(f"app {self.name!r}: empty image tag/ref")
-        if t.startswith("sha256:"):
-            return f"{self.image}@{t}"
-        return f"{self.image}:{t}"
-
-    @property
-    def compose_pin_image(self) -> str:
-        """Image name Compose should pin (default ``ref`` as tag)."""
-        return self.image_ref(self.ref)
-
+__all__ = [
+    "COMPOSE_PROJECT",
+    "App",
+    "Stack",
+    "find_repo_root",
+    "load_inventory",
+    "load_stack",
+]
 
 @dataclass(frozen=True)
 class Stack:
-    """Gate/router plus apps from the on-VPS apply registry under ``~/.raft``."""
-
     root: Path
     apps: tuple[App, ...]
     gate: str = "gate"
@@ -108,32 +73,17 @@ class Stack:
         return self.root / GENERATED_DIRNAME
 
     def contract_for(self, app: App):
-        """Load runtime contract from the applied registry document."""
-        from .contract import load_app_file, registry_path  # deferred: circular import
-
         path = registry_path(self.root, app.name)
         _, contract = load_app_file(path, expect_name=app.name)
         return contract
 
-
 def find_repo_root(start: Optional[Path] = None) -> Path:
-    """Locate product templates (compose.yaml + nginx/).
-
-    Prefer :func:`raft_home` for operator data and :func:`find_package_root`
-    for templates. Kept for compatibility with older call sites/tests.
-    """
     return find_package_root(start)
 
-
 def load_inventory(root: Path) -> tuple[App, ...]:
-    """Compatibility alias: load applied apps from the on-VPS registry."""
-    from .contract import load_registry  # deferred: circular import
-
     return load_registry(root)
 
-
 def load_stack(root: Optional[Path] = None) -> Stack:
-    """Load the stack from ``root`` or the durable ``~/.raft`` data home."""
     data_home = root if root is not None else raft_home()
     ensure_raft_home(data_home)
     return Stack(root=data_home, apps=load_inventory(data_home))

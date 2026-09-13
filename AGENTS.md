@@ -109,7 +109,7 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | Path | Notes |
 |------|-------|
 | `src/raft/cli/` | Fire root + auth; `deps.py` patched in tests |
-| `src/raft/models/` | `App` / `Stack`, contract load/validate, registry paths |
+| `src/raft/models/` | `App` (`app.py`), `Stack` (`inventory.py`), contract load/validate, registry paths |
 | `src/raft/adapters/` | shell, docker, nginx upstreams, HTTP probe |
 | `src/raft/services/` | apply, auth, sync, render, cutover, orchestrator, doctor |
 | `src/raft/config/` | `~/.raft` paths, `settings.yaml`, logging setup |
@@ -141,5 +141,6 @@ If the host is rooted, container-readable secrets are burned. Prefer external st
 ## Tests & commits
 
 - `uv sync --extra dev` then `uv run pytest` — keep **100%** branch coverage.
+- **No function-local imports** — all `import` / `from … import` belong at module scope (fix cycles by restructuring, not by lazy imports).
 - Only commit when asked. Prefer `git mv` for renames.
 - Do not reintroduce committed consumer app names, upstreams, or PEMs.
