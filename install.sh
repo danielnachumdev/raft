@@ -6,14 +6,52 @@ RAFT_BRANCH="${RAFT_BRANCH:-main}"
 RAFT_KEEP_CHECKOUT="${RAFT_KEEP_CHECKOUT:-0}"
 RAFT_INSTALL_QUIET="${RAFT_INSTALL_QUIET:-0}"
 
+_color_stdout() {
+  [[ -z "${NO_COLOR:-}" ]] && { [[ -n "${FORCE_COLOR:-}" ]] || [[ -t 1 ]]; }
+}
+
+_color_stderr() {
+  [[ -z "${NO_COLOR:-}" ]] && { [[ -n "${FORCE_COLOR:-}" ]] || [[ -t 2 ]]; }
+}
+
+if _color_stdout; then
+  C_INFO=$'\033[36m'
+  C_OK=$'\033[32m'
+  C_WARN=$'\033[33m'
+  C_RESET=$'\033[0m'
+else
+  C_INFO=''
+  C_OK=''
+  C_WARN=''
+  C_RESET=''
+fi
+
+if _color_stderr; then
+  C_ERR=$'\033[31m'
+  C_ERR_RESET=$'\033[0m'
+else
+  C_ERR=''
+  C_ERR_RESET=''
+fi
+
 die() {
-  printf 'install.sh: %s\n' "$*" >&2
+  printf '%sinstall.sh: %s%s\n' "${C_ERR}" "$*" "${C_ERR_RESET}" >&2
   exit 1
 }
 
 log() {
   [[ "${RAFT_INSTALL_QUIET}" == "1" ]] && return 0
-  printf '%s\n' "$*"
+  printf '%s%s%s\n' "${C_INFO}" "$*" "${C_RESET}"
+}
+
+log_ok() {
+  [[ "${RAFT_INSTALL_QUIET}" == "1" ]] && return 0
+  printf '%s%s%s\n' "${C_OK}" "$*" "${C_RESET}"
+}
+
+log_warn() {
+  [[ "${RAFT_INSTALL_QUIET}" == "1" ]] && return 0
+  printf '%s%s%s\n' "${C_WARN}" "$*" "${C_RESET}"
 }
 
 ensure_path_local_bin() {
@@ -28,7 +66,7 @@ ensure_uv() {
   if command -v uv >/dev/null 2>&1; then
     return 0
   fi
-  echo "uv not found; installing via https://astral.sh/uv/install.sh"
+  log "uv not found; installing via https://astral.sh/uv/install.sh"
   curl -LsSf https://astral.sh/uv/install.sh | sh
   ensure_path_local_bin
   command -v uv >/dev/null 2>&1 || die "uv install finished but 'uv' is not on PATH (expected ${HOME}/.local/bin)"
@@ -89,12 +127,12 @@ finish_message() {
   ensure_path_local_bin
 
   if command -v raft >/dev/null 2>&1; then
-    log "Installed raft → $(command -v raft)"
+    log_ok "Installed raft → $(command -v raft)"
     raft -- --help >/dev/null 2>&1 || raft -h >/dev/null 2>&1 || true
   else
-    echo "raft was installed but is not on PATH yet."
-    echo "Open a new shell, or run:  export PATH=\"\${HOME}/.local/bin:\${PATH}\""
-    echo "Then:  uv tool update-shell"
+    log_warn "raft was installed but is not on PATH yet."
+    log_warn "Open a new shell, or run:  export PATH=\"\${HOME}/.local/bin:\${PATH}\""
+    log_warn "Then:  uv tool update-shell"
   fi
 }
 

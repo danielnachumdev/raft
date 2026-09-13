@@ -26,7 +26,7 @@ def _suggest_doctor(argv: Optional[list[str]]) -> None:
     if argv and argv[0] == "doctor":
         return
     say_err("")
-    say_err("Hint: run `raft doctor` to check setup and see fixes.")
+    say_err("Hint: run `raft doctor` to check setup and see fixes.", style="warn")
 
 
 def main(argv: Optional[list[str]] = None) -> int:

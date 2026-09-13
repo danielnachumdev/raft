@@ -47,7 +47,7 @@ class AppApply:
             spec["ref"] = ref_override
         app, _ = parse_app_document(data, path=path)
         dest = write_registry_app(self.stack.root, data)
-        say(f"applied {app.name} → {dest.relative_to(self.stack.root)}")
+        say(f"applied {app.name} → {dest.relative_to(self.stack.root)}", style="ok")
         if deploy:
             self._deploy(app.name, ref_override=ref_override, force_sync=force_sync)
         return app.name
@@ -94,7 +94,11 @@ class AppApply:
                 spec["source"] = "docker" if spec.get("image") else "git"
             app, _ = parse_app_document(data, path=manifest)
             dest = write_registry_app(self.stack.root, data)
-            say(f"applied {app.name} from {repo}@{ref} → " f"{dest.relative_to(self.stack.root)}")
+            say(
+                f"applied {app.name} from {repo}@{ref} → "
+                f"{dest.relative_to(self.stack.root)}",
+                style="ok",
+            )
             if deploy:
                 self._deploy(app.name, ref_override=ref, force_sync=force_sync)
             return app.name
@@ -104,14 +108,17 @@ class AppApply:
     def delete(self, name: str) -> None:
         if not delete_registry_app(self.stack.root, name):
             raise KeyError(f"app {name!r} is not applied")
-        say(f"deleted {name} from registry")
+        say(f"deleted {name} from registry", style="ok")
         fresh = load_stack(self.stack.root)
         if fresh.apps:
             StackRenderer(fresh).render()
-            say("re-rendered generated/; remove the Compose service if it is still running")
+            say(
+                "re-rendered generated/; remove the Compose service if it is still running",
+                style="info",
+            )
         else:
             StackRenderer(fresh).render()
-            say("re-rendered generated/ (no apps applied)")
+            say("re-rendered generated/ (no apps applied)", style="info")
 
     def _deploy(
         self,
@@ -126,4 +133,4 @@ class AppApply:
             orch.redeploy_app(name, ref_override=ref_override, force_sync=force_sync)
         else:
             orch.sync([name], ref_override=ref_override, force=force_sync)
-            say(f"synced {name}; bring the stack up with: raft up")
+            say(f"synced {name}; bring the stack up with: raft up", style="info")

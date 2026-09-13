@@ -147,7 +147,7 @@ class GitAuthManager:
         )
 
         logger.info("auth %s: clone URL will be %s", service, parsed.with_host_alias(alias))
-        say(f"next: raft auth test {service} && raft sync {service}")
+        say(f"next: raft auth test {service} && raft sync {service}", style="info")
 
     def list_services(self) -> list[str]:
         if not self.keys_dir.is_dir():
@@ -203,7 +203,7 @@ class GitAuthManager:
                 f"auth test failed for {service!r}" + (f":\n{detail}" if detail else "")
             )
         if not quiet:
-            say(f"auth test {service}: ok")
+            say(f"auth test {service}: ok", style="ok")
         else:
             logger.info("auth test %s: ok", service)
 
@@ -213,10 +213,11 @@ class GitAuthManager:
             self.key_path(service).unlink(missing_ok=True)
             self.pub_path(service).unlink(missing_ok=True)
         suffix = " and key files" if remove_files else ""
-        say(f"auth {service}: removed local SSH config{suffix}")
+        say(f"auth {service}: removed local SSH config{suffix}", style="ok")
         say(
             "if a deploy key was added on the git host, delete it there manually "
-            "(GitHub → repo Settings → Deploy keys)."
+            "(GitHub → repo Settings → Deploy keys).",
+            style="info",
         )
 
     def _ensure_ssh_layout(self) -> None:
@@ -304,7 +305,7 @@ class GitAuthManager:
         pubkey: str,
         title: str,
     ) -> None:
-        say(f"Add a read-only deploy key for {service}:")
+        say(f"Add a read-only deploy key for {service}:", style="info")
         say("")
         say(f"  Title:  {title}")
         say(f"  Key:    {self._pubkey_for_paste(pubkey)}")

@@ -19,7 +19,7 @@ class SelfUpdate:
 
     def run(self) -> None:
         url = os.environ.get("RAFT_INSTALL_URL", DEFAULT_INSTALL_URL)
-        say("Updating raft…")
+        say("Updating raft…", style="info")
         self.sh.run(
             [
                 "bash",
@@ -29,4 +29,4 @@ class SelfUpdate:
                 url,
             ],
         )
-        say("OK: raft updated")
+        say("OK: raft updated", style="ok")

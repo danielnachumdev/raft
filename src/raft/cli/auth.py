@@ -19,7 +19,7 @@ class AuthCLI:
         auth = deps.GitAuthManager(self._stack)
         names = auth.list_services()
         if not names:
-            say("No local raft deploy keys.")
+            say("No local raft deploy keys.", style="warn")
             return
         applied = {a.name for a in self._stack.apps}
         for name in names:

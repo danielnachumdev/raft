@@ -44,7 +44,7 @@ class Orchestrator:
 
     def render(self) -> None:
         StackRenderer(self.stack).render()
-        say("rendered generated/ from applied App manifests + edge settings")
+        say("rendered generated/ from applied App manifests + edge settings", style="ok")
 
     def _wait_app_ready(self, app, *, timeout: float = 45) -> None:
         spec = self.stack.spec_for(app)
@@ -76,19 +76,19 @@ class Orchestrator:
         logger.info("waiting for readiness checks")
         for app in self.stack.apps:
             self._wait_app_ready(app, timeout=45)
-        say("stack is up")
-        say("redeploy with: raft redeploy <app>")
+        say("stack is up", style="ok")
+        say("redeploy with: raft redeploy <app>", style="info")
 
     def stop(self) -> None:
         running = self.docker.running_services()
         if not running:
-            say("stack already stopped")
+            say("stack already stopped", style="info")
             for app in self.stack.apps:
                 self.docker.remove_container(app.tmp_container)
             return
         logger.info("stopping stack (%s)", ", ".join(running))
         self.docker.stop_stack()
-        say("stack stopped")
+        say("stack stopped", style="ok")
 
     def redeploy(self, target: str) -> None:
         if target == self.stack.router:
@@ -108,7 +108,8 @@ class Orchestrator:
         self.render()
         say(
             "recreating gate to pick up published edge ports "
-            "(brief edge downtime — typically 1–2s)"
+            "(brief edge downtime — typically 1–2s)",
+            style="warn",
         )
         self.docker.recreate_gate()
         edge = load_config(self.stack.root).edge
@@ -119,7 +120,7 @@ class Orchestrator:
                 timeout=30,
                 interval=0.5,
             )
-        say("gate recreated")
+        say("gate recreated", style="ok")
 
     def redeploy_router(self) -> None:
         if self.stack.gate not in self.docker.running_services():
@@ -129,7 +130,7 @@ class Orchestrator:
         logger.info("waiting for readiness via gate")
         for app in self.stack.apps:
             self._wait_app_ready(app, timeout=45)
-        say("router redeployed")
+        say("router redeployed", style="ok")
 
     def redeploy_app(
         self,
@@ -161,4 +162,4 @@ class Orchestrator:
                 app.name,
             )
             raise
-        say(f"redeployed {app.name}")
+        say(f"redeployed {app.name}", style="ok")

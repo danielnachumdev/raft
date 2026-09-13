@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import shutil
 import socket
 import sys
@@ -13,6 +12,7 @@ from ..adapters import DockerStack, Shell
 from ..config.settings import load_config
 from ..models import Stack
 from ..models.manifest import registry_path
+from ..ui import BOLD, CYAN, DIM, GREEN, RED, YELLOW, paint, want_color
 from .auth import GitAuthManager, parse_ssh_git_url, real_git_host
 
 Status = Literal["ok", "warn", "fail"]
@@ -21,23 +21,7 @@ INFRA = "infra"
 
 _STATUS_LABEL = {"ok": "OK  ", "warn": "WARN", "fail": "FAIL"}
 
-_RESET = "\033[0m"
-_BOLD = "\033[1m"
-_DIM = "\033[2m"
-_GREEN = "\033[32m"
-_YELLOW = "\033[33m"
-_RED = "\033[31m"
-_CYAN = "\033[36m"
-
-_STATUS_COLOR = {"ok": _GREEN, "warn": _YELLOW, "fail": _RED}
-
-
-def _want_color(stream: TextIO, explicit: Optional[bool]) -> bool:
-    if explicit is not None:
-        return explicit
-    if os.environ.get("NO_COLOR", ""):
-        return False
-    return bool(getattr(stream, "isatty", lambda: False)())
+_STATUS_COLOR = {"ok": GREEN, "warn": YELLOW, "fail": RED}
 
 
 @dataclass(frozen=True)
@@ -84,7 +68,7 @@ class Doctor:
         color: Optional[bool] = None,
     ) -> int:
         stream = out if out is not None else sys.stdout
-        use_color = _want_color(stream, color)
+        use_color = want_color(stream, color)
         results = results if results is not None else self.run()
 
         by_service: dict[str, list[CheckResult]] = {}
@@ -95,10 +79,8 @@ class Doctor:
         ordered = [s for s in preferred if s in by_service]
         ordered.extend(s for s in by_service if s not in preferred)
 
-        def paint(text: str, *codes: str) -> str:
-            if not use_color or not codes:
-                return text
-            return f"{''.join(codes)}{text}{_RESET}"
+        def tint(text: str, *codes: str) -> str:
+            return paint(text, *codes, color=use_color)
 
         issues = [r for r in results if r.status != "ok"]
         check_width = max((len(r.check) for r in issues), default=0)
@@ -119,17 +101,17 @@ class Doctor:
             printed_block = True
 
             if not bad:
-                label = paint(_STATUS_LABEL["ok"], _STATUS_COLOR["ok"], _BOLD)
+                label = tint(_STATUS_LABEL["ok"], _STATUS_COLOR["ok"], BOLD)
                 print(f"  {label}  {service:<{service_width}}", file=stream)
                 prev_expanded = False
                 continue
 
-            print(paint(service, _BOLD, _CYAN), file=stream)
+            print(tint(service, BOLD, CYAN), file=stream)
             for r in bad:
-                label = paint(
+                label = tint(
                     _STATUS_LABEL[r.status],
                     _STATUS_COLOR[r.status],
-                    _BOLD,
+                    BOLD,
                 )
                 print(
                     f"  {label}  {r.check:<{check_width}}  {r.detail}",
@@ -137,18 +119,18 @@ class Doctor:
                 )
                 if r.fix:
                     pad = " " * (2 + status_width + 2 + check_width + 2)
-                    fix_line = paint(f"fix: {r.fix}", _DIM, _CYAN)
+                    fix_line = tint(f"fix: {r.fix}", DIM, CYAN)
                     print(f"{pad}{fix_line}", file=stream)
             prev_expanded = True
 
         print(file=stream)
         if fails:
-            print(paint(f"{fails} check(s) failed", _RED, _BOLD), file=stream)
+            print(tint(f"{fails} check(s) failed", RED, BOLD), file=stream)
             return 1
         if warns:
-            print(paint(f"ok ({warns} warning(s))", _YELLOW), file=stream)
+            print(tint(f"ok ({warns} warning(s))", YELLOW), file=stream)
         else:
-            print(paint("all checks passed", _GREEN, _BOLD), file=stream)
+            print(tint("all checks passed", GREEN, BOLD), file=stream)
         return 0
 
     @staticmethod
