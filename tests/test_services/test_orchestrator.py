@@ -33,6 +33,37 @@ class TestOrchestrator(ServicesTestCase):
             self.orch.render()
             renderer_cls.assert_called_once_with(self.orch.stack)
             instance.render.assert_called_once()
+            self.orch.docker.reload_gate_nginx.assert_not_called()
+
+    def test_render_reloads_gate_when_fingerprint_changes(self) -> None:
+        self.orch.docker.running_services.return_value = ["gate", "router"]
+        with patch(
+            "raft.services.orchestrator.fingerprint_gate_nginx",
+            side_effect=["before", "after"],
+        ):
+            with patch("raft.services.orchestrator.StackRenderer"):
+                self.orch.render()
+        self.orch.docker.reload_gate_nginx.assert_called_once()
+
+    def test_render_skips_gate_reload_when_fingerprint_unchanged(self) -> None:
+        with patch(
+            "raft.services.orchestrator.fingerprint_gate_nginx",
+            return_value="same",
+        ):
+            with patch("raft.services.orchestrator.StackRenderer"):
+                self.orch.render()
+        self.orch.docker.reload_gate_nginx.assert_not_called()
+        self.orch.docker.running_services.assert_not_called()
+
+    def test_render_skips_gate_reload_when_gate_down(self) -> None:
+        self.orch.docker.running_services.return_value = ["router"]
+        with patch(
+            "raft.services.orchestrator.fingerprint_gate_nginx",
+            side_effect=["before", "after"],
+        ):
+            with patch("raft.services.orchestrator.StackRenderer"):
+                self.orch.render()
+        self.orch.docker.reload_gate_nginx.assert_not_called()
 
     def test_start_happy_path(self) -> None:
         self.orch.docker.running_services.side_effect = [

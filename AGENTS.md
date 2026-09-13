@@ -22,11 +22,11 @@ gate (public edge listeners from settings) → router (Host routing) → apps
 
 | Layer | Role | Redeploy |
 |-------|------|----------|
-| **gate** | Outer nginx; http + stream; offline page when router/apps fail | **`raft redeploy gate` refuses**; use **`raft gate recreate`** when published ports change |
+| **gate** | Outer nginx; http + stream; offline page when router/apps fail | **`raft redeploy gate` refuses**; **reload** on generated TLS/http/stream change; **`raft gate recreate`** only for published edge ports |
 | **router** | Inner nginx; Host → upstream | `raft redeploy router` |
 | **apps** | One Compose service per applied App | `raft redeploy <name>` (tmp cutover) |
 
-Cutover reloads **router** nginx, not gate. Never use `redeploy` for gate — only the deliberate `gate recreate` path (brief edge downtime).
+Cutover reloads **router** nginx. Render reloads **gate** nginx when `generated/nginx/gate-{tls,http,stream}` content changes and gate is running. Never use `redeploy` for gate — published-port changes need `gate recreate` (brief edge downtime).
 
 ### Ports and TLS
 

@@ -168,10 +168,19 @@ class DockerStack:
         logger.debug("router_can_fetch %s:%s -> %s", hostname, port, ok)
         return ok
 
-    def nginx_test_and_reload(self) -> None:
+    def reload_router_nginx(self) -> None:
         logger.info("nginx -t && reload on router")
         self.sh.compose("exec", "-T", self.stack.router, "nginx", "-t")
         self.sh.compose("exec", "-T", self.stack.router, "nginx", "-s", "reload")
+
+    def nginx_test_and_reload(self) -> None:
+        """Reload router nginx (alias kept for call sites / tests)."""
+        self.reload_router_nginx()
+
+    def reload_gate_nginx(self) -> None:
+        logger.info("nginx -t && reload on gate")
+        self.sh.compose("exec", "-T", self.stack.gate, "nginx", "-t")
+        self.sh.compose("exec", "-T", self.stack.gate, "nginx", "-s", "reload")
 
     def router_sees_upstream_target(
         self,

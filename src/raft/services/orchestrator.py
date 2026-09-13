@@ -14,7 +14,7 @@ from ..models.stack import Stack
 from ..ui import say
 from .cutover import DEPLOY_CUTOVER, CutoverSession, wait_until
 from .readiness import ReadinessStrategy
-from .render import StackRenderer
+from .render import StackRenderer, fingerprint_gate_nginx
 from .sync import SourceSync
 
 logger = logging.getLogger(__name__)
@@ -43,7 +43,11 @@ class Orchestrator:
         self.render()
 
     def render(self) -> None:
+        before = fingerprint_gate_nginx(self.stack.root)
         StackRenderer(self.stack).render()
+        after = fingerprint_gate_nginx(self.stack.root)
+        if before != after and self.stack.gate in self.docker.running_services():
+            self.docker.reload_gate_nginx()
         say("rendered generated/ from applied App manifests + edge settings", style="ok")
 
     def _wait_app_ready(self, app, *, timeout: float = 45) -> None:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from pathlib import Path
 from typing import Optional
@@ -15,6 +16,33 @@ from .edge import EDGE_HANDLERS, EdgeFragments, TlsEdge
 from .readiness import ReadinessStrategy
 
 logger = logging.getLogger(__name__)
+
+_GATE_NGINX_SUBDIRS = ("gate-tls", "gate-http", "gate-stream")
+
+
+def fingerprint_gate_nginx(stack_root: Path) -> str:
+    """Stable hash of generated gate nginx fragments (tls / http / stream).
+
+    Missing directories count as empty. Does not include ``compose.edge.yaml``
+    (published-port changes still require ``raft gate recreate``).
+    """
+    base = stack_root / GENERATED_DIRNAME / "nginx"
+    entries: list[tuple[str, bytes]] = []
+    for sub in _GATE_NGINX_SUBDIRS:
+        directory = base / sub
+        if not directory.is_dir():
+            continue
+        for path in directory.rglob("*"):
+            if path.is_file():
+                rel = f"{sub}/{path.relative_to(directory).as_posix()}"
+                entries.append((rel, path.read_bytes()))
+    digest = hashlib.sha256()
+    for rel, data in sorted(entries, key=lambda item: item[0]):
+        digest.update(rel.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(data)
+        digest.update(b"\0")
+    return digest.hexdigest()
 
 
 class StackRenderer:

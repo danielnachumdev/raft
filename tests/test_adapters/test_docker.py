@@ -112,6 +112,14 @@ class TestDockerStack(AdapterTestCase):
         assert self.docker.router_can_fetch("app") is False
         self.shell.compose.return_value = self.ok()
         self.docker.nginx_test_and_reload()
+        self.shell.compose.assert_any_call("exec", "-T", "router", "nginx", "-t")
+        self.shell.compose.assert_any_call("exec", "-T", "router", "nginx", "-s", "reload")
+
+    def test_reload_gate_nginx(self) -> None:
+        self.shell.compose.return_value = self.ok()
+        self.docker.reload_gate_nginx()
+        self.shell.compose.assert_any_call("exec", "-T", "gate", "nginx", "-t")
+        self.shell.compose.assert_any_call("exec", "-T", "gate", "nginx", "-s", "reload")
 
     def test_router_sees_upstream_target(self) -> None:
         port = PortSpec(name="http", container_port=80, expose="http")
