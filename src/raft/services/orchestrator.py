@@ -175,3 +175,69 @@ class Orchestrator:
             )
             raise
         say(f"redeployed {app.name}", style="ok")
+
+    def ensure_app_deployed(
+        self,
+        app_name: str,
+        *,
+        ref_override: Optional[str] = None,
+        force_sync: bool = False,
+    ) -> None:
+        """Deploy an applied app: cutover if running, start service if edge is up, else full up."""
+        app = self.stack.app(app_name)
+        running = self.docker.running_services()
+        if app_name in running:
+            self.redeploy_app(app_name, ref_override=ref_override, force_sync=force_sync)
+            return
+        if self.stack.gate in running:
+            self._start_app_on_running_edge(
+                app, ref_override=ref_override, force_sync=force_sync
+            )
+            return
+        self._start_stack_for_app(app_name, ref_override=ref_override, force_sync=force_sync)
+
+    def _start_app_on_running_edge(
+        self,
+        app,
+        *,
+        ref_override: Optional[str],
+        force_sync: bool,
+    ) -> None:
+        """Gate/router already up; sync, start this Compose service, reload router, wait ready."""
+        logger.info("edge up; starting new app service %s", app.name)
+        self.sync([app.name], ref_override=ref_override, force=force_sync)
+        self.docker.rebuild_service(app.name)
+        self.docker.nginx_test_and_reload()
+        self._wait_app_ready(app, timeout=45)
+        say(f"deployed {app.name}", style="ok")
+
+    def _start_stack_for_app(
+        self,
+        app_name: str,
+        *,
+        ref_override: Optional[str],
+        force_sync: bool,
+    ) -> None:
+        """Cold stack: sync (with this app's overrides) then bring everything up."""
+        running = self.docker.running_services()
+        if running:
+            joined = ", ".join(running)
+            raise RuntimeError(
+                f"stack already running ({joined}). "
+                "Refusing to rebuild/reload everything — "
+                "run `raft down` first, "
+                "or `raft redeploy <app|router>` for a targeted update."
+            )
+        logger.info("stack not up; full start to deploy %s", app_name)
+        self.sync([app_name], ref_override=ref_override, force=force_sync)
+        others = [a.name for a in self.stack.apps if a.name != app_name]
+        if others:
+            self.sync(others, force=force_sync)
+        logger.info("starting stack")
+        self.docker.start_stack()
+        self._assert_core_edge_running()
+        logger.info("waiting for readiness checks")
+        for app in self.stack.apps:
+            self._wait_app_ready(app, timeout=45)
+        say("stack is up", style="ok")
+        say(f"deployed {app_name}", style="ok")

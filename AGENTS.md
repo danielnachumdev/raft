@@ -58,11 +58,11 @@ Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 
 1. `install.sh` (or `uv sync` in a clone; Python **3.8+**).
 2. Private git apps: `raft auth setup <name> --repo git@host:owner/repo.git` (works before apply) → paste pubkey as read-only deploy key (`~/.ssh/raft/`). Then `raft auth test <name> --repo …` and `raft apply --git …`.
-3. `raft apply --file …` or `raft apply --git …` → writes `~/.raft/state/apps/<name>.yaml`, optionally syncs + renders.
-4. If any app uses `tls: origin`, install PEMs under `~/.raft/certs/<name>/`.
-5. `raft up` (refuses if stack already up; `down` first).
+3. `raft apply --file …` or `raft apply --git …` → writes `~/.raft/state/apps/<name>.yaml`; with deploy (default) always brings the app live (cutover if running, start the service if gate is up, else full `up`).
+4. If any app uses `tls: origin`, install PEMs under `~/.raft/certs/<name>/` before first deploy.
+5. Manual cold start without apply: `raft up` (refuses if stack already up; `down` first).
 6. `raft doctor` before trusting the site (certs only for `tls: origin`; gate drift → `raft gate recreate`).
-7. Updates: `raft redeploy <app>` or `raft redeploy router`. New edge listeners: `raft gate recreate`.
+7. Updates: `raft apply …` again, or `raft redeploy <app>` / `raft redeploy router`. New edge listeners: `raft gate recreate`.
 8. Tear down: `raft down`.
 
 Useful checks: `curl -H 'Host: <publicHost>' http://127.0.0.1/`. Optional local hosts: `sudo python3 scripts/hosts.py hold` (reads applied `publicHost` values; errors if none applied). See [`scripts/README.md`](scripts/README.md).

@@ -81,18 +81,20 @@ class TestAppApply(RaftTestCase):
         applier = AppApply(stack)
 
         orch = MagicMock()
-        orch.docker.running_services.return_value = ["web"]
         with patch("raft.services.apply.Orchestrator", return_value=orch):
             with patch("raft.services.apply.load_stack", return_value=stack):
                 applier.apply_file(path, deploy=True)
-        orch.redeploy_app.assert_called_once()
+        orch.ensure_app_deployed.assert_called_once_with(
+            "web", ref_override=None, force_sync=False
+        )
 
         orch2 = MagicMock()
-        orch2.docker.running_services.return_value = []
         with patch("raft.services.apply.Orchestrator", return_value=orch2):
             with patch("raft.services.apply.load_stack", return_value=stack):
                 applier.apply_file(path, deploy=True, force_sync=True)
-        orch2.sync.assert_called_once_with(["web"], ref_override=None, force=True)
+        orch2.ensure_app_deployed.assert_called_once_with(
+            "web", ref_override=None, force_sync=True
+        )
 
     def test_apply_git_shallow_and_fallback(self) -> None:
         stack = load_stack(self.tmp_path)
@@ -296,11 +298,12 @@ class TestAppApply(RaftTestCase):
 
         shell.git.side_effect = clone_image_app
         orch = MagicMock()
-        orch.docker.running_services.return_value = []
         with patch("raft.services.apply.Orchestrator", return_value=orch):
             with patch("raft.services.apply.load_stack", return_value=stack):
                 name = AppApply(stack, shell=shell).apply_git(
                     "git@github.com:org/img.git", deploy=True
                 )
         assert name == "img"
-        orch.sync.assert_called_once()
+        orch.ensure_app_deployed.assert_called_once_with(
+            "img", ref_override="main", force_sync=False
+        )

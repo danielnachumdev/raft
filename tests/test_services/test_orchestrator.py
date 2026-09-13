@@ -4,6 +4,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from raft.models.stack import load_stack
+from raft.services import Orchestrator
+
+from ..base import write_applied_app
 from .base import ServicesTestCase
 
 
@@ -100,3 +104,57 @@ class TestOrchestrator(ServicesTestCase):
             with patch.object(self.orch, "sync"):
                 with pytest.raises(RuntimeError, match="cutover failed"):
                     self.orch.redeploy_app("app")
+
+    def test_ensure_app_deployed_redeploys_when_running(self) -> None:
+        self.orch.docker.running_services.return_value = ["gate", "router", "app"]
+        with patch.object(self.orch, "redeploy_app") as redeploy:
+            self.orch.ensure_app_deployed("app", ref_override="sha", force_sync=True)
+        redeploy.assert_called_once_with("app", ref_override="sha", force_sync=True)
+
+    def test_ensure_app_deployed_starts_app_when_edge_up(self) -> None:
+        self.orch.docker.running_services.return_value = ["gate", "router"]
+        self.orch.http.public_host_ok.return_value = True
+        with patch.object(self.orch, "sync") as sync:
+            self.orch.ensure_app_deployed("app", ref_override="v1", force_sync=True)
+        sync.assert_called_once_with(["app"], ref_override="v1", force=True)
+        self.orch.docker.rebuild_service.assert_called_once_with("app")
+        self.orch.docker.nginx_test_and_reload.assert_called_once()
+
+    def test_ensure_app_deployed_full_up_when_cold(self) -> None:
+        self.orch.docker.running_services.side_effect = [
+            [],
+            [],
+            ["gate", "router", "app"],
+        ]
+        self.orch.http.public_host_ok.return_value = True
+        with patch.object(self.orch, "sync") as sync:
+            self.orch.ensure_app_deployed("app", ref_override="main", force_sync=False)
+        sync.assert_called_once_with(["app"], ref_override="main", force=False)
+        self.orch.docker.start_stack.assert_called_once()
+
+    def test_ensure_app_deployed_cold_syncs_other_apps(self) -> None:
+        write_applied_app(self.tmp_path, "other", public_host="other.test")
+        stack = load_stack(self.tmp_path)
+        orch = Orchestrator(stack)
+        orch.docker = MagicMock()
+        orch.nginx = MagicMock()
+        orch.http = MagicMock()
+        orch.syncer = MagicMock()
+        orch.docker.running_services.side_effect = [
+            [],
+            [],
+            ["gate", "router", "app", "other"],
+        ]
+        orch.http.public_host_ok.return_value = True
+        with patch.object(orch, "sync") as sync:
+            orch.ensure_app_deployed("app", force_sync=True)
+        assert sync.call_args_list[0].args[0] == ["app"]
+        assert sync.call_args_list[1].args[0] == ["other"]
+
+    def test_ensure_app_deployed_cold_refuses_partial_stack(self) -> None:
+        self.orch.docker.running_services.side_effect = [
+            ["router"],
+            ["router"],
+        ]
+        with pytest.raises(RuntimeError, match="already running"):
+            self.orch.ensure_app_deployed("app")

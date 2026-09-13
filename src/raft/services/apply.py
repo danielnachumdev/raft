@@ -175,9 +175,4 @@ class AppApply:
         force_sync: bool,
     ) -> None:
         orch = Orchestrator(load_stack(self.stack.root))
-        running = orch.docker.running_services()
-        if name in running:
-            orch.redeploy_app(name, ref_override=ref_override, force_sync=force_sync)
-        else:
-            orch.sync([name], ref_override=ref_override, force=force_sync)
-            say(f"synced {name}; bring the stack up with: raft up", style="info")
+        orch.ensure_app_deployed(name, ref_override=ref_override, force_sync=force_sync)
