@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "raft"
+version = "0.1.0"
+description = "Single-VPS multi-service orchestrator (gate, router, app cutover)"
+requires-python = ">=3.11"
+dependencies = [
+    "fire>=0.7.1",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+
+[project.scripts]
+raft = "raft.cli:run"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "src"]
+addopts = [
+    "--import-mode=importlib",
+    "--cov=raft",
+    "--cov-report=term-missing",
+    "--cov-fail-under=100",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["src/raft"]
+relative_files = true
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true

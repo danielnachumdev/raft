@@ -1,0 +1,543 @@
+"""Environment diagnostics for operators (`uv run raft doctor`)."""
+
+from __future__ import annotations
+
+import os
+import shutil
+import socket
+import sys
+from dataclasses import dataclass
+from typing import Literal, Optional, TextIO
+
+from ..adapters import DockerStack, Shell
+from ..models import Stack
+from .auth import GitAuthManager, parse_ssh_git_url, real_git_host
+
+Status = Literal["ok", "warn", "fail"]
+
+INFRA = "infra"
+
+_STATUS_LABEL = {"ok": "OK  ", "warn": "WARN", "fail": "FAIL"}
+
+_RESET = "\033[0m"
+_BOLD = "\033[1m"
+_DIM = "\033[2m"
+_GREEN = "\033[32m"
+_YELLOW = "\033[33m"
+_RED = "\033[31m"
+_CYAN = "\033[36m"
+
+_STATUS_COLOR = {"ok": _GREEN, "warn": _YELLOW, "fail": _RED}
+
+
+def _want_color(stream: TextIO, explicit: Optional[bool]) -> bool:
+    if explicit is not None:
+        return explicit
+    if os.environ.get("NO_COLOR", ""):
+        return False
+    return bool(getattr(stream, "isatty", lambda: False)())
+
+
+@dataclass(frozen=True)
+class CheckResult:
+    """One check under a service (``infra`` or an inventory app name)."""
+
+    service: str
+    check: str
+    status: Status
+    detail: str
+    fix: str = ""
+
+
+class Doctor:
+    """Run read-only health checks and suggest fixes."""
+
+    def __init__(
+        self,
+        stack: Stack,
+        *,
+        shell: Optional[Shell] = None,
+        auth: Optional[GitAuthManager] = None,
+        docker: Optional[DockerStack] = None,
+    ) -> None:
+        self.stack = stack
+        self.sh = shell or Shell(stack.root)
+        self.auth = auth or GitAuthManager(stack, self.sh)
+        self.docker = docker or DockerStack(stack, self.sh)
+
+    def run(self) -> list[CheckResult]:
+        checks: list[CheckResult] = []
+        checks.append(self._check_compose_file())
+        checks.append(self._check_generated())
+        checks.extend(self._check_docker())
+        checks.extend(self._check_apps())
+        checks.extend(self._check_upstreams())
+        checks.extend(self._check_certs())
+        checks.extend(self._check_stack_running())
+        checks.append(self._check_port_80())
+        return checks
+
+    def report(
+        self,
+        results: Optional[list[CheckResult]] = None,
+        *,
+        out: Optional[TextIO] = None,
+        color: Optional[bool] = None,
+    ) -> int:
+        """Print status grouped by service; exit 1 if any check failed.
+
+        Healthy services collapse to a single OK line. Services with warnings
+        or failures expand to the problematic checks (with ``fix:`` hints).
+
+        Color is used when ``out`` is a TTY (unless ``NO_COLOR`` is set), or
+        when ``color`` is passed explicitly.
+        """
+        stream = out if out is not None else sys.stdout
+        use_color = _want_color(stream, color)
+        results = results if results is not None else self.run()
+
+        by_service: dict[str, list[CheckResult]] = {}
+        for r in results:
+            by_service.setdefault(r.service, []).append(r)
+
+        preferred = [INFRA, *[a.name for a in self.stack.apps]]
+        ordered = [s for s in preferred if s in by_service]
+        ordered.extend(s for s in by_service if s not in preferred)
+
+        def paint(text: str, *codes: str) -> str:
+            if not use_color or not codes:
+                return text
+            return f"{''.join(codes)}{text}{_RESET}"
+
+        issues = [r for r in results if r.status != "ok"]
+        check_width = max((len(r.check) for r in issues), default=0)
+        service_width = max((len(s) for s in ordered), default=0)
+        status_width = 4
+
+        fails = sum(1 for r in results if r.status == "fail")
+        warns = sum(1 for r in results if r.status == "warn")
+        printed_block = False
+        prev_expanded = False
+
+        for service in ordered:
+            items = by_service[service]
+            bad = [r for r in items if r.status != "ok"]
+
+            if printed_block and (bad or prev_expanded):
+                print(file=stream)
+            printed_block = True
+
+            if not bad:
+                label = paint(_STATUS_LABEL["ok"], _STATUS_COLOR["ok"], _BOLD)
+                print(f"  {label}  {service:<{service_width}}", file=stream)
+                prev_expanded = False
+                continue
+
+            print(paint(service, _BOLD, _CYAN), file=stream)
+            for r in bad:
+                label = paint(
+                    _STATUS_LABEL[r.status],
+                    _STATUS_COLOR[r.status],
+                    _BOLD,
+                )
+                print(
+                    f"  {label}  {r.check:<{check_width}}  {r.detail}",
+                    file=stream,
+                )
+                if r.fix:
+                    pad = " " * (2 + status_width + 2 + check_width + 2)
+                    fix_line = paint(f"fix: {r.fix}", _DIM, _CYAN)
+                    print(f"{pad}{fix_line}", file=stream)
+            prev_expanded = True
+
+        print(file=stream)
+        if fails:
+            print(paint(f"{fails} check(s) failed", _RED, _BOLD), file=stream)
+            return 1
+        if warns:
+            print(paint(f"ok ({warns} warning(s))", _YELLOW), file=stream)
+        else:
+            print(paint("all checks passed", _GREEN, _BOLD), file=stream)
+        return 0
+
+    @staticmethod
+    def _auth_deploy_key_fix(service: str, repo_url: str) -> str:
+        """Build a paste-key hint with the real Deploy keys URL when possible."""
+        try:
+            parsed = parse_ssh_git_url(repo_url)
+            host = real_git_host(service, parsed.host)
+        except ValueError:
+            return (
+                f"run `uv run raft auth show {service}` and paste Title + Key "
+                f"as a read-only deploy key on the git host, "
+                f"then `uv run raft auth test {service}`"
+            )
+        if host == "github.com":
+            url = f"https://github.com/{parsed.path}/settings/keys/new"
+            return (
+                f"run `uv run raft auth show {service}` and paste Title + Key at {url} "
+                f"(Allow read-only access), then `uv run raft auth test {service}`"
+            )
+        return (
+            f"run `uv run raft auth show {service}` and paste Title + Key as a "
+            f"read-only deploy key for {parsed.path} on {host}, "
+            f"then `uv run raft auth test {service}`"
+        )
+
+    def _check_compose_file(self) -> CheckResult:
+        path = self.stack.root / "compose.yaml"
+        if path.is_file():
+            return CheckResult(INFRA, "compose.yaml", "ok", str(path))
+        return CheckResult(
+            INFRA,
+            "compose.yaml",
+            "fail",
+            f"missing at {path}",
+            fix="run doctor from the orchestrator checkout (applied App registry + compose.yaml)",
+        )
+
+    def _check_generated(self) -> CheckResult:
+        path = self.stack.root / ".generated" / "compose.apps.yaml"
+        if path.is_file():
+            return CheckResult(INFRA, "generated", "ok", str(path))
+        return CheckResult(
+            INFRA,
+            "generated",
+            "fail",
+            "missing .generated/compose.apps.yaml",
+            fix="uv run raft sync   # or: uv run raft render",
+        )
+
+    def _check_docker(self) -> list[CheckResult]:
+        out: list[CheckResult] = []
+        if not shutil.which("docker"):
+            out.append(
+                CheckResult(
+                    INFRA,
+                    "docker",
+                    "fail",
+                    "docker CLI not found on PATH",
+                    fix="install Docker Engine and ensure `docker` is on PATH",
+                )
+            )
+            return out
+        probe = self.sh.run(["docker", "info"], check=False, capture=True)
+        if probe.returncode != 0:
+            detail = (probe.stderr or probe.stdout or "docker info failed").strip().splitlines()
+            brief = detail[-1] if detail else "docker info failed"
+            out.append(
+                CheckResult(
+                    INFRA,
+                    "docker",
+                    "fail",
+                    brief,
+                    fix="start the Docker daemon (and join the `docker` group if permission denied)",
+                )
+            )
+            return out
+        out.append(CheckResult(INFRA, "docker", "ok", "CLI and daemon reachable"))
+        return out
+
+    def _check_apps(self) -> list[CheckResult]:
+        results: list[CheckResult] = []
+        for app in self.stack.apps:
+            dest = app.abs_path(self.stack.root)
+            if app.source == "local":
+                if dest.is_dir():
+                    results.append(
+                        CheckResult(app.name, "sync", "ok", f"local path {app.path}")
+                    )
+                    results.extend(self._check_contract(app))
+                else:
+                    results.append(
+                        CheckResult(
+                            app.name,
+                            "sync",
+                            "fail",
+                            f"local path missing: {dest}",
+                            fix=f"create {app.path} or fix applied App registry",
+                        )
+                    )
+                continue
+
+            if app.source == "docker":
+                pin = app.compose_pin_image
+                probed = self.docker.sh.docker(
+                    "image",
+                    "inspect",
+                    "-f",
+                    "{{.Id}}",
+                    pin,
+                    check=False,
+                    capture=True,
+                )
+                if probed.returncode == 0 and (probed.stdout or "").strip():
+                    results.append(
+                        CheckResult(
+                            app.name,
+                            "sync",
+                            "ok",
+                            f"docker image present: {pin}",
+                        )
+                    )
+                else:
+                    results.append(
+                        CheckResult(
+                            app.name,
+                            "sync",
+                            "fail",
+                            f"docker image missing locally: {pin}",
+                            fix=f"uv run raft sync {app.name}   # docker pull",
+                        )
+                    )
+                results.extend(self._check_contract(app))
+                if app.repo:
+                    if not self.auth.is_configured(app.name):
+                        results.append(
+                            CheckResult(
+                                app.name,
+                                "auth",
+                                "warn",
+                                "no deploy key (optional git checkout for docker source)",
+                                fix=f"uv run raft auth setup {app.name}",
+                            )
+                        )
+                    else:
+                        results.append(
+                            CheckResult(
+                                app.name,
+                                "auth",
+                                "ok",
+                                "deploy key present (optional checkout + GHCR pull separate)",
+                            )
+                        )
+                else:
+                    results.append(
+                        CheckResult(
+                            app.name,
+                            "auth",
+                            "ok",
+                            "n/a (no git repo on App; registry auth is docker login)",
+                        )
+                    )
+                continue
+
+            # git-backed
+            if not self.auth.is_configured(app.name):
+                results.append(
+                    CheckResult(
+                        app.name,
+                        "auth",
+                        "fail",
+                        "no local deploy key",
+                        fix=f"uv run raft auth setup {app.name}",
+                    )
+                )
+            else:
+                try:
+                    self.auth.test(app.name, quiet=True)
+                    results.append(
+                        CheckResult(
+                            app.name,
+                            "auth",
+                            "ok",
+                            "deploy key can git ls-remote",
+                        )
+                    )
+                except RuntimeError as exc:
+                    results.append(
+                        CheckResult(
+                            app.name,
+                            "auth",
+                            "fail",
+                            str(exc).splitlines()[0],
+                            fix=self._auth_deploy_key_fix(app.name, app.repo or ""),
+                        )
+                    )
+
+            if not dest.exists():
+                results.append(
+                    CheckResult(
+                        app.name,
+                        "sync",
+                        "fail",
+                        f"checkout missing: {dest}",
+                        fix=f"uv run raft sync {app.name}",
+                    )
+                )
+            elif not (dest / ".git").is_dir():
+                results.append(
+                    CheckResult(
+                        app.name,
+                        "sync",
+                        "fail",
+                        f"{app.path} exists but is not a git checkout",
+                        fix=f"move it aside, then `uv run raft sync {app.name}`",
+                    )
+                )
+            else:
+                results.append(
+                    CheckResult(app.name, "sync", "ok", f"git checkout at {app.path}")
+                )
+                results.extend(self._check_contract(app))
+        return results
+
+    def _check_contract(self, app) -> list[CheckResult]:
+        from ..models.contract import registry_path
+
+        path = registry_path(self.stack.root, app.name)
+        if not path.is_file():
+            return [
+                CheckResult(
+                    app.name,
+                    "contract",
+                    "fail",
+                    f"missing applied manifest {path.relative_to(self.stack.root)}",
+                    fix=f"uv run raft apply --file path/to/app.yaml   # or --git <repo>",
+                )
+            ]
+        try:
+            self.stack.contract_for(app)
+        except (ValueError, FileNotFoundError) as exc:
+            return [
+                CheckResult(
+                    app.name,
+                    "contract",
+                    "fail",
+                    str(exc).splitlines()[0],
+                    fix="fix the applied manifest or re-apply",
+                )
+            ]
+        return [CheckResult(app.name, "contract", "ok", path.as_posix())]
+
+    def _check_upstreams(self) -> list[CheckResult]:
+        results: list[CheckResult] = []
+        for app in self.stack.apps:
+            path = self.stack.upstream_file(app)
+            if path.is_file():
+                results.append(
+                    CheckResult(app.name, "upstream", "ok", str(path.name))
+                )
+            else:
+                results.append(
+                    CheckResult(
+                        app.name,
+                        "upstream",
+                        "warn",
+                        f"missing {path.name}",
+                        fix="created automatically on `uv run raft sync` / `uv run raft up`",
+                    )
+                )
+        return results
+
+    def _check_certs(self) -> list[CheckResult]:
+        """Per-service Cloudflare Origin PEMs under ``certs/<name>/``."""
+        results: list[CheckResult] = []
+        for app in self.stack.apps:
+            pem, key = self.stack.cert_files(app)
+            missing = [p.name for p in (pem, key) if not p.is_file()]
+            if not missing:
+                results.append(
+                    CheckResult(
+                        app.name,
+                        "certs",
+                        "ok",
+                        f"certs/{app.name}/origin.pem+key",
+                    )
+                )
+                continue
+            results.append(
+                CheckResult(
+                    app.name,
+                    "certs",
+                    "fail",
+                    f"missing {', '.join(missing)} under certs/{app.name}/",
+                    fix=(
+                        f"install Cloudflare Origin PEMs for {app.name} only at "
+                        f"certs/{app.name}/origin.pem and origin.key "
+                        f"(before recreating gate)"
+                    ),
+                )
+            )
+        return results
+
+    def _check_stack_running(self) -> list[CheckResult]:
+        if not shutil.which("docker"):
+            return [
+                CheckResult(
+                    INFRA,
+                    "stack",
+                    "warn",
+                    "skipped (docker unavailable)",
+                )
+            ]
+        try:
+            running = set(self.docker.running_services())
+        except Exception as exc:  # noqa: BLE001 — doctor must not crash
+            return [
+                CheckResult(
+                    INFRA,
+                    "stack",
+                    "warn",
+                    f"could not query compose: {exc}",
+                    fix="ensure compose.yaml is valid and docker works",
+                )
+            ]
+        expected = list(self.stack.core_services)
+        missing = [s for s in expected if s not in running]
+        if not missing:
+            return [
+                CheckResult(
+                    INFRA,
+                    "stack",
+                    "ok",
+                    f"running: {', '.join(expected)}",
+                )
+            ]
+        if not running:
+            return [
+                CheckResult(
+                    INFRA,
+                    "stack",
+                    "warn",
+                    "no core services running",
+                    fix="uv run raft up",
+                )
+            ]
+        return [
+            CheckResult(
+                INFRA,
+                "stack",
+                "warn",
+                f"running {sorted(running)}; missing {missing}",
+                fix="uv run raft up   # or redeploy the missing service",
+            )
+        ]
+
+    def _check_port_80(self) -> CheckResult:
+        try:
+            with socket.create_connection(("127.0.0.1", 80), timeout=0.4):
+                in_use = True
+        except OSError:
+            in_use = False
+        if not in_use:
+            return CheckResult(
+                INFRA,
+                "port 80",
+                "ok",
+                "nothing accepting on 127.0.0.1:80",
+            )
+        # Something is listening — fine if our gate is up.
+        try:
+            running = set(self.docker.running_services()) if shutil.which("docker") else set()
+        except Exception:  # noqa: BLE001
+            running = set()
+        if self.stack.gate in running:
+            return CheckResult(INFRA, "port 80", "ok", "in use by running gate")
+        return CheckResult(
+            INFRA,
+            "port 80",
+            "warn",
+            "something is listening on 127.0.0.1:80 (gate may fail to bind)",
+            fix="stop the other process, or temporarily change gate ports in compose.yaml for local experiments",
+        )

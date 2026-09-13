@@ -1,0 +1,9 @@
+# raft runtime config (not service inventory — see state/apps/).
+
+logging:
+  # Directory for log files (relative to this repo root, or absolute).
+  # Override with env RAFT_LOG_DIR.
+  # Terminal output is always plain text; only this file uses log formatting.
+  dir: logs
+  file: raft.log
+  level: INFO   # DEBUG | INFO | WARNING | ERROR
