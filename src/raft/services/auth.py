@@ -106,19 +106,35 @@ class GitAuthManager:
         alias = host_alias(app.name, base_host)
         return parsed.with_host_alias(alias)
 
+    def resolve_repo_url(self, service: str, repo: Optional[str] = None) -> str:
+        """Repo URL from ``--repo`` or an already-applied App (no chicken-and-egg)."""
+        if repo is not None and str(repo).strip():
+            return str(repo).strip()
+        try:
+            app = self.stack.app(service)
+        except KeyError as exc:
+            known = ", ".join(a.name for a in self.stack.apps) or "(none applied)"
+            raise RuntimeError(
+                f"unknown app {service!r} (known: {known}). "
+                f"Pass --repo git@host:owner/repo.git to set up auth before apply, "
+                f"or register a manifest first: raft apply --file PATH --no-deploy"
+            ) from exc
+        if not app.repo:
+            raise RuntimeError(
+                f"{service!r} needs a repo URL: pass --repo, or set spec.repo on the "
+                f"applied App (git source, or docker with repo for checkout)"
+            )
+        return app.repo
+
     def setup(
         self,
         service: str,
         *,
         force: bool = False,
+        repo: Optional[str] = None,
     ) -> None:
-        app = self.stack.app(service)
-        if not app.repo:
-            raise RuntimeError(
-                f"{service!r} needs a repo URL in the applied App manifest "
-                f"(git source, or docker with repo for checkout)"
-            )
-        parsed = parse_ssh_git_url(app.repo)
+        repo_url = self.resolve_repo_url(service, repo)
+        parsed = parse_ssh_git_url(repo_url)
         base_host = real_git_host(service, parsed.host)
         alias = host_alias(service, base_host)
 
@@ -146,8 +162,17 @@ class GitAuthManager:
             title=title,
         )
 
-        logger.info("auth %s: clone URL will be %s", service, parsed.with_host_alias(alias))
-        say(f"next: raft auth test {service} && raft sync {service}", style="info")
+        clone_url = parsed.with_host_alias(alias)
+        logger.info("auth %s: clone URL will be %s", service, clone_url)
+        applied = any(a.name == service for a in self.stack.apps)
+        if applied:
+            say(f"next: raft auth test {service} && raft sync {service}", style="info")
+        else:
+            say(
+                f"next: raft auth test {service} --repo {repo_url} "
+                f"&& raft apply --git {repo_url}",
+                style="info",
+            )
 
     def list_services(self) -> list[str]:
         if not self.keys_dir.is_dir():
@@ -168,15 +193,10 @@ class GitAuthManager:
             raise RuntimeError(f"no deploy key for {service!r}; run: raft auth setup {service}")
         return path.read_text(encoding="utf-8").strip()
 
-    def show(self, service: str) -> None:
-        app = self.stack.app(service)
-        if not app.repo:
-            raise RuntimeError(
-                f"{service!r} needs a repo URL in the applied App manifest "
-                f"(git source, or docker with repo for checkout)"
-            )
+    def show(self, service: str, *, repo: Optional[str] = None) -> None:
+        repo_url = self.resolve_repo_url(service, repo)
         pubkey = self.show_pubkey(service)
-        parsed = parse_ssh_git_url(app.repo)
+        parsed = parse_ssh_git_url(repo_url)
         host = real_git_host(service, parsed.host)
         self._print_deploy_key_for_copy(
             service,
@@ -186,15 +206,41 @@ class GitAuthManager:
             title=self.key_title(service),
         )
 
-    def test(self, service: str, *, quiet: bool = False) -> None:
-        app = self.stack.app(service)
-        if not app.repo:
-            raise RuntimeError(
-                f"{service!r} has no repo URL in inventory (needed for deploy-key auth)"
-            )
+    def rewrite_clone_url(self, service: str, repo: str) -> str:
+        """Map a canonical SSH URL onto this service's Host alias when configured."""
         if not self.is_configured(service):
-            raise RuntimeError(f"no key for {service!r}; run: raft auth setup {service}")
-        url = self.effective_clone_url(app)
+            return repo
+        parsed = parse_ssh_git_url(repo)
+        base_host = real_git_host(service, parsed.host)
+        alias = host_alias(service, base_host)
+        return parsed.with_host_alias(alias)
+
+    def clone_urls_for_repo(self, repo: str) -> tuple[str, ...]:
+        """Candidate clone URLs: raw repo, then each configured service's Host alias."""
+        urls: list[str] = [repo]
+        try:
+            parsed = parse_ssh_git_url(repo)
+        except ValueError:
+            return (repo,)
+        for service in self.list_services():
+            base_host = real_git_host(service, parsed.host)
+            alias = host_alias(service, base_host)
+            urls.append(parsed.with_host_alias(alias))
+        return tuple(dict.fromkeys(urls))
+
+    def test(
+        self,
+        service: str,
+        *,
+        quiet: bool = False,
+        repo: Optional[str] = None,
+    ) -> None:
+        repo_url = self.resolve_repo_url(service, repo)
+        if not self.is_configured(service):
+            raise RuntimeError(
+                f"no key for {service!r}; run: raft auth setup {service} --repo {repo_url}"
+            )
+        url = self.rewrite_clone_url(service, repo_url)
         logger.info("auth test %s: git ls-remote %s", service, url)
         result = self.sh.git("ls-remote", url, "HEAD", check=False, capture=True)
         if result.returncode != 0:

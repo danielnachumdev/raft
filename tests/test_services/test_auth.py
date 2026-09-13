@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from raft.models.stack import Stack
 from raft.services.auth import (
     GitAuthManager,
     default_ssh_dir,
@@ -84,12 +85,53 @@ class TestGitAuthManager(ServicesTestCase):
         assert "gh " not in out
 
     def test_setup_rejects_local_and_idempotent_and_force(self) -> None:
-        with pytest.raises(RuntimeError, match="repo URL"):
+        with pytest.raises(RuntimeError, match="needs a repo URL"):
             self.mgr.setup("localapp")
 
         self.mgr.setup("svc")
         self.mgr.setup("svc")
         self.mgr.setup("svc", force=True)
+
+    def test_setup_with_repo_before_apply(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        empty = Stack(root=self.tmp_path, apps=())
+        mgr = GitAuthManager(empty, self.shell, ssh_dir=self.tmp_path / "ssh-empty")
+        self.shell.run.side_effect = self.fake_ssh_keygen()
+        self.shell.git.return_value = MagicMock(returncode=0, stdout="abc\tHEAD\n", stderr="")
+        with pytest.raises(RuntimeError, match="Pass --repo"):
+            mgr.setup("playloftstudio")
+        mgr.setup(
+            "playloftstudio",
+            repo="git@github.com:Playloft-Studio/playloftstudio.com.git",
+        )
+        assert mgr.is_configured("playloftstudio")
+        out = capsys.readouterr().out
+        assert "apply --git" in out
+        assert "auth test playloftstudio --repo" in out
+        mgr.test(
+            "playloftstudio",
+            repo="git@github.com:Playloft-Studio/playloftstudio.com.git",
+            quiet=True,
+        )
+        mgr.test(
+            "playloftstudio",
+            repo="git@github.com:Playloft-Studio/playloftstudio.com.git",
+        )
+
+    def test_clone_urls_for_repo_includes_aliases(self) -> None:
+        self.write_keypair(self.mgr, "svc")
+        urls = self.mgr.clone_urls_for_repo("git@github.com:org/svc.git")
+        assert urls[0] == "git@github.com:org/svc.git"
+        assert "git@github.com-raft-svc:org/svc.git" in urls
+        rewritten = self.mgr.rewrite_clone_url("svc", "git@github.com:org/svc.git")
+        assert "raft-svc" in rewritten
+        assert self.mgr.rewrite_clone_url("other", "git@github.com:org/svc.git").startswith(
+            "git@github.com:"
+        )
+        assert self.mgr.clone_urls_for_repo("https://example.com/x.git") == (
+            "https://example.com/x.git",
+        )
 
     def test_setup_non_github_manual(self, capsys: pytest.CaptureFixture[str]) -> None:
         mgr = self.auth_manager(repo="git@gitlab.com:org/svc.git")
@@ -116,7 +158,7 @@ class TestGitAuthManager(ServicesTestCase):
         assert "Key:" in out
         assert "AAAA" in out
         assert "settings/keys/new" in out
-        with pytest.raises(RuntimeError, match="repo URL"):
+        with pytest.raises(RuntimeError, match="needs a repo URL"):
             self.mgr.show("localapp")
 
     def test_list_show_test_remove(self) -> None:
@@ -125,7 +167,13 @@ class TestGitAuthManager(ServicesTestCase):
             self.mgr.show_pubkey("svc")
         with pytest.raises(RuntimeError, match="no key"):
             self.mgr.test("svc")
-        with pytest.raises(RuntimeError, match="no repo URL"):
+        with pytest.raises(RuntimeError, match="Pass --repo"):
+            GitAuthManager(
+                Stack(root=self.tmp_path, apps=()),
+                self.shell,
+                ssh_dir=self.tmp_path / "ssh2",
+            ).test("ghost")
+        with pytest.raises(RuntimeError, match="needs a repo URL"):
             self.mgr.test("localapp")
 
         self.write_keypair(self.mgr, "svc")

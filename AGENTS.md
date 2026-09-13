@@ -57,7 +57,7 @@ Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 ## Operator loop
 
 1. `install.sh` (or `uv sync` in a clone; Python **3.8+**).
-2. Private git apps: `raft auth setup <service>` → paste pubkey as read-only deploy key (`~/.ssh/raft/`).
+2. Private git apps: `raft auth setup <name> --repo git@host:owner/repo.git` (works before apply) → paste pubkey as read-only deploy key (`~/.ssh/raft/`). Then `raft auth test <name> --repo …` and `raft apply --git …`.
 3. `raft apply --file …` or `raft apply --git …` → writes `~/.raft/state/apps/<name>.yaml`, optionally syncs + renders.
 4. If any app uses `tls: origin`, install PEMs under `~/.raft/certs/<name>/`.
 5. `raft up` (refuses if stack already up; `down` first).

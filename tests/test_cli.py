@@ -210,11 +210,27 @@ class TestCliAuth(RaftTestCase):
 
     def test_auth_setup_list_show_test_remove(self, capsys) -> None:
         assert self._auth_main(["auth", "setup", "svc", "--force"]) == 0
-        self.auth.setup.assert_called_once_with("svc", force=True)
+        self.auth.setup.assert_called_once_with("svc", force=True, repo=None)
         assert self._auth_main(["auth", "list"]) == 0
         assert self._auth_main(["auth", "show", "svc"]) == 0
-        self.auth.show.assert_called_once_with("svc")
+        self.auth.show.assert_called_once_with("svc", repo=None)
+        assert (
+            self._auth_main(
+                [
+                    "auth",
+                    "setup",
+                    "newsvc",
+                    "--repo",
+                    "git@github.com:org/new.git",
+                ]
+            )
+            == 0
+        )
+        self.auth.setup.assert_called_with(
+            "newsvc", force=False, repo="git@github.com:org/new.git"
+        )
         assert self._auth_main(["auth", "test", "svc"]) == 0
+        self.auth.test.assert_called_with("svc", repo=None)
         assert self._auth_main(["auth", "remove", "svc", "--keep-key"]) == 0
         self.auth.remove.assert_called_once_with("svc", remove_files=False)
 

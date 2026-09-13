@@ -1,7 +1,10 @@
 """Apply / delete App manifests into the on-VPS registry (low-budget k8s)."""
 
+from __future__ import annotations
+
 import logging
 import shutil
+import subprocess
 import tempfile
 from pathlib import Path
 from typing import Optional
@@ -18,10 +21,25 @@ from ..models.manifest import (
 )
 from ..models.stack import Stack, load_stack
 from ..ui import say
+from .auth import GitAuthManager
 from .orchestrator import Orchestrator
 from .render import StackRenderer
 
 logger = logging.getLogger(__name__)
+
+
+def _looks_like_git_auth_failure(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    if isinstance(exc, subprocess.CalledProcessError):
+        text = f"{text} {(exc.stderr or '')} {(exc.output or '')}".lower()
+    needles = (
+        "permission denied (publickey)",
+        "could not read from remote repository",
+        "host key verification failed",
+        "authentication failed",
+        "publickey",
+    )
+    return any(n in text for n in needles)
 
 
 class AppApply:
@@ -60,24 +78,53 @@ class AppApply:
         deploy: bool = True,
         force_sync: bool = False,
     ) -> str:
+        auth = GitAuthManager(self.stack, self.sh)
+        clone_urls = auth.clone_urls_for_repo(repo)
         tmp = Path(tempfile.mkdtemp(prefix="raft-apply-"))
+        last_exc: Optional[BaseException] = None
         try:
-            try:
-                self.sh.git(
-                    "clone",
-                    "--quiet",
-                    "--depth",
-                    "1",
-                    "--branch",
-                    ref,
-                    repo,
-                    str(tmp),
-                )
-            except Exception:
+            cloned = False
+            for clone_url in clone_urls:
                 shutil.rmtree(tmp, ignore_errors=True)
                 tmp = Path(tempfile.mkdtemp(prefix="raft-apply-"))
-                self.sh.git("clone", "--quiet", repo, str(tmp))
-                self.sh.git("checkout", "-f", "--detach", ref, cwd=tmp)
+                try:
+                    try:
+                        self.sh.git(
+                            "clone",
+                            "--quiet",
+                            "--depth",
+                            "1",
+                            "--branch",
+                            ref,
+                            clone_url,
+                            str(tmp),
+                        )
+                    except Exception:
+                        shutil.rmtree(tmp, ignore_errors=True)
+                        tmp = Path(tempfile.mkdtemp(prefix="raft-apply-"))
+                        self.sh.git("clone", "--quiet", clone_url, str(tmp))
+                        self.sh.git("checkout", "-f", "--detach", ref, cwd=tmp)
+                    cloned = True
+                    if clone_url != repo:
+                        logger.info("apply --git used auth Host alias URL %s", clone_url)
+                    break
+                except Exception as exc:
+                    last_exc = exc
+                    logger.debug("clone via %s failed: %s", clone_url, exc)
+                    continue
+
+            if not cloned:
+                assert last_exc is not None
+                if _looks_like_git_auth_failure(last_exc):
+                    raise RuntimeError(
+                        f"git clone failed (SSH auth) for {repo!r}. "
+                        f"Set up a read-only deploy key first, then retry:\n"
+                        f"  raft auth setup <app-name> --repo {repo}\n"
+                        f"  # paste the pubkey as a Deploy key on the repo\n"
+                        f"  raft auth test <app-name> --repo {repo}\n"
+                        f"  raft apply --git {repo} --ref {ref}"
+                    ) from last_exc
+                raise last_exc
 
             manifest = contract_path(tmp)
             if not manifest.is_file():

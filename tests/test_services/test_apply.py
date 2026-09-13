@@ -8,8 +8,10 @@ import yaml
 
 from raft.models.stack import load_stack
 from raft.services.apply import AppApply
+from raft.services.auth import GitAuthManager
 
 from ..base import RaftTestCase, write_applied_app
+from .base import ServicesTestCase
 
 
 def _manifest(
@@ -178,6 +180,73 @@ class TestAppApply(RaftTestCase):
         shell.git.side_effect = bad_spec
         with pytest.raises(ValueError, match="spec must be an object"):
             AppApply(stack, shell=shell).apply_git("git@x/y.git", deploy=False)
+
+    def test_apply_git_auth_failure_hints_setup(self) -> None:
+        import subprocess
+
+        stack = load_stack(self.tmp_path)
+        shell = MagicMock()
+
+        def denied(*args, **kwargs):
+            raise subprocess.CalledProcessError(
+                128,
+                args,
+                stderr="git@github.com: Permission denied (publickey).\n",
+            )
+
+        shell.git.side_effect = denied
+        with pytest.raises(RuntimeError, match="auth setup .* --repo"):
+            AppApply(stack, shell=shell).apply_git(
+                "git@github.com:Playloft-Studio/playloftstudio.com.git",
+                deploy=False,
+            )
+
+    def test_apply_git_non_auth_clone_error_reraises(self) -> None:
+        stack = load_stack(self.tmp_path)
+        shell = MagicMock()
+        shell.git.side_effect = RuntimeError("network unreachable")
+        with pytest.raises(RuntimeError, match="network unreachable"):
+            AppApply(stack, shell=shell).apply_git("git@github.com:org/x.git", deploy=False)
+
+    def test_apply_git_retries_host_alias(self) -> None:
+        stack = load_stack(self.tmp_path)
+        shell = MagicMock()
+        auth_dir = self.tmp_path / "ssh-apply"
+        mgr = GitAuthManager(stack, shell, ssh_dir=auth_dir)
+        ServicesTestCase.write_keypair(mgr, "playloftstudio")
+
+        calls: list[str] = []
+
+        def clone_alias(*args, **kwargs):
+            if "clone" not in args:
+                return MagicMock(returncode=0)
+            url = args[-2]
+            calls.append(url)
+            if "raft-playloftstudio" not in url:
+                raise RuntimeError("Permission denied (publickey)")
+            target = Path(args[-1])
+            target.mkdir(parents=True, exist_ok=True)
+            (target / ".raft").mkdir(parents=True, exist_ok=True)
+            (target / ".raft" / "app.yaml").write_text(
+                yaml.safe_dump(
+                    _manifest(
+                        "playloftstudio",
+                        source="git",
+                        repo="git@github.com:Playloft-Studio/playloftstudio.com.git",
+                        public_host="playloftstudio.com",
+                    )
+                ),
+                encoding="utf-8",
+            )
+
+        shell.git.side_effect = clone_alias
+        with patch("raft.services.apply.GitAuthManager", return_value=mgr):
+            name = AppApply(stack, shell=shell).apply_git(
+                "git@github.com:Playloft-Studio/playloftstudio.com.git",
+                deploy=False,
+            )
+        assert name == "playloftstudio"
+        assert any("raft-playloftstudio" in u for u in calls)
 
     def test_delete_re_renders(self, capsys) -> None:
         write_applied_app(self.tmp_path, "web", public_host="web.test")
