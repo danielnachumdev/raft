@@ -28,10 +28,23 @@ class DockerStack:
             self.remove_container(app.tmp_container)
 
     def running_services(self) -> list[str]:
+        """Return compose services that are currently running.
+
+        Unknown services (not yet in the rendered compose file) must not raise —
+        ``docker compose ps <name>`` exits non-zero when the service is absent.
+        """
         running: list[str] = []
         for service in self.stack.core_services:
-            result = self.sh.compose("ps", "-q", "--status", "running", service, capture=True)
-            if (result.stdout or "").strip():
+            result = self.sh.compose(
+                "ps",
+                "-q",
+                "--status",
+                "running",
+                service,
+                capture=True,
+                check=False,
+            )
+            if result.returncode == 0 and (result.stdout or "").strip():
                 running.append(service)
         logger.debug("running services: %s", running)
         return running

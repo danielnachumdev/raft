@@ -17,12 +17,18 @@ class TestDockerStack(AdapterTestCase):
         def compose(*args, **kwargs):
             if args[:1] == ("ps",) and "gate" in args:
                 return self.ok("cid1\n")
+            if args[:1] == ("ps",) and "app" in args:
+                # Newly applied service not in compose yet.
+                return self.ok("", returncode=1)
             if args[:1] == ("ps",):
                 return self.ok("")
             return self.ok()
 
         self.shell.compose.side_effect = compose
         assert self.docker.running_services() == ["gate"]
+        self.shell.compose.assert_any_call(
+            "ps", "-q", "--status", "running", "gate", capture=True, check=False
+        )
         self.docker.start_stack()
         self.docker.stop_stack()
         self.shell.compose.assert_any_call("up", "-d", "--build", "--remove-orphans")
