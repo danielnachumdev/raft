@@ -79,7 +79,6 @@ def make_git_stack(
 
 
 def ensure_orchestrator_root(root: Path) -> None:
-    """Prepare a data-home-shaped tree for tests (settings + optional stub compose)."""
     if not (root / "settings.yaml").is_file():
         (root / "settings.yaml").write_text(
             "logging:\n  level: INFO\n", encoding="utf-8"
@@ -90,7 +89,6 @@ def ensure_orchestrator_root(root: Path) -> None:
     (root / "certs").mkdir(parents=True, exist_ok=True)
     (root / "apps").mkdir(parents=True, exist_ok=True)
     (root / "logs").mkdir(parents=True, exist_ok=True)
-
 
 def write_applied_app(
     root: Path,
@@ -107,7 +105,6 @@ def write_applied_app(
     port: int = 80,
     extra: Optional[dict[str, Any]] = None,
 ) -> Path:
-    """Write ``state/apps/<name>.yaml`` (on-VPS registry document)."""
     ensure_orchestrator_root(root)
     spec: dict[str, Any] = {
         "publicHost": f"{name}.test" if public_host is None else public_host,
@@ -137,9 +134,7 @@ def write_applied_app(
     dest.write_text(yaml.safe_dump(doc, sort_keys=False), encoding="utf-8")
     return dest
 
-
 def write_inventory(root: Path, body: str) -> None:
-    """Legacy test helper: parse minimal YAML inventory into registry YAMLs."""
     ensure_orchestrator_root(root)
     data = yaml.safe_load(body) or {}
     services = data.get("services") or {}
@@ -160,15 +155,12 @@ def write_inventory(root: Path, body: str) -> None:
             build_context="." if str(raw.get("source", "local")) != "docker" else None,
         )
 
-
 def write_demo_inventory(root: Path) -> Path:
-    """Two local apps with directories (generic CLI fixture)."""
     write_applied_app(root, "app", public_host="app.test", source="local")
     write_applied_app(root, "other", public_host="other.test", source="local")
     (root / "apps" / "app").mkdir(parents=True, exist_ok=True)
     (root / "apps" / "other").mkdir(parents=True, exist_ok=True)
     return root
-
 
 def completed(
     stdout: str = "",
@@ -181,14 +173,10 @@ def completed(
     m.stderr = stderr
     return m
 
-
 def git_call_args(shell: MagicMock) -> list[tuple]:
     return [c.args for c in shell.git.call_args_list]
 
-
 class RaftTestCase:
-    """Pytest class base: wires tmp_path / ssh isolation onto ``self``."""
-
     @pytest.fixture(autouse=True)
     def _raft_base(self, tmp_path: Path, isolated_raft_ssh_dir: Path) -> None:
         self.tmp_path = tmp_path

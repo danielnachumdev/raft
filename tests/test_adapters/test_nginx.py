@@ -7,7 +7,6 @@ import pytest
 from .base import AdapterTestCase
 from raft.adapters import NginxUpstreams
 
-
 class TestNginxUpstreams(AdapterTestCase):
     def test_ensure_steady_file_creates_and_skips(self) -> None:
         nginx = NginxUpstreams(self.stack, MagicMock())

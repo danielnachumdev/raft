@@ -23,10 +23,7 @@ from ..ui import say
 
 logger = logging.getLogger(__name__)
 
-
 class AppApply:
-    """Register desired App state on this VPS from a file or git URL."""
-
     def __init__(self, stack: Stack, shell: Optional[Shell] = None) -> None:
         self.stack = stack
         self.sh = shell or Shell(stack.root)
@@ -62,7 +59,6 @@ class AppApply:
         deploy: bool = True,
         force_sync: bool = False,
     ) -> str:
-        """Clone briefly, read ``.raft/app.yaml``, apply, optionally deploy."""
         tmp = Path(tempfile.mkdtemp(prefix="raft-apply-"))
         try:
             try:
@@ -118,7 +114,6 @@ class AppApply:
             StackRenderer(fresh).render()
             say("re-rendered generated/; remove the Compose service if it is still running")
         else:
-            # No apps left — write empty generated apps file
             StackRenderer(fresh).render()
             say("re-rendered generated/ (no apps applied)")
 

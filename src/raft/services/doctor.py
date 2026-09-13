@@ -30,7 +30,6 @@ _CYAN = "\033[36m"
 
 _STATUS_COLOR = {"ok": _GREEN, "warn": _YELLOW, "fail": _RED}
 
-
 def _want_color(stream: TextIO, explicit: Optional[bool]) -> bool:
     if explicit is not None:
         return explicit
@@ -38,21 +37,15 @@ def _want_color(stream: TextIO, explicit: Optional[bool]) -> bool:
         return False
     return bool(getattr(stream, "isatty", lambda: False)())
 
-
 @dataclass(frozen=True)
 class CheckResult:
-    """One check under a service (``infra`` or an inventory app name)."""
-
     service: str
     check: str
     status: Status
     detail: str
     fix: str = ""
 
-
 class Doctor:
-    """Run read-only health checks and suggest fixes."""
-
     def __init__(
         self,
         stack: Stack,
@@ -85,14 +78,6 @@ class Doctor:
         out: Optional[TextIO] = None,
         color: Optional[bool] = None,
     ) -> int:
-        """Print status grouped by service; exit 1 if any check failed.
-
-        Healthy services collapse to a single OK line. Services with warnings
-        or failures expand to the problematic checks (with ``fix:`` hints).
-
-        Color is used when ``out`` is a TTY (unless ``NO_COLOR`` is set), or
-        when ``color`` is passed explicitly.
-        """
         stream = out if out is not None else sys.stdout
         use_color = _want_color(stream, color)
         results = results if results is not None else self.run()
@@ -163,7 +148,6 @@ class Doctor:
 
     @staticmethod
     def _auth_deploy_key_fix(service: str, repo_url: str) -> str:
-        """Build a paste-key hint with the real Deploy keys URL when possible."""
         try:
             parsed = parse_ssh_git_url(repo_url)
             host = real_git_host(service, parsed.host)
@@ -323,7 +307,6 @@ class Doctor:
                     )
                 continue
 
-            # git-backed
             if not self.auth.is_configured(app.name):
                 results.append(
                     CheckResult(
@@ -430,7 +413,6 @@ class Doctor:
         return results
 
     def _check_certs(self) -> list[CheckResult]:
-        """Per-service Cloudflare Origin PEMs under ``~/.raft/certs/<name>/``."""
         results: list[CheckResult] = []
         for app in self.stack.apps:
             pem, key = self.stack.cert_files(app)
@@ -472,7 +454,7 @@ class Doctor:
             ]
         try:
             running = set(self.docker.running_services())
-        except Exception as exc:  # noqa: BLE001 — doctor must not crash
+        except Exception as exc:  # noqa: BLE001
             return [
                 CheckResult(
                     INFRA,
@@ -526,7 +508,6 @@ class Doctor:
                 "ok",
                 "nothing accepting on 127.0.0.1:80",
             )
-        # Something is listening — fine if our gate is up.
         try:
             running = set(self.docker.running_services()) if shutil.which("docker") else set()
         except Exception:  # noqa: BLE001

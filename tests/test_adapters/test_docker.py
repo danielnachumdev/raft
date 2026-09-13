@@ -5,7 +5,6 @@ import pytest
 from ..base import make_app
 from .base import AdapterTestCase
 
-
 class TestDockerStack(AdapterTestCase):
     @pytest.fixture(autouse=True)
     def _docker_setup(self, _adapter_setup) -> None:

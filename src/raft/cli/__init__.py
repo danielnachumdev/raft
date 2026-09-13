@@ -1,12 +1,4 @@
-"""CLI package for raft (Google Fire).
-
-Usage:
-    raft apply --file .raft/app.yaml
-    raft apply --git git@github.com:org/repo.git --ref main
-    raft get apps
-    raft delete app <name>
-    raft up | down | sync | redeploy | render | doctor | update | auth
-"""
+"""CLI package for raft (Google Fire)."""
 
 from .auth import AuthCLI
 from .entry import (

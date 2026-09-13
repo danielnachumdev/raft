@@ -7,7 +7,6 @@ from ..models.inventory import App, Stack
 
 logger = logging.getLogger(__name__)
 
-
 class NginxUpstreams:
     def __init__(self, stack: Stack, docker: DockerStack) -> None:
         self.stack = stack

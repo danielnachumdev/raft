@@ -8,7 +8,6 @@ from ..base import make_app, make_stack
 from .base import ServicesTestCase
 from raft.services import CutoverSession
 
-
 class TestCutoverSession(ServicesTestCase):
     @pytest.fixture(autouse=True)
     def _cutover_setup(self, _services_setup) -> None:
@@ -84,7 +83,6 @@ class TestCutoverSession(ServicesTestCase):
             drain_seconds=0.0,
             ready_timeout_seconds=1.0,
         )
-        # No deploy/hub.ref — use inventory ref
         docker = MagicMock()
         docker.router_can_fetch.return_value = True
         session = CutoverSession(

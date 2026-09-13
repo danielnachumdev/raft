@@ -10,7 +10,6 @@ from .base import ServicesTestCase
 from raft.services import CheckResult, Doctor
 from raft.services.doctor import INFRA
 
-
 class TestDoctor(ServicesTestCase):
     def _doctor(self, stack=None, **kwargs) -> Doctor:
         stack = stack or self.stack
@@ -48,7 +47,6 @@ class TestDoctor(ServicesTestCase):
         assert "  OK    svc" in out
         assert "all checks passed" in out
         assert "\033[" not in out
-        # collapsed: no per-check lines for healthy svc
         assert "  OK    auth" not in out
         assert "  OK    sync" not in out
 
@@ -66,7 +64,7 @@ class TestDoctor(ServicesTestCase):
         assert "svc\n" in out
         assert "  WARN  sync  maybe" in out
         assert "fix: do x" in out
-        assert "auth" not in out  # healthy check omitted when expanding
+        assert "auth" not in out
         assert "warning" in out
 
         assert (
@@ -524,7 +522,6 @@ class TestDoctor(ServicesTestCase):
         assert "before recreating gate" in results[("app", "certs")].fix
 
     def test_report_unknown_service_appended(self, capsys) -> None:
-        """Services outside inventory order still print (coverage)."""
         d = self._doctor()
         assert d.report([CheckResult("custom", "item", "ok", "fine")]) == 0
         out = capsys.readouterr().out
@@ -556,6 +553,5 @@ class TestDoctor(ServicesTestCase):
             == 1
         )
         out = capsys.readouterr().out
-        # blank line before expanded svc and again before trailing OK
         assert "  OK    infra\n\nsvc\n" in out
         assert "fix: fix\n\n  OK    other" in out

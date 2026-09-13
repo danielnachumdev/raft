@@ -14,13 +14,11 @@ from ..adapters.nginx import NginxUpstreams
 
 logger = logging.getLogger(__name__)
 
-
 @dataclass(frozen=True)
 class Step:
     key: str
     summary: str
     run: Callable[["CutoverSession"], None]
-
 
 def wait_until(
     description: str,
@@ -36,7 +34,6 @@ def wait_until(
         time.sleep(interval)
     logger.error("timed out waiting for: %s", description)
     raise TimeoutError(f"timed out waiting for: {description}")
-
 
 @dataclass
 class CutoverSession:
@@ -104,7 +101,6 @@ class CutoverSession:
         )
 
     def _docker_wanted_tag(self) -> str:
-        """Tag/digest to pull: ``# requested:`` from ref state, else inventory ``ref``."""
         state = self.stack.ref_state_file(self.app)
         try:
             lines = state.read_text(encoding="utf-8").splitlines()
@@ -135,7 +131,6 @@ class CutoverSession:
         new_image = self.docker.container_image_id(cid)
         self.stack.image_state_file(self.app).write_text(new_image + "\n", encoding="utf-8")
         self.log(f"done: {self.app.name} live on {new_image}")
-
 
 DEPLOY_CUTOVER: tuple[Step, ...] = (
     Step(

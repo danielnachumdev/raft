@@ -21,7 +21,6 @@ from raft.config import (
 )
 import raft.config.paths as paths
 
-
 class TestConfig(RaftTestCase):
     def test_default_config(self) -> None:
         cfg = default_config()
@@ -72,7 +71,6 @@ logging:
         monkeypatch.setenv("RAFT_LOG_DIR", str(self.tmp_path / "env-logs"))
         assert cfg.resolve_dir(self.tmp_path) == (self.tmp_path / "env-logs").resolve()
 
-
 class TestRaftHome(RaftTestCase):
     def test_raft_home_env_and_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("RAFT_DATA_HOME", str(self.tmp_path / "custom"))
@@ -87,7 +85,6 @@ class TestRaftHome(RaftTestCase):
         assert (home / "nginx" / "gate" / "default.conf").is_file()
         assert (home / "generated" / "compose.apps.yaml").is_file()
         assert (home / "state" / "apps").is_dir()
-        # Second ensure refreshes templates and keeps the generated stub.
         ensure_raft_home(home)
         assert (home / "nginx" / "gate" / "default.conf").is_file()
 
@@ -119,7 +116,6 @@ class TestRaftHome(RaftTestCase):
         orphan.mkdir()
         with pytest.raises(FileNotFoundError, match="package templates"):
             find_package_root(orphan)
-
 
 class TestSetupLogging(RaftTestCase):
     @pytest.fixture(autouse=True)

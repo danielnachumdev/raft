@@ -12,10 +12,7 @@ from ..models.inventory import App, Stack
 
 logger = logging.getLogger(__name__)
 
-
 class StackRenderer:
-    """Materialize app Compose services and Host/TLS nginx from contracts."""
-
     def __init__(self, stack: Stack) -> None:
         self.stack = stack
 
@@ -128,7 +125,6 @@ class StackRenderer:
                     lines.append(f"    build: ./{build_path}")
             lines.append("    expose:")
             lines.append(f'      - "{c.port}"')
-            # wget in alpine-based images; path from contract
             probe = c.probe_path if c.probe_path.startswith("/") else f"/{c.probe_path}"
             lines.append("    healthcheck:")
             lines.append(

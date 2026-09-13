@@ -1,36 +1,5 @@
 #!/usr/bin/env python3
-"""Temporarily manage Linux and Windows hosts files with guaranteed restore.
-
-Snapshots each target on enter and restores those exact bytes on:
-  - normal context exit
-  - atexit (interpreter shutdown)
-  - SIGINT / SIGTERM / SIGHUP / SIGQUIT
-
-On WSL, patches:
-  - /etc/hosts  (needs: sudo)
-  - /mnt/c/Windows/System32/drivers/etc/hosts  (needs: Windows Admin;
-    uses a UAC elevation prompt when the file is not directly writable)
-
-Usage as a library:
-
-    from hosts_manager import HostBinding, HostsManager, HostsPatchPlan
-
-    plan = HostsPatchPlan(
-        bindings=(
-            HostBinding(
-                ip="127.0.0.1",
-                names=("app.example.com", "www.app.example.com"),
-            ),
-        )
-    )
-    with HostsManager(plan=plan):
-        ...
-
-CLI (defaults load public hosts from ~/.raft/state/apps/*.yaml → 127.0.0.1):
-
-    sudo python3 scripts/hosts_manager.py hold
-    sudo python3 scripts/hosts_manager.py --entry '127.0.0.1,app.example.com' hold
-"""
+"""Temporarily manage Linux and Windows hosts files with guaranteed restore."""
 
 from __future__ import annotations
 
@@ -60,16 +29,13 @@ _PUBLIC_HOST_RE = re.compile(
     r'^(?:publicHost|public_host)\s*:\s*["\']?([^"\'#\s]+)["\']?\s*(?:#.*)?$'
 )
 
-
 def _data_home() -> Path:
     override = os.environ.get("RAFT_DATA_HOME")
     if override:
         return Path(override).expanduser().resolve()
     return (Path.home() / ".raft").resolve()
 
-
 def _public_hosts_from_registry(registry_dir: Path) -> tuple[str, ...]:
-    """Return publicHost (+ www.) for each applied App, in filename order."""
     names: list[str] = []
     for path in sorted(registry_dir.glob("*.yaml")):
         host = ""
@@ -85,11 +51,8 @@ def _public_hosts_from_registry(registry_dir: Path) -> tuple[str, ...]:
             names.append(f"www.{host}")
     return tuple(names)
 
-
 @dataclass(frozen=True)
 class HostBinding:
-    """One hosts-file mapping: a single IP pointing at one or more names."""
-
     ip: str
     names: tuple[str, ...]
 
@@ -104,14 +67,10 @@ class HostBinding:
         object.__setattr__(self, "names", cleaned)
 
     def hosts_line(self) -> str:
-        """Render as a single /etc/hosts line (IP + tab + names)."""
         return f"{self.ip}\t{' '.join(self.names)}"
-
 
 @dataclass(frozen=True)
 class HostsPatchPlan:
-    """Exact set of bindings injected into every targeted hosts file."""
-
     bindings: tuple[HostBinding, ...]
 
     def __post_init__(self) -> None:
@@ -120,7 +79,6 @@ class HostsPatchPlan:
 
     @classmethod
     def default(cls) -> HostsPatchPlan:
-        """Map applied App ``publicHost`` values (+ www) to loopback for local testing."""
         registry = _data_home() / "state" / "apps"
         names: tuple[str, ...] = ()
         if registry.is_dir():
@@ -141,11 +99,9 @@ class HostsPatchPlan:
 
     @classmethod
     def from_cli_entries(cls, values: Optional[Sequence[str]]) -> HostsPatchPlan:
-        """Build a plan from repeated --entry IP,name[,name...] flags."""
         if not values:
             return cls.default()
 
-        # Preserve first-seen IP order; merge names for the same IP.
         order: list[str] = []
         merged: dict[str, list[str]] = {}
         for raw in values:
@@ -166,7 +122,6 @@ class HostsPatchPlan:
     def describe(self) -> list[str]:
         return [b.hosts_line() for b in self.bindings]
 
-
 def _parse_cli_entry(raw: str) -> HostBinding:
     parts = [p.strip() for p in raw.split(",") if p.strip()]
     if len(parts) < 2:
@@ -179,9 +134,7 @@ def _parse_cli_entry(raw: str) -> HostBinding:
     except ValueError as exc:
         raise argparse.ArgumentTypeError(str(exc)) from exc
 
-
 def _wsl_to_windows_path(path: Path) -> str:
-    """Convert /mnt/c/foo/bar -> C:\\foo\\bar."""
     resolved = path.resolve()
     parts = resolved.parts
     if len(parts) >= 3 and parts[1] == "mnt" and len(parts[2]) == 1:
@@ -190,9 +143,8 @@ def _wsl_to_windows_path(path: Path) -> str:
         return f"{drive}:\\{rest}" if rest else f"{drive}:\\"
     raise ValueError(f"not a /mnt/<drive> path: {path}")
 
-
 def _windows_temp_dir() -> Path:
-    profile = os.environ.get("USERPROFILE")  # rare inside WSL
+    profile = os.environ.get("USERPROFILE")
     candidates = [
         Path("/mnt/c/Users/User/AppData/Local/Temp"),
         Path(f"/mnt/c/Users/{os.environ.get('USER', 'User')}/AppData/Local/Temp"),
@@ -222,23 +174,17 @@ def _windows_temp_dir() -> Path:
         pass
     raise RuntimeError("could not find a writable Windows Temp directory")
 
-
 @dataclass
 class HostsTarget:
-    """One OS hosts file we will snapshot, patch, and restore."""
-
     path: Path
-    label: str  # "linux" | "windows"
+    label: str
     original: Optional[bytes] = None
     backup_path: Optional[Path] = None
     elevated: bool = False
     touched: bool = False
 
-
 @dataclass
 class HostsManager:
-    """Context manager that patches one or more hosts files and restores them."""
-
     plan: HostsPatchPlan = field(default_factory=HostsPatchPlan.default)
     linux_hosts: Path = DEFAULT_LINUX_HOSTS
     windows_hosts: Optional[Path] = DEFAULT_WINDOWS_HOSTS
@@ -328,7 +274,6 @@ class HostsManager:
         self._active = True
 
     def restore(self) -> None:
-        """Idempotent restore of every snapshotted hosts file."""
         if self._restored:
             return
         errors: list[str] = []
@@ -342,7 +287,7 @@ class HostsManager:
                 try:
                     self._write_hosts(target, payload)
                     print(f"restored {target.path}", flush=True)
-                except Exception as exc:  # noqa: BLE001 — must try all targets
+                except Exception as exc:  # noqa: BLE001
                     errors.append(f"{target.path}: {exc}")
             if self.flush_windows_dns and any(t.label == "windows" for t in self._targets):
                 try:
@@ -378,9 +323,6 @@ class HostsManager:
 
     @staticmethod
     def _needs_elevation(target: HostsTarget) -> bool:
-        # Never write the Windows hosts file directly from WSL: even under Linux
-        # sudo, os.access(..., W_OK) can lie and mkstemp in System32\drivers\etc
-        # fails. Always stage to Temp and elevate via UAC.
         if target.label == "windows":
             return True
         return not os.access(target.path, os.W_OK)
@@ -545,7 +487,6 @@ class HostsManager:
                 raise KeyboardInterrupt
             raise SystemExit(128 + signum)
 
-
 def _cmd_hold(manager: HostsManager) -> int:
     print("Press Ctrl+C to restore both hosts files and exit.", flush=True)
     with manager:
@@ -558,7 +499,6 @@ def _cmd_hold(manager: HostsManager) -> int:
     print("hosts restored.", flush=True)
     return 0
 
-
 def _cmd_run(manager: HostsManager, command: list[str]) -> int:
     if not command:
         raise SystemExit("run requires a command after --")
@@ -566,7 +506,6 @@ def _cmd_run(manager: HostsManager, command: list[str]) -> int:
         print(f"hosts patched for duration of: {' '.join(command)}", flush=True)
         completed = subprocess.run(command, check=False)
         return completed.returncode
-
 
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(
@@ -639,7 +578,6 @@ def main(argv: Optional[list[str]] = None) -> int:
         return _cmd_run(manager, cmd)
     parser.error(f"unknown command {args.command}")
     return 2
-
 
 if __name__ == "__main__":
     sys.exit(main())

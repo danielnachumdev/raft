@@ -7,15 +7,7 @@ from .settings import RaftConfig
 
 _CONFIGURED = False
 
-
 def setup_logging(data_home: Path, config: RaftConfig) -> Path:
-    """Attach a file handler to the ``raft`` logger tree (no console).
-
-    Terminal output is plain ``print`` via ``raft.ui``; only the log file
-    uses the timestamped logging format.
-
-    Returns the log file path in use.
-    """
     global _CONFIGURED
     log_cfg = config.logging
     log_dir = log_cfg.resolve_dir(data_home)
@@ -42,9 +34,7 @@ def setup_logging(data_home: Path, config: RaftConfig) -> Path:
     root.debug("logging configured file=%s level=%s", log_file, log_cfg.level)
     return log_file
 
-
 def reset_logging_for_tests() -> None:
-    """Clear raft handlers (tests only)."""
     global _CONFIGURED
     root = logging.getLogger("raft")
     root.handlers.clear()

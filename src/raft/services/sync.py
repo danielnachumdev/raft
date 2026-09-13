@@ -14,7 +14,6 @@ from ..adapters.shell import Shell
 
 logger = logging.getLogger(__name__)
 
-
 class SourceSync:
     def __init__(
         self,
@@ -53,7 +52,6 @@ class SourceSync:
             return
 
         if app.source == "docker":
-            # Optional git checkout so the service repo can own .raft/app.yaml
             if app.repo:
                 self._sync_git(app, dest, ref_override=ref_override, force=force)
             wanted = (ref_override or os.environ.get("VPS_SYNC_REF") or app.ref).strip()
@@ -100,7 +98,6 @@ class SourceSync:
 
         if not (dest / ".git").is_dir():
             if dest.exists() and any(dest.iterdir()):
-                # Allow a contract-only stub dir (local render) to be replaced by a real clone.
                 entries = [p.name for p in dest.iterdir()]
                 if entries == [".raft"] or set(entries) <= {".raft"}:
                     logger.info(
@@ -116,7 +113,6 @@ class SourceSync:
                     )
             self.sh.git("clone", "--quiet", clone_url, str(dest))
         else:
-            # Keep origin pointed at the auth-aware URL (deploy-key Host alias).
             self.sh.git("remote", "set-url", "origin", clone_url, cwd=dest)
 
         if not force and self._is_dirty(dest):

@@ -8,7 +8,6 @@ from ..base import git_call_args, make_app, make_git_app, make_stack
 from .base import ServicesTestCase
 from raft.services import SourceSync
 
-
 class TestSourceSync(ServicesTestCase):
     @pytest.fixture(autouse=True)
     def _sync_setup(self, _services_setup) -> None:

@@ -8,7 +8,6 @@ import pytest
 from ..base import RaftTestCase, completed
 from raft.adapters import Shell
 
-
 class TestShell(RaftTestCase):
     @pytest.fixture(autouse=True)
     def _shell_setup(self, _raft_base) -> None:

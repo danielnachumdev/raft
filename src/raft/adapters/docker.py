@@ -9,7 +9,6 @@ from .shell import Shell
 
 logger = logging.getLogger(__name__)
 
-
 class DockerStack:
     def __init__(self, stack: Stack, shell: Shell) -> None:
         self.stack = stack
@@ -43,7 +42,6 @@ class DockerStack:
         self.sh.compose("up", "-d", "--build", "--no-deps", service)
 
     def recreate_pulled_service(self, app: App, *, pull_ref: str) -> None:
-        """Pull ``pull_ref``, retag to the Compose pin (inventory default ref), recreate."""
         pin = app.compose_pin_image
         logger.info("pull %s then recreate compose service %s (pin %s)", pull_ref, app.name, pin)
         self.sh.docker("pull", pull_ref)

@@ -12,7 +12,6 @@ import fire
 from .root import RaftCLI
 from ..ui import say_err
 
-
 def _ensure_logging_bootstrap() -> None:
     root = logging.getLogger("raft")
     if root.handlers:
@@ -21,23 +20,17 @@ def _ensure_logging_bootstrap() -> None:
     root.setLevel(logging.INFO)
     root.propagate = False
 
-
 def _suggest_doctor(argv: Optional[list[str]]) -> None:
     if argv and argv[0] == "doctor":
         return
     say_err("")
     say_err("Hint: run `raft doctor` to check setup and see fixes.")
 
-
 def main(argv: Optional[list[str]] = None) -> int:
-    """Parse argv via Fire and dispatch. Returns a process exit code."""
-    # Fire pages --help via $PAGER (often less). Force plain stdout even if
-    # the shell already exported PAGER (setdefault would not override).
     os.environ["PAGER"] = "cat"
     command = list(argv) if argv is not None else None
     fire.Fire(RaftCLI, command=command, name="raft")
     return 0
-
 
 def run(argv: Optional[list[str]] = None) -> None:
     _ensure_logging_bootstrap()

@@ -19,30 +19,19 @@ STATE_DIR = Path("state") / "apps"
 _TEMPLATE_FILES = ("compose.yaml",)
 _TEMPLATE_DIRS = ("nginx",)
 
-
 def raft_home() -> Path:
-    """Operator data root: settings, state, generated artifacts, certs, apps, logs."""
     override = os.environ.get(DATA_HOME_ENV)
     if override:
         return Path(override).expanduser().resolve()
     return (Path.home() / ".raft").resolve()
 
-
 def settings_path(home: Optional[Path] = None) -> Path:
     return (home or raft_home()) / SETTINGS_FILENAME
 
-
 def _bundled_share() -> Path:
-    # paths.py lives in raft/config/; templates ship as raft/share/.
     return Path(__file__).resolve().parent.parent / "share"
 
-
 def find_package_root(start: Optional[Path] = None) -> Path:
-    """Locate product templates (``compose.yaml`` + ``nginx/``).
-
-    Prefers the wheel/editable bundled ``raft/share/``, then walks from
-    ``start`` / cwd and package parents (checkout layouts).
-    """
     bundled = _bundled_share()
     if _is_package_root(bundled):
         return bundled
@@ -58,21 +47,14 @@ def find_package_root(start: Optional[Path] = None) -> Path:
         "could not find raft package templates (compose.yaml + nginx/)"
     )
 
-
 def _is_package_root(candidate: Path) -> bool:
     return (candidate / "compose.yaml").is_file() and (candidate / "nginx").is_dir()
-
 
 def ensure_raft_home(
     home: Optional[Path] = None,
     *,
     package_root: Optional[Path] = None,
 ) -> Path:
-    """Create the ``~/.raft`` layout and sync Compose/nginx templates into it.
-
-    Templates are copied from the install package so the data home stays
-    runnable if an install checkout is cleaned later.
-    """
     root = home if home is not None else raft_home()
     root.mkdir(parents=True, exist_ok=True)
     for rel in (
@@ -91,7 +73,6 @@ def ensure_raft_home(
     pkg = package_root if package_root is not None else find_package_root()
     sync_product_templates(root, pkg)
 
-    # Compose `include` needs this file present before the first `raft render`.
     stub = root / GENERATED_DIRNAME / "compose.apps.yaml"
     if not stub.is_file():
         stub.write_text(
@@ -100,9 +81,7 @@ def ensure_raft_home(
         )
     return root
 
-
 def sync_product_templates(home: Path, package_root: Path) -> None:
-    """Refresh Compose + nginx product templates under the data home."""
     for name in _TEMPLATE_FILES:
         src = package_root / name
         if not src.is_file():

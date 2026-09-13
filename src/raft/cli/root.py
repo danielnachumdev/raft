@@ -13,7 +13,6 @@ from .auth import AuthCLI
 
 logger = logging.getLogger(__name__)
 
-
 class RaftCLI:
     """raft — low-budget single-VPS orchestrator (apply App manifests, sync, redeploy)."""
 

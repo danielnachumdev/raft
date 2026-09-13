@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 from .base import AdapterTestCase
 from raft.adapters import HttpProbe
 
-
 class TestHttpProbe(AdapterTestCase):
     def _response(self, status: int) -> MagicMock:
         resp = MagicMock()

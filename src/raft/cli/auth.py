@@ -3,7 +3,6 @@
 from . import deps
 from ..ui import say
 
-
 class AuthCLI:
     """Manage per-service read-only SSH deploy keys for private git sources."""
 

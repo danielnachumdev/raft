@@ -9,7 +9,6 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-
 class Shell:
     def __init__(self, cwd: Path) -> None:
         self.cwd = cwd

@@ -14,7 +14,6 @@ import pytest
 from .base import RaftTestCase, make_app, make_git_app, make_stack, write_demo_inventory
 from raft import cli
 
-
 class TestCli(RaftTestCase):
     @pytest.fixture(autouse=True)
     def _cli_setup(self, _raft_base) -> None:
@@ -168,8 +167,6 @@ class TestCli(RaftTestCase):
             root.handlers.clear()
 
     def test_main_module_entry(self) -> None:
-        # runpy before any import so __name__ == "__main__" is covered without a
-        # RuntimeWarning (pre-import leaves raft.__main__ in sys.modules).
         with patch("raft.cli.run") as run:
             runpy.run_module("raft.__main__", run_name="__main__")
         run.assert_called_once_with()
@@ -192,7 +189,6 @@ class TestCli(RaftTestCase):
         with pytest.raises(SystemExit) as exc:
             self._run_cli(["sync"])
         assert exc.value.code == 3
-
 
 class TestCliAuth(RaftTestCase):
     @pytest.fixture(autouse=True)
@@ -233,7 +229,6 @@ class TestCliAuth(RaftTestCase):
         self.auth.key_path.return_value = Path("/tmp/ghost")
         assert self._auth_main(["auth", "list"]) == 0
         assert "not applied" in capsys.readouterr().out
-
 
 class TestCliApplyGetDelete(RaftTestCase):
     def test_apply_get_delete_dispatch(self, capsys) -> None:

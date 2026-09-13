@@ -7,7 +7,6 @@ import pytest
 from .base import ServicesTestCase
 from raft.services import DEPLOY_CUTOVER, wait_until
 
-
 class TestWaitUntil:
     def test_succeeds(self) -> None:
         calls = {"n": 0}
@@ -23,7 +22,6 @@ class TestWaitUntil:
         with pytest.raises(TimeoutError, match="timed out waiting"):
             wait_until("never", lambda: False, timeout=0.05, interval=0.01)
 
-
 class TestDeployCutover:
     def test_step_keys(self) -> None:
         keys = [s.key for s in DEPLOY_CUTOVER]
@@ -35,7 +33,6 @@ class TestDeployCutover:
             "shift_traffic_to_stable",
             "remove_tmp",
         ]
-
 
 class TestOrchestratorPolicy(ServicesTestCase):
     @pytest.fixture(autouse=True)

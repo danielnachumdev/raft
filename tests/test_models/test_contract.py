@@ -21,7 +21,6 @@ from raft.models.contract import (
 from raft.models.inventory import find_package_root, load_inventory, load_stack
 from raft.services.render import StackRenderer
 
-
 def _write_contract(
     checkout,
     *,
@@ -92,7 +91,6 @@ def _write_contract(
         reg = Path(registry_root) / "state" / "apps" / f"{name}.yaml"
         reg.parent.mkdir(parents=True, exist_ok=True)
         reg.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
-
 
 class TestServiceContract(RaftTestCase):
     def test_load_and_server_names(self) -> None:
@@ -165,7 +163,7 @@ spec:
         assert c.cpus_limit == "1"
         assert c.memory_limit == "1G"
         assert c.cpus_reservation == "0.5"
-        assert c.memory_reservation == "32M"  # empty → default
+        assert c.memory_reservation == "32M"
 
     def test_resource_empty_cpu_string_uses_default(self) -> None:
         checkout = self.tmp_path / "app"
@@ -338,7 +336,6 @@ spec:
             ),
             encoding="utf-8",
         )
-        # remove good file so only wrong stem remains
         (self.tmp_path / "state" / "apps" / "web.yaml").unlink()
         with pytest.raises(ValueError, match="filename stem"):
             load_inventory(self.tmp_path)
@@ -459,7 +456,6 @@ spec:
         with pytest.raises(ValueError, match="spec.port"):
             load_contract(checkout)
 
-
 class TestRender(RaftTestCase):
     def test_render_compose_and_nginx(self) -> None:
         checkout = self.tmp_path / "apps" / "web"
@@ -559,7 +555,6 @@ class TestRender(RaftTestCase):
         assert "build: ./apps/web" in renderer.compose_apps_path().read_text(
             encoding="utf-8"
         )
-
 
 class TestInventoryHosts(RaftTestCase):
     def test_rejects_duplicate_hosts(self) -> None:

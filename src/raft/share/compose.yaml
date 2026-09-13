@@ -1,6 +1,5 @@
 name: raft
 
-# Resource budgets for a small VPS (Compose applies these with `docker compose up`).
 x-resources-edge: &resources-edge
   deploy:
     resources:
@@ -11,18 +10,11 @@ x-resources-edge: &resources-edge
         cpus: "0.05"
         memory: 16M
 
-# App services + router.depends_on are generated from ~/.raft/state/apps/*.yaml (raft apply).
-# `.raft/app.yaml` into generated/compose.apps.yaml (`raft render`).
-# Runtime project directory is the data home (~/.raft); product templates are synced there.
-# project_directory must be the data home — Compose resolves paths in an included file
-# relative to that file's dir by default (generated/), which breaks builds.
 include:
   - path: generated/compose.apps.yaml
     project_directory: .
 
 services:
-  # Outer edge — public :80 / :443. Keep this stable; do not redeploy for app/router updates.
-  # TLS snippets: `generated/nginx/gate-tls/*.conf` (from contracts). PEMs under ./certs/<name>/.
   gate:
     image: nginx:alpine
     ports:
@@ -37,7 +29,6 @@ services:
     restart: unless-stopped
     <<: *resources-edge
 
-  # Inner router — Host-based routing to apps. Safe to recreate; gate absorbs the gap.
   router:
     image: nginx:alpine
     expose:

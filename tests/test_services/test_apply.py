@@ -10,7 +10,6 @@ from ..base import RaftTestCase, write_applied_app
 from raft.models.inventory import load_stack
 from raft.services.apply import AppApply
 
-
 def _manifest(
     name: str = "web",
     *,
@@ -34,7 +33,6 @@ def _manifest(
         "metadata": {"name": name},
         "spec": spec,
     }
-
 
 class TestAppApply(RaftTestCase):
     def test_apply_file_no_deploy(self, capsys) -> None:
@@ -104,7 +102,6 @@ class TestAppApply(RaftTestCase):
         def clone_then_checkout(*args, **kwargs):
             cwd = kwargs.get("cwd")
             dest = Path(args[-1]) if cwd is None else Path(cwd)
-            # shallow clone writes into tmp dest as last arg
             if "clone" in args:
                 target = Path(args[-1])
                 (target / ".raft").mkdir(parents=True, exist_ok=True)
@@ -119,7 +116,6 @@ class TestAppApply(RaftTestCase):
                     ),
                     encoding="utf-8",
                 )
-                # remove default build for docker
                 data = yaml.safe_load(
                     (target / ".raft" / "app.yaml").read_text(encoding="utf-8")
                 )
@@ -135,7 +131,6 @@ class TestAppApply(RaftTestCase):
         assert name == "hub"
         assert shell.git.call_count >= 1
 
-        # fallback when shallow clone fails
         calls = {"n": 0}
 
         def fail_shallow_then_ok(*args, **kwargs):
@@ -216,7 +211,6 @@ class TestAppApply(RaftTestCase):
             target = Path(args[-1])
             target.mkdir(parents=True, exist_ok=True)
             (target / ".raft").mkdir(parents=True, exist_ok=True)
-            # no source — inferred as docker from image
             (target / ".raft" / "app.yaml").write_text(
                 yaml.safe_dump(
                     {

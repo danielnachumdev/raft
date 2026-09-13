@@ -1,6 +1,3 @@
-# Shared gate → router proxy (HTTP default_server + per-SNI TLS servers).
-# Docker embedded DNS so gate can boot before router and recover when it returns.
-
 resolver 127.0.0.11 valid=10s ipv6=off;
 
 location / {

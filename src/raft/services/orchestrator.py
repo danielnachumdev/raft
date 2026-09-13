@@ -17,7 +17,6 @@ from ..ui import say
 
 logger = logging.getLogger(__name__)
 
-
 class Orchestrator:
     def __init__(self, stack: Stack) -> None:
         self.stack = stack
@@ -38,7 +37,6 @@ class Orchestrator:
         for app in apps:
             self.nginx.ensure_steady_file(app)
         self.syncer.sync(apps, ref_override=ref_override, force=force)
-        # Full inventory render so Compose/nginx match every registered service.
         self.render()
 
     def render(self) -> None:

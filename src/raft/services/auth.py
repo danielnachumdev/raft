@@ -1,19 +1,4 @@
-"""Per-service read-only SSH deploy keys for private git sources.
-
-Keys live under ``~/.ssh/raft/`` (never in the repo). Inventory keeps the
-canonical ``git@host:owner/repo.git`` URL; sync rewrites to a Host alias that
-points at the service key.
-
-Managed ``~/.ssh/config`` blocks::
-
-    # BEGIN raft:<service>
-    Host github.com-raft-<service>
-      HostName github.com
-      User git
-      IdentityFile ~/.ssh/raft/<service>_ed25519
-      IdentitiesOnly yes
-    # END raft:<service>
-"""
+"""Per-service read-only SSH deploy keys for private git sources."""
 
 from __future__ import annotations
 
@@ -37,11 +22,10 @@ _SSH_GIT_RE = re.compile(
     r"^(?:ssh://)?(?:git@)?(?P<host>[^/:]+)[:/](?P<path>.+?)(?:\.git)?/?$"
 )
 
-
 @dataclass(frozen=True)
 class SshGitUrl:
     host: str
-    path: str  # owner/repo (no .git)
+    path: str
 
     @property
     def canonical(self) -> str:
@@ -49,7 +33,6 @@ class SshGitUrl:
 
     def with_host_alias(self, alias: str) -> str:
         return f"git@{alias}:{self.path}.git"
-
 
 def parse_ssh_git_url(url: str) -> SshGitUrl:
     raw = url.strip()
@@ -67,13 +50,11 @@ def parse_ssh_git_url(url: str) -> SshGitUrl:
         raise ValueError(f"SSH git URL must include owner/repo: {url!r}")
     return SshGitUrl(host=host, path=path)
 
-
 def default_ssh_dir() -> Path:
     override = os.environ.get("RAFT_SSH_DIR")
     if override:
         return Path(override).expanduser().resolve()
     return (Path.home() / ".ssh").resolve()
-
 
 def host_alias(service: str, git_host: str) -> str:
     marker = f"-raft-{service}"
@@ -81,17 +62,13 @@ def host_alias(service: str, git_host: str) -> str:
         return git_host
     return f"{git_host}-raft-{service}"
 
-
 def real_git_host(service: str, git_host: str) -> str:
     marker = f"-raft-{service}"
     if git_host.endswith(marker):
         return git_host[: -len(marker)] or git_host
     return git_host
 
-
 class GitAuthManager:
-    """Create/list/remove per-service deploy keys and SSH config stanzas."""
-
     def __init__(
         self,
         stack: Stack,
@@ -189,7 +166,6 @@ class GitAuthManager:
         return path.read_text(encoding="utf-8").strip()
 
     def show(self, service: str) -> None:
-        """Print Title + Key (+ paste URL) for the Deploy keys UI."""
         app = self.stack.app(service)
         if not app.repo:
             raise RuntimeError(
@@ -314,7 +290,6 @@ class GitAuthManager:
 
     @staticmethod
     def _pubkey_for_paste(pubkey: str) -> str:
-        """Return type + key material only (drop the OpenSSH comment)."""
         parts = pubkey.split()
         if len(parts) >= 2:
             return f"{parts[0]} {parts[1]}"
@@ -329,7 +304,6 @@ class GitAuthManager:
         pubkey: str,
         title: str,
     ) -> None:
-        """Emit title + public key for paste into the repo Deploy keys UI."""
         say(f"Add a read-only deploy key for {service}:")
         say("")
         say(f"  Title:  {title}")

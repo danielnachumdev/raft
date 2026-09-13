@@ -7,7 +7,6 @@ import pytest
 from ..base import RaftTestCase, completed, make_local_stack
 from raft.adapters import DockerStack
 
-
 class AdapterTestCase(RaftTestCase):
     @pytest.fixture(autouse=True)
     def _adapter_setup(self, _raft_base) -> None:

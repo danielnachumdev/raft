@@ -13,7 +13,6 @@ from raft.services.auth import (
     real_git_host,
 )
 
-
 class TestParseSshGitUrl:
     def test_variants(self) -> None:
         assert parse_ssh_git_url("git@github.com:org/repo.git").path == "org/repo"
@@ -28,14 +27,12 @@ class TestParseSshGitUrl:
         with pytest.raises(ValueError, match="owner/repo"):
             parse_ssh_git_url("git@github.com:noreply")
 
-
 class TestHostAliasHelpers:
     def test_alias_and_real_host(self) -> None:
         assert host_alias("svc", "github.com") == "github.com-raft-svc"
         assert host_alias("svc", "github.com-raft-svc") == "github.com-raft-svc"
         assert real_git_host("svc", "github.com-raft-svc") == "github.com"
         assert real_git_host("svc", "github.com") == "github.com"
-
 
 class TestDefaultSshDir(ServicesTestCase):
     def test_env_override(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -48,7 +45,6 @@ class TestDefaultSshDir(ServicesTestCase):
         monkeypatch.delenv("RAFT_SSH_DIR", raising=False)
         monkeypatch.setattr("raft.services.auth.Path.home", lambda: self.tmp_path)
         assert default_ssh_dir() == (self.tmp_path / ".ssh").resolve()
-
 
 class TestGitAuthManager(ServicesTestCase):
     @pytest.fixture(autouse=True)
@@ -81,7 +77,7 @@ class TestGitAuthManager(ServicesTestCase):
         assert "Title:" in out
         assert "Key:" in out
         assert "ssh-ed25519 AAAA" in out
-        assert "AAAA setup" not in out  # OpenSSH comment stripped from Key line
+        assert "AAAA setup" not in out
         assert "settings/keys/new" in out
         assert "gh " not in out
 

@@ -8,7 +8,6 @@ from ..models.inventory import App, Stack
 
 logger = logging.getLogger(__name__)
 
-
 class HttpProbe:
     def __init__(self, stack: Stack) -> None:
         self.stack = stack

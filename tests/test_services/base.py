@@ -9,7 +9,6 @@ from ..base import RaftTestCase, make_git_stack, make_local_stack
 from raft.services import CutoverSession, Orchestrator
 from raft.services.auth import GitAuthManager
 
-
 class ServicesTestCase(RaftTestCase):
     @pytest.fixture(autouse=True)
     def _services_setup(self, _raft_base) -> None:
@@ -51,8 +50,6 @@ class ServicesTestCase(RaftTestCase):
         mgr.pub_path(service).write_text("ssh-ed25519 AAAA test\n", encoding="utf-8")
 
     def fake_ssh_keygen(self):
-        """shell.run side_effect that materializes ed25519 key files."""
-
         def run(args, **kwargs):
             if args and args[0] == "ssh-keygen":
                 key = Path(args[args.index("-f") + 1])
