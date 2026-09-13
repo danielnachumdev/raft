@@ -7,7 +7,6 @@ from unittest.mock import MagicMock
 from .base import ServicesTestCase
 from raft.services.update import DEFAULT_INSTALL_URL, SelfUpdate
 
-
 class TestSelfUpdate(ServicesTestCase):
     def test_run_fetches_remote_install_script(self, capsys, monkeypatch) -> None:
         monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
@@ -21,7 +20,8 @@ class TestSelfUpdate(ServicesTestCase):
         assert args[4] == DEFAULT_INSTALL_URL
         out = capsys.readouterr().out
         assert "Updating raft" in out
-        assert "reinstalled" in out
+        assert "OK: raft updated" in out
+        assert "RAFT_INSTALL_QUIET=1" in args[2]
 
     def test_run_respects_install_url_env(self, monkeypatch) -> None:
         url = "https://example.test/install.sh"
@@ -31,7 +31,6 @@ class TestSelfUpdate(ServicesTestCase):
         assert shell.run.call_args.args[0][4] == url
 
     def test_run_ignores_local_install_script(self, monkeypatch) -> None:
-        """Local checkout install.sh must not short-circuit GitHub refresh."""
         script = self.tmp_path / "install.sh"
         script.write_text("#!/bin/bash\n", encoding="utf-8")
         monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
