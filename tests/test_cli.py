@@ -11,8 +11,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from .base import RaftTestCase, make_app, make_git_app, make_stack, write_demo_inventory
 from raft import cli
+
+from .base import RaftTestCase, make_app, make_git_app, make_stack, write_demo_inventory
+
 
 class TestCli(RaftTestCase):
     @pytest.fixture(autouse=True)
@@ -65,9 +67,7 @@ class TestCli(RaftTestCase):
 
     def test_sync_dispatches_subset_and_flags(self) -> None:
         assert self._run_main(["sync", "app", "--ref", "abc", "--force"]) == 0
-        self.orch.sync.assert_called_once_with(
-            ["app"], ref_override="abc", force=True
-        )
+        self.orch.sync.assert_called_once_with(["app"], ref_override="abc", force=True)
 
     def test_sync_unknown_service(self) -> None:
         with patch("raft.cli.deps.load_stack", return_value=self.stack):
@@ -85,12 +85,8 @@ class TestCli(RaftTestCase):
         self.orch.render.assert_called_once()
 
     def test_redeploy_app_dispatch(self) -> None:
-        assert (
-            self._run_main(["redeploy", "app", "--ref", "sha1", "--force-sync"]) == 0
-        )
-        self.orch.redeploy_app.assert_called_once_with(
-            "app", ref_override="sha1", force_sync=True
-        )
+        assert self._run_main(["redeploy", "app", "--ref", "sha1", "--force-sync"]) == 0
+        self.orch.redeploy_app.assert_called_once_with("app", ref_override="sha1", force_sync=True)
 
     def test_redeploy_router_dispatch(self) -> None:
         assert self._run_main(["redeploy", "router"]) == 0
@@ -179,9 +175,7 @@ class TestCli(RaftTestCase):
         assert main_mod.run is cli.run
 
     def test_run_maps_called_process_error(self) -> None:
-        err = subprocess.CalledProcessError(
-            9, ["docker", "compose"], stderr="boom\n"
-        )
+        err = subprocess.CalledProcessError(9, ["docker", "compose"], stderr="boom\n")
         self.orch.stop.side_effect = err
         with pytest.raises(SystemExit) as exc:
             self._run_cli(["down"])
@@ -193,6 +187,7 @@ class TestCli(RaftTestCase):
         with pytest.raises(SystemExit) as exc:
             self._run_cli(["sync"])
         assert exc.value.code == 3
+
 
 class TestCliAuth(RaftTestCase):
     @pytest.fixture(autouse=True)
@@ -233,6 +228,7 @@ class TestCliAuth(RaftTestCase):
         self.auth.key_path.return_value = Path("/tmp/ghost")
         assert self._auth_main(["auth", "list"]) == 0
         assert "not applied" in capsys.readouterr().out
+
 
 class TestCliApplyGetDelete(RaftTestCase):
     def test_apply_get_delete_dispatch(self, capsys) -> None:

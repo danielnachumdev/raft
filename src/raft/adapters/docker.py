@@ -52,8 +52,7 @@ class DockerStack:
         result = self.sh.docker(
             "inspect",
             "-f",
-            "{{range $p, $conf := .NetworkSettings.Ports}}"
-            "{{if $conf}}{{$p}} {{end}}{{end}}",
+            "{{range $p, $conf := .NetworkSettings.Ports}}" "{{if $conf}}{{$p}} {{end}}{{end}}",
             cid,
             capture=True,
             check=False,
@@ -84,9 +83,7 @@ class DockerStack:
         result = self.sh.compose("ps", "-q", service, capture=True)
         cid = (result.stdout or "").strip()
         if not cid:
-            raise RuntimeError(
-                f"service {service!r} is not running — bring the stack up first"
-            )
+            raise RuntimeError(f"service {service!r} is not running — bring the stack up first")
         return cid
 
     def container_image_ref(self, container_id: str) -> str:

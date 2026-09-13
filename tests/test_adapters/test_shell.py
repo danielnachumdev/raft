@@ -5,8 +5,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ..base import RaftTestCase, completed
 from raft.adapters import Shell
+
+from ..base import RaftTestCase, completed
+
 
 class TestShell(RaftTestCase):
     @pytest.fixture(autouse=True)

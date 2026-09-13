@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from .base import ServicesTestCase
 from raft.services.update import DEFAULT_INSTALL_URL, SelfUpdate
+
+from .base import ServicesTestCase
+
 
 class TestSelfUpdate(ServicesTestCase):
     def test_run_fetches_remote_install_script(self, capsys, monkeypatch) -> None:

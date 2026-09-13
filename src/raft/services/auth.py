@@ -10,18 +10,17 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+from ..adapters.shell import Shell
 from ..models.app import App
 from ..models.stack import Stack
-from ..adapters.shell import Shell
 from ..ui import say
 
 logger = logging.getLogger(__name__)
 
 _BEGIN = "# BEGIN raft:{name}"
 _END = "# END raft:{name}"
-_SSH_GIT_RE = re.compile(
-    r"^(?:ssh://)?(?:git@)?(?P<host>[^/:]+)[:/](?P<path>.+?)(?:\.git)?/?$"
-)
+_SSH_GIT_RE = re.compile(r"^(?:ssh://)?(?:git@)?(?P<host>[^/:]+)[:/](?P<path>.+?)(?:\.git)?/?$")
+
 
 @dataclass(frozen=True)
 class SshGitUrl:
@@ -34,6 +33,7 @@ class SshGitUrl:
 
     def with_host_alias(self, alias: str) -> str:
         return f"git@{alias}:{self.path}.git"
+
 
 def parse_ssh_git_url(url: str) -> SshGitUrl:
     raw = url.strip()
@@ -51,11 +51,13 @@ def parse_ssh_git_url(url: str) -> SshGitUrl:
         raise ValueError(f"SSH git URL must include owner/repo: {url!r}")
     return SshGitUrl(host=host, path=path)
 
+
 def default_ssh_dir() -> Path:
     override = os.environ.get("RAFT_SSH_DIR")
     if override:
         return Path(override).expanduser().resolve()
     return (Path.home() / ".ssh").resolve()
+
 
 def host_alias(service: str, git_host: str) -> str:
     marker = f"-raft-{service}"
@@ -63,11 +65,13 @@ def host_alias(service: str, git_host: str) -> str:
         return git_host
     return f"{git_host}-raft-{service}"
 
+
 def real_git_host(service: str, git_host: str) -> str:
     marker = f"-raft-{service}"
     if git_host.endswith(marker):
         return git_host[: -len(marker)] or git_host
     return git_host
+
 
 class GitAuthManager:
     def __init__(
@@ -161,9 +165,7 @@ class GitAuthManager:
     def show_pubkey(self, service: str) -> str:
         path = self.pub_path(service)
         if not path.is_file():
-            raise RuntimeError(
-                f"no deploy key for {service!r}; run: raft auth setup {service}"
-            )
+            raise RuntimeError(f"no deploy key for {service!r}; run: raft auth setup {service}")
         return path.read_text(encoding="utf-8").strip()
 
     def show(self, service: str) -> None:
@@ -191,17 +193,14 @@ class GitAuthManager:
                 f"{service!r} has no repo URL in inventory (needed for deploy-key auth)"
             )
         if not self.is_configured(service):
-            raise RuntimeError(
-                f"no key for {service!r}; run: raft auth setup {service}"
-            )
+            raise RuntimeError(f"no key for {service!r}; run: raft auth setup {service}")
         url = self.effective_clone_url(app)
         logger.info("auth test %s: git ls-remote %s", service, url)
         result = self.sh.git("ls-remote", url, "HEAD", check=False, capture=True)
         if result.returncode != 0:
             detail = (result.stderr or result.stdout or "").strip()
             raise RuntimeError(
-                f"auth test failed for {service!r}"
-                + (f":\n{detail}" if detail else "")
+                f"auth test failed for {service!r}" + (f":\n{detail}" if detail else "")
             )
         if not quiet:
             say(f"auth test {service}: ok")

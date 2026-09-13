@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from . import deps
 from ..models.stack import Stack
+from . import deps
 
 
 class GateCLI:

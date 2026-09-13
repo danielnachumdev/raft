@@ -3,9 +3,10 @@
 import urllib.error
 from unittest.mock import MagicMock, patch
 
-from .base import AdapterTestCase
 from raft.adapters import HttpProbe
 from raft.models import App
+
+from .base import AdapterTestCase
 
 
 class TestHttpProbe(AdapterTestCase):

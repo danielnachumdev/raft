@@ -9,9 +9,8 @@ from ..adapters.shell import Shell
 from ..models import Stack
 from ..ui import say
 
-DEFAULT_INSTALL_URL = (
-    "https://raw.githubusercontent.com/danielnachumdev/raft/main/install.sh"
-)
+DEFAULT_INSTALL_URL = "https://raw.githubusercontent.com/danielnachumdev/raft/main/install.sh"
+
 
 class SelfUpdate:
     def __init__(self, stack: Stack, shell: Optional[Shell] = None) -> None:

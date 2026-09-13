@@ -7,6 +7,7 @@ from .settings import RaftConfig
 
 _CONFIGURED = False
 
+
 def setup_logging(data_home: Path, config: RaftConfig) -> Path:
     global _CONFIGURED
     log_cfg = config.logging
@@ -33,6 +34,7 @@ def setup_logging(data_home: Path, config: RaftConfig) -> Path:
     _CONFIGURED = True
     root.debug("logging configured file=%s level=%s", log_file, log_cfg.level)
     return log_file
+
 
 def reset_logging_for_tests() -> None:
     global _CONFIGURED

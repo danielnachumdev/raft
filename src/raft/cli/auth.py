@@ -1,7 +1,8 @@
 """Auth subcommands (`raft auth …`)."""
 
-from . import deps
 from ..ui import say
+from . import deps
+
 
 class AuthCLI:
     """Manage per-service read-only SSH deploy keys for private git sources."""

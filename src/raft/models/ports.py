@@ -37,8 +37,7 @@ class PortSpec:
             )
         if self.public_port is not None and not (1 <= self.public_port <= 65535):
             raise ValueError(
-                f"{path}: ports[{self.name!r}].publicPort out of range: "
-                f"{self.public_port}"
+                f"{path}: ports[{self.name!r}].publicPort out of range: " f"{self.public_port}"
             )
         if self.expose in {"stream", "host"} and self.public_port is None:
             raise ValueError(
@@ -47,13 +46,11 @@ class PortSpec:
             )
         if self.expose == "http" and self.public_port is not None:
             raise ValueError(
-                f"{path}: ports[{self.name!r}].publicPort is only valid for "
-                f"expose stream|host"
+                f"{path}: ports[{self.name!r}].publicPort is only valid for " f"expose stream|host"
             )
         if self.proxy_protocol and self.expose != "stream":
             raise ValueError(
-                f"{path}: ports[{self.name!r}].proxyProtocol only applies to "
-                f"expose=stream"
+                f"{path}: ports[{self.name!r}].proxyProtocol only applies to " f"expose=stream"
             )
 
 
@@ -78,9 +75,7 @@ def parse_ports(spec: dict[str, Any], path: Path) -> tuple[PortSpec, ...]:
             raise ValueError(f"{path}: duplicate port name {name!r}")
         seen.add(name)
         if "containerPort" not in entry:
-            raise ValueError(
-                f"{path}: spec.ports[{name!r}].containerPort is required"
-            )
+            raise ValueError(f"{path}: spec.ports[{name!r}].containerPort is required")
         container_port = int(entry["containerPort"])
         expose = str(entry.get("expose", "http")).strip().lower() or "http"
         public_raw = entry.get("publicPort")

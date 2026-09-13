@@ -5,17 +5,17 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from .cutover import DEPLOY_CUTOVER, CutoverSession, wait_until
 from ..adapters.docker import DockerStack
 from ..adapters.http import HttpProbe
-from ..models.stack import Stack
 from ..adapters.nginx import NginxUpstreams
 from ..adapters.shell import Shell
 from ..config.settings import load_config
+from ..models.stack import Stack
+from ..ui import say
+from .cutover import DEPLOY_CUTOVER, CutoverSession, wait_until
 from .readiness import ReadinessStrategy
 from .render import StackRenderer
 from .sync import SourceSync
-from ..ui import say
 
 logger = logging.getLogger(__name__)
 

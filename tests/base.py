@@ -81,8 +81,7 @@ def make_git_stack(
 def ensure_orchestrator_root(root: Path) -> None:
     if not (root / "settings.yaml").is_file():
         (root / "settings.yaml").write_text(
-            "logging:\n  level: INFO\n"
-            "edge:\n  http: 80\n  https: 443\n",
+            "logging:\n  level: INFO\n" "edge:\n  http: 80\n  https: 443\n",
             encoding="utf-8",
         )
     (root / "state" / "apps").mkdir(parents=True, exist_ok=True)
@@ -150,9 +149,7 @@ def write_inventory(root: Path, body: str) -> None:
         write_applied_app(
             root,
             name,
-            public_host=(
-                str(raw["public_host"]) if "public_host" in raw else None
-            ),
+            public_host=(str(raw["public_host"]) if "public_host" in raw else None),
             source=str(raw.get("source", "local")),
             path=str(raw.get("path", f"apps/{name}")),
             repo=raw.get("repo"),

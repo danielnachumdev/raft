@@ -4,8 +4,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ..base import RaftTestCase, completed, make_local_stack, write_applied_app
 from raft.adapters import DockerStack
+
+from ..base import RaftTestCase, completed, make_local_stack, write_applied_app
 
 
 class AdapterTestCase(RaftTestCase):

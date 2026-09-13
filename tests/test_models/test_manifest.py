@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from ..base import RaftTestCase, write_applied_app, write_inventory
 from raft.config.settings import EdgeConfig, EdgeStream
+from raft.models import find_package_root, load_registry
 from raft.models.manifest import (
     AppSpec,
     delete_registry_app,
@@ -20,8 +20,9 @@ from raft.models.manifest import (
 from raft.models.ports import PortSpec
 from raft.models.readiness import ReadinessSpec
 from raft.models.stack import load_stack
-from raft.models import find_package_root, load_registry
 from raft.services.render import StackRenderer
+
+from ..base import RaftTestCase, write_applied_app, write_inventory
 
 
 def _write_manifest(
@@ -129,9 +130,7 @@ class TestAppSpec(RaftTestCase):
     def test_resources_and_dockerfile(self) -> None:
         checkout = self.tmp_path / "app"
         checkout.mkdir()
-        _write_manifest(
-            checkout, context="svc", dockerfile="Dockerfile.web", resources=True
-        )
+        _write_manifest(checkout, context="svc", dockerfile="Dockerfile.web", resources=True)
         c = load_contract(checkout)
         assert c.dockerfile == "Dockerfile.web"
         assert c.cpus_limit == "0.25"
@@ -273,38 +272,30 @@ class TestStackRenderer(RaftTestCase):
         (self.tmp_path / "apps" / "web").mkdir(parents=True)
         stack = load_stack(self.tmp_path)
         StackRenderer(stack).render()
-        apps_yaml = (self.tmp_path / "generated" / "compose.apps.yaml").read_text(
-            encoding="utf-8"
-        )
+        apps_yaml = (self.tmp_path / "generated" / "compose.apps.yaml").read_text(encoding="utf-8")
         assert "wget" in apps_yaml
         assert 'expose:\n      - "80"' in apps_yaml
-        edge_yaml = (self.tmp_path / "generated" / "compose.edge.yaml").read_text(
-            encoding="utf-8"
-        )
+        edge_yaml = (self.tmp_path / "generated" / "compose.edge.yaml").read_text(encoding="utf-8")
         assert '"80:80"' in edge_yaml
         assert '"443:443"' in edge_yaml
-        hosts = (
-            self.tmp_path / "generated" / "nginx" / "router" / "hosts.conf"
-        ).read_text(encoding="utf-8")
+        hosts = (self.tmp_path / "generated" / "nginx" / "router" / "hosts.conf").read_text(
+            encoding="utf-8"
+        )
         assert "upstream web_http" in hosts or "include /etc/nginx/upstreams/web-http.conf" in hosts
         assert "proxy_pass http://web_http" in hosts
         tls_dir = self.tmp_path / "generated" / "nginx" / "gate-tls"
         assert list(tls_dir.glob("*.conf")) == []
-        upstream = (
-            self.tmp_path / "generated" / "nginx" / "upstreams" / "web-http.conf"
-        )
+        upstream = self.tmp_path / "generated" / "nginx" / "upstreams" / "web-http.conf"
         assert upstream.is_file()
 
     def test_render_tls_origin_writes_snippet(self) -> None:
-        write_applied_app(
-            self.tmp_path, "web", public_host="web.test", tls="origin"
-        )
+        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="origin")
         (self.tmp_path / "apps" / "web").mkdir(parents=True)
         stack = load_stack(self.tmp_path)
         StackRenderer(stack).render()
-        tls = (
-            self.tmp_path / "generated" / "nginx" / "gate-tls" / "web.conf"
-        ).read_text(encoding="utf-8")
+        tls = (self.tmp_path / "generated" / "nginx" / "gate-tls" / "web.conf").read_text(
+            encoding="utf-8"
+        )
         assert "listen 443 ssl" in tls
         assert "certs/web/origin.pem" in tls
 
@@ -362,26 +353,20 @@ class TestStackRenderer(RaftTestCase):
             streams=(EdgeStream(name="smtp", port=25, protocol="tcp"),),
         )
         StackRenderer(stack, edge=edge).render()
-        apps = (self.tmp_path / "generated" / "compose.apps.yaml").read_text(
-            encoding="utf-8"
-        )
+        apps = (self.tmp_path / "generated" / "compose.apps.yaml").read_text(encoding="utf-8")
         assert '"587:587"' in apps
         assert "nc -z" in apps
         streams = (
             self.tmp_path / "generated" / "nginx" / "gate-stream" / "streams.conf"
         ).read_text(encoding="utf-8")
         assert "listen 25" in streams
-        edge_yaml = (self.tmp_path / "generated" / "compose.edge.yaml").read_text(
-            encoding="utf-8"
-        )
+        edge_yaml = (self.tmp_path / "generated" / "compose.edge.yaml").read_text(encoding="utf-8")
         assert '"25:25"' in edge_yaml
 
     def test_render_empty_apps(self) -> None:
         stack = load_stack(self.tmp_path)
         StackRenderer(stack).render()
-        text = (self.tmp_path / "generated" / "compose.apps.yaml").read_text(
-            encoding="utf-8"
-        )
+        text = (self.tmp_path / "generated" / "compose.apps.yaml").read_text(encoding="utf-8")
         assert "services: {}" in text
 
     def test_validate_requires_build_context(self) -> None:

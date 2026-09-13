@@ -31,12 +31,14 @@ _CYAN = "\033[36m"
 
 _STATUS_COLOR = {"ok": _GREEN, "warn": _YELLOW, "fail": _RED}
 
+
 def _want_color(stream: TextIO, explicit: Optional[bool]) -> bool:
     if explicit is not None:
         return explicit
     if os.environ.get("NO_COLOR", ""):
         return False
     return bool(getattr(stream, "isatty", lambda: False)())
+
 
 @dataclass(frozen=True)
 class CheckResult:
@@ -45,6 +47,7 @@ class CheckResult:
     status: Status
     detail: str
     fix: str = ""
+
 
 class Doctor:
     def __init__(
@@ -231,9 +234,7 @@ class Doctor:
             dest = app.abs_path(self.stack.root)
             if app.source == "local":
                 if dest.is_dir():
-                    results.append(
-                        CheckResult(app.name, "sync", "ok", f"local path {app.path}")
-                    )
+                    results.append(CheckResult(app.name, "sync", "ok", f"local path {app.path}"))
                     results.extend(self._check_contract(app))
                 else:
                     results.append(
@@ -362,9 +363,7 @@ class Doctor:
                     )
                 )
             else:
-                results.append(
-                    CheckResult(app.name, "sync", "ok", f"git checkout at {app.path}")
-                )
+                results.append(CheckResult(app.name, "sync", "ok", f"git checkout at {app.path}"))
                 results.extend(self._check_contract(app))
         return results
 
@@ -415,9 +414,7 @@ class Doctor:
             for port in http_ports:
                 path = self.stack.upstream_file(app, port)
                 if path.is_file():
-                    results.append(
-                        CheckResult(app.name, "upstream", "ok", str(path.name))
-                    )
+                    results.append(CheckResult(app.name, "upstream", "ok", str(path.name)))
                 else:
                     results.append(
                         CheckResult(
@@ -564,9 +561,7 @@ class Doctor:
                 in_use = False
             label = f"port {port}"
             if in_use and gate_up:
-                results.append(
-                    CheckResult(INFRA, label, "ok", "accepting (gate running)")
-                )
+                results.append(CheckResult(INFRA, label, "ok", "accepting (gate running)"))
             elif in_use and not gate_up:
                 results.append(
                     CheckResult(

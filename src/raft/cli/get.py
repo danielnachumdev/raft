@@ -2,6 +2,7 @@
 
 from ..ui import say
 
+
 def get_apps(stack) -> None:
     """List applied apps."""
     if not stack.apps:
@@ -9,6 +10,7 @@ def get_apps(stack) -> None:
         return
     for app in stack.apps:
         say(f"{app.name}\t{app.source}\t{app.public_host}\t{app.ref}")
+
 
 def get_app(stack, name: str) -> None:
     """Show one applied app by metadata.name."""

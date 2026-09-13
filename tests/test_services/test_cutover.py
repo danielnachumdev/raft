@@ -4,9 +4,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from raft.services import CutoverSession
+
 from ..base import make_app, make_stack, write_applied_app
 from .base import ServicesTestCase
-from raft.services import CutoverSession
+
 
 class TestCutoverSession(ServicesTestCase):
     @pytest.fixture(autouse=True)
@@ -22,9 +24,7 @@ class TestCutoverSession(ServicesTestCase):
             public_host="hub.test",
             build_context=None,
         )
-        app = make_app(
-            "hub", source="docker", image="ghcr.io/org/hub", ref="main"
-        )
+        app = make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
         stack = make_stack(
             self.tmp_path,
             (app,),
@@ -33,9 +33,7 @@ class TestCutoverSession(ServicesTestCase):
         )
         if ref_text is not None:
             (self.tmp_path / "deploy").mkdir(parents=True, exist_ok=True)
-            (self.tmp_path / "deploy" / "hub.ref").write_text(
-                ref_text, encoding="utf-8"
-            )
+            (self.tmp_path / "deploy" / "hub.ref").write_text(ref_text, encoding="utf-8")
         docker = MagicMock()
         docker.router_can_fetch.return_value = True
         return CutoverSession(
@@ -73,9 +71,7 @@ class TestCutoverSession(ServicesTestCase):
             s.nginx.point_at.assert_called_with(s.app, "app")
 
             s.remove_tmp()
-            assert "sha_new" in (
-                self.tmp_path / "deploy" / "app.image"
-            ).read_text(encoding="utf-8")
+            assert "sha_new" in (self.tmp_path / "deploy" / "app.image").read_text(encoding="utf-8")
 
     def test_rebuild_stable_docker_pulls(self) -> None:
         session = self._docker_session(ref_text="digest\n# requested: abc123\n")
@@ -100,9 +96,7 @@ class TestCutoverSession(ServicesTestCase):
         )
 
     def test_rebuild_stable_docker_state_without_requested(self) -> None:
-        session = self._docker_session(
-            ref_text="sha256:only\n# pin: ghcr.io/org/hub:main\n"
-        )
+        session = self._docker_session(ref_text="sha256:only\n# pin: ghcr.io/org/hub:main\n")
         session.rebuild_stable_service()
         session.docker.recreate_pulled_service.assert_called_once_with(
             session.app, pull_ref="ghcr.io/org/hub:main"

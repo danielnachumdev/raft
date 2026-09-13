@@ -105,14 +105,10 @@ def _parse_edge(raw: Any) -> EdgeConfig:
             raise ValueError(f"settings.yaml edge.streams: duplicate name {name!r}")
         seen_names.add(name)
         if "port" not in entry:
-            raise ValueError(
-                f"settings.yaml edge.streams[{name!r}].port is required"
-            )
+            raise ValueError(f"settings.yaml edge.streams[{name!r}].port is required")
         port = int(entry["port"])
         if not (1 <= port <= 65535):
-            raise ValueError(
-                f"settings.yaml edge.streams[{name!r}].port out of range: {port}"
-            )
+            raise ValueError(f"settings.yaml edge.streams[{name!r}].port out of range: {port}")
         if port in seen_ports:
             raise ValueError(f"settings.yaml edge.streams: duplicate port {port}")
         if http is not None and port == http:

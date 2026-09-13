@@ -4,9 +4,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from .base import AdapterTestCase
 from raft.adapters import NginxUpstreams
 from raft.models.ports import PortSpec
+
+from .base import AdapterTestCase
 
 
 class TestNginxUpstreams(AdapterTestCase):

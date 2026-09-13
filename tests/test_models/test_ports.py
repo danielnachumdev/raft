@@ -4,8 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from ..base import RaftTestCase
 from raft.models.ports import PortSpec, parse_ports, port_by_name
+
+from ..base import RaftTestCase
 
 
 class TestPorts(RaftTestCase):
@@ -21,11 +22,7 @@ class TestPorts(RaftTestCase):
     def test_stream_requires_public_port(self) -> None:
         with pytest.raises(ValueError, match="publicPort is required"):
             parse_ports(
-                {
-                    "ports": [
-                        {"name": "smtp", "containerPort": 25, "expose": "stream"}
-                    ]
-                },
+                {"ports": [{"name": "smtp", "containerPort": 25, "expose": "stream"}]},
                 Path("app.yaml"),
             )
 
@@ -58,8 +55,6 @@ class TestPorts(RaftTestCase):
             ).validate(path=Path("x"))
 
     def test_port_by_name_missing(self) -> None:
-        ports = (
-            PortSpec(name="http", container_port=80, expose="http"),
-        )
+        ports = (PortSpec(name="http", container_port=80, expose="http"),)
         with pytest.raises(KeyError, match="unknown port"):
             port_by_name(ports, "smtp")

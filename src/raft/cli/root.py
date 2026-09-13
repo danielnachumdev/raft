@@ -6,13 +6,14 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from . import deps
 from . import delete as delete_cmd
+from . import deps
 from . import get as get_cmd
 from .auth import AuthCLI
 from .gate import GateCLI
 
 logger = logging.getLogger(__name__)
+
 
 class RaftCLI:
     """raft — low-budget single-VPS orchestrator (apply App manifests, sync, redeploy)."""
@@ -117,9 +118,7 @@ class RaftCLI:
         if names:
             unknown = [n for n in names if n not in self._app_names]
             if unknown:
-                raise SystemExit(
-                    f"unknown service(s): {', '.join(unknown)} (known: {self._known})"
-                )
+                raise SystemExit(f"unknown service(s): {', '.join(unknown)} (known: {self._known})")
         deps.Orchestrator(self._stack).sync(names, ref_override=ref, force=force)
 
     def redeploy(

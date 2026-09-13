@@ -9,9 +9,9 @@ from typing import Callable, Optional
 
 from ..adapters.docker import DockerStack
 from ..adapters.http import HttpProbe
-from ..models.app import App, COMPOSE_PROJECT
-from ..models.stack import Stack
 from ..adapters.nginx import NginxUpstreams
+from ..models.app import COMPOSE_PROJECT, App
+from ..models.stack import Stack
 from .readiness import ReadinessStrategy
 
 logger = logging.getLogger(__name__)
@@ -85,14 +85,10 @@ class CutoverSession:
         )
         strategy = self._strategy()
         if strategy.kind == "http":
-            fetch_port = (
-                strategy.port.container_port if strategy.port is not None else 80
-            )
+            fetch_port = strategy.port.container_port if strategy.port is not None else 80
             wait_until(
                 f"{self.app.tmp_alias} reachable from router",
-                lambda: self.docker.router_can_fetch(
-                    self.app.tmp_alias, port=fetch_port
-                ),
+                lambda: self.docker.router_can_fetch(self.app.tmp_alias, port=fetch_port),
                 timeout=self.stack.ready_timeout_seconds,
             )
 
@@ -113,14 +109,10 @@ class CutoverSession:
             self.docker.rebuild_service(self.app.name)
         strategy = self._strategy()
         if strategy.kind == "http":
-            fetch_port = (
-                strategy.port.container_port if strategy.port is not None else 80
-            )
+            fetch_port = strategy.port.container_port if strategy.port is not None else 80
             wait_until(
                 f"{self.app.name} reachable from router",
-                lambda: self.docker.router_can_fetch(
-                    self.app.name, port=fetch_port
-                ),
+                lambda: self.docker.router_can_fetch(self.app.name, port=fetch_port),
                 timeout=self.stack.ready_timeout_seconds,
             )
 

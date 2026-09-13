@@ -4,8 +4,10 @@ from unittest.mock import patch
 
 import pytest
 
-from .base import ServicesTestCase
 from raft.services import DEPLOY_CUTOVER, wait_until
+
+from .base import ServicesTestCase
+
 
 class TestWaitUntil:
     def test_succeeds(self) -> None:
@@ -22,6 +24,7 @@ class TestWaitUntil:
         with pytest.raises(TimeoutError, match="timed out waiting"):
             wait_until("never", lambda: False, timeout=0.05, interval=0.01)
 
+
 class TestDeployCutover:
     def test_step_keys(self) -> None:
         keys = [s.key for s in DEPLOY_CUTOVER]
@@ -34,6 +37,7 @@ class TestDeployCutover:
             "remove_tmp",
         ]
 
+
 class TestOrchestratorPolicy(ServicesTestCase):
     @pytest.fixture(autouse=True)
     def _policy_setup(self, _services_setup) -> None:
@@ -44,22 +48,16 @@ class TestOrchestratorPolicy(ServicesTestCase):
             self.orch.redeploy("gate")
 
     def test_recreate_gate_requires_running(self) -> None:
-        with patch.object(
-            self.orch.docker, "running_services", return_value=["router"]
-        ):
+        with patch.object(self.orch.docker, "running_services", return_value=["router"]):
             with pytest.raises(RuntimeError, match="gate is not running"):
                 self.orch.recreate_gate()
 
     def test_start_refuses_if_running(self) -> None:
-        with patch.object(
-            self.orch.docker, "running_services", return_value=["gate", "router"]
-        ):
+        with patch.object(self.orch.docker, "running_services", return_value=["gate", "router"]):
             with pytest.raises(RuntimeError, match="already running"):
                 self.orch.start()
 
     def test_redeploy_router_requires_gate(self) -> None:
-        with patch.object(
-            self.orch.docker, "running_services", return_value=["router"]
-        ):
+        with patch.object(self.orch.docker, "running_services", return_value=["router"]):
             with pytest.raises(RuntimeError, match="gate is not running"):
                 self.orch.redeploy_router()

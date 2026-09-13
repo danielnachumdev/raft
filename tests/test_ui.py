@@ -4,6 +4,7 @@ import logging
 
 from raft.ui import say, say_err
 
+
 def test_say_prints_and_logs(capsys, caplog) -> None:
     with caplog.at_level(logging.INFO, logger="raft"):
         say("hello operator")
@@ -11,6 +12,7 @@ def test_say_prints_and_logs(capsys, caplog) -> None:
     out = capsys.readouterr().out
     assert "hello operator" in out
     assert "hello operator" in caplog.text
+
 
 def test_say_err_prints_stderr_and_logs(capsys, caplog) -> None:
     with caplog.at_level(logging.ERROR, logger="raft"):

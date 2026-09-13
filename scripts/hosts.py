@@ -25,9 +25,7 @@ IPCONFIG = Path("/mnt/c/Windows/System32/ipconfig.exe")
 MARKER_BEGIN = "# >>> raft hosts BEGIN"
 MARKER_END = "# <<< raft hosts END"
 # Older installs used hosts-manager markers; strip those too on apply/restore.
-_LEGACY_MARKER_PAIRS = (
-    ("# >>> raft hosts-manager BEGIN", "# <<< raft hosts-manager END"),
-)
+_LEGACY_MARKER_PAIRS = (("# >>> raft hosts-manager BEGIN", "# <<< raft hosts-manager END"),)
 HANDLED_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGQUIT)
 _PUBLIC_HOST_RE = re.compile(
     r'^(?:publicHost|public_host)\s*:\s*["\']?([^"\'#\s]+)["\']?\s*(?:#.*)?$'
@@ -119,11 +117,7 @@ class HostsPlan:
                 if name not in merged[binding.ip]:
                     merged[binding.ip].append(name)
 
-        return cls(
-            bindings=tuple(
-                HostBinding(ip=ip, names=tuple(merged[ip])) for ip in order
-            )
-        )
+        return cls(bindings=tuple(HostBinding(ip=ip, names=tuple(merged[ip])) for ip in order))
 
     def describe(self) -> list[str]:
         return [b.hosts_line() for b in self.bindings]
@@ -141,9 +135,7 @@ class HostsPlan:
 def _parse_cli_entry(raw: str) -> HostBinding:
     parts = [p.strip() for p in raw.split(",") if p.strip()]
     if len(parts) < 2:
-        raise argparse.ArgumentTypeError(
-            f"expected IP,name[,name...] got {raw!r}"
-        )
+        raise argparse.ArgumentTypeError(f"expected IP,name[,name...] got {raw!r}")
     ip, *names = parts
     try:
         return HostBinding(ip=ip, names=tuple(names))
@@ -171,18 +163,22 @@ def _windows_temp_dir() -> Path:
     if profile and profile.startswith("C:"):
         win = profile.replace("\\", "/")
         if win[1:3] == ":/":
-            candidates.insert(
-                0, Path("/mnt/" + win[0].lower() + win[2:]) / "AppData/Local/Temp"
-            )
+            candidates.insert(0, Path("/mnt/" + win[0].lower() + win[2:]) / "AppData/Local/Temp")
     for path in candidates:
         if path.is_dir() and os.access(path, os.W_OK):
             return path
     try:
-        out = subprocess.check_output(
-            ["/mnt/c/Windows/System32/cmd.exe", "/c", "echo %LOCALAPPDATA%"],
-            text=True,
-            stderr=subprocess.DEVNULL,
-        ).strip().splitlines()[-1].strip().replace("\r", "")
+        out = (
+            subprocess.check_output(
+                ["/mnt/c/Windows/System32/cmd.exe", "/c", "echo %LOCALAPPDATA%"],
+                text=True,
+                stderr=subprocess.DEVNULL,
+            )
+            .strip()
+            .splitlines()[-1]
+            .strip()
+            .replace("\r", "")
+        )
         if out.upper().startswith("C:"):
             local = Path("/mnt/c") / out[3:].replace("\\", "/")
             tmp = local / "Temp"
@@ -226,9 +222,7 @@ class Hosts:
             self.windows_hosts = Path(self.windows_hosts)
         self.backup_dir = Path(self.backup_dir)
         if not isinstance(self.plan, HostsPlan):
-            raise TypeError(
-                f"plan must be a HostsPlan (got {type(self.plan).__name__})"
-            )
+            raise TypeError(f"plan must be a HostsPlan (got {type(self.plan).__name__})")
 
     def __enter__(self) -> "Hosts":
         self.apply()
@@ -570,9 +564,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     )
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("hold", help="apply entries until Ctrl+C / signal, then restore")
-    run_parser = sub.add_parser(
-        "run", help="apply entries, run a command, restore afterward"
-    )
+    run_parser = sub.add_parser("run", help="apply entries, run a command, restore afterward")
     run_parser.add_argument(
         "cmd",
         nargs=argparse.REMAINDER,

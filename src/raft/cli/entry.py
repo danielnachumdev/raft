@@ -9,8 +9,9 @@ from typing import Optional
 
 import fire
 
-from .root import RaftCLI
 from ..ui import say_err
+from .root import RaftCLI
+
 
 def _ensure_logging_bootstrap() -> None:
     root = logging.getLogger("raft")
@@ -20,11 +21,13 @@ def _ensure_logging_bootstrap() -> None:
     root.setLevel(logging.INFO)
     root.propagate = False
 
+
 def _suggest_doctor(argv: Optional[list[str]]) -> None:
     if argv and argv[0] == "doctor":
         return
     say_err("")
     say_err("Hint: run `raft doctor` to check setup and see fixes.")
+
 
 def main(argv: Optional[list[str]] = None) -> int:
     os.environ["PAGER"] = "cat"
@@ -32,14 +35,13 @@ def main(argv: Optional[list[str]] = None) -> int:
     fire.Fire(RaftCLI, command=command, name="raft")
     return 0
 
+
 def run(argv: Optional[list[str]] = None) -> None:
     _ensure_logging_bootstrap()
     try:
         raise SystemExit(main(argv))
     except subprocess.CalledProcessError as exc:
-        say_err(
-            f"command failed ({exc.returncode}): {' '.join(map(str, exc.cmd))}"
-        )
+        say_err(f"command failed ({exc.returncode}): {' '.join(map(str, exc.cmd))}")
         err = (exc.stderr or "").strip()
         if err:
             say_err(err)

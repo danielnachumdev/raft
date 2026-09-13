@@ -83,9 +83,7 @@ services:
         app = make_app("x", source="local")
         with pytest.raises(ValueError, match="no image"):
             app.image_ref()
-        docker_app = make_app(
-            "hub", source="docker", image="ghcr.io/org/hub", ref="main"
-        )
+        docker_app = make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
         with pytest.raises(ValueError, match="empty image tag"):
             docker_app.image_ref("  ")
 
@@ -195,14 +193,8 @@ services:
         assert self.stack.contract_for(self.app) is spec or True
 
     def test_image_and_ref_state_files(self) -> None:
-        assert (
-            self.stack.image_state_file(self.app)
-            == self.tmp_path / "deploy" / "app.image"
-        )
-        assert (
-            self.stack.ref_state_file(self.app)
-            == self.tmp_path / "deploy" / "app.ref"
-        )
+        assert self.stack.image_state_file(self.app) == self.tmp_path / "deploy" / "app.image"
+        assert self.stack.ref_state_file(self.app) == self.tmp_path / "deploy" / "app.ref"
 
     def test_load_stack_uses_raft_home_when_root_none(
         self, monkeypatch: pytest.MonkeyPatch, isolated_raft_data_home: Path

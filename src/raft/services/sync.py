@@ -8,12 +8,13 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-from .auth import GitAuthManager
+from ..adapters.shell import Shell
 from ..models.app import App
 from ..models.stack import Stack
-from ..adapters.shell import Shell
+from .auth import GitAuthManager
 
 logger = logging.getLogger(__name__)
+
 
 class SourceSync:
     def __init__(
@@ -117,9 +118,7 @@ class SourceSync:
             self.sh.git("remote", "set-url", "origin", clone_url, cwd=dest)
 
         if not force and self._is_dirty(dest):
-            raise RuntimeError(
-                f"{dest} has local changes; commit/stash them or pass --force"
-            )
+            raise RuntimeError(f"{dest} has local changes; commit/stash them or pass --force")
 
         self.sh.git("fetch", "--prune", "--tags", "origin", cwd=dest)
         checked = self.sh.git(

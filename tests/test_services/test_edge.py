@@ -1,10 +1,10 @@
 """Edge handlers and readiness strategy."""
 
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
-from ..base import RaftTestCase, make_app
 from raft.config.settings import EdgeConfig, EdgeStream
 from raft.models.manifest import AppSpec
 from raft.models.ports import PortSpec
@@ -17,7 +17,8 @@ from raft.services.edge import (
     handler_for,
 )
 from raft.services.readiness import ReadinessStrategy
-from unittest.mock import MagicMock
+
+from ..base import RaftTestCase, make_app
 
 
 class TestEdgeHandlers(RaftTestCase):
@@ -26,9 +27,7 @@ class TestEdgeHandlers(RaftTestCase):
         spec = AppSpec(
             ports=(PortSpec(name="http", container_port=80, expose="http"),),
         )
-        frag = HttpEdge().contribute(
-            app, spec, spec.ports[0], edge=EdgeConfig()
-        )
+        frag = HttpEdge().contribute(app, spec, spec.ports[0], edge=EdgeConfig())
         assert "web-http.conf" in frag.upstreams
         assert any("server_name web.example.com" in line for line in frag.router_servers)
 
@@ -71,9 +70,7 @@ class TestEdgeHandlers(RaftTestCase):
             public_port=587,
         )
         spec = AppSpec(ports=(smtp, sub))
-        edge = EdgeConfig(
-            streams=(EdgeStream(name="smtp", port=25, protocol="tcp"),)
-        )
+        edge = EdgeConfig(streams=(EdgeStream(name="smtp", port=25, protocol="tcp"),))
         stream_frag = StreamEdge().contribute(app, spec, smtp, edge=edge)
         assert "proxy_protocol on" in stream_frag.gate_stream[0]
         host_frag = HostEdge().contribute(app, spec, sub, edge=edge)

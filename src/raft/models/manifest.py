@@ -129,15 +129,9 @@ def _resources(spec: dict[str, Any], path: Path) -> tuple[str, str, str, str]:
         raise ValueError(f"{path}: resources.limits/requests must be objects")
     return (
         _parse_cpu(limits.get("cpu", resources.get("cpus_limit")), default="0.50"),
-        _parse_memory(
-            limits.get("memory", resources.get("memory_limit")), default="128M"
-        ),
-        _parse_cpu(
-            requests.get("cpu", resources.get("cpus_reservation")), default="0.10"
-        ),
-        _parse_memory(
-            requests.get("memory", resources.get("memory_reservation")), default="32M"
-        ),
+        _parse_memory(limits.get("memory", resources.get("memory_limit")), default="128M"),
+        _parse_cpu(requests.get("cpu", resources.get("cpus_reservation")), default="0.10"),
+        _parse_memory(requests.get("memory", resources.get("memory_reservation")), default="32M"),
     )
 
 
@@ -160,9 +154,7 @@ def parse_app_document(
     api = str(data.get("apiVersion", "")).strip()
     kind = str(data.get("kind", "")).strip()
     if api != CONTRACT_API_VERSION:
-        raise ValueError(
-            f"{path}: apiVersion must be {CONTRACT_API_VERSION!r}, got {api!r}"
-        )
+        raise ValueError(f"{path}: apiVersion must be {CONTRACT_API_VERSION!r}, got {api!r}")
     if kind != CONTRACT_KIND:
         raise ValueError(f"{path}: kind must be {CONTRACT_KIND!r}, got {kind!r}")
 
@@ -174,9 +166,7 @@ def parse_app_document(
     if not name:
         raise ValueError(f"{path}: metadata.name is required")
     if expect_name and name != expect_name:
-        raise ValueError(
-            f"{path}: metadata.name {name!r} does not match expected {expect_name!r}"
-        )
+        raise ValueError(f"{path}: metadata.name {name!r} does not match expected {expect_name!r}")
 
     spec = data.get("spec")
     if spec is None:
@@ -186,13 +176,9 @@ def parse_app_document(
 
     ports = parse_ports(spec, path)
     needs_host = any(p.expose == "http" for p in ports)
-    public_host = str(
-        spec.get("publicHost", spec.get("public_host", ""))
-    ).strip()
+    public_host = str(spec.get("publicHost", spec.get("public_host", ""))).strip()
     if needs_host and not public_host:
-        raise ValueError(
-            f"{path}: spec.publicHost is required when any port uses expose=http"
-        )
+        raise ValueError(f"{path}: spec.publicHost is required when any port uses expose=http")
 
     raw_tls = spec.get("tls", "off")
     if isinstance(raw_tls, bool):
@@ -205,9 +191,7 @@ def parse_app_document(
     else:
         tls = str(raw_tls).strip().lower() or "off"
     if tls not in TLS_MODES:
-        raise ValueError(
-            f"{path}: spec.tls must be one of {sorted(TLS_MODES)}, got {tls!r}"
-        )
+        raise ValueError(f"{path}: spec.tls must be one of {sorted(TLS_MODES)}, got {tls!r}")
     if tls == "origin" and not public_host:
         raise ValueError(f"{path}: spec.tls=origin requires spec.publicHost")
 
@@ -271,9 +255,7 @@ def parse_app_document(
         dockerfile_s = None
 
     readiness = parse_readiness(spec, ports, path)
-    cpus_limit, memory_limit, cpus_reservation, memory_reservation = _resources(
-        spec, path
-    )
+    cpus_limit, memory_limit, cpus_reservation, memory_reservation = _resources(spec, path)
 
     app_spec = AppSpec(
         ports=ports,
@@ -350,8 +332,7 @@ def write_registry_app(root: Path, document: dict[str, Any]) -> Path:
             and other_app.public_host.lower() == app.public_host.lower()
         ):
             raise ValueError(
-                f"publicHost {app.public_host!r} already used by applied app "
-                f"{other_app.name!r}"
+                f"publicHost {app.public_host!r} already used by applied app " f"{other_app.name!r}"
             )
     text = yaml.safe_dump(document, sort_keys=False, default_flow_style=False)
     dest.write_text(text, encoding="utf-8")

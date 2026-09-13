@@ -19,17 +19,21 @@ STATE_DIR = Path("state") / "apps"
 _TEMPLATE_FILES = ("compose.yaml",)
 _TEMPLATE_DIRS = ("nginx",)
 
+
 def raft_home() -> Path:
     override = os.environ.get(DATA_HOME_ENV)
     if override:
         return Path(override).expanduser().resolve()
     return (Path.home() / ".raft").resolve()
 
+
 def settings_path(home: Optional[Path] = None) -> Path:
     return (home or raft_home()) / SETTINGS_FILENAME
 
+
 def _bundled_share() -> Path:
     return Path(__file__).resolve().parent.parent / "share"
+
 
 def find_package_root(start: Optional[Path] = None) -> Path:
     bundled = _bundled_share()
@@ -43,12 +47,12 @@ def find_package_root(start: Optional[Path] = None) -> Path:
     for candidate in [pkg, *pkg.parents]:
         if _is_package_root(candidate):
             return candidate
-    raise FileNotFoundError(
-        "could not find raft package templates (compose.yaml + nginx/)"
-    )
+    raise FileNotFoundError("could not find raft package templates (compose.yaml + nginx/)")
+
 
 def _is_package_root(candidate: Path) -> bool:
     return (candidate / "compose.yaml").is_file() and (candidate / "nginx").is_dir()
+
 
 def ensure_raft_home(
     home: Optional[Path] = None,
@@ -93,6 +97,7 @@ def ensure_raft_home(
             encoding="utf-8",
         )
     return root
+
 
 def sync_product_templates(home: Path, package_root: Path) -> None:
     for name in _TEMPLATE_FILES:

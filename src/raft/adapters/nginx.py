@@ -3,10 +3,10 @@
 import logging
 from typing import Optional
 
-from .docker import DockerStack
 from ..models.app import App
 from ..models.ports import PortSpec
 from ..models.stack import Stack
+from .docker import DockerStack
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +20,7 @@ class NginxUpstreams:
         try:
             return self.stack.spec_for(app).http_ports()
         except FileNotFoundError:
-            return (
-                PortSpec(name="http", container_port=80, expose="http"),
-            )
+            return (PortSpec(name="http", container_port=80, expose="http"),)
 
     def ensure_steady_file(self, app: App) -> None:
         for port in self._http_ports(app):

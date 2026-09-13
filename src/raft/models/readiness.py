@@ -25,9 +25,7 @@ class ReadinessSpec:
                 if port.name == self.port:
                     return port
             known = ", ".join(p.name for p in ports) or "(none)"
-            raise KeyError(
-                f"readiness.port {self.port!r} not in ports (known: {known})"
-            )
+            raise KeyError(f"readiness.port {self.port!r} not in ports (known: {known})")
         if self.type == "http":
             for port in ports:
                 if port.expose == "http":
@@ -43,9 +41,7 @@ def parse_readiness(
     path: Path,
 ) -> ReadinessSpec:
     if "readinessProbe" in spec:
-        raise ValueError(
-            f"{path}: readinessProbe is not supported; use spec.readiness"
-        )
+        raise ValueError(f"{path}: readinessProbe is not supported; use spec.readiness")
     raw = spec.get("readiness")
     if raw is None:
         http_ports = [p for p in ports if p.expose == "http"]
@@ -57,8 +53,7 @@ def parse_readiness(
     rtype = str(raw.get("type", "http")).strip().lower() or "http"
     if rtype not in READINESS_TYPES:
         raise ValueError(
-            f"{path}: readiness.type must be one of {sorted(READINESS_TYPES)}, "
-            f"got {rtype!r}"
+            f"{path}: readiness.type must be one of {sorted(READINESS_TYPES)}, " f"got {rtype!r}"
         )
     port_name = raw.get("port")
     port_s = str(port_name).strip() if port_name is not None else None
@@ -82,7 +77,5 @@ def parse_readiness(
                 f"(got {resolved.name!r} expose={resolved.expose!r})"
             )
         if readiness.port is None:
-            readiness = ReadinessSpec(
-                type=rtype, port=resolved.name, path=probe_path
-            )
+            readiness = ReadinessSpec(type=rtype, port=resolved.name, path=probe_path)
     return readiness

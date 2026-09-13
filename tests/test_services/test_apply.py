@@ -6,9 +6,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 import yaml
 
-from ..base import RaftTestCase, write_applied_app
 from raft.models.stack import load_stack
 from raft.services.apply import AppApply
+
+from ..base import RaftTestCase, write_applied_app
+
 
 def _manifest(
     name: str = "web",
@@ -34,6 +36,7 @@ def _manifest(
         "spec": spec,
     }
 
+
 class TestAppApply(RaftTestCase):
     def test_apply_file_no_deploy(self, capsys) -> None:
         path = self.tmp_path / "manifest.yaml"
@@ -56,9 +59,7 @@ class TestAppApply(RaftTestCase):
             yaml.safe_dump(_manifest()),
             encoding="utf-8",
         )
-        AppApply(load_stack(self.tmp_path)).apply_file(
-            path, ref_override="v2", deploy=False
-        )
+        AppApply(load_stack(self.tmp_path)).apply_file(path, ref_override="v2", deploy=False)
         data = yaml.safe_load(
             (self.tmp_path / "state" / "apps" / "web.yaml").read_text(encoding="utf-8")
         )
@@ -69,9 +70,7 @@ class TestAppApply(RaftTestCase):
             encoding="utf-8",
         )
         with pytest.raises(ValueError, match="spec must be an object"):
-            AppApply(load_stack(self.tmp_path)).apply_file(
-                path, ref_override="x", deploy=False
-            )
+            AppApply(load_stack(self.tmp_path)).apply_file(path, ref_override="x", deploy=False)
 
     def test_apply_file_deploys_running_and_new(self) -> None:
         path = self.tmp_path / "manifest.yaml"
@@ -91,9 +90,7 @@ class TestAppApply(RaftTestCase):
         with patch("raft.services.apply.Orchestrator", return_value=orch2):
             with patch("raft.services.apply.load_stack", return_value=stack):
                 applier.apply_file(path, deploy=True, force_sync=True)
-        orch2.sync.assert_called_once_with(
-            ["web"], ref_override=None, force=True
-        )
+        orch2.sync.assert_called_once_with(["web"], ref_override=None, force=True)
 
     def test_apply_git_shallow_and_fallback(self) -> None:
         stack = load_stack(self.tmp_path)
@@ -116,13 +113,9 @@ class TestAppApply(RaftTestCase):
                     ),
                     encoding="utf-8",
                 )
-                data = yaml.safe_load(
-                    (target / ".raft" / "app.yaml").read_text(encoding="utf-8")
-                )
+                data = yaml.safe_load((target / ".raft" / "app.yaml").read_text(encoding="utf-8"))
                 data["spec"].pop("build", None)
-                (target / ".raft" / "app.yaml").write_text(
-                    yaml.safe_dump(data), encoding="utf-8"
-                )
+                (target / ".raft" / "app.yaml").write_text(yaml.safe_dump(data), encoding="utf-8")
 
         shell.git.side_effect = clone_then_checkout
         name = AppApply(stack, shell=shell).apply_git(
@@ -143,9 +136,7 @@ class TestAppApply(RaftTestCase):
                 (target / ".raft").mkdir(parents=True, exist_ok=True)
                 doc = _manifest("gitapp", source="git", repo="git@github.com:org/x.git")
                 doc["spec"].pop("image", None)
-                (target / ".raft" / "app.yaml").write_text(
-                    yaml.safe_dump(doc), encoding="utf-8"
-                )
+                (target / ".raft" / "app.yaml").write_text(yaml.safe_dump(doc), encoding="utf-8")
 
         shell2 = MagicMock()
         shell2.git.side_effect = fail_shallow_then_ok

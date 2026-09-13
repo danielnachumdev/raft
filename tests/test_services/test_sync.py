@@ -4,9 +4,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from raft.services import SourceSync
+
 from ..base import git_call_args, make_app, make_git_app, make_stack
 from .base import ServicesTestCase
-from raft.services import SourceSync
+
 
 class TestSourceSync(ServicesTestCase):
     @pytest.fixture(autouse=True)
@@ -157,9 +159,7 @@ class TestSourceSync(ServicesTestCase):
         pulls = [c.args for c in self.shell.docker.call_args_list if c.args[:1] == ("pull",)]
         assert pulls
 
-    def test_sync_git_falls_back_to_origin_ref(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_sync_git_falls_back_to_origin_ref(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._git_syncer(repo="git@example.com:org/svc.git")
         self._ensure_git_checkout()
         monkeypatch.setenv("VPS_SYNC_REF", "feature")
@@ -228,9 +228,7 @@ class TestSourceSync(ServicesTestCase):
         self.shell.docker.side_effect = docker
         self.syncer.sync([app], ref_override="abc123")
         self.shell.docker.assert_any_call("pull", "ghcr.io/org/hub:abc123")
-        self.shell.docker.assert_any_call(
-            "tag", "ghcr.io/org/hub:abc123", "ghcr.io/org/hub:main"
-        )
+        self.shell.docker.assert_any_call("tag", "ghcr.io/org/hub:abc123", "ghcr.io/org/hub:main")
         state = (self.tmp_path / "deploy" / "hub.ref").read_text(encoding="utf-8")
         assert "abc123" in state
         assert "ghcr.io/org/hub@sha256:deadbeef" in state

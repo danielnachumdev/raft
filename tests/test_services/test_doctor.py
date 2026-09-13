@@ -5,10 +5,12 @@ from __future__ import annotations
 import io
 from unittest.mock import MagicMock, patch
 
-from ..base import make_app, make_git_app, make_stack, write_applied_app
-from .base import ServicesTestCase
 from raft.services import CheckResult, Doctor
 from raft.services.doctor import INFRA
+
+from ..base import make_app, make_git_app, make_stack, write_applied_app
+from .base import ServicesTestCase
+
 
 class TestDoctor(ServicesTestCase):
     def _doctor(self, stack=None, **kwargs) -> Doctor:
@@ -87,9 +89,7 @@ class TestDoctor(ServicesTestCase):
         assert (
             d.report(
                 [
-                    CheckResult(
-                        "svc", "auth", "fail", "bad", fix="raft auth setup svc"
-                    ),
+                    CheckResult("svc", "auth", "fail", "bad", fix="raft auth setup svc"),
                 ],
                 color=True,
             )
@@ -160,9 +160,7 @@ class TestDoctor(ServicesTestCase):
 
         with patch("raft.services.doctor.shutil.which", return_value="/usr/bin/docker"):
             with patch("raft.services.doctor.socket.create_connection"):
-                results = self._by_key(
-                    self._doctor(shell=shell, auth=auth, docker=docker).run()
-                )
+                results = self._by_key(self._doctor(shell=shell, auth=auth, docker=docker).run())
         assert results[(INFRA, "compose.yaml")].status == "ok"
         assert results[(INFRA, "docker")].status == "ok"
         assert results[("app", "sync")].status == "ok"
@@ -216,9 +214,7 @@ class TestDoctor(ServicesTestCase):
                 results = self._by_key(self._doctor(shell=shell).run())
         assert results[(INFRA, "docker")].status == "fail"
 
-        shell.run.return_value = MagicMock(
-            returncode=1, stdout="", stderr="Cannot connect\n"
-        )
+        shell.run.return_value = MagicMock(returncode=1, stdout="", stderr="Cannot connect\n")
         with patch("raft.services.doctor.shutil.which", return_value="/usr/bin/docker"):
             with patch(
                 "raft.services.doctor.socket.create_connection",
@@ -279,9 +275,7 @@ class TestDoctor(ServicesTestCase):
         with patch("raft.services.doctor.shutil.which", return_value="/usr/bin/docker"):
             with patch("raft.services.doctor.socket.create_connection"):
                 results = self._by_key(
-                    self._doctor(
-                        stack, shell=shell, docker=docker, auth=MagicMock()
-                    ).run()
+                    self._doctor(stack, shell=shell, docker=docker, auth=MagicMock()).run()
                 )
         assert results[(INFRA, "compose.yaml")].status == "fail"
         assert results[(INFRA, "generated")].status == "fail"
@@ -359,26 +353,20 @@ class TestDoctor(ServicesTestCase):
     def test_docker_source_image_checks(self) -> None:
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")
         self._write_certs("hub")
-        app = make_app(
-            "hub", source="docker", image="ghcr.io/org/hub", ref="main"
-        )
+        app = make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
         stack = make_stack(self.tmp_path, (app,))
         shell = MagicMock()
         shell.run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         docker = MagicMock()
         docker.running_services.return_value = []
-        docker.sh.docker.return_value = MagicMock(
-            returncode=0, stdout="sha256:abc\n", stderr=""
-        )
+        docker.sh.docker.return_value = MagicMock(returncode=0, stdout="sha256:abc\n", stderr="")
         with patch("raft.services.doctor.shutil.which", return_value="/usr/bin/docker"):
             with patch(
                 "raft.services.doctor.socket.create_connection",
                 side_effect=OSError(),
             ):
                 results = self._by_key(
-                    self._doctor(
-                        stack, shell=shell, docker=docker, auth=MagicMock()
-                    ).run()
+                    self._doctor(stack, shell=shell, docker=docker, auth=MagicMock()).run()
                 )
         assert results[("hub", "sync")].status == "ok"
         assert "ghcr.io/org/hub:main" in results[("hub", "sync")].detail
@@ -388,7 +376,9 @@ class TestDoctor(ServicesTestCase):
 
     def test_docker_with_repo_checks_contract_and_auth(self) -> None:
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")
-        (self.tmp_path / "generated" / "compose.apps.yaml").parent.mkdir(parents=True, exist_ok=True)
+        (self.tmp_path / "generated" / "compose.apps.yaml").parent.mkdir(
+            parents=True, exist_ok=True
+        )
         (self.tmp_path / "generated" / "compose.apps.yaml").write_text("services: {}\n")
         self._write_certs("hub")
         app = make_app(
@@ -416,9 +406,7 @@ class TestDoctor(ServicesTestCase):
         shell.run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         docker = MagicMock()
         docker.running_services.return_value = []
-        docker.sh.docker.return_value = MagicMock(
-            returncode=0, stdout="sha256:abc\n", stderr=""
-        )
+        docker.sh.docker.return_value = MagicMock(returncode=0, stdout="sha256:abc\n", stderr="")
         auth = MagicMock()
         auth.is_configured.return_value = True
         with patch("raft.services.doctor.shutil.which", return_value="/usr/bin/docker"):
@@ -427,9 +415,7 @@ class TestDoctor(ServicesTestCase):
                 side_effect=OSError(),
             ):
                 results = self._by_key(
-                    self._doctor(
-                        stack, shell=shell, docker=docker, auth=auth
-                    ).run()
+                    self._doctor(stack, shell=shell, docker=docker, auth=auth).run()
                 )
         assert results[("hub", "contract")].status == "ok"
         assert results[("hub", "auth")].status == "ok"
@@ -437,7 +423,9 @@ class TestDoctor(ServicesTestCase):
 
     def test_docker_with_repo_warns_without_deploy_key(self) -> None:
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")
-        (self.tmp_path / "generated" / "compose.apps.yaml").parent.mkdir(parents=True, exist_ok=True)
+        (self.tmp_path / "generated" / "compose.apps.yaml").parent.mkdir(
+            parents=True, exist_ok=True
+        )
         (self.tmp_path / "generated" / "compose.apps.yaml").write_text("services: {}\n")
         self._write_certs("hub")
         app = make_app(
@@ -454,9 +442,7 @@ class TestDoctor(ServicesTestCase):
         shell.run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         docker = MagicMock()
         docker.running_services.return_value = []
-        docker.sh.docker.return_value = MagicMock(
-            returncode=0, stdout="sha256:abc\n", stderr=""
-        )
+        docker.sh.docker.return_value = MagicMock(returncode=0, stdout="sha256:abc\n", stderr="")
         auth = MagicMock()
         auth.is_configured.return_value = False
         with patch("raft.services.doctor.shutil.which", return_value="/usr/bin/docker"):
@@ -465,16 +451,16 @@ class TestDoctor(ServicesTestCase):
                 side_effect=OSError(),
             ):
                 results = self._by_key(
-                    self._doctor(
-                        stack, shell=shell, docker=docker, auth=auth
-                    ).run()
+                    self._doctor(stack, shell=shell, docker=docker, auth=auth).run()
                 )
         assert results[("hub", "auth")].status == "warn"
         assert results[("hub", "contract")].status == "fail"
 
     def test_contract_invalid_content(self) -> None:
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")
-        (self.tmp_path / "generated" / "compose.apps.yaml").parent.mkdir(parents=True, exist_ok=True)
+        (self.tmp_path / "generated" / "compose.apps.yaml").parent.mkdir(
+            parents=True, exist_ok=True
+        )
         (self.tmp_path / "generated" / "compose.apps.yaml").write_text("services: {}\n")
         self._write_certs("app")
         (self.tmp_path / "apps" / "app").mkdir(parents=True)
@@ -501,26 +487,20 @@ class TestDoctor(ServicesTestCase):
     def test_docker_source_image_missing(self) -> None:
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")
         self._write_certs("hub")
-        app = make_app(
-            "hub", source="docker", image="ghcr.io/org/hub", ref="main"
-        )
+        app = make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
         stack = make_stack(self.tmp_path, (app,))
         shell = MagicMock()
         shell.run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         docker = MagicMock()
         docker.running_services.return_value = []
-        docker.sh.docker.return_value = MagicMock(
-            returncode=1, stdout="", stderr="missing"
-        )
+        docker.sh.docker.return_value = MagicMock(returncode=1, stdout="", stderr="missing")
         with patch("raft.services.doctor.shutil.which", return_value="/usr/bin/docker"):
             with patch(
                 "raft.services.doctor.socket.create_connection",
                 side_effect=OSError(),
             ):
                 results = self._by_key(
-                    self._doctor(
-                        stack, shell=shell, docker=docker, auth=MagicMock()
-                    ).run()
+                    self._doctor(stack, shell=shell, docker=docker, auth=MagicMock()).run()
                 )
         assert results[("hub", "sync")].status == "fail"
         assert "docker pull" in (results[("hub", "sync")].fix or "")
@@ -558,12 +538,8 @@ class TestDoctor(ServicesTestCase):
         assert "github.com/acme/site/settings/keys/new" in Doctor._auth_deploy_key_fix(
             "svc", "git@github.com:acme/site.git"
         )
-        assert "Title + Key" in Doctor._auth_deploy_key_fix(
-            "svc", "git@github.com:acme/site.git"
-        )
-        assert "gitlab.com" in Doctor._auth_deploy_key_fix(
-            "svc", "git@gitlab.com:acme/site.git"
-        )
+        assert "Title + Key" in Doctor._auth_deploy_key_fix("svc", "git@github.com:acme/site.git")
+        assert "gitlab.com" in Doctor._auth_deploy_key_fix("svc", "git@gitlab.com:acme/site.git")
         assert "on the git host" in Doctor._auth_deploy_key_fix("svc", "not-a-url")
 
     def test_report_blank_lines_between_ok_and_issues(self, capsys) -> None:

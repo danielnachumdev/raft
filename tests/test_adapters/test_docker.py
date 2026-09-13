@@ -2,9 +2,11 @@
 
 import pytest
 
+from raft.models.ports import PortSpec
+
 from ..base import make_app
 from .base import AdapterTestCase
-from raft.models.ports import PortSpec
+
 
 class TestDockerStack(AdapterTestCase):
     @pytest.fixture(autouse=True)
@@ -31,22 +33,16 @@ class TestDockerStack(AdapterTestCase):
         self.shell.compose.return_value = self.ok()
         self.docker.recreate_router()
         self.docker.rebuild_service("app")
-        self.shell.compose.assert_any_call(
-            "up", "-d", "--no-deps", "--force-recreate", "router"
-        )
+        self.shell.compose.assert_any_call("up", "-d", "--no-deps", "--force-recreate", "router")
         self.shell.compose.assert_any_call("up", "-d", "--build", "--no-deps", "app")
 
     def test_recreate_pulled_service_tags_then_up(self) -> None:
         self.shell.compose.return_value = self.ok()
         self.shell.docker.return_value = self.ok()
-        app = make_app(
-            "hub", source="docker", image="ghcr.io/org/hub", ref="main"
-        )
+        app = make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
         self.docker.recreate_pulled_service(app, pull_ref="ghcr.io/org/hub:abc")
         self.shell.docker.assert_any_call("pull", "ghcr.io/org/hub:abc")
-        self.shell.docker.assert_any_call(
-            "tag", "ghcr.io/org/hub:abc", "ghcr.io/org/hub:main"
-        )
+        self.shell.docker.assert_any_call("tag", "ghcr.io/org/hub:abc", "ghcr.io/org/hub:main")
         self.shell.compose.assert_any_call(
             "up", "-d", "--no-deps", "--no-build", "--force-recreate", "hub"
         )
@@ -54,14 +50,10 @@ class TestDockerStack(AdapterTestCase):
     def test_recreate_pulled_service_skips_tag_when_pin(self) -> None:
         self.shell.compose.return_value = self.ok()
         self.shell.docker.return_value = self.ok()
-        app = make_app(
-            "hub", source="docker", image="ghcr.io/org/hub", ref="main"
-        )
+        app = make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
         self.docker.recreate_pulled_service(app, pull_ref="ghcr.io/org/hub:main")
         self.shell.docker.assert_any_call("pull", "ghcr.io/org/hub:main")
-        assert not any(
-            c.args[:1] == ("tag",) for c in self.shell.docker.call_args_list
-        )
+        assert not any(c.args[:1] == ("tag",) for c in self.shell.docker.call_args_list)
 
     def test_service_container_id_missing(self) -> None:
         self.shell.compose.return_value = self.ok("  \n")
@@ -77,10 +69,7 @@ class TestDockerStack(AdapterTestCase):
 
     def test_container_image_ref_commits_when_unnamed(self) -> None:
         self.shell.docker.side_effect = [self.ok(""), self.ok()]
-        assert (
-            self.docker.container_image_ref("abcdefghijklmn")
-            == "raft-snapshot:abcdefghijkl"
-        )
+        assert self.docker.container_image_ref("abcdefghijklmn") == "raft-snapshot:abcdefghijkl"
 
     def test_container_image_ref_commits_when_named_missing(self) -> None:
         self.shell.docker.side_effect = [
@@ -88,10 +77,7 @@ class TestDockerStack(AdapterTestCase):
             self.ok("", returncode=1),
             self.ok(),
         ]
-        assert (
-            self.docker.container_image_ref("cid1234567890")
-            == "raft-snapshot:cid123456789"
-        )
+        assert self.docker.container_image_ref("cid1234567890") == "raft-snapshot:cid123456789"
 
     def test_container_image_id_falls_back_to_ref(self) -> None:
         self.shell.docker.side_effect = [
@@ -131,9 +117,7 @@ class TestDockerStack(AdapterTestCase):
     def test_recreate_gate_and_published_ports(self) -> None:
         self.shell.compose.return_value = self.ok("gatecid\n")
         self.docker.recreate_gate()
-        self.shell.compose.assert_any_call(
-            "up", "-d", "--no-deps", "--force-recreate", "gate"
-        )
+        self.shell.compose.assert_any_call("up", "-d", "--no-deps", "--force-recreate", "gate")
         self.shell.docker.return_value = self.ok("80/tcp 443/tcp\n")
         assert self.docker.gate_published_ports() == [80, 443]
         self.shell.compose.return_value = self.ok("  \n")

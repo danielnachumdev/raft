@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from ..base import RaftTestCase
+import raft.config.paths as paths
 from raft.config import (
     LoggingConfig,
     default_config,
@@ -19,7 +19,9 @@ from raft.config import (
     setup_logging,
     sync_product_templates,
 )
-import raft.config.paths as paths
+
+from ..base import RaftTestCase
+
 
 class TestConfig(RaftTestCase):
     def test_default_config(self) -> None:
@@ -55,14 +57,10 @@ logging:
             load_config(self.tmp_path)
 
     def test_load_logging_null(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
-            "# no logging mapping\n", encoding="utf-8"
-        )
+        (self.tmp_path / "settings.yaml").write_text("# no logging mapping\n", encoding="utf-8")
         assert load_config(self.tmp_path).logging.dir == "logs"
 
-    def test_resolve_dir_relative_absolute_and_env(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_resolve_dir_relative_absolute_and_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("RAFT_LOG_DIR", raising=False)
         cfg = LoggingConfig(dir="logs")
         assert cfg.resolve_dir(self.tmp_path) == (self.tmp_path / "logs").resolve()
@@ -70,6 +68,7 @@ logging:
         assert abs_cfg.resolve_dir(self.tmp_path) == (self.tmp_path / "abs-logs").resolve()
         monkeypatch.setenv("RAFT_LOG_DIR", str(self.tmp_path / "env-logs"))
         assert cfg.resolve_dir(self.tmp_path) == (self.tmp_path / "env-logs").resolve()
+
 
 class TestRaftHome(RaftTestCase):
     def test_raft_home_env_and_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -146,14 +145,13 @@ edge:
         with pytest.raises(FileNotFoundError, match="missing package template dir"):
             sync_product_templates(dest, pkg)
 
-    def test_find_package_root_missing(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_find_package_root_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(paths, "_bundled_share", lambda: self.tmp_path / "nope")
         orphan = self.tmp_path / "orphan"
         orphan.mkdir()
         with pytest.raises(FileNotFoundError, match="package templates"):
             find_package_root(orphan)
+
 
 class TestSetupLogging(RaftTestCase):
     @pytest.fixture(autouse=True)

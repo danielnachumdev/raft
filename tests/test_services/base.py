@@ -5,9 +5,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ..base import RaftTestCase, make_git_stack, make_local_stack, write_applied_app
 from raft.services import CutoverSession, Orchestrator
 from raft.services.auth import GitAuthManager
+
+from ..base import RaftTestCase, make_git_stack, make_local_stack, write_applied_app
 
 
 class ServicesTestCase(RaftTestCase):
@@ -58,9 +59,7 @@ class ServicesTestCase(RaftTestCase):
                 key = Path(args[args.index("-f") + 1])
                 key.parent.mkdir(parents=True, exist_ok=True)
                 key.write_text("PRIVATE", encoding="utf-8")
-                Path(str(key) + ".pub").write_text(
-                    "ssh-ed25519 AAAA setup\n", encoding="utf-8"
-                )
+                Path(str(key) + ".pub").write_text("ssh-ed25519 AAAA setup\n", encoding="utf-8")
             return MagicMock(returncode=0, stdout="", stderr="")
 
         return run

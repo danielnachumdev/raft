@@ -17,11 +17,12 @@ from ..models.manifest import (
     write_registry_app,
 )
 from ..models.stack import Stack, load_stack
+from ..ui import say
 from .orchestrator import Orchestrator
 from .render import StackRenderer
-from ..ui import say
 
 logger = logging.getLogger(__name__)
+
 
 class AppApply:
     def __init__(self, stack: Stack, shell: Optional[Shell] = None) -> None:
@@ -80,9 +81,7 @@ class AppApply:
 
             manifest = contract_path(tmp)
             if not manifest.is_file():
-                raise FileNotFoundError(
-                    f"no {CONTRACT_REL_PATH.as_posix()} in {repo}@{ref}"
-                )
+                raise FileNotFoundError(f"no {CONTRACT_REL_PATH.as_posix()} in {repo}@{ref}")
             data = yaml.safe_load(manifest.read_text(encoding="utf-8"))
             if not isinstance(data, dict):
                 raise ValueError("app manifest must be a mapping")
@@ -95,10 +94,7 @@ class AppApply:
                 spec["source"] = "docker" if spec.get("image") else "git"
             app, _ = parse_app_document(data, path=manifest)
             dest = write_registry_app(self.stack.root, data)
-            say(
-                f"applied {app.name} from {repo}@{ref} → "
-                f"{dest.relative_to(self.stack.root)}"
-            )
+            say(f"applied {app.name} from {repo}@{ref} → " f"{dest.relative_to(self.stack.root)}")
             if deploy:
                 self._deploy(app.name, ref_override=ref, force_sync=force_sync)
             return app.name

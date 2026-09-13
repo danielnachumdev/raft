@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ..base import RaftTestCase, make_app, make_stack, write_applied_app
 from raft.adapters.docker import DockerStack
 from raft.adapters.nginx import NginxUpstreams
 from raft.config.settings import EdgeConfig, EdgeStream, load_config
@@ -23,11 +22,13 @@ from raft.models.ports import PortSpec, parse_ports
 from raft.models.readiness import ReadinessSpec, parse_readiness
 from raft.models.stack import load_stack
 from raft.services.cutover import CutoverSession
-from raft.services.doctor import Doctor, INFRA
+from raft.services.doctor import INFRA, Doctor
 from raft.services.edge import StreamEdge
 from raft.services.orchestrator import Orchestrator
 from raft.services.readiness import ReadinessStrategy
 from raft.services.render import StackRenderer
+
+from ..base import RaftTestCase, make_app, make_stack, write_applied_app
 
 
 class TestSettingsEdgeErrors(RaftTestCase):
@@ -57,8 +58,7 @@ class TestSettingsEdgeErrors(RaftTestCase):
                 "conflicts with edge.https",
             ),
             (
-                "edge:\n  streams:\n    - name: a\n      port: 25\n"
-                "      protocol: sctp\n",
+                "edge:\n  streams:\n    - name: a\n      port: 25\n" "      protocol: sctp\n",
                 "protocol must be",
             ),
         ]
@@ -74,9 +74,9 @@ class TestPortsAndReadinessCoverage(RaftTestCase):
         with pytest.raises(ValueError, match="expose must be"):
             PortSpec(name="x", container_port=80, expose="quic").validate(path=path)
         with pytest.raises(ValueError, match="protocol must be"):
-            PortSpec(
-                name="x", container_port=80, expose="http", protocol="sctp"
-            ).validate(path=path)
+            PortSpec(name="x", container_port=80, expose="http", protocol="sctp").validate(
+                path=path
+            )
         with pytest.raises(ValueError, match="containerPort out of range"):
             PortSpec(name="x", container_port=0, expose="http").validate(path=path)
         with pytest.raises(ValueError, match="publicPort out of range"):
@@ -87,9 +87,7 @@ class TestPortsAndReadinessCoverage(RaftTestCase):
                 public_port=0,
             ).validate(path=path)
         with pytest.raises(ValueError, match="publicPort is only valid"):
-            PortSpec(
-                name="x", container_port=80, expose="http", public_port=80
-            ).validate(path=path)
+            PortSpec(name="x", container_port=80, expose="http", public_port=80).validate(path=path)
         with pytest.raises(ValueError, match="spec.ports is required"):
             parse_ports({}, path)
         with pytest.raises(ValueError, match="non-empty list"):
@@ -105,37 +103,25 @@ class TestPortsAndReadinessCoverage(RaftTestCase):
         path = Path("app.yaml")
         ports = (
             PortSpec(name="http", container_port=80, expose="http"),
-            PortSpec(
-                name="smtp", container_port=25, expose="stream", public_port=25
-            ),
+            PortSpec(name="smtp", container_port=25, expose="stream", public_port=25),
         )
         with pytest.raises(ValueError, match="must be an object"):
             parse_readiness({"readiness": "x"}, ports, path)
         with pytest.raises(ValueError, match="readiness.type must be"):
             parse_readiness({"readiness": {"type": "udp"}}, ports, path)
         with pytest.raises(ValueError, match="not in ports"):
-            parse_readiness(
-                {"readiness": {"type": "tcp", "port": "missing"}}, ports, path
-            )
+            parse_readiness({"readiness": {"type": "tcp", "port": "missing"}}, ports, path)
         with pytest.raises(ValueError, match="requires an expose=http"):
-            parse_readiness(
-                {"readiness": {"type": "http", "port": "smtp"}}, ports, path
-            )
+            parse_readiness({"readiness": {"type": "http", "port": "smtp"}}, ports, path)
         r = parse_readiness({"readiness": {"type": "none"}}, ports, path)
         assert r.type == "none"
-        r2 = parse_readiness(
-            {"readiness": {"type": "http", "path": "ready"}}, ports, path
-        )
+        r2 = parse_readiness({"readiness": {"type": "http", "path": "ready"}}, ports, path)
         assert r2.path == "/ready"
         r3 = parse_readiness({}, ports, path)
         assert r3.port == "http"
         r4 = parse_readiness(
             {},
-            (
-                PortSpec(
-                    name="smtp", container_port=25, expose="stream", public_port=25
-                ),
-            ),
+            (PortSpec(name="smtp", container_port=25, expose="stream", public_port=25),),
             path,
         )
         assert r4.type == "tcp"
@@ -180,9 +166,7 @@ class TestManifestCoverage(RaftTestCase):
                         "publicHost": "a.test",
                         "source": "local",
                         "tls": True,
-                        "ports": [
-                            {"name": "http", "containerPort": 80, "expose": "http"}
-                        ],
+                        "ports": [{"name": "http", "containerPort": 80, "expose": "http"}],
                     },
                 },
                 path=path,
@@ -268,9 +252,7 @@ class TestAdapterCoverage(RaftTestCase):
         assert strategy.wait_predicate(app, stack, http)() is True
         tcp = ReadinessStrategy(
             kind="tcp",
-            port=PortSpec(
-                name="smtp", container_port=25, expose="stream", public_port=25
-            ),
+            port=PortSpec(name="smtp", container_port=25, expose="stream", public_port=25),
         )
         assert tcp.wait_predicate(app, stack, http)() is True
         assert tcp.wait_predicate(app, stack, http, tcp_ok=lambda p: p == 25)() is True
@@ -297,21 +279,15 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
             protocol="udp",
         )
         spec = AppSpec(ports=(port,))
-        edge = EdgeConfig(
-            streams=(EdgeStream(name="smtp", port=25, protocol="tcp"),)
-        )
+        edge = EdgeConfig(streams=(EdgeStream(name="smtp", port=25, protocol="tcp"),))
         with pytest.raises(ValueError, match="does not match"):
             StreamEdge().contribute(app, spec, port, edge=edge)
 
         write_applied_app(self.tmp_path, "web")
         (self.tmp_path / "apps" / "web").mkdir(parents=True)
         stack = load_stack(self.tmp_path)
-        StackRenderer(
-            stack, edge=EdgeConfig(http=None, https=None, streams=())
-        ).render()
-        edge_yaml = (self.tmp_path / "generated" / "compose.edge.yaml").read_text(
-            encoding="utf-8"
-        )
+        StackRenderer(stack, edge=EdgeConfig(http=None, https=None, streams=())).render()
+        edge_yaml = (self.tmp_path / "generated" / "compose.edge.yaml").read_text(encoding="utf-8")
         assert "ports:\n      []" in edge_yaml
 
     def test_render_dockerfile_and_stale_prune(self) -> None:
@@ -360,9 +336,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
             ):
                 results = {
                     (r.service, r.check): r
-                    for r in Doctor(
-                        stack, shell=shell, auth=MagicMock(), docker=docker
-                    ).run()
+                    for r in Doctor(stack, shell=shell, auth=MagicMock(), docker=docker).run()
                 }
         assert results[(INFRA, "gate ports")].status == "fail"
         assert "raft gate recreate" in results[(INFRA, "gate ports")].fix
@@ -384,9 +358,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
         with patch("raft.services.doctor.shutil.which", return_value="/bin/docker"):
             results = {
                 (r.service, r.check): r
-                for r in Doctor(
-                    stack, shell=shell, auth=MagicMock(), docker=docker
-                ).run()
+                for r in Doctor(stack, shell=shell, auth=MagicMock(), docker=docker).run()
             }
         assert results[(INFRA, "edge")].status == "warn"
 
@@ -402,9 +374,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
             ):
                 results = {
                     (r.service, r.check): r
-                    for r in Doctor(
-                        stack, shell=shell, auth=MagicMock(), docker=docker
-                    ).run()
+                    for r in Doctor(stack, shell=shell, auth=MagicMock(), docker=docker).run()
                 }
         assert results[(INFRA, "port 80")].status == "warn"
         assert results[(INFRA, "gate ports")].status == "warn"
@@ -450,8 +420,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
         (d / "origin.key").write_text("k", encoding="utf-8")
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")
         (self.tmp_path / "settings.yaml").write_text(
-            "edge:\n  http: 80\n  https: 443\n  streams:\n"
-            "    - name: smtp\n      port: 25\n",
+            "edge:\n  http: 80\n  https: 443\n  streams:\n" "    - name: smtp\n      port: 25\n",
             encoding="utf-8",
         )
         stack = load_stack(self.tmp_path)
@@ -467,9 +436,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
             ):
                 results = {
                     (r.service, r.check): r
-                    for r in Doctor(
-                        stack, shell=shell, auth=MagicMock(), docker=docker
-                    ).run()
+                    for r in Doctor(stack, shell=shell, auth=MagicMock(), docker=docker).run()
                 }
         assert results[("mail", "upstream")].detail.startswith("n/a")
         assert results[("mail", "certs")].status == "ok"
@@ -492,9 +459,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
         )
         stack2 = load_stack(self.tmp_path)
         StackRenderer(stack2).render()
-        text = (stack2.generated_dir() / "compose.apps.yaml").read_text(
-            encoding="utf-8"
-        )
+        text = (stack2.generated_dir() / "compose.apps.yaml").read_text(encoding="utf-8")
         assert "image: ghcr.io/org/hub:main" in text
 
     def test_render_build_outside_home(self) -> None:
@@ -603,30 +568,17 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
 
     def test_readiness_http_fallback_and_docker_non_digit(self) -> None:
         ports = (
-            PortSpec(
-                name="smtp", container_port=25, expose="stream", public_port=25
-            ),
+            PortSpec(name="smtp", container_port=25, expose="stream", public_port=25),
             PortSpec(name="http", container_port=80, expose="http"),
         )
-        assert (
-            ReadinessSpec(type="http", port=None).resolve_port(ports).name == "http"
-        )
-        only_stream = (
-            PortSpec(
-                name="smtp", container_port=25, expose="stream", public_port=25
-            ),
-        )
-        assert (
-            ReadinessSpec(type="http", port=None).resolve_port(only_stream).name
-            == "smtp"
-        )
+        assert ReadinessSpec(type="http", port=None).resolve_port(ports).name == "http"
+        only_stream = (PortSpec(name="smtp", container_port=25, expose="stream", public_port=25),)
+        assert ReadinessSpec(type="http", port=None).resolve_port(only_stream).name == "smtp"
 
         shell = MagicMock()
         docker = DockerStack(make_stack(self.tmp_path), shell)
         shell.compose.return_value = MagicMock(stdout="cid\n", returncode=0)
-        shell.docker.return_value = MagicMock(
-            stdout="80/tcp weird\n", returncode=0
-        )
+        shell.docker.return_value = MagicMock(stdout="80/tcp weird\n", returncode=0)
         assert docker.gate_published_ports() == [80]
         app = make_app()
         stack = make_stack(self.tmp_path, (app,))
@@ -659,9 +611,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
         assert manifest_mod._parse_cpu("500m", default="0.1") == "0.5"
 
     def test_remaining_coverage_bits(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
-            "edge:\n  streams: null\n", encoding="utf-8"
-        )
+        (self.tmp_path / "settings.yaml").write_text("edge:\n  streams: null\n", encoding="utf-8")
         assert load_config(self.tmp_path).edge.streams == ()
 
         path = Path("x.yaml")
@@ -674,9 +624,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
                     "spec": {
                         "publicHost": "a.test",
                         "source": "local",
-                        "ports": [
-                            {"name": "http", "containerPort": 80, "expose": "http"}
-                        ],
+                        "ports": [{"name": "http", "containerPort": 80, "expose": "http"}],
                     },
                 },
                 path=path,
@@ -691,9 +639,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
                     "spec": {
                         "publicHost": "a.test",
                         "source": "ftp",
-                        "ports": [
-                            {"name": "http", "containerPort": 80, "expose": "http"}
-                        ],
+                        "ports": [{"name": "http", "containerPort": 80, "expose": "http"}],
                     },
                 },
                 path=path,
@@ -708,9 +654,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
                     "source": "docker",
                     "image": "ghcr.io/org/hub",
                     "repo": "git@github.com:org/hub.git",
-                    "ports": [
-                        {"name": "http", "containerPort": 80, "expose": "http"}
-                    ],
+                    "ports": [{"name": "http", "containerPort": 80, "expose": "http"}],
                 },
             },
             path=path,
@@ -759,13 +703,9 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
                 streams=(EdgeStream(name="dns", port=53, protocol="udp"),),
             ),
         ).render()
-        apps = (stack.generated_dir() / "compose.apps.yaml").read_text(
-            encoding="utf-8"
-        )
+        apps = (stack.generated_dir() / "compose.apps.yaml").read_text(encoding="utf-8")
         assert "587:587/udp" in apps
-        edge_yaml = (stack.generated_dir() / "compose.edge.yaml").read_text(
-            encoding="utf-8"
-        )
+        edge_yaml = (stack.generated_dir() / "compose.edge.yaml").read_text(encoding="utf-8")
         assert "53:53/udp" in edge_yaml
         mail_block = apps.split("  mail:\n", 1)[1]
         assert "healthcheck:" not in mail_block.split("    restart:", 1)[0]
@@ -805,9 +745,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
                         "publicHost": "a.test",
                         "source": "local",
                         "tls": "bogus",
-                        "ports": [
-                            {"name": "http", "containerPort": 80, "expose": "http"}
-                        ],
+                        "ports": [{"name": "http", "containerPort": 80, "expose": "http"}],
                     },
                 },
                 path=Path("x.yaml"),
@@ -821,9 +759,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
                     "publicHost": "a.test",
                     "source": "local",
                     "extraHosts": "",
-                    "ports": [
-                        {"name": "http", "containerPort": 80, "expose": "http"}
-                    ],
+                    "ports": [{"name": "http", "containerPort": 80, "expose": "http"}],
                     "build": {"context": "."},
                 },
             },
@@ -868,14 +804,13 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
         write_applied_app(self.tmp_path, "web", tls="origin")
         (self.tmp_path / "apps" / "web").mkdir(parents=True)
         stack = load_stack(self.tmp_path)
-        StackRenderer(
-            stack, edge=EdgeConfig(http=None, https=443, streams=())
-        ).render()
-        listeners = (
-            stack.generated_dir() / "nginx" / "gate-http" / "listeners.conf"
-        ).read_text(encoding="utf-8")
+        StackRenderer(stack, edge=EdgeConfig(http=None, https=443, streams=())).render()
+        listeners = (stack.generated_dir() / "nginx" / "gate-http" / "listeners.conf").read_text(
+            encoding="utf-8"
+        )
         assert "listen 443 ssl" in listeners
         assert "listen 80" not in listeners
+
     def test_shift_skips_wait_when_none(self) -> None:
         write_applied_app(
             self.tmp_path,

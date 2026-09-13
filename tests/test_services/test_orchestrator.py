@@ -6,6 +6,7 @@ import pytest
 
 from .base import ServicesTestCase
 
+
 class TestOrchestrator(ServicesTestCase):
     @pytest.fixture(autouse=True)
     def _orch_setup(self, _services_setup) -> None:
@@ -75,9 +76,7 @@ class TestOrchestrator(ServicesTestCase):
             Session.return_value = session
             with patch("raft.services.orchestrator.DEPLOY_CUTOVER", new=()):
                 with patch.object(self.orch, "sync"):
-                    self.orch.redeploy_app(
-                        "app", ref_override="sha", force_sync=True
-                    )
+                    self.orch.redeploy_app("app", ref_override="sha", force_sync=True)
             Session.assert_called_once()
 
     def test_redeploy_app_prints_error_and_reraises(self) -> None:

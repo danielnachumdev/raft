@@ -4,7 +4,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from .base import ServicesTestCase
 from raft.services.auth import (
     GitAuthManager,
     default_ssh_dir,
@@ -12,6 +11,9 @@ from raft.services.auth import (
     parse_ssh_git_url,
     real_git_host,
 )
+
+from .base import ServicesTestCase
+
 
 class TestParseSshGitUrl:
     def test_variants(self) -> None:
@@ -27,12 +29,14 @@ class TestParseSshGitUrl:
         with pytest.raises(ValueError, match="owner/repo"):
             parse_ssh_git_url("git@github.com:noreply")
 
+
 class TestHostAliasHelpers:
     def test_alias_and_real_host(self) -> None:
         assert host_alias("svc", "github.com") == "github.com-raft-svc"
         assert host_alias("svc", "github.com-raft-svc") == "github.com-raft-svc"
         assert real_git_host("svc", "github.com-raft-svc") == "github.com"
         assert real_git_host("svc", "github.com") == "github.com"
+
 
 class TestDefaultSshDir(ServicesTestCase):
     def test_env_override(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -46,6 +50,7 @@ class TestDefaultSshDir(ServicesTestCase):
         monkeypatch.setattr("raft.services.auth.Path.home", lambda: self.tmp_path)
         assert default_ssh_dir() == (self.tmp_path / ".ssh").resolve()
 
+
 class TestGitAuthManager(ServicesTestCase):
     @pytest.fixture(autouse=True)
     def _auth_setup(self, _services_setup) -> None:
@@ -56,10 +61,7 @@ class TestGitAuthManager(ServicesTestCase):
         app = self.mgr.stack.app("svc")
         assert self.mgr.effective_clone_url(app) == app.repo
         self.write_keypair(self.mgr, "svc")
-        assert (
-            self.mgr.effective_clone_url(app)
-            == "git@github.com-raft-svc:org/svc.git"
-        )
+        assert self.mgr.effective_clone_url(app) == "git@github.com-raft-svc:org/svc.git"
         with pytest.raises(ValueError, match="no repo URL"):
             self.mgr.effective_clone_url(self.mgr.stack.app("localapp"))
 
@@ -102,8 +104,7 @@ class TestGitAuthManager(ServicesTestCase):
 
     def test_pubkey_for_paste_strips_comment(self) -> None:
         assert (
-            GitAuthManager._pubkey_for_paste("ssh-ed25519 AAAA comment-here")
-            == "ssh-ed25519 AAAA"
+            GitAuthManager._pubkey_for_paste("ssh-ed25519 AAAA comment-here") == "ssh-ed25519 AAAA"
         )
         assert GitAuthManager._pubkey_for_paste("weird") == "weird"
 
@@ -135,19 +136,13 @@ class TestGitAuthManager(ServicesTestCase):
 
         self.mgr._ensure_ssh_layout()
         self.mgr.config_path.write_text("Host keep\n  HostName z", encoding="utf-8")
-        self.mgr._upsert_ssh_config(
-            "svc", alias="github.com-raft-svc", hostname="github.com"
-        )
+        self.mgr._upsert_ssh_config("svc", alias="github.com-raft-svc", hostname="github.com")
         assert self.mgr.config_path.read_text(encoding="utf-8").endswith("\n")
 
-        self.shell.git.return_value = MagicMock(
-            returncode=0, stdout="abc\tHEAD\n", stderr=""
-        )
+        self.shell.git.return_value = MagicMock(returncode=0, stdout="abc\tHEAD\n", stderr="")
         self.mgr.test("svc")
         self.mgr.test("svc", quiet=True)
-        self.shell.git.return_value = MagicMock(
-            returncode=1, stdout="", stderr="denied"
-        )
+        self.shell.git.return_value = MagicMock(returncode=1, stdout="", stderr="denied")
         with pytest.raises(RuntimeError, match="auth test failed"):
             self.mgr.test("svc")
         self.shell.git.return_value = MagicMock(returncode=1, stdout="", stderr="")
