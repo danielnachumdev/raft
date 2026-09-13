@@ -10,7 +10,7 @@ Public product: CLI + Compose/nginx templates + tests. Operators typically run [
 
 Desired apps are **not** a committed inventory. Operators `apply` App manifests; registry files live in `~/.raft/state/apps/*.yaml`.
 
-User-facing samples live under **[`examples/`](examples/)**: operator settings (`examples/settings.yaml`), a minimal consumer repo (`examples/consumer-app/`), and a mail-shaped app (`examples/mailu/`).
+User-facing samples live under **[`examples/`](examples/)**: operator settings (`examples/settings.yaml`) and named service scenarios (`http-only-site`, `https-origin-site`, `http-plus-stream`, `host-published-ports`).
 
 ---
 

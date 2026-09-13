@@ -1,0 +1,40 @@
+# HTTPS via Cloudflare Origin certs on the gate (`tls: origin`).
+# Apply: raft apply --file examples/https-origin-site/.raft/app.yaml
+#
+# Install PEMs before `raft up` / recreating gate:
+#   ~/.raft/certs/https-origin-site/origin.pem
+#   ~/.raft/certs/https-origin-site/origin.key
+# Missing PEMs make nginx reject the gate config → HTTP and HTTPS die.
+# Operator settings need edge.https set (default 443); see examples/settings.yaml.
+
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: https-origin-site
+
+spec:
+  publicHost: secure.example.com
+  www: true
+
+  # origin → gate includes TLS snippets from certs/<name>/ for this host.
+  tls: origin
+
+  source: git
+  repo: git@github.com:example/https-origin-site.git
+  ref: main
+  path: apps/https-origin-site
+
+  build:
+    context: .
+    dockerfile: Dockerfile
+
+  ports:
+    - name: http
+      containerPort: 80
+      # App still speaks HTTP to the router; the gate terminates TLS for clients.
+      expose: http
+
+  readiness:
+    type: http
+    port: http
+    path: /

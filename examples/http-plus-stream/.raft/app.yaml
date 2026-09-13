@@ -1,0 +1,46 @@
+# HTTP Host routing + a gate stream listener (SMTP-shaped example).
+# Apply: raft apply --file examples/http-plus-stream/.raft/app.yaml
+#
+# Required operator settings (examples/settings.yaml) — then `raft gate recreate`:
+#   edge:
+#     streams:
+#       - name: smtp
+#         port: 25
+#         protocol: tcp
+# The app's expose:stream publicPort must match an edge.streams[].port.
+
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: http-plus-stream
+
+spec:
+  publicHost: mail-ui.example.com
+  www: false
+  tls: off
+
+  # docker source: image without tag; pin/tag in ref. Optional repo for apply --git refresh.
+  source: docker
+  image: ghcr.io/example/mail-ui
+  ref: "1.2.3"
+  repo: git@github.com:example/http-plus-stream.git
+  path: apps/http-plus-stream
+
+  ports:
+    - name: http
+      containerPort: 8080
+      expose: http
+
+    - name: smtp
+      containerPort: 25
+      # stream → traffic hits the gate on publicPort, then nginx stream to the app.
+      # Prefer expose: host for mail if you need the real client IP (see host-published-ports/).
+      expose: stream
+      publicPort: 25          # must exist in settings edge.streams
+      protocol: tcp           # tcp | udp
+      # proxyProtocol: true   # optional; PROXY protocol to the upstream (stream only)
+
+  readiness:
+    type: http
+    port: http
+    path: /healthz

@@ -1,21 +1,53 @@
-# raft operator settings — copy to ~/.raft/settings.yaml (created on first use with defaults).
-# This file lives under examples/; override the data home with RAFT_DATA_HOME (default: ~/.raft).
+# raft operator settings — copy to ~/.raft/settings.yaml
+# (created on first use with defaults if missing).
+# Override the data home with RAFT_DATA_HOME (default: ~/.raft).
+#
+# After changing edge published ports (http / https / streams), run:
+#   raft gate recreate
+# (not `raft redeploy gate` — that command refuses).
 
+# ---------------------------------------------------------------------------
+# logging — file logging only; the terminal stays plain text.
+# ---------------------------------------------------------------------------
 logging:
-  # Directory for log files (relative to the data home, or absolute).
-  # Override with env RAFT_LOG_DIR.
-  # Terminal output is always plain text; only this file uses log formatting.
+  # Directory for log files. Relative paths are under the data home
+  # (~/.raft/logs by default). Absolute paths are used as-is.
+  # Override entirely with env RAFT_LOG_DIR.
   dir: logs
-  file: raft.log
-  level: INFO   # DEBUG | INFO | WARNING | ERROR
 
-# Public edge listeners published by the gate container.
-# null http/https → that listener is omitted. New stream ports need
-# `raft gate recreate` after changing this section.
+  # Log file name inside logging.dir.
+  file: raft.log
+
+  # Minimum level written to the file: DEBUG | INFO | WARNING | ERROR
+  level: INFO
+
+# ---------------------------------------------------------------------------
+# edge — public listeners published by the gate container.
+#
+# null (or omit via YAML null) for http/https → that listener is not published.
+# streams[] entries are extra TCP/UDP listeners on the gate (nginx stream).
+# Apps that use expose: stream must match a declared edge.streams[].port.
+# Apps that use expose: host publish ports themselves — no edge entry needed.
+# ---------------------------------------------------------------------------
 edge:
+  # Public HTTP port on the host (gate). Default 80.
+  # Set to null to disable the HTTP listener entirely.
   http: 80
+  # http: null
+
+  # Public HTTPS port on the host (gate). Default 443.
+  # Needed when any app uses tls: origin. Set to null to omit HTTPS.
   https: 443
-  streams:
-    # - name: smtp
-    #   port: 25
-    #   protocol: tcp
+  # https: null
+
+  # Extra gate listeners for expose: stream apps (L4 proxy).
+  # Empty list (default) means no stream listeners.
+  streams: []
+  # Example — uncomment (and gate recreate) when an app uses expose: stream:
+  # streams:
+  #   - name: smtp          # label only (for humans / docs)
+  #     port: 25            # host port published by the gate
+  #     protocol: tcp       # tcp | udp (default tcp)
+  #   - name: dns
+  #     port: 53
+  #     protocol: udp

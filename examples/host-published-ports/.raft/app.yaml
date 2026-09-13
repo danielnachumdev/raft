@@ -1,0 +1,53 @@
+# Host-published ports (mail-shaped) — app binds public ports itself.
+# Apply: raft apply --file examples/host-published-ports/.raft/app.yaml
+#
+# expose: host skips the gate for those ports (recommended when the app must
+# see the real client IP, e.g. SMTP/IMAP). No edge.streams entries needed for
+# host ports. HTTP admin UI still goes through gate+router via expose: http.
+#
+# This example uses tls: origin for the web UI — install PEMs first:
+#   ~/.raft/certs/host-published-ports/origin.pem
+#   ~/.raft/certs/host-published-ports/origin.key
+# Use tls: off if you do not want HTTPS for the admin host.
+
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: host-published-ports
+
+spec:
+  publicHost: mail.example.com
+  www: false
+  tls: origin
+
+  source: docker
+  image: ghcr.io/example/mail-stack
+  ref: master
+  # Optional: keep repo so apply --git can refresh the manifest from git.
+  repo: git@github.com:example/mail-stack.git
+  path: apps/host-published-ports
+
+  ports:
+    - name: http
+      containerPort: 80
+      expose: http
+
+    - name: smtp
+      containerPort: 25
+      expose: host
+      publicPort: 25          # required for expose: host|stream
+
+    - name: submission
+      containerPort: 587
+      expose: host
+      publicPort: 587
+
+    - name: imaps
+      containerPort: 993
+      expose: host
+      publicPort: 993
+
+  readiness:
+    # tcp probe against a named port (useful when the primary signal is not HTTP).
+    type: tcp
+    port: smtp

@@ -42,7 +42,7 @@ Apps own their contract (`.raft/app.yaml`). The VPS stores applied desired state
 
 ## Examples
 
-See **[`examples/`](examples/)** for copy-paste samples: operator [`settings.yaml`](examples/settings.yaml), a minimal [`consumer-app/`](examples/consumer-app/), and [`mailu/`](examples/mailu/) (HTTP + host-published mail ports).
+See **[`examples/`](examples/)** for copy-paste samples: operator [`settings.yaml`](examples/settings.yaml) and named scenarios (`http-only-site`, `https-origin-site`, `http-plus-stream`, `host-published-ports`).
 
 ## Requirements
 

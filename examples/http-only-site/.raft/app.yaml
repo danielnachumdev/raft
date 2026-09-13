@@ -1,0 +1,77 @@
+# Minimal HTTP-only site — TLS off, one Host-routed port.
+# Apply: raft apply --file examples/http-only-site/.raft/app.yaml
+# Or from a real service repo: raft apply --git git@github.com:ORG/REPO.git
+#
+# When to use: a normal website/API behind the gate+router with no HTTPS
+# Origin certs on the VPS (Cloudflare Flexible, or TLS terminated elsewhere).
+
+apiVersion: raft/v1
+kind: App
+metadata:
+  # Stable app id used in registry, Compose service names, certs/<name>/, etc.
+  name: http-only-site
+
+spec:
+  # Required when any port uses expose: http (Host routing).
+  publicHost: site.example.com
+
+  # Also serve www.<publicHost> via the router (default true).
+  www: true
+  # Extra Host names routed to this app (in addition to publicHost / www).
+  # extraHosts:
+  #   - api.site.example.com
+  #   - staging.site.example.com
+
+  # off (default) | origin
+  # off  → HTTP only through the gate; no PEMs required.
+  # origin → gate terminates Cloudflare Origin TLS; needs
+  #          ~/.raft/certs/<metadata.name>/origin.pem + origin.key
+  #          and edge.https enabled in settings.
+  tls: off
+
+  # How raft obtains the app tree / image.
+  # local  — tree already on disk at spec.path (relative to data home apps/, or absolute)
+  # git    — clone/fetch spec.repo @ spec.ref into apps/; Compose build: from contract
+  # docker — pull spec.image:spec.ref (image has no tag; tag/pin lives in ref)
+  source: git
+  repo: git@github.com:example/http-only-site.git
+  ref: main
+  # Checkout / working tree path under the data home (default apps/<name>).
+  path: apps/http-only-site
+  # For source: docker only (image without tag):
+  # image: ghcr.io/example/http-only-site
+
+  # Compose build: (used when source is git/local and you build on the VPS).
+  build:
+    context: .                 # relative to the checkout
+    dockerfile: Dockerfile     # optional; defaults to Dockerfile
+
+  ports:
+    # name is referenced by readiness.port and must be unique per app.
+    - name: http
+      containerPort: 80
+      # http   → Host routing via router (needs publicHost)
+      # stream → gate L4 proxy; needs publicPort + matching edge.streams[].port
+      # host   → app publishes publicPort on the host itself (gate not involved)
+      expose: http
+      # publicPort:  …   # required for stream|host only
+      # protocol: tcp    # tcp | udp — for stream (default tcp)
+      # proxyProtocol: false  # stream only: PROXY protocol to upstream
+
+  readiness:
+    # http | tcp | none
+    # http → GET path on an expose:http port (default type when an http port exists)
+    # tcp  → TCP connect to the named port
+    # none → skip probes (cutover still runs; use sparingly)
+    type: http
+    port: http                 # ports[].name
+    path: /                    # only for type: http
+
+  # Optional Compose resource limits / reservations (defaults shown).
+  # resources:
+  #   limits:
+  #     cpu: "0.50"
+  #     memory: 128M
+  #   requests:
+  #     cpu: "0.10"
+  #     memory: 32M
