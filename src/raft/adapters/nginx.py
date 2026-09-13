@@ -1,5 +1,7 @@
 """Nginx upstream file management (keyed by app + port name)."""
 
+from __future__ import annotations
+
 import logging
 from typing import Optional
 

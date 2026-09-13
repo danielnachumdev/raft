@@ -33,7 +33,7 @@ class EdgeFragments:
         self.expose_ports.extend(other.expose_ports)
 
 
-class EdgeHandler(Protocol):
+class EdgeHandler(Protocol):  # pragma: no cover
     def contribute(
         self,
         app: App,
