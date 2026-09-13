@@ -11,17 +11,18 @@ x-resources-edge: &resources-edge
         cpus: "0.05"
         memory: 16M
 
-# App services + router.depends_on are generated from state/apps/*.yaml (raft apply).
-# `.raft/app.yaml` into `.generated/compose.apps.yaml` (`uv run raft render`).
-# project_directory must be the orchestrator root — Compose resolves paths in an
-# included file relative to that file's dir by default (.generated/), which breaks builds.
+# App services + router.depends_on are generated from ~/.raft/state/apps/*.yaml (raft apply).
+# `.raft/app.yaml` into generated/compose.apps.yaml (`raft render`).
+# Runtime project directory is the data home (~/.raft); product templates are synced there.
+# project_directory must be the data home — Compose resolves paths in an included file
+# relative to that file's dir by default (generated/), which breaks builds.
 include:
-  - path: .generated/compose.apps.yaml
+  - path: generated/compose.apps.yaml
     project_directory: .
 
 services:
   # Outer edge — public :80 / :443. Keep this stable; do not redeploy for app/router updates.
-  # TLS snippets: `.generated/nginx/gate-tls/*.conf` (from contracts). PEMs under ./certs/<name>/.
+  # TLS snippets: `generated/nginx/gate-tls/*.conf` (from contracts). PEMs under ./certs/<name>/.
   gate:
     image: nginx:alpine
     ports:
@@ -30,7 +31,7 @@ services:
     volumes:
       - ./nginx/gate/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./nginx/gate/proxy_router.inc:/etc/nginx/gate/proxy_router.inc:ro
-      - ./.generated/nginx/gate-tls:/etc/nginx/gate-tls:ro
+      - ./generated/nginx/gate-tls:/etc/nginx/gate-tls:ro
       - ./nginx/errors:/usr/share/nginx/errors:ro
       - ./certs:/etc/nginx/certs:ro
     restart: unless-stopped
@@ -43,8 +44,8 @@ services:
       - "80"
     volumes:
       - ./nginx/router/default.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./.generated/nginx/router:/etc/nginx/router-generated:ro
-      - ./.generated/nginx/upstreams:/etc/nginx/upstreams:ro
+      - ./generated/nginx/router:/etc/nginx/router-generated:ro
+      - ./generated/nginx/upstreams:/etc/nginx/upstreams:ro
       - ./nginx/errors:/usr/share/nginx/errors:ro
     restart: unless-stopped
     <<: *resources-edge

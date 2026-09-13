@@ -11,7 +11,9 @@ letsencrypt/
 htmlcov/
 
 certs/
+deploy/
 .deploy/
+generated/
 .generated/
 logs/
 apps/

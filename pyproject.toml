@@ -24,6 +24,12 @@ raft = "raft.cli:run"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+raft = [
+    "share/compose.yaml",
+    "share/nginx/**/*",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = [".", "src"]

@@ -6,9 +6,9 @@ Instructions for coding agents (and humans) changing **raft**. The GitHub-facing
 
 ## What this repo is
 
-Public product: CLI + Compose/nginx templates + tests. A VPS typically clones **this** repo (e.g. `~/raft`) and runs `uv run raft …` from that checkout. Private cloud/CI that only provisions the VM is **out of tree**.
+Public product: CLI + Compose/nginx templates + tests. Operators typically run [`install.sh`](install.sh) (`uv tool install` from GitHub; no lasting clone by default) so `raft` is on `PATH`. **Durable operator data lives under `~/.raft/`** (override with `RAFT_DATA_HOME`), not in an install checkout.
 
-Desired apps are **not** a committed inventory. Operators `apply` App manifests; registry files live in gitignored `state/apps/*.yaml`.
+Desired apps are **not** a committed inventory. Operators `apply` App manifests; registry files live in `~/.raft/state/apps/*.yaml`.
 
 ---
 
@@ -28,21 +28,23 @@ Cutover reloads **router** nginx, not gate. Never `raft redeploy gate`.
 
 ### TLS (hard requirement)
 
-- Per-app Cloudflare Origin PEMs: `certs/<app>/origin.pem` + `origin.key` (gitignored; VPS only).
-- `raft render` writes gate TLS snippets under `.generated/nginx/gate-tls/`.
+- Per-app Cloudflare Origin PEMs: `~/.raft/certs/<app>/origin.pem` + `origin.key`.
+- `raft render` writes gate TLS snippets under `~/.raft/generated/nginx/gate-tls/`.
 - Gate **includes** those snippets. Missing PEMs make nginx reject the config → **HTTP and HTTPS die**.
 - Install PEMs before `up` / recreating gate. `raft doctor` treats missing certs as failure.
 
-### Generated vs committed
+### Data home vs product templates
 
 | Path | Role |
 |------|------|
-| `compose.yaml`, `nginx/gate/`, `nginx/router/default.conf`, `nginx/errors/` | Committed product templates |
-| `state/apps/*.yaml` | Applied desired state (gitignored) |
-| `.generated/` | Compose apps + router hosts + gate-tls + **upstreams** (gitignored) |
-| `apps/` | Sync checkouts (gitignored) |
-| `.deploy/` | Image/ref pins from sync/cutover (gitignored) |
-| `certs/` | Origin PEMs (gitignored) |
+| `compose.yaml`, `nginx/` (`src/raft/share/`) | Product templates; synced into the data home on use |
+| `~/.raft/settings.yaml` | Operator settings (logging); see `settings.yaml.example` |
+| `~/.raft/state/apps/*.yaml` | Applied desired state |
+| `~/.raft/generated/` | Compose apps + router hosts + gate-tls + **upstreams** |
+| `~/.raft/apps/` | Sync checkouts |
+| `~/.raft/deploy/` | Image/ref pins from sync/cutover |
+| `~/.raft/certs/` | Origin PEMs |
+| `~/.raft/logs/` | Structured log file (default) |
 
 Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 
@@ -50,17 +52,17 @@ Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 
 ## Operator loop
 
-1. `uv sync` (Python **3.8+**).
+1. `install.sh` (or `uv sync` in a clone; Python **3.8+**).
 2. Private git apps: `raft auth setup <service>` → paste pubkey as read-only deploy key (`~/.ssh/raft/`).
-3. `raft apply --file …` or `raft apply --git …` → writes `state/apps/<name>.yaml`, optionally syncs + renders.
-4. Origin PEMs in place → `raft up` (refuses if stack already up; `down` first).
+3. `raft apply --file …` or `raft apply --git …` → writes `~/.raft/state/apps/<name>.yaml`, optionally syncs + renders.
+4. Origin PEMs in `~/.raft/certs/<name>/` → `raft up` (refuses if stack already up; `down` first).
 5. `raft doctor` before trusting the site.
 6. Updates: `raft redeploy <app>` or `raft redeploy router`.
 7. Tear down: `raft down`.
 
 Useful checks: `curl -H 'Host: <publicHost>' http://127.0.0.1/`. Optional local hosts: `sudo python3 scripts/hosts_manager.py hold` (reads applied `publicHost` values; errors if none applied).
 
-Logging: `raft.yaml` `logging:`; default `logs/raft.log`; override dir with `RAFT_LOG_DIR`. Terminal stays plain; file is structured.
+Logging: `~/.raft/settings.yaml` `logging:`; default `~/.raft/logs/raft.log`; override dir with `RAFT_LOG_DIR`. Terminal stays plain; file is structured.
 
 ---
 
@@ -76,7 +78,7 @@ Canonical path in a service repo: `.raft/app.yaml` (also accepts `.raft/service.
 | `git` | `spec.repo` + `spec.ref` → clone/fetch; Compose `build:` from contract |
 | `docker` | `spec.image` (no tag) + `spec.ref` as pin/tag; still set `repo`/`path` so apply can refresh the manifest from git |
 
-`apply --git` clones briefly, reads `.raft/app.yaml`, copies into `state/apps/`. `sync` (end of many flows) refreshes sources then `render` regenerates `.generated/`.
+`apply --git` clones briefly, reads `.raft/app.yaml`, copies into `~/.raft/state/apps/`. `sync` (end of many flows) refreshes sources then `render` regenerates `~/.raft/generated/`.
 
 Private remotes stay as `git@github.com:…` in the manifest; auth rewrites clone URLs to `Host` aliases (`github.com-raft-<service>`).
 
@@ -92,12 +94,13 @@ Top-level **commands** (not nested groups, except `auth`):
 | `get` | `get apps` / `get app NAME` |
 | `delete` | `delete app NAME` |
 | `up` / `down` | Stack bring-up / tear-down |
-| `sync` / `render` | Sources / regenerate `.generated/` |
+| `sync` / `render` | Sources / regenerate `~/.raft/generated/` |
 | `redeploy` | App cutover or `router` |
 | `doctor` | Health + fix hints |
+| `update` | Re-install CLI from GitHub (`install.sh`) |
 | `auth` | `setup` / `list` / `show` / `test` / `remove` |
 
-Entry: `raft` console script → `raft.cli:run`. Prefer `uv run raft …`.
+Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool install` so `raft` is on `PATH`; in a bare checkout `uv run raft …` still works.
 
 ---
 
@@ -109,10 +112,11 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `uv run raft …`.
 | `src/raft/models/` | `App` / `Stack`, contract load/validate, registry paths |
 | `src/raft/adapters/` | shell, docker, nginx upstreams, HTTP probe |
 | `src/raft/services/` | apply, auth, sync, render, cutover, orchestrator, doctor |
-| `src/raft/config/` | `raft.yaml` + logging setup |
+| `src/raft/config/` | `~/.raft` paths, `settings.yaml`, logging setup |
+| `src/raft/share/` | Product Compose + nginx templates (synced into data home) |
 | `tests/` | Mirrors packages (`test_*`); class-based; **`--cov-fail-under=100`** |
 
-Compose mounts `.generated/nginx/upstreams` into the router. Upstream files are written by `NginxUpstreams` under `.generated/nginx/upstreams/`.
+Compose mounts `generated/nginx/upstreams` into the router (under the data home). Upstream files are written by `NginxUpstreams` under `generated/nginx/upstreams/`.
 
 ---
 

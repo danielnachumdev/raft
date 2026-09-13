@@ -79,10 +79,17 @@ def make_git_stack(
 
 
 def ensure_orchestrator_root(root: Path) -> None:
-    if not (root / "compose.yaml").is_file():
-        (root / "compose.yaml").write_text("name: raft\nservices: {}\n", encoding="utf-8")
-    if not (root / "raft.yaml").is_file():
-        (root / "raft.yaml").write_text("logging:\n  level: INFO\n", encoding="utf-8")
+    """Prepare a data-home-shaped tree for tests (settings + optional stub compose)."""
+    if not (root / "settings.yaml").is_file():
+        (root / "settings.yaml").write_text(
+            "logging:\n  level: INFO\n", encoding="utf-8"
+        )
+    (root / "state" / "apps").mkdir(parents=True, exist_ok=True)
+    (root / "generated").mkdir(parents=True, exist_ok=True)
+    (root / "deploy").mkdir(parents=True, exist_ok=True)
+    (root / "certs").mkdir(parents=True, exist_ok=True)
+    (root / "apps").mkdir(parents=True, exist_ok=True)
+    (root / "logs").mkdir(parents=True, exist_ok=True)
 
 
 def write_applied_app(

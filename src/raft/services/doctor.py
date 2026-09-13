@@ -1,4 +1,4 @@
-"""Environment diagnostics for operators (`uv run raft doctor`)."""
+"""Environment diagnostics for operators (`raft doctor`)."""
 
 from __future__ import annotations
 
@@ -169,20 +169,20 @@ class Doctor:
             host = real_git_host(service, parsed.host)
         except ValueError:
             return (
-                f"run `uv run raft auth show {service}` and paste Title + Key "
+                f"run `raft auth show {service}` and paste Title + Key "
                 f"as a read-only deploy key on the git host, "
-                f"then `uv run raft auth test {service}`"
+                f"then `raft auth test {service}`"
             )
         if host == "github.com":
             url = f"https://github.com/{parsed.path}/settings/keys/new"
             return (
-                f"run `uv run raft auth show {service}` and paste Title + Key at {url} "
-                f"(Allow read-only access), then `uv run raft auth test {service}`"
+                f"run `raft auth show {service}` and paste Title + Key at {url} "
+                f"(Allow read-only access), then `raft auth test {service}`"
             )
         return (
-            f"run `uv run raft auth show {service}` and paste Title + Key as a "
+            f"run `raft auth show {service}` and paste Title + Key as a "
             f"read-only deploy key for {parsed.path} on {host}, "
-            f"then `uv run raft auth test {service}`"
+            f"then `raft auth test {service}`"
         )
 
     def _check_compose_file(self) -> CheckResult:
@@ -194,19 +194,19 @@ class Doctor:
             "compose.yaml",
             "fail",
             f"missing at {path}",
-            fix="run doctor from the orchestrator checkout (applied App registry + compose.yaml)",
+            fix="run `raft render` (syncs Compose templates into ~/.raft)",
         )
 
     def _check_generated(self) -> CheckResult:
-        path = self.stack.root / ".generated" / "compose.apps.yaml"
+        path = self.stack.root / "generated" / "compose.apps.yaml"
         if path.is_file():
             return CheckResult(INFRA, "generated", "ok", str(path))
         return CheckResult(
             INFRA,
             "generated",
             "fail",
-            "missing .generated/compose.apps.yaml",
-            fix="uv run raft sync   # or: uv run raft render",
+            "missing generated/compose.apps.yaml",
+            fix="raft sync   # or: raft render",
         )
 
     def _check_docker(self) -> list[CheckResult]:
@@ -288,7 +288,7 @@ class Doctor:
                             "sync",
                             "fail",
                             f"docker image missing locally: {pin}",
-                            fix=f"uv run raft sync {app.name}   # docker pull",
+                            fix=f"raft sync {app.name}   # docker pull",
                         )
                     )
                 results.extend(self._check_contract(app))
@@ -300,7 +300,7 @@ class Doctor:
                                 "auth",
                                 "warn",
                                 "no deploy key (optional git checkout for docker source)",
-                                fix=f"uv run raft auth setup {app.name}",
+                                fix=f"raft auth setup {app.name}",
                             )
                         )
                     else:
@@ -331,7 +331,7 @@ class Doctor:
                         "auth",
                         "fail",
                         "no local deploy key",
-                        fix=f"uv run raft auth setup {app.name}",
+                        fix=f"raft auth setup {app.name}",
                     )
                 )
             else:
@@ -363,7 +363,7 @@ class Doctor:
                         "sync",
                         "fail",
                         f"checkout missing: {dest}",
-                        fix=f"uv run raft sync {app.name}",
+                        fix=f"raft sync {app.name}",
                     )
                 )
             elif not (dest / ".git").is_dir():
@@ -373,7 +373,7 @@ class Doctor:
                         "sync",
                         "fail",
                         f"{app.path} exists but is not a git checkout",
-                        fix=f"move it aside, then `uv run raft sync {app.name}`",
+                        fix=f"move it aside, then `raft sync {app.name}`",
                     )
                 )
             else:
@@ -392,7 +392,7 @@ class Doctor:
                     "contract",
                     "fail",
                     f"missing applied manifest {path.relative_to(self.stack.root)}",
-                    fix=f"uv run raft apply --file path/to/app.yaml   # or --git <repo>",
+                    fix=f"raft apply --file path/to/app.yaml   # or --git <repo>",
                 )
             ]
         try:
@@ -424,13 +424,13 @@ class Doctor:
                         "upstream",
                         "warn",
                         f"missing {path.name}",
-                        fix="created automatically on `uv run raft sync` / `uv run raft up`",
+                        fix="created automatically on `raft sync` / `raft up`",
                     )
                 )
         return results
 
     def _check_certs(self) -> list[CheckResult]:
-        """Per-service Cloudflare Origin PEMs under ``certs/<name>/``."""
+        """Per-service Cloudflare Origin PEMs under ``~/.raft/certs/<name>/``."""
         results: list[CheckResult] = []
         for app in self.stack.apps:
             pem, key = self.stack.cert_files(app)
@@ -453,7 +453,7 @@ class Doctor:
                     f"missing {', '.join(missing)} under certs/{app.name}/",
                     fix=(
                         f"install Cloudflare Origin PEMs for {app.name} only at "
-                        f"certs/{app.name}/origin.pem and origin.key "
+                        f"~/.raft/certs/{app.name}/origin.pem and origin.key "
                         f"(before recreating gate)"
                     ),
                 )
@@ -500,7 +500,7 @@ class Doctor:
                     "stack",
                     "warn",
                     "no core services running",
-                    fix="uv run raft up",
+                    fix="raft up",
                 )
             ]
         return [
@@ -509,7 +509,7 @@ class Doctor:
                 "stack",
                 "warn",
                 f"running {sorted(running)}; missing {missing}",
-                fix="uv run raft up   # or redeploy the missing service",
+                fix="raft up   # or redeploy the missing service",
             )
         ]
 

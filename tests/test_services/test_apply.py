@@ -199,7 +199,7 @@ class TestAppApply(RaftTestCase):
         stack = load_stack(self.tmp_path)
         AppApply(stack).delete("web")
         assert not (self.tmp_path / "state" / "apps" / "web.yaml").is_file()
-        assert (self.tmp_path / ".generated" / "compose.apps.yaml").is_file()
+        assert (self.tmp_path / "generated" / "compose.apps.yaml").is_file()
         assert "deleted web" in capsys.readouterr().out
 
         AppApply(load_stack(self.tmp_path)).delete("other")

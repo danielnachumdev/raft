@@ -14,32 +14,50 @@ You keep writing services in their own repos. On the VPS you **apply** a `.raft/
 
 Kubernetes (and most “platform” stacks) are overkill when you have one VM and a handful of sites. Compose alone does not give you a desired-state registry, zero-downtime app cutover, or a boring operator CLI. raft does — and stays readable.
 
+## Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/danielnachumdev/raft/main/install.sh | bash
+```
+
+[`install.sh`](install.sh) will:
+
+1. Install **uv** if missing  
+2. `uv tool install` from GitHub so **`raft` is on your `PATH`** (no lasting clone; optional `RAFT_KEEP_CHECKOUT=1` keeps one)
+
+Operator data lives under **`~/.raft/`** (settings, applied apps, generated Compose/nginx, certs, logs). Override with `RAFT_DATA_HOME`. Refresh the CLI later with `raft update`.
+
+```bash
+raft doctor
+raft up
+```
+
 ## Feel of the CLI
 
 ```bash
-uv sync
-uv run raft apply --git git@github.com:org/my-site.git
-uv run raft up
-uv run raft doctor
-uv run raft redeploy my-site
-uv run raft get apps
+raft apply --git git@github.com:org/my-site.git
+raft up
+raft doctor
+raft redeploy my-site
+raft get apps
 ```
 
-Apps own their contract (`.raft/app.yaml`). The VPS stores applied desired state under `state/apps/` (not committed). Generated Compose/nginx land in `.generated/` (also not committed).
+Apps own their contract (`.raft/app.yaml`). The VPS stores applied desired state under `~/.raft/state/apps/` and generated Compose/nginx under `~/.raft/generated/`. Settings: `~/.raft/settings.yaml`.
 
 ## Requirements
 
-- **Python 3.8+** (CI: 3.8–3.13)
-- Runtime config: `raft.yaml` (logging); PyYAML
-- Docker + Compose on the host
-- For HTTPS: Cloudflare Origin PEMs per app under `certs/<name>/` (missing PEMs break the gate for HTTP too)
+- **Python 3.8+** (CI: 3.8–3.13); uv can fetch an interpreter when needed  
+- Runtime settings: `~/.raft/settings.yaml` (logging); PyYAML  
+- Docker + Compose on the host  
+- For HTTPS: Cloudflare Origin PEMs per app under `~/.raft/certs/<name>/` (missing PEMs break the gate for HTTP too)
 
 ## Develop
 
 ```bash
+git clone https://github.com/danielnachumdev/raft.git && cd raft
 uv sync --extra dev
 uv run pytest          # 100% coverage required
-uv run raft -- --help
+uv run raft -- --help  # or re-run ./install.sh / uv tool install --force -e .
 ```
 
 Working on the codebase? See **[AGENTS.md](AGENTS.md)** for architecture rules, package map, and operator invariants.

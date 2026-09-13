@@ -26,7 +26,7 @@ class TestCutoverSession(ServicesTestCase):
         with patch("raft.services.cutover.time.sleep"):
             s.snapshot_previous_image()
             assert s.previous_image == "img:old"
-            assert (self.tmp_path / ".deploy" / "app.image").is_file()
+            assert (self.tmp_path / "deploy" / "app.image").is_file()
 
             s.start_tmp_from_previous()
             s.docker.run_tmp.assert_called_once()
@@ -42,7 +42,7 @@ class TestCutoverSession(ServicesTestCase):
 
             s.remove_tmp()
             assert "sha_new" in (
-                self.tmp_path / ".deploy" / "app.image"
+                self.tmp_path / "deploy" / "app.image"
             ).read_text(encoding="utf-8")
 
     def test_rebuild_stable_docker_pulls(self) -> None:
@@ -55,8 +55,8 @@ class TestCutoverSession(ServicesTestCase):
             drain_seconds=0.0,
             ready_timeout_seconds=1.0,
         )
-        (self.tmp_path / ".deploy").mkdir(parents=True, exist_ok=True)
-        (self.tmp_path / ".deploy" / "hub.ref").write_text(
+        (self.tmp_path / "deploy").mkdir(parents=True, exist_ok=True)
+        (self.tmp_path / "deploy" / "hub.ref").write_text(
             "digest\n# requested: abc123\n", encoding="utf-8"
         )
         docker = MagicMock()
@@ -84,7 +84,7 @@ class TestCutoverSession(ServicesTestCase):
             drain_seconds=0.0,
             ready_timeout_seconds=1.0,
         )
-        # No .deploy/hub.ref — use inventory ref
+        # No deploy/hub.ref — use inventory ref
         docker = MagicMock()
         docker.router_can_fetch.return_value = True
         session = CutoverSession(
@@ -109,8 +109,8 @@ class TestCutoverSession(ServicesTestCase):
             drain_seconds=0.0,
             ready_timeout_seconds=1.0,
         )
-        (self.tmp_path / ".deploy").mkdir(parents=True, exist_ok=True)
-        (self.tmp_path / ".deploy" / "hub.ref").write_text(
+        (self.tmp_path / "deploy").mkdir(parents=True, exist_ok=True)
+        (self.tmp_path / "deploy" / "hub.ref").write_text(
             "digest\n# requested:   \n", encoding="utf-8"
         )
         docker = MagicMock()
@@ -137,8 +137,8 @@ class TestCutoverSession(ServicesTestCase):
             drain_seconds=0.0,
             ready_timeout_seconds=1.0,
         )
-        (self.tmp_path / ".deploy").mkdir(parents=True, exist_ok=True)
-        (self.tmp_path / ".deploy" / "hub.ref").write_text(
+        (self.tmp_path / "deploy").mkdir(parents=True, exist_ok=True)
+        (self.tmp_path / "deploy" / "hub.ref").write_text(
             "sha256:only\n# pin: ghcr.io/org/hub:main\n", encoding="utf-8"
         )
         docker = MagicMock()

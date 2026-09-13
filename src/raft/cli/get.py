@@ -6,7 +6,7 @@ from ..ui import say
 def get_apps(stack) -> None:
     """List applied apps."""
     if not stack.apps:
-        say("No apps applied. Use: uv run raft apply --file .raft/app.yaml")
+        say("No apps applied. Use: raft apply --file .raft/app.yaml")
         return
     for app in stack.apps:
         say(f"{app.name}\t{app.source}\t{app.public_host}\t{app.ref}")

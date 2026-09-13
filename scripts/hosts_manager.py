@@ -26,7 +26,7 @@ Usage as a library:
     with HostsManager(plan=plan):
         ...
 
-CLI (defaults load public hosts from state/apps/*.yaml → 127.0.0.1):
+CLI (defaults load public hosts from ~/.raft/state/apps/*.yaml → 127.0.0.1):
 
     sudo python3 scripts/hosts_manager.py hold
     sudo python3 scripts/hosts_manager.py --entry '127.0.0.1,app.example.com' hold
@@ -61,8 +61,11 @@ _PUBLIC_HOST_RE = re.compile(
 )
 
 
-def _repo_root() -> Path:
-    return Path(__file__).resolve().parent.parent
+def _data_home() -> Path:
+    override = os.environ.get("RAFT_DATA_HOME")
+    if override:
+        return Path(override).expanduser().resolve()
+    return (Path.home() / ".raft").resolve()
 
 
 def _public_hosts_from_registry(registry_dir: Path) -> tuple[str, ...]:
@@ -118,7 +121,7 @@ class HostsPatchPlan:
     @classmethod
     def default(cls) -> HostsPatchPlan:
         """Map applied App ``publicHost`` values (+ www) to loopback for local testing."""
-        registry = _repo_root() / "state" / "apps"
+        registry = _data_home() / "state" / "apps"
         names: tuple[str, ...] = ()
         if registry.is_dir():
             try:
@@ -127,7 +130,7 @@ class HostsPatchPlan:
                 names = ()
         if not names:
             raise ValueError(
-                "no applied apps under state/apps/*.yaml; "
+                "no applied apps under ~/.raft/state/apps/*.yaml; "
                 "apply an App first or pass --entry IP,hostname[,hostname...]"
             )
         return cls(

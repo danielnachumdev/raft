@@ -88,7 +88,7 @@ class TestDoctor(ServicesTestCase):
             d.report(
                 [
                     CheckResult(
-                        "svc", "auth", "fail", "bad", fix="uv run raft auth setup svc"
+                        "svc", "auth", "fail", "bad", fix="raft auth setup svc"
                     ),
                 ],
                 color=True,
@@ -145,7 +145,7 @@ class TestDoctor(ServicesTestCase):
     def test_local_app_path_and_upstream(self) -> None:
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")
         (self.tmp_path / "apps" / "app").mkdir(parents=True)
-        up = self.tmp_path / ".generated" / "nginx" / "upstreams"
+        up = self.tmp_path / "generated" / "nginx" / "upstreams"
         up.mkdir(parents=True)
         (up / "app.conf").write_text(
             "upstream app_upstream { server app:80; }\n", encoding="utf-8"
@@ -252,7 +252,12 @@ class TestDoctor(ServicesTestCase):
     def test_missing_compose_and_port_conflict(self) -> None:
         stack = make_stack(self.tmp_path, (make_app("app"),))
         (self.tmp_path / "apps" / "app").mkdir(parents=True)
-        (self.tmp_path / "compose.yaml").unlink()
+        compose = self.tmp_path / "compose.yaml"
+        if compose.is_file():
+            compose.unlink()
+        gen = self.tmp_path / "generated" / "compose.apps.yaml"
+        if gen.is_file():
+            gen.unlink()
         shell = MagicMock()
         shell.run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         docker = MagicMock()
@@ -266,6 +271,7 @@ class TestDoctor(ServicesTestCase):
                     ).run()
                 )
         assert results[(INFRA, "compose.yaml")].status == "fail"
+        assert results[(INFRA, "generated")].status == "fail"
         assert results[(INFRA, "port 80")].status == "warn"
 
     def test_git_ok_partial_stack_and_gate_owns_port(self) -> None:
@@ -362,8 +368,8 @@ class TestDoctor(ServicesTestCase):
 
     def test_docker_with_repo_checks_contract_and_auth(self) -> None:
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")
-        (self.tmp_path / ".generated" / "compose.apps.yaml").parent.mkdir(parents=True)
-        (self.tmp_path / ".generated" / "compose.apps.yaml").write_text("services: {}\n")
+        (self.tmp_path / "generated" / "compose.apps.yaml").parent.mkdir(parents=True, exist_ok=True)
+        (self.tmp_path / "generated" / "compose.apps.yaml").write_text("services: {}\n")
         self._write_certs("hub")
         app = make_app(
             "hub",
@@ -407,8 +413,8 @@ class TestDoctor(ServicesTestCase):
 
     def test_docker_with_repo_warns_without_deploy_key(self) -> None:
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")
-        (self.tmp_path / ".generated" / "compose.apps.yaml").parent.mkdir(parents=True)
-        (self.tmp_path / ".generated" / "compose.apps.yaml").write_text("services: {}\n")
+        (self.tmp_path / "generated" / "compose.apps.yaml").parent.mkdir(parents=True, exist_ok=True)
+        (self.tmp_path / "generated" / "compose.apps.yaml").write_text("services: {}\n")
         self._write_certs("hub")
         app = make_app(
             "hub",
@@ -444,8 +450,8 @@ class TestDoctor(ServicesTestCase):
 
     def test_contract_invalid_content(self) -> None:
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")
-        (self.tmp_path / ".generated" / "compose.apps.yaml").parent.mkdir(parents=True)
-        (self.tmp_path / ".generated" / "compose.apps.yaml").write_text("services: {}\n")
+        (self.tmp_path / "generated" / "compose.apps.yaml").parent.mkdir(parents=True, exist_ok=True)
+        (self.tmp_path / "generated" / "compose.apps.yaml").write_text("services: {}\n")
         self._write_certs("app")
         (self.tmp_path / "apps" / "app").mkdir(parents=True)
         reg = self.tmp_path / "state" / "apps" / "app.yaml"

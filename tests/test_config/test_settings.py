@@ -1,6 +1,9 @@
-"""raft.yaml config loading and logging setup."""
+"""settings.yaml config loading and logging setup."""
+
+from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import pytest
 
@@ -8,10 +11,15 @@ from ..base import RaftTestCase
 from raft.config import (
     LoggingConfig,
     default_config,
+    ensure_raft_home,
+    find_package_root,
     load_config,
+    raft_home,
     reset_logging_for_tests,
     setup_logging,
+    sync_product_templates,
 )
+import raft.config.paths as paths
 
 
 class TestConfig(RaftTestCase):
@@ -22,11 +30,13 @@ class TestConfig(RaftTestCase):
         assert cfg.logging.level == "INFO"
 
     def test_load_missing_uses_defaults(self) -> None:
-        (self.tmp_path / "raft.yaml").unlink()
+        settings = self.tmp_path / "settings.yaml"
+        if settings.is_file():
+            settings.unlink()
         assert load_config(self.tmp_path) == default_config()
 
     def test_load_from_file(self) -> None:
-        (self.tmp_path / "raft.yaml").write_text(
+        (self.tmp_path / "settings.yaml").write_text(
             """
 logging:
   dir: var/log
@@ -41,12 +51,14 @@ logging:
         assert cfg.logging.level == "DEBUG"
 
     def test_rejects_bad_logging_table(self) -> None:
-        (self.tmp_path / "raft.yaml").write_text("logging: nope\n", encoding="utf-8")
+        (self.tmp_path / "settings.yaml").write_text("logging: nope\n", encoding="utf-8")
         with pytest.raises(ValueError, match="must be a mapping"):
             load_config(self.tmp_path)
 
     def test_load_logging_null(self) -> None:
-        (self.tmp_path / "raft.yaml").write_text("# no logging mapping\n", encoding="utf-8")
+        (self.tmp_path / "settings.yaml").write_text(
+            "# no logging mapping\n", encoding="utf-8"
+        )
         assert load_config(self.tmp_path).logging.dir == "logs"
 
     def test_resolve_dir_relative_absolute_and_env(
@@ -59,6 +71,54 @@ logging:
         assert abs_cfg.resolve_dir(self.tmp_path) == (self.tmp_path / "abs-logs").resolve()
         monkeypatch.setenv("RAFT_LOG_DIR", str(self.tmp_path / "env-logs"))
         assert cfg.resolve_dir(self.tmp_path) == (self.tmp_path / "env-logs").resolve()
+
+
+class TestRaftHome(RaftTestCase):
+    def test_raft_home_env_and_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("RAFT_DATA_HOME", str(self.tmp_path / "custom"))
+        assert raft_home() == (self.tmp_path / "custom").resolve()
+        monkeypatch.delenv("RAFT_DATA_HOME", raising=False)
+        assert raft_home() == (Path.home() / ".raft").resolve()
+
+    def test_ensure_syncs_templates(self) -> None:
+        home = self.tmp_path / "home"
+        ensure_raft_home(home)
+        assert (home / "compose.yaml").is_file()
+        assert (home / "nginx" / "gate" / "default.conf").is_file()
+        assert (home / "generated" / "compose.apps.yaml").is_file()
+        assert (home / "state" / "apps").is_dir()
+        # Second ensure refreshes templates and keeps the generated stub.
+        ensure_raft_home(home)
+        assert (home / "nginx" / "gate" / "default.conf").is_file()
+
+    def test_find_package_root_bundled(self) -> None:
+        root = find_package_root()
+        assert (root / "compose.yaml").is_file()
+        assert (root / "nginx").is_dir()
+
+    def test_sync_missing_file_template(self) -> None:
+        empty = self.tmp_path / "empty-pkg"
+        empty.mkdir()
+        with pytest.raises(FileNotFoundError, match="missing package template"):
+            sync_product_templates(self.tmp_path / "dest", empty)
+
+    def test_sync_missing_dir_template(self) -> None:
+        pkg = self.tmp_path / "partial-pkg"
+        pkg.mkdir()
+        (pkg / "compose.yaml").write_text("name: raft\n", encoding="utf-8")
+        dest = self.tmp_path / "dest"
+        dest.mkdir()
+        with pytest.raises(FileNotFoundError, match="missing package template dir"):
+            sync_product_templates(dest, pkg)
+
+    def test_find_package_root_missing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(paths, "_bundled_share", lambda: self.tmp_path / "nope")
+        orphan = self.tmp_path / "orphan"
+        orphan.mkdir()
+        with pytest.raises(FileNotFoundError, match="package templates"):
+            find_package_root(orphan)
 
 
 class TestSetupLogging(RaftTestCase):

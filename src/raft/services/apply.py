@@ -116,11 +116,11 @@ class AppApply:
         fresh = load_stack(self.stack.root)
         if fresh.apps:
             StackRenderer(fresh).render()
-            say("re-rendered .generated/; remove the Compose service if it is still running")
+            say("re-rendered generated/; remove the Compose service if it is still running")
         else:
             # No apps left — write empty generated apps file
             StackRenderer(fresh).render()
-            say("re-rendered .generated/ (no apps applied)")
+            say("re-rendered generated/ (no apps applied)")
 
     def _deploy(
         self,
@@ -135,4 +135,4 @@ class AppApply:
             orch.redeploy_app(name, ref_override=ref_override, force_sync=force_sync)
         else:
             orch.sync([name], ref_override=ref_override, force=force_sync)
-            say(f"synced {name}; bring the stack up with: uv run raft up")
+            say(f"synced {name}; bring the stack up with: raft up")

@@ -165,7 +165,7 @@ class GitAuthManager:
         )
 
         logger.info("auth %s: clone URL will be %s", service, parsed.with_host_alias(alias))
-        say(f"next: uv run raft auth test {service} && uv run raft sync {service}")
+        say(f"next: raft auth test {service} && raft sync {service}")
 
     def list_services(self) -> list[str]:
         if not self.keys_dir.is_dir():
@@ -184,7 +184,7 @@ class GitAuthManager:
         path = self.pub_path(service)
         if not path.is_file():
             raise RuntimeError(
-                f"no deploy key for {service!r}; run: uv run raft auth setup {service}"
+                f"no deploy key for {service!r}; run: raft auth setup {service}"
             )
         return path.read_text(encoding="utf-8").strip()
 
@@ -215,7 +215,7 @@ class GitAuthManager:
             )
         if not self.is_configured(service):
             raise RuntimeError(
-                f"no key for {service!r}; run: uv run raft auth setup {service}"
+                f"no key for {service!r}; run: raft auth setup {service}"
             )
         url = self.effective_clone_url(app)
         logger.info("auth test %s: git ls-remote %s", service, url)

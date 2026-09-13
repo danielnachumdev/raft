@@ -19,6 +19,7 @@ from .inventory import (
     load_inventory,
     load_stack,
 )
+from ..config.paths import ensure_raft_home, find_package_root, raft_home
 
 __all__ = [
     "COMPOSE_PROJECT",
@@ -29,11 +30,14 @@ __all__ = [
     "ServiceContract",
     "Stack",
     "contract_path",
+    "ensure_raft_home",
+    "find_package_root",
     "find_repo_root",
     "load_app_file",
     "load_contract",
     "load_inventory",
     "load_registry",
     "load_stack",
+    "raft_home",
     "registry_path",
 ]

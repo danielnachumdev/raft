@@ -59,7 +59,7 @@ class TestSourceSync(ServicesTestCase):
         assert "clone" in cmds
         assert "fetch" in cmds
         assert "checkout" in cmds
-        state = (self.tmp_path / ".deploy" / "svc.ref").read_text(encoding="utf-8")
+        state = (self.tmp_path / "deploy" / "svc.ref").read_text(encoding="utf-8")
         assert "abc123def456" in state
         assert "deadbeef" in state
 
@@ -154,7 +154,7 @@ class TestSourceSync(ServicesTestCase):
             returncode=0, stdout="sha256:deadbeef\n", stderr=""
         )
         self.syncer.sync([app])
-        assert (self.tmp_path / ".deploy" / "hub.ref").is_file()
+        assert (self.tmp_path / "deploy" / "hub.ref").is_file()
         pulls = [c.args for c in self.shell.docker.call_args_list if c.args[:1] == ("pull",)]
         assert pulls
 
@@ -232,7 +232,7 @@ class TestSourceSync(ServicesTestCase):
         self.shell.docker.assert_any_call(
             "tag", "ghcr.io/org/hub:abc123", "ghcr.io/org/hub:main"
         )
-        state = (self.tmp_path / ".deploy" / "hub.ref").read_text(encoding="utf-8")
+        state = (self.tmp_path / "deploy" / "hub.ref").read_text(encoding="utf-8")
         assert "abc123" in state
         assert "ghcr.io/org/hub@sha256:deadbeef" in state
 

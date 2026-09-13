@@ -1,4 +1,4 @@
-"""Isolate SSH dir and logging so tests never touch real ~/.ssh or repo logs."""
+"""Isolate SSH dir, data home, and logging so tests never touch real ~/.raft or ~/.ssh."""
 
 from pathlib import Path
 
@@ -13,6 +13,14 @@ def isolated_raft_ssh_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Pa
     ssh.mkdir()
     monkeypatch.setenv("RAFT_SSH_DIR", str(ssh))
     return ssh
+
+
+@pytest.fixture(autouse=True)
+def isolated_raft_data_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    home = tmp_path / "raft-data-home"
+    home.mkdir()
+    monkeypatch.setenv("RAFT_DATA_HOME", str(home))
+    return home
 
 
 @pytest.fixture(autouse=True)

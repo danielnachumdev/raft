@@ -2,7 +2,7 @@
 
 Canonical path in a service repo: ``.raft/app.yaml``.
 
-Applied desired state on the VPS: ``state/apps/<name>.yaml`` (not in git).
+Applied desired state on the VPS: ``~/.raft/state/apps/<name>.yaml``.
 There is no per-service inventory.toml — ``raft apply`` registers apps.
 """
 
@@ -322,7 +322,7 @@ def load_contract(
 
 
 def load_registry(root: Path) -> tuple[App, ...]:
-    """Load applied apps from ``state/apps/*.yaml`` (on-VPS desired state)."""
+    """Load applied apps from ``~/.raft/state/apps/*.yaml``."""
     directory = registry_dir(root)
     if not directory.is_dir():
         return ()

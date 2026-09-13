@@ -18,7 +18,7 @@ from raft.models.contract import (
     parse_app_document,
     write_registry_app,
 )
-from raft.models.inventory import find_repo_root, load_inventory, load_stack
+from raft.models.inventory import find_package_root, load_inventory, load_stack
 from raft.services.render import StackRenderer
 
 
@@ -472,14 +472,14 @@ class TestRender(RaftTestCase):
         )
         stack = load_stack(self.tmp_path)
         StackRenderer(stack).render()
-        compose = (self.tmp_path / ".generated" / "compose.apps.yaml").read_text(
+        compose = (self.tmp_path / "generated" / "compose.apps.yaml").read_text(
             encoding="utf-8"
         )
         assert "web:" in compose
         assert "build: ./apps/web" in compose or "context: ./apps/web" in compose
         assert "dockerfile: Dockerfile" in compose
         hosts = (
-            self.tmp_path / ".generated" / "nginx" / "router" / "hosts.conf"
+            self.tmp_path / "generated" / "nginx" / "router" / "hosts.conf"
         ).read_text(encoding="utf-8")
         assert "server_name web.test www.web.test" in hosts
 
@@ -498,11 +498,11 @@ class TestRender(RaftTestCase):
             registry_root=self.tmp_path,
         )
         stack = load_stack(self.tmp_path)
-        tls_dir = self.tmp_path / ".generated" / "nginx" / "gate-tls"
-        tls_dir.mkdir(parents=True)
+        tls_dir = self.tmp_path / "generated" / "nginx" / "gate-tls"
+        tls_dir.mkdir(parents=True, exist_ok=True)
         (tls_dir / "old.conf").write_text("stale\n", encoding="utf-8")
         StackRenderer(stack).render()
-        compose = (self.tmp_path / ".generated" / "compose.apps.yaml").read_text(
+        compose = (self.tmp_path / "generated" / "compose.apps.yaml").read_text(
             encoding="utf-8"
         )
         assert "image: ghcr.io/org/hub:main" in compose
@@ -544,7 +544,7 @@ class TestRender(RaftTestCase):
         _write_contract(
             web, context="../../../etc", registry_root=self.tmp_path
         )
-        with pytest.raises(ValueError, match="outside orchestrator root"):
+        with pytest.raises(ValueError, match="outside raft data home"):
             StackRenderer(load_stack(self.tmp_path)).render()
 
     def test_render_simple_build_path_and_missing_contract_map(self) -> None:
@@ -613,14 +613,14 @@ services:
         _write_contract(checkout, name="web")
         stack = load_stack(self.tmp_path)
         assert isinstance(stack.contract_for(stack.apps[0]), ServiceContract)
-        assert stack.generated_dir() == self.tmp_path / ".generated"
+        assert stack.generated_dir() == self.tmp_path / "generated"
 
-    def test_find_repo_root_walks_package(self) -> None:
+    def test_find_package_root_bundled(self) -> None:
         orphan = Path(tempfile.mkdtemp(prefix="raft-orphan-"))
         try:
-            found = find_repo_root(start=orphan)
+            found = find_package_root(start=orphan)
             assert (found / "compose.yaml").is_file()
-            assert (found / "raft.yaml").is_file()
+            assert (found / "nginx").is_dir()
         finally:
             os.rmdir(orphan)
 

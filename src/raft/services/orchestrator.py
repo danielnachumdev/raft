@@ -43,7 +43,7 @@ class Orchestrator:
 
     def render(self) -> None:
         StackRenderer(self.stack).render()
-        say("rendered .generated/ from inventory + service contracts")
+        say("rendered generated/ from inventory + service contracts")
 
     def start(self) -> None:
         running = self.docker.running_services()
@@ -52,8 +52,8 @@ class Orchestrator:
             raise RuntimeError(
                 f"stack already running ({joined}). "
                 "Refusing to rebuild/reload everything — "
-                "run `uv run raft down` first, "
-                "or `uv run raft redeploy <app|router>` for a targeted update."
+                "run `raft down` first, "
+                "or `raft redeploy <app|router>` for a targeted update."
             )
         logger.info("syncing service sources from inventory")
         self.sync()
@@ -68,7 +68,7 @@ class Orchestrator:
                 interval=1.0,
             )
         say("stack is up")
-        say("redeploy with: uv run raft redeploy <app>")
+        say("redeploy with: raft redeploy <app>")
 
     def stop(self) -> None:
         running = self.docker.running_services()
