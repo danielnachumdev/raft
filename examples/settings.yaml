@@ -1,5 +1,5 @@
 # raft operator settings — copy to ~/.raft/settings.yaml (created on first use with defaults).
-# Override the data home with RAFT_DATA_HOME (default: ~/.raft).
+# This file lives under examples/; override the data home with RAFT_DATA_HOME (default: ~/.raft).
 
 logging:
   # Directory for log files (relative to the data home, or absolute).

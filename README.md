@@ -39,10 +39,14 @@ raft get apps
 
 Apps own their contract (`.raft/app.yaml`). The VPS stores applied desired state under `~/.raft/state/apps/` and generated Compose/nginx under `~/.raft/generated/`. Settings: `~/.raft/settings.yaml`.
 
+## Examples
+
+See **[`examples/`](examples/)** for copy-paste samples: operator [`settings.yaml`](examples/settings.yaml) and a minimal [`consumer-app/`](examples/consumer-app/) (Dockerfile + App contract + deploy notes).
+
 ## Requirements
 
 - **Python 3.8+** (CI: 3.8–3.13); uv can fetch an interpreter when needed  
-- Runtime settings: `~/.raft/settings.yaml` (logging); PyYAML  
+- Runtime settings: `~/.raft/settings.yaml` (logging); template in [`examples/settings.yaml`](examples/settings.yaml)  
 - Docker + Compose on the host  
 - For HTTPS: Cloudflare Origin PEMs per app under `~/.raft/certs/<name>/` (missing PEMs break the gate for HTTP too)
 

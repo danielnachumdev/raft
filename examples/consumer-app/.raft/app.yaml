@@ -1,0 +1,20 @@
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: example-app
+spec:
+  publicHost: app.example.com
+  source: git
+  repo: git@github.com:example/consumer-app.git
+  ref: main
+  path: apps/example-app
+  www: true
+  ports:
+    - name: http
+      containerPort: 80
+  build:
+    context: .
+    dockerfile: Dockerfile
+  readinessProbe:
+    httpGet:
+      path: /

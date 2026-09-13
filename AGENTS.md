@@ -10,6 +10,8 @@ Public product: CLI + Compose/nginx templates + tests. Operators typically run [
 
 Desired apps are **not** a committed inventory. Operators `apply` App manifests; registry files live in `~/.raft/state/apps/*.yaml`.
 
+User-facing samples live under **[`examples/`](examples/)**: operator settings template (`examples/settings.yaml`) and a minimal consumer repo (`examples/consumer-app/`).
+
 ---
 
 ## Architecture (hard rules)
@@ -38,7 +40,7 @@ Cutover reloads **router** nginx, not gate. Never `raft redeploy gate`.
 | Path | Role |
 |------|------|
 | `compose.yaml`, `nginx/` (`src/raft/share/`) | Product templates; synced into the data home on use |
-| `~/.raft/settings.yaml` | Operator settings (logging); see `settings.yaml.example` |
+| `~/.raft/settings.yaml` | Operator settings (logging); see [`examples/settings.yaml`](examples/settings.yaml) |
 | `~/.raft/state/apps/*.yaml` | Applied desired state |
 | `~/.raft/generated/` | Compose apps + router hosts + gate-tls + **upstreams** |
 | `~/.raft/apps/` | Sync checkouts |
