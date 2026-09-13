@@ -37,6 +37,13 @@ class TestOrchestrator(ServicesTestCase):
         sync.assert_called_once()
         self.orch.docker.start_stack.assert_called_once()
 
+    def test_recreate_gate_happy(self) -> None:
+        self.orch.docker.running_services.return_value = ["gate", "router"]
+        self.orch.http.tcp_port_ok.return_value = True
+        with patch.object(self.orch, "render"):
+            self.orch.recreate_gate()
+        self.orch.docker.recreate_gate.assert_called_once()
+
     def test_stop_already_stopped(self) -> None:
         self.orch.docker.running_services.return_value = []
         self.orch.stop()

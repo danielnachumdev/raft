@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ..base import make_app, make_stack
+from ..base import make_app, make_stack, write_applied_app
 from .base import ServicesTestCase
 from raft.services import CutoverSession
 
@@ -12,6 +12,39 @@ class TestCutoverSession(ServicesTestCase):
     @pytest.fixture(autouse=True)
     def _cutover_setup(self, _services_setup) -> None:
         self.session = self.cutover_session()
+
+    def _docker_session(self, *, ref_text: str | None = None) -> CutoverSession:
+        write_applied_app(
+            self.tmp_path,
+            "hub",
+            source="docker",
+            image="ghcr.io/org/hub",
+            public_host="hub.test",
+            build_context=None,
+        )
+        app = make_app(
+            "hub", source="docker", image="ghcr.io/org/hub", ref="main"
+        )
+        stack = make_stack(
+            self.tmp_path,
+            (app,),
+            drain_seconds=0.0,
+            ready_timeout_seconds=1.0,
+        )
+        if ref_text is not None:
+            (self.tmp_path / "deploy").mkdir(parents=True, exist_ok=True)
+            (self.tmp_path / "deploy" / "hub.ref").write_text(
+                ref_text, encoding="utf-8"
+            )
+        docker = MagicMock()
+        docker.router_can_fetch.return_value = True
+        return CutoverSession(
+            stack=stack,
+            app=app,
+            docker=docker,
+            nginx=MagicMock(),
+            http=MagicMock(),
+        )
 
     def test_full_cutover_happy_path(self) -> None:
         s = self.session
@@ -45,112 +78,34 @@ class TestCutoverSession(ServicesTestCase):
             ).read_text(encoding="utf-8")
 
     def test_rebuild_stable_docker_pulls(self) -> None:
-        app = make_app(
-            "hub", source="docker", image="ghcr.io/org/hub", ref="main"
-        )
-        stack = make_stack(
-            self.tmp_path,
-            (app,),
-            drain_seconds=0.0,
-            ready_timeout_seconds=1.0,
-        )
-        (self.tmp_path / "deploy").mkdir(parents=True, exist_ok=True)
-        (self.tmp_path / "deploy" / "hub.ref").write_text(
-            "digest\n# requested: abc123\n", encoding="utf-8"
-        )
-        docker = MagicMock()
-        docker.router_can_fetch.return_value = True
-        session = CutoverSession(
-            stack=stack,
-            app=app,
-            docker=docker,
-            nginx=MagicMock(),
-            http=MagicMock(),
-        )
+        session = self._docker_session(ref_text="digest\n# requested: abc123\n")
         session.rebuild_stable_service()
-        docker.recreate_pulled_service.assert_called_once_with(
-            app, pull_ref="ghcr.io/org/hub:abc123"
+        session.docker.recreate_pulled_service.assert_called_once_with(
+            session.app, pull_ref="ghcr.io/org/hub:abc123"
         )
-        docker.rebuild_service.assert_not_called()
+        session.docker.rebuild_service.assert_not_called()
 
     def test_rebuild_stable_docker_defaults_ref(self) -> None:
-        app = make_app(
-            "hub", source="docker", image="ghcr.io/org/hub", ref="main"
-        )
-        stack = make_stack(
-            self.tmp_path,
-            (app,),
-            drain_seconds=0.0,
-            ready_timeout_seconds=1.0,
-        )
-        docker = MagicMock()
-        docker.router_can_fetch.return_value = True
-        session = CutoverSession(
-            stack=stack,
-            app=app,
-            docker=docker,
-            nginx=MagicMock(),
-            http=MagicMock(),
-        )
+        session = self._docker_session()
         session.rebuild_stable_service()
-        docker.recreate_pulled_service.assert_called_once_with(
-            app, pull_ref="ghcr.io/org/hub:main"
+        session.docker.recreate_pulled_service.assert_called_once_with(
+            session.app, pull_ref="ghcr.io/org/hub:main"
         )
 
     def test_rebuild_stable_docker_empty_requested_keeps_ref(self) -> None:
-        app = make_app(
-            "hub", source="docker", image="ghcr.io/org/hub", ref="main"
-        )
-        stack = make_stack(
-            self.tmp_path,
-            (app,),
-            drain_seconds=0.0,
-            ready_timeout_seconds=1.0,
-        )
-        (self.tmp_path / "deploy").mkdir(parents=True, exist_ok=True)
-        (self.tmp_path / "deploy" / "hub.ref").write_text(
-            "digest\n# requested:   \n", encoding="utf-8"
-        )
-        docker = MagicMock()
-        docker.router_can_fetch.return_value = True
-        session = CutoverSession(
-            stack=stack,
-            app=app,
-            docker=docker,
-            nginx=MagicMock(),
-            http=MagicMock(),
-        )
+        session = self._docker_session(ref_text="digest\n# requested:   \n")
         session.rebuild_stable_service()
-        docker.recreate_pulled_service.assert_called_once_with(
-            app, pull_ref="ghcr.io/org/hub:main"
+        session.docker.recreate_pulled_service.assert_called_once_with(
+            session.app, pull_ref="ghcr.io/org/hub:main"
         )
 
     def test_rebuild_stable_docker_state_without_requested(self) -> None:
-        app = make_app(
-            "hub", source="docker", image="ghcr.io/org/hub", ref="main"
-        )
-        stack = make_stack(
-            self.tmp_path,
-            (app,),
-            drain_seconds=0.0,
-            ready_timeout_seconds=1.0,
-        )
-        (self.tmp_path / "deploy").mkdir(parents=True, exist_ok=True)
-        (self.tmp_path / "deploy" / "hub.ref").write_text(
-            "sha256:only\n# pin: ghcr.io/org/hub:main\n", encoding="utf-8"
-        )
-        docker = MagicMock()
-        docker.router_can_fetch.return_value = True
-        session = CutoverSession(
-            stack=stack,
-            app=app,
-            docker=docker,
-            nginx=MagicMock(),
-            http=MagicMock(),
+        session = self._docker_session(
+            ref_text="sha256:only\n# pin: ghcr.io/org/hub:main\n"
         )
         session.rebuild_stable_service()
-        docker.recreate_pulled_service.assert_called_once_with(
-            app, pull_ref="ghcr.io/org/hub:main"
+        session.docker.recreate_pulled_service.assert_called_once_with(
+            session.app, pull_ref="ghcr.io/org/hub:main"
         )
 
     def test_log_prints(self, caplog: pytest.LogCaptureFixture) -> None:

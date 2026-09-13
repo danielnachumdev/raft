@@ -10,6 +10,7 @@ from . import deps
 from . import delete as delete_cmd
 from . import get as get_cmd
 from .auth import AuthCLI
+from .gate import GateCLI
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ class RaftCLI:
         log_file = deps.setup_logging(self._stack.root, config)
         logger.debug("config loaded; log_file=%s", log_file)
         self.auth = AuthCLI(self._stack)
+        self.gate = GateCLI(self._stack)
 
     @property
     def _app_names(self) -> list[str]:

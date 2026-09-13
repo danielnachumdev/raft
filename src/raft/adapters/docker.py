@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import logging
 
-from ..models.inventory import COMPOSE_PROJECT, App, Stack
+from ..models.app import COMPOSE_PROJECT, App
+from ..models.ports import PortSpec
+from ..models.stack import Stack
 from .shell import Shell
 
 logger = logging.getLogger(__name__)
+
 
 class DockerStack:
     def __init__(self, stack: Stack, shell: Shell) -> None:
@@ -36,6 +39,34 @@ class DockerStack:
     def recreate_router(self) -> None:
         logger.info("force-recreate router")
         self.sh.compose("up", "-d", "--no-deps", "--force-recreate", self.stack.router)
+
+    def recreate_gate(self) -> None:
+        logger.info("force-recreate gate (published edge ports)")
+        self.sh.compose("up", "-d", "--no-deps", "--force-recreate", self.stack.gate)
+
+    def gate_published_ports(self) -> list[int]:
+        try:
+            cid = self.service_container_id(self.stack.gate)
+        except RuntimeError:
+            return []
+        result = self.sh.docker(
+            "inspect",
+            "-f",
+            "{{range $p, $conf := .NetworkSettings.Ports}}"
+            "{{if $conf}}{{$p}} {{end}}{{end}}",
+            cid,
+            capture=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            return []
+        ports: list[int] = []
+        for token in (result.stdout or "").split():
+            # e.g. 80/tcp
+            num = token.split("/", 1)[0]
+            if num.isdigit():
+                ports.append(int(num))
+        return sorted(set(ports))
 
     def rebuild_service(self, service: str) -> None:
         logger.info("rebuild service %s", service)
@@ -112,19 +143,19 @@ class DockerStack:
             capture=True,
         )
 
-    def router_can_fetch(self, hostname: str) -> bool:
+    def router_can_fetch(self, hostname: str, *, port: int = 80) -> bool:
         result = self.sh.compose(
             "exec",
             "-T",
             self.stack.router,
             "wget",
             "-qO-",
-            f"http://{hostname}:80/",
+            f"http://{hostname}:{port}/",
             check=False,
             capture=True,
         )
         ok = result.returncode == 0
-        logger.debug("router_can_fetch %s -> %s", hostname, ok)
+        logger.debug("router_can_fetch %s:%s -> %s", hostname, port, ok)
         return ok
 
     def nginx_test_and_reload(self) -> None:
@@ -132,7 +163,13 @@ class DockerStack:
         self.sh.compose("exec", "-T", self.stack.router, "nginx", "-t")
         self.sh.compose("exec", "-T", self.stack.router, "nginx", "-s", "reload")
 
-    def router_sees_upstream_target(self, app: App, target: str) -> bool:
+    def router_sees_upstream_target(
+        self,
+        app: App,
+        target: str,
+        port: PortSpec,
+    ) -> bool:
+        filename = f"{app.name}-{port.name}.conf"
         result = self.sh.compose(
             "exec",
             "-T",
@@ -140,7 +177,7 @@ class DockerStack:
             "grep",
             "-q",
             target,
-            f"/etc/nginx/upstreams/{app.name}.conf",
+            f"/etc/nginx/upstreams/{filename}",
             check=False,
             capture=True,
         )

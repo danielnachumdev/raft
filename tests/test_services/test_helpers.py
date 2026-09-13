@@ -40,8 +40,15 @@ class TestOrchestratorPolicy(ServicesTestCase):
         self.orch = self.orchestrator(mock_deps=False)
 
     def test_redeploy_refuses_gate(self) -> None:
-        with pytest.raises(RuntimeError, match="refusing to redeploy `gate`"):
+        with pytest.raises(RuntimeError, match="raft gate recreate"):
             self.orch.redeploy("gate")
+
+    def test_recreate_gate_requires_running(self) -> None:
+        with patch.object(
+            self.orch.docker, "running_services", return_value=["router"]
+        ):
+            with pytest.raises(RuntimeError, match="gate is not running"):
+                self.orch.recreate_gate()
 
     def test_start_refuses_if_running(self) -> None:
         with patch.object(

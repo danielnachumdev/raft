@@ -101,6 +101,10 @@ class TestCli(RaftTestCase):
             with pytest.raises(SystemExit):
                 cli.main(["redeploy", "gate"])
 
+    def test_gate_recreate_dispatch(self) -> None:
+        assert self._run_main(["gate", "recreate"]) == 0
+        self.orch.recreate_gate.assert_called_once()
+
     def test_run_success_exits_zero(self) -> None:
         with pytest.raises(SystemExit) as exc:
             self._run_cli(["down"])

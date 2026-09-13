@@ -1,4 +1,4 @@
-"""App model — one public site backed by one Compose service name."""
+"""App model — one Compose service, optionally one public Host."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Optional
 
 COMPOSE_PROJECT = "raft"
+
 
 @dataclass(frozen=True)
 class App:

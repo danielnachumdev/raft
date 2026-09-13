@@ -9,14 +9,14 @@ from typing import Optional
 import yaml
 
 from ..adapters.shell import Shell
-from ..models.contract import (
+from ..models.manifest import (
     CONTRACT_REL_PATH,
     contract_path,
     delete_registry_app,
     parse_app_document,
     write_registry_app,
 )
-from ..models.inventory import Stack, load_stack
+from ..models.stack import Stack, load_stack
 from .orchestrator import Orchestrator
 from .render import StackRenderer
 from ..ui import say

@@ -4,6 +4,7 @@ import pytest
 
 from ..base import make_app
 from .base import AdapterTestCase
+from raft.models.ports import PortSpec
 
 class TestDockerStack(AdapterTestCase):
     @pytest.fixture(autouse=True)
@@ -121,7 +122,19 @@ class TestDockerStack(AdapterTestCase):
         self.docker.nginx_test_and_reload()
 
     def test_router_sees_upstream_target(self) -> None:
+        port = PortSpec(name="http", container_port=80, expose="http")
         self.shell.compose.return_value = self.ok(returncode=0)
-        assert self.docker.router_sees_upstream_target(self.app, "app_tmp") is True
+        assert self.docker.router_sees_upstream_target(self.app, "app_tmp", port) is True
         self.shell.compose.return_value = self.ok(returncode=1)
-        assert self.docker.router_sees_upstream_target(self.app, "app_tmp") is False
+        assert self.docker.router_sees_upstream_target(self.app, "app_tmp", port) is False
+
+    def test_recreate_gate_and_published_ports(self) -> None:
+        self.shell.compose.return_value = self.ok("gatecid\n")
+        self.docker.recreate_gate()
+        self.shell.compose.assert_any_call(
+            "up", "-d", "--no-deps", "--force-recreate", "gate"
+        )
+        self.shell.docker.return_value = self.ok("80/tcp 443/tcp\n")
+        assert self.docker.gate_published_ports() == [80, 443]
+        self.shell.compose.return_value = self.ok("  \n")
+        assert self.docker.gate_published_ports() == []

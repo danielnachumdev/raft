@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 from unittest.mock import MagicMock, patch
 
-from ..base import make_app, make_git_app, make_stack
+from ..base import make_app, make_git_app, make_stack, write_applied_app
 from .base import ServicesTestCase
 from raft.services import CheckResult, Doctor
 from raft.services.doctor import INFRA
@@ -16,6 +16,8 @@ class TestDoctor(ServicesTestCase):
         shell = kwargs.pop("shell", MagicMock())
         auth = kwargs.pop("auth", MagicMock())
         docker = kwargs.pop("docker", MagicMock())
+        if isinstance(docker.gate_published_ports.return_value, MagicMock):
+            docker.gate_published_ports.return_value = [80, 443]
         return Doctor(stack, shell=shell, auth=auth, docker=docker, **kwargs)
 
     def _write_certs(self, *names: str) -> None:
@@ -145,8 +147,8 @@ class TestDoctor(ServicesTestCase):
         (self.tmp_path / "apps" / "app").mkdir(parents=True)
         up = self.tmp_path / "generated" / "nginx" / "upstreams"
         up.mkdir(parents=True)
-        (up / "app.conf").write_text(
-            "upstream app_upstream { server app:80; }\n", encoding="utf-8"
+        (up / "app-http.conf").write_text(
+            "upstream app_http { server app:80; }\n", encoding="utf-8"
         )
         self._write_certs("app")
 
@@ -171,6 +173,13 @@ class TestDoctor(ServicesTestCase):
 
     def test_git_app_missing_auth_and_checkout(self) -> None:
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")
+        write_applied_app(
+            self.tmp_path,
+            "svc",
+            source="git",
+            repo="git@github.com:org/svc.git",
+            public_host="svc.test",
+        )
         stack = make_stack(self.tmp_path, (make_git_app("svc"),))
         auth = MagicMock()
         auth.is_configured.return_value = False
@@ -191,9 +200,8 @@ class TestDoctor(ServicesTestCase):
         assert "auth setup svc" in results[("svc", "auth")].fix
         assert results[("svc", "sync")].status == "fail"
         assert "sync svc" in results[("svc", "sync")].fix
-        assert results[("svc", "certs")].status == "fail"
-        assert "certs/svc/" in results[("svc", "certs")].detail
-        assert "Origin PEMs for svc only" in results[("svc", "certs")].fix
+        assert results[("svc", "certs")].status == "ok"
+        assert "tls: off" in results[("svc", "certs")].detail
         assert results[(INFRA, "stack")].status == "warn"
         assert results[(INFRA, "port 80")].status == "ok"
 
@@ -225,6 +233,13 @@ class TestDoctor(ServicesTestCase):
         dest = self.tmp_path / "apps" / "svc"
         dest.mkdir(parents=True)
         (dest / "README").write_text("x", encoding="utf-8")
+        write_applied_app(
+            self.tmp_path,
+            "svc",
+            source="git",
+            repo="git@github.com:org/svc.git",
+            public_host="svc.test",
+        )
         stack = make_stack(self.tmp_path, (make_git_app("svc"),))
         auth = MagicMock()
         auth.is_configured.return_value = True
@@ -278,6 +293,13 @@ class TestDoctor(ServicesTestCase):
         dest.mkdir(parents=True)
         (dest / ".git").mkdir()
         self._write_certs("svc")
+        write_applied_app(
+            self.tmp_path,
+            "svc",
+            source="git",
+            repo="git@github.com:org/svc.git",
+            public_host="svc.test",
+        )
         stack = make_stack(self.tmp_path, (make_git_app("svc"),))
         auth = MagicMock()
         auth.is_configured.return_value = True
@@ -332,7 +354,7 @@ class TestDoctor(ServicesTestCase):
                     self._doctor(shell=shell, docker=docker, auth=MagicMock()).run()
                 )
         assert results[("app", "sync")].status == "fail"
-        assert results[("app", "certs")].status == "fail"
+        assert results[("app", "certs")].status == "ok"
 
     def test_docker_source_image_checks(self) -> None:
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")
@@ -382,7 +404,11 @@ class TestDoctor(ServicesTestCase):
         reg = self.tmp_path / "state" / "apps" / "hub.yaml"
         reg.parent.mkdir(parents=True, exist_ok=True)
         reg.write_text(
-            "apiVersion: raft/v1\nkind: App\nmetadata:\n  name: hub\nspec:\n  publicHost: hub.test\n  source: docker\n  image: ghcr.io/org/hub\n  ref: main\n  repo: git@github.com:org/hub.git\n  path: apps/hub\n  www: false\n  ports:\n    - containerPort: 80\n",
+            "apiVersion: raft/v1\nkind: App\nmetadata:\n  name: hub\nspec:\n"
+            "  publicHost: hub.test\n  source: docker\n  image: ghcr.io/org/hub\n"
+            "  ref: main\n  repo: git@github.com:org/hub.git\n  path: apps/hub\n"
+            "  www: false\n  ports:\n"
+            "    - name: http\n      containerPort: 80\n      expose: http\n",
             encoding="utf-8",
         )
         stack = make_stack(self.tmp_path, (app,))
@@ -502,6 +528,7 @@ class TestDoctor(ServicesTestCase):
     def test_certs_partial_pair_fails(self) -> None:
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")
         (self.tmp_path / "apps" / "app").mkdir(parents=True)
+        write_applied_app(self.tmp_path, "app", tls="origin")
         d = self.tmp_path / "certs" / "app"
         d.mkdir(parents=True)
         (d / "origin.pem").write_text("pem\n", encoding="utf-8")
@@ -519,7 +546,7 @@ class TestDoctor(ServicesTestCase):
                 )
         assert results[("app", "certs")].status == "fail"
         assert "origin.key" in results[("app", "certs")].detail
-        assert "before recreating gate" in results[("app", "certs")].fix
+        assert "tls: origin" in results[("app", "certs")].fix
 
     def test_report_unknown_service_appended(self, capsys) -> None:
         d = self._doctor()

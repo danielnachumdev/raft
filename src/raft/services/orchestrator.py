@@ -1,4 +1,4 @@
-"""High-level up / down / sync / redeploy orchestration."""
+"""High-level up / down / sync / redeploy / gate recreate orchestration."""
 
 from __future__ import annotations
 
@@ -8,14 +8,17 @@ from typing import Optional
 from .cutover import DEPLOY_CUTOVER, CutoverSession, wait_until
 from ..adapters.docker import DockerStack
 from ..adapters.http import HttpProbe
-from ..models.inventory import Stack
+from ..models.stack import Stack
 from ..adapters.nginx import NginxUpstreams
 from ..adapters.shell import Shell
+from ..config.settings import load_config
+from .readiness import ReadinessStrategy
 from .render import StackRenderer
 from .sync import SourceSync
 from ..ui import say
 
 logger = logging.getLogger(__name__)
+
 
 class Orchestrator:
     def __init__(self, stack: Stack) -> None:
@@ -41,7 +44,20 @@ class Orchestrator:
 
     def render(self) -> None:
         StackRenderer(self.stack).render()
-        say("rendered generated/ from inventory + service contracts")
+        say("rendered generated/ from applied App manifests + edge settings")
+
+    def _wait_app_ready(self, app, *, timeout: float = 45) -> None:
+        spec = self.stack.spec_for(app)
+        strategy = ReadinessStrategy.from_spec(spec)
+        predicate = strategy.wait_predicate(app, self.stack, self.http)
+        if predicate is None:
+            return
+        label = (
+            f"Host {app.public_host}"
+            if strategy.kind == "http"
+            else f"{strategy.kind} readiness for {app.name}"
+        )
+        wait_until(label, predicate, timeout=timeout, interval=1.0)
 
     def start(self) -> None:
         running = self.docker.running_services()
@@ -57,14 +73,9 @@ class Orchestrator:
         self.sync()
         logger.info("starting stack")
         self.docker.start_stack()
-        logger.info("waiting for public Host checks")
+        logger.info("waiting for readiness checks")
         for app in self.stack.apps:
-            wait_until(
-                f"Host {app.public_host}",
-                lambda a=app: self.http.public_host_ok(a),
-                timeout=45,
-                interval=1.0,
-            )
+            self._wait_app_ready(app, timeout=45)
         say("stack is up")
         say("redeploy with: raft redeploy <app>")
 
@@ -86,23 +97,38 @@ class Orchestrator:
         if target == self.stack.gate:
             raise RuntimeError(
                 "refusing to redeploy `gate` — it is the stable public edge. "
-                "Change gate only deliberately (`down`/`up`), not via redeploy."
+                "To change published edge ports, run `raft gate recreate` "
+                "(brief edge downtime)."
             )
         self.redeploy_app(target)
+
+    def recreate_gate(self) -> None:
+        if self.stack.gate not in self.docker.running_services():
+            raise RuntimeError("gate is not running — bring the stack up first")
+        self.render()
+        say(
+            "recreating gate to pick up published edge ports "
+            "(brief edge downtime — typically 1–2s)"
+        )
+        self.docker.recreate_gate()
+        edge = load_config(self.stack.root).edge
+        for port, _protocol in edge.published_ports():
+            wait_until(
+                f"edge listener :{port}",
+                lambda p=port: self.http.tcp_port_ok(p),
+                timeout=30,
+                interval=0.5,
+            )
+        say("gate recreated")
 
     def redeploy_router(self) -> None:
         if self.stack.gate not in self.docker.running_services():
             raise RuntimeError("gate is not running — bring the stack up first")
         logger.info("recreating inner router (gate stays up)")
         self.docker.recreate_router()
-        logger.info("waiting for public Host checks via gate")
+        logger.info("waiting for readiness via gate")
         for app in self.stack.apps:
-            wait_until(
-                f"Host {app.public_host}",
-                lambda a=app: self.http.public_host_ok(a),
-                timeout=45,
-                interval=1.0,
-            )
+            self._wait_app_ready(app, timeout=45)
         say("router redeployed")
 
     def redeploy_app(

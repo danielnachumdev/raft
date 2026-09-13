@@ -82,11 +82,49 @@ class TestRaftHome(RaftTestCase):
         home = self.tmp_path / "home"
         ensure_raft_home(home)
         assert (home / "compose.yaml").is_file()
-        assert (home / "nginx" / "gate" / "default.conf").is_file()
+        assert (home / "nginx" / "gate" / "nginx.conf").is_file()
         assert (home / "generated" / "compose.apps.yaml").is_file()
+        assert (home / "generated" / "compose.edge.yaml").is_file()
         assert (home / "state" / "apps").is_dir()
         ensure_raft_home(home)
-        assert (home / "nginx" / "gate" / "default.conf").is_file()
+        assert (home / "nginx" / "gate" / "nginx.conf").is_file()
+
+    def test_load_edge_section(self) -> None:
+        (self.tmp_path / "settings.yaml").write_text(
+            """
+logging:
+  level: INFO
+edge:
+  http: 8080
+  https: null
+  streams:
+    - name: smtp
+      port: 25
+      protocol: tcp
+""",
+            encoding="utf-8",
+        )
+        cfg = load_config(self.tmp_path)
+        assert cfg.edge.http == 8080
+        assert cfg.edge.https is None
+        assert len(cfg.edge.streams) == 1
+        assert cfg.edge.streams[0].name == "smtp"
+        assert cfg.edge.published_ports() == [(8080, "tcp"), (25, "tcp")]
+
+    def test_edge_rejects_duplicate_stream_port(self) -> None:
+        (self.tmp_path / "settings.yaml").write_text(
+            """
+edge:
+  streams:
+    - name: a
+      port: 25
+    - name: b
+      port: 25
+""",
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match="duplicate port"):
+            load_config(self.tmp_path)
 
     def test_find_package_root_bundled(self) -> None:
         root = find_package_root()

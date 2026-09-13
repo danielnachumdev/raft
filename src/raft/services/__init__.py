@@ -5,6 +5,7 @@ from .auth import GitAuthManager
 from .cutover import DEPLOY_CUTOVER, CutoverSession, wait_until
 from .doctor import CheckResult, Doctor
 from .orchestrator import Orchestrator
+from .readiness import ReadinessStrategy
 from .render import StackRenderer
 from .sync import SourceSync
 from .update import SelfUpdate
@@ -17,6 +18,7 @@ __all__ = [
     "Doctor",
     "GitAuthManager",
     "Orchestrator",
+    "ReadinessStrategy",
     "SelfUpdate",
     "SourceSync",
     "StackRenderer",

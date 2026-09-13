@@ -10,8 +10,9 @@ from dataclasses import dataclass
 from typing import Literal, Optional, TextIO
 
 from ..adapters import DockerStack, Shell
+from ..config.settings import load_config
 from ..models import Stack
-from ..models.contract import registry_path
+from ..models.manifest import registry_path
 from .auth import GitAuthManager, parse_ssh_git_url, real_git_host
 
 Status = Literal["ok", "warn", "fail"]
@@ -68,7 +69,8 @@ class Doctor:
         checks.extend(self._check_upstreams())
         checks.extend(self._check_certs())
         checks.extend(self._check_stack_running())
-        checks.append(self._check_port_80())
+        checks.extend(self._check_edge_listeners())
+        checks.extend(self._check_gate_drift())
         return checks
 
     def report(
@@ -395,26 +397,56 @@ class Doctor:
     def _check_upstreams(self) -> list[CheckResult]:
         results: list[CheckResult] = []
         for app in self.stack.apps:
-            path = self.stack.upstream_file(app)
-            if path.is_file():
-                results.append(
-                    CheckResult(app.name, "upstream", "ok", str(path.name))
-                )
-            else:
+            try:
+                app_spec = self.stack.spec_for(app)
+            except (ValueError, FileNotFoundError):
+                continue
+            http_ports = app_spec.http_ports()
+            if not http_ports:
                 results.append(
                     CheckResult(
                         app.name,
                         "upstream",
-                        "warn",
-                        f"missing {path.name}",
-                        fix="created automatically on `raft sync` / `raft up`",
+                        "ok",
+                        "n/a (no expose=http ports)",
                     )
                 )
+                continue
+            for port in http_ports:
+                path = self.stack.upstream_file(app, port)
+                if path.is_file():
+                    results.append(
+                        CheckResult(app.name, "upstream", "ok", str(path.name))
+                    )
+                else:
+                    results.append(
+                        CheckResult(
+                            app.name,
+                            "upstream",
+                            "warn",
+                            f"missing {path.name}",
+                            fix="created automatically on `raft sync` / `raft up`",
+                        )
+                    )
         return results
 
     def _check_certs(self) -> list[CheckResult]:
         results: list[CheckResult] = []
         for app in self.stack.apps:
+            try:
+                app_spec = self.stack.spec_for(app)
+            except (ValueError, FileNotFoundError):
+                continue
+            if app_spec.tls != "origin":
+                results.append(
+                    CheckResult(
+                        app.name,
+                        "certs",
+                        "ok",
+                        "n/a (tls: off)",
+                    )
+                )
+                continue
             pem, key = self.stack.cert_files(app)
             missing = [p.name for p in (pem, key) if not p.is_file()]
             if not missing:
@@ -434,9 +466,9 @@ class Doctor:
                     "fail",
                     f"missing {', '.join(missing)} under certs/{app.name}/",
                     fix=(
-                        f"install Cloudflare Origin PEMs for {app.name} only at "
+                        f"install Cloudflare Origin PEMs for {app.name} at "
                         f"~/.raft/certs/{app.name}/origin.pem and origin.key "
-                        f"(before recreating gate)"
+                        f"(required for tls: origin; then `raft gate recreate` if needed)"
                     ),
                 )
             )
@@ -495,29 +527,114 @@ class Doctor:
             )
         ]
 
-    def _check_port_80(self) -> CheckResult:
-        try:
-            with socket.create_connection(("127.0.0.1", 80), timeout=0.4):
-                in_use = True
-        except OSError:
-            in_use = False
-        if not in_use:
-            return CheckResult(
-                INFRA,
-                "port 80",
-                "ok",
-                "nothing accepting on 127.0.0.1:80",
-            )
+    def _check_edge_listeners(self) -> list[CheckResult]:
+        edge = load_config(self.stack.root).edge
+        published = edge.published_ports()
+        if not published:
+            return [
+                CheckResult(
+                    INFRA,
+                    "edge",
+                    "warn",
+                    "no edge listeners declared in settings.yaml",
+                    fix="set edge.http / edge.https / edge.streams in ~/.raft/settings.yaml",
+                )
+            ]
         try:
             running = set(self.docker.running_services()) if shutil.which("docker") else set()
         except Exception:  # noqa: BLE001
             running = set()
-        if self.stack.gate in running:
-            return CheckResult(INFRA, "port 80", "ok", "in use by running gate")
-        return CheckResult(
-            INFRA,
-            "port 80",
-            "warn",
-            "something is listening on 127.0.0.1:80 (gate may fail to bind)",
-            fix="stop the other process, or temporarily change gate ports in compose.yaml for local experiments",
-        )
+        gate_up = self.stack.gate in running
+        results: list[CheckResult] = []
+        for port, protocol in published:
+            if protocol != "tcp":
+                results.append(
+                    CheckResult(
+                        INFRA,
+                        f"port {port}/{protocol}",
+                        "ok",
+                        "declared (udp listen not probed)",
+                    )
+                )
+                continue
+            try:
+                with socket.create_connection(("127.0.0.1", port), timeout=0.4):
+                    in_use = True
+            except OSError:
+                in_use = False
+            label = f"port {port}"
+            if in_use and gate_up:
+                results.append(
+                    CheckResult(INFRA, label, "ok", "accepting (gate running)")
+                )
+            elif in_use and not gate_up:
+                results.append(
+                    CheckResult(
+                        INFRA,
+                        label,
+                        "warn",
+                        f"something is listening on 127.0.0.1:{port} (gate may fail to bind)",
+                        fix="stop the other process, or change edge ports in settings.yaml",
+                    )
+                )
+            elif gate_up:
+                results.append(
+                    CheckResult(
+                        INFRA,
+                        label,
+                        "warn",
+                        f"gate running but nothing accepting on 127.0.0.1:{port}",
+                        fix="raft gate recreate   # pick up edge: ports",
+                    )
+                )
+            else:
+                results.append(
+                    CheckResult(
+                        INFRA,
+                        label,
+                        "ok",
+                        f"nothing accepting on 127.0.0.1:{port}",
+                    )
+                )
+        return results
+
+    def _check_gate_drift(self) -> list[CheckResult]:
+        if not shutil.which("docker"):
+            return []
+        try:
+            running = set(self.docker.running_services())
+        except Exception:  # noqa: BLE001
+            return []
+        if self.stack.gate not in running:
+            return []
+        edge = load_config(self.stack.root).edge
+        declared = sorted({p for p, _ in edge.published_ports()})
+        actual = self.docker.gate_published_ports()
+        if not actual:
+            return [
+                CheckResult(
+                    INFRA,
+                    "gate ports",
+                    "warn",
+                    "could not inspect gate published ports",
+                    fix="raft gate recreate",
+                )
+            ]
+        if declared == actual:
+            return [
+                CheckResult(
+                    INFRA,
+                    "gate ports",
+                    "ok",
+                    f"match edge: {declared}",
+                )
+            ]
+        return [
+            CheckResult(
+                INFRA,
+                "gate ports",
+                "fail",
+                f"declared {declared} but gate publishes {actual}",
+                fix="raft gate recreate   # Docker binds ports at create time",
+            )
+        ]

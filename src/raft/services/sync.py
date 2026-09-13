@@ -9,7 +9,8 @@ from pathlib import Path
 from typing import Optional
 
 from .auth import GitAuthManager
-from ..models.inventory import App, Stack
+from ..models.app import App
+from ..models.stack import Stack
 from ..adapters.shell import Shell
 
 logger = logging.getLogger(__name__)

@@ -81,7 +81,9 @@ def make_git_stack(
 def ensure_orchestrator_root(root: Path) -> None:
     if not (root / "settings.yaml").is_file():
         (root / "settings.yaml").write_text(
-            "logging:\n  level: INFO\n", encoding="utf-8"
+            "logging:\n  level: INFO\n"
+            "edge:\n  http: 80\n  https: 443\n",
+            encoding="utf-8",
         )
     (root / "state" / "apps").mkdir(parents=True, exist_ok=True)
     (root / "generated").mkdir(parents=True, exist_ok=True)
@@ -89,6 +91,7 @@ def ensure_orchestrator_root(root: Path) -> None:
     (root / "certs").mkdir(parents=True, exist_ok=True)
     (root / "apps").mkdir(parents=True, exist_ok=True)
     (root / "logs").mkdir(parents=True, exist_ok=True)
+
 
 def write_applied_app(
     root: Path,
@@ -103,6 +106,7 @@ def write_applied_app(
     www: bool = True,
     build_context: Optional[str] = ".",
     port: int = 80,
+    tls: str = "off",
     extra: Optional[dict[str, Any]] = None,
 ) -> Path:
     ensure_orchestrator_root(root)
@@ -112,8 +116,9 @@ def write_applied_app(
         "ref": ref,
         "path": path or f"apps/{name}",
         "www": www,
-        "ports": [{"name": "http", "containerPort": port}],
-        "readinessProbe": {"httpGet": {"path": "/"}},
+        "tls": tls,
+        "ports": [{"name": "http", "containerPort": port, "expose": "http"}],
+        "readiness": {"type": "http", "port": "http", "path": "/"},
     }
     if repo:
         spec["repo"] = repo
@@ -133,6 +138,7 @@ def write_applied_app(
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(yaml.safe_dump(doc, sort_keys=False), encoding="utf-8")
     return dest
+
 
 def write_inventory(root: Path, body: str) -> None:
     ensure_orchestrator_root(root)
@@ -155,12 +161,14 @@ def write_inventory(root: Path, body: str) -> None:
             build_context="." if str(raw.get("source", "local")) != "docker" else None,
         )
 
+
 def write_demo_inventory(root: Path) -> Path:
     write_applied_app(root, "app", public_host="app.test", source="local")
     write_applied_app(root, "other", public_host="other.test", source="local")
     (root / "apps" / "app").mkdir(parents=True, exist_ok=True)
     (root / "apps" / "other").mkdir(parents=True, exist_ok=True)
     return root
+
 
 def completed(
     stdout: str = "",
@@ -173,8 +181,10 @@ def completed(
     m.stderr = stderr
     return m
 
+
 def git_call_args(shell: MagicMock) -> list[tuple]:
     return [c.args for c in shell.git.call_args_list]
+
 
 class RaftTestCase:
     @pytest.fixture(autouse=True)

@@ -1,0 +1,30 @@
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: mailu
+spec:
+  publicHost: mail.example.com
+  source: docker
+  image: ghcr.io/example/mailu
+  ref: master
+  path: apps/mailu
+  tls: origin
+  ports:
+    - name: http
+      containerPort: 80
+      expose: http
+    - name: smtp
+      containerPort: 25
+      expose: host
+      publicPort: 25
+    - name: submission
+      containerPort: 587
+      expose: host
+      publicPort: 587
+    - name: imaps
+      containerPort: 993
+      expose: host
+      publicPort: 993
+  readiness:
+    type: tcp
+    port: smtp

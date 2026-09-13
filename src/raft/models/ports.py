@@ -1,0 +1,108 @@
+"""App port exposure: container ports and how they reach the public edge."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Optional
+
+EXPOSE_MODES = frozenset({"http", "stream", "host"})
+PORT_PROTOCOLS = frozenset({"tcp", "udp"})
+
+
+@dataclass(frozen=True)
+class PortSpec:
+    name: str
+    container_port: int
+    expose: str
+    public_port: Optional[int] = None
+    protocol: str = "tcp"
+    proxy_protocol: bool = False
+
+    def validate(self, *, path: Path) -> None:
+        if self.expose not in EXPOSE_MODES:
+            raise ValueError(
+                f"{path}: ports[{self.name!r}].expose must be one of "
+                f"{sorted(EXPOSE_MODES)}, got {self.expose!r}"
+            )
+        if self.protocol not in PORT_PROTOCOLS:
+            raise ValueError(
+                f"{path}: ports[{self.name!r}].protocol must be one of "
+                f"{sorted(PORT_PROTOCOLS)}, got {self.protocol!r}"
+            )
+        if not (1 <= self.container_port <= 65535):
+            raise ValueError(
+                f"{path}: ports[{self.name!r}].containerPort out of range: "
+                f"{self.container_port}"
+            )
+        if self.public_port is not None and not (1 <= self.public_port <= 65535):
+            raise ValueError(
+                f"{path}: ports[{self.name!r}].publicPort out of range: "
+                f"{self.public_port}"
+            )
+        if self.expose in {"stream", "host"} and self.public_port is None:
+            raise ValueError(
+                f"{path}: ports[{self.name!r}].publicPort is required when "
+                f"expose={self.expose!r}"
+            )
+        if self.expose == "http" and self.public_port is not None:
+            raise ValueError(
+                f"{path}: ports[{self.name!r}].publicPort is only valid for "
+                f"expose stream|host"
+            )
+        if self.proxy_protocol and self.expose != "stream":
+            raise ValueError(
+                f"{path}: ports[{self.name!r}].proxyProtocol only applies to "
+                f"expose=stream"
+            )
+
+
+def parse_ports(spec: dict[str, Any], path: Path) -> tuple[PortSpec, ...]:
+    raw = spec.get("ports")
+    if raw is None:
+        raise ValueError(f"{path}: spec.ports is required (non-empty list)")
+    if not isinstance(raw, list) or not raw:
+        raise ValueError(f"{path}: spec.ports must be a non-empty list")
+    if "port" in spec:
+        raise ValueError(f"{path}: spec.port is not supported; use spec.ports[]")
+
+    ports: list[PortSpec] = []
+    seen: set[str] = set()
+    for index, entry in enumerate(raw):
+        if not isinstance(entry, dict):
+            raise ValueError(f"{path}: spec.ports[{index}] must be an object")
+        name = str(entry.get("name", "")).strip()
+        if not name:
+            raise ValueError(f"{path}: spec.ports[{index}].name is required")
+        if name in seen:
+            raise ValueError(f"{path}: duplicate port name {name!r}")
+        seen.add(name)
+        if "containerPort" not in entry:
+            raise ValueError(
+                f"{path}: spec.ports[{name!r}].containerPort is required"
+            )
+        container_port = int(entry["containerPort"])
+        expose = str(entry.get("expose", "http")).strip().lower() or "http"
+        public_raw = entry.get("publicPort")
+        public_port = int(public_raw) if public_raw is not None else None
+        protocol = str(entry.get("protocol", "tcp")).strip().lower() or "tcp"
+        proxy_protocol = bool(entry.get("proxyProtocol", False))
+        port = PortSpec(
+            name=name,
+            container_port=container_port,
+            expose=expose,
+            public_port=public_port,
+            protocol=protocol,
+            proxy_protocol=proxy_protocol,
+        )
+        port.validate(path=path)
+        ports.append(port)
+    return tuple(ports)
+
+
+def port_by_name(ports: tuple[PortSpec, ...], name: str) -> PortSpec:
+    for port in ports:
+        if port.name == name:
+            return port
+    known = ", ".join(p.name for p in ports) or "(none)"
+    raise KeyError(f"unknown port {name!r} (known: {known})")

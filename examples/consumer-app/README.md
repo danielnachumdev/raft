@@ -2,11 +2,11 @@
 
 Minimal service tree for raft: a dummy `Dockerfile` and an App contract at `.raft/app.yaml`.
 
-Replace `publicHost`, `repo`, and `metadata.name` before using this on a real VPS.
+Replace `publicHost`, `repo`, and `metadata.name` before using this on a real VPS. Default `tls: off` — no Origin PEMs required. Set `tls: origin` only when you want gate HTTPS for this host.
 
 ## Manual deploy (CLI on the VPS)
 
-1. Install raft (`install.sh`) and put Origin PEMs under `~/.raft/certs/example-app/` if you need HTTPS.
+1. Install raft (`install.sh`). For `tls: origin`, put PEMs under `~/.raft/certs/example-app/`.
 2. Apply from git (raft clones, registers the manifest, syncs, and renders):
 
 ```bash
@@ -28,6 +28,8 @@ raft redeploy example-app
 raft doctor
 ```
 
+After changing `edge:` published ports in settings, run `raft gate recreate` (not `redeploy gate`).
+
 ## Automate in CI
 
 Use the same commands from your service repo’s CI after a successful build (SSH to the VPS, or a runner that already has `raft` + Docker access):
@@ -38,4 +40,4 @@ raft apply --git git@github.com:example/consumer-app.git --ref "$GIT_SHA"
 raft redeploy example-app --ref "$GIT_SHA"
 ```
 
-Gate is never redeployed by app CI — only `raft redeploy <app>` (or `router` when needed).
+Gate is never recreated by app CI — only `raft redeploy <app>` (or `router` when needed).

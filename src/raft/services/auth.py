@@ -10,7 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from ..models.inventory import App, Stack
+from ..models.app import App
+from ..models.stack import Stack
 from ..adapters.shell import Shell
 from ..ui import say
 

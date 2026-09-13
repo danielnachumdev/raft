@@ -9,12 +9,15 @@ spec:
   ref: main
   path: apps/example-app
   www: true
+  tls: off
   ports:
     - name: http
       containerPort: 80
+      expose: http
   build:
     context: .
     dockerfile: Dockerfile
-  readinessProbe:
-    httpGet:
-      path: /
+  readiness:
+    type: http
+    port: http
+    path: /

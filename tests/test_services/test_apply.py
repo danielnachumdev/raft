@@ -7,7 +7,7 @@ import pytest
 import yaml
 
 from ..base import RaftTestCase, write_applied_app
-from raft.models.inventory import load_stack
+from raft.models.stack import load_stack
 from raft.services.apply import AppApply
 
 def _manifest(
@@ -23,7 +23,7 @@ def _manifest(
         "path": f"apps/{name}",
         "ref": "main",
         "www": True,
-        "ports": [{"containerPort": 80}],
+        "ports": [{"name": "http", "containerPort": 80, "expose": "http"}],
         "build": {"context": "."},
         **spec_extra,
     }
@@ -221,6 +221,13 @@ class TestAppApply(RaftTestCase):
                             "publicHost": "img.test",
                             "image": "ghcr.io/org/img",
                             "path": "apps/img",
+                            "ports": [
+                                {
+                                    "name": "http",
+                                    "containerPort": 80,
+                                    "expose": "http",
+                                }
+                            ],
                         },
                     }
                 ),

@@ -1,4 +1,4 @@
-"""Nginx upstream file management."""
+"""Nginx upstream file management (app + port name)."""
 
 from unittest.mock import MagicMock
 
@@ -6,13 +6,18 @@ import pytest
 
 from .base import AdapterTestCase
 from raft.adapters import NginxUpstreams
+from raft.models.ports import PortSpec
+
 
 class TestNginxUpstreams(AdapterTestCase):
     def test_ensure_steady_file_creates_and_skips(self) -> None:
         nginx = NginxUpstreams(self.stack, MagicMock())
         nginx.ensure_steady_file(self.app)
-        path = self.stack.upstream_file(self.app)
+        port = PortSpec(name="http", container_port=80, expose="http")
+        path = self.stack.upstream_file(self.app, port)
         assert path.is_file()
+        assert path.name == "app-http.conf"
+        assert "upstream app_http" in path.read_text(encoding="utf-8")
         assert "server app:80" in path.read_text(encoding="utf-8")
         text = path.read_text(encoding="utf-8")
         nginx.ensure_steady_file(self.app)
@@ -24,7 +29,8 @@ class TestNginxUpstreams(AdapterTestCase):
         docker.router_sees_upstream_target.return_value = True
         nginx = NginxUpstreams(self.stack, docker)
         nginx.point_at(self.app, "app_tmp")
-        assert "server app_tmp:80" in self.stack.upstream_file(self.app).read_text(
+        port = PortSpec(name="http", container_port=80, expose="http")
+        assert "server app_tmp:80" in self.stack.upstream_file(self.app, port).read_text(
             encoding="utf-8"
         )
         docker.router_sees_upstream_target.return_value = False

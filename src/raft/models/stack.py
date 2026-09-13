@@ -11,20 +11,19 @@ from ..config.paths import (
     DEPLOY_DIRNAME,
     GENERATED_DIRNAME,
     ensure_raft_home,
-    find_package_root,
     raft_home,
 )
 from .app import COMPOSE_PROJECT, App
-from .contract import load_app_file, load_registry, registry_path
+from .manifest import load_app_file, load_registry, registry_path
+from .ports import PortSpec
 
 __all__ = [
     "COMPOSE_PROJECT",
     "App",
     "Stack",
-    "find_repo_root",
-    "load_inventory",
     "load_stack",
 ]
+
 
 @dataclass(frozen=True)
 class Stack:
@@ -56,8 +55,11 @@ class Stack:
     def certs_dir(self) -> Path:
         return self.root / CERTS_DIRNAME
 
-    def upstream_file(self, app: App) -> Path:
-        return self.upstreams_dir / f"{app.name}.conf"
+    def upstream_file(self, app: App, port: PortSpec) -> Path:
+        return self.upstreams_dir / f"{app.name}-{port.name}.conf"
+
+    def upstream_name(self, app: App, port: PortSpec) -> str:
+        return f"{app.name}_{port.name}"
 
     def cert_files(self, app: App) -> tuple[Path, Path]:
         base = self.certs_dir / app.name
@@ -72,18 +74,16 @@ class Stack:
     def generated_dir(self) -> Path:
         return self.root / GENERATED_DIRNAME
 
-    def contract_for(self, app: App):
+    def spec_for(self, app: App):
         path = registry_path(self.root, app.name)
-        _, contract = load_app_file(path, expect_name=app.name)
-        return contract
+        _, app_spec = load_app_file(path, expect_name=app.name)
+        return app_spec
 
-def find_repo_root(start: Optional[Path] = None) -> Path:
-    return find_package_root(start)
+    def contract_for(self, app: App):
+        return self.spec_for(app)
 
-def load_inventory(root: Path) -> tuple[App, ...]:
-    return load_registry(root)
 
 def load_stack(root: Optional[Path] = None) -> Stack:
     data_home = root if root is not None else raft_home()
     ensure_raft_home(data_home)
-    return Stack(root=data_home, apps=load_inventory(data_home))
+    return Stack(root=data_home, apps=load_registry(data_home))

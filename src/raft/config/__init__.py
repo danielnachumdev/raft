@@ -18,6 +18,8 @@ from .paths import (
 )
 from .settings import (
     CONFIG_FILENAME,
+    EdgeConfig,
+    EdgeStream,
     LoggingConfig,
     RaftConfig,
     default_config,
@@ -30,6 +32,8 @@ __all__ = [
     "CONFIG_FILENAME",
     "DATA_HOME_ENV",
     "DEPLOY_DIRNAME",
+    "EdgeConfig",
+    "EdgeStream",
     "GENERATED_DIRNAME",
     "LOGS_DIRNAME",
     "LoggingConfig",

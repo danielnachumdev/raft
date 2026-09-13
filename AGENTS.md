@@ -10,42 +10,44 @@ Public product: CLI + Compose/nginx templates + tests. Operators typically run [
 
 Desired apps are **not** a committed inventory. Operators `apply` App manifests; registry files live in `~/.raft/state/apps/*.yaml`.
 
-User-facing samples live under **[`examples/`](examples/)**: operator settings template (`examples/settings.yaml`) and a minimal consumer repo (`examples/consumer-app/`).
+User-facing samples live under **[`examples/`](examples/)**: operator settings (`examples/settings.yaml`), a minimal consumer repo (`examples/consumer-app/`), and a mail-shaped app (`examples/mailu/`).
 
 ---
 
 ## Architecture (hard rules)
 
 ```text
-gate (public :80/:443, stable) → router (Host routing) → apps
+gate (public edge listeners from settings) → router (Host routing) → apps
 ```
 
 | Layer | Role | Redeploy |
 |-------|------|----------|
-| **gate** | Outer nginx; offline page when router/apps fail | **Never** via `raft redeploy` |
+| **gate** | Outer nginx; http + stream; offline page when router/apps fail | **`raft redeploy gate` refuses**; use **`raft gate recreate`** when published ports change |
 | **router** | Inner nginx; Host → upstream | `raft redeploy router` |
 | **apps** | One Compose service per applied App | `raft redeploy <name>` (tmp cutover) |
 
-Cutover reloads **router** nginx, not gate. Never `raft redeploy gate`.
+Cutover reloads **router** nginx, not gate. Never use `redeploy` for gate — only the deliberate `gate recreate` path (brief edge downtime).
 
-### TLS (hard requirement)
+### Ports and TLS
 
-- Per-app Cloudflare Origin PEMs: `~/.raft/certs/<app>/origin.pem` + `origin.key`.
-- `raft render` writes gate TLS snippets under `~/.raft/generated/nginx/gate-tls/`.
-- Gate **includes** those snippets. Missing PEMs make nginx reject the config → **HTTP and HTTPS die**.
-- Install PEMs before `up` / recreating gate. `raft doctor` treats missing certs as failure.
+- Each app declares `spec.ports[]` with `expose: http | stream | host`.
+- `expose: http` → Host routing via router (needs `publicHost`).
+- `expose: stream` → gate `stream {}` (port must be declared in settings `edge.streams`).
+- `expose: host` → app publishes the host port itself (gate not involved).
+- `spec.tls`: **`off` (default)** or **`origin`**. HTTP-only apps need no PEMs. `tls: origin` requires `~/.raft/certs/<app>/origin.{pem,key}` and `edge.https`.
+- Gate published ports come from `~/.raft/settings.yaml` `edge:` (`http`, `https`, `streams[]`), rendered into `generated/compose.edge.yaml`.
 
 ### Data home vs product templates
 
 | Path | Role |
 |------|------|
 | `compose.yaml`, `nginx/` (`src/raft/share/`) | Product templates; synced into the data home on use |
-| `~/.raft/settings.yaml` | Operator settings (logging); see [`examples/settings.yaml`](examples/settings.yaml) |
+| `~/.raft/settings.yaml` | Operator settings (logging + **edge**); see [`examples/settings.yaml`](examples/settings.yaml) |
 | `~/.raft/state/apps/*.yaml` | Applied desired state |
-| `~/.raft/generated/` | Compose apps + router hosts + gate-tls + **upstreams** |
+| `~/.raft/generated/` | Compose apps + compose.edge + router hosts + gate-http/stream/tls + **upstreams** |
 | `~/.raft/apps/` | Sync checkouts |
 | `~/.raft/deploy/` | Image/ref pins from sync/cutover |
-| `~/.raft/certs/` | Origin PEMs |
+| `~/.raft/certs/` | Origin PEMs (only for `tls: origin`) |
 | `~/.raft/logs/` | Structured log file (default) |
 
 Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
@@ -57,10 +59,11 @@ Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 1. `install.sh` (or `uv sync` in a clone; Python **3.8+**).
 2. Private git apps: `raft auth setup <service>` → paste pubkey as read-only deploy key (`~/.ssh/raft/`).
 3. `raft apply --file …` or `raft apply --git …` → writes `~/.raft/state/apps/<name>.yaml`, optionally syncs + renders.
-4. Origin PEMs in `~/.raft/certs/<name>/` → `raft up` (refuses if stack already up; `down` first).
-5. `raft doctor` before trusting the site.
-6. Updates: `raft redeploy <app>` or `raft redeploy router`.
-7. Tear down: `raft down`.
+4. If any app uses `tls: origin`, install PEMs under `~/.raft/certs/<name>/`.
+5. `raft up` (refuses if stack already up; `down` first).
+6. `raft doctor` before trusting the site (certs only for `tls: origin`; gate drift → `raft gate recreate`).
+7. Updates: `raft redeploy <app>` or `raft redeploy router`. New edge listeners: `raft gate recreate`.
+8. Tear down: `raft down`.
 
 Useful checks: `curl -H 'Host: <publicHost>' http://127.0.0.1/`. Optional local hosts: `sudo python3 scripts/hosts.py hold` (reads applied `publicHost` values; errors if none applied). See [`scripts/README.md`](scripts/README.md).
 
@@ -70,17 +73,38 @@ Logging: `~/.raft/settings.yaml` `logging:`; default `~/.raft/logs/raft.log`; ov
 
 ## App manifest model
 
-Canonical path in a service repo: `.raft/app.yaml` (also accepts `.raft/service.yaml`). Shape: `apiVersion: raft/v1`, `kind: App`, `metadata`, `spec`.
+Canonical path in a service repo: **`.raft/app.yaml`** only. Shape: `apiVersion: raft/v1`, `kind: App`, `metadata`, `spec`.
 
 ### `spec.source`
 
 | `source` | Meaning |
 |----------|---------|
 | `local` | Tree under `spec.path`; already on disk |
-| `git` | `spec.repo` + `spec.ref` → clone/fetch; Compose `build:` from contract |
+| `git` | `spec.repo` + `spec.ref` → clone/fetch; Compose `build:` from manifest |
 | `docker` | `spec.image` (no tag) + `spec.ref` as pin/tag; still set `repo`/`path` so apply can refresh the manifest from git |
 
-`apply --git` clones briefly, reads `.raft/app.yaml`, copies into `~/.raft/state/apps/`. `sync` (end of many flows) refreshes sources then `render` regenerates `~/.raft/generated/`.
+### Ports / TLS / readiness (canonical)
+
+```yaml
+spec:
+  publicHost: app.example.com   # required when any port uses expose=http
+  tls: off                      # off | origin
+  ports:
+    - name: http
+      containerPort: 80
+      expose: http
+    - name: smtp
+      containerPort: 25
+      expose: stream            # or host
+      publicPort: 25
+      protocol: tcp
+  readiness:
+    type: http                  # http | tcp | none
+    port: http                  # port name
+    path: /
+```
+
+`apply --git` clones briefly, reads `.raft/app.yaml`, copies into `~/.raft/state/apps/`. `sync` refreshes sources then `render` regenerates `~/.raft/generated/`.
 
 Private remotes stay as `git@github.com:…` in the manifest; auth rewrites clone URLs to `Host` aliases (`github.com-raft-<service>`).
 
@@ -88,7 +112,7 @@ Private remotes stay as `git@github.com:…` in the manifest; auth rewrites clon
 
 ## CLI surface (Fire)
 
-Top-level **commands** (not nested groups, except `auth`):
+Top-level **commands** (not nested groups, except `auth` and `gate`):
 
 | Command | Purpose |
 |---------|---------|
@@ -97,7 +121,8 @@ Top-level **commands** (not nested groups, except `auth`):
 | `delete` | `delete app NAME` |
 | `up` / `down` | Stack bring-up / tear-down |
 | `sync` / `render` | Sources / regenerate `~/.raft/generated/` |
-| `redeploy` | App cutover or `router` |
+| `redeploy` | App cutover or `router` (`gate` refused) |
+| `gate recreate` | Recreate gate for new published edge ports |
 | `doctor` | Health + fix hints |
 | `update` | Re-install CLI from GitHub (`install.sh`) |
 | `auth` | `setup` / `list` / `show` / `test` / `remove` |
@@ -110,15 +135,15 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 
 | Path | Notes |
 |------|-------|
-| `src/raft/cli/` | Fire root + auth; `deps.py` patched in tests |
-| `src/raft/models/` | `App` (`app.py`), `Stack` (`inventory.py`), contract load/validate, registry paths |
-| `src/raft/adapters/` | shell, docker, nginx upstreams, HTTP probe |
-| `src/raft/services/` | apply, auth, sync, render, cutover, orchestrator, doctor |
-| `src/raft/config/` | `~/.raft` paths, `settings.yaml`, logging setup |
+| `src/raft/cli/` | Fire root + auth + gate; `deps.py` patched in tests |
+| `src/raft/models/` | `App`, `AppSpec` (`manifest.py`), `PortSpec`, `Stack` (`stack.py`) |
+| `src/raft/adapters/` | shell, docker, nginx upstreams, HTTP/TCP probe |
+| `src/raft/services/` | apply, auth, sync, render, edge handlers, cutover, orchestrator, doctor |
+| `src/raft/config/` | `~/.raft` paths, `settings.yaml` (logging + edge), logging setup |
 | `src/raft/share/` | Product Compose + nginx templates (synced into data home) |
 | `tests/` | Mirrors packages (`test_*`); class-based; **`--cov-fail-under=100`** |
 
-Compose mounts `generated/nginx/upstreams` into the router (under the data home). Upstream files are written by `NginxUpstreams` under `generated/nginx/upstreams/`.
+Compose mounts `generated/nginx/upstreams` into the router. Upstream files are keyed by app + port name (`<app>-<port>.conf`).
 
 ---
 
@@ -130,7 +155,7 @@ Compose mounts `generated/nginx/upstreams` into the router (under the data home)
 | **Private ops** | GCP/VM + SSH job that pulls this repo onto the VPS |
 | **Service repos** | Own `.raft/app.yaml` + their CI (apply/redeploy against the VPS) |
 
-Gate is never auto-redeployed by service CI.
+Gate is never auto-recreated by service CI.
 
 ---
 

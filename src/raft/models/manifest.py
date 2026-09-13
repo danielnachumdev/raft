@@ -9,24 +9,25 @@ from typing import Any, Optional
 import yaml
 
 from .app import App
+from .ports import PortSpec, parse_ports
+from .readiness import ReadinessSpec, parse_readiness
 
 CONTRACT_API_VERSION = "raft/v1"
-CONTRACT_KINDS = frozenset({"App", "Service"})
-CONTRACT_REL_CANDIDATES = (
-    Path(".raft") / "app.yaml",
-    Path(".raft") / "service.yaml",
-)
-CONTRACT_REL_PATH = CONTRACT_REL_CANDIDATES[0]
+CONTRACT_KIND = "App"
+CONTRACT_REL_PATH = Path(".raft") / "app.yaml"
 REGISTRY_DIR = Path("state") / "apps"
+TLS_MODES = frozenset({"off", "origin"})
+
 
 @dataclass(frozen=True)
-class ServiceContract:
-    port: int = 80
+class AppSpec:
+    ports: tuple[PortSpec, ...]
+    tls: str = "off"
+    readiness: ReadinessSpec = ReadinessSpec()
     www: bool = True
     extra_hosts: tuple[str, ...] = ()
     build_context: Optional[str] = None
     dockerfile: Optional[str] = None
-    probe_path: str = "/"
     cpus_limit: str = "0.50"
     memory_limit: str = "128M"
     cpus_reservation: str = "0.10"
@@ -49,18 +50,27 @@ class ServiceContract:
                 out.append(name)
         return tuple(out)
 
+    def http_ports(self) -> tuple[PortSpec, ...]:
+        return tuple(p for p in self.ports if p.expose == "http")
+
+    def stream_ports(self) -> tuple[PortSpec, ...]:
+        return tuple(p for p in self.ports if p.expose == "stream")
+
+    def host_ports(self) -> tuple[PortSpec, ...]:
+        return tuple(p for p in self.ports if p.expose == "host")
+
+
 def contract_path(checkout: Path) -> Path:
-    for rel in CONTRACT_REL_CANDIDATES:
-        path = checkout / rel
-        if path.is_file():
-            return path
     return checkout / CONTRACT_REL_PATH
+
 
 def registry_dir(root: Path) -> Path:
     return root / REGISTRY_DIR
 
+
 def registry_path(root: Path, name: str) -> Path:
     return registry_dir(root) / f"{name}.yaml"
+
 
 def _parse_cpu(value: Any, *, default: str) -> str:
     if value is None:
@@ -75,6 +85,7 @@ def _parse_cpu(value: Any, *, default: str) -> str:
         return f"{millis / 1000.0:g}"
     return text
 
+
 def _parse_memory(value: Any, *, default: str) -> str:
     if value is None:
         return default
@@ -88,49 +99,32 @@ def _parse_memory(value: Any, *, default: str) -> str:
         return f"{text[:-2]}G"
     return text
 
-def _port_from_spec(spec: dict[str, Any], path: Path) -> int:
-    if "port" in spec and "ports" not in spec:
-        port = int(spec["port"])
-        if port < 1 or port > 65535:
-            raise ValueError(f"{path}: spec.port out of range: {port}")
-        return port
-    ports = spec.get("ports")
-    if ports is None:
-        return 80
-    if not isinstance(ports, list) or not ports:
-        raise ValueError(f"{path}: spec.ports must be a non-empty list when set")
-    first = ports[0]
-    if not isinstance(first, dict):
-        raise ValueError(f"{path}: spec.ports[] entries must be objects")
-    raw = first.get("containerPort", first.get("port", 80))
-    port = int(raw)
-    if port < 1 or port > 65535:
-        raise ValueError(f"{path}: containerPort out of range: {port}")
-    return port
 
 def _extra_hosts(spec: dict[str, Any], path: Path) -> tuple[str, ...]:
-    extra_raw = spec.get("extraHosts", spec.get("extra_hosts")) or []
+    extra_raw = spec.get("extraHosts", spec.get("extra_hosts"))
+    if extra_raw is None:
+        return ()
     if isinstance(extra_raw, str):
         return (extra_raw.strip(),) if extra_raw.strip() else ()
     if isinstance(extra_raw, list):
         return tuple(str(x).strip() for x in extra_raw if str(x).strip())
     raise ValueError(f"{path}: spec.extraHosts must be a string or array")
 
-def _probe_path(spec: dict[str, Any], path: Path) -> str:
-    probe = spec.get("readinessProbe") or spec.get("probe") or {}
-    if not isinstance(probe, dict):
-        raise ValueError(f"{path}: readinessProbe must be an object")
-    http_get = probe.get("httpGet") or probe
-    if not isinstance(http_get, dict):
-        raise ValueError(f"{path}: readinessProbe.httpGet must be an object")
-    return str(http_get.get("path", "/")).strip() or "/"
 
 def _resources(spec: dict[str, Any], path: Path) -> tuple[str, str, str, str]:
-    resources = spec.get("resources") or {}
+    resources = spec.get("resources")
+    if resources is None:
+        resources = {}
     if not isinstance(resources, dict):
         raise ValueError(f"{path}: resources must be an object")
-    limits = resources.get("limits") or {}
-    requests = resources.get("requests") or resources.get("reservations") or {}
+    limits = resources.get("limits")
+    if limits is None:
+        limits = {}
+    requests = resources.get("requests")
+    if requests is None:
+        requests = resources.get("reservations")
+    if requests is None:
+        requests = {}
     if not isinstance(limits, dict) or not isinstance(requests, dict):
         raise ValueError(f"{path}: resources.limits/requests must be objects")
     return (
@@ -146,6 +140,7 @@ def _resources(spec: dict[str, Any], path: Path) -> tuple[str, str, str, str]:
         ),
     )
 
+
 def _load_yaml_mapping(path: Path) -> dict[str, Any]:
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -155,22 +150,21 @@ def _load_yaml_mapping(path: Path) -> dict[str, Any]:
         raise ValueError(f"{path}: document must be a mapping")
     return data
 
+
 def parse_app_document(
     data: dict[str, Any],
     *,
     path: Path,
     expect_name: Optional[str] = None,
-) -> tuple[App, ServiceContract]:
+) -> tuple[App, AppSpec]:
     api = str(data.get("apiVersion", "")).strip()
     kind = str(data.get("kind", "")).strip()
     if api != CONTRACT_API_VERSION:
         raise ValueError(
             f"{path}: apiVersion must be {CONTRACT_API_VERSION!r}, got {api!r}"
         )
-    if kind not in CONTRACT_KINDS:
-        raise ValueError(
-            f"{path}: kind must be one of {sorted(CONTRACT_KINDS)}, got {kind!r}"
-        )
+    if kind != CONTRACT_KIND:
+        raise ValueError(f"{path}: kind must be {CONTRACT_KIND!r}, got {kind!r}")
 
     metadata = data.get("metadata") or {}
     if not isinstance(metadata, dict):
@@ -190,11 +184,32 @@ def parse_app_document(
     if not isinstance(spec, dict):
         raise ValueError(f"{path}: spec must be an object")
 
+    ports = parse_ports(spec, path)
+    needs_host = any(p.expose == "http" for p in ports)
     public_host = str(
         spec.get("publicHost", spec.get("public_host", ""))
     ).strip()
-    if not public_host:
-        raise ValueError(f"{path}: spec.publicHost is required")
+    if needs_host and not public_host:
+        raise ValueError(
+            f"{path}: spec.publicHost is required when any port uses expose=http"
+        )
+
+    raw_tls = spec.get("tls", "off")
+    if isinstance(raw_tls, bool):
+        if raw_tls:
+            raise ValueError(
+                f"{path}: spec.tls must be one of {sorted(TLS_MODES)} "
+                f"(YAML true is not valid; use 'origin')"
+            )
+        tls = "off"
+    else:
+        tls = str(raw_tls).strip().lower() or "off"
+    if tls not in TLS_MODES:
+        raise ValueError(
+            f"{path}: spec.tls must be one of {sorted(TLS_MODES)}, got {tls!r}"
+        )
+    if tls == "origin" and not public_host:
+        raise ValueError(f"{path}: spec.tls=origin requires spec.publicHost")
 
     source = str(spec.get("source", "git")).strip().lower()
     if source not in {"local", "git", "docker"}:
@@ -238,11 +253,12 @@ def parse_app_document(
         image=image,
     )
 
-    port = _port_from_spec(spec, path)
     www = bool(spec.get("www", True))
     extra_hosts = _extra_hosts(spec, path)
 
-    build = spec.get("build") or {}
+    build = spec.get("build")
+    if build is None:
+        build = {}
     if not isinstance(build, dict):
         raise ValueError(f"{path}: spec.build must be an object")
     context = build.get("context")
@@ -254,47 +270,51 @@ def parse_app_document(
     if dockerfile_s == "":
         dockerfile_s = None
 
-    probe_path = _probe_path(spec, path)
+    readiness = parse_readiness(spec, ports, path)
     cpus_limit, memory_limit, cpus_reservation, memory_reservation = _resources(
         spec, path
     )
 
-    contract = ServiceContract(
-        port=port,
+    app_spec = AppSpec(
+        ports=ports,
+        tls=tls,
+        readiness=readiness,
         www=www,
         extra_hosts=extra_hosts,
         build_context=build_context,
         dockerfile=dockerfile_s,
-        probe_path=probe_path,
         cpus_limit=cpus_limit,
         memory_limit=memory_limit,
         cpus_reservation=cpus_reservation,
         memory_reservation=memory_reservation,
         metadata_name=name,
     )
-    return app, contract
+    return app, app_spec
+
 
 def load_app_file(
     path: Path,
     *,
     expect_name: Optional[str] = None,
-) -> tuple[App, ServiceContract]:
+) -> tuple[App, AppSpec]:
     data = _load_yaml_mapping(path)
     return parse_app_document(data, path=path, expect_name=expect_name)
+
 
 def load_contract(
     checkout: Path,
     *,
     expect_name: Optional[str] = None,
-) -> ServiceContract:
+) -> AppSpec:
     path = contract_path(checkout)
     if not path.is_file():
         raise FileNotFoundError(
-            f"missing service contract: {path} "
+            f"missing App manifest: {path} "
             f"(add {CONTRACT_REL_PATH.as_posix()} to the service repo)"
         )
-    _, contract = load_app_file(path, expect_name=expect_name)
-    return contract
+    _, app_spec = load_app_file(path, expect_name=expect_name)
+    return app_spec
+
 
 def load_registry(root: Path) -> tuple[App, ...]:
     directory = registry_dir(root)
@@ -308,10 +328,11 @@ def load_registry(root: Path) -> tuple[App, ...]:
                 f"{path}: filename stem {path.stem!r} must match metadata.name {app.name!r}"
             )
         apps.append(app)
-    hosts = [a.public_host.lower() for a in apps]
+    hosts = [a.public_host.lower() for a in apps if a.public_host]
     if len(hosts) != len(set(hosts)):
         raise ValueError("registry: publicHost values must be unique across applied apps")
     return tuple(apps)
+
 
 def write_registry_app(root: Path, document: dict[str, Any]) -> Path:
     path_hint = Path("<apply>")
@@ -323,7 +344,11 @@ def write_registry_app(root: Path, document: dict[str, Any]) -> Path:
         if other.stem == app.name:
             continue
         other_app, _ = load_app_file(other)
-        if other_app.public_host.lower() == app.public_host.lower():
+        if (
+            app.public_host
+            and other_app.public_host
+            and other_app.public_host.lower() == app.public_host.lower()
+        ):
             raise ValueError(
                 f"publicHost {app.public_host!r} already used by applied app "
                 f"{other_app.name!r}"
@@ -331,6 +356,7 @@ def write_registry_app(root: Path, document: dict[str, Any]) -> Path:
     text = yaml.safe_dump(document, sort_keys=False, default_flow_style=False)
     dest.write_text(text, encoding="utf-8")
     return dest
+
 
 def delete_registry_app(root: Path, name: str) -> bool:
     path = registry_path(root, name)
