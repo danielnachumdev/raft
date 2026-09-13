@@ -26,7 +26,7 @@ gate (public edge listeners from settings) → router (Host routing) → apps
 | **router** | Inner nginx; Host → upstream | `raft redeploy router` |
 | **apps** | One Compose service per applied App | `raft redeploy <name>` (tmp cutover) |
 
-Cutover reloads **router** nginx. Render reloads **gate** nginx when `generated/nginx/gate-{tls,http,stream}` content changes and gate is running. Never use `redeploy` for gate — published-port changes need `gate recreate` (brief edge downtime).
+Cutover reloads **router** nginx. Render reloads **gate** nginx when on-disk `gate-{tls,http,stream}` differs from the last reload stamp (`state/gate-nginx.fingerprint`) and gate is running — so stale nginx (files already written, process never reloaded) is recovered on the next apply/render. Never use `redeploy` for gate — published-port changes need `gate recreate` (brief edge downtime).
 
 ### Ports and TLS
 

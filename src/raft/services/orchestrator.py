@@ -14,7 +14,12 @@ from ..models.stack import Stack
 from ..ui import say
 from .cutover import DEPLOY_CUTOVER, CutoverSession, wait_until
 from .readiness import ReadinessStrategy
-from .render import StackRenderer, fingerprint_gate_nginx
+from .render import (
+    StackRenderer,
+    fingerprint_gate_nginx,
+    read_gate_nginx_reload_stamp,
+    write_gate_nginx_reload_stamp,
+)
 from .sync import SourceSync
 
 logger = logging.getLogger(__name__)
@@ -43,12 +48,21 @@ class Orchestrator:
         self.render()
 
     def render(self) -> None:
-        before = fingerprint_gate_nginx(self.stack.root)
         StackRenderer(self.stack).render()
-        after = fingerprint_gate_nginx(self.stack.root)
-        if before != after and self.stack.gate in self.docker.running_services():
-            self.docker.reload_gate_nginx()
+        disk = fingerprint_gate_nginx(self.stack.root)
+        if self.stack.gate in self.docker.running_services():
+            loaded = read_gate_nginx_reload_stamp(self.stack.root)
+            if loaded != disk:
+                self.docker.reload_gate_nginx()
+                write_gate_nginx_reload_stamp(self.stack.root, disk)
+                say("reloaded gate nginx (edge TLS/http/stream config)", style="info")
         say("rendered generated/ from applied App manifests + edge settings", style="ok")
+
+    def _mark_gate_nginx_loaded(self) -> None:
+        """Gate process just started/recreated with current on-disk fragments."""
+        write_gate_nginx_reload_stamp(
+            self.stack.root, fingerprint_gate_nginx(self.stack.root)
+        )
 
     def _wait_app_ready(self, app, *, timeout: float = 45) -> None:
         spec = self.stack.spec_for(app)
@@ -78,6 +92,7 @@ class Orchestrator:
         logger.info("starting stack")
         self.docker.start_stack()
         self._assert_core_edge_running()
+        self._mark_gate_nginx_loaded()
         logger.info("waiting for readiness checks")
         for app in self.stack.apps:
             self._wait_app_ready(app, timeout=45)
@@ -128,6 +143,7 @@ class Orchestrator:
             style="warn",
         )
         self.docker.recreate_gate()
+        self._mark_gate_nginx_loaded()
         edge = load_config(self.stack.root).edge
         for port, _protocol in edge.published_ports():
             wait_until(
@@ -240,6 +256,7 @@ class Orchestrator:
         logger.info("starting stack")
         self.docker.start_stack()
         self._assert_core_edge_running()
+        self._mark_gate_nginx_loaded()
         logger.info("waiting for readiness checks")
         for app in self.stack.apps:
             self._wait_app_ready(app, timeout=45)

@@ -254,12 +254,16 @@ class TestAppApply(RaftTestCase):
         write_applied_app(self.tmp_path, "web", public_host="web.test")
         write_applied_app(self.tmp_path, "other", public_host="other.test")
         stack = load_stack(self.tmp_path)
-        AppApply(stack).delete("web")
+        with patch("raft.services.apply.Orchestrator") as orch_cls:
+            AppApply(stack).delete("web")
+            orch_cls.assert_called_once()
+            orch_cls.return_value.render.assert_called_once()
         assert not (self.tmp_path / "state" / "apps" / "web.yaml").is_file()
-        assert (self.tmp_path / "generated" / "compose.apps.yaml").is_file()
         assert "deleted web" in capsys.readouterr().out
 
-        AppApply(load_stack(self.tmp_path)).delete("other")
+        with patch("raft.services.apply.Orchestrator") as orch_cls:
+            AppApply(load_stack(self.tmp_path)).delete("other")
+            orch_cls.return_value.render.assert_called_once()
         assert "no apps applied" in capsys.readouterr().out.lower() or True
 
         with pytest.raises(KeyError, match="not applied"):

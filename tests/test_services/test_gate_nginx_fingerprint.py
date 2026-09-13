@@ -3,7 +3,11 @@
 from pathlib import Path
 
 from raft.config.paths import GENERATED_DIRNAME
-from raft.services.render import fingerprint_gate_nginx
+from raft.services.render import (
+    fingerprint_gate_nginx,
+    read_gate_nginx_reload_stamp,
+    write_gate_nginx_reload_stamp,
+)
 
 from ..base import RaftTestCase
 
@@ -49,3 +53,14 @@ class TestFingerprintGateNginx(RaftTestCase):
         (tls / "nested").mkdir(parents=True)
         (tls / "app.conf").write_text("server {}\n", encoding="utf-8")
         assert fingerprint_gate_nginx(self.tmp_path) == fingerprint_gate_nginx(self.tmp_path)
+
+    def test_reload_stamp_roundtrip(self) -> None:
+        assert read_gate_nginx_reload_stamp(self.tmp_path) is None
+        write_gate_nginx_reload_stamp(self.tmp_path, "abc123")
+        assert read_gate_nginx_reload_stamp(self.tmp_path) == "abc123"
+
+    def test_reload_stamp_empty_file_is_none(self) -> None:
+        path = self.tmp_path / "state" / "gate-nginx.fingerprint"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("\n", encoding="utf-8")
+        assert read_gate_nginx_reload_stamp(self.tmp_path) is None

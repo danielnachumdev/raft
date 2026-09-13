@@ -28,6 +28,7 @@ class TestOrchestrator(ServicesTestCase):
         assert self.orch.syncer.sync.call_args.args[0] == list(self.orch.stack.apps)
 
     def test_render_invokes_stack_renderer(self) -> None:
+        self.orch.docker.running_services.return_value = []
         with patch("raft.services.orchestrator.StackRenderer") as renderer_cls:
             instance = renderer_cls.return_value
             self.orch.render()
@@ -35,34 +36,66 @@ class TestOrchestrator(ServicesTestCase):
             instance.render.assert_called_once()
             self.orch.docker.reload_gate_nginx.assert_not_called()
 
-    def test_render_reloads_gate_when_fingerprint_changes(self) -> None:
+    def test_render_reloads_gate_when_stamp_differs_from_disk(self) -> None:
         self.orch.docker.running_services.return_value = ["gate", "router"]
         with patch(
             "raft.services.orchestrator.fingerprint_gate_nginx",
-            side_effect=["before", "after"],
+            return_value="disk-fp",
         ):
-            with patch("raft.services.orchestrator.StackRenderer"):
-                self.orch.render()
+            with patch(
+                "raft.services.orchestrator.read_gate_nginx_reload_stamp",
+                return_value="stale-fp",
+            ):
+                with patch(
+                    "raft.services.orchestrator.write_gate_nginx_reload_stamp"
+                ) as write_stamp:
+                    with patch("raft.services.orchestrator.StackRenderer"):
+                        self.orch.render()
+        self.orch.docker.reload_gate_nginx.assert_called_once()
+        write_stamp.assert_called_once_with(self.orch.stack.root, "disk-fp")
+
+    def test_render_reloads_gate_when_stamp_missing(self) -> None:
+        """Disk already has config but gate never recorded a reload (stale process)."""
+        self.orch.docker.running_services.return_value = ["gate", "router"]
+        with patch(
+            "raft.services.orchestrator.fingerprint_gate_nginx",
+            return_value="on-disk",
+        ):
+            with patch(
+                "raft.services.orchestrator.read_gate_nginx_reload_stamp",
+                return_value=None,
+            ):
+                with patch("raft.services.orchestrator.write_gate_nginx_reload_stamp"):
+                    with patch("raft.services.orchestrator.StackRenderer"):
+                        self.orch.render()
         self.orch.docker.reload_gate_nginx.assert_called_once()
 
-    def test_render_skips_gate_reload_when_fingerprint_unchanged(self) -> None:
+    def test_render_skips_gate_reload_when_stamp_matches_disk(self) -> None:
+        self.orch.docker.running_services.return_value = ["gate", "router"]
         with patch(
             "raft.services.orchestrator.fingerprint_gate_nginx",
             return_value="same",
         ):
-            with patch("raft.services.orchestrator.StackRenderer"):
-                self.orch.render()
+            with patch(
+                "raft.services.orchestrator.read_gate_nginx_reload_stamp",
+                return_value="same",
+            ):
+                with patch("raft.services.orchestrator.StackRenderer"):
+                    self.orch.render()
         self.orch.docker.reload_gate_nginx.assert_not_called()
-        self.orch.docker.running_services.assert_not_called()
 
     def test_render_skips_gate_reload_when_gate_down(self) -> None:
         self.orch.docker.running_services.return_value = ["router"]
         with patch(
             "raft.services.orchestrator.fingerprint_gate_nginx",
-            side_effect=["before", "after"],
+            return_value="disk-fp",
         ):
-            with patch("raft.services.orchestrator.StackRenderer"):
-                self.orch.render()
+            with patch(
+                "raft.services.orchestrator.read_gate_nginx_reload_stamp",
+                return_value="stale",
+            ):
+                with patch("raft.services.orchestrator.StackRenderer"):
+                    self.orch.render()
         self.orch.docker.reload_gate_nginx.assert_not_called()
 
     def test_start_happy_path(self) -> None:

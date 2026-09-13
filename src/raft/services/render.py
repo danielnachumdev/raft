@@ -18,6 +18,7 @@ from .readiness import ReadinessStrategy
 logger = logging.getLogger(__name__)
 
 _GATE_NGINX_SUBDIRS = ("gate-tls", "gate-http", "gate-stream")
+GATE_NGINX_RELOAD_STAMP = Path("state") / "gate-nginx.fingerprint"
 
 
 def fingerprint_gate_nginx(stack_root: Path) -> str:
@@ -43,6 +44,22 @@ def fingerprint_gate_nginx(stack_root: Path) -> str:
         digest.update(data)
         digest.update(b"\0")
     return digest.hexdigest()
+
+
+def read_gate_nginx_reload_stamp(stack_root: Path) -> Optional[str]:
+    """Fingerprint last successfully loaded into a running gate, if recorded."""
+    path = stack_root / GATE_NGINX_RELOAD_STAMP
+    if not path.is_file():
+        return None
+    text = path.read_text(encoding="utf-8").strip()
+    return text or None
+
+
+def write_gate_nginx_reload_stamp(stack_root: Path, fingerprint: str) -> None:
+    """Record that gate nginx has loaded this fingerprint (reload or cold start)."""
+    path = stack_root / GATE_NGINX_RELOAD_STAMP
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(fingerprint + "\n", encoding="utf-8")
 
 
 class StackRenderer:

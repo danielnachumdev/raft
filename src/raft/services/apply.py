@@ -23,7 +23,6 @@ from ..models.stack import Stack, load_stack
 from ..ui import say
 from .auth import GitAuthManager
 from .orchestrator import Orchestrator
-from .render import StackRenderer
 
 logger = logging.getLogger(__name__)
 
@@ -157,14 +156,13 @@ class AppApply:
             raise KeyError(f"app {name!r} is not applied")
         say(f"deleted {name} from registry", style="ok")
         fresh = load_stack(self.stack.root)
+        Orchestrator(fresh).render()
         if fresh.apps:
-            StackRenderer(fresh).render()
             say(
                 "re-rendered generated/; remove the Compose service if it is still running",
                 style="info",
             )
         else:
-            StackRenderer(fresh).render()
             say("re-rendered generated/ (no apps applied)", style="info")
 
     def _deploy(
