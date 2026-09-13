@@ -20,12 +20,7 @@ Kubernetes (and most “platform” stacks) are overkill when you have one VM an
 curl -fsSL https://raw.githubusercontent.com/danielnachumdev/raft/main/install.sh | bash
 ```
 
-[`install.sh`](install.sh) will:
-
-1. Install **uv** if missing  
-2. `uv tool install` from GitHub so **`raft` is on your `PATH`** (no lasting clone; optional `RAFT_KEEP_CHECKOUT=1` keeps one)
-
-Operator data lives under **`~/.raft/`** (settings, applied apps, generated Compose/nginx, certs, logs). Override with `RAFT_DATA_HOME`. Refresh the CLI later with `raft update`.
+Operator data lives under **`~/.raft/`**. Override with `RAFT_DATA_HOME`. Refresh the CLI later with `raft update`.
 
 ```bash
 raft doctor
