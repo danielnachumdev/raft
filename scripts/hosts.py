@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Temporarily manage Linux and Windows hosts files with guaranteed restore."""
+"""Temporarily patch local hosts files for applied raft apps, then restore."""
 
 from __future__ import annotations
 
@@ -22,18 +22,24 @@ DEFAULT_WINDOWS_HOSTS = Path("/mnt/c/Windows/System32/drivers/etc/hosts")
 POWERSHELL = Path("/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe")
 IPCONFIG = Path("/mnt/c/Windows/System32/ipconfig.exe")
 
-MARKER_BEGIN = "# >>> raft hosts-manager BEGIN"
-MARKER_END = "# <<< raft hosts-manager END"
+MARKER_BEGIN = "# >>> raft hosts BEGIN"
+MARKER_END = "# <<< raft hosts END"
+# Older installs used hosts-manager markers; strip those too on apply/restore.
+_LEGACY_MARKER_PAIRS = (
+    ("# >>> raft hosts-manager BEGIN", "# <<< raft hosts-manager END"),
+)
 HANDLED_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGQUIT)
 _PUBLIC_HOST_RE = re.compile(
     r'^(?:publicHost|public_host)\s*:\s*["\']?([^"\'#\s]+)["\']?\s*(?:#.*)?$'
 )
+
 
 def _data_home() -> Path:
     override = os.environ.get("RAFT_DATA_HOME")
     if override:
         return Path(override).expanduser().resolve()
     return (Path.home() / ".raft").resolve()
+
 
 def _public_hosts_from_registry(registry_dir: Path) -> tuple[str, ...]:
     names: list[str] = []
@@ -50,6 +56,7 @@ def _public_hosts_from_registry(registry_dir: Path) -> tuple[str, ...]:
         if not host.startswith("www."):
             names.append(f"www.{host}")
     return tuple(names)
+
 
 @dataclass(frozen=True)
 class HostBinding:
@@ -69,16 +76,19 @@ class HostBinding:
     def hosts_line(self) -> str:
         return f"{self.ip}\t{' '.join(self.names)}"
 
+
 @dataclass(frozen=True)
-class HostsPatchPlan:
+class HostsPlan:
+    """Declarative set of hosts lines to inject while the session is active."""
+
     bindings: tuple[HostBinding, ...]
 
     def __post_init__(self) -> None:
         if not self.bindings:
-            raise ValueError("HostsPatchPlan requires at least one HostBinding")
+            raise ValueError("HostsPlan requires at least one HostBinding")
 
     @classmethod
-    def default(cls) -> HostsPatchPlan:
+    def from_applied_apps(cls) -> HostsPlan:
         registry = _data_home() / "state" / "apps"
         names: tuple[str, ...] = ()
         if registry.is_dir():
@@ -91,16 +101,12 @@ class HostsPatchPlan:
                 "no applied apps under ~/.raft/state/apps/*.yaml; "
                 "apply an App first or pass --entry IP,hostname[,hostname...]"
             )
-        return cls(
-            bindings=(
-                HostBinding(ip="127.0.0.1", names=names),
-            )
-        )
+        return cls(bindings=(HostBinding(ip="127.0.0.1", names=names),))
 
     @classmethod
-    def from_cli_entries(cls, values: Optional[Sequence[str]]) -> HostsPatchPlan:
+    def from_cli_entries(cls, values: Optional[Sequence[str]]) -> HostsPlan:
         if not values:
-            return cls.default()
+            return cls.from_applied_apps()
 
         order: list[str] = []
         merged: dict[str, list[str]] = {}
@@ -122,6 +128,16 @@ class HostsPatchPlan:
     def describe(self) -> list[str]:
         return [b.hosts_line() for b in self.bindings]
 
+    def managed_block_lines(self) -> list[str]:
+        return [
+            MARKER_BEGIN,
+            "# managed by raft hosts; do not edit",
+            *(binding.hosts_line() for binding in self.bindings),
+            MARKER_END,
+            "",
+        ]
+
+
 def _parse_cli_entry(raw: str) -> HostBinding:
     parts = [p.strip() for p in raw.split(",") if p.strip()]
     if len(parts) < 2:
@@ -134,6 +150,7 @@ def _parse_cli_entry(raw: str) -> HostBinding:
     except ValueError as exc:
         raise argparse.ArgumentTypeError(str(exc)) from exc
 
+
 def _wsl_to_windows_path(path: Path) -> str:
     resolved = path.resolve()
     parts = resolved.parts
@@ -142,6 +159,7 @@ def _wsl_to_windows_path(path: Path) -> str:
         rest = "\\".join(parts[3:])
         return f"{drive}:\\{rest}" if rest else f"{drive}:\\"
     raise ValueError(f"not a /mnt/<drive> path: {path}")
+
 
 def _windows_temp_dir() -> Path:
     profile = os.environ.get("USERPROFILE")
@@ -174,6 +192,7 @@ def _windows_temp_dir() -> Path:
         pass
     raise RuntimeError("could not find a writable Windows Temp directory")
 
+
 @dataclass
 class HostsTarget:
     path: Path
@@ -183,9 +202,12 @@ class HostsTarget:
     elevated: bool = False
     touched: bool = False
 
+
 @dataclass
-class HostsManager:
-    plan: HostsPatchPlan = field(default_factory=HostsPatchPlan.default)
+class Hosts:
+    """Apply a HostsPlan to Linux/Windows hosts files; always restore on exit."""
+
+    plan: HostsPlan = field(default_factory=HostsPlan.from_applied_apps)
     linux_hosts: Path = DEFAULT_LINUX_HOSTS
     windows_hosts: Optional[Path] = DEFAULT_WINDOWS_HOSTS
     include_windows: bool = True
@@ -203,13 +225,12 @@ class HostsManager:
         if self.windows_hosts is not None:
             self.windows_hosts = Path(self.windows_hosts)
         self.backup_dir = Path(self.backup_dir)
-        if not isinstance(self.plan, HostsPatchPlan):
+        if not isinstance(self.plan, HostsPlan):
             raise TypeError(
-                "plan must be a HostsPatchPlan "
-                f"(got {type(self.plan).__name__})"
+                f"plan must be a HostsPlan (got {type(self.plan).__name__})"
             )
 
-    def __enter__(self) -> "HostsManager":
+    def __enter__(self) -> "Hosts":
         self.apply()
         return self
 
@@ -392,33 +413,13 @@ class HostsManager:
         newline = "\r\n" if b"\r\n" in original else "\n"
         text = original.decode("utf-8", errors="surrogateescape")
         text = text.replace("\r\n", "\n").replace("\r", "\n")
-        text = self._strip_managed_block(text)
+        text = _strip_managed_blocks(text)
         if not text.endswith("\n"):
             text += "\n"
-        block = [
-            MARKER_BEGIN,
-            "# managed by raft hosts_manager; do not edit",
-            *(binding.hosts_line() for binding in self.plan.bindings),
-            MARKER_END,
-            "",
-        ]
-        patched = text + "\n".join(block)
+        patched = text + "\n".join(self.plan.managed_block_lines())
         if newline != "\n":
             patched = patched.replace("\n", newline)
         return patched.encode("utf-8", errors="surrogateescape")
-
-    @staticmethod
-    def _strip_managed_block(text: str) -> str:
-        begin = text.find(MARKER_BEGIN)
-        if begin == -1:
-            return text
-        end = text.find(MARKER_END, begin)
-        if end == -1:
-            return text
-        end = text.find("\n", end)
-        if end == -1:
-            return text[:begin].rstrip("\n") + "\n"
-        return text[:begin].rstrip("\n") + "\n" + text[end + 1 :].lstrip("\n")
 
     def _atomic_write(self, path: Path, data: bytes) -> None:
         directory = path.parent
@@ -487,10 +488,30 @@ class HostsManager:
                 raise KeyboardInterrupt
             raise SystemExit(128 + signum)
 
-def _cmd_hold(manager: HostsManager) -> int:
+
+def _strip_one_block(text: str, begin: str, end: str) -> str:
+    start = text.find(begin)
+    if start == -1:
+        return text
+    stop = text.find(end, start)
+    if stop == -1:
+        return text
+    stop = text.find("\n", stop)
+    if stop == -1:
+        return text[:start].rstrip("\n") + "\n"
+    return text[:start].rstrip("\n") + "\n" + text[stop + 1 :].lstrip("\n")
+
+
+def _strip_managed_blocks(text: str) -> str:
+    for begin, end in ((MARKER_BEGIN, MARKER_END), *_LEGACY_MARKER_PAIRS):
+        text = _strip_one_block(text, begin, end)
+    return text
+
+
+def _cmd_hold(session: Hosts) -> int:
     print("Press Ctrl+C to restore both hosts files and exit.", flush=True)
-    with manager:
-        for line in manager.plan.describe():
+    with session:
+        for line in session.plan.describe():
             print(f"  {line}", flush=True)
         try:
             signal.pause()
@@ -499,19 +520,21 @@ def _cmd_hold(manager: HostsManager) -> int:
     print("hosts restored.", flush=True)
     return 0
 
-def _cmd_run(manager: HostsManager, command: list[str]) -> int:
+
+def _cmd_run(session: Hosts, command: list[str]) -> int:
     if not command:
         raise SystemExit("run requires a command after --")
-    with manager:
+    with session:
         print(f"hosts patched for duration of: {' '.join(command)}", flush=True)
         completed = subprocess.run(command, check=False)
         return completed.returncode
 
+
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Safely patch Linux /etc/hosts and the Windows hosts file, "
-            "then always restore the prior state."
+            "Safely patch Linux /etc/hosts and the Windows hosts file for "
+            "applied raft publicHost values, then always restore prior state."
         )
     )
     parser.add_argument(
@@ -543,7 +566,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         "--entry",
         action="append",
         metavar="IP,name[,name...]",
-        help="override HostsPatchPlan.default(); repeatable",
+        help="override HostsPlan.from_applied_apps(); repeatable",
     )
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("hold", help="apply entries until Ctrl+C / signal, then restore")
@@ -560,8 +583,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     if args.linux_only and args.windows_only:
         parser.error("use only one of --linux-only / --windows-only")
 
-    manager = HostsManager(
-        plan=HostsPatchPlan.from_cli_entries(args.entry),
+    session = Hosts(
+        plan=HostsPlan.from_cli_entries(args.entry),
         linux_hosts=args.linux_hosts,
         windows_hosts=args.windows_hosts,
         include_linux=not args.windows_only,
@@ -570,14 +593,15 @@ def main(argv: Optional[list[str]] = None) -> int:
     )
 
     if args.command == "hold":
-        return _cmd_hold(manager)
+        return _cmd_hold(session)
     if args.command == "run":
         cmd = list(args.cmd)
         if cmd and cmd[0] == "--":
             cmd = cmd[1:]
-        return _cmd_run(manager, cmd)
+        return _cmd_run(session, cmd)
     parser.error(f"unknown command {args.command}")
     return 2
+
 
 if __name__ == "__main__":
     sys.exit(main())

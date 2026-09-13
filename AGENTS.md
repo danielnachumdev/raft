@@ -60,7 +60,7 @@ Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 6. Updates: `raft redeploy <app>` or `raft redeploy router`.
 7. Tear down: `raft down`.
 
-Useful checks: `curl -H 'Host: <publicHost>' http://127.0.0.1/`. Optional local hosts: `sudo python3 scripts/hosts_manager.py hold` (reads applied `publicHost` values; errors if none applied).
+Useful checks: `curl -H 'Host: <publicHost>' http://127.0.0.1/`. Optional local hosts: `sudo python3 scripts/hosts.py hold` (reads applied `publicHost` values; errors if none applied). See [`scripts/README.md`](scripts/README.md).
 
 Logging: `~/.raft/settings.yaml` `logging:`; default `~/.raft/logs/raft.log`; override dir with `RAFT_LOG_DIR`. Terminal stays plain; file is structured.
 
