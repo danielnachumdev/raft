@@ -391,7 +391,10 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
         orch.nginx = MagicMock()
         orch.http = MagicMock()
         orch.syncer = MagicMock()
-        orch.docker.running_services.return_value = []
+        orch.docker.running_services.side_effect = [
+            [],
+            ["gate", "router", "app"],
+        ]
         with patch.object(orch, "sync"):
             orch.start()
         orch.http.public_host_ok.assert_not_called()

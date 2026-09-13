@@ -88,6 +88,15 @@ class TestRaftHome(RaftTestCase):
         ensure_raft_home(home)
         assert (home / "nginx" / "gate" / "nginx.conf").is_file()
 
+    def test_gate_nginx_conf_uses_builtin_stream(self) -> None:
+        """nginx:alpine builds stream in; load_module ngx_stream_module.so crashes gate."""
+        home = self.tmp_path / "home"
+        ensure_raft_home(home)
+        conf = (home / "nginx" / "gate" / "nginx.conf").read_text(encoding="utf-8")
+        assert "load_module" not in conf
+        assert "stream {" in conf
+        assert "include /etc/nginx/stream-generated/*.conf;" in conf
+
     def test_load_edge_section(self) -> None:
         (self.tmp_path / "settings.yaml").write_text(
             """

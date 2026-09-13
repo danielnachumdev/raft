@@ -73,11 +73,23 @@ class Orchestrator:
         self.sync()
         logger.info("starting stack")
         self.docker.start_stack()
+        self._assert_core_edge_running()
         logger.info("waiting for readiness checks")
         for app in self.stack.apps:
             self._wait_app_ready(app, timeout=45)
         say("stack is up", style="ok")
         say("redeploy with: raft redeploy <app>", style="info")
+
+    def _assert_core_edge_running(self) -> None:
+        """Compose can report Started even when nginx then exits on bad config."""
+        expected = (self.stack.gate, self.stack.router)
+        running = set(self.docker.running_services())
+        missing = [name for name in expected if name not in running]
+        if missing:
+            raise RuntimeError(
+                f"stack start incomplete — missing running services: {missing}. "
+                "Check `docker compose logs gate` (often bad nginx config)."
+            )
 
     def stop(self) -> None:
         running = self.docker.running_services()

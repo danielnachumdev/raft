@@ -31,11 +31,24 @@ class TestOrchestrator(ServicesTestCase):
             instance.render.assert_called_once()
 
     def test_start_happy_path(self) -> None:
-        self.orch.docker.running_services.return_value = []
+        self.orch.docker.running_services.side_effect = [
+            [],
+            ["gate", "router", "app"],
+        ]
         self.orch.http.public_host_ok.return_value = True
         with patch.object(self.orch, "sync") as sync:
             self.orch.start()
         sync.assert_called_once()
+        self.orch.docker.start_stack.assert_called_once()
+
+    def test_start_fails_if_gate_exits(self) -> None:
+        self.orch.docker.running_services.side_effect = [
+            [],
+            ["router"],
+        ]
+        with patch.object(self.orch, "sync"):
+            with pytest.raises(RuntimeError, match="missing running services: \\['gate'\\]"):
+                self.orch.start()
         self.orch.docker.start_stack.assert_called_once()
 
     def test_recreate_gate_happy(self) -> None:
