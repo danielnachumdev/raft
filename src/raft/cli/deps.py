@@ -2,7 +2,7 @@
 
 from ..config import load_config, setup_logging
 from ..models import load_stack
-from ..services import Doctor, GitAuthManager, Orchestrator
+from ..services import Doctor, GitAuthManager, Orchestrator, SelfUpdate
 from ..services.apply import AppApply
 
 __all__ = [
@@ -10,6 +10,7 @@ __all__ = [
     "Doctor",
     "GitAuthManager",
     "Orchestrator",
+    "SelfUpdate",
     "load_config",
     "load_stack",
     "setup_logging",

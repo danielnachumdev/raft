@@ -7,6 +7,7 @@ from .doctor import CheckResult, Doctor
 from .orchestrator import Orchestrator
 from .render import StackRenderer
 from .sync import SourceSync
+from .update import SelfUpdate
 
 __all__ = [
     "AppApply",
@@ -16,6 +17,7 @@ __all__ = [
     "Doctor",
     "GitAuthManager",
     "Orchestrator",
+    "SelfUpdate",
     "SourceSync",
     "StackRenderer",
     "wait_until",

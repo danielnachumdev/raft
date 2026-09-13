@@ -1,11 +1,11 @@
 """CLI package for raft (Google Fire).
 
 Usage:
-    uv run raft apply --file .raft/app.yaml
-    uv run raft apply --git git@github.com:org/repo.git --ref main
-    uv run raft get apps
-    uv run raft delete app <name>
-    uv run raft up | down | sync | redeploy | render | doctor | auth
+    raft apply --file .raft/app.yaml
+    raft apply --git git@github.com:org/repo.git --ref main
+    raft get apps
+    raft delete app <name>
+    raft up | down | sync | redeploy | render | doctor | update | auth
 """
 
 from .auth import AuthCLI

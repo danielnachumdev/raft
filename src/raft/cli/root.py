@@ -92,7 +92,7 @@ class RaftCLI:
         deps.Orchestrator(self._stack).stop()
 
     def render(self) -> None:
-        """Generate Compose/nginx from state/apps/*.yaml."""
+        """Generate Compose/nginx from ~/.raft/state/apps/*.yaml."""
         deps.Orchestrator(self._stack).render()
 
     def doctor(self) -> None:
@@ -100,6 +100,10 @@ class RaftCLI:
         code = deps.Doctor(self._stack).report()
         if code:
             raise SystemExit(code)
+
+    def update(self) -> None:
+        """Re-install raft from GitHub (re-run install.sh / uv tool install)."""
+        deps.SelfUpdate(self._stack).run()
 
     def sync(
         self,

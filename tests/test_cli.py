@@ -52,6 +52,14 @@ class TestCli(RaftTestCase):
                 assert cli.main(["doctor"]) == 0
         doctor.report.assert_called_once()
 
+    def test_update_dispatches(self) -> None:
+        updater = MagicMock()
+        with patch("raft.cli.deps.load_stack", return_value=self.stack):
+            with patch("raft.cli.deps.SelfUpdate", return_value=updater) as ctor:
+                assert cli.main(["update"]) == 0
+        ctor.assert_called_once_with(self.stack)
+        updater.run.assert_called_once()
+
     def test_sync_dispatches_all(self) -> None:
         assert self._run_main(["sync"]) == 0
         self.orch.sync.assert_called_once_with(None, ref_override=None, force=False)
