@@ -62,7 +62,7 @@ class SourceSync:
             pull_ref = app.image_ref(wanted)
             pin = app.compose_pin_image
             logger.info("sync %s: docker pull %s", app.name, pull_ref)
-            self._docker_pull(pull_ref)
+            self._docker_pull(pull_ref, app=app.name, repo=app.repo)
             if pull_ref != pin:
                 logger.info("sync %s: tag %s -> %s (compose pin)", app.name, pull_ref, pin)
                 self.sh.docker("tag", pull_ref, pin)
@@ -86,13 +86,23 @@ class SourceSync:
         assert app.repo
         self._sync_git(app, dest, ref_override=ref_override, force=force)
 
-    def _docker_pull(self, image: str) -> None:
+    def _docker_pull(
+        self,
+        image: str,
+        *,
+        app: Optional[str] = None,
+        repo: Optional[str] = None,
+    ) -> None:
         result = self.sh.docker("pull", image, capture=True, check=False)
         if result.returncode == 0:
             return
         detail = (result.stderr or result.stdout or "").strip()
         if looks_like_registry_unauthorized(detail):
-            raise RuntimeError(registry_unauthorized_message(image, detail=detail))
+            raise RuntimeError(
+                registry_unauthorized_message(
+                    image, detail=detail, app=app, repo=repo
+                )
+            )
         raise subprocess.CalledProcessError(
             result.returncode,
             ["docker", "pull", image],

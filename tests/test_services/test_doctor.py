@@ -531,9 +531,9 @@ class TestDoctor(ServicesTestCase):
         assert results[("hub", "sync")].status == "fail"
         fix = results[("hub", "sync")].fix or ""
         assert "ghcr.io/org/hub:main" in fix
+        assert "https://github.com/settings/tokens/new?scopes=read:packages" in fix
         assert "docker login ghcr.io" in fix
-        assert "read:packages" in fix
-        assert "raft sync" in fix
+        assert "raft sync hub" in fix
 
     def test_certs_partial_pair_fails(self) -> None:
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")

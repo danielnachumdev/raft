@@ -2,6 +2,16 @@
 
 from __future__ import annotations
 
+from typing import Optional
+from urllib.parse import quote
+
+# Classic PAT only — fine-grained tokens cannot grant Packages scopes.
+_GHCR_PAT_URL = (
+    "https://github.com/settings/tokens/new"
+    "?scopes=read:packages"
+    "&description=raft-ghcr-pull"
+)
+
 
 def looks_like_registry_unauthorized(text: str) -> bool:
     lower = text.lower()
@@ -18,23 +28,54 @@ def is_ghcr_image(image: str) -> bool:
     return image.strip().lower().startswith("ghcr.io/")
 
 
-def registry_login_fix_steps(image: str) -> list[str]:
-    """Ordered operator steps to pull a (likely private) image on the VPS."""
-    login = (
-        "echo 'YOUR_PAT' | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin"
-        if is_ghcr_image(image)
-        else "docker login <registry>   # credentials for this image's registry"
+def ghcr_pat_create_url(*, description: str = "raft-ghcr-pull") -> str:
+    """Deep-link to GitHub classic PAT creation with only ``read:packages``."""
+    return (
+        "https://github.com/settings/tokens/new"
+        f"?scopes=read:packages&description={quote(description, safe='')}"
     )
+
+
+def registry_login_fix_steps(
+    image: str,
+    *,
+    app: Optional[str] = None,
+    repo: Optional[str] = None,
+) -> list[str]:
+    """Ordered operator steps to pull a (likely private) image on the VPS."""
+    if is_ghcr_image(image):
+        desc = f"raft-ghcr-{app}" if app else "raft-ghcr-pull"
+        token_step = f"Open {ghcr_pat_create_url(description=desc)} (classic PAT, read:packages only)"
+        login = (
+            "echo 'YOUR_PAT' | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin"
+        )
+    else:
+        token_step = "Create a registry credential that can pull this image"
+        login = "docker login <registry>   # credentials for this image's registry"
+
+    if repo:
+        retry = f"raft sync {app}   # or: raft apply --git {repo}" if app else f"raft apply --git {repo}"
+    elif app:
+        retry = f"raft sync {app}   # or re-run: raft apply --git <repo>"
+    else:
+        retry = "raft sync <app>   # or re-run: raft apply --git <repo>"
+
     return [
-        "GitHub → Settings → Developer settings → Personal access tokens (classic)",
-        "Create a token with only read:packages",
+        token_step,
+        "Generate the token and copy it once",
         login,
         f"docker pull {image}",
-        "raft sync <app>   # or re-run: raft apply --git <repo>",
+        retry,
     ]
 
 
-def registry_unauthorized_message(image: str, *, detail: str = "") -> str:
+def registry_unauthorized_message(
+    image: str,
+    *,
+    detail: str = "",
+    app: Optional[str] = None,
+    repo: Optional[str] = None,
+) -> str:
     """Single call-to-action for a failed ``docker pull`` (private GHCR, etc.)."""
     lines = [
         f"cannot pull {image}: registry unauthorized.",
@@ -44,7 +85,9 @@ def registry_unauthorized_message(image: str, *, detail: str = "") -> str:
         "",
         "fix (as the raft user):",
     ]
-    for i, step in enumerate(registry_login_fix_steps(image), start=1):
+    for i, step in enumerate(
+        registry_login_fix_steps(image, app=app, repo=repo), start=1
+    ):
         lines.append(f"  {i}. {step}")
     if detail:
         first = detail.splitlines()[0].strip()
@@ -53,12 +96,19 @@ def registry_unauthorized_message(image: str, *, detail: str = "") -> str:
     return "\n".join(lines)
 
 
-def missing_image_doctor_fix(image: str) -> str:
+def missing_image_doctor_fix(
+    image: str,
+    *,
+    app: Optional[str] = None,
+    repo: Optional[str] = None,
+) -> str:
     """Doctor ``fix:`` text when the Compose pin image is not present locally."""
     lines = [
         f"image not on this VPS yet ({image}).",
         "`raft auth` does not pull images — login to the registry, then sync:",
     ]
-    for i, step in enumerate(registry_login_fix_steps(image), start=1):
+    for i, step in enumerate(
+        registry_login_fix_steps(image, app=app, repo=repo), start=1
+    ):
         lines.append(f"{i}. {step}")
     return "\n".join(lines)

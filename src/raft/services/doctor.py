@@ -256,7 +256,9 @@ class Doctor:
                             "sync",
                             "fail",
                             f"docker image missing locally: {pin}",
-                            fix=missing_image_doctor_fix(pin),
+                            fix=missing_image_doctor_fix(
+                                pin, app=app.name, repo=app.repo
+                            ),
                         )
                     )
                 results.extend(self._check_contract(app))
