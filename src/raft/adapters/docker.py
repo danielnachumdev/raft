@@ -8,6 +8,13 @@ import subprocess
 from ..models.app import COMPOSE_PROJECT, App
 from ..models.ports import PortSpec
 from ..models.stack import Stack
+from ..services.certs import looks_like_missing_origin_cert
+from ..services.command_errors import (
+    raise_for_compose_failure,
+    raise_for_docker_pull_failure,
+    run_compose_checked,
+    run_docker_checked,
+)
 from .shell import Shell
 
 logger = logging.getLogger(__name__)
@@ -19,8 +26,6 @@ class DockerStack:
         self.sh = shell
 
     def start_stack(self) -> None:
-        from ..services.command_errors import run_compose_checked
-
         logger.info("compose up -d --build --remove-orphans")
         run_compose_checked(
             self.sh,
@@ -29,8 +34,6 @@ class DockerStack:
         )
 
     def stop_stack(self) -> None:
-        from ..services.command_errors import run_compose_checked
-
         logger.info("compose down --remove-orphans")
         run_compose_checked(
             self.sh,
@@ -63,8 +66,6 @@ class DockerStack:
         return running
 
     def recreate_router(self) -> None:
-        from ..services.command_errors import run_compose_checked
-
         logger.info("force-recreate router")
         run_compose_checked(
             self.sh,
@@ -73,8 +74,6 @@ class DockerStack:
         )
 
     def recreate_gate(self) -> None:
-        from ..services.command_errors import run_compose_checked
-
         logger.info("force-recreate gate (published edge ports)")
         run_compose_checked(
             self.sh,
@@ -107,8 +106,6 @@ class DockerStack:
         return sorted(set(ports))
 
     def rebuild_service(self, service: str) -> None:
-        from ..services.command_errors import run_compose_checked
-
         logger.info("rebuild service %s", service)
         run_compose_checked(
             self.sh,
@@ -117,12 +114,6 @@ class DockerStack:
         )
 
     def recreate_pulled_service(self, app: App, *, pull_ref: str) -> None:
-        from ..services.command_errors import (
-            raise_for_docker_pull_failure,
-            run_compose_checked,
-            run_docker_checked,
-        )
-
         pin = app.compose_pin_image
         logger.info("pull %s then recreate compose service %s (pin %s)", pull_ref, app.name, pin)
         result = self.sh.docker("pull", pull_ref, capture=True, check=False)
@@ -144,8 +135,6 @@ class DockerStack:
         )
 
     def service_container_id(self, service: str) -> str:
-        from ..services.command_errors import raise_for_compose_failure
-
         result = self.sh.compose("ps", "-q", service, capture=True, check=False)
         if result.returncode != 0:
             exc = subprocess.CalledProcessError(
@@ -164,8 +153,6 @@ class DockerStack:
         return cid
 
     def container_image_ref(self, container_id: str) -> str:
-        from ..services.command_errors import run_docker_checked
-
         try:
             named = run_docker_checked(
                 self.sh,
@@ -198,8 +185,6 @@ class DockerStack:
         return tag
 
     def container_image_id(self, container_id: str) -> str:
-        from ..services.command_errors import run_docker_checked
-
         ref = self.container_image_ref(container_id)
         result = run_docker_checked(
             self.sh,
@@ -209,8 +194,6 @@ class DockerStack:
         return (result.stdout or "").strip() or ref
 
     def router_network(self) -> str:
-        from ..services.command_errors import run_docker_checked
-
         router_id = self.service_container_id(self.stack.router)
         try:
             result = run_docker_checked(
@@ -238,8 +221,6 @@ class DockerStack:
         self.sh.docker("rm", "-f", name, check=False, capture=True)
 
     def run_tmp(self, *, name: str, alias: str, image: str, network: str) -> None:
-        from ..services.command_errors import run_docker_checked
-
         logger.info("run tmp container name=%s alias=%s image=%s", name, alias, image)
         self.remove_container(name)
         run_docker_checked(
@@ -310,8 +291,6 @@ class DockerStack:
         self.reload_router_nginx()
 
     def reload_gate_nginx(self) -> None:
-        from ..services.certs import looks_like_missing_origin_cert
-
         logger.info("nginx -t && reload on gate")
         # Capture stderr so entry/CLI can surface Origin PEM guidance instead of
         # only "command failed: docker compose exec … nginx -t".

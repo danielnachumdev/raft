@@ -10,7 +10,27 @@ from typing import Optional
 import fire
 import yaml
 
+from ..models.stack import load_stack
 from ..services.certs import looks_like_missing_origin_cert, missing_origin_certs
+from ..services.command_errors import (
+    compose_failure_message,
+    docker_daemon_message,
+    docker_pull_failure_message,
+    looks_like_docker_daemon_down,
+    looks_like_port_in_use,
+    port_in_use_message,
+)
+from ..services.git_errors import (
+    git_auth_failure_message,
+    git_generic_failure_message,
+    git_network_failure_message,
+    looks_like_git_auth_failure,
+    looks_like_git_network_failure,
+)
+from ..services.registry import (
+    looks_like_registry_unauthorized,
+    registry_unauthorized_message,
+)
 from ..ui import say_err
 from .root import RaftCLI
 
@@ -45,8 +65,6 @@ def _format_called_process_error(exc: subprocess.CalledProcessError) -> str:
     blob = f"{cmd}\n{detail}"
     if looks_like_missing_origin_cert(blob):
         try:
-            from ..models.stack import load_stack
-
             missing = missing_origin_certs(load_stack())
         except Exception:  # noqa: BLE001 — best-effort enrichment only
             missing = []
@@ -67,24 +85,6 @@ def _format_called_process_error(exc: subprocess.CalledProcessError) -> str:
             say_err(detail)
             return f"{text}\n{detail}"
         return text
-    from ..services.command_errors import (
-        looks_like_docker_daemon_down,
-        looks_like_port_in_use,
-        docker_daemon_message,
-        port_in_use_message,
-        compose_failure_message,
-    )
-    from ..services.git_errors import (
-        looks_like_git_auth_failure,
-        looks_like_git_network_failure,
-        git_auth_failure_message,
-        git_network_failure_message,
-        git_generic_failure_message,
-    )
-    from ..services.registry import (
-        looks_like_registry_unauthorized,
-        registry_unauthorized_message,
-    )
 
     cmd_parts = [str(p) for p in (exc.cmd or [])]
     if "docker" in cmd and "pull" in cmd and looks_like_registry_unauthorized(blob):
@@ -119,8 +119,6 @@ def _format_called_process_error(exc: subprocess.CalledProcessError) -> str:
         say_err(text)
         return text
     if "docker" in cmd and "pull" in cmd:
-        from ..services.command_errors import docker_pull_failure_message
-
         image = cmd_parts[-1] if cmd_parts else "image"
         text = docker_pull_failure_message(image, detail=detail)
         say_err(text)

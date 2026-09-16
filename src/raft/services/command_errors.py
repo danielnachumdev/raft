@@ -5,6 +5,11 @@ from __future__ import annotations
 import subprocess
 from typing import Optional, Sequence
 
+from .registry import (
+    looks_like_registry_unauthorized,
+    registry_unauthorized_message,
+)
+
 
 def _blob(exc: BaseException) -> str:
     text = str(exc).lower()
@@ -168,11 +173,6 @@ def raise_for_docker_pull_failure(
     repo: Optional[str] = None,
 ) -> None:
     """Always raise RuntimeError for a failed ``docker pull``."""
-    from .registry import (
-        looks_like_registry_unauthorized,
-        registry_unauthorized_message,
-    )
-
     if looks_like_registry_unauthorized(detail):
         raise RuntimeError(
             registry_unauthorized_message(

@@ -14,6 +14,8 @@ from ..models import Stack
 from ..models.manifest import registry_path
 from ..ui import BOLD, CYAN, DIM, GREEN, RED, YELLOW, paint, want_color
 from .auth import GitAuthManager, parse_ssh_git_url, real_git_host
+from .certs import missing_origin_certs
+from .registry import missing_image_doctor_fix
 
 Status = Literal["ok", "warn", "fail"]
 
@@ -248,8 +250,6 @@ class Doctor:
                         )
                     )
                 else:
-                    from .registry import missing_image_doctor_fix
-
                     results.append(
                         CheckResult(
                             app.name,
@@ -411,8 +411,6 @@ class Doctor:
         return results
 
     def _check_certs(self) -> list[CheckResult]:
-        from .certs import missing_origin_certs
-
         results: list[CheckResult] = []
         missing_by_name = {m.app_name: m for m in missing_origin_certs(self.stack)}
         for app in self.stack.apps:

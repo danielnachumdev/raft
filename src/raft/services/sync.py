@@ -12,6 +12,7 @@ from ..adapters.shell import Shell
 from ..models.app import App
 from ..models.stack import Stack
 from .auth import GitAuthManager
+from .command_errors import raise_for_docker_pull_failure
 from .git_errors import raise_for_git_failure
 
 logger = logging.getLogger(__name__)
@@ -96,8 +97,6 @@ class SourceSync:
         app: Optional[str] = None,
         repo: Optional[str] = None,
     ) -> None:
-        from .command_errors import raise_for_docker_pull_failure
-
         result = self.sh.docker("pull", image, capture=True, check=False)
         if result.returncode == 0:
             return

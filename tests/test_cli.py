@@ -220,7 +220,7 @@ class TestCli(RaftTestCase):
             ),
         )
         self.orch.stop.side_effect = err
-        with patch("raft.models.stack.load_stack", return_value=stack):
+        with patch("raft.cli.entry.load_stack", return_value=stack):
             with pytest.raises(SystemExit) as exc:
                 self._run_cli(["down"])
         assert exc.value.code == 1
@@ -264,7 +264,7 @@ class TestCli(RaftTestCase):
             stderr='cannot load certificate "/etc/nginx/certs/web/origin.pem"\n',
         )
         self.orch.stop.side_effect = err
-        with patch("raft.models.stack.load_stack", side_effect=RuntimeError("no home")):
+        with patch("raft.cli.entry.load_stack", side_effect=RuntimeError("no home")):
             with pytest.raises(SystemExit) as exc:
                 self._run_cli(["down"])
         assert exc.value.code == 1
@@ -279,7 +279,7 @@ class TestCli(RaftTestCase):
             stderr='cannot load certificate "/etc/nginx/certs/web/origin.pem"\n',
         )
         self.orch.stop.side_effect = err
-        with patch("raft.models.stack.load_stack", return_value=self.stack):
+        with patch("raft.cli.entry.load_stack", return_value=self.stack):
             with patch("raft.cli.entry.missing_origin_certs", return_value=[]):
                 with pytest.raises(SystemExit) as exc:
                     self._run_cli(["down"])
@@ -304,7 +304,7 @@ class TestCli(RaftTestCase):
             stderr="",
         )
         self.orch.stop.side_effect = err
-        with patch("raft.models.stack.load_stack", return_value=self.stack):
+        with patch("raft.cli.entry.load_stack", return_value=self.stack):
             with patch("raft.cli.entry.missing_origin_certs", return_value=[]):
                 with pytest.raises(SystemExit) as exc:
                     self._run_cli(["down"])

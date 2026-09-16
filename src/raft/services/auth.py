@@ -15,6 +15,7 @@ from ..adapters.shell import Shell
 from ..models.app import App
 from ..models.stack import Stack
 from ..ui import say
+from .git_errors import raise_for_git_failure
 
 logger = logging.getLogger(__name__)
 
@@ -256,8 +257,6 @@ class GitAuthManager:
                 ["git", "ls-remote", url, "HEAD"],
                 stderr=detail,
             )
-            from .git_errors import raise_for_git_failure
-
             raise_for_git_failure(exc, repo_url, app=service, always=True)
             return  # pragma: no cover — always raises
         if not quiet:
