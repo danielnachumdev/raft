@@ -7,6 +7,7 @@ this package ``__init__``.
 
 from __future__ import annotations
 
+import importlib
 from typing import Any
 
 __all__ = [
@@ -45,8 +46,6 @@ def __getattr__(name: str) -> Any:
         module_name, attr = _EXPORTS[name]
     except KeyError as exc:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}") from exc
-    import importlib
-
     module = importlib.import_module(module_name, __name__)
     value = getattr(module, attr)
     globals()[name] = value
