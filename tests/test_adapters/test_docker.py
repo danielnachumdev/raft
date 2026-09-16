@@ -47,7 +47,9 @@ class TestDockerStack(AdapterTestCase):
         self.shell.docker.return_value = self.ok()
         app = make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
         self.docker.recreate_pulled_service(app, pull_ref="ghcr.io/org/hub:abc")
-        self.shell.docker.assert_any_call("pull", "ghcr.io/org/hub:abc")
+        self.shell.docker.assert_any_call(
+            "pull", "ghcr.io/org/hub:abc", capture=True, check=False
+        )
         self.shell.docker.assert_any_call("tag", "ghcr.io/org/hub:abc", "ghcr.io/org/hub:main")
         self.shell.compose.assert_any_call(
             "up", "-d", "--no-deps", "--no-build", "--force-recreate", "hub"
@@ -58,8 +60,21 @@ class TestDockerStack(AdapterTestCase):
         self.shell.docker.return_value = self.ok()
         app = make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
         self.docker.recreate_pulled_service(app, pull_ref="ghcr.io/org/hub:main")
-        self.shell.docker.assert_any_call("pull", "ghcr.io/org/hub:main")
+        self.shell.docker.assert_any_call(
+            "pull", "ghcr.io/org/hub:main", capture=True, check=False
+        )
         assert not any(c.args[:1] == ("tag",) for c in self.shell.docker.call_args_list)
+
+    def test_recreate_pulled_service_unauthorized(self) -> None:
+        import subprocess
+
+        self.shell.docker.return_value = self.ok(
+            returncode=1, stderr="Error response from daemon: unauthorized\n"
+        )
+        app = make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
+        with pytest.raises(subprocess.CalledProcessError) as exc:
+            self.docker.recreate_pulled_service(app, pull_ref="ghcr.io/org/hub:main")
+        assert "unauthorized" in (exc.value.stderr or "")
 
     def test_service_container_id_missing(self) -> None:
         self.shell.compose.return_value = self.ok("  \n")

@@ -47,8 +47,9 @@ class TestDoctor(ServicesTestCase):
             == 0
         )
         out = capsys.readouterr().out
-        assert "  OK    infra" in out
-        assert "  OK    svc" in out
+        assert "infra\n" in out
+        assert "  OK  \n" in out or "  OK\n" in out or "OK" in out
+        assert "svc\n" in out
         assert "all checks passed" in out
         assert "\033[" not in out
         assert "  OK    auth" not in out
@@ -65,11 +66,35 @@ class TestDoctor(ServicesTestCase):
             == 0
         )
         out = capsys.readouterr().out
-        assert "svc\n" in out
-        assert "  WARN  sync  maybe" in out
-        assert "fix: do x" in out
+        assert out.startswith("svc\n") or "\nsvc\n" in f"\n{out}"
+        assert "  WARN  sync" in out
+        assert "    maybe" in out
+        assert "fix → do x" in out
         assert "auth" not in out
         assert "warning" in out
+
+        assert (
+            d.report(
+                [
+                    CheckResult(
+                        "hub",
+                        "sync",
+                        "fail",
+                        "docker image missing locally: ghcr.io/org/hub:main",
+                        fix="line one\nline two\nline three",
+                    ),
+                ],
+                color=False,
+            )
+            == 1
+        )
+        out = capsys.readouterr().out
+        assert "hub\n" in out
+        assert "  FAIL  sync" in out
+        assert "    docker image missing locally:" in out
+        assert "fix → line one" in out
+        assert "           line two" in out
+        assert "           line three" in out
 
         assert (
             d.report(
@@ -80,8 +105,9 @@ class TestDoctor(ServicesTestCase):
         )
         out = capsys.readouterr().out
         assert "infra\n" in out
-        assert "  FAIL  docker  bad" in out
-        assert "fix: fix it" in out
+        assert "  FAIL  docker" in out
+        assert "    bad" in out
+        assert "fix → fix it" in out
         assert "failed" in out
 
     def test_report_uses_ansi_when_color_enabled(self, capsys) -> None:
@@ -503,7 +529,11 @@ class TestDoctor(ServicesTestCase):
                     self._doctor(stack, shell=shell, docker=docker, auth=MagicMock()).run()
                 )
         assert results[("hub", "sync")].status == "fail"
-        assert "docker pull" in (results[("hub", "sync")].fix or "")
+        fix = results[("hub", "sync")].fix or ""
+        assert "ghcr.io/org/hub:main" in fix
+        assert "docker login ghcr.io" in fix
+        assert "read:packages" in fix
+        assert "raft sync" in fix
 
     def test_certs_partial_pair_fails(self) -> None:
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")
@@ -532,7 +562,8 @@ class TestDoctor(ServicesTestCase):
         d = self._doctor()
         assert d.report([CheckResult("custom", "item", "ok", "fine")]) == 0
         out = capsys.readouterr().out
-        assert "  OK    custom" in out
+        assert "custom\n" in out
+        assert "  OK" in out
 
     def test_auth_deploy_key_fix_urls(self) -> None:
         assert "github.com/acme/site/settings/keys/new" in Doctor._auth_deploy_key_fix(
@@ -556,5 +587,8 @@ class TestDoctor(ServicesTestCase):
             == 1
         )
         out = capsys.readouterr().out
-        assert "  OK    infra\n\nsvc\n" in out
-        assert "fix: fix\n\n  OK    other" in out
+        assert "infra\n  OK" in out
+        assert "\nsvc\n" in out
+        assert "  FAIL  auth" in out
+        assert "fix → fix" in out
+        assert "\nother\n  OK" in out

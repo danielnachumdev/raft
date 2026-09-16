@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
+import subprocess
 from pathlib import Path
 from typing import Optional
 
@@ -12,6 +13,7 @@ from ..adapters.shell import Shell
 from ..models.app import App
 from ..models.stack import Stack
 from .auth import GitAuthManager
+from .registry import looks_like_registry_unauthorized, registry_unauthorized_message
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +62,7 @@ class SourceSync:
             pull_ref = app.image_ref(wanted)
             pin = app.compose_pin_image
             logger.info("sync %s: docker pull %s", app.name, pull_ref)
-            self.sh.docker("pull", pull_ref)
+            self._docker_pull(pull_ref)
             if pull_ref != pin:
                 logger.info("sync %s: tag %s -> %s (compose pin)", app.name, pull_ref, pin)
                 self.sh.docker("tag", pull_ref, pin)
@@ -83,6 +85,20 @@ class SourceSync:
 
         assert app.repo
         self._sync_git(app, dest, ref_override=ref_override, force=force)
+
+    def _docker_pull(self, image: str) -> None:
+        result = self.sh.docker("pull", image, capture=True, check=False)
+        if result.returncode == 0:
+            return
+        detail = (result.stderr or result.stdout or "").strip()
+        if looks_like_registry_unauthorized(detail):
+            raise RuntimeError(registry_unauthorized_message(image, detail=detail))
+        raise subprocess.CalledProcessError(
+            result.returncode,
+            ["docker", "pull", image],
+            output=result.stdout,
+            stderr=detail,
+        )
 
     def _sync_git(
         self,
@@ -113,14 +129,14 @@ class SourceSync:
                         f"{dest} exists but is not a git checkout; "
                         "move it aside or set source=local"
                     )
-            self.sh.git("clone", "--quiet", clone_url, str(dest))
+            self.sh.git("clone", "--quiet", clone_url, str(dest), capture=True)
         else:
             self.sh.git("remote", "set-url", "origin", clone_url, cwd=dest)
 
         if not force and self._is_dirty(dest):
             raise RuntimeError(f"{dest} has local changes; commit/stash them or pass --force")
 
-        self.sh.git("fetch", "--prune", "--tags", "origin", cwd=dest)
+        self.sh.git("fetch", "--prune", "--tags", "origin", cwd=dest, capture=True)
         checked = self.sh.git(
             "rev-parse",
             "--verify",
@@ -142,7 +158,7 @@ class SourceSync:
             sha = checked.stdout.strip()
         else:
             raise RuntimeError(f"cannot resolve ref {wanted!r} in {app.repo}")
-        self.sh.git("checkout", "-f", "--detach", sha, cwd=dest)
+        self.sh.git("checkout", "-q", "-f", "--detach", sha, cwd=dest, capture=True)
         if app.source != "docker":
             state = self.stack.ref_state_file(app)
             state.parent.mkdir(parents=True, exist_ok=True)

@@ -147,6 +147,34 @@ class TestCli(RaftTestCase):
         assert "Origin certs missing" in err_out
         assert "certs/web/" in err_out
         assert "command failed" not in err_out
+        assert "Hint: run `raft doctor`" not in err_out
+
+    def test_run_rewrites_docker_pull_unauthorized(self, capsys) -> None:
+        err = subprocess.CalledProcessError(
+            1,
+            ["docker", "pull", "ghcr.io/playloft-studio/playcrate:main"],
+            stderr="Error response from daemon: unauthorized\nunauthorized\n",
+        )
+        self.orch.stop.side_effect = err
+        with pytest.raises(SystemExit) as exc:
+            self._run_cli(["down"])
+        assert exc.value.code == 1
+        err_out = capsys.readouterr().err
+        assert "cannot pull ghcr.io/playloft-studio/playcrate:main" in err_out
+        assert "docker login ghcr.io" in err_out
+        assert "command failed" not in err_out
+        assert "Hint: run `raft doctor`" not in err_out
+
+    def test_run_runtime_error_with_fix_skips_doctor_hint(self, capsys) -> None:
+        self.orch.start.side_effect = RuntimeError(
+            "cannot pull img: registry unauthorized.\n\nfix (as the raft user):\n  1. login"
+        )
+        with pytest.raises(SystemExit) as exc:
+            self._run_cli(["up"])
+        assert exc.value.code == 1
+        err_out = capsys.readouterr().err
+        assert "cannot pull img" in err_out
+        assert "Hint: run `raft doctor`" not in err_out
 
     def test_run_cert_error_fallback_when_stack_load_fails(self, capsys) -> None:
         err = subprocess.CalledProcessError(

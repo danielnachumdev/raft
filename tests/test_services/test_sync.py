@@ -227,7 +227,9 @@ class TestSourceSync(ServicesTestCase):
 
         self.shell.docker.side_effect = docker
         self.syncer.sync([app], ref_override="abc123")
-        self.shell.docker.assert_any_call("pull", "ghcr.io/org/hub:abc123")
+        self.shell.docker.assert_any_call(
+            "pull", "ghcr.io/org/hub:abc123", capture=True, check=False
+        )
         self.shell.docker.assert_any_call("tag", "ghcr.io/org/hub:abc123", "ghcr.io/org/hub:main")
         state = (self.tmp_path / "deploy" / "hub.ref").read_text(encoding="utf-8")
         assert "abc123" in state
@@ -252,5 +254,50 @@ class TestSourceSync(ServicesTestCase):
 
         self.shell.docker.side_effect = docker
         self.syncer.sync([app])
-        self.shell.docker.assert_any_call("pull", "ghcr.io/org/hub:main")
+        self.shell.docker.assert_any_call(
+            "pull", "ghcr.io/org/hub:main", capture=True, check=False
+        )
         assert not any(c.args[:1] == ("tag",) for c in self.shell.docker.call_args_list)
+
+    def test_sync_docker_unauthorized_clear_fix(self) -> None:
+        app = make_app(
+            "hub",
+            source="docker",
+            image="ghcr.io/org/hub",
+            ref="main",
+            public_host="hub.test",
+        )
+        self.stack = make_stack(self.tmp_path, (app,))
+        self.syncer = SourceSync(self.stack, self.shell)
+        self.shell.docker.return_value = MagicMock(
+            returncode=1,
+            stdout="",
+            stderr="Error response from daemon: unauthorized\nunauthorized\n",
+        )
+        with pytest.raises(RuntimeError, match="docker login ghcr.io") as exc:
+            self.syncer.sync([app])
+        msg = str(exc.value)
+        assert "cannot pull ghcr.io/org/hub:main" in msg
+        assert "raft auth" in msg.lower()
+        assert "command failed" not in msg.lower()
+
+    def test_sync_docker_pull_other_error_reraises(self) -> None:
+        import subprocess
+
+        app = make_app(
+            "hub",
+            source="docker",
+            image="ghcr.io/org/hub",
+            ref="main",
+            public_host="hub.test",
+        )
+        self.stack = make_stack(self.tmp_path, (app,))
+        self.syncer = SourceSync(self.stack, self.shell)
+        self.shell.docker.return_value = MagicMock(
+            returncode=1,
+            stdout="",
+            stderr="dial tcp: lookup ghcr.io: no such host\n",
+        )
+        with pytest.raises(subprocess.CalledProcessError) as exc:
+            self.syncer.sync([app])
+        assert "no such host" in (exc.value.stderr or "")

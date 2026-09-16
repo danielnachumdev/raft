@@ -84,44 +84,41 @@ class Doctor:
 
         issues = [r for r in results if r.status != "ok"]
         check_width = max((len(r.check) for r in issues), default=0)
-        service_width = max((len(s) for s in ordered), default=0)
-        status_width = 4
 
         fails = sum(1 for r in results if r.status == "fail")
         warns = sum(1 for r in results if r.status == "warn")
-        printed_block = False
-        prev_expanded = False
+        first_block = True
 
         for service in ordered:
             items = by_service[service]
             bad = [r for r in items if r.status != "ok"]
 
-            if printed_block and (bad or prev_expanded):
+            if not first_block:
                 print(file=stream)
-            printed_block = True
+            first_block = False
+
+            # Service name is always the top-level heading (column 0).
+            print(tint(service, BOLD, CYAN), file=stream)
 
             if not bad:
                 label = tint(_STATUS_LABEL["ok"], _STATUS_COLOR["ok"], BOLD)
-                print(f"  {label}  {service:<{service_width}}", file=stream)
-                prev_expanded = False
+                print(f"  {label}", file=stream)
                 continue
 
-            print(tint(service, BOLD, CYAN), file=stream)
             for r in bad:
-                label = tint(
+                status = tint(
                     _STATUS_LABEL[r.status],
                     _STATUS_COLOR[r.status],
                     BOLD,
                 )
-                print(
-                    f"  {label}  {r.check:<{check_width}}  {r.detail}",
-                    file=stream,
-                )
+                print(f"  {status}  {r.check:<{check_width}}", file=stream)
+                # Detail + fix are nested notes (deeper indent, not status-column).
+                print(f"    {r.detail}", file=stream)
                 if r.fix:
-                    pad = " " * (2 + status_width + 2 + check_width + 2)
-                    fix_line = tint(f"fix: {r.fix}", DIM, CYAN)
-                    print(f"{pad}{fix_line}", file=stream)
-            prev_expanded = True
+                    fix_lines = r.fix.splitlines() or [""]
+                    print(f"    {tint('fix → ' + fix_lines[0], DIM, CYAN)}", file=stream)
+                    for line in fix_lines[1:]:
+                        print(f"           {tint(line, DIM, CYAN)}", file=stream)
 
         print(file=stream)
         if fails:
@@ -251,13 +248,15 @@ class Doctor:
                         )
                     )
                 else:
+                    from .registry import missing_image_doctor_fix
+
                     results.append(
                         CheckResult(
                             app.name,
                             "sync",
                             "fail",
                             f"docker image missing locally: {pin}",
-                            fix=f"raft sync {app.name}   # docker pull",
+                            fix=missing_image_doctor_fix(pin),
                         )
                     )
                 results.extend(self._check_contract(app))
