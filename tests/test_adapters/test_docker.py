@@ -118,8 +118,21 @@ class TestDockerStack(AdapterTestCase):
     def test_reload_gate_nginx(self) -> None:
         self.shell.compose.return_value = self.ok()
         self.docker.reload_gate_nginx()
-        self.shell.compose.assert_any_call("exec", "-T", "gate", "nginx", "-t")
+        self.shell.compose.assert_any_call(
+            "exec", "-T", "gate", "nginx", "-t", capture=True, check=False
+        )
         self.shell.compose.assert_any_call("exec", "-T", "gate", "nginx", "-s", "reload")
+
+    def test_reload_gate_nginx_captures_failure(self) -> None:
+        import subprocess
+
+        self.shell.compose.return_value = self.ok(
+            returncode=1,
+            stderr='cannot load certificate "/etc/nginx/certs/web/origin.pem"',
+        )
+        with pytest.raises(subprocess.CalledProcessError) as exc:
+            self.docker.reload_gate_nginx()
+        assert "origin.pem" in (exc.value.stderr or "")
 
     def test_router_sees_upstream_target(self) -> None:
         port = PortSpec(name="http", container_port=80, expose="http")

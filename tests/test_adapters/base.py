@@ -21,5 +21,5 @@ class AdapterTestCase(RaftTestCase):
         return DockerStack(self.stack, self.shell)
 
     @staticmethod
-    def ok(stdout: str = "", returncode: int = 0) -> MagicMock:
-        return completed(stdout=stdout, returncode=returncode)
+    def ok(stdout: str = "", returncode: int = 0, stderr: str = "") -> MagicMock:
+        return completed(stdout=stdout, returncode=returncode, stderr=stderr)

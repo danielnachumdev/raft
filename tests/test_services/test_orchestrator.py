@@ -50,7 +50,8 @@ class TestOrchestrator(ServicesTestCase):
                     "raft.services.orchestrator.write_gate_nginx_reload_stamp"
                 ) as write_stamp:
                     with patch("raft.services.orchestrator.StackRenderer"):
-                        self.orch.render()
+                        with patch("raft.services.orchestrator.require_origin_certs"):
+                            self.orch.render()
         self.orch.docker.reload_gate_nginx.assert_called_once()
         write_stamp.assert_called_once_with(self.orch.stack.root, "disk-fp")
 
@@ -67,8 +68,26 @@ class TestOrchestrator(ServicesTestCase):
             ):
                 with patch("raft.services.orchestrator.write_gate_nginx_reload_stamp"):
                     with patch("raft.services.orchestrator.StackRenderer"):
-                        self.orch.render()
+                        with patch("raft.services.orchestrator.require_origin_certs"):
+                            self.orch.render()
         self.orch.docker.reload_gate_nginx.assert_called_once()
+
+    def test_render_blocks_gate_reload_when_origin_certs_missing(self) -> None:
+        write_applied_app(self.tmp_path, "app", public_host="app.test", tls="origin")
+        orch = self.orchestrator()
+        orch.docker.running_services.return_value = ["gate", "router"]
+        with patch(
+            "raft.services.orchestrator.fingerprint_gate_nginx",
+            return_value="disk-fp",
+        ):
+            with patch(
+                "raft.services.orchestrator.read_gate_nginx_reload_stamp",
+                return_value="stale",
+            ):
+                with patch("raft.services.orchestrator.StackRenderer"):
+                    with pytest.raises(RuntimeError, match="Origin certs missing"):
+                        orch.render()
+        orch.docker.reload_gate_nginx.assert_not_called()
 
     def test_render_skips_gate_reload_when_stamp_matches_disk(self) -> None:
         self.orch.docker.running_services.return_value = ["gate", "router"]

@@ -88,6 +88,8 @@ class AppApply:
                 tmp = Path(tempfile.mkdtemp(prefix="raft-apply-"))
                 try:
                     try:
+                        # capture=True: failed URL probes must not spam the terminal
+                        # (e.g. raw git@host before the Host-alias deploy key succeeds).
                         self.sh.git(
                             "clone",
                             "--quiet",
@@ -97,12 +99,23 @@ class AppApply:
                             ref,
                             clone_url,
                             str(tmp),
+                            capture=True,
                         )
                     except Exception:
                         shutil.rmtree(tmp, ignore_errors=True)
                         tmp = Path(tempfile.mkdtemp(prefix="raft-apply-"))
-                        self.sh.git("clone", "--quiet", clone_url, str(tmp))
-                        self.sh.git("checkout", "-f", "--detach", ref, cwd=tmp)
+                        self.sh.git(
+                            "clone", "--quiet", clone_url, str(tmp), capture=True
+                        )
+                        self.sh.git(
+                            "checkout",
+                            "-q",
+                            "-f",
+                            "--detach",
+                            ref,
+                            cwd=tmp,
+                            capture=True,
+                        )
                     cloned = True
                     if clone_url != repo:
                         logger.info("apply --git used auth Host alias URL %s", clone_url)

@@ -122,7 +122,8 @@ class TestGitAuthManager(ServicesTestCase):
     def test_clone_urls_for_repo_includes_aliases(self) -> None:
         self.write_keypair(self.mgr, "svc")
         urls = self.mgr.clone_urls_for_repo("git@github.com:org/svc.git")
-        assert urls[0] == "git@github.com:org/svc.git"
+        assert urls[0] == "git@github.com-raft-svc:org/svc.git"
+        assert urls[-1] == "git@github.com:org/svc.git"
         assert "git@github.com-raft-svc:org/svc.git" in urls
         rewritten = self.mgr.rewrite_clone_url("svc", "git@github.com:org/svc.git")
         assert "raft-svc" in rewritten

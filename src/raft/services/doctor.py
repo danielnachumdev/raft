@@ -410,7 +410,10 @@ class Doctor:
         return results
 
     def _check_certs(self) -> list[CheckResult]:
+        from .certs import missing_origin_certs
+
         results: list[CheckResult] = []
+        missing_by_name = {m.app_name: m for m in missing_origin_certs(self.stack)}
         for app in self.stack.apps:
             try:
                 app_spec = self.stack.spec_for(app)
@@ -426,9 +429,8 @@ class Doctor:
                     )
                 )
                 continue
-            pem, key = self.stack.cert_files(app)
-            missing = [p.name for p in (pem, key) if not p.is_file()]
-            if not missing:
+            item = missing_by_name.get(app.name)
+            if item is None:
                 results.append(
                     CheckResult(
                         app.name,
@@ -443,12 +445,8 @@ class Doctor:
                     app.name,
                     "certs",
                     "fail",
-                    f"missing {', '.join(missing)} under certs/{app.name}/",
-                    fix=(
-                        f"install Cloudflare Origin PEMs for {app.name} at "
-                        f"~/.raft/certs/{app.name}/origin.pem and origin.key "
-                        f"(required for tls: origin; then `raft gate recreate` if needed)"
-                    ),
+                    item.detail,
+                    fix=item.fix,
                 )
             )
         return results

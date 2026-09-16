@@ -13,7 +13,7 @@ import pytest
 
 from raft import cli
 
-from .base import RaftTestCase, make_app, make_git_app, make_stack, write_demo_inventory
+from .base import RaftTestCase, make_app, make_git_app, make_stack, write_applied_app, write_demo_inventory
 
 
 class TestCli(RaftTestCase):
@@ -124,6 +124,83 @@ class TestCli(RaftTestCase):
         out = capsys.readouterr().err
         assert "boom" in out
         assert "raft doctor" in out
+
+    def test_run_rewrites_missing_origin_cert_errors(self, capsys) -> None:
+        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="origin")
+        from raft.models.stack import load_stack
+
+        stack = load_stack(self.tmp_path)
+        err = subprocess.CalledProcessError(
+            1,
+            ["docker", "compose", "exec", "-T", "gate", "nginx", "-t"],
+            stderr=(
+                'cannot load certificate "/etc/nginx/certs/web/origin.pem": '
+                "BIO_new_file() failed (SSL: error:80000002:system library::No such file)\n"
+            ),
+        )
+        self.orch.stop.side_effect = err
+        with patch("raft.models.stack.load_stack", return_value=stack):
+            with pytest.raises(SystemExit) as exc:
+                self._run_cli(["down"])
+        assert exc.value.code == 1
+        err_out = capsys.readouterr().err
+        assert "Origin certs missing" in err_out
+        assert "certs/web/" in err_out
+        assert "command failed" not in err_out
+
+    def test_run_cert_error_fallback_when_stack_load_fails(self, capsys) -> None:
+        err = subprocess.CalledProcessError(
+            1,
+            ["docker", "compose", "exec", "-T", "gate", "nginx", "-t"],
+            stderr='cannot load certificate "/etc/nginx/certs/web/origin.pem"\n',
+        )
+        self.orch.stop.side_effect = err
+        with patch("raft.models.stack.load_stack", side_effect=RuntimeError("no home")):
+            with pytest.raises(SystemExit) as exc:
+                self._run_cli(["down"])
+        assert exc.value.code == 1
+        err_out = capsys.readouterr().err
+        assert "could not load Origin TLS certificates" in err_out
+        assert "origin.pem" in err_out
+
+    def test_run_cert_error_fallback_when_no_missing_listed(self, capsys) -> None:
+        err = subprocess.CalledProcessError(
+            1,
+            ["docker", "compose", "exec", "-T", "gate", "nginx", "-t"],
+            stderr='cannot load certificate "/etc/nginx/certs/web/origin.pem"\n',
+        )
+        self.orch.stop.side_effect = err
+        with patch("raft.models.stack.load_stack", return_value=self.stack):
+            with patch("raft.cli.entry.missing_origin_certs", return_value=[]):
+                with pytest.raises(SystemExit) as exc:
+                    self._run_cli(["down"])
+        assert exc.value.code == 1
+        err_out = capsys.readouterr().err
+        assert "could not load Origin TLS certificates" in err_out
+
+    def test_run_cert_error_fallback_without_detail(self, capsys) -> None:
+        # Match via argv text so stderr can be empty (covers detail-absent branch).
+        err = subprocess.CalledProcessError(
+            1,
+            [
+                "docker",
+                "compose",
+                "exec",
+                "-T",
+                "gate",
+                "nginx",
+                "-t",
+                'cannot load certificate "/etc/nginx/certs/web/origin.pem"',
+            ],
+            stderr="",
+        )
+        self.orch.stop.side_effect = err
+        with patch("raft.models.stack.load_stack", return_value=self.stack):
+            with patch("raft.cli.entry.missing_origin_certs", return_value=[]):
+                with pytest.raises(SystemExit) as exc:
+                    self._run_cli(["down"])
+        assert exc.value.code == 1
+        assert "could not load Origin TLS certificates" in capsys.readouterr().err
 
     def test_doctor_failure_does_not_suggest_doctor(self, capsys) -> None:
         doctor = MagicMock()

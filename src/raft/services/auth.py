@@ -216,16 +216,21 @@ class GitAuthManager:
         return parsed.with_host_alias(alias)
 
     def clone_urls_for_repo(self, repo: str) -> tuple[str, ...]:
-        """Candidate clone URLs: raw repo, then each configured service's Host alias."""
-        urls: list[str] = [repo]
+        """Candidate clone URLs: configured Host aliases first, then the raw repo.
+
+        Trying aliases before ``git@github.com:…`` avoids noisy ``Permission denied
+        (publickey)`` on the default identity when a deploy key is already set up.
+        """
         try:
             parsed = parse_ssh_git_url(repo)
         except ValueError:
             return (repo,)
+        urls: list[str] = []
         for service in self.list_services():
             base_host = real_git_host(service, parsed.host)
             alias = host_alias(service, base_host)
             urls.append(parsed.with_host_alias(alias))
+        urls.append(repo)
         return tuple(dict.fromkeys(urls))
 
     def test(

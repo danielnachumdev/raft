@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import subprocess
 
 from ..models.app import COMPOSE_PROJECT, App
 from ..models.ports import PortSpec
@@ -179,8 +180,21 @@ class DockerStack:
 
     def reload_gate_nginx(self) -> None:
         logger.info("nginx -t && reload on gate")
-        self.sh.compose("exec", "-T", self.stack.gate, "nginx", "-t")
+        # Capture stderr so entry/CLI can surface Origin PEM guidance instead of
+        # only "command failed: docker compose exec … nginx -t".
+        result = self.sh.compose(
+            "exec", "-T", self.stack.gate, "nginx", "-t", capture=True, check=False
+        )
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout or "").strip()
+            raise subprocess.CalledProcessError(
+                result.returncode,
+                ["docker", "compose", "exec", "-T", self.stack.gate, "nginx", "-t"],
+                output=result.stdout,
+                stderr=detail,
+            )
         self.sh.compose("exec", "-T", self.stack.gate, "nginx", "-s", "reload")
+
 
     def router_sees_upstream_target(
         self,

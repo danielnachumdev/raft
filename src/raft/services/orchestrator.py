@@ -12,6 +12,7 @@ from ..adapters.shell import Shell
 from ..config.settings import load_config
 from ..models.stack import Stack
 from ..ui import say
+from .certs import require_origin_certs
 from .cutover import DEPLOY_CUTOVER, CutoverSession, wait_until
 from .readiness import ReadinessStrategy
 from .render import (
@@ -53,6 +54,8 @@ class Orchestrator:
         if self.stack.gate in self.docker.running_services():
             loaded = read_gate_nginx_reload_stamp(self.stack.root)
             if loaded != disk:
+                # Fail before nginx -t so operators see doctor-style PEM guidance.
+                require_origin_certs(self.stack)
                 self.docker.reload_gate_nginx()
                 write_gate_nginx_reload_stamp(self.stack.root, disk)
                 say("reloaded gate nginx (edge TLS/http/stream config)", style="info")
@@ -89,6 +92,7 @@ class Orchestrator:
             )
         logger.info("syncing service sources from inventory")
         self.sync()
+        require_origin_certs(self.stack)
         logger.info("starting stack")
         self.docker.start_stack()
         self._assert_core_edge_running()
@@ -136,6 +140,7 @@ class Orchestrator:
     def recreate_gate(self) -> None:
         if self.stack.gate not in self.docker.running_services():
             raise RuntimeError("gate is not running — bring the stack up first")
+        require_origin_certs(self.stack)
         self.render()
         say(
             "recreating gate to pick up published edge ports "
@@ -253,6 +258,7 @@ class Orchestrator:
         others = [a.name for a in self.stack.apps if a.name != app_name]
         if others:
             self.sync(others, force=force_sync)
+        require_origin_certs(self.stack)
         logger.info("starting stack")
         self.docker.start_stack()
         self._assert_core_edge_running()
