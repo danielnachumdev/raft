@@ -138,8 +138,16 @@ def _resources(spec: dict[str, Any], path: Path) -> tuple[str, str, str, str]:
 def _load_yaml_mapping(path: Path) -> dict[str, Any]:
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise ValueError(
+            f"cannot read App manifest: {path}\n"
+            f"Fix: check permissions and UTF-8 encoding — ls -l {path}"
+        ) from exc
     except yaml.YAMLError as exc:
-        raise ValueError(f"{path}: invalid YAML: {exc}") from exc
+        raise ValueError(
+            f"{path}: invalid YAML: {exc}\n"
+            f"Fix: repair the App manifest YAML"
+        ) from exc
     if not isinstance(data, dict):
         raise ValueError(f"{path}: document must be a mapping")
     return data
@@ -237,7 +245,13 @@ def parse_app_document(
         image=image,
     )
 
-    www = bool(spec.get("www", True))
+    www_raw = spec.get("www", True)
+    if not isinstance(www_raw, bool):
+        raise ValueError(
+            f"{path}: spec.www must be a boolean, got {www_raw!r}.\n"
+            f"Fix: use `www: true` or `www: false` (unquoted) in .raft/app.yaml"
+        )
+    www = www_raw
     extra_hosts = _extra_hosts(spec, path)
 
     build = spec.get("build")
@@ -246,11 +260,21 @@ def parse_app_document(
     if not isinstance(build, dict):
         raise ValueError(f"{path}: spec.build must be an object")
     context = build.get("context")
-    build_context = str(context).strip() if context is not None else None
+    if context is not None and not isinstance(context, str):
+        raise ValueError(
+            f"{path}: spec.build.context must be a string path, got {type(context).__name__}.\n"
+            f"Fix: set build.context to `.` or a relative directory under the app checkout"
+        )
+    build_context = context.strip() if context is not None else None
     if build_context == "":
         build_context = None
     dockerfile = build.get("dockerfile")
-    dockerfile_s = str(dockerfile).strip() if dockerfile is not None else None
+    if dockerfile is not None and not isinstance(dockerfile, str):
+        raise ValueError(
+            f"{path}: spec.build.dockerfile must be a string, got {type(dockerfile).__name__}.\n"
+            f"Fix: set build.dockerfile to a filename (e.g. Dockerfile) in .raft/app.yaml"
+        )
+    dockerfile_s = dockerfile.strip() if dockerfile is not None else None
     if dockerfile_s == "":
         dockerfile_s = None
 
@@ -279,6 +303,11 @@ def load_app_file(
     *,
     expect_name: Optional[str] = None,
 ) -> tuple[App, AppSpec]:
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"missing applied App manifest: {path}\n"
+            f"Fix: re-apply the app (`raft apply …`) or restore the file under ~/.raft/state/apps/"
+        )
     data = _load_yaml_mapping(path)
     return parse_app_document(data, path=path, expect_name=expect_name)
 

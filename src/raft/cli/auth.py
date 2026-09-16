@@ -6,6 +6,16 @@ from ..ui import say
 from . import deps
 
 
+def _require_service(service: Optional[str], cmd: str) -> str:
+    name = (service or "").strip()
+    if not name:
+        raise RuntimeError(
+            f"auth {cmd} requires SERVICE.\n"
+            f"Fix: raft auth {cmd} <app-name> [--repo git@host:owner/repo.git]"
+        )
+    return name
+
+
 class AuthCLI:
     """Manage per-service read-only SSH deploy keys for private git sources."""
 
@@ -14,7 +24,7 @@ class AuthCLI:
 
     def setup(
         self,
-        service: str,
+        service: Optional[str] = None,
         force: bool = False,
         repo: Optional[str] = None,
     ) -> None:
@@ -23,7 +33,8 @@ class AuthCLI:
         Pass ``--repo git@host:owner/name.git`` when the App is not applied yet
         (bootstrap before ``raft apply --git``).
         """
-        deps.GitAuthManager(self._stack).setup(service, force=force, repo=repo)
+        name = _require_service(service, "setup")
+        deps.GitAuthManager(self._stack).setup(name, force=force, repo=repo)
 
     def list(self) -> None:
         """List services with local deploy keys."""
@@ -37,14 +48,17 @@ class AuthCLI:
             mark = "" if name in applied else " (not applied)"
             say(f"{name}\t{auth.key_path(name)}{mark}")
 
-    def show(self, service: str, repo: Optional[str] = None) -> None:
+    def show(self, service: Optional[str] = None, repo: Optional[str] = None) -> None:
         """Print Title + Key (and paste URL) for a service deploy key."""
-        deps.GitAuthManager(self._stack).show(service, repo=repo)
+        name = _require_service(service, "show")
+        deps.GitAuthManager(self._stack).show(name, repo=repo)
 
-    def test(self, service: str, repo: Optional[str] = None) -> None:
+    def test(self, service: Optional[str] = None, repo: Optional[str] = None) -> None:
         """git ls-remote using the service deploy key."""
-        deps.GitAuthManager(self._stack).test(service, repo=repo)
+        name = _require_service(service, "test")
+        deps.GitAuthManager(self._stack).test(name, repo=repo)
 
-    def remove(self, service: str, keep_key: bool = False) -> None:
+    def remove(self, service: Optional[str] = None, keep_key: bool = False) -> None:
         """Remove local key + SSH config stanza for a service."""
-        deps.GitAuthManager(self._stack).remove(service, remove_files=not keep_key)
+        name = _require_service(service, "remove")
+        deps.GitAuthManager(self._stack).remove(name, remove_files=not keep_key)

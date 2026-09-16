@@ -110,8 +110,9 @@ class Orchestrator:
         missing = [name for name in expected if name not in running]
         if missing:
             raise RuntimeError(
-                f"stack start incomplete — missing running services: {missing}. "
-                "Check `docker compose logs gate` (often bad nginx config)."
+                f"stack start incomplete — missing running services: {missing}.\n"
+                f"Fix: docker compose -f ~/.raft/compose.yaml logs gate router\n"
+                f"     raft render && raft doctor"
             )
 
     def stop(self) -> None:

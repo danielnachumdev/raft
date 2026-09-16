@@ -451,7 +451,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
         renderer = StackRenderer(stack)
         specs = renderer.load_all_contracts()
         assert "web" in specs
-        with pytest.raises(KeyError, match="missing AppSpec"):
+        with pytest.raises(RuntimeError, match="missing AppSpec"):
             renderer.render(specs={})
         write_applied_app(
             self.tmp_path,

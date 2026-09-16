@@ -55,6 +55,15 @@ class TestAppApply(RaftTestCase):
         with pytest.raises(ValueError, match="mapping"):
             AppApply(load_stack(self.tmp_path)).apply_file(path, deploy=False)
 
+    def test_apply_file_missing_and_bad_yaml(self) -> None:
+        missing = self.tmp_path / "nope.yaml"
+        with pytest.raises(FileNotFoundError, match="cannot read App manifest"):
+            AppApply(load_stack(self.tmp_path)).apply_file(missing, deploy=False)
+        path = self.tmp_path / "bad.yaml"
+        path.write_text("{{{{", encoding="utf-8")
+        with pytest.raises(ValueError, match="invalid App manifest YAML"):
+            AppApply(load_stack(self.tmp_path)).apply_file(path, deploy=False)
+
     def test_apply_file_ref_override_and_bad_spec(self) -> None:
         path = self.tmp_path / "manifest.yaml"
         path.write_text(
@@ -207,7 +216,22 @@ class TestAppApply(RaftTestCase):
         stack = load_stack(self.tmp_path)
         shell = MagicMock()
         shell.git.side_effect = RuntimeError("network unreachable")
-        with pytest.raises(RuntimeError, match="network unreachable"):
+        with pytest.raises(RuntimeError, match="cannot reach git host"):
+            AppApply(stack, shell=shell).apply_git("git@github.com:org/x.git", deploy=False)
+
+    def test_apply_git_bad_manifest_yaml(self) -> None:
+        stack = load_stack(self.tmp_path)
+        shell = MagicMock()
+
+        def clone(*args, **kwargs):
+            target = Path(args[-1])
+            target.mkdir(parents=True, exist_ok=True)
+            (target / ".raft").mkdir(parents=True, exist_ok=True)
+            (target / ".raft" / "app.yaml").write_text("{{{{", encoding="utf-8")
+            return MagicMock(returncode=0)
+
+        shell.git.side_effect = clone
+        with pytest.raises(ValueError, match="invalid App manifest YAML"):
             AppApply(stack, shell=shell).apply_git("git@github.com:org/x.git", deploy=False)
 
     def test_apply_git_retries_host_alias(self) -> None:
@@ -266,7 +290,7 @@ class TestAppApply(RaftTestCase):
             orch_cls.return_value.render.assert_called_once()
         assert "no apps applied" in capsys.readouterr().out.lower() or True
 
-        with pytest.raises(KeyError, match="not applied"):
+        with pytest.raises(RuntimeError, match="not applied"):
             AppApply(load_stack(self.tmp_path)).delete("ghost")
 
     def test_apply_git_infers_source_and_deploys(self) -> None:

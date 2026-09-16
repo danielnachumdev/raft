@@ -22,23 +22,10 @@ from ..models.manifest import (
 from ..models.stack import Stack, load_stack
 from ..ui import say
 from .auth import GitAuthManager
+from .git_errors import raise_for_git_failure
 from .orchestrator import Orchestrator
 
 logger = logging.getLogger(__name__)
-
-
-def _looks_like_git_auth_failure(exc: BaseException) -> bool:
-    text = str(exc).lower()
-    if isinstance(exc, subprocess.CalledProcessError):
-        text = f"{text} {(exc.stderr or '')} {(exc.output or '')}".lower()
-    needles = (
-        "permission denied (publickey)",
-        "could not read from remote repository",
-        "host key verification failed",
-        "authentication failed",
-        "publickey",
-    )
-    return any(n in text for n in needles)
 
 
 class AppApply:
@@ -54,7 +41,21 @@ class AppApply:
         deploy: bool = True,
         force_sync: bool = False,
     ) -> str:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        if not path.is_file():
+            raise FileNotFoundError(
+                f"cannot read App manifest: {path}\n"
+                f"Fix: pass an existing path (e.g. .raft/app.yaml) or use: "
+                f"raft apply --git git@host:owner/repo.git"
+            )
+        try:
+            raw = path.read_text(encoding="utf-8")
+            data = yaml.safe_load(raw)
+        except yaml.YAMLError as exc:
+            raise ValueError(
+                f"invalid App manifest YAML at {path}: {exc}\n"
+                f"Fix: repair the YAML (apiVersion/kind/metadata/spec) — "
+                f"see examples/*/ .raft/app.yaml"
+            ) from exc
         if not isinstance(data, dict):
             raise ValueError(f"{path}: document must be a mapping")
         if ref_override:
@@ -127,23 +128,26 @@ class AppApply:
 
             if not cloned:
                 assert last_exc is not None
-                if _looks_like_git_auth_failure(last_exc):
-                    raise RuntimeError(
-                        f"git clone failed (SSH auth) for {repo!r}. "
-                        f"Set up a read-only deploy key first, then retry:\n"
-                        f"  raft auth setup <app-name> --repo {repo}\n"
-                        f"  # paste the pubkey as a Deploy key on the repo\n"
-                        f"  raft auth test <app-name> --repo {repo}\n"
-                        f"  raft apply --git {repo} --ref {ref}"
-                    ) from last_exc
-                raise last_exc
+                raise_for_git_failure(last_exc, repo, always=True)
 
             manifest = contract_path(tmp)
             if not manifest.is_file():
-                raise FileNotFoundError(f"no {CONTRACT_REL_PATH.as_posix()} in {repo}@{ref}")
-            data = yaml.safe_load(manifest.read_text(encoding="utf-8"))
+                raise FileNotFoundError(
+                    f"no {CONTRACT_REL_PATH.as_posix()} in {repo}@{ref}\n"
+                    f"Fix: add that file on the ref, or: raft apply --git {repo} --ref <other>"
+                )
+            try:
+                data = yaml.safe_load(manifest.read_text(encoding="utf-8"))
+            except yaml.YAMLError as exc:
+                raise ValueError(
+                    f"invalid App manifest YAML in {repo}@{ref}: {exc}\n"
+                    f"Fix: repair .raft/app.yaml in the repo"
+                ) from exc
             if not isinstance(data, dict):
-                raise ValueError("app manifest must be a mapping")
+                raise ValueError(
+                    f"app manifest must be a mapping in {repo}@{ref}\n"
+                    f"Fix: repair .raft/app.yaml in the repo"
+                )
             spec = data.setdefault("spec", {})
             if not isinstance(spec, dict):
                 raise ValueError("spec must be an object")
@@ -166,13 +170,18 @@ class AppApply:
 
     def delete(self, name: str) -> None:
         if not delete_registry_app(self.stack.root, name):
-            raise KeyError(f"app {name!r} is not applied")
+            known = ", ".join(a.name for a in self.stack.apps) or "(none)"
+            raise RuntimeError(
+                f"app {name!r} is not applied (known: {known}).\n"
+                f"Fix: raft get apps"
+            )
         say(f"deleted {name} from registry", style="ok")
         fresh = load_stack(self.stack.root)
         Orchestrator(fresh).render()
         if fresh.apps:
             say(
-                "re-rendered generated/; remove the Compose service if it is still running",
+                "re-rendered generated/; remove the Compose service if it is still running "
+                f"(docker compose -f {fresh.root / 'compose.yaml'} rm -sf {name})",
                 style="info",
             )
         else:

@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import yaml
 
 from raft import cli
 
@@ -71,7 +72,7 @@ class TestCli(RaftTestCase):
 
     def test_sync_unknown_service(self) -> None:
         with patch("raft.cli.deps.load_stack", return_value=self.stack):
-            with pytest.raises(SystemExit):
+            with pytest.raises(RuntimeError, match="unknown service"):
                 cli.main(["sync", "nope"])
 
     def test_up_down_dispatch(self) -> None:
@@ -94,8 +95,13 @@ class TestCli(RaftTestCase):
 
     def test_redeploy_gate_not_in_choices(self) -> None:
         with patch("raft.cli.deps.load_stack", return_value=self.stack):
-            with pytest.raises(SystemExit):
+            with pytest.raises(RuntimeError, match="unknown app"):
                 cli.main(["redeploy", "gate"])
+
+    def test_redeploy_requires_app(self) -> None:
+        with patch("raft.cli.deps.load_stack", return_value=self.stack):
+            with pytest.raises(RuntimeError, match="redeploy requires APP"):
+                cli.main(["redeploy"])
 
     def test_gate_recreate_dispatch(self) -> None:
         assert self._run_main(["gate", "recreate"]) == 0
@@ -116,7 +122,7 @@ class TestCli(RaftTestCase):
         assert "raft doctor" in err
 
     def test_run_called_process_error_suggests_doctor(self, capsys) -> None:
-        err = subprocess.CalledProcessError(9, ["docker", "compose"], stderr="boom\n")
+        err = subprocess.CalledProcessError(9, ["true"], stderr="boom\n")
         self.orch.stop.side_effect = err
         with pytest.raises(SystemExit) as exc:
             self._run_cli(["down"])
@@ -124,6 +130,81 @@ class TestCli(RaftTestCase):
         out = capsys.readouterr().err
         assert "boom" in out
         assert "raft doctor" in out
+
+    def test_run_rewrites_docker_daemon_and_port(self, capsys) -> None:
+        err = subprocess.CalledProcessError(
+            1, ["docker", "ps"], stderr="Cannot connect to the Docker daemon\n"
+        )
+        self.orch.stop.side_effect = err
+        with pytest.raises(SystemExit):
+            self._run_cli(["down"])
+        assert "Docker daemon" in capsys.readouterr().err
+
+        err2 = subprocess.CalledProcessError(
+            1, ["docker", "run"], stderr="port is already allocated\n"
+        )
+        self.orch.stop.side_effect = err2
+        with pytest.raises(SystemExit):
+            self._run_cli(["down"])
+        assert "already in use" in capsys.readouterr().err
+
+    def test_run_rewrites_compose_and_git_and_pull(self, capsys) -> None:
+        err = subprocess.CalledProcessError(
+            1, ["docker", "compose", "up"], stderr="explode\n"
+        )
+        self.orch.stop.side_effect = err
+        with pytest.raises(SystemExit):
+            self._run_cli(["down"])
+        assert "docker compose failed" in capsys.readouterr().err
+
+        auth = subprocess.CalledProcessError(
+            1,
+            ["git", "ls-remote", "git@github.com:org/x.git"],
+            stderr="Permission denied (publickey)\n",
+        )
+        self.orch.sync.side_effect = auth
+        with pytest.raises(SystemExit):
+            self._run_cli(["sync"])
+        assert "git auth failed" in capsys.readouterr().err
+
+        net = subprocess.CalledProcessError(
+            1,
+            ["git", "fetch"],
+            stderr="Could not resolve host: github.com\n",
+        )
+        self.orch.sync.side_effect = net
+        with pytest.raises(SystemExit):
+            self._run_cli(["sync"])
+        assert "cannot reach git host" in capsys.readouterr().err
+
+        generic = subprocess.CalledProcessError(
+            1, ["git", "status"], stderr="index.lock\n"
+        )
+        self.orch.sync.side_effect = generic
+        with pytest.raises(SystemExit):
+            self._run_cli(["sync"])
+        assert "git command failed" in capsys.readouterr().err
+
+        pull = subprocess.CalledProcessError(
+            1, ["docker", "pull", "ghcr.io/x:y"], stderr="no such host\n"
+        )
+        self.orch.stop.side_effect = pull
+        with pytest.raises(SystemExit):
+            self._run_cli(["down"])
+        assert "docker pull failed" in capsys.readouterr().err
+
+    def test_run_maps_oserror_and_yaml(self, capsys) -> None:
+        self.orch.start.side_effect = OSError("permission denied")
+        with pytest.raises(SystemExit) as exc:
+            self._run_cli(["up"])
+        assert exc.value.code == 1
+        assert "filesystem error" in capsys.readouterr().err
+
+        self.orch.start.side_effect = yaml.YAMLError("bad indent")
+        with pytest.raises(SystemExit) as exc:
+            self._run_cli(["up"])
+        assert exc.value.code == 1
+        assert "invalid YAML" in capsys.readouterr().err
 
     def test_run_rewrites_missing_origin_cert_errors(self, capsys) -> None:
         write_applied_app(self.tmp_path, "web", public_host="web.test", tls="origin")
@@ -287,7 +368,7 @@ class TestCli(RaftTestCase):
         assert exc.value.code == 9
 
     def test_run_called_process_error_without_stderr(self) -> None:
-        err = subprocess.CalledProcessError(3, ["git"], stderr=None)
+        err = subprocess.CalledProcessError(3, ["true"], stderr=None)
         self.orch.sync.side_effect = err
         with pytest.raises(SystemExit) as exc:
             self._run_cli(["sync"])
@@ -339,6 +420,19 @@ class TestCliAuth(RaftTestCase):
         assert self._auth_main(["auth", "remove", "svc", "--keep-key"]) == 0
         self.auth.remove.assert_called_once_with("svc", remove_files=False)
 
+    def test_auth_requires_service(self) -> None:
+        with patch("raft.cli.deps.load_stack", return_value=self.stack):
+            with patch("raft.cli.deps.Orchestrator"):
+                with patch("raft.cli.deps.GitAuthManager", return_value=self.auth):
+                    with pytest.raises(RuntimeError, match="auth setup requires SERVICE"):
+                        cli.main(["auth", "setup"])
+                    with pytest.raises(RuntimeError, match="auth show requires SERVICE"):
+                        cli.main(["auth", "show"])
+                    with pytest.raises(RuntimeError, match="auth test requires SERVICE"):
+                        cli.main(["auth", "test"])
+                    with pytest.raises(RuntimeError, match="auth remove requires SERVICE"):
+                        cli.main(["auth", "remove"])
+
     def test_auth_list_empty(self, capsys) -> None:
         self.auth.list_services.return_value = []
         assert self._auth_main(["auth", "list"]) == 0
@@ -379,7 +473,7 @@ class TestCliApplyGetDelete(RaftTestCase):
                     == 0
                 )
                 applier.apply_git.assert_called_once()
-                with pytest.raises(SystemExit):
+                with pytest.raises(RuntimeError, match="apply requires"):
                     cli.main(["apply"])
 
         empty = make_stack(self.tmp_path, ())

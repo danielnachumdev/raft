@@ -184,7 +184,7 @@ services:
         assert self.stack.upstream_name(self.app, port) == "app_http"
         assert self.stack.certs_dir == self.tmp_path / "certs"
         assert self.stack.core_services == ("gate", "router", "app")
-        with pytest.raises(KeyError, match="unknown app"):
+        with pytest.raises(RuntimeError, match="unknown app"):
             self.stack.app("nope")
 
     def test_spec_for(self) -> None:

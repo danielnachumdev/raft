@@ -74,9 +74,19 @@ def default_config() -> RaftConfig:
 def _optional_port(raw: Any, *, field_name: str) -> Optional[int]:
     if raw is None:
         return None
-    port = int(raw)
+    try:
+        port = int(raw)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"settings.yaml edge.{field_name} must be an integer port (1–65535) or null, "
+            f"got {raw!r}.\n"
+            f"Fix: set edge.{field_name} to a number (e.g. 80) or omit/null in ~/.raft/settings.yaml"
+        ) from exc
     if not (1 <= port <= 65535):
-        raise ValueError(f"settings.yaml edge.{field_name} out of range: {port}")
+        raise ValueError(
+            f"settings.yaml edge.{field_name} out of range: {port}.\n"
+            f"Fix: pick a port between 1 and 65535 in ~/.raft/settings.yaml"
+        )
     return port
 
 
@@ -106,9 +116,19 @@ def _parse_edge(raw: Any) -> EdgeConfig:
         seen_names.add(name)
         if "port" not in entry:
             raise ValueError(f"settings.yaml edge.streams[{name!r}].port is required")
-        port = int(entry["port"])
+        try:
+            port = int(entry["port"])
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"settings.yaml edge.streams[{name!r}].port must be an integer (1–65535), "
+                f"got {entry['port']!r}.\n"
+                f"Fix: use a numeric port in edge.streams[] in ~/.raft/settings.yaml"
+            ) from exc
         if not (1 <= port <= 65535):
-            raise ValueError(f"settings.yaml edge.streams[{name!r}].port out of range: {port}")
+            raise ValueError(
+                f"settings.yaml edge.streams[{name!r}].port out of range: {port}.\n"
+                f"Fix: pick a port between 1 and 65535 in ~/.raft/settings.yaml"
+            )
         if port in seen_ports:
             raise ValueError(f"settings.yaml edge.streams: duplicate port {port}")
         if http is not None and port == http:
@@ -132,13 +152,46 @@ def _parse_edge(raw: Any) -> EdgeConfig:
 
 def load_config(data_home: Path, *, path: Optional[Path] = None) -> RaftConfig:
     config_path = path or settings_path(data_home)
-    if not config_path.is_file():
+    if not config_path.exists():
         return default_config()
-    data = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+    if not config_path.is_file():
+        raise ValueError(
+            f"settings path is not a file: {config_path}\n"
+            f"Fix: remove the directory or point at ~/.raft/settings.yaml"
+        )
+    try:
+        raw_text = config_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ValueError(
+            f"cannot read settings.yaml: {config_path}\n"
+            f"Fix: ensure the file is readable — chmod u+r {config_path}"
+        ) from exc
+    try:
+        data = yaml.safe_load(raw_text) or {}
+    except yaml.YAMLError as exc:
+        raise ValueError(
+            f"invalid YAML in {config_path}: {exc}\n"
+            f"Fix: repair ~/.raft/settings.yaml (logging/edge mapping)"
+        ) from exc
+    if not isinstance(data, dict):
+        raise ValueError(
+            f"settings.yaml must be a YAML mapping (key/value document), "
+            f"got {type(data).__name__}.\n"
+            f"Fix: rewrite ~/.raft/settings.yaml as `{{logging: ..., edge: ...}}`"
+        )
     raw = data.get("logging") or {}
     if not isinstance(raw, dict):
-        raise ValueError("settings.yaml logging must be a mapping")
+        raise ValueError(
+            "settings.yaml logging must be a mapping.\n"
+            "Fix: set logging: {level: INFO, ...} in ~/.raft/settings.yaml"
+        )
     level = str(raw.get("level", "INFO")).strip().upper() or "INFO"
+    allowed = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+    if level not in allowed:
+        raise ValueError(
+            f"settings.yaml logging.level must be one of {sorted(allowed)}, got {level!r}.\n"
+            f"Fix: set logging.level in ~/.raft/settings.yaml"
+        )
     return RaftConfig(
         logging=LoggingConfig(
             dir=str(raw.get("dir", LOGS_DIRNAME)).strip() or LOGS_DIRNAME,

@@ -63,5 +63,7 @@ class NginxUpstreams:
                 continue
             if not self.docker.router_sees_upstream_target(app, target_hostname, p):
                 raise RuntimeError(
-                    f"router container does not see upstream target {target_hostname!r} yet"
+                    f"router container does not see upstream target {target_hostname!r} yet.\n"
+                    f"Fix: wait for the router mount sync, or: raft redeploy router; "
+                    f"verify generated/nginx/upstreams/"
                 )

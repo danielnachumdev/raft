@@ -92,6 +92,11 @@ class TestGitAuthManager(ServicesTestCase):
         self.mgr.setup("svc")
         self.mgr.setup("svc", force=True)
 
+    def test_generate_key_failure(self) -> None:
+        self.shell.run.side_effect = RuntimeError("ssh-keygen missing")
+        with pytest.raises(RuntimeError, match="ssh-keygen failed"):
+            self.mgr._generate_key("svc")
+
     def test_setup_with_repo_before_apply(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -192,10 +197,10 @@ class TestGitAuthManager(ServicesTestCase):
         self.mgr.test("svc")
         self.mgr.test("svc", quiet=True)
         self.shell.git.return_value = MagicMock(returncode=1, stdout="", stderr="denied")
-        with pytest.raises(RuntimeError, match="auth test failed"):
+        with pytest.raises(RuntimeError, match="git command failed"):
             self.mgr.test("svc")
         self.shell.git.return_value = MagicMock(returncode=1, stdout="", stderr="")
-        with pytest.raises(RuntimeError, match="auth test failed"):
+        with pytest.raises(RuntimeError, match="git command failed"):
             self.mgr.test("svc")
 
         self.mgr.remove("svc", remove_files=False)

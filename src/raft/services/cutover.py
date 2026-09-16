@@ -30,6 +30,7 @@ def wait_until(
     *,
     timeout: float,
     interval: float = 1.0,
+    fix: str = "",
 ) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -37,7 +38,10 @@ def wait_until(
             return
         time.sleep(interval)
     logger.error("timed out waiting for: %s", description)
-    raise TimeoutError(f"timed out waiting for: {description}")
+    message = f"timed out waiting for: {description}"
+    if fix:
+        message = f"{message}\nFix: {fix}"
+    raise TimeoutError(message)
 
 
 @dataclass
@@ -61,7 +65,16 @@ class CutoverSession:
         predicate = strategy.wait_predicate(self.app, self.stack, self.http)
         if predicate is None:
             return
-        wait_until(label, predicate, timeout=timeout, interval=0.5)
+        wait_until(
+            label,
+            predicate,
+            timeout=timeout,
+            interval=0.5,
+            fix=(
+                f"check readiness/health for {self.app.name}; "
+                f"raft doctor; raft redeploy {self.app.name}"
+            ),
+        )
 
     def snapshot_previous_image(self) -> None:
         cid = self.docker.service_container_id(self.app.name)
@@ -90,6 +103,10 @@ class CutoverSession:
                 f"{self.app.tmp_alias} reachable from router",
                 lambda: self.docker.router_can_fetch(self.app.tmp_alias, port=fetch_port),
                 timeout=self.stack.ready_timeout_seconds,
+                fix=(
+                    f"inspect tmp container / upstreams; then: "
+                    f"raft redeploy {self.app.name} or raft doctor"
+                ),
             )
 
     def shift_traffic_to_tmp(self) -> None:
@@ -114,6 +131,10 @@ class CutoverSession:
                 f"{self.app.name} reachable from router",
                 lambda: self.docker.router_can_fetch(self.app.name, port=fetch_port),
                 timeout=self.stack.ready_timeout_seconds,
+                fix=(
+                    f"check build/pull logs; traffic may still be on "
+                    f"{self.app.name}_tmp — raft doctor / raft redeploy {self.app.name}"
+                ),
             )
 
     def _docker_wanted_tag(self) -> str:

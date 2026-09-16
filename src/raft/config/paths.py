@@ -22,7 +22,12 @@ _TEMPLATE_DIRS = ("nginx",)
 
 def raft_home() -> Path:
     override = os.environ.get(DATA_HOME_ENV)
-    if override:
+    if override is not None:
+        if not override.strip():
+            raise RuntimeError(
+                f"{DATA_HOME_ENV} is set but empty.\n"
+                f"Fix: unset {DATA_HOME_ENV} or set it to an absolute path (e.g. ~/.raft)"
+            )
         return Path(override).expanduser().resolve()
     return (Path.home() / ".raft").resolve()
 
@@ -47,7 +52,10 @@ def find_package_root(start: Optional[Path] = None) -> Path:
     for candidate in [pkg, *pkg.parents]:
         if _is_package_root(candidate):
             return candidate
-    raise FileNotFoundError("could not find raft package templates (compose.yaml + nginx/)")
+    raise FileNotFoundError(
+        "could not find raft package templates (compose.yaml + nginx/).\n"
+        "Fix: reinstall raft (`raft update`) or run from a checkout that includes src/raft/share/"
+    )
 
 
 def _is_package_root(candidate: Path) -> bool:

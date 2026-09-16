@@ -31,16 +31,25 @@ class TestDockerStack(AdapterTestCase):
         )
         self.docker.start_stack()
         self.docker.stop_stack()
-        self.shell.compose.assert_any_call("up", "-d", "--build", "--remove-orphans")
-        self.shell.compose.assert_any_call("down", "--remove-orphans")
+        self.shell.compose.assert_any_call(
+            "up", "-d", "--build", "--remove-orphans", capture=True, check=False
+        )
+        self.shell.compose.assert_any_call(
+            "down", "--remove-orphans", capture=True, check=False
+        )
         self.shell.docker.assert_called()
 
     def test_recreate_rebuild(self) -> None:
         self.shell.compose.return_value = self.ok()
         self.docker.recreate_router()
         self.docker.rebuild_service("app")
-        self.shell.compose.assert_any_call("up", "-d", "--no-deps", "--force-recreate", "router")
-        self.shell.compose.assert_any_call("up", "-d", "--build", "--no-deps", "app")
+        self.shell.compose.assert_any_call(
+            "up", "-d", "--no-deps", "--force-recreate", "router",
+            capture=True, check=False,
+        )
+        self.shell.compose.assert_any_call(
+            "up", "-d", "--build", "--no-deps", "app", capture=True, check=False
+        )
 
     def test_recreate_pulled_service_tags_then_up(self) -> None:
         self.shell.compose.return_value = self.ok()
@@ -50,9 +59,13 @@ class TestDockerStack(AdapterTestCase):
         self.shell.docker.assert_any_call(
             "pull", "ghcr.io/org/hub:abc", capture=True, check=False
         )
-        self.shell.docker.assert_any_call("tag", "ghcr.io/org/hub:abc", "ghcr.io/org/hub:main")
+        self.shell.docker.assert_any_call(
+            "tag", "ghcr.io/org/hub:abc", "ghcr.io/org/hub:main",
+            capture=True, check=False,
+        )
         self.shell.compose.assert_any_call(
-            "up", "-d", "--no-deps", "--no-build", "--force-recreate", "hub"
+            "up", "-d", "--no-deps", "--no-build", "--force-recreate", "hub",
+            capture=True, check=False,
         )
 
     def test_recreate_pulled_service_skips_tag_when_pin(self) -> None:
@@ -66,15 +79,13 @@ class TestDockerStack(AdapterTestCase):
         assert not any(c.args[:1] == ("tag",) for c in self.shell.docker.call_args_list)
 
     def test_recreate_pulled_service_unauthorized(self) -> None:
-        import subprocess
-
         self.shell.docker.return_value = self.ok(
             returncode=1, stderr="Error response from daemon: unauthorized\n"
         )
         app = make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
-        with pytest.raises(subprocess.CalledProcessError) as exc:
+        with pytest.raises(RuntimeError, match="docker login") as exc:
             self.docker.recreate_pulled_service(app, pull_ref="ghcr.io/org/hub:main")
-        assert "unauthorized" in (exc.value.stderr or "")
+        assert "unauthorized" in str(exc.value).lower() or "login" in str(exc.value).lower()
 
     def test_service_container_id_missing(self) -> None:
         self.shell.compose.return_value = self.ok("  \n")
@@ -127,8 +138,13 @@ class TestDockerStack(AdapterTestCase):
         assert self.docker.router_can_fetch("app") is False
         self.shell.compose.return_value = self.ok()
         self.docker.nginx_test_and_reload()
-        self.shell.compose.assert_any_call("exec", "-T", "router", "nginx", "-t")
-        self.shell.compose.assert_any_call("exec", "-T", "router", "nginx", "-s", "reload")
+        self.shell.compose.assert_any_call(
+            "exec", "-T", "router", "nginx", "-t", capture=True, check=False
+        )
+        self.shell.compose.assert_any_call(
+            "exec", "-T", "router", "nginx", "-s", "reload",
+            capture=True, check=False,
+        )
 
     def test_reload_gate_nginx(self) -> None:
         self.shell.compose.return_value = self.ok()
@@ -136,9 +152,12 @@ class TestDockerStack(AdapterTestCase):
         self.shell.compose.assert_any_call(
             "exec", "-T", "gate", "nginx", "-t", capture=True, check=False
         )
-        self.shell.compose.assert_any_call("exec", "-T", "gate", "nginx", "-s", "reload")
+        self.shell.compose.assert_any_call(
+            "exec", "-T", "gate", "nginx", "-s", "reload",
+            capture=True, check=False,
+        )
 
-    def test_reload_gate_nginx_captures_failure(self) -> None:
+    def test_reload_gate_nginx_captures_cert_failure(self) -> None:
         import subprocess
 
         self.shell.compose.return_value = self.ok(
@@ -148,6 +167,61 @@ class TestDockerStack(AdapterTestCase):
         with pytest.raises(subprocess.CalledProcessError) as exc:
             self.docker.reload_gate_nginx()
         assert "origin.pem" in (exc.value.stderr or "")
+
+    def test_reload_router_nginx_rejects_bad_config(self) -> None:
+        self.shell.compose.return_value = self.ok(returncode=1, stderr="syntax error")
+        with pytest.raises(RuntimeError, match="router nginx rejected"):
+            self.docker.reload_router_nginx()
+
+    def test_reload_gate_nginx_rejects_non_cert_error(self) -> None:
+        self.shell.compose.return_value = self.ok(returncode=1, stderr="unknown directive")
+        with pytest.raises(RuntimeError, match="gate nginx rejected"):
+            self.docker.reload_gate_nginx()
+
+    def test_reload_router_nginx_reload_failure(self) -> None:
+        self.shell.compose.side_effect = [
+            self.ok(),  # nginx -t
+            self.ok(returncode=1, stderr="reload failed"),
+        ]
+        with pytest.raises(RuntimeError, match="reload failed"):
+            self.docker.reload_router_nginx()
+
+    def test_service_container_id_compose_failure(self) -> None:
+        self.shell.compose.return_value = self.ok(
+            returncode=1, stderr="Cannot connect to the Docker daemon"
+        )
+        with pytest.raises(RuntimeError, match="Docker daemon"):
+            self.docker.service_container_id("app")
+
+    def test_container_image_ref_commit_failure(self) -> None:
+        self.shell.docker.side_effect = [
+            self.ok(returncode=1, stderr="Cannot connect to the Docker daemon"),
+            self.ok(returncode=1, stderr="commit failed"),
+        ]
+        with pytest.raises(RuntimeError, match="could not snapshot"):
+            self.docker.container_image_ref("cid1234567890")
+
+    def test_router_network_inspect_failure(self) -> None:
+        self.shell.compose.return_value = self.ok("routerid\n")
+        self.shell.docker.return_value = self.ok(
+            returncode=1, stderr="Cannot connect to the Docker daemon"
+        )
+        with pytest.raises(RuntimeError, match="could not detect"):
+            self.docker.router_network()
+
+    def test_reload_nginx_empty_detail_and_gate_reload_fail(self) -> None:
+        self.shell.compose.return_value = self.ok(returncode=1, stderr="")
+        with pytest.raises(RuntimeError, match="router nginx rejected"):
+            self.docker.reload_router_nginx()
+        with pytest.raises(RuntimeError, match="gate nginx rejected"):
+            self.docker.reload_gate_nginx()
+
+        self.shell.compose.side_effect = [
+            self.ok(),  # -t ok
+            self.ok(returncode=1, stderr=""),  # reload fail empty
+        ]
+        with pytest.raises(RuntimeError, match="gate recreate"):
+            self.docker.reload_gate_nginx()
 
     def test_router_sees_upstream_target(self) -> None:
         port = PortSpec(name="http", container_port=80, expose="http")
@@ -159,7 +233,10 @@ class TestDockerStack(AdapterTestCase):
     def test_recreate_gate_and_published_ports(self) -> None:
         self.shell.compose.return_value = self.ok("gatecid\n")
         self.docker.recreate_gate()
-        self.shell.compose.assert_any_call("up", "-d", "--no-deps", "--force-recreate", "gate")
+        self.shell.compose.assert_any_call(
+            "up", "-d", "--no-deps", "--force-recreate", "gate",
+            capture=True, check=False,
+        )
         self.shell.docker.return_value = self.ok("80/tcp 443/tcp\n")
         assert self.docker.gate_published_ports() == [80, 443]
         self.shell.compose.return_value = self.ok("  \n")

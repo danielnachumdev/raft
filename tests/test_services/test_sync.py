@@ -282,8 +282,6 @@ class TestSourceSync(ServicesTestCase):
         assert "command failed" not in msg.lower()
 
     def test_sync_docker_pull_other_error_reraises(self) -> None:
-        import subprocess
-
         app = make_app(
             "hub",
             source="docker",
@@ -298,6 +296,51 @@ class TestSourceSync(ServicesTestCase):
             stdout="",
             stderr="dial tcp: lookup ghcr.io: no such host\n",
         )
-        with pytest.raises(subprocess.CalledProcessError) as exc:
+        with pytest.raises(RuntimeError, match="docker pull failed") as exc:
             self.syncer.sync([app])
-        assert "no such host" in (exc.value.stderr or "")
+        assert "no such host" in str(exc.value)
+
+    def test_sync_git_clone_fetch_checkout_failures(self) -> None:
+        self._git_syncer(repo="git@example.com:org/svc.git")
+        self.shell.git.side_effect = RuntimeError("Permission denied (publickey)")
+        with pytest.raises(RuntimeError, match="git auth failed"):
+            self.syncer.sync([self.app])
+
+        self._ensure_git_checkout()
+        calls = {"n": 0}
+
+        def git(*args, **kwargs):
+            calls["n"] += 1
+            if args[:1] == ("remote",):
+                raise RuntimeError("Could not resolve host: example.com")
+            return MagicMock(returncode=0, stdout="")
+
+        self.shell.git.side_effect = git
+        with pytest.raises(RuntimeError, match="cannot reach"):
+            self.syncer.sync([self.app])
+
+        def git_fetch(*args, **kwargs):
+            if args[:1] == ("fetch",):
+                raise RuntimeError("network unreachable")
+            if args[:2] == ("status", "--porcelain"):
+                return MagicMock(returncode=0, stdout="")
+            if args[:1] == ("remote",):
+                return MagicMock(returncode=0, stdout="")
+            return MagicMock(returncode=0, stdout="")
+
+        self.shell.git.side_effect = git_fetch
+        with pytest.raises(RuntimeError, match="cannot reach"):
+            self.syncer.sync([self.app])
+
+        def git_checkout(*args, **kwargs):
+            if args[:1] == ("checkout",):
+                raise RuntimeError("pathspec did not match")
+            if args[:2] == ("status", "--porcelain"):
+                return MagicMock(returncode=0, stdout="")
+            if args[:2] == ("rev-parse", "--verify"):
+                return MagicMock(returncode=0, stdout="abc123\n")
+            return MagicMock(returncode=0, stdout="")
+
+        self.shell.git.side_effect = git_checkout
+        with pytest.raises(RuntimeError, match="git command failed"):
+            self.syncer.sync([self.app])

@@ -111,7 +111,12 @@ class StackRenderer:
         resolved = specs if specs is not None else self.load_all_specs()
         for app in self.stack.apps:
             if app.name not in resolved:
-                raise KeyError(f"missing AppSpec for {app.name!r}")
+                raise RuntimeError(
+                    f"missing AppSpec for {app.name!r} "
+                    f"(corrupt or incomplete registry entry).\n"
+                    f"Fix: re-apply the app (`raft apply …`) or repair "
+                    f"~/.raft/state/apps/{app.name}.yaml; then raft render"
+                )
             self._validate_app_spec(app, resolved[app.name])
 
         fragments = EdgeFragments()

@@ -63,6 +63,15 @@ def parse_ports(spec: dict[str, Any], path: Path) -> tuple[PortSpec, ...]:
     if "port" in spec:
         raise ValueError(f"{path}: spec.port is not supported; use spec.ports[]")
 
+    def _require_int(raw_val: Any, *, label: str) -> int:
+        try:
+            return int(raw_val)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"{path}: {label} must be an integer (1–65535), got {raw_val!r}.\n"
+                f"Fix: use an unquoted number in .raft/app.yaml"
+            ) from exc
+
     ports: list[PortSpec] = []
     seen: set[str] = set()
     for index, entry in enumerate(raw):
@@ -76,12 +85,26 @@ def parse_ports(spec: dict[str, Any], path: Path) -> tuple[PortSpec, ...]:
         seen.add(name)
         if "containerPort" not in entry:
             raise ValueError(f"{path}: spec.ports[{name!r}].containerPort is required")
-        container_port = int(entry["containerPort"])
+        container_port = _require_int(
+            entry["containerPort"],
+            label=f"spec.ports[{name!r}].containerPort",
+        )
         expose = str(entry.get("expose", "http")).strip().lower() or "http"
         public_raw = entry.get("publicPort")
-        public_port = int(public_raw) if public_raw is not None else None
+        public_port = (
+            _require_int(public_raw, label=f"spec.ports[{name!r}].publicPort")
+            if public_raw is not None
+            else None
+        )
         protocol = str(entry.get("protocol", "tcp")).strip().lower() or "tcp"
-        proxy_protocol = bool(entry.get("proxyProtocol", False))
+        proxy_raw = entry.get("proxyProtocol", False)
+        if not isinstance(proxy_raw, bool):
+            raise ValueError(
+                f"{path}: spec.ports[{name!r}].proxyProtocol must be a boolean, "
+                f"got {proxy_raw!r}.\n"
+                f"Fix: use `proxyProtocol: true` or `false` (unquoted) in .raft/app.yaml"
+            )
+        proxy_protocol = proxy_raw
         port = PortSpec(
             name=name,
             container_port=container_port,

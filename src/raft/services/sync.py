@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import os
 import shutil
-import subprocess
 from pathlib import Path
 from typing import Optional
 
@@ -13,7 +12,7 @@ from ..adapters.shell import Shell
 from ..models.app import App
 from ..models.stack import Stack
 from .auth import GitAuthManager
-from .registry import looks_like_registry_unauthorized, registry_unauthorized_message
+from .git_errors import raise_for_git_failure
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +50,11 @@ class SourceSync:
         dest = app.abs_path(self.stack.root)
         if app.source == "local":
             if not dest.is_dir():
-                raise RuntimeError(f"local app path missing: {dest}")
+                raise RuntimeError(
+                    f"local app path missing: {dest}\n"
+                    f"Fix: create/copy the tree under {app.path}, or change "
+                    f"spec.source / re-apply the App"
+                )
             logger.info("sync %s: local (%s)", app.name, app.path)
             return
 
@@ -93,21 +96,14 @@ class SourceSync:
         app: Optional[str] = None,
         repo: Optional[str] = None,
     ) -> None:
+        from .command_errors import raise_for_docker_pull_failure
+
         result = self.sh.docker("pull", image, capture=True, check=False)
         if result.returncode == 0:
             return
         detail = (result.stderr or result.stdout or "").strip()
-        if looks_like_registry_unauthorized(detail):
-            raise RuntimeError(
-                registry_unauthorized_message(
-                    image, detail=detail, app=app, repo=repo
-                )
-            )
-        raise subprocess.CalledProcessError(
-            result.returncode,
-            ["docker", "pull", image],
-            output=result.stdout,
-            stderr=detail,
+        raise_for_docker_pull_failure(
+            image, detail=detail, app=app, repo=repo
         )
 
     def _sync_git(
@@ -136,17 +132,40 @@ class SourceSync:
                     shutil.rmtree(dest)
                 else:
                     raise RuntimeError(
-                        f"{dest} exists but is not a git checkout; "
-                        "move it aside or set source=local"
+                        f"{dest} exists but is not a git checkout.\n"
+                        f"Fix: move it aside, then: raft sync {app.name}"
                     )
-            self.sh.git("clone", "--quiet", clone_url, str(dest), capture=True)
+            try:
+                self.sh.git("clone", "--quiet", clone_url, str(dest), capture=True)
+            except Exception as exc:
+                raise_for_git_failure(
+                    exc, app.repo or clone_url, app=app.name, always=True
+                )
         else:
-            self.sh.git("remote", "set-url", "origin", clone_url, cwd=dest)
+            try:
+                self.sh.git(
+                    "remote", "set-url", "origin", clone_url, cwd=dest, capture=True
+                )
+            except Exception as exc:
+                raise_for_git_failure(
+                    exc, app.repo or clone_url, app=app.name, always=True
+                )
 
         if not force and self._is_dirty(dest):
-            raise RuntimeError(f"{dest} has local changes; commit/stash them or pass --force")
+            raise RuntimeError(
+                f"{dest} has local changes.\n"
+                f"Fix: commit/stash them, or: raft sync {app.name} --force"
+            )
 
-        self.sh.git("fetch", "--prune", "--tags", "origin", cwd=dest, capture=True)
+        try:
+            self.sh.git(
+                "fetch", "--prune", "--tags", "origin", cwd=dest, capture=True
+            )
+        except Exception as exc:
+            raise_for_git_failure(
+                exc, app.repo or clone_url, app=app.name, always=True
+            )
+
         checked = self.sh.git(
             "rev-parse",
             "--verify",
@@ -167,8 +186,16 @@ class SourceSync:
         if checked.returncode == 0:
             sha = checked.stdout.strip()
         else:
-            raise RuntimeError(f"cannot resolve ref {wanted!r} in {app.repo}")
-        self.sh.git("checkout", "-q", "-f", "--detach", sha, cwd=dest, capture=True)
+            raise RuntimeError(
+                f"cannot resolve ref {wanted!r} in {app.repo}.\n"
+                f"Fix: raft sync {app.name} --ref <existing-branch-or-tag>"
+            )
+        try:
+            self.sh.git("checkout", "-q", "-f", "--detach", sha, cwd=dest, capture=True)
+        except Exception as exc:
+            raise_for_git_failure(
+                exc, app.repo or clone_url, app=app.name, always=True
+            )
         if app.source != "docker":
             state = self.stack.ref_state_file(app)
             state.parent.mkdir(parents=True, exist_ok=True)

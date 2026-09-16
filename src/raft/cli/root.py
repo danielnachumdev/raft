@@ -62,7 +62,7 @@ class RaftCLI:
                 force_sync=force_sync,
             )
             return
-        raise SystemExit("apply requires --file PATH or --git URL")
+        raise RuntimeError("apply requires --file PATH or --git URL.\nFix: raft apply --file path/to/app.yaml")
 
     def get(self, resource: str, name: Optional[str] = None) -> None:
         """Show applied resources (e.g. get apps, get app NAME)."""
@@ -118,20 +118,32 @@ class RaftCLI:
         if names:
             unknown = [n for n in names if n not in self._app_names]
             if unknown:
-                raise SystemExit(f"unknown service(s): {', '.join(unknown)} (known: {self._known})")
+                raise RuntimeError(
+                    f"unknown service(s): {', '.join(unknown)} (known: {self._known}).\n"
+                    f"Fix: raft get apps"
+                )
         deps.Orchestrator(self._stack).sync(names, ref_override=ref, force=force)
 
     def redeploy(
         self,
-        app: str,
+        app: Optional[str] = None,
         ref: Optional[str] = None,
         force_sync: bool = False,
     ) -> None:
         """Redeploy one running app, or recreate inner router."""
+        name = (app or "").strip()
+        if not name:
+            raise RuntimeError(
+                "redeploy requires APP.\n"
+                "Fix: raft redeploy <app>|router"
+            )
         orch = deps.Orchestrator(self._stack)
-        if app == "router":
+        if name == "router":
             orch.redeploy_router()
             return
-        if app not in self._app_names:
-            raise SystemExit(f"unknown app {app!r} (known: {self._known})")
-        orch.redeploy_app(app, ref_override=ref, force_sync=force_sync)
+        if name not in self._app_names:
+            raise RuntimeError(
+                f"unknown app {name!r} (known: {self._known}).\n"
+                f"Fix: raft get apps"
+            )
+        orch.redeploy_app(name, ref_override=ref, force_sync=force_sync)

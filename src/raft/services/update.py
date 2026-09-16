@@ -57,15 +57,22 @@ class SelfUpdate:
         url = os.environ.get("RAFT_INSTALL_URL", DEFAULT_INSTALL_URL)
         before = install_identity()
         say("Updating raft…", style="info")
-        self.sh.run(
-            [
-                "bash",
-                "-c",
-                'export RAFT_INSTALL_QUIET=1; curl -fsSL "$1" | bash',
-                "_",
-                url,
-            ],
-        )
+        try:
+            self.sh.run(
+                [
+                    "bash",
+                    "-c",
+                    'export RAFT_INSTALL_QUIET=1; curl -fsSL "$1" | bash',
+                    "_",
+                    url,
+                ],
+            )
+        except Exception as exc:
+            raise RuntimeError(
+                "raft update failed (could not download/run the installer).\n"
+                f"Fix: check outbound HTTPS, then retry `raft update`\n"
+                f"     or run manually: curl -fsSL {url} | bash"
+            ) from exc
         after = install_identity()
         if before is not None and before == after:
             say("raft is already up to date", style="info")

@@ -265,6 +265,49 @@ spec:
                 path=path,
             )
 
+    def test_parse_rejects_bad_www_and_build_types(self) -> None:
+        path = self.tmp_path / "app.yaml"
+        base = {
+            "apiVersion": "raft/v1",
+            "kind": "App",
+            "metadata": {"name": "a"},
+            "spec": {
+                "source": "local",
+                "publicHost": "a.test",
+                "path": "apps/a",
+                "ports": [{"name": "http", "containerPort": 80}],
+            },
+        }
+        with pytest.raises(ValueError, match="spec.www must be a boolean"):
+            parse_app_document(
+                {**base, "spec": {**base["spec"], "www": "yes"}},
+                path=path,
+            )
+        with pytest.raises(ValueError, match="build.context must be a string"):
+            parse_app_document(
+                {**base, "spec": {**base["spec"], "build": {"context": 1}}},
+                path=path,
+            )
+        with pytest.raises(ValueError, match="build.dockerfile must be a string"):
+            parse_app_document(
+                {
+                    **base,
+                    "spec": {**base["spec"], "build": {"dockerfile": ["Dockerfile"]}},
+                },
+                path=path,
+            )
+
+    def test_load_app_file_oserror(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        path = self.tmp_path / "app.yaml"
+        path.write_text("x: 1\n", encoding="utf-8")
+        monkeypatch.setattr(
+            Path,
+            "read_text",
+            lambda self, *a, **k: (_ for _ in ()).throw(OSError("EACCES")),
+        )
+        with pytest.raises(ValueError, match="cannot read App manifest"):
+            load_app_file(path)
+
 
 class TestStackRenderer(RaftTestCase):
     def test_render_http_only_no_tls_snippets(self) -> None:

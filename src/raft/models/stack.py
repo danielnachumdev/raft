@@ -41,7 +41,10 @@ class Stack:
             if app.name == name:
                 return app
         known = ", ".join(a.name for a in self.apps) or "(none applied)"
-        raise KeyError(f"unknown app {name!r} (known: {known})")
+        raise RuntimeError(
+            f"unknown app {name!r} (known: {known}).\n"
+            f"Fix: raft get apps   # then apply or pick a listed name"
+        )
 
     @property
     def core_services(self) -> tuple[str, ...]:

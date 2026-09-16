@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import socket
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -112,7 +113,7 @@ class GitAuthManager:
             return str(repo).strip()
         try:
             app = self.stack.app(service)
-        except KeyError as exc:
+        except RuntimeError as exc:
             known = ", ".join(a.name for a in self.stack.apps) or "(none applied)"
             raise RuntimeError(
                 f"unknown app {service!r} (known: {known}). "
@@ -250,9 +251,15 @@ class GitAuthManager:
         result = self.sh.git("ls-remote", url, "HEAD", check=False, capture=True)
         if result.returncode != 0:
             detail = (result.stderr or result.stdout or "").strip()
-            raise RuntimeError(
-                f"auth test failed for {service!r}" + (f":\n{detail}" if detail else "")
+            exc = subprocess.CalledProcessError(
+                result.returncode,
+                ["git", "ls-remote", url, "HEAD"],
+                stderr=detail,
             )
+            from .git_errors import raise_for_git_failure
+
+            raise_for_git_failure(exc, repo_url, app=service, always=True)
+            return  # pragma: no cover — always raises
         if not quiet:
             say(f"auth test {service}: ok", style="ok")
         else:
@@ -282,21 +289,28 @@ class GitAuthManager:
 
     def _generate_key(self, service: str) -> None:
         comment = self.key_title(service)
-        self.sh.run(
-            [
-                "ssh-keygen",
-                "-t",
-                "ed25519",
-                "-f",
-                str(self.key_path(service)),
-                "-N",
-                "",
-                "-C",
-                comment,
-                "-q",
-            ],
-            capture=True,
-        )
+        try:
+            self.sh.run(
+                [
+                    "ssh-keygen",
+                    "-t",
+                    "ed25519",
+                    "-f",
+                    str(self.key_path(service)),
+                    "-N",
+                    "",
+                    "-C",
+                    comment,
+                    "-q",
+                ],
+                capture=True,
+            )
+        except Exception as exc:
+            raise RuntimeError(
+                f"ssh-keygen failed while creating a deploy key for {service!r}.\n"
+                f"Fix: install openssh-client, ensure ~/.ssh/raft is writable, "
+                f"then: raft auth setup {service}"
+            ) from exc
         os.chmod(self.key_path(service), 0o600)
         os.chmod(self.pub_path(service), 0o644)
 
