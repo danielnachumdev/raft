@@ -2,17 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Protocol, Sequence
-
-
-class MissingCertItem(Protocol):
-    app_name: str
-
-    @property
-    def detail(self) -> str: ...
-
-    @property
-    def fix(self) -> str: ...
+from typing import Any, Sequence
 
 
 def looks_like_missing_origin_cert(text: str) -> bool:
@@ -27,10 +17,11 @@ def looks_like_missing_origin_cert(text: str) -> bool:
 
 
 def format_missing_origin_certs(
-    missing: Sequence[MissingCertItem],
+    missing: Sequence[Any],
     *,
     include_doctor_footer: bool = False,
 ) -> str:
+    """Format items that expose ``app_name``, ``detail``, and ``fix``."""
     lines: list[str] = [
         "cannot deploy/reload gate: Cloudflare Origin certs missing:",
     ]
