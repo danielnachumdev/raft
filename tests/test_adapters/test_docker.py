@@ -1,8 +1,11 @@
 """DockerStack helpers (shell mocked)."""
 
+from unittest.mock import patch
+
 import pytest
 
 from raft.models.ports import PortSpec
+from raft.services.certs import MissingOriginCerts
 
 from ..base import make_app
 from .base import AdapterTestCase
@@ -158,15 +161,25 @@ class TestDockerStack(AdapterTestCase):
         )
 
     def test_reload_gate_nginx_captures_cert_failure(self) -> None:
-        import subprocess
-
         self.shell.compose.return_value = self.ok(
             returncode=1,
             stderr='cannot load certificate "/etc/nginx/certs/web/origin.pem"',
         )
-        with pytest.raises(subprocess.CalledProcessError) as exc:
+        with pytest.raises(RuntimeError, match="could not load Origin TLS certificates"):
             self.docker.reload_gate_nginx()
-        assert "origin.pem" in (exc.value.stderr or "")
+
+    def test_reload_gate_nginx_lists_missing_certs(self) -> None:
+        self.shell.compose.return_value = self.ok(
+            returncode=1,
+            stderr='cannot load certificate "/etc/nginx/certs/web/origin.pem"',
+        )
+        missing = [MissingOriginCerts("web", ("origin.pem",))]
+        with patch(
+            "raft.adapters.docker.missing_origin_certs",
+            return_value=missing,
+        ):
+            with pytest.raises(RuntimeError, match="Origin certs missing"):
+                self.docker.reload_gate_nginx()
 
     def test_reload_router_nginx_rejects_bad_config(self) -> None:
         self.shell.compose.return_value = self.ok(returncode=1, stderr="syntax error")
@@ -198,7 +211,7 @@ class TestDockerStack(AdapterTestCase):
             self.ok(returncode=1, stderr="Cannot connect to the Docker daemon"),
             self.ok(returncode=1, stderr="commit failed"),
         ]
-        with pytest.raises(RuntimeError, match="could not snapshot"):
+        with pytest.raises(RuntimeError, match="snapshot running container"):
             self.docker.container_image_ref("cid1234567890")
 
     def test_router_network_inspect_failure(self) -> None:
@@ -206,7 +219,7 @@ class TestDockerStack(AdapterTestCase):
         self.shell.docker.return_value = self.ok(
             returncode=1, stderr="Cannot connect to the Docker daemon"
         )
-        with pytest.raises(RuntimeError, match="could not detect"):
+        with pytest.raises(RuntimeError, match="Docker daemon"):
             self.docker.router_network()
 
     def test_reload_nginx_empty_detail_and_gate_reload_fail(self) -> None:

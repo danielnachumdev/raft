@@ -11,12 +11,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+from raft.errors import OperatorError, raise_for_git_failure
+
 from ..adapters.shell import Shell
 from ..models.app import App
 from ..models.stack import Stack
 from ..ui import say
-from .git_errors import raise_for_git_failure
-
 logger = logging.getLogger(__name__)
 
 _BEGIN = "# BEGIN raft:{name}"
@@ -116,15 +116,17 @@ class GitAuthManager:
             app = self.stack.app(service)
         except RuntimeError as exc:
             known = ", ".join(a.name for a in self.stack.apps) or "(none applied)"
-            raise RuntimeError(
+            raise OperatorError(
                 f"unknown app {service!r} (known: {known}). "
                 f"Pass --repo git@host:owner/repo.git to set up auth before apply, "
-                f"or register a manifest first: raft apply --file PATH --no-deploy"
+                f"or register a manifest first: raft apply --file PATH --no-deploy",
+                has_fix=False,
             ) from exc
         if not app.repo:
-            raise RuntimeError(
+            raise OperatorError(
                 f"{service!r} needs a repo URL: pass --repo, or set spec.repo on the "
-                f"applied App (git source, or docker with repo for checkout)"
+                f"applied App (git source, or docker with repo for checkout)",
+                has_fix=False,
             )
         return app.repo
 
@@ -192,7 +194,10 @@ class GitAuthManager:
     def show_pubkey(self, service: str) -> str:
         path = self.pub_path(service)
         if not path.is_file():
-            raise RuntimeError(f"no deploy key for {service!r}; run: raft auth setup {service}")
+            raise OperatorError(
+                f"no deploy key for {service!r}; run: raft auth setup {service}",
+                has_fix=False,
+            )
         return path.read_text(encoding="utf-8").strip()
 
     def show(self, service: str, *, repo: Optional[str] = None) -> None:
@@ -244,8 +249,9 @@ class GitAuthManager:
     ) -> None:
         repo_url = self.resolve_repo_url(service, repo)
         if not self.is_configured(service):
-            raise RuntimeError(
-                f"no key for {service!r}; run: raft auth setup {service} --repo {repo_url}"
+            raise OperatorError(
+                f"no key for {service!r}; run: raft auth setup {service} --repo {repo_url}",
+                has_fix=False,
             )
         url = self.rewrite_clone_url(service, repo_url)
         logger.info("auth test %s: git ls-remote %s", service, url)
@@ -305,7 +311,7 @@ class GitAuthManager:
                 capture=True,
             )
         except Exception as exc:
-            raise RuntimeError(
+            raise OperatorError(
                 f"ssh-keygen failed while creating a deploy key for {service!r}.\n"
                 f"Fix: install openssh-client, ensure ~/.ssh/raft is writable, "
                 f"then: raft auth setup {service}"

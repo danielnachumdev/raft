@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+from raft.errors import unknown_app
+
 from ..config.paths import (
     CERTS_DIRNAME,
     DEPLOY_DIRNAME,
@@ -41,10 +43,7 @@ class Stack:
             if app.name == name:
                 return app
         known = ", ".join(a.name for a in self.apps) or "(none applied)"
-        raise RuntimeError(
-            f"unknown app {name!r} (known: {known}).\n"
-            f"Fix: raft get apps   # then apply or pick a listed name"
-        )
+        raise unknown_app(name, known)
 
     @property
     def core_services(self) -> tuple[str, ...]:

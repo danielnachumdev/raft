@@ -64,7 +64,7 @@ class TestSettingsEdgeErrors(RaftTestCase):
         ]
         for body, match in cases:
             (self.tmp_path / "settings.yaml").write_text(body, encoding="utf-8")
-            with pytest.raises(ValueError, match=match):
+            with pytest.raises(RuntimeError, match=match):
                 load_config(self.tmp_path)
 
 
@@ -280,7 +280,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
         )
         spec = AppSpec(ports=(port,))
         edge = EdgeConfig(streams=(EdgeStream(name="smtp", port=25, protocol="tcp"),))
-        with pytest.raises(ValueError, match="does not match"):
+        with pytest.raises(RuntimeError, match="does not match"):
             StreamEdge().contribute(app, spec, port, edge=edge)
 
         write_applied_app(self.tmp_path, "web")

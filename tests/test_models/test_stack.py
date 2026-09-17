@@ -241,7 +241,7 @@ class TestFindPackageRoot(RaftTestCase):
         monkeypatch.setattr(paths, "_bundled_share", lambda: self.tmp_path / "nope")
         nested = self.tmp_path / "empty"
         nested.mkdir()
-        with pytest.raises(FileNotFoundError, match="package templates"):
+        with pytest.raises(RuntimeError, match="package templates"):
             find_package_root(nested)
 
 

@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Protocol
 
+from raft.errors import OperatorError
+
 from ...config.settings import EdgeConfig
 from ...models.app import App
 from ...models.manifest import AppSpec
@@ -100,7 +102,7 @@ class TlsEdge:
         if spec.tls != "origin":
             return EdgeFragments()
         if edge.https is None:
-            raise ValueError(
+            raise OperatorError(
                 f"{app.name}: tls=origin requires edge.https in settings.yaml.\n"
                 f"Fix: set edge.https (e.g. 443) in ~/.raft/settings.yaml, then: raft render"
             )
@@ -134,7 +136,7 @@ class StreamEdge:
         public = port.public_port
         assert public is not None
         if public not in declared:
-            raise ValueError(
+            raise OperatorError(
                 f"{app.name}: ports[{port.name!r}] publicPort {public} is not "
                 f"declared in settings edge.streams "
                 f"(known: {sorted(declared) or 'none'}).\n"
@@ -143,7 +145,7 @@ class StreamEdge:
             )
         stream = declared[public]
         if stream.protocol != port.protocol:
-            raise ValueError(
+            raise OperatorError(
                 f"{app.name}: ports[{port.name!r}] protocol {port.protocol!r} "
                 f"does not match edge.streams entry {stream.name!r} "
                 f"({stream.protocol!r}).\n"

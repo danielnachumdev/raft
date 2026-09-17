@@ -254,7 +254,7 @@ spec:
     def test_parse_rejects_bad_yaml_and_api(self) -> None:
         path = self.tmp_path / "bad.yaml"
         path.write_text(":\n", encoding="utf-8")
-        with pytest.raises(ValueError, match="invalid YAML"):
+        with pytest.raises(RuntimeError, match="invalid YAML"):
             load_app_file(path)
         path.write_text("- list\n", encoding="utf-8")
         with pytest.raises(ValueError, match="mapping"):
@@ -278,17 +278,17 @@ spec:
                 "ports": [{"name": "http", "containerPort": 80}],
             },
         }
-        with pytest.raises(ValueError, match="spec.www must be a boolean"):
+        with pytest.raises(RuntimeError, match="spec.www must be a boolean"):
             parse_app_document(
                 {**base, "spec": {**base["spec"], "www": "yes"}},
                 path=path,
             )
-        with pytest.raises(ValueError, match="build.context must be a string"):
+        with pytest.raises(RuntimeError, match="build.context must be a string"):
             parse_app_document(
                 {**base, "spec": {**base["spec"], "build": {"context": 1}}},
                 path=path,
             )
-        with pytest.raises(ValueError, match="build.dockerfile must be a string"):
+        with pytest.raises(RuntimeError, match="build.dockerfile must be a string"):
             parse_app_document(
                 {
                     **base,
@@ -305,7 +305,7 @@ spec:
             "read_text",
             lambda self, *a, **k: (_ for _ in ()).throw(OSError("EACCES")),
         )
-        with pytest.raises(ValueError, match="cannot read App manifest"):
+        with pytest.raises(RuntimeError, match="cannot read App manifest"):
             load_app_file(path)
 
 
@@ -361,7 +361,7 @@ class TestStackRenderer(RaftTestCase):
         )
         (self.tmp_path / "apps" / "mail").mkdir(parents=True)
         stack = load_stack(self.tmp_path)
-        with pytest.raises(ValueError, match="not declared in settings edge.streams"):
+        with pytest.raises(RuntimeError, match="not declared in settings edge.streams"):
             StackRenderer(stack, edge=EdgeConfig(http=80, https=None, streams=())).render()
 
     def test_render_stream_and_host(self) -> None:

@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
+from raft.errors import OperatorError
+
 from ..models.app import App
 from ..models.ports import PortSpec
 from ..models.stack import Stack
@@ -21,7 +23,7 @@ class NginxUpstreams:
     def _http_ports(self, app: App) -> tuple[PortSpec, ...]:
         try:
             return self.stack.spec_for(app).http_ports()
-        except FileNotFoundError:
+        except (FileNotFoundError, OperatorError):
             return (PortSpec(name="http", container_port=80, expose="http"),)
 
     def ensure_steady_file(self, app: App) -> None:
@@ -62,7 +64,7 @@ class NginxUpstreams:
             if not reload:
                 continue
             if not self.docker.router_sees_upstream_target(app, target_hostname, p):
-                raise RuntimeError(
+                raise OperatorError(
                     f"router container does not see upstream target {target_hostname!r} yet.\n"
                     f"Fix: wait for the router mount sync, or: raft redeploy router; "
                     f"verify generated/nginx/upstreams/"

@@ -11,6 +11,8 @@ from typing import Optional
 
 import yaml
 
+from raft.errors import OperatorError, app_not_applied, missing_manifest, raise_for_git_failure
+
 from ..adapters.shell import Shell
 from ..models.manifest import (
     CONTRACT_REL_PATH,
@@ -22,7 +24,6 @@ from ..models.manifest import (
 from ..models.stack import Stack, load_stack
 from ..ui import say
 from .auth import GitAuthManager
-from .git_errors import raise_for_git_failure
 from .orchestrator import Orchestrator
 
 logger = logging.getLogger(__name__)
@@ -42,16 +43,12 @@ class AppApply:
         force_sync: bool = False,
     ) -> str:
         if not path.is_file():
-            raise FileNotFoundError(
-                f"cannot read App manifest: {path}\n"
-                f"Fix: pass an existing path (e.g. .raft/app.yaml) or use: "
-                f"raft apply --git git@host:owner/repo.git"
-            )
+            raise missing_manifest(path)
         try:
             raw = path.read_text(encoding="utf-8")
             data = yaml.safe_load(raw)
         except yaml.YAMLError as exc:
-            raise ValueError(
+            raise OperatorError(
                 f"invalid App manifest YAML at {path}: {exc}\n"
                 f"Fix: repair the YAML (apiVersion/kind/metadata/spec) — "
                 f"see examples/*/ .raft/app.yaml"
@@ -132,19 +129,19 @@ class AppApply:
 
             manifest = contract_path(tmp)
             if not manifest.is_file():
-                raise FileNotFoundError(
+                raise OperatorError(
                     f"no {CONTRACT_REL_PATH.as_posix()} in {repo}@{ref}\n"
                     f"Fix: add that file on the ref, or: raft apply --git {repo} --ref <other>"
                 )
             try:
                 data = yaml.safe_load(manifest.read_text(encoding="utf-8"))
             except yaml.YAMLError as exc:
-                raise ValueError(
+                raise OperatorError(
                     f"invalid App manifest YAML in {repo}@{ref}: {exc}\n"
                     f"Fix: repair .raft/app.yaml in the repo"
                 ) from exc
             if not isinstance(data, dict):
-                raise ValueError(
+                raise OperatorError(
                     f"app manifest must be a mapping in {repo}@{ref}\n"
                     f"Fix: repair .raft/app.yaml in the repo"
                 )
@@ -171,10 +168,7 @@ class AppApply:
     def delete(self, name: str) -> None:
         if not delete_registry_app(self.stack.root, name):
             known = ", ".join(a.name for a in self.stack.apps) or "(none)"
-            raise RuntimeError(
-                f"app {name!r} is not applied (known: {known}).\n"
-                f"Fix: raft get apps"
-            )
+            raise app_not_applied(name, known)
         say(f"deleted {name} from registry", style="ok")
         fresh = load_stack(self.stack.root)
         Orchestrator(fresh).render()

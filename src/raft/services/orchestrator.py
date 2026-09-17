@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
+from raft.errors import OperatorError
+
 from ..adapters.docker import DockerStack
 from ..adapters.http import HttpProbe
 from ..adapters.nginx import NginxUpstreams
@@ -84,11 +86,12 @@ class Orchestrator:
         running = self.docker.running_services()
         if running:
             joined = ", ".join(running)
-            raise RuntimeError(
+            raise OperatorError(
                 f"stack already running ({joined}). "
                 "Refusing to rebuild/reload everything — "
                 "run `raft down` first, "
-                "or `raft redeploy <app|router>` for a targeted update."
+                "or `raft redeploy <app|router>` for a targeted update.",
+                has_fix=False,
             )
         logger.info("syncing service sources from inventory")
         self.sync()
@@ -109,7 +112,7 @@ class Orchestrator:
         running = set(self.docker.running_services())
         missing = [name for name in expected if name not in running]
         if missing:
-            raise RuntimeError(
+            raise OperatorError(
                 f"stack start incomplete — missing running services: {missing}.\n"
                 f"Fix: docker compose -f ~/.raft/compose.yaml logs gate router\n"
                 f"     raft render && raft doctor"
@@ -131,16 +134,20 @@ class Orchestrator:
             self.redeploy_router()
             return
         if target == self.stack.gate:
-            raise RuntimeError(
+            raise OperatorError(
                 "refusing to redeploy `gate` — it is the stable public edge. "
                 "To change published edge ports, run `raft gate recreate` "
-                "(brief edge downtime)."
+                "(brief edge downtime).",
+                has_fix=False,
             )
         self.redeploy_app(target)
 
     def recreate_gate(self) -> None:
         if self.stack.gate not in self.docker.running_services():
-            raise RuntimeError("gate is not running — bring the stack up first")
+            raise OperatorError(
+                "gate is not running — bring the stack up first",
+                has_fix=False,
+            )
         require_origin_certs(self.stack)
         self.render()
         say(
@@ -162,7 +169,10 @@ class Orchestrator:
 
     def redeploy_router(self) -> None:
         if self.stack.gate not in self.docker.running_services():
-            raise RuntimeError("gate is not running — bring the stack up first")
+            raise OperatorError(
+                "gate is not running — bring the stack up first",
+                has_fix=False,
+            )
         logger.info("recreating inner router (gate stays up)")
         self.docker.recreate_router()
         logger.info("waiting for readiness via gate")
@@ -248,11 +258,12 @@ class Orchestrator:
         running = self.docker.running_services()
         if running:
             joined = ", ".join(running)
-            raise RuntimeError(
+            raise OperatorError(
                 f"stack already running ({joined}). "
                 "Refusing to rebuild/reload everything — "
                 "run `raft down` first, "
-                "or `raft redeploy <app|router>` for a targeted update."
+                "or `raft redeploy <app|router>` for a targeted update.",
+                has_fix=False,
             )
         logger.info("stack not up; full start to deploy %s", app_name)
         self.sync([app_name], ref_override=ref_override, force=force_sync)

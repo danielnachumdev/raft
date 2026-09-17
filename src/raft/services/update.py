@@ -7,6 +7,8 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
+from raft.errors import OperatorError
+
 from ..adapters.shell import Shell
 from ..models import Stack
 from ..ui import say
@@ -68,7 +70,7 @@ class SelfUpdate:
                 ],
             )
         except Exception as exc:
-            raise RuntimeError(
+            raise OperatorError(
                 "raft update failed (could not download/run the installer).\n"
                 f"Fix: check outbound HTTPS, then retry `raft update`\n"
                 f"     or run manually: curl -fsSL {url} | bash"

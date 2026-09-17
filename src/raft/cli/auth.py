@@ -2,6 +2,8 @@
 
 from typing import Optional
 
+from raft.errors import auth_requires_service
+
 from ..ui import say
 from . import deps
 
@@ -9,10 +11,7 @@ from . import deps
 def _require_service(service: Optional[str], cmd: str) -> str:
     name = (service or "").strip()
     if not name:
-        raise RuntimeError(
-            f"auth {cmd} requires SERVICE.\n"
-            f"Fix: raft auth {cmd} <app-name> [--repo git@host:owner/repo.git]"
-        )
+        raise auth_requires_service(cmd)
     return name
 
 

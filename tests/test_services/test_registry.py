@@ -1,6 +1,6 @@
 """Registry unauthorized messaging."""
 
-from raft.services.registry import (
+from raft.errors import (
     ghcr_pat_create_url,
     looks_like_registry_unauthorized,
     missing_image_doctor_fix,

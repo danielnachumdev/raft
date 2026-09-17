@@ -257,6 +257,15 @@ class TestCli(RaftTestCase):
         assert "cannot pull img" in err_out
         assert "Hint: run `raft doctor`" not in err_out
 
+    def test_run_operator_error_handler(self, capsys) -> None:
+        with pytest.raises(SystemExit) as exc:
+            self._run_cli(["sync", "nope"])
+        assert exc.value.code == 1
+        err_out = capsys.readouterr().err
+        assert "unknown service(s)" in err_out
+        assert "Fix: raft get apps" in err_out
+        assert "Hint: run `raft doctor`" not in err_out
+
     def test_run_cert_error_fallback_when_stack_load_fails(self, capsys) -> None:
         err = subprocess.CalledProcessError(
             1,

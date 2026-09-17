@@ -7,6 +7,8 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Optional
 
+from raft.errors import OperatorError
+
 from ..adapters.docker import DockerStack
 from ..adapters.http import HttpProbe
 from ..adapters.nginx import NginxUpstreams
@@ -41,7 +43,7 @@ def wait_until(
     message = f"timed out waiting for: {description}"
     if fix:
         message = f"{message}\nFix: {fix}"
-    raise TimeoutError(message)
+    raise OperatorError(message, has_fix=bool(fix))
 
 
 @dataclass

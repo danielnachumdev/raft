@@ -8,6 +8,8 @@ from typing import Any, Optional
 
 import yaml
 
+from raft.errors import OperatorError
+
 from .app import App
 from .ports import PortSpec, parse_ports
 from .readiness import ReadinessSpec, parse_readiness
@@ -139,12 +141,12 @@ def _load_yaml_mapping(path: Path) -> dict[str, Any]:
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
     except OSError as exc:
-        raise ValueError(
+        raise OperatorError(
             f"cannot read App manifest: {path}\n"
             f"Fix: check permissions and UTF-8 encoding — ls -l {path}"
         ) from exc
     except yaml.YAMLError as exc:
-        raise ValueError(
+        raise OperatorError(
             f"{path}: invalid YAML: {exc}\n"
             f"Fix: repair the App manifest YAML"
         ) from exc
@@ -247,7 +249,7 @@ def parse_app_document(
 
     www_raw = spec.get("www", True)
     if not isinstance(www_raw, bool):
-        raise ValueError(
+        raise OperatorError(
             f"{path}: spec.www must be a boolean, got {www_raw!r}.\n"
             f"Fix: use `www: true` or `www: false` (unquoted) in .raft/app.yaml"
         )
@@ -261,7 +263,7 @@ def parse_app_document(
         raise ValueError(f"{path}: spec.build must be an object")
     context = build.get("context")
     if context is not None and not isinstance(context, str):
-        raise ValueError(
+        raise OperatorError(
             f"{path}: spec.build.context must be a string path, got {type(context).__name__}.\n"
             f"Fix: set build.context to `.` or a relative directory under the app checkout"
         )
@@ -270,7 +272,7 @@ def parse_app_document(
         build_context = None
     dockerfile = build.get("dockerfile")
     if dockerfile is not None and not isinstance(dockerfile, str):
-        raise ValueError(
+        raise OperatorError(
             f"{path}: spec.build.dockerfile must be a string, got {type(dockerfile).__name__}.\n"
             f"Fix: set build.dockerfile to a filename (e.g. Dockerfile) in .raft/app.yaml"
         )
@@ -304,7 +306,7 @@ def load_app_file(
     expect_name: Optional[str] = None,
 ) -> tuple[App, AppSpec]:
     if not path.is_file():
-        raise FileNotFoundError(
+        raise OperatorError(
             f"missing applied App manifest: {path}\n"
             f"Fix: re-apply the app (`raft apply …`) or restore the file under ~/.raft/state/apps/"
         )

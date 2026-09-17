@@ -53,7 +53,7 @@ logging:
 
     def test_rejects_bad_logging_table(self) -> None:
         (self.tmp_path / "settings.yaml").write_text("logging: nope\n", encoding="utf-8")
-        with pytest.raises(ValueError, match="must be a mapping"):
+        with pytest.raises(RuntimeError, match="must be a mapping"):
             load_config(self.tmp_path)
 
     def test_load_logging_null(self) -> None:
@@ -131,7 +131,7 @@ edge:
 """,
             encoding="utf-8",
         )
-        with pytest.raises(ValueError, match="duplicate port"):
+        with pytest.raises(RuntimeError, match="duplicate port"):
             load_config(self.tmp_path)
 
     def test_find_package_root_bundled(self) -> None:
@@ -158,7 +158,7 @@ edge:
         monkeypatch.setattr(paths, "_bundled_share", lambda: self.tmp_path / "nope")
         orphan = self.tmp_path / "orphan"
         orphan.mkdir()
-        with pytest.raises(FileNotFoundError, match="package templates"):
+        with pytest.raises(RuntimeError, match="package templates"):
             find_package_root(orphan)
 
 

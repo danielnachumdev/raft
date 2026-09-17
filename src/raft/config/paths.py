@@ -7,6 +7,8 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
+from raft.errors import OperatorError
+
 DATA_HOME_ENV = "RAFT_DATA_HOME"
 SETTINGS_FILENAME = "settings.yaml"
 GENERATED_DIRNAME = "generated"
@@ -24,7 +26,7 @@ def raft_home() -> Path:
     override = os.environ.get(DATA_HOME_ENV)
     if override is not None:
         if not override.strip():
-            raise RuntimeError(
+            raise OperatorError(
                 f"{DATA_HOME_ENV} is set but empty.\n"
                 f"Fix: unset {DATA_HOME_ENV} or set it to an absolute path (e.g. ~/.raft)"
             )
@@ -52,7 +54,7 @@ def find_package_root(start: Optional[Path] = None) -> Path:
     for candidate in [pkg, *pkg.parents]:
         if _is_package_root(candidate):
             return candidate
-    raise FileNotFoundError(
+    raise OperatorError(
         "could not find raft package templates (compose.yaml + nginx/).\n"
         "Fix: reinstall raft (`raft update`) or run from a checkout that includes src/raft/share/"
     )

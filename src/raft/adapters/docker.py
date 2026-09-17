@@ -5,16 +5,24 @@ from __future__ import annotations
 import logging
 import subprocess
 
-from ..models.app import COMPOSE_PROJECT, App
-from ..models.ports import PortSpec
-from ..models.stack import Stack
-from ..services.certs import looks_like_missing_origin_cert
-from ..services.command_errors import (
+from raft.errors import (
+    OperatorError,
+    format_missing_origin_certs,
+    looks_like_missing_origin_cert,
+    missing_origin_certs_fallback,
+    nginx_rejected,
+    nginx_reload_failed,
     raise_for_compose_failure,
     raise_for_docker_pull_failure,
     run_compose_checked,
     run_docker_checked,
+    service_not_running,
 )
+
+from ..models.app import COMPOSE_PROJECT, App
+from ..models.ports import PortSpec
+from ..models.stack import Stack
+from ..services.certs import missing_origin_certs
 from .shell import Shell
 
 logger = logging.getLogger(__name__)
@@ -146,10 +154,7 @@ class DockerStack:
             raise_for_compose_failure(exc, action=f"inspect service {service}")
         cid = (result.stdout or "").strip()
         if not cid:
-            raise RuntimeError(
-                f"service {service!r} is not running — bring the stack up first.\n"
-                f"Fix: raft up"
-            )
+            raise service_not_running(service)
         return cid
 
     def container_image_ref(self, container_id: str) -> str:
@@ -159,7 +164,7 @@ class DockerStack:
                 ("inspect", "-f", "{{.Config.Image}}", container_id),
                 action="inspect container image",
             ).stdout.strip()
-        except RuntimeError:
+        except OperatorError:
             named = ""
         if named:
             probed = self.sh.docker(
@@ -169,19 +174,12 @@ class DockerStack:
                 return named
         tag = f"{COMPOSE_PROJECT}-snapshot:{container_id[:12]}"
         logger.info("committing container %s as %s", container_id[:12], tag)
-        try:
-            run_docker_checked(
-                self.sh,
-                ("commit", container_id, tag),
-                action="snapshot running container for cutover",
-                hint="ensure the service is healthy, then: raft redeploy <app>",
-            )
-        except RuntimeError as exc:
-            raise RuntimeError(
-                "could not snapshot the running image for cutover.\n"
-                "Fix: ensure the service is healthy, then: raft redeploy <app>\n"
-                "     raft doctor"
-            ) from exc
+        run_docker_checked(
+            self.sh,
+            ("commit", container_id, tag),
+            action="snapshot running container for cutover",
+            hint="ensure the service is healthy, then: raft redeploy <app>",
+        )
         return tag
 
     def container_image_id(self, container_id: str) -> str:
@@ -195,24 +193,17 @@ class DockerStack:
 
     def router_network(self) -> str:
         router_id = self.service_container_id(self.stack.router)
-        try:
-            result = run_docker_checked(
-                self.sh,
-                (
-                    "inspect",
-                    "-f",
-                    "{{range $k, $v := .NetworkSettings.Networks}}{{println $k}}{{end}}",
-                    router_id,
-                ),
-                action="detect compose network",
-                hint="raft up / raft doctor",
-            )
-        except RuntimeError as exc:
-            raise RuntimeError(
-                "could not detect the compose network.\n"
-                "Fix: raft up\n"
-                "     raft doctor"
-            ) from exc
+        result = run_docker_checked(
+            self.sh,
+            (
+                "inspect",
+                "-f",
+                "{{range $k, $v := .NetworkSettings.Networks}}{{println $k}}{{end}}",
+                router_id,
+            ),
+            action="detect compose network",
+            hint="raft up / raft doctor",
+        )
         networks = [line.strip() for line in (result.stdout or "").splitlines() if line.strip()]
         return networks[0] if networks else f"{COMPOSE_PROJECT}_default"
 
@@ -264,27 +255,14 @@ class DockerStack:
         )
         if result.returncode != 0:
             detail = (result.stderr or result.stdout or "").strip()
-            if detail:
-                raise RuntimeError(
-                    "router nginx rejected the config.\n"
-                    f"{detail}\n"
-                    "Fix: raft render && raft doctor"
-                )
-            raise RuntimeError(
-                "router nginx rejected the config.\n"
-                "Fix: raft render && raft doctor"
-            )
+            raise nginx_rejected("router", detail)
         reload = self.sh.compose(
             "exec", "-T", self.stack.router, "nginx", "-s", "reload",
             capture=True, check=False,
         )
         if reload.returncode != 0:
             detail = (reload.stderr or reload.stdout or "").strip()
-            raise RuntimeError(
-                "router nginx config was valid but reload failed.\n"
-                + (f"{detail}\n" if detail else "")
-                + "Fix: docker compose -f ~/.raft/compose.yaml restart router"
-            )
+            raise nginx_reload_failed("router", detail)
 
     def nginx_test_and_reload(self) -> None:
         """Reload router nginx (alias kept for call sites / tests)."""
@@ -292,8 +270,6 @@ class DockerStack:
 
     def reload_gate_nginx(self) -> None:
         logger.info("nginx -t && reload on gate")
-        # Capture stderr so entry/CLI can surface Origin PEM guidance instead of
-        # only "command failed: docker compose exec … nginx -t".
         result = self.sh.compose(
             "exec", "-T", self.stack.gate, "nginx", "-t", capture=True, check=False
         )
@@ -301,35 +277,22 @@ class DockerStack:
             detail = (result.stderr or result.stdout or "").strip()
             blob = f"nginx -t\n{detail}"
             if looks_like_missing_origin_cert(blob):
-                # Preserve CalledProcessError so entry.py can enrich with missing certs.
-                raise subprocess.CalledProcessError(
-                    result.returncode,
-                    ["docker", "compose", "exec", "-T", self.stack.gate, "nginx", "-t"],
-                    output=result.stdout,
-                    stderr=detail,
-                )
-            if detail:
-                raise RuntimeError(
-                    "gate nginx rejected the config.\n"
-                    f"{detail}\n"
-                    "Fix: raft render && raft doctor"
-                )
-            raise RuntimeError(
-                "gate nginx rejected the config.\n"
-                "Fix: raft render && raft doctor"
-            )
+                missing = missing_origin_certs(self.stack)
+                if missing:
+                    raise OperatorError(
+                        format_missing_origin_certs(
+                            missing, include_doctor_footer=False
+                        )
+                    )
+                raise OperatorError(missing_origin_certs_fallback(detail=detail))
+            raise nginx_rejected("gate", detail)
         reload = self.sh.compose(
             "exec", "-T", self.stack.gate, "nginx", "-s", "reload",
             capture=True, check=False,
         )
         if reload.returncode != 0:
             detail = (reload.stderr or reload.stdout or "").strip()
-            raise RuntimeError(
-                "gate nginx config was valid but reload failed.\n"
-                + (f"{detail}\n" if detail else "")
-                + "Fix: raft gate recreate"
-            )
-
+            raise nginx_reload_failed("gate", detail)
 
     def router_sees_upstream_target(
         self,

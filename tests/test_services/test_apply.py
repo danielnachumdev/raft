@@ -57,11 +57,11 @@ class TestAppApply(RaftTestCase):
 
     def test_apply_file_missing_and_bad_yaml(self) -> None:
         missing = self.tmp_path / "nope.yaml"
-        with pytest.raises(FileNotFoundError, match="cannot read App manifest"):
+        with pytest.raises(RuntimeError, match="cannot read App manifest"):
             AppApply(load_stack(self.tmp_path)).apply_file(missing, deploy=False)
         path = self.tmp_path / "bad.yaml"
         path.write_text("{{{{", encoding="utf-8")
-        with pytest.raises(ValueError, match="invalid App manifest YAML"):
+        with pytest.raises(RuntimeError, match="invalid App manifest YAML"):
             AppApply(load_stack(self.tmp_path)).apply_file(path, deploy=False)
 
     def test_apply_file_ref_override_and_bad_spec(self) -> None:
@@ -166,7 +166,7 @@ class TestAppApply(RaftTestCase):
             Path(args[-1]).mkdir(parents=True, exist_ok=True)
 
         shell.git.side_effect = empty_clone
-        with pytest.raises(FileNotFoundError, match="app.yaml"):
+        with pytest.raises(RuntimeError, match="app.yaml"):
             AppApply(stack, shell=shell).apply_git("git@x/y.git", deploy=False)
 
         def list_doc(*args, **kwargs):
@@ -176,7 +176,7 @@ class TestAppApply(RaftTestCase):
             (target / ".raft" / "app.yaml").write_text("- x\n", encoding="utf-8")
 
         shell.git.side_effect = list_doc
-        with pytest.raises(ValueError, match="mapping"):
+        with pytest.raises(RuntimeError, match="mapping"):
             AppApply(stack, shell=shell).apply_git("git@x/y.git", deploy=False)
 
         def bad_spec(*args, **kwargs):
@@ -231,7 +231,7 @@ class TestAppApply(RaftTestCase):
             return MagicMock(returncode=0)
 
         shell.git.side_effect = clone
-        with pytest.raises(ValueError, match="invalid App manifest YAML"):
+        with pytest.raises(RuntimeError, match="invalid App manifest YAML"):
             AppApply(stack, shell=shell).apply_git("git@github.com:org/x.git", deploy=False)
 
     def test_apply_git_retries_host_alias(self) -> None:

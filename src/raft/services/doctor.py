@@ -13,9 +13,10 @@ from ..config.settings import load_config
 from ..models import Stack
 from ..models.manifest import registry_path
 from ..ui import BOLD, CYAN, DIM, GREEN, RED, YELLOW, paint, want_color
+from raft.errors import OperatorError, missing_image_doctor_fix
+
 from .auth import GitAuthManager, parse_ssh_git_url, real_git_host
 from .certs import missing_origin_certs
-from .registry import missing_image_doctor_fix
 
 Status = Literal["ok", "warn", "fail"]
 
@@ -364,7 +365,7 @@ class Doctor:
             ]
         try:
             self.stack.contract_for(app)
-        except (ValueError, FileNotFoundError) as exc:
+        except (ValueError, FileNotFoundError, OperatorError) as exc:
             return [
                 CheckResult(
                     app.name,
@@ -381,7 +382,7 @@ class Doctor:
         for app in self.stack.apps:
             try:
                 app_spec = self.stack.spec_for(app)
-            except (ValueError, FileNotFoundError):
+            except (ValueError, FileNotFoundError, OperatorError):
                 continue
             http_ports = app_spec.http_ports()
             if not http_ports:
@@ -416,7 +417,7 @@ class Doctor:
         for app in self.stack.apps:
             try:
                 app_spec = self.stack.spec_for(app)
-            except (ValueError, FileNotFoundError):
+            except (ValueError, FileNotFoundError, OperatorError):
                 continue
             if app_spec.tls != "origin":
                 results.append(

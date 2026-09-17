@@ -7,6 +7,8 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+from raft.errors import OperatorError
+
 from ..config.paths import GENERATED_DIRNAME
 from ..config.settings import EdgeConfig, load_config
 from ..models.app import App
@@ -111,7 +113,7 @@ class StackRenderer:
         resolved = specs if specs is not None else self.load_all_specs()
         for app in self.stack.apps:
             if app.name not in resolved:
-                raise RuntimeError(
+                raise OperatorError(
                     f"missing AppSpec for {app.name!r} "
                     f"(corrupt or incomplete registry entry).\n"
                     f"Fix: re-apply the app (`raft apply …`) or repair "

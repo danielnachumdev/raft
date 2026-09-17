@@ -4,6 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from raft.errors import (
+    format_missing_origin_certs,
+    looks_like_missing_origin_cert,
+)
+from raft.errors.cta import OperatorError
+
 from ..models.stack import Stack
 
 
@@ -31,7 +37,7 @@ def missing_origin_certs(stack: Stack) -> list[MissingOriginCerts]:
     for app in stack.apps:
         try:
             app_spec = stack.spec_for(app)
-        except (ValueError, FileNotFoundError):
+        except (ValueError, FileNotFoundError, OperatorError):
             continue
         if app_spec.tls != "origin":
             continue
@@ -47,22 +53,6 @@ def require_origin_certs(stack: Stack) -> None:
     missing = missing_origin_certs(stack)
     if not missing:
         return
-    lines: list[str] = [
-        "cannot deploy/reload gate: Cloudflare Origin certs missing:",
-    ]
-    for item in missing:
-        lines.append(f"  {item.app_name}: {item.detail}")
-        lines.append(f"    fix: {item.fix}")
-    lines.append("Run `raft doctor` for a full check.")
-    raise RuntimeError("\n".join(lines))
-
-
-def looks_like_missing_origin_cert(text: str) -> bool:
-    lower = text.lower()
-    if "cannot load certificate" in lower and (
-        "origin.pem" in lower or "/certs/" in lower
-    ):
-        return True
-    if "bio_new_file" in lower and "origin." in lower:
-        return True
-    return False
+    raise OperatorError(
+        format_missing_origin_certs(missing, include_doctor_footer=True)
+    )

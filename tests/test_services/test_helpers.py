@@ -21,7 +21,7 @@ class TestWaitUntil:
         assert calls["n"] == 2
 
     def test_times_out(self) -> None:
-        with pytest.raises(TimeoutError, match="timed out waiting"):
+        with pytest.raises(RuntimeError, match="timed out waiting"):
             wait_until("never", lambda: False, timeout=0.05, interval=0.01)
 
 

@@ -37,7 +37,7 @@ class TestEdgeHandlers(RaftTestCase):
             ports=(PortSpec(name="http", container_port=80, expose="http"),),
             tls="origin",
         )
-        with pytest.raises(ValueError, match="edge.https"):
+        with pytest.raises(RuntimeError, match="edge.https"):
             TlsEdge().contribute_app(app, spec, edge=EdgeConfig(https=None))
         frag = TlsEdge().contribute_app(app, spec, edge=EdgeConfig())
         assert "web.conf" in frag.gate_tls
@@ -51,7 +51,7 @@ class TestEdgeHandlers(RaftTestCase):
             public_port=25,
         )
         spec = AppSpec(ports=(port,))
-        with pytest.raises(ValueError, match="not declared"):
+        with pytest.raises(RuntimeError, match="not declared"):
             StreamEdge().contribute(app, spec, port, edge=EdgeConfig())
 
     def test_stream_and_host(self) -> None:

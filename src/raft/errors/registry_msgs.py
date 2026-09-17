@@ -1,16 +1,11 @@
-"""Container registry pull errors (GHCR / docker login)."""
+"""Container registry pull CTAs (GHCR / docker login)."""
 
 from __future__ import annotations
 
 from typing import Optional
 from urllib.parse import quote
 
-# Classic PAT only — fine-grained tokens cannot grant Packages scopes.
-_GHCR_PAT_URL = (
-    "https://github.com/settings/tokens/new"
-    "?scopes=read:packages"
-    "&description=raft-ghcr-pull"
-)
+from .cta import first_line
 
 
 def looks_like_registry_unauthorized(text: str) -> bool:
@@ -45,16 +40,24 @@ def registry_login_fix_steps(
     """Ordered operator steps to pull a (likely private) image on the VPS."""
     if is_ghcr_image(image):
         desc = f"raft-ghcr-{app}" if app else "raft-ghcr-pull"
-        token_step = f"Open {ghcr_pat_create_url(description=desc)} (classic PAT, read:packages only)"
+        token_step = (
+            f"Open {ghcr_pat_create_url(description=desc)} "
+            "(classic PAT, read:packages only)"
+        )
         login = (
-            "echo 'YOUR_PAT' | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin"
+            "echo 'YOUR_PAT' | docker login ghcr.io -u YOUR_GITHUB_USERNAME "
+            "--password-stdin"
         )
     else:
         token_step = "Create a registry credential that can pull this image"
         login = "docker login <registry>   # credentials for this image's registry"
 
     if repo:
-        retry = f"raft sync {app}   # or: raft apply --git {repo}" if app else f"raft apply --git {repo}"
+        retry = (
+            f"raft sync {app}   # or: raft apply --git {repo}"
+            if app
+            else f"raft apply --git {repo}"
+        )
     elif app:
         retry = f"raft sync {app}   # or re-run: raft apply --git <repo>"
     else:
@@ -83,16 +86,15 @@ def registry_unauthorized_message(
         "Private images need docker registry login on this VPS.",
         "`raft auth` (git deploy keys) does not authenticate GHCR pulls.",
         "",
-        "fix (as the raft user):",
+        "Fix (as the raft user):",
     ]
     for i, step in enumerate(
         registry_login_fix_steps(image, app=app, repo=repo), start=1
     ):
         lines.append(f"  {i}. {step}")
-    if detail:
-        first = detail.splitlines()[0].strip()
-        if first:
-            lines.extend(["", f"(docker: {first})"])
+    first = first_line(detail)
+    if first:
+        lines.extend(["", f"(docker: {first})"])
     return "\n".join(lines)
 
 

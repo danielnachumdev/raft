@@ -11,9 +11,9 @@ from typing import Optional
 from ..adapters.shell import Shell
 from ..models.app import App
 from ..models.stack import Stack
+from raft.errors import OperatorError, raise_for_docker_pull_failure, raise_for_git_failure
+
 from .auth import GitAuthManager
-from .command_errors import raise_for_docker_pull_failure
-from .git_errors import raise_for_git_failure
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ class SourceSync:
         dest = app.abs_path(self.stack.root)
         if app.source == "local":
             if not dest.is_dir():
-                raise RuntimeError(
+                raise OperatorError(
                     f"local app path missing: {dest}\n"
                     f"Fix: create/copy the tree under {app.path}, or change "
                     f"spec.source / re-apply the App"
@@ -130,7 +130,7 @@ class SourceSync:
                     )
                     shutil.rmtree(dest)
                 else:
-                    raise RuntimeError(
+                    raise OperatorError(
                         f"{dest} exists but is not a git checkout.\n"
                         f"Fix: move it aside, then: raft sync {app.name}"
                     )
@@ -151,7 +151,7 @@ class SourceSync:
                 )
 
         if not force and self._is_dirty(dest):
-            raise RuntimeError(
+            raise OperatorError(
                 f"{dest} has local changes.\n"
                 f"Fix: commit/stash them, or: raft sync {app.name} --force"
             )
@@ -185,7 +185,7 @@ class SourceSync:
         if checked.returncode == 0:
             sha = checked.stdout.strip()
         else:
-            raise RuntimeError(
+            raise OperatorError(
                 f"cannot resolve ref {wanted!r} in {app.repo}.\n"
                 f"Fix: raft sync {app.name} --ref <existing-branch-or-tag>"
             )

@@ -1,8 +1,7 @@
 """High-level operations: apply, sync, auth, cutover, orchestration.
 
 Exports are loaded lazily so adapters can import leaf service modules
-(e.g. ``certs``, ``command_errors``) without circular imports through
-this package ``__init__``.
+(e.g. ``certs``) without circular imports through this package ``__init__``.
 """
 
 from __future__ import annotations
