@@ -175,15 +175,15 @@ services:
 
     def test_app_lookup_and_paths(self) -> None:
         port = PortSpec(name="http", container_port=80, expose="http")
-        assert self.app.tmp_alias == "raft-app_tmp"
-        assert self.app.tmp_container == "raft-raft-app_tmp"
+        assert self.app.tmp_alias == "app_tmp"
+        assert self.app.tmp_container == "raft-app_tmp"
         assert (
             self.stack.upstream_file(self.app, port)
             == self.tmp_path / "generated" / "nginx" / "upstreams" / "app-http.conf"
         )
         assert self.stack.upstream_name(self.app, port) == "app_http"
         assert self.stack.certs_dir == self.tmp_path / "certs"
-        assert self.stack.core_services == ("raft-raft-gate", "raft-raft-router", "raft-app")
+        assert self.stack.core_services == ("raft-gate", "raft-router", "app")
         with pytest.raises(RuntimeError, match="unknown app"):
             self.stack.app("nope")
 

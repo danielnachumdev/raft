@@ -475,7 +475,7 @@ class TestStackRenderer(RaftTestCase):
         assert "/home/raft/.raft/demo.env" in apps
         assert "FOO: bar" in apps
         assert "/mnt/raft-data/demo/redis:/data" in apps
-        assert "raft-demo-stack-redis:" in apps
+        assert "demo-stack-redis:" in apps
         assert "condition: service_started" in apps
         assert '"25:25"' in apps
 

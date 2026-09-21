@@ -17,7 +17,7 @@ include:
     project_directory: .
 
 services:
-  raft-raft-gate:
+  raft-gate:
     image: nginx:alpine
     volumes:
       - ./nginx/gate/nginx.conf:/etc/nginx/nginx.conf:ro
@@ -30,7 +30,7 @@ services:
     restart: unless-stopped
     <<: *resources-edge
 
-  raft-raft-router:
+  raft-router:
     image: nginx:alpine
     expose:
       - "80"

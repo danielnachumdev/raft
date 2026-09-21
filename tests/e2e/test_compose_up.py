@@ -19,8 +19,8 @@ class TestE2ESingleHttp:
         self, compose_project: tuple[ComposeProject, Path, Path]
     ) -> None:
         cp, _home, _vol = compose_project
-        cp.wait_running("raft-http-only")
-        port = cp.published_port("raft-http-only", 5678)
+        cp.wait_running("http-only")
+        port = cp.published_port("http-only", 5678)
         assert port is not None
         # http-echo returns the -text value or default; any HTTP response means up.
         status, _body = http_get(f"http://127.0.0.1:{port}/")
@@ -33,7 +33,7 @@ class TestE2EExposeNoneAndVolume:
         self, compose_project: tuple[ComposeProject, Path, Path]
     ) -> None:
         cp, _home, _vol = compose_project
-        cp.wait_running("raft-demo-expose-none-vol")
+        cp.wait_running("demo-expose-none-vol")
         # We intentionally add ephemeral publish in apps_only_compose for probing.
         # Assert the *rendered* raft compose had no host ports before overlay:
         raw = (_home / "generated" / "compose.apps.yaml").read_text(encoding="utf-8")
@@ -42,7 +42,7 @@ class TestE2EExposeNoneAndVolume:
         # the pre-e2e file sections: look for host publish of 6379 as "6379:6379"
         assert '"6379:6379"' not in raw
         assert "6379:6379" not in raw
-        port = cp.published_port("raft-demo-expose-none-vol", 6379)
+        port = cp.published_port("demo-expose-none-vol", 6379)
         assert port is not None  # e2e overlay only
         assert tcp_connect("127.0.0.1", port)
 
@@ -50,7 +50,7 @@ class TestE2EExposeNoneAndVolume:
         self, compose_project: tuple[ComposeProject, Path, Path]
     ) -> None:
         cp, _home, vol = compose_project
-        cp.wait_running("raft-demo-expose-none-vol")
+        cp.wait_running("demo-expose-none-vol")
         assert (vol / "raft-e2e-marker.txt").is_file()
         proc = subprocess.run(
             [
@@ -62,7 +62,7 @@ class TestE2EExposeNoneAndVolume:
                 str(cp.compose_file),
                 "exec",
                 "-T",
-                "raft-demo-expose-none-vol",
+                "demo-expose-none-vol",
                 "cat",
                 "/data/raft-e2e-marker.txt",
             ],
@@ -82,17 +82,17 @@ class TestE2EMultiApp:
     ) -> None:
         cp, home, _vol = compose_project
         apps = (home / "generated" / "compose.apps.yaml").read_text(encoding="utf-8")
-        assert "raft-demo-stack-redis:" in apps
+        assert "demo-stack-redis:" in apps
         assert "condition: service_started" in apps
-        cp.wait_running("raft-demo-stack-redis")
-        cp.wait_running("raft-demo-stack-front")
+        cp.wait_running("demo-stack-redis")
+        cp.wait_running("demo-stack-front")
 
     def test_e2e_multi_app_same_project(
         self, compose_project: tuple[ComposeProject, Path, Path]
     ) -> None:
         cp, _home, _vol = compose_project
-        cp.wait_running("raft-demo-stack-redis")
-        cp.wait_running("raft-demo-stack-front")
+        cp.wait_running("demo-stack-redis")
+        cp.wait_running("demo-stack-front")
         # DNS: resolve peer by Compose service name from front container.
         deadline = time.time() + 30
         last = ""
@@ -107,10 +107,10 @@ class TestE2EMultiApp:
                     str(cp.compose_file),
                     "exec",
                     "-T",
-                    "raft-demo-stack-front",
+                    "demo-stack-front",
                     "getent",
                     "hosts",
-                    "raft-demo-stack-redis",
+                    "demo-stack-redis",
                 ],
                 check=False,
                 cwd=cp.workdir,
@@ -119,9 +119,9 @@ class TestE2EMultiApp:
                 timeout=30,
             )
             last = proc.stdout + proc.stderr
-            if proc.returncode == 0 and "raft-demo-stack-redis" in last:
+            if proc.returncode == 0 and "demo-stack-redis" in last:
                 return
             time.sleep(0.5)
         # http-echo may lack getent — both running in same project is enough.
-        assert cp.service_running("raft-demo-stack-redis")
-        assert cp.service_running("raft-demo-stack-front"), last
+        assert cp.service_running("demo-stack-redis")
+        assert cp.service_running("demo-stack-front"), last

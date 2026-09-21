@@ -36,6 +36,16 @@ def _doctor(stack, *, shell=None, docker=None, auth=None) -> Doctor:
     doctor.sh = shell if shell is not None else MagicMock()
     doctor.auth = auth if auth is not None else MagicMock()
     doctor.docker = docker if docker is not None else MagicMock()
+    original_run = doctor.run
+
+    def run_with_host_ok():
+        with patch(
+            "raft.services.doctor.checks.public_host.HttpProbe.public_host_ok",
+            return_value=True,
+        ):
+            return original_run()
+
+    doctor.run = run_with_host_ok  # type: ignore[method-assign]
     return doctor
 
 
@@ -335,7 +345,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
         shell = MagicMock()
         shell.run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         docker = MagicMock()
-        docker.running_services.return_value = ["raft-raft-gate", "raft-raft-router", "raft-app"]
+        docker.running_services.return_value = ["raft-gate", "raft-router", "app"]
         docker.gate_published_ports.return_value = [80, 999]
         with patch("raft.services.doctor.shutil.which", return_value="/bin/docker"):
             with patch(
@@ -346,8 +356,8 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
                     (r.service, r.check): r
                     for r in _doctor(stack, shell=shell, docker=docker).run()
                 }
-        assert results[("raft-raft-gate", "ports")].status == "fail"
-        assert "raft gate recreate" in results[("raft-raft-gate", "ports")].fix
+        assert results[("raft-gate", "ports")].status == "fail"
+        assert "raft gate recreate" in results[("raft-gate", "ports")].fix
         assert results[(INFRA, "port 53/udp")].status == "ok"
 
     def test_doctor_no_edge_and_gate_up_not_listening(self) -> None:
@@ -373,7 +383,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
         (self.tmp_path / "settings.yaml").write_text(
             "edge:\n  http: 80\n  https: null\n", encoding="utf-8"
         )
-        docker.running_services.return_value = ["raft-raft-gate"]
+        docker.running_services.return_value = ["raft-gate"]
         docker.gate_published_ports.return_value = []
         with patch("raft.services.doctor.shutil.which", return_value="/bin/docker"):
             with patch(
@@ -385,7 +395,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
                     for r in _doctor(stack, shell=shell, docker=docker).run()
                 }
         assert results[(INFRA, "port 80")].status == "warn"
-        assert results[("raft-raft-gate", "ports")].status == "warn"
+        assert results[("raft-gate", "ports")].status == "warn"
 
     def test_orchestrator_none_readiness(self) -> None:
         write_applied_app(
@@ -401,7 +411,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
         orch.syncer = MagicMock()
         orch.docker.running_services.side_effect = [
             [],
-            ["raft-raft-gate", "raft-raft-router", "raft-app"],
+            ["raft-gate", "raft-router", "app"],
         ]
         with patch.object(orch, "sync"):
             orch.start()
@@ -449,8 +459,8 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
                     (r.service, r.check): r
                     for r in _doctor(stack, shell=shell, docker=docker).run()
                 }
-        assert results[("raft-mail", "upstream")].detail.startswith("n/a")
-        assert results[("raft-mail", "certs")].status == "ok"
+        assert results[("mail", "upstream")].detail.startswith("n/a")
+        assert results[("mail", "certs")].status == "ok"
 
     def test_render_aliases_and_errors(self) -> None:
         write_applied_app(self.tmp_path, "web")
@@ -718,7 +728,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
         assert "587:587/udp" in apps
         edge_yaml = (stack.generated_dir() / "compose.edge.yaml").read_text(encoding="utf-8")
         assert "53:53/udp" in edge_yaml
-        mail_block = apps.split("  raft-mail:\n", 1)[1]
+        mail_block = apps.split("  mail:\n", 1)[1]
         assert "healthcheck:" not in mail_block.split("    restart:", 1)[0]
 
         app = App(

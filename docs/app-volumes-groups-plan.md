@@ -43,7 +43,7 @@ Canonical file remains **`.raft/app.yaml`** per App path (`apply --git … --pat
 apiVersion: raft/v1
 kind: App
 metadata:
-  name: stack-front          # metadata.name (registry/CLI); Compose id is raft-demo-stack-front
+  name: stack-front          # metadata.name (registry/CLI); Compose id is demo-stack-front
 spec:
   group: demo            # NEW — non-empty strings; order preserved; dedupe
   dependsOn: [stack-smtp, stack-imap, stack-admin]  # NEW — other App names; optional
@@ -242,7 +242,7 @@ uv run pytest tests/unit --cov=raft --cov-fail-under=100 -q
 
 #### Execute
 
-- `raft doctor`: group-first layout — heading `raft` (edge compose ids + host checks), then App groups (`demo`, …); ungrouped apps with no heading. Members use Compose ids (`raft-NAME` / `raft-GROUP-NAME`).
+- `raft doctor`: group-first layout — heading `raft` (edge compose ids + host checks), then App groups (`demo`, …); ungrouped apps with no heading. Members use Compose ids (`NAME` / `GROUP-NAME`; edge `raft-gate` / `raft-router`).
 - `raft get apps [--group demo]`: filter; default table adds Groups column.
 - Optional (if small): `raft redeploy --group demo` = redeploy each member in `dependsOn` topological order (defer if large).
 
@@ -313,7 +313,7 @@ Sites must remain healthy (no demo Apps applied yet).
 
 1. **`envFile` path ownership** — file must be readable by Docker; mode 600 `raft:raft` is OK if compose runs as that user.
 2. **Front vs raft gate on 80/443** — admin UI via gate; front must not host-publish 80/443 (private ops plan). Confirm the front image works with only mail ports published (may need overrides).
-3. **Service DNS names** — Compose service id = `raft-{name}` or `raft-{group}-{name}` (project `raft` → containers `raft-raft-…-1`). Consumer env must use those hostnames (or add network aliases later).
+3. **Service DNS names** — Compose service id = `{name}` or `{group}-{name}` (project `raft` → containers `raft-{service}-1`). Consumer env must use those hostnames (or add network aliases later).
 4. **Group actions v1 scope** — doctor + get only in v1; `redeploy --group` deferred (You OK 2026-09-21).
 
 ---

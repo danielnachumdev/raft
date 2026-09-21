@@ -239,20 +239,20 @@ class TestVolumesGroupsCoverage(RaftTestCase):
         buf = StringIO()
         results = [
             CheckResult(INFRA, "docker", "ok", "fine"),
-            CheckResult("raft-demo-stack-a", "contract", "ok", "fine"),
-            CheckResult("raft-solo", "contract", "ok", "fine"),
+            CheckResult("demo-stack-a", "contract", "ok", "fine"),
+            CheckResult("solo", "contract", "ok", "fine"),
         ]
         assert d.report(results, out=buf, color=False) == 0
         text = buf.getvalue()
         assert "demo\n" in text
-        assert "  raft-demo-stack-a\n" in text
+        assert "  demo-stack-a\n" in text
         assert "ungrouped\n" not in text
-        assert "raft-solo\n" in text
+        assert "solo\n" in text
         assert "group: demo" not in text
         assert "infra\n" not in text
         assert "raft\n" in text
-        assert "  raft-raft-gate\n" in text
-        assert "  raft-raft-router\n" in text
+        assert "  raft-gate\n" in text
+        assert "  raft-router\n" in text
 
         only_grouped = self.tmp_path / "grouped-only"
         only_grouped.mkdir()
@@ -271,7 +271,7 @@ class TestVolumesGroupsCoverage(RaftTestCase):
             d2.report(
                 [
                     CheckResult(INFRA, "docker", "ok", "fine"),
-                    CheckResult("raft-demo-stack-b", "contract", "ok", "fine"),
+                    CheckResult("demo-stack-b", "contract", "ok", "fine"),
                 ],
                 out=buf3,
                 color=False,
@@ -281,7 +281,7 @@ class TestVolumesGroupsCoverage(RaftTestCase):
         text3 = buf3.getvalue()
         assert "ungrouped\n" not in text3
         assert "demo\n" in text3
-        assert "  raft-demo-stack-b\n" in text3
+        assert "  demo-stack-b\n" in text3
 
     def test_render_quoted_env(self) -> None:
         write_applied_app(

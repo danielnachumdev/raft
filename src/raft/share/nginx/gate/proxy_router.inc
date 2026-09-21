@@ -1,7 +1,7 @@
 resolver 127.0.0.11 valid=10s ipv6=off;
 
 location / {
-    set $router_upstream http://router:80;
+    set $router_upstream http://raft-router:80;
     proxy_pass $router_upstream;
     proxy_http_version 1.1;
     proxy_set_header Host $host;

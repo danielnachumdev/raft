@@ -24,7 +24,7 @@ class TestRenderHttpOnly:
             isolated_raft_env, fixture_app_yamls("http_only")
         )
         apps = load_compose_apps(generated)
-        svc = apps["services"]["raft-http-only"]
+        svc = apps["services"]["http-only"]
         assert svc["image"] == "hashicorp/http-echo:1.0.0"
         assert 5678 in [int(x) for x in svc["expose"]]
         assert "ports" not in svc
@@ -33,7 +33,7 @@ class TestRenderHttpOnly:
         assert "site.test" in hosts
         upstream = generated / "nginx" / "upstreams" / "http-only-http.conf"
         assert upstream.is_file()
-        assert "server raft-http-only:" in read_text(upstream)
+        assert "server http-only:" in read_text(upstream)
         edge_raw = (generated / "compose.edge.yaml").read_text(encoding="utf-8")
         assert '"80:80"' in edge_raw
         assert '"443:443"' in edge_raw
@@ -47,7 +47,7 @@ class TestRenderHttpPlusStream:
             edge=edge_with_smtp_stream(),
         )
         apps = load_compose_apps(generated)
-        svc = apps["services"]["raft-http-plus-stream"]
+        svc = apps["services"]["http-plus-stream"]
         assert "ports" not in svc
         stream = read_text(generated / "nginx" / "gate-stream" / "streams.conf")
         assert "25" in stream
@@ -62,7 +62,7 @@ class TestRenderHostPublish:
             isolated_raft_env, fixture_app_yamls("host_publish")
         )
         apps = load_compose_apps(generated)
-        svc = apps["services"]["raft-host-publish"]
+        svc = apps["services"]["host-publish"]
         ports = svc.get("ports") or []
         assert any("2525:25" in str(p) for p in ports)
 
@@ -73,7 +73,7 @@ class TestRenderExposeNoneVolume:
             isolated_raft_env, fixture_app_yamls("expose_none_volume")
         )
         apps = load_compose_apps(generated)
-        svc = apps["services"]["raft-demo-expose-none-vol"]
+        svc = apps["services"]["demo-expose-none-vol"]
         assert svc["image"] == "redis:alpine"
         assert "ports" not in svc
         assert 6379 in [int(x) for x in svc["expose"]]
@@ -87,7 +87,7 @@ class TestRenderExposeNoneVolume:
         # No Host routing for expose:none-only apps
         assert "expose-none-vol" not in hosts
         edge_raw = (generated / "compose.edge.yaml").read_text(encoding="utf-8")
-        assert "raft-raft-gate:" in edge_raw
+        assert "raft-gate:" in edge_raw
 
 
 class TestRenderMultiAppGroup:
@@ -97,12 +97,12 @@ class TestRenderMultiAppGroup:
         ordered = sorted(yamls, key=lambda p: 0 if "redis" in str(p) else 1)
         generated = apply_and_render(isolated_raft_env, ordered)
         apps = load_compose_apps(generated)
-        front = apps["services"]["raft-demo-stack-front"]
-        assert "raft-demo-stack-redis" in front["depends_on"]
-        assert front["depends_on"]["raft-demo-stack-redis"]["condition"] == "service_started"
-        router = apps["services"]["raft-raft-router"]
-        assert "raft-demo-stack-front" in router["depends_on"]
-        assert "raft-demo-stack-redis" in router["depends_on"]
+        front = apps["services"]["demo-stack-front"]
+        assert "demo-stack-redis" in front["depends_on"]
+        assert front["depends_on"]["demo-stack-redis"]["condition"] == "service_started"
+        router = apps["services"]["raft-router"]
+        assert "demo-stack-front" in router["depends_on"]
+        assert "demo-stack-redis" in router["depends_on"]
 
 
 class TestRenderTlsOrigin:

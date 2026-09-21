@@ -158,7 +158,7 @@ class StreamEdge:
         proxy_proto = "\n    proxy_protocol on;" if port.proxy_protocol else ""
         server = (
             f"upstream {upstream} {{\n"
-            f"    server {app.name}:{port.container_port};\n"
+            f"    server {app.compose_id}:{port.container_port};\n"
             "}\n"
             "\n"
             "server {\n"

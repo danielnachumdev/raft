@@ -19,7 +19,7 @@ class TestNginxUpstreams(AdapterTestCase):
         assert path.is_file()
         assert path.name == "app-http.conf"
         assert "upstream app_http" in path.read_text(encoding="utf-8")
-        assert "server raft-app:80" in path.read_text(encoding="utf-8")
+        assert "server app:80" in path.read_text(encoding="utf-8")
         text = path.read_text(encoding="utf-8")
         nginx.ensure_steady_file(self.app)
         assert path.read_text(encoding="utf-8") == text
@@ -29,9 +29,9 @@ class TestNginxUpstreams(AdapterTestCase):
         docker = MagicMock()
         docker.router_sees_upstream_target.return_value = True
         nginx = NginxUpstreams(self.stack, docker)
-        nginx.point_at(self.app, "raft-app_tmp")
+        nginx.point_at(self.app, "app_tmp")
         port = PortSpec(name="http", container_port=80, expose="http")
-        assert "server raft-app_tmp:80" in self.stack.upstream_file(self.app, port).read_text(
+        assert "server app_tmp:80" in self.stack.upstream_file(self.app, port).read_text(
             encoding="utf-8"
         )
         docker.router_sees_upstream_target.return_value = False

@@ -64,13 +64,13 @@ class TestCutoverSession(ServicesTestCase):
             s.docker.run_tmp.assert_called_once()
 
             s.shift_traffic_to_tmp()
-            s.nginx.point_at.assert_called_with(s.app, "raft-app_tmp")
+            s.nginx.point_at.assert_called_with(s.app, "app_tmp")
 
             s.rebuild_stable_service()
-            s.docker.rebuild_service.assert_called_with("raft-app")
+            s.docker.rebuild_service.assert_called_with("app")
 
             s.shift_traffic_to_stable()
-            s.nginx.point_at.assert_called_with(s.app, "raft-app")
+            s.nginx.point_at.assert_called_with(s.app, "app")
 
             s.remove_tmp()
             assert "sha_new" in (self.tmp_path / "deploy" / "app.image").read_text(encoding="utf-8")

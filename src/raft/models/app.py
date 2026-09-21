@@ -7,15 +7,19 @@ from pathlib import Path
 from typing import Optional
 
 COMPOSE_PROJECT = "raft"
-# Built-in edge group so gate/router compose ids are raft-raft-gate / raft-raft-router.
+# Built-in edge group so gate/router compose ids are raft-gate / raft-router
+# (containers raft-raft-gate-1 via project name).
 EDGE_GROUP = "raft"
 
 
 def compose_service_id(name: str, group: Optional[str] = None) -> str:
-    """Compose service key (DNS hostname): ``raft-NAME`` or ``raft-GROUP-NAME``."""
+    """Compose service key (DNS hostname): ``NAME`` or ``GROUP-NAME``.
+
+    Project ``raft`` prefixes containers as ``raft-{service}-N``.
+    """
     if group:
-        return f"{COMPOSE_PROJECT}-{group}-{name}"
-    return f"{COMPOSE_PROJECT}-{name}"
+        return f"{group}-{name}"
+    return name
 
 
 GATE_COMPOSE_ID = compose_service_id("gate", EDGE_GROUP)

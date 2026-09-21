@@ -7,6 +7,7 @@ from .base import CheckSuite
 from .certs import CertChecks
 from .edge import EdgeChecks
 from .host import HostChecks
+from .public_host import PublicHostChecks
 from .runtime import RuntimeChecks
 from .upstreams import UpstreamChecks
 
@@ -18,6 +19,7 @@ CHECK_SUITES: tuple[CheckSuite, ...] = (
     CertChecks(),
     RuntimeChecks(),
     EdgeChecks(),
+    PublicHostChecks(),
 )
 
 __all__ = [
@@ -27,6 +29,7 @@ __all__ = [
     "CertChecks",
     "EdgeChecks",
     "HostChecks",
+    "PublicHostChecks",
     "RuntimeChecks",
     "UpstreamChecks",
     "auth_deploy_key_fix",
