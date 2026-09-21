@@ -101,7 +101,12 @@ class TestGitAuthManager(ServicesTestCase):
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         empty = Stack(root=self.tmp_path, apps=())
-        mgr = GitAuthManager(empty, self.shell, ssh_dir=self.tmp_path / "ssh-empty")
+        mgr = GitAuthManager(empty)
+        mgr.sh = self.shell
+        # ssh via RAFT_SSH_DIR fixture; override for empty dir:
+        mgr.ssh_dir = self.tmp_path / "ssh-empty"
+        mgr.keys_dir = mgr.ssh_dir / "raft"
+        mgr.config_path = mgr.ssh_dir / "config"
         self.shell.run.side_effect = self.fake_ssh_keygen()
         self.shell.git.return_value = MagicMock(returncode=0, stdout="abc\tHEAD\n", stderr="")
         with pytest.raises(RuntimeError, match="Pass --repo"):
@@ -174,11 +179,12 @@ class TestGitAuthManager(ServicesTestCase):
         with pytest.raises(RuntimeError, match="no key"):
             self.mgr.test("svc")
         with pytest.raises(RuntimeError, match="Pass --repo"):
-            GitAuthManager(
-                Stack(root=self.tmp_path, apps=()),
-                self.shell,
-                ssh_dir=self.tmp_path / "ssh2",
-            ).test("ghost")
+            ghost = GitAuthManager(Stack(root=self.tmp_path, apps=()))
+            ghost.sh = self.shell
+            ghost.ssh_dir = self.tmp_path / "ssh2"
+            ghost.keys_dir = ghost.ssh_dir / "raft"
+            ghost.config_path = ghost.ssh_dir / "config"
+            ghost.test("ghost")
         with pytest.raises(RuntimeError, match="needs a repo URL"):
             self.mgr.test("localapp")
 

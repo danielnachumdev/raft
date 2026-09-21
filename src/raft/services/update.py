@@ -51,9 +51,9 @@ def install_identity() -> Optional[str]:
 
 
 class SelfUpdate:
-    def __init__(self, stack: Stack, shell: Optional[Shell] = None) -> None:
+    def __init__(self, stack: Stack) -> None:
         self.stack = stack
-        self.sh = shell or Shell(stack.root)
+        self.sh = Shell(stack.root)
 
     def run(self) -> None:
         url = os.environ.get("RAFT_INSTALL_URL", DEFAULT_INSTALL_URL)

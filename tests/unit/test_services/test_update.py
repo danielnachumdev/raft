@@ -17,7 +17,9 @@ class TestSelfUpdate(ServicesTestCase):
         monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
         monkeypatch.setattr(update_mod, "install_identity", lambda: None)
         shell = MagicMock()
-        SelfUpdate(self.stack, shell).run()
+        upd = SelfUpdate(self.stack)
+        upd.sh = shell
+        upd.run()
         shell.run.assert_called_once()
         args = shell.run.call_args.args[0]
         assert args[0] == "bash"
@@ -35,7 +37,9 @@ class TestSelfUpdate(ServicesTestCase):
         monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
         monkeypatch.setattr(update_mod, "install_identity", lambda: "same-id")
         shell = MagicMock()
-        SelfUpdate(self.stack, shell).run()
+        upd = SelfUpdate(self.stack)
+        upd.sh = shell
+        upd.run()
         out = capsys.readouterr().out
         assert "Updating raft" in out
         assert "raft is already up to date" in out
@@ -46,7 +50,9 @@ class TestSelfUpdate(ServicesTestCase):
         identities = iter(["before", "after"])
         monkeypatch.setattr(update_mod, "install_identity", lambda: next(identities))
         shell = MagicMock()
-        SelfUpdate(self.stack, shell).run()
+        upd = SelfUpdate(self.stack)
+        upd.sh = shell
+        upd.run()
         out = capsys.readouterr().out
         assert "OK: raft updated" in out
         assert "already up to date" not in out
@@ -56,7 +62,9 @@ class TestSelfUpdate(ServicesTestCase):
         monkeypatch.setenv("RAFT_INSTALL_URL", url)
         monkeypatch.setattr(update_mod, "install_identity", lambda: None)
         shell = MagicMock()
-        SelfUpdate(self.stack, shell).run()
+        upd = SelfUpdate(self.stack)
+        upd.sh = shell
+        upd.run()
         assert shell.run.call_args.args[0][4] == url
 
     def test_run_ignores_local_install_script(self, monkeypatch) -> None:
@@ -65,7 +73,9 @@ class TestSelfUpdate(ServicesTestCase):
         monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
         monkeypatch.setattr(update_mod, "install_identity", lambda: None)
         shell = MagicMock()
-        SelfUpdate(self.stack, shell).run()
+        upd = SelfUpdate(self.stack)
+        upd.sh = shell
+        upd.run()
         args = shell.run.call_args.args[0]
         assert args[4] == DEFAULT_INSTALL_URL
         assert "bash" == args[0]

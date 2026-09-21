@@ -30,9 +30,9 @@ logger = logging.getLogger(__name__)
 
 
 class AppApply:
-    def __init__(self, stack: Stack, shell: Optional[Shell] = None) -> None:
+    def __init__(self, stack: Stack) -> None:
         self.stack = stack
-        self.sh = shell or Shell(stack.root)
+        self.sh = Shell(stack.root)
 
     def apply_file(
         self,
@@ -83,7 +83,7 @@ class AppApply:
         deploy: bool = True,
         force_sync: bool = False,
     ) -> str:
-        auth = GitAuthManager(self.stack, self.sh)
+        auth = GitAuthManager(self.stack)
         clone_urls = auth.clone_urls_for_repo(repo)
         tmp = Path(tempfile.mkdtemp(prefix="raft-apply-"))
         last_exc: Optional[BaseException] = None

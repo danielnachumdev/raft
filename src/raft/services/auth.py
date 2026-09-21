@@ -76,16 +76,10 @@ def real_git_host(service: str, git_host: str) -> str:
 
 
 class GitAuthManager:
-    def __init__(
-        self,
-        stack: Stack,
-        shell: Optional[Shell] = None,
-        *,
-        ssh_dir: Optional[Path] = None,
-    ) -> None:
+    def __init__(self, stack: Stack) -> None:
         self.stack = stack
-        self.sh = shell or Shell(stack.root)
-        self.ssh_dir = ssh_dir or default_ssh_dir()
+        self.sh = Shell(stack.root)
+        self.ssh_dir = default_ssh_dir()
         self.keys_dir = self.ssh_dir / "raft"
         self.config_path = self.ssh_dir / "config"
 

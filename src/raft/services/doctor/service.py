@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Optional, Sequence, TextIO
+from typing import Optional, TextIO
 
 from ...adapters import DockerStack, Shell
 from ...models import Stack
 from ..auth import GitAuthManager
 from .checks import CHECK_SUITES, auth_deploy_key_fix
-from .checks.base import CheckSuite
 from .context import DoctorContext
 from .models import CheckResult
 from .report import GroupReportWriter
@@ -17,33 +16,24 @@ from .report import GroupReportWriter
 class Doctor:
     """Environment diagnostics for operators (`raft doctor`)."""
 
-    def __init__(
-        self,
-        stack: Stack,
-        *,
-        shell: Optional[Shell] = None,
-        auth: Optional[GitAuthManager] = None,
-        docker: Optional[DockerStack] = None,
-        suites: Optional[Sequence[CheckSuite]] = None,
-        reporter: Optional[GroupReportWriter] = None,
-    ) -> None:
+    def __init__(self, stack: Stack) -> None:
         self.stack = stack
-        self.sh = shell or Shell(stack.root)
-        self.auth = auth or GitAuthManager(stack, self.sh)
-        self.docker = docker or DockerStack(stack, self.sh)
-        self._ctx = DoctorContext(
+        self.sh = Shell(stack.root)
+        self.auth = GitAuthManager(stack)
+        self.docker = DockerStack(stack, self.sh)
+        self._suites = CHECK_SUITES
+        self._reporter = GroupReportWriter()
+
+    def run(self) -> list[CheckResult]:
+        ctx = DoctorContext(
             stack=self.stack,
             shell=self.sh,
             auth=self.auth,
             docker=self.docker,
         )
-        self._suites: tuple[CheckSuite, ...] = tuple(suites) if suites is not None else CHECK_SUITES
-        self._reporter = reporter or GroupReportWriter()
-
-    def run(self) -> list[CheckResult]:
         results: list[CheckResult] = []
         for suite in self._suites:
-            results.extend(suite.run(self._ctx))
+            results.extend(suite.run(ctx))
         return results
 
     def report(

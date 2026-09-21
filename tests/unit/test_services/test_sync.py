@@ -99,7 +99,8 @@ class TestSourceSync(ServicesTestCase):
         self._git_syncer(repo="git@github.com:org/svc.git")
         auth = MagicMock()
         auth.effective_clone_url.return_value = "git@github.com-raft-svc:org/svc.git"
-        self.syncer = SourceSync(self.stack, self.shell, auth=auth)
+        self.syncer = SourceSync(self.stack, self.shell)
+        self.syncer.auth = auth
         dest = self.app.abs_path(self.tmp_path)
 
         def git(*args, **kwargs):

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .apps import AppChecks, auth_deploy_key_fix
+from .base import CheckSuite
 from .certs import CertChecks
 from .edge import EdgeChecks
 from .host import HostChecks
@@ -10,7 +11,7 @@ from .runtime import RuntimeChecks
 from .upstreams import UpstreamChecks
 
 # Composition order for Doctor.run — add suites here.
-CHECK_SUITES = (
+CHECK_SUITES: tuple[CheckSuite, ...] = (
     HostChecks(),
     AppChecks(),
     UpstreamChecks(),
@@ -21,6 +22,7 @@ CHECK_SUITES = (
 
 __all__ = [
     "CHECK_SUITES",
+    "CheckSuite",
     "AppChecks",
     "CertChecks",
     "EdgeChecks",

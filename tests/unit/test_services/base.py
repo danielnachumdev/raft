@@ -45,7 +45,9 @@ class ServicesTestCase(RaftTestCase):
 
     def auth_manager(self, **git_stack_kwargs) -> GitAuthManager:
         stack = make_git_stack(self.tmp_path, **git_stack_kwargs)
-        return GitAuthManager(stack, self.shell, ssh_dir=self.ssh_dir)
+        mgr = GitAuthManager(stack)
+        mgr.sh = self.shell
+        return mgr
 
     @staticmethod
     def write_keypair(mgr: GitAuthManager, service: str) -> None:

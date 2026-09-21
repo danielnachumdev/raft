@@ -31,6 +31,14 @@ from raft.services.render import StackRenderer
 from ..base import RaftTestCase, make_app, make_stack, write_applied_app
 
 
+def _doctor(stack, *, shell=None, docker=None, auth=None) -> Doctor:
+    doctor = Doctor(stack)
+    doctor.sh = shell if shell is not None else MagicMock()
+    doctor.auth = auth if auth is not None else MagicMock()
+    doctor.docker = docker if docker is not None else MagicMock()
+    return doctor
+
+
 class TestSettingsEdgeErrors(RaftTestCase):
     def test_edge_validation_errors(self) -> None:
         cases = [
@@ -336,7 +344,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
             ):
                 results = {
                     (r.service, r.check): r
-                    for r in Doctor(stack, shell=shell, auth=MagicMock(), docker=docker).run()
+                    for r in _doctor(stack, shell=shell, docker=docker).run()
                 }
         assert results[("raft-raft-gate", "ports")].status == "fail"
         assert "raft gate recreate" in results[("raft-raft-gate", "ports")].fix
@@ -358,7 +366,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
         with patch("raft.services.doctor.shutil.which", return_value="/bin/docker"):
             results = {
                 (r.service, r.check): r
-                for r in Doctor(stack, shell=shell, auth=MagicMock(), docker=docker).run()
+                for r in _doctor(stack, shell=shell, docker=docker).run()
             }
         assert results[(INFRA, "edge")].status == "warn"
 
@@ -374,7 +382,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
             ):
                 results = {
                     (r.service, r.check): r
-                    for r in Doctor(stack, shell=shell, auth=MagicMock(), docker=docker).run()
+                    for r in _doctor(stack, shell=shell, docker=docker).run()
                 }
         assert results[(INFRA, "port 80")].status == "warn"
         assert results[("raft-raft-gate", "ports")].status == "warn"
@@ -439,7 +447,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
             ):
                 results = {
                     (r.service, r.check): r
-                    for r in Doctor(stack, shell=shell, auth=MagicMock(), docker=docker).run()
+                    for r in _doctor(stack, shell=shell, docker=docker).run()
                 }
         assert results[("raft-mail", "upstream")].detail.startswith("n/a")
         assert results[("raft-mail", "certs")].status == "ok"

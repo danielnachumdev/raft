@@ -14,6 +14,12 @@ from ..base import RaftTestCase, write_applied_app
 from .base import ServicesTestCase
 
 
+def _apply(stack, shell):
+    applier = AppApply(stack)
+    applier.sh = shell
+    return applier
+
+
 def _manifest(
     name: str = "web",
     *,
@@ -131,7 +137,7 @@ class TestAppApply(RaftTestCase):
                 (target / ".raft" / "app.yaml").write_text(yaml.safe_dump(data), encoding="utf-8")
 
         shell.git.side_effect = clone_then_checkout
-        name = AppApply(stack, shell=shell).apply_git(
+        name = _apply(stack, shell).apply_git(
             "git@github.com:org/hub.git", ref="main", deploy=False
         )
         assert name == "hub"
@@ -153,7 +159,7 @@ class TestAppApply(RaftTestCase):
 
         shell2 = MagicMock()
         shell2.git.side_effect = fail_shallow_then_ok
-        name2 = AppApply(stack, shell=shell2).apply_git(
+        name2 = _apply(stack, shell2).apply_git(
             "git@github.com:org/x.git", ref="dev", deploy=False
         )
         assert name2 == "gitapp"
@@ -167,7 +173,7 @@ class TestAppApply(RaftTestCase):
 
         shell.git.side_effect = empty_clone
         with pytest.raises(RuntimeError, match="app.yaml"):
-            AppApply(stack, shell=shell).apply_git("git@x/y.git", deploy=False)
+            _apply(stack, shell).apply_git("git@x/y.git", deploy=False)
 
         def list_doc(*args, **kwargs):
             target = Path(args[-1])
@@ -177,7 +183,7 @@ class TestAppApply(RaftTestCase):
 
         shell.git.side_effect = list_doc
         with pytest.raises(RuntimeError, match="mapping"):
-            AppApply(stack, shell=shell).apply_git("git@x/y.git", deploy=False)
+            _apply(stack, shell).apply_git("git@x/y.git", deploy=False)
 
         def bad_spec(*args, **kwargs):
             target = Path(args[-1])
@@ -190,7 +196,7 @@ class TestAppApply(RaftTestCase):
 
         shell.git.side_effect = bad_spec
         with pytest.raises(ValueError, match="spec must be an object"):
-            AppApply(stack, shell=shell).apply_git("git@x/y.git", deploy=False)
+            _apply(stack, shell).apply_git("git@x/y.git", deploy=False)
 
     def test_apply_git_auth_failure_hints_setup(self) -> None:
         import subprocess
@@ -207,7 +213,7 @@ class TestAppApply(RaftTestCase):
 
         shell.git.side_effect = denied
         with pytest.raises(RuntimeError, match="auth setup .* --repo"):
-            AppApply(stack, shell=shell).apply_git(
+            _apply(stack, shell).apply_git(
                 "git@github.com:Playloft-Studio/playloftstudio.com.git",
                 deploy=False,
             )
@@ -217,7 +223,7 @@ class TestAppApply(RaftTestCase):
         shell = MagicMock()
         shell.git.side_effect = RuntimeError("network unreachable")
         with pytest.raises(RuntimeError, match="cannot reach git host"):
-            AppApply(stack, shell=shell).apply_git("git@github.com:org/x.git", deploy=False)
+            _apply(stack, shell).apply_git("git@github.com:org/x.git", deploy=False)
 
     def test_apply_git_bad_manifest_yaml(self) -> None:
         stack = load_stack(self.tmp_path)
@@ -232,13 +238,17 @@ class TestAppApply(RaftTestCase):
 
         shell.git.side_effect = clone
         with pytest.raises(RuntimeError, match="invalid App manifest YAML"):
-            AppApply(stack, shell=shell).apply_git("git@github.com:org/x.git", deploy=False)
+            _apply(stack, shell).apply_git("git@github.com:org/x.git", deploy=False)
 
     def test_apply_git_retries_host_alias(self) -> None:
         stack = load_stack(self.tmp_path)
         shell = MagicMock()
         auth_dir = self.tmp_path / "ssh-apply"
-        mgr = GitAuthManager(stack, shell, ssh_dir=auth_dir)
+        mgr = GitAuthManager(stack)
+        mgr.sh = shell
+        mgr.ssh_dir = auth_dir
+        mgr.keys_dir = auth_dir / "raft"
+        mgr.config_path = auth_dir / "config"
         ServicesTestCase.write_keypair(mgr, "playloftstudio")
 
         calls: list[str] = []
@@ -267,7 +277,7 @@ class TestAppApply(RaftTestCase):
 
         shell.git.side_effect = clone_alias
         with patch("raft.services.apply.GitAuthManager", return_value=mgr):
-            name = AppApply(stack, shell=shell).apply_git(
+            name = _apply(stack, shell).apply_git(
                 "git@github.com:Playloft-Studio/playloftstudio.com.git",
                 deploy=False,
             )
@@ -328,7 +338,7 @@ class TestAppApply(RaftTestCase):
         orch = MagicMock()
         with patch("raft.services.apply.Orchestrator", return_value=orch):
             with patch("raft.services.apply.load_stack", return_value=stack):
-                name = AppApply(stack, shell=shell).apply_git(
+                name = _apply(stack, shell).apply_git(
                     "git@github.com:org/img.git", deploy=True
                 )
         assert name == "img"

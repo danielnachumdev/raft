@@ -19,9 +19,15 @@ class TestDoctor(ServicesTestCase):
         shell = kwargs.pop("shell", MagicMock())
         auth = kwargs.pop("auth", MagicMock())
         docker = kwargs.pop("docker", MagicMock())
+        if kwargs:
+            raise TypeError(f"unexpected Doctor test kwargs: {sorted(kwargs)}")
         if isinstance(docker.gate_published_ports.return_value, MagicMock):
             docker.gate_published_ports.return_value = [80, 443]
-        return Doctor(stack, shell=shell, auth=auth, docker=docker, **kwargs)
+        doctor = Doctor(stack)
+        doctor.sh = shell
+        doctor.auth = auth
+        doctor.docker = docker
+        return doctor
 
     def _write_certs(self, *names: str) -> None:
         for name in names:

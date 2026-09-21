@@ -243,7 +243,9 @@ class TestValidationCTAs(RaftTestCase):
         shell = MagicMock()
         shell.run.side_effect = RuntimeError("curl failed")
         with pytest.raises(RuntimeError, match="raft update failed"):
-            SelfUpdate(stack, shell=shell).run()
+            upd = SelfUpdate(stack)
+            upd.sh = shell
+            upd.run()
 
     def test_settings_unreadable(self, monkeypatch: pytest.MonkeyPatch) -> None:
         path = self.tmp_path / "settings.yaml"

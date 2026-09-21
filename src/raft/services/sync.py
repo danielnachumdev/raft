@@ -19,16 +19,10 @@ logger = logging.getLogger(__name__)
 
 
 class SourceSync:
-    def __init__(
-        self,
-        stack: Stack,
-        shell: Shell,
-        *,
-        auth: Optional[GitAuthManager] = None,
-    ) -> None:
+    def __init__(self, stack: Stack, shell: Shell) -> None:
         self.stack = stack
         self.sh = shell
-        self.auth = auth or GitAuthManager(stack, shell)
+        self.auth = GitAuthManager(stack)
 
     def sync(
         self,

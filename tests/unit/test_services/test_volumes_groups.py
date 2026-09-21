@@ -216,10 +216,10 @@ class TestVolumesGroupsCoverage(RaftTestCase):
             )
 
         shell.git.side_effect = clone_with_manifest
+        applier = AppApply(load_stack(self.tmp_path))
+        applier.sh = shell
         with patch("raft.services.apply.say") as say_git:
-            AppApply(load_stack(self.tmp_path), shell=shell).apply_git(
-                "git@github.com:org/stack.git", deploy=False
-            )
+            applier.apply_git("git@github.com:org/stack.git", deploy=False)
         assert any(
             "dependsOn not yet applied" in str(c) for c in say_git.call_args_list
         )
@@ -232,7 +232,10 @@ class TestVolumesGroupsCoverage(RaftTestCase):
         )
         write_applied_app(self.tmp_path, "solo")
         stack = load_stack(self.tmp_path)
-        d = Doctor(stack, shell=MagicMock(), auth=MagicMock(), docker=MagicMock())
+        d = Doctor(stack)
+        d.sh = MagicMock()
+        d.auth = MagicMock()
+        d.docker = MagicMock()
         buf = StringIO()
         results = [
             CheckResult(INFRA, "docker", "ok", "fine"),
@@ -259,7 +262,10 @@ class TestVolumesGroupsCoverage(RaftTestCase):
             extra={"group": "demo"},
         )
         stack2 = load_stack(only_grouped)
-        d2 = Doctor(stack2, shell=MagicMock(), auth=MagicMock(), docker=MagicMock())
+        d2 = Doctor(stack2)
+        d2.sh = MagicMock()
+        d2.auth = MagicMock()
+        d2.docker = MagicMock()
         buf3 = StringIO()
         assert (
             d2.report(
