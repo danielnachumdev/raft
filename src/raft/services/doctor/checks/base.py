@@ -8,7 +8,7 @@ from ..context import DoctorContext
 from ..models import CheckResult
 
 
-class CheckSuite(Protocol):
+class CheckSuite(Protocol):  # pragma: no cover
     """One cohesive group of doctor probes."""
 
     name: str
