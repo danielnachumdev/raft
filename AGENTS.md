@@ -10,9 +10,9 @@ Public product: CLI + Compose/nginx templates + tests. Operators typically run [
 
 Desired apps are **not** a committed inventory. Operators `apply` App manifests; registry files live in `~/.raft/state/apps/*.yaml`.
 
-User-facing samples live under **[`examples/`](examples/)**: operator settings (`examples/settings.yaml`) and named service scenarios (`http-only-site`, `https-origin-site`, `http-plus-stream`, `host-published-ports`).
+User-facing samples live under **[`examples/`](examples/)**: operator settings (`examples/settings.yaml`) and named service scenarios (`http-only-site`, `https-origin-site`, `http-plus-stream`, `host-published-ports`, `grouped-volume-app`).
 
-**In progress:** App `volumes` / `envFile` / `groups` / `expose: none` — see [`docs/app-volumes-groups-plan.md`](docs/app-volumes-groups-plan.md) (required for Mailu as N Apps).
+**Shipped:** App `volumes` / `envFile` / `groups` / `expose: none` — see [`docs/app-volumes-groups-plan.md`](docs/app-volumes-groups-plan.md) (required for Mailu as N Apps).
 
 ---
 
@@ -32,10 +32,12 @@ Cutover reloads **router** nginx. Render reloads **gate** nginx when on-disk `ga
 
 ### Ports and TLS
 
-- Each app declares `spec.ports[]` with `expose: http | stream | host`.
+- Each app declares `spec.ports[]` with `expose: http | stream | host | none`.
 - `expose: http` → Host routing via router (needs `publicHost`).
 - `expose: stream` → gate `stream {}` (port must be declared in settings `edge.streams`).
 - `expose: host` → app publishes the host port itself (gate not involved).
+- `expose: none` → Compose `expose` only (internal); no host publish; no router; no `publicHost` required.
+- Optional multi-app stacks: `spec.groups`, `spec.dependsOn`, `spec.envFile` / `spec.env`, `spec.volumes` — see [`docs/app-volumes-groups-plan.md`](docs/app-volumes-groups-plan.md).
 - `spec.tls`: **`off` (default)** or **`origin`**. HTTP-only apps need no PEMs. `tls: origin` requires `~/.raft/certs/<app>/origin.{pem,key}` and `edge.https`.
 - Gate published ports come from `~/.raft/settings.yaml` `edge:` (`http`, `https`, `streams[]`), rendered into `generated/compose.edge.yaml`.
 
@@ -91,13 +93,21 @@ Canonical path in a service repo: **`.raft/app.yaml`** only. Shape: `apiVersion:
 spec:
   publicHost: app.example.com   # required when any port uses expose=http
   tls: off                      # off | origin
+  groups: [mailu]               # optional
+  dependsOn: [other-app]        # optional
+  envFile: /home/raft/.raft/mailu.env
+  env: { KEY: value }           # overrides envFile on clash
+  volumes:
+    - hostPath: /mnt/data/x
+      containerPath: /data
+      readOnly: false
   ports:
     - name: http
       containerPort: 80
       expose: http
     - name: smtp
       containerPort: 25
-      expose: stream            # or host
+      expose: stream            # or host | none
       publicPort: 25
       protocol: tcp
   readiness:

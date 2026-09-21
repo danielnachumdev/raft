@@ -60,7 +60,15 @@ class AppApply:
             if not isinstance(spec, dict):
                 raise ValueError(f"{path}: spec must be an object")
             spec["ref"] = ref_override
-        app, _ = parse_app_document(data, path=path)
+        app, app_spec = parse_app_document(data, path=path)
+        known = {a.name for a in self.stack.apps}
+        missing_deps = [d for d in app_spec.depends_on if d not in known and d != app.name]
+        if missing_deps:
+            say(
+                f"{app.name}: dependsOn not yet applied: {', '.join(missing_deps)} "
+                f"(ok if you apply them next)",
+                style="warn",
+            )
         dest = write_registry_app(self.stack.root, data)
         say(f"applied {app.name} → {dest.relative_to(self.stack.root)}", style="ok")
         if deploy:
@@ -152,7 +160,15 @@ class AppApply:
             spec["ref"] = ref
             if not spec.get("source"):
                 spec["source"] = "docker" if spec.get("image") else "git"
-            app, _ = parse_app_document(data, path=manifest)
+            app, app_spec = parse_app_document(data, path=manifest)
+            known = {a.name for a in self.stack.apps}
+            missing_deps = [d for d in app_spec.depends_on if d not in known and d != app.name]
+            if missing_deps:
+                say(
+                    f"{app.name}: dependsOn not yet applied: {', '.join(missing_deps)} "
+                    f"(ok if you apply them next)",
+                    style="warn",
+                )
             dest = write_registry_app(self.stack.root, data)
             say(
                 f"applied {app.name} from {repo}@{ref} → "

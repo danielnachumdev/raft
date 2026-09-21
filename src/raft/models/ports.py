@@ -8,7 +8,7 @@ from typing import Any, Optional
 
 from raft.errors import require_bool, require_int
 
-EXPOSE_MODES = frozenset({"http", "stream", "host"})
+EXPOSE_MODES = frozenset({"http", "stream", "host", "none"})
 PORT_PROTOCOLS = frozenset({"tcp", "udp"})
 
 
@@ -46,9 +46,10 @@ class PortSpec:
                 f"{path}: ports[{self.name!r}].publicPort is required when "
                 f"expose={self.expose!r}"
             )
-        if self.expose == "http" and self.public_port is not None:
+        if self.expose in {"http", "none"} and self.public_port is not None:
             raise ValueError(
-                f"{path}: ports[{self.name!r}].publicPort is only valid for " f"expose stream|host"
+                f"{path}: ports[{self.name!r}].publicPort is only valid for "
+                f"expose stream|host"
             )
         if self.proxy_protocol and self.expose != "stream":
             raise ValueError(

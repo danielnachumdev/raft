@@ -130,14 +130,14 @@ Router `depends_on` all apps (existing) stays. App→app `dependsOn` is additive
 
 | # | Step | Who | Status |
 |---|------|-----|--------|
-| 0 | This plan + schema lock | Me / You approve | **pending approval** |
-| 1 | `expose: none` in ports model + tests | Me | pending |
-| 2 | Parse `groups` / `dependsOn` / `envFile` / `env` / `volumes` on `AppSpec` | Me | pending |
-| 3 | Registry round-trip (apply state YAML keeps new fields) | Me | pending |
-| 4 | Render Compose fragments | Me | pending |
-| 5 | Doctor + `get apps` group listing / `--group` | Me | pending |
-| 6 | Example manifest + AGENTS.md | Me | pending |
-| 7 | Full test suite green / coverage 100% | Me | pending |
+| 0 | This plan + schema lock | Me / You approve | **done** (You approved 2026-09-21) |
+| 1 | `expose: none` in ports model + tests | Me | **done** |
+| 2 | Parse `groups` / `dependsOn` / `envFile` / `env` / `volumes` on `AppSpec` | Me | **done** |
+| 3 | Registry round-trip (apply state YAML keeps new fields) | Me | **done** |
+| 4 | Render Compose fragments | Me | **done** |
+| 5 | Doctor + `get apps` group listing / `--group` | Me | **done** |
+| 6 | Example manifest + AGENTS.md | Me | **done** |
+| 7 | Full test suite green / coverage 100% | Me | **done** (`327 passed`, 100% cov) |
 | 8 | Release / You merge; VPS `raft update` | You / Me | pending |
 
 ---
@@ -314,7 +314,7 @@ Sites must remain healthy (no Mailu Apps applied yet).
 1. **`envFile` path ownership** — file must be readable by Docker; mode 600 `raft:raft` is OK if compose runs as that user.
 2. **Mailu front vs raft gate on 80/443** — Mailu admin is `mailu-admin` via gate; front must not host-publish 80/443 (vpsctl plan). Confirm Mailu nginx image works with only mail ports published (may need overrides).
 3. **Service DNS names** — Compose service name = `metadata.name` (`mailu-front`). Mailu env often expects hostnames like `front` / `admin`. May need `spec.hostnames` / network aliases later, or env overrides (`FRONT_ADDRESS=mailu-front`). **Flag for M5:** set Mailu env to raft service names.
-4. **Group actions v1 scope** — doctor + get only, unless You want `redeploy --group` in the same PR.
+4. **Group actions v1 scope** — doctor + get only in v1; `redeploy --group` deferred (You OK 2026-09-21).
 
 ---
 
@@ -323,11 +323,11 @@ Sites must remain healthy (no Mailu Apps applied yet).
 | When | Note |
 |------|------|
 | 2026-09-21 | Plan created from vpsctl Mailu multi-App + groups decision |
+| 2026-09-21 | Schema approved (You); `redeploy --group` deferred; start Step 1 |
+| 2026-09-21 | Steps 1–7 implemented; `uv run pytest --cov=raft --cov-fail-under=100` green |
 
 ---
 
 ## Next command right now
 
-**You:** approve schema (`Mr schema approved`) or request field renames / whether `redeploy --group` is in v1.
-
-**Me (after approval):** start Step 1 (`expose: none` + tests).
+**You:** review + commit/merge when ready, then VPS `raft update` (Step 8). No Mailu Apps yet.

@@ -66,10 +66,15 @@ class RaftCLI:
             return
         raise apply_requires_source()
 
-    def get(self, resource: str, name: Optional[str] = None) -> None:
-        """Show applied resources (e.g. get apps, get app NAME)."""
+    def get(
+        self,
+        resource: str,
+        name: Optional[str] = None,
+        group: Optional[str] = None,
+    ) -> None:
+        """Show applied resources (e.g. get apps, get app NAME, get apps --group=mailu)."""
         if resource == "apps":
-            get_cmd.get_apps(self._stack)
+            get_cmd.get_apps(self._stack, group=group)
             return
         if resource == "app":
             if not name:

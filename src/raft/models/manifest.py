@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
+import re
 
 import yaml
 
@@ -19,6 +20,15 @@ CONTRACT_KIND = "App"
 CONTRACT_REL_PATH = Path(".raft") / "app.yaml"
 REGISTRY_DIR = Path("state") / "apps"
 TLS_MODES = frozenset({"off", "origin"})
+_GROUP_NAME = re.compile(r"^[a-z][a-z0-9-]*$")
+
+
+@dataclass(frozen=True)
+class VolumeSpec:
+    host_path: str
+    container_path: str
+    read_only: bool = False
+    name: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -35,6 +45,11 @@ class AppSpec:
     cpus_reservation: str = "0.10"
     memory_reservation: str = "32M"
     metadata_name: Optional[str] = None
+    groups: tuple[str, ...] = ()
+    depends_on: tuple[str, ...] = ()
+    env_file: Optional[str] = None
+    env: tuple[tuple[str, str], ...] = ()
+    volumes: tuple[VolumeSpec, ...] = ()
 
     def server_names(self, public_host: str) -> tuple[str, ...]:
         names: list[str] = [public_host]
@@ -60,6 +75,9 @@ class AppSpec:
 
     def host_ports(self) -> tuple[PortSpec, ...]:
         return tuple(p for p in self.ports if p.expose == "host")
+
+    def none_ports(self) -> tuple[PortSpec, ...]:
+        return tuple(p for p in self.ports if p.expose == "none")
 
 
 def contract_path(checkout: Path) -> Path:
@@ -111,6 +129,111 @@ def _extra_hosts(spec: dict[str, Any], path: Path) -> tuple[str, ...]:
     if isinstance(extra_raw, list):
         return tuple(str(x).strip() for x in extra_raw if str(x).strip())
     raise ValueError(f"{path}: spec.extraHosts must be a string or array")
+
+
+def _parse_name_list(
+    raw: Any,
+    *,
+    path: Path,
+    label: str,
+    pattern: Any = None,
+) -> tuple[str, ...]:
+    if raw is None:
+        return ()
+    if isinstance(raw, str):
+        items = [raw.strip()] if raw.strip() else []
+    elif isinstance(raw, list):
+        items = [str(x).strip() for x in raw if str(x).strip()]
+    else:
+        raise ValueError(f"{path}: {label} must be a string or array")
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in items:
+        if pattern is not None and not pattern.match(item):
+            raise ValueError(
+                f"{path}: {label} entry {item!r} must match {pattern.pattern}"
+            )
+        if item not in seen:
+            seen.add(item)
+            out.append(item)
+    return tuple(out)
+
+
+def _parse_env_file(spec: dict[str, Any], path: Path) -> Optional[str]:
+    raw = spec.get("envFile", spec.get("env_file"))
+    if raw is None:
+        return None
+    if not isinstance(raw, str):
+        raise ValueError(f"{path}: spec.envFile must be a string path")
+    text = raw.strip()
+    if not text:
+        return None
+    if ".." in Path(text).parts:
+        raise ValueError(f"{path}: spec.envFile must not contain '..'")
+    return text
+
+
+def _parse_env(spec: dict[str, Any], path: Path) -> tuple[tuple[str, str], ...]:
+    raw = spec.get("env")
+    if raw is None:
+        return ()
+    if not isinstance(raw, dict):
+        raise ValueError(f"{path}: spec.env must be an object")
+    out: list[tuple[str, str]] = []
+    for key, value in raw.items():
+        k = str(key).strip()
+        if not k:
+            raise ValueError(f"{path}: spec.env keys must be non-empty strings")
+        if value is None:
+            raise ValueError(f"{path}: spec.env[{k!r}] must not be null")
+        out.append((k, str(value)))
+    return tuple(out)
+
+
+def _parse_volumes(spec: dict[str, Any], path: Path) -> tuple[VolumeSpec, ...]:
+    raw = spec.get("volumes")
+    if raw is None:
+        return ()
+    if not isinstance(raw, list):
+        raise ValueError(f"{path}: spec.volumes must be a list")
+    volumes: list[VolumeSpec] = []
+    for index, entry in enumerate(raw):
+        if not isinstance(entry, dict):
+            raise ValueError(f"{path}: spec.volumes[{index}] must be an object")
+        host = entry.get("hostPath", entry.get("host_path"))
+        container = entry.get("containerPath", entry.get("container_path"))
+        if host is None or not str(host).strip():
+            raise ValueError(f"{path}: spec.volumes[{index}].hostPath is required")
+        if container is None or not str(container).strip():
+            raise ValueError(f"{path}: spec.volumes[{index}].containerPath is required")
+        host_s = str(host).strip()
+        container_s = str(container).strip()
+        if ".." in Path(host_s).parts:
+            raise ValueError(
+                f"{path}: spec.volumes[{index}].hostPath must not contain '..'"
+            )
+        if not container_s.startswith("/"):
+            raise ValueError(
+                f"{path}: spec.volumes[{index}].containerPath must be absolute"
+            )
+        read_only = entry.get("readOnly", entry.get("read_only", False))
+        if not isinstance(read_only, bool):
+            raise ValueError(
+                f"{path}: spec.volumes[{index}].readOnly must be a boolean"
+            )
+        name_raw = entry.get("name")
+        name = str(name_raw).strip() if name_raw is not None else None
+        if name == "":
+            name = None
+        volumes.append(
+            VolumeSpec(
+                host_path=host_s,
+                container_path=container_s,
+                read_only=read_only,
+                name=name,
+            )
+        )
+    return tuple(volumes)
 
 
 def _resources(spec: dict[str, Any], path: Path) -> tuple[str, str, str, str]:
@@ -282,6 +405,17 @@ def parse_app_document(
 
     readiness = parse_readiness(spec, ports, path)
     cpus_limit, memory_limit, cpus_reservation, memory_reservation = _resources(spec, path)
+    groups = _parse_name_list(
+        spec.get("groups"), path=path, label="spec.groups", pattern=_GROUP_NAME
+    )
+    depends_on = _parse_name_list(
+        spec.get("dependsOn", spec.get("depends_on")),
+        path=path,
+        label="spec.dependsOn",
+    )
+    env_file = _parse_env_file(spec, path)
+    env = _parse_env(spec, path)
+    volumes = _parse_volumes(spec, path)
 
     app_spec = AppSpec(
         ports=ports,
@@ -296,6 +430,11 @@ def parse_app_document(
         cpus_reservation=cpus_reservation,
         memory_reservation=memory_reservation,
         metadata_name=name,
+        groups=groups,
+        depends_on=depends_on,
+        env_file=env_file,
+        env=env,
+        volumes=volumes,
     )
     return app, app_spec
 

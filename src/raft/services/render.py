@@ -23,6 +23,16 @@ _GATE_NGINX_SUBDIRS = ("gate-tls", "gate-http", "gate-stream")
 GATE_NGINX_RELOAD_STAMP = Path("state") / "gate-nginx.fingerprint"
 
 
+def _compose_str(value: str) -> str:
+    """Quote a Compose scalar when it contains reserved characters."""
+    if value == "":
+        return '""'
+    if any(ch in value for ch in ":\n#{}[]&*!|>%@`'\"\\") or value.strip() != value:
+        escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{escaped}"'
+    return value
+
+
 def fingerprint_gate_nginx(stack_root: Path) -> str:
     """Stable hash of generated gate nginx fragments (tls / http / stream).
 
@@ -228,6 +238,27 @@ class StackRenderer:
                 lines.append("    ports:")
                 for entry in host_ports:
                     lines.append(f"      - {entry}")
+            if c.env_file:
+                lines.append("    env_file:")
+                lines.append(f"      - {c.env_file}")
+            if c.env:
+                lines.append("    environment:")
+                for key, value in c.env:
+                    lines.append(f"      {key}: {_compose_str(value)}")
+            if c.volumes:
+                lines.append("    volumes:")
+                for vol in c.volumes:
+                    suffix = ":ro" if vol.read_only else ""
+                    lines.append(
+                        f"      - {vol.host_path}:{vol.container_path}{suffix}"
+                    )
+            known_apps = {a.name for a in self.stack.apps}
+            deps = [d for d in c.depends_on if d in known_apps]
+            if deps:
+                lines.append("    depends_on:")
+                for dep in deps:
+                    lines.append(f"      {dep}:")
+                    lines.append("        condition: service_started")
             strategy = ReadinessStrategy.from_spec(c)
             test = strategy.healthcheck_test()
             if test is not None:

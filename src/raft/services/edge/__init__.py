@@ -191,10 +191,26 @@ class HostEdge:
         )
 
 
+@dataclass(frozen=True)
+class NoneEdge:
+    """Internal-only port: Compose expose, no host publish, no router/gate."""
+
+    def contribute(
+        self,
+        app: App,
+        spec: AppSpec,
+        port: PortSpec,
+        *,
+        edge: EdgeConfig,
+    ) -> EdgeFragments:
+        return EdgeFragments(expose_ports=[port.container_port])
+
+
 EDGE_HANDLERS: Dict[str, EdgeHandler] = {
     "http": HttpEdge(),
     "stream": StreamEdge(),
     "host": HostEdge(),
+    "none": NoneEdge(),
 }
 
 

@@ -423,6 +423,124 @@ class TestStackRenderer(RaftTestCase):
         with pytest.raises(ValueError, match="context is required"):
             StackRenderer(stack).render()
 
+    def test_render_volumes_env_depends_on(self) -> None:
+        write_applied_app(
+            self.tmp_path,
+            "mailu-redis",
+            source="docker",
+            image="redis",
+            public_host="",
+            build_context=None,
+            extra={
+                "ports": [{"name": "redis", "containerPort": 6379, "expose": "none"}],
+                "readiness": {"type": "tcp", "port": "redis"},
+                "groups": ["mailu"],
+                "envFile": "/home/raft/.raft/mailu.env",
+                "env": {"FOO": "bar"},
+                "volumes": [
+                    {
+                        "hostPath": "/mnt/raft-data/mailu/redis",
+                        "containerPath": "/data",
+                        "readOnly": False,
+                    }
+                ],
+            },
+        )
+        write_applied_app(
+            self.tmp_path,
+            "mailu-front",
+            source="docker",
+            image="ghcr.io/mailu/nginx",
+            public_host="",
+            build_context=None,
+            extra={
+                "ports": [
+                    {
+                        "name": "smtp",
+                        "containerPort": 25,
+                        "expose": "host",
+                        "publicPort": 25,
+                    }
+                ],
+                "readiness": {"type": "tcp", "port": "smtp"},
+                "groups": ["mailu"],
+                "dependsOn": ["mailu-redis"],
+                "envFile": "/home/raft/.raft/mailu.env",
+            },
+        )
+        stack = load_stack(self.tmp_path)
+        StackRenderer(stack).render()
+        apps = (self.tmp_path / "generated" / "compose.apps.yaml").read_text(encoding="utf-8")
+        assert "env_file:" in apps
+        assert "/home/raft/.raft/mailu.env" in apps
+        assert "FOO: bar" in apps
+        assert "/mnt/raft-data/mailu/redis:/data" in apps
+        assert "mailu-redis:" in apps
+        assert "condition: service_started" in apps
+        assert '"25:25"' in apps
+
+
+class TestAppSpecExtensions(RaftTestCase):
+    def test_parse_groups_volumes_env(self) -> None:
+        data = {
+            "apiVersion": "raft/v1",
+            "kind": "App",
+            "metadata": {"name": "mailu-redis"},
+            "spec": {
+                "source": "docker",
+                "image": "redis",
+                "ref": "alpine",
+                "path": "apps/mailu-redis",
+                "groups": ["mailu"],
+                "dependsOn": ["mailu-front"],
+                "envFile": "/home/raft/.raft/mailu.env",
+                "env": {"A": "1"},
+                "volumes": [
+                    {
+                        "name": "data",
+                        "hostPath": "/mnt/raft-data/mailu/redis",
+                        "containerPath": "/data",
+                        "readOnly": True,
+                    }
+                ],
+                "ports": [{"name": "redis", "containerPort": 6379, "expose": "none"}],
+                "readiness": {"type": "tcp", "port": "redis"},
+            },
+        }
+        app, spec = parse_app_document(data, path=Path("app.yaml"))
+        assert app.public_host == ""
+        assert spec.groups == ("mailu",)
+        assert spec.depends_on == ("mailu-front",)
+        assert spec.env_file == "/home/raft/.raft/mailu.env"
+        assert spec.env == (("A", "1"),)
+        assert len(spec.volumes) == 1
+        assert spec.volumes[0].read_only is True
+        assert spec.none_ports()[0].name == "redis"
+
+    def test_rejects_bad_group_and_volume_traversal(self) -> None:
+        base = {
+            "apiVersion": "raft/v1",
+            "kind": "App",
+            "metadata": {"name": "x"},
+            "spec": {
+                "source": "docker",
+                "image": "redis",
+                "path": "apps/x",
+                "ports": [{"name": "redis", "containerPort": 6379, "expose": "none"}],
+                "readiness": {"type": "none"},
+            },
+        }
+        bad_group = yaml.safe_load(yaml.safe_dump(base))
+        bad_group["spec"]["groups"] = ["Mailu"]
+        with pytest.raises(ValueError, match="spec.groups"):
+            parse_app_document(bad_group, path=Path("g.yaml"))
+        bad_vol = yaml.safe_load(yaml.safe_dump(base))
+        bad_vol["spec"]["volumes"] = [
+            {"hostPath": "/tmp/../etc/passwd", "containerPath": "/data"}
+        ]
+        with pytest.raises(ValueError, match="must not contain"):
+            parse_app_document(bad_vol, path=Path("v.yaml"))
+
 
 class TestFindPackageRoot(RaftTestCase):
     def test_bundled(self) -> None:

@@ -1,0 +1,30 @@
+# Grouped docker app with an internal-only port and a bind volume.
+# Apply: raft apply --file examples/grouped-volume-app/.raft/app.yaml
+#
+# Demonstrates: spec.groups, spec.envFile, spec.volumes, expose: none.
+# Replace image/ref/paths for a real service before production use.
+
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: grouped-volume-app
+
+spec:
+  groups: [demo]
+  source: docker
+  image: redis
+  ref: alpine
+  path: apps/grouped-volume-app
+  www: false
+  envFile: /home/raft/.raft/demo.env
+  volumes:
+    - name: data
+      hostPath: /mnt/raft-data/demo/redis
+      containerPath: /data
+  ports:
+    - name: redis
+      containerPort: 6379
+      expose: none
+  readiness:
+    type: tcp
+    port: redis

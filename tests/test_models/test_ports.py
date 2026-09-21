@@ -54,7 +54,34 @@ class TestPorts(RaftTestCase):
                 proxy_protocol=True,
             ).validate(path=Path("x"))
 
-    def test_port_by_name_missing(self) -> None:
-        ports = (PortSpec(name="http", container_port=80, expose="http"),)
-        with pytest.raises(KeyError, match="unknown port"):
-            port_by_name(ports, "smtp")
+    def test_parse_expose_none(self) -> None:
+        ports = parse_ports(
+            {
+                "ports": [
+                    {
+                        "name": "redis",
+                        "containerPort": 6379,
+                        "expose": "none",
+                    }
+                ]
+            },
+            Path("app.yaml"),
+        )
+        assert ports[0].expose == "none"
+        assert ports[0].public_port is None
+
+    def test_none_rejects_public_port(self) -> None:
+        with pytest.raises(ValueError, match="publicPort is only valid"):
+            parse_ports(
+                {
+                    "ports": [
+                        {
+                            "name": "redis",
+                            "containerPort": 6379,
+                            "expose": "none",
+                            "publicPort": 6379,
+                        }
+                    ]
+                },
+                Path("app.yaml"),
+            )

@@ -78,9 +78,36 @@ class Doctor:
         for r in results:
             by_service.setdefault(r.service, []).append(r)
 
-        preferred = [INFRA, *[a.name for a in self.stack.apps]]
-        ordered = [s for s in preferred if s in by_service]
-        ordered.extend(s for s in by_service if s not in preferred)
+        preferred = [INFRA]
+        grouped: dict[str, list[str]] = {}
+        ungrouped: list[str] = []
+        for app in self.stack.apps:
+            try:
+                groups = self.stack.spec_for(app).groups
+            except (ValueError, FileNotFoundError, OperatorError):
+                groups = ()
+            if groups:
+                for group in groups:
+                    grouped.setdefault(group, []).append(app.name)
+            else:
+                ungrouped.append(app.name)
+        for group in sorted(grouped):
+            preferred.append(f"group:{group}")
+            preferred.extend(grouped[group])
+        if ungrouped:
+            preferred.append("group:ungrouped")
+            preferred.extend(ungrouped)
+
+        ordered: list[str] = []
+        seen: set[str] = set()
+        for service in preferred:
+            if service.startswith("group:"):
+                ordered.append(service)
+                continue
+            if service in by_service and service not in seen:
+                ordered.append(service)
+                seen.add(service)
+        ordered.extend(s for s in by_service if s not in seen)
 
         def tint(text: str, *codes: str) -> str:
             return paint(text, *codes, color=use_color)
@@ -93,6 +120,14 @@ class Doctor:
         first_block = True
 
         for service in ordered:
+            if service.startswith("group:"):
+                label = service.split(":", 1)[1]
+                if not first_block:
+                    print(file=stream)
+                first_block = False
+                print(tint(f"group: {label}", BOLD, YELLOW), file=stream)
+                continue
+
             items = by_service[service]
             bad = [r for r in items if r.status != "ok"]
 
