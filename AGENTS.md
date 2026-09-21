@@ -12,6 +12,8 @@ Desired apps are **not** a committed inventory. Operators `apply` App manifests;
 
 User-facing samples live under **[`examples/`](examples/)**: operator settings (`examples/settings.yaml`) and named service scenarios (`http-only-site`, `https-origin-site`, `http-plus-stream`, `host-published-ports`).
 
+**In progress:** App `volumes` / `envFile` / `groups` / `expose: none` — see [`docs/app-volumes-groups-plan.md`](docs/app-volumes-groups-plan.md) (required for Mailu as N Apps).
+
 ---
 
 ## Architecture (hard rules)
