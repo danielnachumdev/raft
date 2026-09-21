@@ -20,7 +20,7 @@ Kubernetes (and most “platform” stacks) are overkill when you have one VM an
 curl -fsSL https://raw.githubusercontent.com/danielnachumdev/raft/main/install.sh | bash
 ```
 
-Operator data lives under **`~/.raft/`**. Override with `RAFT_DATA_HOME`. Refresh the CLI later with `raft update`.
+Operator data lives under **`~/.raft/`**. Override with `RAFT_DATA_HOME`. Refresh the CLI later with `raft update`. Remove everything with `raft uninstall --yes` (add `--uv` only if you also want the uv installer gone).
 
 ```bash
 raft doctor

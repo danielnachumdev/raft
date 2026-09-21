@@ -62,6 +62,22 @@ class TestCli(RaftTestCase):
         ctor.assert_called_once_with(self.stack)
         updater.run.assert_called_once()
 
+    def test_uninstall_dispatches(self) -> None:
+        uninstaller = MagicMock()
+        with patch("raft.cli.deps.load_stack", return_value=self.stack):
+            with patch("raft.cli.deps.Uninstall", return_value=uninstaller) as ctor:
+                assert cli.main(["uninstall", "--yes"]) == 0
+        ctor.assert_called_once_with(self.stack)
+        uninstaller.run.assert_called_once_with(yes=True, uv=False)
+
+    def test_uninstall_dispatches_with_uv(self) -> None:
+        uninstaller = MagicMock()
+        with patch("raft.cli.deps.load_stack", return_value=self.stack):
+            with patch("raft.cli.deps.Uninstall", return_value=uninstaller) as ctor:
+                assert cli.main(["uninstall", "--yes", "--uv"]) == 0
+        ctor.assert_called_once_with(self.stack)
+        uninstaller.run.assert_called_once_with(yes=True, uv=True)
+
     def test_sync_dispatches_all(self) -> None:
         assert self._run_main(["sync"]) == 0
         self.orch.sync.assert_called_once_with(None, ref_override=None, force=False)

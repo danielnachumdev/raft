@@ -114,6 +114,15 @@ class RaftCLI:
         """Re-install raft from GitHub (re-run install.sh / uv tool install)."""
         deps.SelfUpdate(self._stack).run()
 
+    def uninstall(self, yes: bool = False, uv: bool = False) -> None:
+        """Remove raft from this machine (stack, ~/.raft, deploy keys, uv tool).
+
+        Requires ``--yes``. Pass ``--uv`` to also remove the ``uv`` installer
+        (left installed by default — other tools may need it). Does not revoke
+        git-host deploy keys or CDN certs.
+        """
+        deps.Uninstall(self._stack).run(yes=yes, uv=uv)
+
     def sync(
         self,
         *services: str,

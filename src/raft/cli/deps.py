@@ -4,6 +4,7 @@ from ..config import load_config, setup_logging
 from ..models import load_stack
 from ..services import Doctor, GitAuthManager, Orchestrator, SelfUpdate
 from ..services.apply import AppApply
+from ..services.uninstall import Uninstall
 
 __all__ = [
     "AppApply",
@@ -11,6 +12,7 @@ __all__ = [
     "GitAuthManager",
     "Orchestrator",
     "SelfUpdate",
+    "Uninstall",
     "load_config",
     "load_stack",
     "setup_logging",

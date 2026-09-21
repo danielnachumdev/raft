@@ -137,6 +137,7 @@ Top-level **commands** (not nested groups, except `auth` and `gate`):
 | `gate recreate` | Recreate gate for new published edge ports |
 | `doctor` | Health + fix hints |
 | `update` | Re-install CLI from GitHub (`install.sh`) |
+| `uninstall` | Full removal (`--yes`; optional `--uv` to remove uv too) |
 | `auth` | `setup` / `list` / `show` / `test` / `remove` |
 
 Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool install` so `raft` is on `PATH`; in a bare checkout `uv run raft …` still works.
