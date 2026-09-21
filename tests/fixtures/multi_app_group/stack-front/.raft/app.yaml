@@ -1,14 +1,14 @@
 apiVersion: raft/v1
 kind: App
 metadata:
-  name: mailu-front
+  name: stack-front
 spec:
-  groups: [mailu]
-  dependsOn: [mailu-redis]
+  groups: [demo]
+  dependsOn: [stack-redis]
   source: docker
   image: hashicorp/http-echo
   ref: "1.0.0"
-  path: apps/mailu-front
+  path: apps/stack-front
   www: false
   ports:
     - name: http

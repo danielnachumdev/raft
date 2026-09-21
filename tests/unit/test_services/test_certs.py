@@ -39,7 +39,7 @@ class TestOriginCerts(RaftTestCase):
 
     def test_looks_like_missing_origin_cert(self) -> None:
         nginx = (
-            'cannot load certificate "/etc/nginx/certs/danielnachum/origin.pem": '
+            'cannot load certificate "/etc/nginx/certs/web/origin.pem": '
             "BIO_new_file() failed"
         )
         assert looks_like_missing_origin_cert(nginx)

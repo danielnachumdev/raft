@@ -94,12 +94,12 @@ class TestRenderMultiAppGroup:
         ordered = sorted(yamls, key=lambda p: 0 if "redis" in str(p) else 1)
         generated = apply_and_render(isolated_raft_env, ordered)
         apps = load_compose_apps(generated)
-        front = apps["services"]["mailu-front"]
-        assert "mailu-redis" in front["depends_on"]
-        assert front["depends_on"]["mailu-redis"]["condition"] == "service_started"
+        front = apps["services"]["stack-front"]
+        assert "stack-redis" in front["depends_on"]
+        assert front["depends_on"]["stack-redis"]["condition"] == "service_started"
         router = apps["services"]["router"]
-        assert "mailu-front" in router["depends_on"]
-        assert "mailu-redis" in router["depends_on"]
+        assert "stack-front" in router["depends_on"]
+        assert "stack-redis" in router["depends_on"]
 
 
 class TestRenderTlsOrigin:

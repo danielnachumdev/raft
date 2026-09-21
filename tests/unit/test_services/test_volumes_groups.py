@@ -65,9 +65,9 @@ class TestVolumesGroupsCoverage(RaftTestCase):
 
     def test_parse_name_list_and_env_volume_errors(self) -> None:
         data = _base_docker()
-        data["spec"]["groups"] = "mailu"
+        data["spec"]["groups"] = "demo"
         _, spec = parse_app_document(data, path=Path("a.yaml"))
-        assert spec.groups == ("mailu",)
+        assert spec.groups == ("demo",)
 
         data2 = _base_docker()
         data2["spec"]["groups"] = 123
@@ -139,9 +139,9 @@ class TestVolumesGroupsCoverage(RaftTestCase):
             parse_app_document(data14, path=Path("n.yaml"))
 
         data15 = _base_docker()
-        data15["spec"]["groups"] = ["mailu", "mailu", ""]
+        data15["spec"]["groups"] = ["demo", "demo", ""]
         _, spec15 = parse_app_document(data15, path=Path("o.yaml"))
-        assert spec15.groups == ("mailu",)
+        assert spec15.groups == ("demo",)
 
         data16 = _base_docker()
         data16["spec"]["volumes"] = [
@@ -154,11 +154,11 @@ class TestVolumesGroupsCoverage(RaftTestCase):
         write_applied_app(
             self.tmp_path,
             "a",
-            extra={"groups": ["mailu"]},
+            extra={"groups": ["demo"]},
         )
         write_applied_app(self.tmp_path, "b")
         stack = load_stack(self.tmp_path)
-        get_cmd.get_apps(stack, group="mailu")
+        get_cmd.get_apps(stack, group="demo")
         get_cmd.get_apps(stack, group="missing")
         get_cmd.get_app(stack, "a")
 
@@ -168,8 +168,8 @@ class TestVolumesGroupsCoverage(RaftTestCase):
 
     def test_apply_warns_missing_depends_on(self) -> None:
         path = self.tmp_path / "app.yaml"
-        doc = _base_docker(name="mailu-front")
-        doc["spec"]["dependsOn"] = ["mailu-redis"]
+        doc = _base_docker(name="stack-front")
+        doc["spec"]["dependsOn"] = ["stack-redis"]
         path.write_text(yaml.safe_dump(doc), encoding="utf-8")
         stack = load_stack(self.tmp_path)
         with patch("raft.services.apply.say") as say:
@@ -183,8 +183,8 @@ class TestVolumesGroupsCoverage(RaftTestCase):
                 return
             target = Path(args[-1])
             (target / ".raft").mkdir(parents=True, exist_ok=True)
-            git_doc = _base_docker(name="mailu-admin")
-            git_doc["spec"]["dependsOn"] = ["mailu-redis"]
+            git_doc = _base_docker(name="stack-admin")
+            git_doc["spec"]["dependsOn"] = ["stack-redis"]
             (target / ".raft" / "app.yaml").write_text(
                 yaml.safe_dump(git_doc), encoding="utf-8"
             )
@@ -192,7 +192,7 @@ class TestVolumesGroupsCoverage(RaftTestCase):
         shell.git.side_effect = clone_with_manifest
         with patch("raft.services.apply.say") as say_git:
             AppApply(load_stack(self.tmp_path), shell=shell).apply_git(
-                "git@github.com:org/mailu.git", deploy=False
+                "git@github.com:org/stack.git", deploy=False
             )
         assert any(
             "dependsOn not yet applied" in str(c) for c in say_git.call_args_list
@@ -201,8 +201,8 @@ class TestVolumesGroupsCoverage(RaftTestCase):
     def test_doctor_groups_banner(self) -> None:
         write_applied_app(
             self.tmp_path,
-            "mailu-a",
-            extra={"groups": ["mailu"]},
+            "stack-a",
+            extra={"groups": ["demo"]},
         )
         write_applied_app(self.tmp_path, "solo")
         stack = load_stack(self.tmp_path)
@@ -210,16 +210,16 @@ class TestVolumesGroupsCoverage(RaftTestCase):
         buf = StringIO()
         results = [
             CheckResult(INFRA, "docker", "ok", "fine"),
-            CheckResult("mailu-a", "contract", "ok", "fine"),
+            CheckResult("stack-a", "contract", "ok", "fine"),
             CheckResult("solo", "contract", "ok", "fine"),
         ]
         assert d.report(results, out=buf, color=False) == 0
         text = buf.getvalue()
-        assert "mailu\n" in text
-        assert "  mailu-a\n" in text
+        assert "demo\n" in text
+        assert "  stack-a\n" in text
         assert "ungrouped\n" in text
         assert "  solo\n" in text
-        assert "group: mailu" not in text
+        assert "group: demo" not in text
         assert "infra\n" not in text
         assert "raft\n" in text
         assert "  gate\n" in text
@@ -233,8 +233,8 @@ class TestVolumesGroupsCoverage(RaftTestCase):
         only_grouped.mkdir()
         write_applied_app(
             only_grouped,
-            "mailu-b",
-            extra={"groups": ["mailu"]},
+            "stack-b",
+            extra={"groups": ["demo"]},
         )
         stack2 = load_stack(only_grouped)
         d2 = Doctor(stack2, shell=MagicMock(), auth=MagicMock(), docker=MagicMock())
@@ -243,7 +243,7 @@ class TestVolumesGroupsCoverage(RaftTestCase):
             d2.report(
                 [
                     CheckResult(INFRA, "docker", "ok", "fine"),
-                    CheckResult("mailu-b", "contract", "ok", "fine"),
+                    CheckResult("stack-b", "contract", "ok", "fine"),
                 ],
                 out=buf3,
                 color=False,

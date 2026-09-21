@@ -82,17 +82,17 @@ class TestE2EMultiApp:
     ) -> None:
         cp, home, _vol = compose_project
         apps = (home / "generated" / "compose.apps.yaml").read_text(encoding="utf-8")
-        assert "mailu-redis:" in apps
+        assert "stack-redis:" in apps
         assert "condition: service_started" in apps
-        cp.wait_running("mailu-redis")
-        cp.wait_running("mailu-front")
+        cp.wait_running("stack-redis")
+        cp.wait_running("stack-front")
 
     def test_e2e_multi_app_same_project(
         self, compose_project: tuple[ComposeProject, Path, Path]
     ) -> None:
         cp, _home, _vol = compose_project
-        cp.wait_running("mailu-redis")
-        cp.wait_running("mailu-front")
+        cp.wait_running("stack-redis")
+        cp.wait_running("stack-front")
         # DNS: resolve peer by Compose service name from front container.
         deadline = time.time() + 30
         last = ""
@@ -107,10 +107,10 @@ class TestE2EMultiApp:
                     str(cp.compose_file),
                     "exec",
                     "-T",
-                    "mailu-front",
+                    "stack-front",
                     "getent",
                     "hosts",
-                    "mailu-redis",
+                    "stack-redis",
                 ],
                 check=False,
                 cwd=cp.workdir,
@@ -119,9 +119,9 @@ class TestE2EMultiApp:
                 timeout=30,
             )
             last = proc.stdout + proc.stderr
-            if proc.returncode == 0 and "mailu-redis" in last:
+            if proc.returncode == 0 and "stack-redis" in last:
                 return
             time.sleep(0.5)
         # http-echo may lack getent — both running in same project is enough.
-        assert cp.service_running("mailu-redis")
-        assert cp.service_running("mailu-front"), last
+        assert cp.service_running("stack-redis")
+        assert cp.service_running("stack-front"), last

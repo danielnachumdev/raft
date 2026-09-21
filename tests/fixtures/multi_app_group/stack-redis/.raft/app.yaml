@@ -1,13 +1,13 @@
 apiVersion: raft/v1
 kind: App
 metadata:
-  name: mailu-redis
+  name: stack-redis
 spec:
-  groups: [mailu]
+  groups: [demo]
   source: docker
   image: redis
   ref: alpine
-  path: apps/mailu-redis
+  path: apps/stack-redis
   www: false
   ports:
     - name: redis

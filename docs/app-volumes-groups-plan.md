@@ -1,8 +1,8 @@
 # App volumes, envFile, groups, dependsOn — implementation plan
 
-Single source of truth for extending raft so **multi-service stacks** (Mailu first) can be expressed as **N Apps** with shared operator control via **groups**.
+Single source of truth for extending raft so **multi-service stacks** can be expressed as **N Apps** with shared operator control via **groups**.
 
-**Consumer plan:** `/home/danielnachumdev/dev/projects/vpsctl/docs/cloud-sql-plan.md` Phase **Mr** / **M5** (deploy = `danielnachumdev/mailu` Apps `mailu-*`, `spec.groups: [mailu]`).
+**Consumer plan:** private ops `docs/cloud-sql-plan.md` Phase **Mr** / **M5** (deploy = consumer mail stack Apps `stack-*`, `spec.groups: [demo]`).
 
 **Do not invent alternate field names mid-flight;** edit this file first.
 
@@ -19,8 +19,8 @@ Single source of truth for extending raft so **multi-service stacks** (Mailu fir
 
 ## Goals
 
-1. Apps can mount host paths (`volumes`) — required for Mailu data/mail/dkim.
-2. Apps can load a shared env file and/or inline env — required for Mailu `mailu.env` + Cloud SQL URI.
+1. Apps can mount host paths (`volumes`) — required for shared data mounts.
+2. Apps can load a shared env file and/or inline env — required for shared env + DB URI on multi-app stacks.
 3. Apps declare **group membership**; doctor (and later CLI) can list/act by group.
 4. Optional `dependsOn` for documentation + future ordered group actions (render may emit Compose `depends_on` between apps).
 5. Keep **one Compose service per App**; no multi-service App YAML.
@@ -29,30 +29,30 @@ Single source of truth for extending raft so **multi-service stacks** (Mailu fir
 ## Non-goals (this plan)
 
 - Full Kubernetes-like Controllers / Deployments.
-- Network aliases / fixed container IPs (Mailu unbound resolver) — defer; revisit if front cannot resolve peers by Compose service name.
-- Implementing the `mailu` git repo (that is vpsctl Phase M5).
+- Network aliases / fixed container IPs (consumer unbound resolver) — defer; revisit if front cannot resolve peers by Compose service name.
+- Implementing the consumer mail git repo (private ops Phase M5).
 - Group actions beyond doctor listing in v1 (define stubs / CLI shape only if cheap).
 
 ---
 
 ## Locked schema (draft)
 
-Canonical file remains **`.raft/app.yaml`** per App path (`apply --git … --path apps/mailu-front`).
+Canonical file remains **`.raft/app.yaml`** per App path (`apply --git … --path apps/stack-front`).
 
 ```yaml
 apiVersion: raft/v1
 kind: App
 metadata:
-  name: mailu-front          # Compose service name; prefer mailu-* prefix for Mailu
+  name: stack-front          # Compose service name; prefer a shared prefix per stack
 spec:
-  groups: [mailu]            # NEW — non-empty strings; order preserved; dedupe
-  dependsOn: [mailu-smtp, mailu-imap, mailu-admin]  # NEW — other App names; optional
-  envFile: /home/raft/.raft/mailu.env               # NEW — absolute or ~/.raft-relative; optional
+  groups: [demo]            # NEW — non-empty strings; order preserved; dedupe
+  dependsOn: [stack-smtp, stack-imap, stack-admin]  # NEW — other App names; optional
+  envFile: /home/raft/.raft/demo.env               # NEW — absolute or ~/.raft-relative; optional
   env:                       # NEW — optional map; overrides envFile keys if both set
     SOME_FLAG: "1"
   volumes:                   # NEW — optional list
     - name: certs
-      hostPath: /mnt/raft-data/mailu/certs
+      hostPath: /mnt/raft-data/demo/certs
       containerPath: /certs
       readOnly: true
   # … existing fields: publicHost, tls, source, image, ref, ports, readiness, resources
@@ -77,16 +77,16 @@ spec:
 apiVersion: raft/v1
 kind: App
 metadata:
-  name: mailu-redis
+  name: stack-redis
 spec:
-  groups: [mailu]
+  groups: [demo]
   source: docker
   image: redis
   ref: alpine
-  path: apps/mailu-redis
-  envFile: /home/raft/.raft/mailu.env
+  path: apps/stack-redis
+  envFile: /home/raft/.raft/demo.env
   volumes:
-    - hostPath: /mnt/raft-data/mailu/redis
+    - hostPath: /mnt/raft-data/demo/redis
       containerPath: /data
   ports:
     - name: redis
@@ -105,7 +105,7 @@ spec:
 | `host` | publish host port (unchanged) |
 | **`none`** | **NEW** — container `expose` only; no host publish; no router; **no** `publicHost` required |
 
-Mailu smtp/imap/redis/antispam use `expose: none`. Front uses `host` for 25/465/587/993. Admin uses `http` + `tls: origin`.
+Internal smtp/imap/redis/antispam-style services use `expose: none`. Front uses `host` for 25/465/587/993. Admin uses `http` + `tls: origin`.
 
 ---
 
@@ -164,7 +164,7 @@ Confirm locked field names above (`groups`, `dependsOn`, `envFile`, `env`, `volu
 #### Sanity
 
 ```bash
-cd /home/danielnachumdev/dev/projects/raft
+cd /path/to/raft
 uv run pytest tests/unit/test_models/ -q --tb=no
 ```
 
@@ -177,7 +177,7 @@ uv run pytest tests/unit/test_models/ -q --tb=no
 #### Execute
 
 - Add frozen fields on `AppSpec` with parsers validating paths and names.
-- Reject relative `hostPath` with `..`; allow absolute paths for Mailu PD mounts.
+- Reject relative `hostPath` with `..`; allow absolute paths for demo PD mounts.
 
 #### Sanity
 
@@ -214,13 +214,13 @@ Emit under each service (when set):
 
 ```yaml
     env_file:
-      - /home/raft/.raft/mailu.env
+      - /home/raft/.raft/demo.env
     environment:
       SOME_FLAG: "1"
     volumes:
-      - /mnt/raft-data/mailu/certs:/certs:ro
+      - /mnt/raft-data/demo/certs:/certs:ro
     depends_on:
-      mailu-smtp:
+      stack-smtp:
         condition: service_started
 ```
 
@@ -242,9 +242,9 @@ uv run pytest tests/unit --cov=raft --cov-fail-under=100 -q
 
 #### Execute
 
-- `raft doctor`: group-first layout — heading `raft` (edge + host checks), then App groups (`mailu`, …), then `ungrouped`; each member indented with status.
-- `raft get apps [--group mailu]`: filter; default table adds Groups column.
-- Optional (if small): `raft redeploy --group mailu` = redeploy each member in `dependsOn` topological order (defer if large).
+- `raft doctor`: group-first layout — heading `raft` (edge + host checks), then App groups (`demo`, …), then `ungrouped`; each member indented with status.
+- `raft get apps [--group demo]`: filter; default table adds Groups column.
+- Optional (if small): `raft redeploy --group demo` = redeploy each member in `dependsOn` topological order (defer if large).
 
 #### Sanity
 
@@ -275,7 +275,7 @@ You skim `AGENTS.md` diff.
 **Who:** Me
 
 ```bash
-cd /home/danielnachumdev/dev/projects/raft
+cd /path/to/raft
 uv run pytest tests/unit --cov=raft --cov-fail-under=100
 ```
 
@@ -295,7 +295,7 @@ sudo -u raft -H env HOME=/home/raft USER=raft LOGNAME=raft \
   bash -lc 'raft doctor; raft get apps'
 ```
 
-Sites must remain healthy (no Mailu Apps applied yet).
+Sites must remain healthy (no demo Apps applied yet).
 
 ---
 
@@ -304,16 +304,16 @@ Sites must remain healthy (no Mailu Apps applied yet).
 | Stage | Action |
 |-------|--------|
 | Before merge | Abandon branch |
-| After merge, before Mailu apply | Pin previous raft on VPS; new fields unused by old manifests |
-| After Mailu apps applied | `raft delete app mailu-*` (order reverse of APPLY_ORDER); keep volumes on disk |
+| After merge, before demo apply | Pin previous raft on VPS; new fields unused by old manifests |
+| After stack apps applied | `raft delete app stack-*` (order reverse of APPLY_ORDER); keep volumes on disk |
 
 ---
 
 ## Risks / open questions (resolve in Step 0 if possible)
 
 1. **`envFile` path ownership** — file must be readable by Docker; mode 600 `raft:raft` is OK if compose runs as that user.
-2. **Mailu front vs raft gate on 80/443** — Mailu admin is `mailu-admin` via gate; front must not host-publish 80/443 (vpsctl plan). Confirm Mailu nginx image works with only mail ports published (may need overrides).
-3. **Service DNS names** — Compose service name = `metadata.name` (`mailu-front`). Mailu env often expects hostnames like `front` / `admin`. May need `spec.hostnames` / network aliases later, or env overrides (`FRONT_ADDRESS=mailu-front`). **Flag for M5:** set Mailu env to raft service names.
+2. **Front vs raft gate on 80/443** — admin UI via gate; front must not host-publish 80/443 (private ops plan). Confirm the front image works with only mail ports published (may need overrides).
+3. **Service DNS names** — Compose service name = `metadata.name` (`stack-front`). Consumer env often expects short hostnames like `front` / `admin`. May need `spec.hostnames` / network aliases later, or env overrides (`FRONT_ADDRESS=stack-front`). **Flag for M5:** set consumer env to raft service names.
 4. **Group actions v1 scope** — doctor + get only in v1; `redeploy --group` deferred (You OK 2026-09-21).
 
 ---
@@ -322,7 +322,7 @@ Sites must remain healthy (no Mailu Apps applied yet).
 
 | When | Note |
 |------|------|
-| 2026-09-21 | Plan created from vpsctl Mailu multi-App + groups decision |
+| 2026-09-21 | Plan created from vpsctl demo multi-App + groups decision |
 | 2026-09-21 | Schema approved (You); `redeploy --group` deferred; start Step 1 |
 | 2026-09-21 | Steps 1–7 implemented; `uv run pytest --cov=raft --cov-fail-under=100` green |
 
@@ -330,4 +330,4 @@ Sites must remain healthy (no Mailu Apps applied yet).
 
 ## Next command right now
 
-**You:** review + commit/merge when ready, then VPS `raft update` (Step 8). No Mailu Apps yet.
+**You:** review + commit/merge when ready, then VPS `raft update` (Step 8). No demo Apps yet.

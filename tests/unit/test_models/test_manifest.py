@@ -426,7 +426,7 @@ class TestStackRenderer(RaftTestCase):
     def test_render_volumes_env_depends_on(self) -> None:
         write_applied_app(
             self.tmp_path,
-            "mailu-redis",
+            "stack-redis",
             source="docker",
             image="redis",
             public_host="",
@@ -434,12 +434,12 @@ class TestStackRenderer(RaftTestCase):
             extra={
                 "ports": [{"name": "redis", "containerPort": 6379, "expose": "none"}],
                 "readiness": {"type": "tcp", "port": "redis"},
-                "groups": ["mailu"],
-                "envFile": "/home/raft/.raft/mailu.env",
+                "groups": ["demo"],
+                "envFile": "/home/raft/.raft/demo.env",
                 "env": {"FOO": "bar"},
                 "volumes": [
                     {
-                        "hostPath": "/mnt/raft-data/mailu/redis",
+                        "hostPath": "/mnt/raft-data/demo/redis",
                         "containerPath": "/data",
                         "readOnly": False,
                     }
@@ -448,9 +448,9 @@ class TestStackRenderer(RaftTestCase):
         )
         write_applied_app(
             self.tmp_path,
-            "mailu-front",
+            "stack-front",
             source="docker",
-            image="ghcr.io/mailu/nginx",
+            image="ghcr.io/example/nginx",
             public_host="",
             build_context=None,
             extra={
@@ -463,19 +463,19 @@ class TestStackRenderer(RaftTestCase):
                     }
                 ],
                 "readiness": {"type": "tcp", "port": "smtp"},
-                "groups": ["mailu"],
-                "dependsOn": ["mailu-redis"],
-                "envFile": "/home/raft/.raft/mailu.env",
+                "groups": ["demo"],
+                "dependsOn": ["stack-redis"],
+                "envFile": "/home/raft/.raft/demo.env",
             },
         )
         stack = load_stack(self.tmp_path)
         StackRenderer(stack).render()
         apps = (self.tmp_path / "generated" / "compose.apps.yaml").read_text(encoding="utf-8")
         assert "env_file:" in apps
-        assert "/home/raft/.raft/mailu.env" in apps
+        assert "/home/raft/.raft/demo.env" in apps
         assert "FOO: bar" in apps
-        assert "/mnt/raft-data/mailu/redis:/data" in apps
-        assert "mailu-redis:" in apps
+        assert "/mnt/raft-data/demo/redis:/data" in apps
+        assert "stack-redis:" in apps
         assert "condition: service_started" in apps
         assert '"25:25"' in apps
 
@@ -485,20 +485,20 @@ class TestAppSpecExtensions(RaftTestCase):
         data = {
             "apiVersion": "raft/v1",
             "kind": "App",
-            "metadata": {"name": "mailu-redis"},
+            "metadata": {"name": "stack-redis"},
             "spec": {
                 "source": "docker",
                 "image": "redis",
                 "ref": "alpine",
-                "path": "apps/mailu-redis",
-                "groups": ["mailu"],
-                "dependsOn": ["mailu-front"],
-                "envFile": "/home/raft/.raft/mailu.env",
+                "path": "apps/stack-redis",
+                "groups": ["demo"],
+                "dependsOn": ["stack-front"],
+                "envFile": "/home/raft/.raft/demo.env",
                 "env": {"A": "1"},
                 "volumes": [
                     {
                         "name": "data",
-                        "hostPath": "/mnt/raft-data/mailu/redis",
+                        "hostPath": "/mnt/raft-data/demo/redis",
                         "containerPath": "/data",
                         "readOnly": True,
                     }
@@ -509,9 +509,9 @@ class TestAppSpecExtensions(RaftTestCase):
         }
         app, spec = parse_app_document(data, path=Path("app.yaml"))
         assert app.public_host == ""
-        assert spec.groups == ("mailu",)
-        assert spec.depends_on == ("mailu-front",)
-        assert spec.env_file == "/home/raft/.raft/mailu.env"
+        assert spec.groups == ("demo",)
+        assert spec.depends_on == ("stack-front",)
+        assert spec.env_file == "/home/raft/.raft/demo.env"
         assert spec.env == (("A", "1"),)
         assert len(spec.volumes) == 1
         assert spec.volumes[0].read_only is True

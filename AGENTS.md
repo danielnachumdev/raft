@@ -12,7 +12,7 @@ Desired apps are **not** a committed inventory. Operators `apply` App manifests;
 
 User-facing samples live under **[`examples/`](examples/)**: operator settings (`examples/settings.yaml`) and named service scenarios (`http-only-site`, `https-origin-site`, `http-plus-stream`, `host-published-ports`, `grouped-volume-app`).
 
-**Shipped:** App `volumes` / `envFile` / `groups` / `expose: none` — see [`docs/app-volumes-groups-plan.md`](docs/app-volumes-groups-plan.md) (required for Mailu as N Apps).
+**Shipped:** App `volumes` / `envFile` / `groups` / `expose: none` — see [`docs/app-volumes-groups-plan.md`](docs/app-volumes-groups-plan.md) (required for multi-App stacks).
 
 ---
 
@@ -93,9 +93,9 @@ Canonical path in a service repo: **`.raft/app.yaml`** only. Shape: `apiVersion:
 spec:
   publicHost: app.example.com   # required when any port uses expose=http
   tls: off                      # off | origin
-  groups: [mailu]               # optional
+  groups: [demo]               # optional
   dependsOn: [other-app]        # optional
-  envFile: /home/raft/.raft/mailu.env
+  envFile: /home/raft/.raft/demo.env
   env: { KEY: value }           # overrides envFile on clash
   volumes:
     - hostPath: /mnt/data/x

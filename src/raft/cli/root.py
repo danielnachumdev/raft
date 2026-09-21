@@ -72,7 +72,7 @@ class RaftCLI:
         name: Optional[str] = None,
         group: Optional[str] = None,
     ) -> None:
-        """Show applied resources (e.g. get apps, get app NAME, get apps --group=mailu)."""
+        """Show applied resources (e.g. get apps, get app NAME, get apps --group=demo)."""
         if resource == "apps":
             get_cmd.get_apps(self._stack, group=group)
             return
