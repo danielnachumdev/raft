@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 from unittest.mock import MagicMock, patch
 
+from raft.models.stack import load_stack
 from raft.services import CheckResult, Doctor
 from raft.services.doctor import INFRA
 
@@ -47,9 +48,13 @@ class TestDoctor(ServicesTestCase):
             == 0
         )
         out = capsys.readouterr().out
-        assert "infra\n" in out
+        assert "raft\n" in out
+        assert "  docker\n" in out
+        assert "  gate\n" in out
+        assert "  router\n" in out
+        assert "infra\n" not in out
         assert "  OK  \n" in out or "  OK\n" in out or "OK" in out
-        assert "svc\n" in out
+        assert "  svc\n" in out
         assert "all checks passed" in out
         assert "\033[" not in out
         assert "  OK    auth" not in out
@@ -66,9 +71,9 @@ class TestDoctor(ServicesTestCase):
             == 0
         )
         out = capsys.readouterr().out
-        assert out.startswith("svc\n") or "\nsvc\n" in f"\n{out}"
-        assert "  WARN  sync" in out
-        assert "    maybe" in out
+        assert "  svc\n" in out
+        assert "    WARN  sync" in out
+        assert "      maybe" in out
         assert "fix → do x" in out
         assert "auth" not in out
         assert "warning" in out
@@ -89,12 +94,12 @@ class TestDoctor(ServicesTestCase):
             == 1
         )
         out = capsys.readouterr().out
-        assert "hub\n" in out
-        assert "  FAIL  sync" in out
-        assert "    docker image missing locally:" in out
+        assert "  hub\n" in out
+        assert "    FAIL  sync" in out
+        assert "      docker image missing locally:" in out
         assert "fix → line one" in out
-        assert "           line two" in out
-        assert "           line three" in out
+        assert "             line two" in out
+        assert "             line three" in out
 
         assert (
             d.report(
@@ -104,9 +109,10 @@ class TestDoctor(ServicesTestCase):
             == 1
         )
         out = capsys.readouterr().out
-        assert "infra\n" in out
-        assert "  FAIL  docker" in out
-        assert "    bad" in out
+        assert "raft\n" in out
+        assert "  docker\n" in out
+        assert "    FAIL  docker" in out
+        assert "      bad" in out
         assert "fix → fix it" in out
         assert "failed" in out
 
@@ -558,12 +564,57 @@ class TestDoctor(ServicesTestCase):
         assert "origin.key" in results[("app", "certs")].detail
         assert "tls: origin" in results[("app", "certs")].fix
 
-    def test_report_unknown_service_appended(self, capsys) -> None:
-        d = self._doctor()
-        assert d.report([CheckResult("custom", "item", "ok", "fine")]) == 0
+    def test_report_raft_group_and_orphan_paths(self, capsys) -> None:
+        write_applied_app(
+            self.tmp_path,
+            "gate",
+            extra={"groups": ["raft"]},
+        )
+        write_applied_app(
+            self.tmp_path,
+            "raftling",
+            extra={"groups": ["raft"]},
+        )
+        write_applied_app(self.tmp_path, "solo")
+        stack = load_stack(self.tmp_path)
+        d = self._doctor(stack=stack)
+        assert (
+            d.report(
+                [
+                    CheckResult(INFRA, "compose.yaml", "ok", "fine"),
+                    CheckResult(INFRA, "gate", "ok", "host check named gate"),
+                    CheckResult("gate", "running", "ok", "up"),
+                    CheckResult("raftling", "contract", "ok", "fine"),
+                    CheckResult("solo", "contract", "ok", "fine"),
+                    CheckResult("orphan", "x", "ok", "fine"),
+                ],
+                color=False,
+            )
+            == 0
+        )
         out = capsys.readouterr().out
-        assert "custom\n" in out
-        assert "  OK" in out
+        assert "raft\n" in out
+        assert "  compose.yaml\n" in out
+        assert "  gate\n" in out
+        assert "  raftling\n" in out
+        assert "ungrouped\n" in out
+        assert "  solo\n" in out
+        assert "  orphan\n" in out
+
+        d2 = self._doctor(stack=make_stack(self.tmp_path, apps=()))
+        assert (
+            d2.report(
+                [
+                    CheckResult(INFRA, "docker", "ok", "fine"),
+                    CheckResult("custom", "item", "ok", "fine"),
+                ],
+                color=False,
+            )
+            == 0
+        )
+        out2 = capsys.readouterr().out
+        assert "ungrouped\n" in out2
+        assert "  custom\n" in out2
 
     def test_auth_deploy_key_fix_urls(self) -> None:
         assert "github.com/acme/site/settings/keys/new" in Doctor._auth_deploy_key_fix(
@@ -587,8 +638,11 @@ class TestDoctor(ServicesTestCase):
             == 1
         )
         out = capsys.readouterr().out
-        assert "infra\n  OK" in out
-        assert "\nsvc\n" in out
-        assert "  FAIL  auth" in out
+        assert "raft\n" in out
+        assert "  docker\n" in out
+        assert "    OK" in out
+        assert "\nungrouped\n" in out or out.endswith("ungrouped\n") or "ungrouped\n" in out
+        assert "  svc\n" in out
+        assert "    FAIL  auth" in out
         assert "fix → fix" in out
-        assert "\nother\n  OK" in out
+        assert "  other\n" in out

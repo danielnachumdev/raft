@@ -338,8 +338,8 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
                     (r.service, r.check): r
                     for r in Doctor(stack, shell=shell, auth=MagicMock(), docker=docker).run()
                 }
-        assert results[(INFRA, "gate ports")].status == "fail"
-        assert "raft gate recreate" in results[(INFRA, "gate ports")].fix
+        assert results[("gate", "ports")].status == "fail"
+        assert "raft gate recreate" in results[("gate", "ports")].fix
         assert results[(INFRA, "port 53/udp")].status == "ok"
 
     def test_doctor_no_edge_and_gate_up_not_listening(self) -> None:
@@ -377,7 +377,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
                     for r in Doctor(stack, shell=shell, auth=MagicMock(), docker=docker).run()
                 }
         assert results[(INFRA, "port 80")].status == "warn"
-        assert results[(INFRA, "gate ports")].status == "warn"
+        assert results[("gate", "ports")].status == "warn"
 
     def test_orchestrator_none_readiness(self) -> None:
         write_applied_app(

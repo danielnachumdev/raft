@@ -242,7 +242,7 @@ uv run pytest tests/unit --cov=raft --cov-fail-under=100 -q
 
 #### Execute
 
-- `raft doctor`: group apps under headings `group: mailu`, then `ungrouped`.
+- `raft doctor`: group-first layout — heading `raft` (edge + host checks), then App groups (`mailu`, …), then `ungrouped`; each member indented with status.
 - `raft get apps [--group mailu]`: filter; default table adds Groups column.
 - Optional (if small): `raft redeploy --group mailu` = redeploy each member in `dependsOn` topological order (defer if large).
 

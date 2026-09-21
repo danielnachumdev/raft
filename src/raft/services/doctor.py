@@ -20,11 +20,24 @@ from .certs import missing_origin_certs
 
 Status = Literal["ok", "warn", "fail"]
 
+# Host/platform CheckResult.service bucket (displayed under group RAFT_GROUP).
 INFRA = "infra"
+# Built-in doctor group for edge containers + host checks (replaces the old "infra" heading).
+RAFT_GROUP = "raft"
+UNGROUPED = "ungrouped"
 
 _STATUS_LABEL = {"ok": "OK  ", "warn": "WARN", "fail": "FAIL"}
 
 _STATUS_COLOR = {"ok": GREEN, "warn": YELLOW, "fail": RED}
+
+# Preferred member order under the raft group (then port*/remaining alpha).
+_RAFT_MEMBER_ORDER = (
+    "docker",
+    "compose.yaml",
+    "generated",
+    "stack",
+    "edge",
+)
 
 
 @dataclass(frozen=True)
@@ -78,7 +91,18 @@ class Doctor:
         for r in results:
             by_service.setdefault(r.service, []).append(r)
 
-        preferred = [INFRA]
+        # Expand INFRA checks into raft-group members keyed by check name.
+        infra_keys = {r.check for r in by_service.get(INFRA, [])}
+        by_member: dict[str, list[CheckResult]] = {
+            name: list(items)
+            for name, items in by_service.items()
+            if name != INFRA
+        }
+        for r in by_service.get(INFRA, []):
+            by_member.setdefault(r.check, []).append(r)
+
+        app_names = {a.name for a in self.stack.apps}
+
         grouped: dict[str, list[str]] = {}
         ungrouped: list[str] = []
         for app in self.stack.apps:
@@ -91,23 +115,36 @@ class Doctor:
                     grouped.setdefault(group, []).append(app.name)
             else:
                 ungrouped.append(app.name)
-        for group in sorted(grouped):
-            preferred.append(f"group:{group}")
-            preferred.extend(grouped[group])
-        if ungrouped:
-            preferred.append("group:ungrouped")
-            preferred.extend(ungrouped)
 
-        ordered: list[str] = []
-        seen: set[str] = set()
-        for service in preferred:
-            if service.startswith("group:"):
-                ordered.append(service)
-                continue
-            if service in by_service and service not in seen:
-                ordered.append(service)
-                seen.add(service)
-        ordered.extend(s for s in by_service if s not in seen)
+        raft_members = self._raft_member_order(by_member, infra_keys)
+        # Edge containers sit after host file checks when those exist.
+        insert_at = len(raft_members)
+        for marker in ("generated", "compose.yaml", "docker"):
+            if marker in raft_members:
+                insert_at = raft_members.index(marker) + 1
+                break
+        for edge in (self.stack.gate, self.stack.router):
+            if edge not in raft_members:
+                raft_members.insert(insert_at, edge)
+                insert_at += 1
+            by_member.setdefault(edge, [])
+
+        for name in grouped.pop(RAFT_GROUP, []):
+            if name not in raft_members:
+                raft_members.append(name)
+
+        group_order: list[tuple[str, list[str]]] = [(RAFT_GROUP, raft_members)]
+        for group in sorted(grouped):
+            group_order.append((group, list(grouped[group])))
+        if ungrouped:
+            group_order.append((UNGROUPED, list(ungrouped)))
+
+        listed = {m for _, members in group_order for m in members}
+        orphans = [n for n in sorted(by_member) if n not in listed]
+        if orphans:
+            if not group_order or group_order[-1][0] != UNGROUPED:
+                group_order.append((UNGROUPED, []))
+            group_order[-1][1].extend(orphans)
 
         def tint(text: str, *codes: str) -> str:
             return paint(text, *codes, color=use_color)
@@ -117,46 +154,41 @@ class Doctor:
 
         fails = sum(1 for r in results if r.status == "fail")
         warns = sum(1 for r in results if r.status == "warn")
-        first_block = True
+        first_group = True
 
-        for service in ordered:
-            if service.startswith("group:"):
-                label = service.split(":", 1)[1]
-                if not first_block:
-                    print(file=stream)
-                first_block = False
-                print(tint(f"group: {label}", BOLD, YELLOW), file=stream)
-                continue
-
-            items = by_service[service]
-            bad = [r for r in items if r.status != "ok"]
-
-            if not first_block:
+        for group_name, members in group_order:
+            if not first_group:
                 print(file=stream)
-            first_block = False
+            first_group = False
+            print(tint(group_name, BOLD, YELLOW), file=stream)
 
-            # Service name is always the top-level heading (column 0).
-            print(tint(service, BOLD, CYAN), file=stream)
-
-            if not bad:
-                label = tint(_STATUS_LABEL["ok"], _STATUS_COLOR["ok"], BOLD)
-                print(f"  {label}", file=stream)
-                continue
-
-            for r in bad:
-                status = tint(
-                    _STATUS_LABEL[r.status],
-                    _STATUS_COLOR[r.status],
-                    BOLD,
-                )
-                print(f"  {status}  {r.check:<{check_width}}", file=stream)
-                # Detail + fix are nested notes (deeper indent, not status-column).
-                print(f"    {r.detail}", file=stream)
-                if r.fix:
-                    fix_lines = r.fix.splitlines() or [""]
-                    print(f"    {tint('fix → ' + fix_lines[0], DIM, CYAN)}", file=stream)
-                    for line in fix_lines[1:]:
-                        print(f"           {tint(line, DIM, CYAN)}", file=stream)
+            for member in members:
+                items = by_member.get(member, [])
+                bad = [r for r in items if r.status != "ok"]
+                print(tint(f"  {member}", BOLD, CYAN), file=stream)
+                if not bad:
+                    label = tint(_STATUS_LABEL["ok"], _STATUS_COLOR["ok"], BOLD)
+                    print(f"    {label}", file=stream)
+                    continue
+                for r in bad:
+                    status = tint(
+                        _STATUS_LABEL[r.status],
+                        _STATUS_COLOR[r.status],
+                        BOLD,
+                    )
+                    print(f"    {status}  {r.check:<{check_width}}", file=stream)
+                    print(f"      {r.detail}", file=stream)
+                    if r.fix:
+                        fix_lines = r.fix.splitlines() or [""]
+                        print(
+                            f"      {tint('fix → ' + fix_lines[0], DIM, CYAN)}",
+                            file=stream,
+                        )
+                        for line in fix_lines[1:]:
+                            print(
+                                f"             {tint(line, DIM, CYAN)}",
+                                file=stream,
+                            )
 
         print(file=stream)
         if fails:
@@ -167,6 +199,19 @@ class Doctor:
         else:
             print(tint("all checks passed", GREEN, BOLD), file=stream)
         return 0
+
+    def _raft_member_order(
+        self,
+        by_member: dict[str, list[CheckResult]],
+        infra_keys: set[str],
+    ) -> list[str]:
+        ordered: list[str] = []
+        for key in _RAFT_MEMBER_ORDER:
+            if key in by_member and key not in ordered:
+                ordered.append(key)
+        rest = sorted(n for n in infra_keys if n in by_member and n not in ordered)
+        ordered.extend(rest)
+        return ordered
 
     @staticmethod
     def _auth_deploy_key_fix(service: str, repo_url: str) -> str:
@@ -508,19 +553,33 @@ class Doctor:
                     fix="ensure compose.yaml is valid and docker works",
                 )
             ]
+        results: list[CheckResult] = []
+        for name in (self.stack.gate, self.stack.router):
+            if name in running:
+                results.append(CheckResult(name, "running", "ok", "up"))
+            else:
+                results.append(
+                    CheckResult(
+                        name,
+                        "running",
+                        "warn",
+                        "not running",
+                        fix="raft up",
+                    )
+                )
         expected = list(self.stack.core_services)
         missing = [s for s in expected if s not in running]
         if not missing:
-            return [
+            results.append(
                 CheckResult(
                     INFRA,
                     "stack",
                     "ok",
                     f"running: {', '.join(expected)}",
                 )
-            ]
-        if not running:
-            return [
+            )
+        elif not running:
+            results.append(
                 CheckResult(
                     INFRA,
                     "stack",
@@ -528,16 +587,18 @@ class Doctor:
                     "no core services running",
                     fix="raft up",
                 )
-            ]
-        return [
-            CheckResult(
-                INFRA,
-                "stack",
-                "warn",
-                f"running {sorted(running)}; missing {missing}",
-                fix="raft up   # or redeploy the missing service",
             )
-        ]
+        else:
+            results.append(
+                CheckResult(
+                    INFRA,
+                    "stack",
+                    "warn",
+                    f"running {sorted(running)}; missing {missing}",
+                    fix="raft up   # or redeploy the missing service",
+                )
+            )
+        return results
 
     def _check_edge_listeners(self) -> list[CheckResult]:
         edge = load_config(self.stack.root).edge
@@ -623,8 +684,8 @@ class Doctor:
         if not actual:
             return [
                 CheckResult(
-                    INFRA,
-                    "gate ports",
+                    self.stack.gate,
+                    "ports",
                     "warn",
                     "could not inspect gate published ports",
                     fix="raft gate recreate",
@@ -633,16 +694,16 @@ class Doctor:
         if declared == actual:
             return [
                 CheckResult(
-                    INFRA,
-                    "gate ports",
+                    self.stack.gate,
+                    "ports",
                     "ok",
                     f"match edge: {declared}",
                 )
             ]
         return [
             CheckResult(
-                INFRA,
-                "gate ports",
+                self.stack.gate,
+                "ports",
                 "fail",
                 f"declared {declared} but gate publishes {actual}",
                 fix="raft gate recreate   # Docker binds ports at create time",

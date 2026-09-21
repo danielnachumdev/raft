@@ -215,8 +215,15 @@ class TestVolumesGroupsCoverage(RaftTestCase):
         ]
         assert d.report(results, out=buf, color=False) == 0
         text = buf.getvalue()
-        assert "group: mailu" in text
-        assert "group: ungrouped" in text
+        assert "mailu\n" in text
+        assert "  mailu-a\n" in text
+        assert "ungrouped\n" in text
+        assert "  solo\n" in text
+        assert "group: mailu" not in text
+        assert "infra\n" not in text
+        assert "raft\n" in text
+        assert "  gate\n" in text
+        assert "  router\n" in text
 
         with patch.object(Stack, "spec_for", side_effect=OperatorError("x")):
             buf2 = StringIO()
@@ -243,7 +250,7 @@ class TestVolumesGroupsCoverage(RaftTestCase):
             )
             == 0
         )
-        assert "group: ungrouped" not in buf3.getvalue()
+        assert "ungrouped" not in buf3.getvalue()
 
     def test_render_quoted_env(self) -> None:
         write_applied_app(

@@ -12,6 +12,8 @@ Living plan for how tests are laid out and what each tier owns.
 
 Default local/CI: **unit + integration**. E2E runs in CI on **every Python matrix version** when Docker is available; locally skipped if Docker is missing.
 
+**Doctor groups:** built-in group `raft` (gate, router, host checks); App `spec.groups`; `ungrouped`. Heading is the group name; members are indented beneath it. Compose service names stay `gate` / `router` (containers `raft-gate-1` via project name).
+
 ## Layout
 
 ```text
