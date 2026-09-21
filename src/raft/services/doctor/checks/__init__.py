@@ -7,6 +7,7 @@ from .base import CheckSuite
 from .certs import CertChecks
 from .edge import EdgeChecks
 from .host import HostChecks
+from .ports_summary import PortSummaryChecks
 from .public_host import PublicHostChecks
 from .runtime import RuntimeChecks
 from .upstreams import UpstreamChecks
@@ -19,6 +20,7 @@ CHECK_SUITES: tuple[CheckSuite, ...] = (
     CertChecks(),
     RuntimeChecks(),
     EdgeChecks(),
+    PortSummaryChecks(),
     PublicHostChecks(),
 )
 
@@ -29,6 +31,7 @@ __all__ = [
     "CertChecks",
     "EdgeChecks",
     "HostChecks",
+    "PortSummaryChecks",
     "PublicHostChecks",
     "RuntimeChecks",
     "UpstreamChecks",

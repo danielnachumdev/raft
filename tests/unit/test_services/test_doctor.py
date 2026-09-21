@@ -598,8 +598,11 @@ class TestDoctor(ServicesTestCase):
                     CheckResult(INFRA, "port 80", "ok", "host probe"),
                     CheckResult("raft-gate", "running", "ok", "up"),
                     CheckResult("raft-gate", "ports", "ok", "80, 443"),
+                    CheckResult("raft-router", "ports", "ok", "80"),
                     CheckResult("raft-raftling", "contract", "ok", "fine"),
+                    CheckResult("raft-raftling", "ports", "ok", "80"),
                     CheckResult("solo", "contract", "ok", "fine"),
+                    CheckResult("solo", "ports", "ok", "80"),
                     CheckResult("orphan", "x", "ok", "fine"),
                 ],
                 color=False,
@@ -612,6 +615,8 @@ class TestDoctor(ServicesTestCase):
         assert "  port 80\n" not in out
         assert "  raft-gate\n" in out
         assert "  OK    80, 443" in out or "OK    80, 443" in out
+        assert "  raft-router\n" in out
+        assert "  OK    80" in out
         assert "  raft-raftling\n" in out
         assert "ungrouped\n" not in out
         assert "solo\n" in out
@@ -726,3 +731,66 @@ class TestDoctor(ServicesTestCase):
             docker=MagicMock(),
         )
         assert PublicHostChecks().run(ctx) == []
+
+    def test_port_summary_for_router_and_apps(self) -> None:
+        from raft.services.doctor.checks.ports_summary import PortSummaryChecks
+        from raft.services.doctor.context import DoctorContext
+
+        write_applied_app(self.tmp_path, "web")
+        write_applied_app(
+            self.tmp_path,
+            "mail",
+            extra={
+                "ports": [
+                    {
+                        "name": "smtp",
+                        "containerPort": 25,
+                        "expose": "stream",
+                        "publicPort": 25,
+                    }
+                ],
+                "readiness": {"type": "none"},
+            },
+        )
+        (self.tmp_path / "apps" / "web").mkdir(parents=True, exist_ok=True)
+        (self.tmp_path / "apps" / "mail").mkdir(parents=True, exist_ok=True)
+        stack = load_stack(self.tmp_path)
+        ctx = DoctorContext(
+            stack=stack,
+            shell=MagicMock(),
+            auth=MagicMock(),
+            docker=MagicMock(),
+        )
+        by_key = self._by_key(PortSummaryChecks().run(ctx))
+        assert by_key[("raft-router", "ports")].detail == "80"
+        assert by_key[("web", "ports")].detail == "80"
+        assert by_key[("mail", "ports")].detail == "25"
+        assert ("raft-gate", "ports") not in by_key
+
+        from raft.models.manifest import AppSpec
+        from raft.models.ports import PortSpec
+        from raft.models.stack import Stack
+        from raft.services.doctor.checks.ports_summary import _port_number
+
+        def raise_missing(_self, _app):
+            raise FileNotFoundError("gone")
+
+        with patch.object(Stack, "spec_for", raise_missing):
+            only_router = PortSummaryChecks().run(ctx)
+        assert [(r.service, r.check) for r in only_router] == [("raft-router", "ports")]
+
+        def empty_or_dup(_self, app):
+            if app.name == "mail":
+                return AppSpec(
+                    ports=(
+                        PortSpec(name="a", container_port=80, expose="http"),
+                        PortSpec(name="b", container_port=80, expose="none"),
+                    )
+                )
+            return AppSpec(ports=())
+
+        with patch.object(Stack, "spec_for", empty_or_dup):
+            mixed = self._by_key(PortSummaryChecks().run(ctx))
+        assert mixed[("mail", "ports")].detail == "80"
+        assert ("web", "ports") not in mixed
+        assert _port_number(PortSpec(name="h", container_port=80, expose="http")) == "80"
