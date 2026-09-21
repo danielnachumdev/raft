@@ -115,7 +115,7 @@ class EdgeChecks:
                     ctx.stack.gate,
                     "ports",
                     "ok",
-                    f"match edge: {declared}",
+                    ", ".join(str(p) for p in actual),
                 )
             ]
         return [

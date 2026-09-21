@@ -65,7 +65,7 @@ class TestDoctor(ServicesTestCase):
         )
         out = capsys.readouterr().out
         assert "raft\n" in out
-        assert "  docker\n" in out
+        assert "  docker\n" not in out  # healthy infra hidden
         assert "  raft-gate\n" in out
         assert "  raft-router\n" in out
         assert "infra\n" not in out
@@ -597,6 +597,7 @@ class TestDoctor(ServicesTestCase):
                     CheckResult(INFRA, "compose.yaml", "ok", "fine"),
                     CheckResult(INFRA, "port 80", "ok", "host probe"),
                     CheckResult("raft-gate", "running", "ok", "up"),
+                    CheckResult("raft-gate", "ports", "ok", "80, 443"),
                     CheckResult("raft-raftling", "contract", "ok", "fine"),
                     CheckResult("solo", "contract", "ok", "fine"),
                     CheckResult("orphan", "x", "ok", "fine"),
@@ -607,8 +608,10 @@ class TestDoctor(ServicesTestCase):
         )
         out = capsys.readouterr().out
         assert "raft\n" in out
-        assert "  compose.yaml\n" in out
+        assert "  compose.yaml\n" not in out
+        assert "  port 80\n" not in out
         assert "  raft-gate\n" in out
+        assert "  OK    80, 443" in out or "OK    80, 443" in out
         assert "  raft-raftling\n" in out
         assert "ungrouped\n" not in out
         assert "solo\n" in out
@@ -676,9 +679,7 @@ class TestDoctor(ServicesTestCase):
         )
         out = capsys.readouterr().out
         assert "raft\n" in out
-        assert "  docker\n" in out
-        assert "    OK" in out
-        assert "ungrouped\n" not in out
+        assert "  docker\n" not in out  # healthy infra hidden
         assert "svc\n" in out
         assert "  FAIL" in out
         assert "fix → fix" in out

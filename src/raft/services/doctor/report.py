@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
+import re
 import sys
 from typing import Optional, TextIO
-
-from raft.errors import OperatorError
 
 from ...models import Stack
 from ...ui import BOLD, CYAN, DIM, GREEN, RED, YELLOW, paint, want_color
@@ -18,6 +17,10 @@ from .models import (
 
 _STATUS_LABEL = {"ok": "OK  ", "warn": "WARN", "fail": "FAIL"}
 _STATUS_COLOR = {"ok": GREEN, "warn": YELLOW, "fail": RED}
+
+# Host/platform members under ``raft`` — hide when fully healthy.
+_INFRA_NOISE = frozenset(RAFT_MEMBER_ORDER)
+_PORT_MEMBER_RE = re.compile(r"^port \d+")
 
 
 class GroupReportWriter:
@@ -73,6 +76,12 @@ class GroupReportWriter:
             if name not in raft_members:
                 raft_members.append(name)
 
+        raft_members = [
+            m
+            for m in raft_members
+            if not self._hide_healthy_infra(m, by_member.get(m, []))
+        ]
+
         group_order: list[tuple[Optional[str], list[str]]] = [
             (RAFT_GROUP, raft_members)
         ]
@@ -82,6 +91,11 @@ class GroupReportWriter:
         listed = {m for _, members in group_order for m in members}
         listed.update(ungrouped)
         orphans = [n for n in sorted(by_member) if n not in listed]
+        orphans = [
+            n
+            for n in orphans
+            if not self._hide_healthy_infra(n, by_member.get(n, []))
+        ]
         ungrouped.extend(orphans)
 
         def tint(text: str, *codes: str) -> str:
@@ -98,7 +112,11 @@ class GroupReportWriter:
             body = indent + "  "
             if not bad:
                 label = tint(_STATUS_LABEL["ok"], _STATUS_COLOR["ok"], BOLD)
-                print(f"{body}{label}", file=stream)
+                ports = self._ok_ports_note(items)
+                if ports:
+                    print(f"{body}{label}  {ports}", file=stream)
+                else:
+                    print(f"{body}{label}", file=stream)
                 return
             for r in bad:
                 status = tint(
@@ -130,7 +148,6 @@ class GroupReportWriter:
                 emit_member(member, indent="  ")
 
         if ungrouped:
-            # Raft group (and any App groups) always printed above.
             print(file=stream)
             for member in ungrouped:
                 emit_member(member, indent="")
@@ -144,6 +161,27 @@ class GroupReportWriter:
         else:
             print(tint("all checks passed", GREEN, BOLD), file=stream)
         return 0
+
+    @staticmethod
+    def _hide_healthy_infra(member: str, items: list[CheckResult]) -> bool:
+        """Drop docker/compose/generated/stack/port probes when they are all OK."""
+        if not items:
+            return False
+        if any(r.status != "ok" for r in items):
+            return False
+        if member in _INFRA_NOISE:
+            return True
+        if _PORT_MEMBER_RE.match(member):
+            return True
+        return False
+
+    @staticmethod
+    def _ok_ports_note(items: list[CheckResult]) -> str:
+        """Ports to show after OK — from a healthy ``ports`` check detail."""
+        for r in items:
+            if r.check == "ports" and r.status == "ok" and r.detail.strip():
+                return r.detail.strip()
+        return ""
 
     @staticmethod
     def _raft_member_order(

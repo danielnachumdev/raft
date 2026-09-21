@@ -253,6 +253,7 @@ class TestVolumesGroupsCoverage(RaftTestCase):
         assert "raft\n" in text
         assert "  raft-gate\n" in text
         assert "  raft-router\n" in text
+        assert "  docker\n" not in text
 
         only_grouped = self.tmp_path / "grouped-only"
         only_grouped.mkdir()
