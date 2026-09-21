@@ -123,7 +123,12 @@ class DockerStack:
 
     def recreate_pulled_service(self, app: App, *, pull_ref: str) -> None:
         pin = app.compose_pin_image
-        logger.info("pull %s then recreate compose service %s (pin %s)", pull_ref, app.name, pin)
+        logger.info(
+            "pull %s then recreate compose service %s (pin %s)",
+            pull_ref,
+            app.compose_id,
+            pin,
+        )
         result = self.sh.docker("pull", pull_ref, capture=True, check=False)
         if result.returncode != 0:
             detail = (result.stderr or result.stdout or "").strip()
@@ -138,8 +143,8 @@ class DockerStack:
             )
         run_compose_checked(
             self.sh,
-            ("up", "-d", "--no-deps", "--no-build", "--force-recreate", app.name),
-            action=f"recreate service {app.name}",
+            ("up", "-d", "--no-deps", "--no-build", "--force-recreate", app.compose_id),
+            action=f"recreate service {app.compose_id}",
         )
 
     def service_container_id(self, service: str) -> str:

@@ -82,7 +82,7 @@ class HttpEdge:
                 filename: (
                     "# Managed by raft — do not hand-edit while deploying.\n"
                     f"upstream {upstream} {{\n"
-                    f"    server {app.name}:{port.container_port};\n"
+                    f"    server {app.compose_id}:{port.container_port};\n"
                     "}\n"
                 )
             },

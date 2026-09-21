@@ -45,7 +45,7 @@ class AppSpec:
     cpus_reservation: str = "0.10"
     memory_reservation: str = "32M"
     metadata_name: Optional[str] = None
-    groups: tuple[str, ...] = ()
+    group: Optional[str] = None
     depends_on: tuple[str, ...] = ()
     env_file: Optional[str] = None
     env: tuple[tuple[str, str], ...] = ()
@@ -136,7 +136,6 @@ def _parse_name_list(
     *,
     path: Path,
     label: str,
-    pattern: Any = None,
 ) -> tuple[str, ...]:
     if raw is None:
         return ()
@@ -149,14 +148,34 @@ def _parse_name_list(
     out: list[str] = []
     seen: set[str] = set()
     for item in items:
-        if pattern is not None and not pattern.match(item):
-            raise ValueError(
-                f"{path}: {label} entry {item!r} must match {pattern.pattern}"
-            )
         if item not in seen:
             seen.add(item)
             out.append(item)
     return tuple(out)
+
+
+def _parse_group(spec: dict[str, Any], path: Path) -> Optional[str]:
+    if "groups" in spec and spec.get("groups") is not None:
+        raise ValueError(
+            f"{path}: use spec.group (a single string), not spec.groups"
+        )
+    raw = spec.get("group")
+    if raw is None:
+        return None
+    if isinstance(raw, list):
+        raise ValueError(
+            f"{path}: spec.group must be a string (at most one group), not a list"
+        )
+    if not isinstance(raw, str):
+        raise ValueError(f"{path}: spec.group must be a string")
+    text = raw.strip()
+    if not text:
+        return None
+    if not _GROUP_NAME.match(text):
+        raise ValueError(
+            f"{path}: spec.group {text!r} must match {_GROUP_NAME.pattern}"
+        )
+    return text
 
 
 def _parse_env_file(spec: dict[str, Any], path: Path) -> Optional[str]:
@@ -360,16 +379,6 @@ def parse_app_document(
     else:
         repo = str(repo_raw).strip() if repo_raw and str(repo_raw).strip() else None
 
-    app = App(
-        name=name,
-        public_host=public_host,
-        source=source,
-        path=rel_path,
-        repo=repo,
-        ref=ref,
-        image=image,
-    )
-
     www_raw = spec.get("www", True)
     if not isinstance(www_raw, bool):
         raise OperatorError(
@@ -405,9 +414,7 @@ def parse_app_document(
 
     readiness = parse_readiness(spec, ports, path)
     cpus_limit, memory_limit, cpus_reservation, memory_reservation = _resources(spec, path)
-    groups = _parse_name_list(
-        spec.get("groups"), path=path, label="spec.groups", pattern=_GROUP_NAME
-    )
+    group = _parse_group(spec, path)
     depends_on = _parse_name_list(
         spec.get("dependsOn", spec.get("depends_on")),
         path=path,
@@ -416,6 +423,17 @@ def parse_app_document(
     env_file = _parse_env_file(spec, path)
     env = _parse_env(spec, path)
     volumes = _parse_volumes(spec, path)
+
+    app = App(
+        name=name,
+        public_host=public_host,
+        source=source,
+        path=rel_path,
+        repo=repo,
+        ref=ref,
+        image=image,
+        group=group,
+    )
 
     app_spec = AppSpec(
         ports=ports,
@@ -430,7 +448,7 @@ def parse_app_document(
         cpus_reservation=cpus_reservation,
         memory_reservation=memory_reservation,
         metadata_name=name,
-        groups=groups,
+        group=group,
         depends_on=depends_on,
         env_file=env_file,
         env=env,

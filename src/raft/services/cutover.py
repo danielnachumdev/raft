@@ -79,7 +79,7 @@ class CutoverSession:
         )
 
     def snapshot_previous_image(self) -> None:
-        cid = self.docker.service_container_id(self.app.name)
+        cid = self.docker.service_container_id(self.app.compose_id)
         image_ref = self.docker.container_image_ref(cid)
         self.previous_image = image_ref
         image_id = self.docker.container_image_id(cid)
@@ -125,17 +125,17 @@ class CutoverSession:
             self.docker.recreate_pulled_service(self.app, pull_ref=pull_ref)
         else:
             self.log(f"rebuild stable service {self.app.name} (new code)")
-            self.docker.rebuild_service(self.app.name)
+            self.docker.rebuild_service(self.app.compose_id)
         strategy = self._strategy()
         if strategy.kind == "http":
             fetch_port = strategy.port.container_port if strategy.port is not None else 80
             wait_until(
-                f"{self.app.name} reachable from router",
-                lambda: self.docker.router_can_fetch(self.app.name, port=fetch_port),
+                f"{self.app.compose_id} reachable from router",
+                lambda: self.docker.router_can_fetch(self.app.compose_id, port=fetch_port),
                 timeout=self.stack.ready_timeout_seconds,
                 fix=(
                     f"check build/pull logs; traffic may still be on "
-                    f"{self.app.name}_tmp — raft doctor / raft redeploy {self.app.name}"
+                    f"{self.app.tmp_alias} — raft doctor / raft redeploy {self.app.name}"
                 ),
             )
 
@@ -152,8 +152,8 @@ class CutoverSession:
         return self.app.ref
 
     def shift_traffic_to_stable(self) -> None:
-        self.log(f"point nginx at {self.app.name} (new code) + reload + drain")
-        self.nginx.point_at(self.app, self.app.name)
+        self.log(f"point nginx at {self.app.compose_id} (new code) + reload + drain")
+        self.nginx.point_at(self.app, self.app.compose_id)
         self.docker.nginx_test_and_reload()
         self._wait_ready(f"readiness for {self.app.name} via stable")
         time.sleep(self.stack.drain_seconds)
@@ -161,7 +161,7 @@ class CutoverSession:
     def remove_tmp(self) -> None:
         self.log(f"remove temp {self.app.tmp_container}")
         self.docker.remove_container(self.app.tmp_container)
-        cid = self.docker.service_container_id(self.app.name)
+        cid = self.docker.service_container_id(self.app.compose_id)
         new_image = self.docker.container_image_id(cid)
         self.stack.image_state_file(self.app).write_text(new_image + "\n", encoding="utf-8")
         self.log(f"done: {self.app.name} live on {new_image}")

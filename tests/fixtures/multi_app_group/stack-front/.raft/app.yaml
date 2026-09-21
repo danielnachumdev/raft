@@ -3,7 +3,7 @@ kind: App
 metadata:
   name: stack-front
 spec:
-  groups: [demo]
+  group: demo
   dependsOn: [stack-redis]
   source: docker
   image: hashicorp/http-echo

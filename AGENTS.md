@@ -12,7 +12,7 @@ Desired apps are **not** a committed inventory. Operators `apply` App manifests;
 
 User-facing samples live under **[`examples/`](examples/)**: operator settings (`examples/settings.yaml`) and named service scenarios (`http-only-site`, `https-origin-site`, `http-plus-stream`, `host-published-ports`, `grouped-volume-app`).
 
-**Shipped:** App `volumes` / `envFile` / `groups` / `expose: none` — see [`docs/app-volumes-groups-plan.md`](docs/app-volumes-groups-plan.md) (required for multi-App stacks).
+**Shipped:** App `volumes` / `envFile` / `group` / `expose: none` — see [`docs/app-volumes-groups-plan.md`](docs/app-volumes-groups-plan.md) (required for multi-App stacks).
 
 ---
 
@@ -37,7 +37,7 @@ Cutover reloads **router** nginx. Render reloads **gate** nginx when on-disk `ga
 - `expose: stream` → gate `stream {}` (port must be declared in settings `edge.streams`).
 - `expose: host` → app publishes the host port itself (gate not involved).
 - `expose: none` → Compose `expose` only (internal); no host publish; no router; no `publicHost` required.
-- Optional multi-app stacks: `spec.groups`, `spec.dependsOn`, `spec.envFile` / `spec.env`, `spec.volumes` — see [`docs/app-volumes-groups-plan.md`](docs/app-volumes-groups-plan.md).
+- Optional multi-app stacks: `spec.group`, `spec.dependsOn`, `spec.envFile` / `spec.env`, `spec.volumes` — see [`docs/app-volumes-groups-plan.md`](docs/app-volumes-groups-plan.md).
 - `spec.tls`: **`off` (default)** or **`origin`**. HTTP-only apps need no PEMs. `tls: origin` requires `~/.raft/certs/<app>/origin.{pem,key}` and `edge.https`.
 - Gate published ports come from `~/.raft/settings.yaml` `edge:` (`http`, `https`, `streams[]`), rendered into `generated/compose.edge.yaml`.
 
@@ -65,7 +65,7 @@ Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 3. `raft apply --file …` or `raft apply --git …` → writes `~/.raft/state/apps/<name>.yaml`; with deploy (default) always brings the app live (cutover if running, start the service if gate is up, else full `up`).
 4. If any app uses `tls: origin`, install PEMs under `~/.raft/certs/<name>/` before first deploy.
 5. Manual cold start without apply: `raft up` (refuses if stack already up; `down` first).
-6. `raft doctor` before trusting the site (certs only for `tls: origin`; gate drift → `raft gate recreate`). Doctor is group-first: built-in **`raft`** (gate/router + host checks), then App `spec.groups`, then `ungrouped`.
+6. `raft doctor` before trusting the site (certs only for `tls: origin`; gate drift → `raft gate recreate`). Doctor is group-first: built-in **`raft`** (edge compose ids + host checks), then App `spec.group` (at most one); ungrouped apps appear without a heading. Member labels are Compose service ids (`raft-NAME` / `raft-GROUP-NAME`).
 7. Updates: `raft apply …` again, or `raft redeploy <app>` / `raft redeploy router`. New edge listeners: `raft gate recreate`.
 8. Tear down: `raft down`.
 
@@ -93,7 +93,7 @@ Canonical path in a service repo: **`.raft/app.yaml`** only. Shape: `apiVersion:
 spec:
   publicHost: app.example.com   # required when any port uses expose=http
   tls: off                      # off | origin
-  groups: [demo]               # optional
+  group: demo               # optional; at most one group
   dependsOn: [other-app]        # optional
   envFile: /home/raft/.raft/demo.env
   env: { KEY: value }           # overrides envFile on clash

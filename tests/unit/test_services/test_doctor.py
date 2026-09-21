@@ -40,8 +40,8 @@ class TestDoctor(ServicesTestCase):
             d.report(
                 [
                     CheckResult(INFRA, "docker", "ok", "fine"),
-                    CheckResult("svc", "auth", "ok", "fine"),
-                    CheckResult("svc", "sync", "ok", "fine"),
+                    CheckResult("raft-svc", "auth", "ok", "fine"),
+                    CheckResult("raft-svc", "sync", "ok", "fine"),
                 ],
                 color=False,
             )
@@ -50,11 +50,12 @@ class TestDoctor(ServicesTestCase):
         out = capsys.readouterr().out
         assert "raft\n" in out
         assert "  docker\n" in out
-        assert "  gate\n" in out
-        assert "  router\n" in out
+        assert "  raft-raft-gate\n" in out
+        assert "  raft-raft-router\n" in out
         assert "infra\n" not in out
         assert "  OK  \n" in out or "  OK\n" in out or "OK" in out
-        assert "  svc\n" in out
+        assert "raft-svc\n" in out
+        assert "ungrouped\n" not in out
         assert "all checks passed" in out
         assert "\033[" not in out
         assert "  OK    auth" not in out
@@ -63,18 +64,19 @@ class TestDoctor(ServicesTestCase):
         assert (
             d.report(
                 [
-                    CheckResult("svc", "auth", "ok", "fine"),
-                    CheckResult("svc", "sync", "warn", "maybe", fix="do x"),
+                    CheckResult("raft-svc", "auth", "ok", "fine"),
+                    CheckResult("raft-svc", "sync", "warn", "maybe", fix="do x"),
                 ],
                 color=False,
             )
             == 0
         )
         out = capsys.readouterr().out
-        assert "  svc\n" in out
-        assert "    WARN  sync" in out
-        assert "      maybe" in out
+        assert "raft-svc\n" in out
+        assert "  WARN" in out
+        assert "  maybe" in out or "    maybe" in out
         assert "fix → do x" in out
+        assert "sync" not in out  # check key omitted
         assert "auth" not in out
         assert "warning" in out
 
@@ -82,7 +84,7 @@ class TestDoctor(ServicesTestCase):
             d.report(
                 [
                     CheckResult(
-                        "hub",
+                        "raft-hub",
                         "sync",
                         "fail",
                         "docker image missing locally: ghcr.io/org/hub:main",
@@ -94,12 +96,12 @@ class TestDoctor(ServicesTestCase):
             == 1
         )
         out = capsys.readouterr().out
-        assert "  hub\n" in out
-        assert "    FAIL  sync" in out
-        assert "      docker image missing locally:" in out
+        assert "raft-hub\n" in out
+        assert "  FAIL" in out
+        assert "docker image missing locally:" in out
         assert "fix → line one" in out
-        assert "             line two" in out
-        assert "             line three" in out
+        assert "line two" in out
+        assert "line three" in out
 
         assert (
             d.report(
@@ -111,8 +113,8 @@ class TestDoctor(ServicesTestCase):
         out = capsys.readouterr().out
         assert "raft\n" in out
         assert "  docker\n" in out
-        assert "    FAIL  docker" in out
-        assert "      bad" in out
+        assert "    FAIL" in out
+        assert "bad" in out
         assert "fix → fix it" in out
         assert "failed" in out
 
@@ -187,7 +189,7 @@ class TestDoctor(ServicesTestCase):
         shell = MagicMock()
         shell.run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         docker = MagicMock()
-        docker.running_services.return_value = ["gate", "router", "app"]
+        docker.running_services.return_value = ["raft-raft-gate", "raft-raft-router", "raft-app"]
         auth = MagicMock()
 
         with patch("raft.services.doctor.shutil.which", return_value="/usr/bin/docker"):
@@ -195,9 +197,9 @@ class TestDoctor(ServicesTestCase):
                 results = self._by_key(self._doctor(shell=shell, auth=auth, docker=docker).run())
         assert results[(INFRA, "compose.yaml")].status == "ok"
         assert results[(INFRA, "docker")].status == "ok"
-        assert results[("app", "sync")].status == "ok"
-        assert results[("app", "upstream")].status == "ok"
-        assert results[("app", "certs")].status == "ok"
+        assert results[("raft-app", "sync")].status == "ok"
+        assert results[("raft-app", "upstream")].status == "ok"
+        assert results[("raft-app", "certs")].status == "ok"
         assert results[(INFRA, "stack")].status == "ok"
         assert results[(INFRA, "port 80")].status == "ok"
 
@@ -226,12 +228,12 @@ class TestDoctor(ServicesTestCase):
                 results = self._by_key(
                     self._doctor(stack, shell=shell, auth=auth, docker=docker).run()
                 )
-        assert results[("svc", "auth")].status == "fail"
-        assert "auth setup svc" in results[("svc", "auth")].fix
-        assert results[("svc", "sync")].status == "fail"
-        assert "sync svc" in results[("svc", "sync")].fix
-        assert results[("svc", "certs")].status == "ok"
-        assert "tls: off" in results[("svc", "certs")].detail
+        assert results[("raft-svc", "auth")].status == "fail"
+        assert "auth setup svc" in results[("raft-svc", "auth")].fix
+        assert results[("raft-svc", "sync")].status == "fail"
+        assert "sync svc" in results[("raft-svc", "sync")].fix
+        assert results[("raft-svc", "certs")].status == "ok"
+        assert "tls: off" in results[("raft-svc", "certs")].detail
         assert results[(INFRA, "stack")].status == "warn"
         assert results[(INFRA, "port 80")].status == "ok"
 
@@ -285,10 +287,10 @@ class TestDoctor(ServicesTestCase):
                 results = self._by_key(
                     self._doctor(stack, shell=shell, auth=auth, docker=docker).run()
                 )
-        assert results[("svc", "auth")].status == "fail"
-        assert results[("svc", "sync")].status == "fail"
-        assert "not a git checkout" in results[("svc", "sync")].detail
-        assert "github.com/org/svc/settings/keys/new" in results[("svc", "auth")].fix
+        assert results[("raft-svc", "auth")].status == "fail"
+        assert results[("raft-svc", "sync")].status == "fail"
+        assert "not a git checkout" in results[("raft-svc", "sync")].detail
+        assert "github.com/org/svc/settings/keys/new" in results[("raft-svc", "auth")].fix
 
     def test_missing_compose_and_port_conflict(self) -> None:
         stack = make_stack(self.tmp_path, (make_app("app"),))
@@ -333,17 +335,17 @@ class TestDoctor(ServicesTestCase):
         shell = MagicMock()
         shell.run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         docker = MagicMock()
-        docker.running_services.return_value = ["gate"]
+        docker.running_services.return_value = ["raft-raft-gate"]
 
         with patch("raft.services.doctor.shutil.which", return_value="/usr/bin/docker"):
             with patch("raft.services.doctor.socket.create_connection"):
                 results = self._by_key(
                     self._doctor(stack, shell=shell, auth=auth, docker=docker).run()
                 )
-        assert results[("svc", "auth")].status == "ok"
-        assert results[("svc", "sync")].status == "ok"
-        assert results[("svc", "upstream")].status == "warn"
-        assert results[("svc", "certs")].status == "ok"
+        assert results[("raft-svc", "auth")].status == "ok"
+        assert results[("raft-svc", "sync")].status == "ok"
+        assert results[("raft-svc", "upstream")].status == "warn"
+        assert results[("raft-svc", "certs")].status == "ok"
         assert results[(INFRA, "stack")].status == "warn"
         assert "missing" in results[(INFRA, "stack")].detail
         assert results[(INFRA, "port 80")].status == "ok"
@@ -379,8 +381,8 @@ class TestDoctor(ServicesTestCase):
                 results = self._by_key(
                     self._doctor(shell=shell, docker=docker, auth=MagicMock()).run()
                 )
-        assert results[("app", "sync")].status == "fail"
-        assert results[("app", "certs")].status == "ok"
+        assert results[("raft-app", "sync")].status == "fail"
+        assert results[("raft-app", "certs")].status == "ok"
 
     def test_docker_source_image_checks(self) -> None:
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")
@@ -400,11 +402,11 @@ class TestDoctor(ServicesTestCase):
                 results = self._by_key(
                     self._doctor(stack, shell=shell, docker=docker, auth=MagicMock()).run()
                 )
-        assert results[("hub", "sync")].status == "ok"
-        assert "ghcr.io/org/hub:main" in results[("hub", "sync")].detail
-        assert results[("hub", "auth")].status == "ok"
-        assert "registry auth" in results[("hub", "auth")].detail
-        assert results[("hub", "contract")].status == "fail"
+        assert results[("raft-hub", "sync")].status == "ok"
+        assert "ghcr.io/org/hub:main" in results[("raft-hub", "sync")].detail
+        assert results[("raft-hub", "auth")].status == "ok"
+        assert "registry auth" in results[("raft-hub", "auth")].detail
+        assert results[("raft-hub", "contract")].status == "fail"
 
     def test_docker_with_repo_checks_contract_and_auth(self) -> None:
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")
@@ -449,9 +451,9 @@ class TestDoctor(ServicesTestCase):
                 results = self._by_key(
                     self._doctor(stack, shell=shell, docker=docker, auth=auth).run()
                 )
-        assert results[("hub", "contract")].status == "ok"
-        assert results[("hub", "auth")].status == "ok"
-        assert "deploy key present" in results[("hub", "auth")].detail
+        assert results[("raft-hub", "contract")].status == "ok"
+        assert results[("raft-hub", "auth")].status == "ok"
+        assert "deploy key present" in results[("raft-hub", "auth")].detail
 
     def test_docker_with_repo_warns_without_deploy_key(self) -> None:
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")
@@ -485,8 +487,8 @@ class TestDoctor(ServicesTestCase):
                 results = self._by_key(
                     self._doctor(stack, shell=shell, docker=docker, auth=auth).run()
                 )
-        assert results[("hub", "auth")].status == "warn"
-        assert results[("hub", "contract")].status == "fail"
+        assert results[("raft-hub", "auth")].status == "warn"
+        assert results[("raft-hub", "contract")].status == "fail"
 
     def test_contract_invalid_content(self) -> None:
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")
@@ -513,8 +515,8 @@ class TestDoctor(ServicesTestCase):
                 side_effect=OSError(),
             ):
                 results = self._by_key(self._doctor(stack, shell=shell, docker=docker).run())
-        assert results[("app", "contract")].status == "fail"
-        assert "apiVersion" in results[("app", "contract")].detail
+        assert results[("raft-app", "contract")].status == "fail"
+        assert "apiVersion" in results[("raft-app", "contract")].detail
 
     def test_docker_source_image_missing(self) -> None:
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")
@@ -534,8 +536,8 @@ class TestDoctor(ServicesTestCase):
                 results = self._by_key(
                     self._doctor(stack, shell=shell, docker=docker, auth=MagicMock()).run()
                 )
-        assert results[("hub", "sync")].status == "fail"
-        fix = results[("hub", "sync")].fix or ""
+        assert results[("raft-hub", "sync")].status == "fail"
+        fix = results[("raft-hub", "sync")].fix or ""
         assert "ghcr.io/org/hub:main" in fix
         assert "https://github.com/settings/tokens/new?scopes=read:packages" in fix
         assert "docker login ghcr.io" in fix
@@ -560,20 +562,15 @@ class TestDoctor(ServicesTestCase):
                 results = self._by_key(
                     self._doctor(shell=shell, docker=docker, auth=MagicMock()).run()
                 )
-        assert results[("app", "certs")].status == "fail"
-        assert "origin.key" in results[("app", "certs")].detail
-        assert "tls: origin" in results[("app", "certs")].fix
+        assert results[("raft-app", "certs")].status == "fail"
+        assert "origin.key" in results[("raft-app", "certs")].detail
+        assert "tls: origin" in results[("raft-app", "certs")].fix
 
     def test_report_raft_group_and_orphan_paths(self, capsys) -> None:
         write_applied_app(
             self.tmp_path,
-            "gate",
-            extra={"groups": ["raft"]},
-        )
-        write_applied_app(
-            self.tmp_path,
             "raftling",
-            extra={"groups": ["raft"]},
+            extra={"group": "raft"},
         )
         write_applied_app(self.tmp_path, "solo")
         stack = load_stack(self.tmp_path)
@@ -582,10 +579,10 @@ class TestDoctor(ServicesTestCase):
             d.report(
                 [
                     CheckResult(INFRA, "compose.yaml", "ok", "fine"),
-                    CheckResult(INFRA, "gate", "ok", "host check named gate"),
-                    CheckResult("gate", "running", "ok", "up"),
-                    CheckResult("raftling", "contract", "ok", "fine"),
-                    CheckResult("solo", "contract", "ok", "fine"),
+                    CheckResult(INFRA, "port 80", "ok", "host probe"),
+                    CheckResult("raft-raft-gate", "running", "ok", "up"),
+                    CheckResult("raft-raft-raftling", "contract", "ok", "fine"),
+                    CheckResult("raft-solo", "contract", "ok", "fine"),
                     CheckResult("orphan", "x", "ok", "fine"),
                 ],
                 color=False,
@@ -595,11 +592,11 @@ class TestDoctor(ServicesTestCase):
         out = capsys.readouterr().out
         assert "raft\n" in out
         assert "  compose.yaml\n" in out
-        assert "  gate\n" in out
-        assert "  raftling\n" in out
-        assert "ungrouped\n" in out
-        assert "  solo\n" in out
-        assert "  orphan\n" in out
+        assert "  raft-raft-gate\n" in out
+        assert "  raft-raft-raftling\n" in out
+        assert "ungrouped\n" not in out
+        assert "raft-solo\n" in out
+        assert "orphan\n" in out
 
         d2 = self._doctor(stack=make_stack(self.tmp_path, apps=()))
         assert (
@@ -613,10 +610,34 @@ class TestDoctor(ServicesTestCase):
             == 0
         )
         out2 = capsys.readouterr().out
-        assert "ungrouped\n" in out2
-        assert "  custom\n" in out2
+        assert "ungrouped\n" not in out2
+        assert "custom\n" in out2
 
-    def test_auth_deploy_key_fix_urls(self) -> None:
+    def test_report_edge_already_listed_and_raft_group_dedupe(self, capsys) -> None:
+        """Cover branches where edge/raft-group members are already ordered."""
+        from raft.models.app import GATE_COMPOSE_ID, ROUTER_COMPOSE_ID
+
+        write_applied_app(self.tmp_path, "gate", extra={"group": "raft"})
+        stack = load_stack(self.tmp_path)
+        d = self._doctor(stack=stack)
+        # INFRA check named like the gate compose id puts it in raft_members early.
+        assert (
+            d.report(
+                [
+                    CheckResult(INFRA, GATE_COMPOSE_ID, "ok", "probe"),
+                    CheckResult(INFRA, ROUTER_COMPOSE_ID, "ok", "probe"),
+                    CheckResult(INFRA, "docker", "ok", "fine"),
+                    CheckResult("raft-raft-gate", "contract", "ok", "app ok"),
+                ],
+                color=False,
+            )
+            == 0
+        )
+        out = capsys.readouterr().out
+        assert "raft\n" in out
+        assert GATE_COMPOSE_ID in out
+        assert "ungrouped\n" not in out
+
         assert "github.com/acme/site/settings/keys/new" in Doctor._auth_deploy_key_fix(
             "svc", "git@github.com:acme/site.git"
         )
@@ -630,8 +651,8 @@ class TestDoctor(ServicesTestCase):
             d.report(
                 [
                     CheckResult(INFRA, "docker", "ok", "fine"),
-                    CheckResult("svc", "auth", "fail", "bad", fix="fix"),
-                    CheckResult("other", "sync", "ok", "fine"),
+                    CheckResult("raft-svc", "auth", "fail", "bad", fix="fix"),
+                    CheckResult("raft-other", "sync", "ok", "fine"),
                 ],
                 color=False,
             )
@@ -641,8 +662,8 @@ class TestDoctor(ServicesTestCase):
         assert "raft\n" in out
         assert "  docker\n" in out
         assert "    OK" in out
-        assert "\nungrouped\n" in out or out.endswith("ungrouped\n") or "ungrouped\n" in out
-        assert "  svc\n" in out
-        assert "    FAIL  auth" in out
+        assert "ungrouped\n" not in out
+        assert "raft-svc\n" in out
+        assert "  FAIL" in out
         assert "fix → fix" in out
-        assert "  other\n" in out
+        assert "raft-other\n" in out

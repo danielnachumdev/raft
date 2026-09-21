@@ -32,7 +32,7 @@ class NginxUpstreams:
             if path.is_file():
                 logger.debug("upstream file already exists for %s/%s", app.name, port.name)
                 continue
-            self.point_at(app, app.name, port=port, reload=False)
+            self.point_at(app, app.compose_id, port=port, reload=False)
 
     def point_at(
         self,

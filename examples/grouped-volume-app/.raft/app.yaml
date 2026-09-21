@@ -1,7 +1,7 @@
 # Grouped docker app with an internal-only port and a bind volume.
 # Apply: raft apply --file examples/grouped-volume-app/.raft/app.yaml
 #
-# Demonstrates: spec.groups, spec.envFile, spec.volumes, expose: none.
+# Demonstrates: spec.group, spec.envFile, spec.volumes, expose: none.
 # Replace image/ref/paths for a real service before production use.
 
 apiVersion: raft/v1
@@ -10,7 +10,7 @@ metadata:
   name: grouped-volume-app
 
 spec:
-  groups: [demo]
+  group: demo
   source: docker
   image: redis
   ref: alpine

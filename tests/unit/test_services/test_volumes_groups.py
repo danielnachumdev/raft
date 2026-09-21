@@ -10,10 +10,9 @@ import pytest
 import yaml
 
 from raft.cli import get as get_cmd
-from raft.errors import OperatorError
 from raft.models.manifest import parse_app_document
 from raft.models.ports import PortSpec, port_by_name
-from raft.models.stack import Stack, load_stack
+from raft.models.stack import load_stack
 from raft.services.apply import AppApply
 from raft.services.doctor import CheckResult, Doctor, INFRA
 from raft.services.render import StackRenderer, _compose_str
@@ -65,14 +64,39 @@ class TestVolumesGroupsCoverage(RaftTestCase):
 
     def test_parse_name_list_and_env_volume_errors(self) -> None:
         data = _base_docker()
-        data["spec"]["groups"] = "demo"
+        data["spec"]["group"] = "demo"
         _, spec = parse_app_document(data, path=Path("a.yaml"))
-        assert spec.groups == ("demo",)
+        assert spec.group == "demo"
 
         data2 = _base_docker()
-        data2["spec"]["groups"] = 123
-        with pytest.raises(ValueError, match="must be a string or array"):
+        data2["spec"]["group"] = 123
+        with pytest.raises(ValueError, match="spec.group must be a string"):
             parse_app_document(data2, path=Path("b.yaml"))
+
+        data2b = _base_docker()
+        data2b["spec"]["groups"] = ["demo"]
+        with pytest.raises(ValueError, match="use spec.group"):
+            parse_app_document(data2b, path=Path("b2.yaml"))
+
+        data2c = _base_docker()
+        data2c["spec"]["group"] = ["demo", "other"]
+        with pytest.raises(ValueError, match="not a list"):
+            parse_app_document(data2c, path=Path("b3.yaml"))
+
+        data2d = _base_docker()
+        data2d["spec"]["dependsOn"] = "stack-redis"
+        _, spec2d = parse_app_document(data2d, path=Path("b4.yaml"))
+        assert spec2d.depends_on == ("stack-redis",)
+
+        data2e = _base_docker()
+        data2e["spec"]["dependsOn"] = 123
+        with pytest.raises(ValueError, match="must be a string or array"):
+            parse_app_document(data2e, path=Path("b5.yaml"))
+
+        data2f = _base_docker()
+        data2f["spec"]["dependsOn"] = ["a", "a", ""]
+        _, spec2f = parse_app_document(data2f, path=Path("b6.yaml"))
+        assert spec2f.depends_on == ("a",)
 
         data3 = _base_docker()
         data3["spec"]["envFile"] = 1
@@ -139,9 +163,14 @@ class TestVolumesGroupsCoverage(RaftTestCase):
             parse_app_document(data14, path=Path("n.yaml"))
 
         data15 = _base_docker()
-        data15["spec"]["groups"] = ["demo", "demo", ""]
+        data15["spec"]["group"] = "  "
         _, spec15 = parse_app_document(data15, path=Path("o.yaml"))
-        assert spec15.groups == ("demo",)
+        assert spec15.group is None
+
+        data15b = _base_docker()
+        data15b["spec"]["group"] = "Bad_Name"
+        with pytest.raises(ValueError, match="spec.group"):
+            parse_app_document(data15b, path=Path("o2.yaml"))
 
         data16 = _base_docker()
         data16["spec"]["volumes"] = [
@@ -154,17 +183,14 @@ class TestVolumesGroupsCoverage(RaftTestCase):
         write_applied_app(
             self.tmp_path,
             "a",
-            extra={"groups": ["demo"]},
+            extra={"group": "demo"},
         )
         write_applied_app(self.tmp_path, "b")
         stack = load_stack(self.tmp_path)
         get_cmd.get_apps(stack, group="demo")
         get_cmd.get_apps(stack, group="missing")
         get_cmd.get_app(stack, "a")
-
-        with patch.object(Stack, "spec_for", side_effect=ValueError("boom")):
-            get_cmd.get_apps(stack)
-            get_cmd.get_app(stack, "a")
+        get_cmd.get_apps(stack)
 
     def test_apply_warns_missing_depends_on(self) -> None:
         path = self.tmp_path / "app.yaml"
@@ -198,11 +224,11 @@ class TestVolumesGroupsCoverage(RaftTestCase):
             "dependsOn not yet applied" in str(c) for c in say_git.call_args_list
         )
 
-    def test_doctor_groups_banner(self) -> None:
+    def test_doctor_group_banner(self) -> None:
         write_applied_app(
             self.tmp_path,
             "stack-a",
-            extra={"groups": ["demo"]},
+            extra={"group": "demo"},
         )
         write_applied_app(self.tmp_path, "solo")
         stack = load_stack(self.tmp_path)
@@ -210,31 +236,27 @@ class TestVolumesGroupsCoverage(RaftTestCase):
         buf = StringIO()
         results = [
             CheckResult(INFRA, "docker", "ok", "fine"),
-            CheckResult("stack-a", "contract", "ok", "fine"),
-            CheckResult("solo", "contract", "ok", "fine"),
+            CheckResult("raft-demo-stack-a", "contract", "ok", "fine"),
+            CheckResult("raft-solo", "contract", "ok", "fine"),
         ]
         assert d.report(results, out=buf, color=False) == 0
         text = buf.getvalue()
         assert "demo\n" in text
-        assert "  stack-a\n" in text
-        assert "ungrouped\n" in text
-        assert "  solo\n" in text
+        assert "  raft-demo-stack-a\n" in text
+        assert "ungrouped\n" not in text
+        assert "raft-solo\n" in text
         assert "group: demo" not in text
         assert "infra\n" not in text
         assert "raft\n" in text
-        assert "  gate\n" in text
-        assert "  router\n" in text
-
-        with patch.object(Stack, "spec_for", side_effect=OperatorError("x")):
-            buf2 = StringIO()
-            assert d.report(results, out=buf2, color=False) == 0
+        assert "  raft-raft-gate\n" in text
+        assert "  raft-raft-router\n" in text
 
         only_grouped = self.tmp_path / "grouped-only"
         only_grouped.mkdir()
         write_applied_app(
             only_grouped,
             "stack-b",
-            extra={"groups": ["demo"]},
+            extra={"group": "demo"},
         )
         stack2 = load_stack(only_grouped)
         d2 = Doctor(stack2, shell=MagicMock(), auth=MagicMock(), docker=MagicMock())
@@ -243,14 +265,17 @@ class TestVolumesGroupsCoverage(RaftTestCase):
             d2.report(
                 [
                     CheckResult(INFRA, "docker", "ok", "fine"),
-                    CheckResult("stack-b", "contract", "ok", "fine"),
+                    CheckResult("raft-demo-stack-b", "contract", "ok", "fine"),
                 ],
                 out=buf3,
                 color=False,
             )
             == 0
         )
-        assert "ungrouped" not in buf3.getvalue()
+        text3 = buf3.getvalue()
+        assert "ungrouped\n" not in text3
+        assert "demo\n" in text3
+        assert "  raft-demo-stack-b\n" in text3
 
     def test_render_quoted_env(self) -> None:
         write_applied_app(

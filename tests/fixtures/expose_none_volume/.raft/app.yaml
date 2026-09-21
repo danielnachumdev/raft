@@ -3,7 +3,7 @@ kind: App
 metadata:
   name: expose-none-vol
 spec:
-  groups: [demo]
+  group: demo
   source: docker
   image: redis
   ref: alpine

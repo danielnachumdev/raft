@@ -434,7 +434,7 @@ class TestStackRenderer(RaftTestCase):
             extra={
                 "ports": [{"name": "redis", "containerPort": 6379, "expose": "none"}],
                 "readiness": {"type": "tcp", "port": "redis"},
-                "groups": ["demo"],
+                "group": "demo",
                 "envFile": "/home/raft/.raft/demo.env",
                 "env": {"FOO": "bar"},
                 "volumes": [
@@ -463,7 +463,7 @@ class TestStackRenderer(RaftTestCase):
                     }
                 ],
                 "readiness": {"type": "tcp", "port": "smtp"},
-                "groups": ["demo"],
+                "group": "demo",
                 "dependsOn": ["stack-redis"],
                 "envFile": "/home/raft/.raft/demo.env",
             },
@@ -475,13 +475,13 @@ class TestStackRenderer(RaftTestCase):
         assert "/home/raft/.raft/demo.env" in apps
         assert "FOO: bar" in apps
         assert "/mnt/raft-data/demo/redis:/data" in apps
-        assert "stack-redis:" in apps
+        assert "raft-demo-stack-redis:" in apps
         assert "condition: service_started" in apps
         assert '"25:25"' in apps
 
 
 class TestAppSpecExtensions(RaftTestCase):
-    def test_parse_groups_volumes_env(self) -> None:
+    def test_parse_group_volumes_env(self) -> None:
         data = {
             "apiVersion": "raft/v1",
             "kind": "App",
@@ -491,7 +491,7 @@ class TestAppSpecExtensions(RaftTestCase):
                 "image": "redis",
                 "ref": "alpine",
                 "path": "apps/stack-redis",
-                "groups": ["demo"],
+                "group": "demo",
                 "dependsOn": ["stack-front"],
                 "envFile": "/home/raft/.raft/demo.env",
                 "env": {"A": "1"},
@@ -509,7 +509,7 @@ class TestAppSpecExtensions(RaftTestCase):
         }
         app, spec = parse_app_document(data, path=Path("app.yaml"))
         assert app.public_host == ""
-        assert spec.groups == ("demo",)
+        assert spec.group == "demo"
         assert spec.depends_on == ("stack-front",)
         assert spec.env_file == "/home/raft/.raft/demo.env"
         assert spec.env == (("A", "1"),)
@@ -531,8 +531,8 @@ class TestAppSpecExtensions(RaftTestCase):
             },
         }
         bad_group = yaml.safe_load(yaml.safe_dump(base))
-        bad_group["spec"]["groups"] = ["Mailu"]
-        with pytest.raises(ValueError, match="spec.groups"):
+        bad_group["spec"]["group"] = "Mailu"
+        with pytest.raises(ValueError, match="spec.group"):
             parse_app_document(bad_group, path=Path("g.yaml"))
         bad_vol = yaml.safe_load(yaml.safe_dump(base))
         bad_vol["spec"]["volumes"] = [

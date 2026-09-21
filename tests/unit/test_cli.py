@@ -213,7 +213,7 @@ class TestCli(RaftTestCase):
         stack = load_stack(self.tmp_path)
         err = subprocess.CalledProcessError(
             1,
-            ["docker", "compose", "exec", "-T", "gate", "nginx", "-t"],
+            ["docker", "compose", "exec", "-T", "raft-raft-gate", "nginx", "-t"],
             stderr=(
                 'cannot load certificate "/etc/nginx/certs/web/origin.pem": '
                 "BIO_new_file() failed (SSL: error:80000002:system library::No such file)\n"
@@ -269,7 +269,7 @@ class TestCli(RaftTestCase):
     def test_run_cert_error_fallback_when_stack_load_fails(self, capsys) -> None:
         err = subprocess.CalledProcessError(
             1,
-            ["docker", "compose", "exec", "-T", "gate", "nginx", "-t"],
+            ["docker", "compose", "exec", "-T", "raft-raft-gate", "nginx", "-t"],
             stderr='cannot load certificate "/etc/nginx/certs/web/origin.pem"\n',
         )
         self.orch.stop.side_effect = err
@@ -284,7 +284,7 @@ class TestCli(RaftTestCase):
     def test_run_cert_error_fallback_when_no_missing_listed(self, capsys) -> None:
         err = subprocess.CalledProcessError(
             1,
-            ["docker", "compose", "exec", "-T", "gate", "nginx", "-t"],
+            ["docker", "compose", "exec", "-T", "raft-raft-gate", "nginx", "-t"],
             stderr='cannot load certificate "/etc/nginx/certs/web/origin.pem"\n',
         )
         self.orch.stop.side_effect = err

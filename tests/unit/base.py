@@ -21,6 +21,7 @@ def make_app(
     repo: Optional[str] = None,
     ref: str = "main",
     image: Optional[str] = None,
+    group: Optional[str] = None,
 ) -> App:
     return App(
         name=name,
@@ -30,6 +31,7 @@ def make_app(
         repo=repo,
         ref=ref,
         image=image,
+        group=group,
     )
 
 

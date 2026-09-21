@@ -12,6 +12,8 @@ from typing import Any, Optional
 
 import yaml
 
+from raft.models.app import ROUTER_COMPOSE_ID
+
 
 def docker_available() -> bool:
     if shutil.which("docker") is None:
@@ -37,6 +39,7 @@ def apps_only_compose(generated: Path, dest: Path) -> Path:
     raw = yaml.safe_load((generated / "compose.apps.yaml").read_text(encoding="utf-8"))
     services = dict(raw.get("services") or {})
     services.pop("router", None)
+    services.pop(ROUTER_COMPOSE_ID, None)
     for name, svc in list(services.items()):
         if not isinstance(svc, dict):
             continue

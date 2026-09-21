@@ -15,12 +15,19 @@ from ..config.paths import (
     ensure_raft_home,
     raft_home,
 )
-from .app import COMPOSE_PROJECT, App
+from .app import (
+    COMPOSE_PROJECT,
+    GATE_COMPOSE_ID,
+    ROUTER_COMPOSE_ID,
+    App,
+)
 from .manifest import load_app_file, load_registry, registry_path
 from .ports import PortSpec
 
 __all__ = [
     "COMPOSE_PROJECT",
+    "GATE_COMPOSE_ID",
+    "ROUTER_COMPOSE_ID",
     "App",
     "Stack",
     "load_stack",
@@ -31,8 +38,8 @@ __all__ = [
 class Stack:
     root: Path
     apps: tuple[App, ...]
-    gate: str = "gate"
-    router: str = "router"
+    gate: str = GATE_COMPOSE_ID
+    router: str = ROUTER_COMPOSE_ID
     public_base_url: str = "http://127.0.0.1"
     state_dir: str = DEPLOY_DIRNAME
     drain_seconds: float = 3.0
@@ -47,7 +54,7 @@ class Stack:
 
     @property
     def core_services(self) -> tuple[str, ...]:
-        return (self.gate, self.router, *(app.name for app in self.apps))
+        return (self.gate, self.router, *(app.compose_id for app in self.apps))
 
     @property
     def upstreams_dir(self) -> Path:

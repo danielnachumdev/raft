@@ -114,7 +114,8 @@ class Orchestrator:
         if missing:
             raise OperatorError(
                 f"stack start incomplete — missing running services: {missing}.\n"
-                f"Fix: docker compose -f ~/.raft/compose.yaml logs gate router\n"
+                f"Fix: docker compose -f ~/.raft/compose.yaml logs "
+                f"{self.stack.gate} {self.stack.router}\n"
                 f"     raft render && raft doctor"
             )
 
@@ -130,10 +131,11 @@ class Orchestrator:
         say("stack stopped", style="ok")
 
     def redeploy(self, target: str) -> None:
-        if target == self.stack.router:
+        # Accept short edge aliases (gate/router) or full compose ids.
+        if target in ("router", self.stack.router):
             self.redeploy_router()
             return
-        if target == self.stack.gate:
+        if target in ("gate", self.stack.gate):
             raise OperatorError(
                 "refusing to redeploy `gate` — it is the stable public edge. "
                 "To change published edge ports, run `raft gate recreate` "
@@ -222,7 +224,7 @@ class Orchestrator:
         """Deploy an applied app: cutover if running, start service if edge is up, else full up."""
         app = self.stack.app(app_name)
         running = self.docker.running_services()
-        if app_name in running:
+        if app.compose_id in running:
             self.redeploy_app(app_name, ref_override=ref_override, force_sync=force_sync)
             return
         if self.stack.gate in running:
@@ -240,9 +242,9 @@ class Orchestrator:
         force_sync: bool,
     ) -> None:
         """Gate/router already up; sync, start this Compose service, reload router, wait ready."""
-        logger.info("edge up; starting new app service %s", app.name)
+        logger.info("edge up; starting new app service %s", app.compose_id)
         self.sync([app.name], ref_override=ref_override, force=force_sync)
-        self.docker.rebuild_service(app.name)
+        self.docker.rebuild_service(app.compose_id)
         self.docker.nginx_test_and_reload()
         self._wait_app_ready(app, timeout=45)
         say(f"deployed {app.name}", style="ok")

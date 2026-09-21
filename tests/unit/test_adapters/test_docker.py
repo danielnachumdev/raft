@@ -18,9 +18,9 @@ class TestDockerStack(AdapterTestCase):
 
     def test_start_stop_and_running(self) -> None:
         def compose(*args, **kwargs):
-            if args[:1] == ("ps",) and "gate" in args:
+            if args[:1] == ("ps",) and "raft-raft-gate" in args:
                 return self.ok("cid1\n")
-            if args[:1] == ("ps",) and "app" in args:
+            if args[:1] == ("ps",) and "raft-app" in args:
                 # Newly applied service not in compose yet.
                 return self.ok("", returncode=1)
             if args[:1] == ("ps",):
@@ -28,9 +28,9 @@ class TestDockerStack(AdapterTestCase):
             return self.ok()
 
         self.shell.compose.side_effect = compose
-        assert self.docker.running_services() == ["gate"]
+        assert self.docker.running_services() == ["raft-raft-gate"]
         self.shell.compose.assert_any_call(
-            "ps", "-q", "--status", "running", "gate", capture=True, check=False
+            "ps", "-q", "--status", "running", "raft-raft-gate", capture=True, check=False
         )
         self.docker.start_stack()
         self.docker.stop_stack()
@@ -47,7 +47,7 @@ class TestDockerStack(AdapterTestCase):
         self.docker.recreate_router()
         self.docker.rebuild_service("app")
         self.shell.compose.assert_any_call(
-            "up", "-d", "--no-deps", "--force-recreate", "router",
+            "up", "-d", "--no-deps", "--force-recreate", "raft-raft-router",
             capture=True, check=False,
         )
         self.shell.compose.assert_any_call(
@@ -67,7 +67,7 @@ class TestDockerStack(AdapterTestCase):
             capture=True, check=False,
         )
         self.shell.compose.assert_any_call(
-            "up", "-d", "--no-deps", "--no-build", "--force-recreate", "hub",
+            "up", "-d", "--no-deps", "--no-build", "--force-recreate", "raft-hub",
             capture=True, check=False,
         )
 
@@ -142,10 +142,10 @@ class TestDockerStack(AdapterTestCase):
         self.shell.compose.return_value = self.ok()
         self.docker.nginx_test_and_reload()
         self.shell.compose.assert_any_call(
-            "exec", "-T", "router", "nginx", "-t", capture=True, check=False
+            "exec", "-T", "raft-raft-router", "nginx", "-t", capture=True, check=False
         )
         self.shell.compose.assert_any_call(
-            "exec", "-T", "router", "nginx", "-s", "reload",
+            "exec", "-T", "raft-raft-router", "nginx", "-s", "reload",
             capture=True, check=False,
         )
 
@@ -153,10 +153,10 @@ class TestDockerStack(AdapterTestCase):
         self.shell.compose.return_value = self.ok()
         self.docker.reload_gate_nginx()
         self.shell.compose.assert_any_call(
-            "exec", "-T", "gate", "nginx", "-t", capture=True, check=False
+            "exec", "-T", "raft-raft-gate", "nginx", "-t", capture=True, check=False
         )
         self.shell.compose.assert_any_call(
-            "exec", "-T", "gate", "nginx", "-s", "reload",
+            "exec", "-T", "raft-raft-gate", "nginx", "-s", "reload",
             capture=True, check=False,
         )
 
@@ -247,7 +247,7 @@ class TestDockerStack(AdapterTestCase):
         self.shell.compose.return_value = self.ok("gatecid\n")
         self.docker.recreate_gate()
         self.shell.compose.assert_any_call(
-            "up", "-d", "--no-deps", "--force-recreate", "gate",
+            "up", "-d", "--no-deps", "--force-recreate", "raft-raft-gate",
             capture=True, check=False,
         )
         self.shell.docker.return_value = self.ok("80/tcp 443/tcp\n")

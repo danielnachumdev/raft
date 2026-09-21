@@ -2,7 +2,7 @@
 
 Single source of truth for extending raft so **multi-service stacks** can be expressed as **N Apps** with shared operator control via **groups**.
 
-**Consumer plan:** private ops `docs/cloud-sql-plan.md` Phase **Mr** / **M5** (deploy = consumer mail stack Apps `stack-*`, `spec.groups: [demo]`).
+**Consumer plan:** private ops `docs/cloud-sql-plan.md` Phase **Mr** / **M5** (deploy = consumer mail stack Apps `stack-*`, `spec.group: [demo]`).
 
 **Do not invent alternate field names mid-flight;** edit this file first.
 
@@ -43,9 +43,9 @@ Canonical file remains **`.raft/app.yaml`** per App path (`apply --git … --pat
 apiVersion: raft/v1
 kind: App
 metadata:
-  name: stack-front          # Compose service name; prefer a shared prefix per stack
+  name: stack-front          # metadata.name (registry/CLI); Compose id is raft-demo-stack-front
 spec:
-  groups: [demo]            # NEW — non-empty strings; order preserved; dedupe
+  group: demo            # NEW — non-empty strings; order preserved; dedupe
   dependsOn: [stack-smtp, stack-imap, stack-admin]  # NEW — other App names; optional
   envFile: /home/raft/.raft/demo.env               # NEW — absolute or ~/.raft-relative; optional
   env:                       # NEW — optional map; overrides envFile keys if both set
@@ -62,7 +62,7 @@ spec:
 
 | Field | Rules |
 |-------|--------|
-| `groups` | List of strings `[a-z][a-z0-9-]*`; empty/omit = ungrouped; app may be in multiple groups |
+| `group` | List of at most one string `[a-z][a-z0-9-]*`; empty/omit = ungrouped |
 | `dependsOn` | List of App names that must exist in registry when deploying group actions; **warn** on apply if missing (v1); render emits Compose `depends_on` with `condition: service_started` (not healthy — peers may lack healthchecks) |
 | `envFile` | Single path string; must be readable at **render/deploy** time on the VPS; rendered as Compose `env_file: […]` |
 | `env` | Map string→string; rendered as Compose `environment:`; **wins over** envFile for same key |
@@ -79,7 +79,7 @@ kind: App
 metadata:
   name: stack-redis
 spec:
-  groups: [demo]
+  group: demo
   source: docker
   image: redis
   ref: alpine
@@ -114,10 +114,10 @@ Internal smtp/imap/redis/antispam-style services use `expose: none`. Front uses 
 | Area | Change |
 |------|--------|
 | `models/ports.py` | Allow `expose: none` |
-| `models/manifest.py` | Parse `groups`, `dependsOn`, `envFile`, `env`, `volumes`; store on `AppSpec` |
+| `models/manifest.py` | Parse `group`, `dependsOn`, `envFile`, `env`, `volumes`; store on `AppSpec` |
 | `models/app.py` / registry | Persist new fields through apply → state YAML round-trip |
 | `services/render.py` | Emit `env_file`, `environment`, `volumes`, per-app `depends_on` |
-| `services/doctor.py` | Section or grouping by `groups`; list ungrouped separately |
+| `services/doctor.py` | Section or grouping by `group`; list ungrouped separately |
 | `cli` (`get apps`) | Show group column / filter `--group` |
 | `AGENTS.md` + `examples/` | Document fields; add `examples/grouped-volume-app/` |
 | Tests | Parse, render snapshots, doctor grouping, reject bad paths |
@@ -132,7 +132,7 @@ Router `depends_on` all apps (existing) stays. App→app `dependsOn` is additive
 |---|------|-----|--------|
 | 0 | This plan + schema lock | Me / You approve | **done** (You approved 2026-09-21) |
 | 1 | `expose: none` in ports model + tests | Me | **done** |
-| 2 | Parse `groups` / `dependsOn` / `envFile` / `env` / `volumes` on `AppSpec` | Me | **done** |
+| 2 | Parse `group` / `dependsOn` / `envFile` / `env` / `volumes` on `AppSpec` | Me | **done** |
 | 3 | Registry round-trip (apply state YAML keeps new fields) | Me | **done** |
 | 4 | Render Compose fragments | Me | **done** |
 | 5 | Doctor + `get apps` group listing / `--group` | Me | **done** |
@@ -148,7 +148,7 @@ Router `depends_on` all apps (existing) stays. App→app `dependsOn` is additive
 
 **Who:** **You**
 
-Confirm locked field names above (`groups`, `dependsOn`, `envFile`, `env`, `volumes`, `expose: none`). Reply `Mr schema approved` or request renames **before** Step 1.
+Confirm locked field names above (`group`, `dependsOn`, `envFile`, `env`, `volumes`, `expose: none`). Reply `Mr schema approved` or request renames **before** Step 1.
 
 ---
 
@@ -194,7 +194,7 @@ uv run pytest tests/unit/test_models/test_manifest.py -q
 #### Execute
 
 - Ensure `apply` writes and reloads new fields from `~/.raft/state/apps/<name>.yaml`.
-- Existing apps without fields keep defaults (empty groups, no volumes).
+- Existing apps without fields keep defaults (no group, no volumes).
 
 #### Sanity
 
@@ -242,7 +242,7 @@ uv run pytest tests/unit --cov=raft --cov-fail-under=100 -q
 
 #### Execute
 
-- `raft doctor`: group-first layout — heading `raft` (edge + host checks), then App groups (`demo`, …), then `ungrouped`; each member indented with status.
+- `raft doctor`: group-first layout — heading `raft` (edge compose ids + host checks), then App groups (`demo`, …); ungrouped apps with no heading. Members use Compose ids (`raft-NAME` / `raft-GROUP-NAME`).
 - `raft get apps [--group demo]`: filter; default table adds Groups column.
 - Optional (if small): `raft redeploy --group demo` = redeploy each member in `dependsOn` topological order (defer if large).
 
@@ -313,7 +313,7 @@ Sites must remain healthy (no demo Apps applied yet).
 
 1. **`envFile` path ownership** — file must be readable by Docker; mode 600 `raft:raft` is OK if compose runs as that user.
 2. **Front vs raft gate on 80/443** — admin UI via gate; front must not host-publish 80/443 (private ops plan). Confirm the front image works with only mail ports published (may need overrides).
-3. **Service DNS names** — Compose service name = `metadata.name` (`stack-front`). Consumer env often expects short hostnames like `front` / `admin`. May need `spec.hostnames` / network aliases later, or env overrides (`FRONT_ADDRESS=stack-front`). **Flag for M5:** set consumer env to raft service names.
+3. **Service DNS names** — Compose service id = `raft-{name}` or `raft-{group}-{name}` (project `raft` → containers `raft-raft-…-1`). Consumer env must use those hostnames (or add network aliases later).
 4. **Group actions v1 scope** — doctor + get only in v1; `redeploy --group` deferred (You OK 2026-09-21).
 
 ---
