@@ -1,0 +1,26 @@
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: expose-none-vol
+spec:
+  groups: [demo]
+  source: docker
+  image: redis
+  ref: alpine
+  path: apps/expose-none-vol
+  www: false
+  envFile: /tmp/raft-e2e-demo.env
+  env:
+    DEMO_FLAG: "1"
+  volumes:
+    - name: data
+      hostPath: /tmp/raft-e2e-vol
+      containerPath: /data
+      readOnly: false
+  ports:
+    - name: redis
+      containerPort: 6379
+      expose: none
+  readiness:
+    type: tcp
+    port: redis

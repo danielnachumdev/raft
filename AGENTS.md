@@ -153,7 +153,7 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | `src/raft/services/` | apply, auth, sync, render, edge handlers, cutover, orchestrator, doctor |
 | `src/raft/config/` | `~/.raft` paths, `settings.yaml` (logging + edge), logging setup |
 | `src/raft/share/` | Product Compose + nginx templates (synced into data home) |
-| `tests/` | Mirrors packages (`test_*`); class-based; **`--cov-fail-under=100`** |
+| `tests/` | `unit/` (100% cov), `integration/` (render artifacts), `e2e/` (Docker Compose) — see [`docs/testing-plan.md`](docs/testing-plan.md) |
 
 Compose mounts `generated/nginx/upstreams` into the router. Upstream files are keyed by app + port name (`<app>-<port>.conf`).
 
@@ -179,7 +179,10 @@ If the host is rooted, container-readable secrets are burned. Prefer external st
 
 ## Tests & commits
 
-- `uv sync --extra dev` then `uv run pytest` — keep **100%** branch coverage.
+- `uv sync --extra dev` then see [`docs/testing-plan.md`](docs/testing-plan.md):
+  - `uv run pytest tests/unit --cov=raft --cov-fail-under=100` — **100%** branch coverage
+  - `uv run pytest` — unit + integration (default)
+  - `uv run pytest tests/e2e -m e2e` — Docker required; runs on all CI Python versions
 - **No function-local imports** — all `import` / `from … import` belong at module scope (fix cycles by restructuring, not by lazy imports).
 - Only commit when asked. Prefer `git mv` for renames.
 - Do not reintroduce committed consumer app names, upstreams, or PEMs.

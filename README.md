@@ -56,8 +56,10 @@ See **[`examples/`](examples/)** for copy-paste samples: operator [`settings.yam
 ```bash
 git clone https://github.com/danielnachumdev/raft.git && cd raft
 uv sync --extra dev
-uv run pytest          # 100% coverage required
+uv run pytest                              # unit + integration
+uv run pytest tests/unit --cov=raft --cov-fail-under=100
+uv run pytest tests/e2e -m e2e             # needs Docker; all CI Py versions
 uv run raft -- --help  # or re-run ./install.sh / uv tool install --force -e .
 ```
 
-Working on the codebase? See **[AGENTS.md](AGENTS.md)** for architecture rules, package map, and operator invariants.
+Working on the codebase? See **[AGENTS.md](AGENTS.md)** and **[docs/testing-plan.md](docs/testing-plan.md)**.

@@ -165,7 +165,7 @@ Confirm locked field names above (`groups`, `dependsOn`, `envFile`, `env`, `volu
 
 ```bash
 cd /home/danielnachumdev/dev/projects/raft
-uv run pytest tests/test_models/ -q --tb=no
+uv run pytest tests/unit/test_models/ -q --tb=no
 ```
 
 ---
@@ -182,7 +182,7 @@ uv run pytest tests/test_models/ -q --tb=no
 #### Sanity
 
 ```bash
-uv run pytest tests/test_models/test_manifest.py -q
+uv run pytest tests/unit/test_models/test_manifest.py -q
 ```
 
 ---
@@ -199,7 +199,7 @@ uv run pytest tests/test_models/test_manifest.py -q
 #### Sanity
 
 ```bash
-uv run pytest tests/test_services/test_apply.py tests/test_models/ -q
+uv run pytest tests/unit/test_services/test_apply.py tests/unit/test_models/ -q
 ```
 
 ---
@@ -230,8 +230,8 @@ Emit under each service (when set):
 #### Sanity
 
 ```bash
-uv run pytest tests/test_services/test_render.py -q
-uv run pytest --cov=raft --cov-fail-under=100 -q
+uv run pytest tests/unit/test_services/ -q
+uv run pytest tests/unit --cov=raft --cov-fail-under=100 -q
 ```
 
 ---
@@ -249,7 +249,7 @@ uv run pytest --cov=raft --cov-fail-under=100 -q
 #### Sanity
 
 ```bash
-uv run pytest tests/test_services/test_doctor.py tests/test_cli/ -q
+uv run pytest tests/unit/test_services/test_doctor.py tests/unit/test_cli.py -q
 ```
 
 ---
@@ -276,7 +276,7 @@ You skim `AGENTS.md` diff.
 
 ```bash
 cd /home/danielnachumdev/dev/projects/raft
-uv run pytest --cov=raft --cov-fail-under=100
+uv run pytest tests/unit --cov=raft --cov-fail-under=100
 ```
 
 **Expect:** pass.

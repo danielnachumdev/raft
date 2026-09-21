@@ -1,0 +1,20 @@
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: tls-origin
+spec:
+  publicHost: secure.test
+  www: false
+  tls: origin
+  source: docker
+  image: hashicorp/http-echo
+  ref: "1.0.0"
+  path: apps/tls-origin
+  ports:
+    - name: http
+      containerPort: 5678
+      expose: http
+  readiness:
+    type: http
+    port: http
+    path: /

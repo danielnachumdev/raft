@@ -1,0 +1,18 @@
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: mailu-redis
+spec:
+  groups: [mailu]
+  source: docker
+  image: redis
+  ref: alpine
+  path: apps/mailu-redis
+  www: false
+  ports:
+    - name: redis
+      containerPort: 6379
+      expose: none
+  readiness:
+    type: tcp
+    port: redis

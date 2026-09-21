@@ -1,0 +1,25 @@
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: http-plus-stream
+spec:
+  publicHost: mail-ui.test
+  www: false
+  tls: off
+  source: docker
+  image: hashicorp/http-echo
+  ref: "1.0.0"
+  path: apps/http-plus-stream
+  ports:
+    - name: http
+      containerPort: 5678
+      expose: http
+    - name: smtp
+      containerPort: 25
+      expose: stream
+      publicPort: 25
+      protocol: tcp
+  readiness:
+    type: http
+    port: http
+    path: /

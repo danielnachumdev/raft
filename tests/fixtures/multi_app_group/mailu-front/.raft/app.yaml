@@ -1,0 +1,21 @@
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: mailu-front
+spec:
+  groups: [mailu]
+  dependsOn: [mailu-redis]
+  source: docker
+  image: hashicorp/http-echo
+  ref: "1.0.0"
+  path: apps/mailu-front
+  www: false
+  ports:
+    - name: http
+      containerPort: 5678
+      expose: http
+  publicHost: front.test
+  readiness:
+    type: http
+    port: http
+    path: /

@@ -1,0 +1,20 @@
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: http-only
+spec:
+  publicHost: site.test
+  www: true
+  tls: off
+  source: docker
+  image: hashicorp/http-echo
+  ref: "1.0.0"
+  path: apps/http-only
+  ports:
+    - name: http
+      containerPort: 5678
+      expose: http
+  readiness:
+    type: http
+    port: http
+    path: /

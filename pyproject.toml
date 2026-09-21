@@ -33,13 +33,16 @@ raft = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+# Default: unit + integration. E2E is opt-in (needs Docker): pytest tests/e2e -m e2e
+testpaths = ["tests/unit", "tests/integration"]
 pythonpath = [".", "src"]
 addopts = [
     "--import-mode=importlib",
-    "--cov=raft",
-    "--cov-report=term-missing",
-    "--cov-fail-under=100",
+]
+markers = [
+    "unit: fast mocked unit tests",
+    "integration: app.yaml → render artifact checks (no Docker)",
+    "e2e: Docker Compose runtime checks (skipped without Docker)",
 ]
 
 [tool.coverage.run]
