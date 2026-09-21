@@ -29,6 +29,8 @@ class TestSelfUpdate(ServicesTestCase):
         out = capsys.readouterr().out
         assert "Updating raft" in out
         assert "OK: raft updated" in out
+        assert "raft render" in out
+        assert "raft down && raft up" in out
         assert "RAFT_INSTALL_QUIET=1" in args[2]
 
     def test_run_reports_already_up_to_date_when_identity_unchanged(
@@ -44,6 +46,7 @@ class TestSelfUpdate(ServicesTestCase):
         assert "Updating raft" in out
         assert "raft is already up to date" in out
         assert "OK: raft updated" not in out
+        assert "raft render" not in out
 
     def test_run_reports_updated_when_identity_changes(self, capsys, monkeypatch) -> None:
         monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
@@ -55,6 +58,7 @@ class TestSelfUpdate(ServicesTestCase):
         upd.run()
         out = capsys.readouterr().out
         assert "OK: raft updated" in out
+        assert "raft down && raft up" in out
         assert "already up to date" not in out
 
     def test_run_respects_install_url_env(self, monkeypatch) -> None:

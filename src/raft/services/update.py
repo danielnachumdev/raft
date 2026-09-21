@@ -80,3 +80,11 @@ class SelfUpdate:
             say("raft is already up to date", style="info")
             return
         say("OK: raft updated", style="ok")
+        say(
+            "Next: align the running stack with this release — templates and "
+            "Compose ids can change. Typical path: `raft render`, then "
+            "`raft redeploy <app|router>` for targeted updates, or "
+            "`raft down && raft up` when edge/service names or schemas shifted. "
+            "Finish with `raft doctor`.",
+            style="info",
+        )
