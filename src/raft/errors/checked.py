@@ -100,11 +100,25 @@ def run_compose_checked(
     *,
     action: str,
     hint: str = "",
+    stream: bool = False,
 ):
-    """Run ``docker compose *args`` with capture; raise OperatorError on failure."""
-    result = shell.compose(*args, capture=True, check=False)
+    """Run ``docker compose *args``; raise OperatorError on failure.
+
+    When ``stream`` is True, compose stdout/stderr inherit the terminal so
+    operators see live ``up``/``down`` progress (no capture buffering).
+    """
+    result = shell.compose(*args, capture=not stream, check=False)
     if result.returncode == 0:
         return result
+    if stream:
+        # Failure details already printed by compose on the terminal.
+        raise OperatorError(
+            compose_failure_message(
+                action,
+                detail="",
+                hint=hint or "see docker compose output above",
+            )
+        )
     exc = subprocess.CalledProcessError(
         result.returncode,
         ["docker", "compose", *args],

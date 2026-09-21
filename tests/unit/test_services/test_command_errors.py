@@ -87,6 +87,17 @@ class TestCommandErrors:
         with pytest.raises(RuntimeError, match="already in use"):
             run_compose_checked(shell, ("up", "-d"), action="up")
 
+        shell.compose.reset_mock()
+        shell.compose.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        assert run_compose_checked(
+            shell, ("up", "-d"), action="up", stream=True
+        ).returncode == 0
+        shell.compose.assert_called_with("up", "-d", capture=False, check=False)
+
+        shell.compose.return_value = MagicMock(returncode=1, stdout="", stderr="")
+        with pytest.raises(RuntimeError, match="see docker compose output above"):
+            run_compose_checked(shell, ("down",), action="down", stream=True)
+
     def test_image_missing_and_pull(self) -> None:
         assert looks_like_image_missing(
             subprocess.CalledProcessError(1, ["docker"], stderr="manifest unknown")

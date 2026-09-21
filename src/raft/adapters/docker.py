@@ -39,6 +39,7 @@ class DockerStack:
             self.sh,
             ("up", "-d", "--build", "--remove-orphans"),
             action="bring the stack up",
+            stream=True,
         )
 
     def stop_stack(self) -> None:
@@ -47,6 +48,7 @@ class DockerStack:
             self.sh,
             ("down", "--remove-orphans"),
             action="bring the stack down",
+            stream=True,
         )
         for app in self.stack.apps:
             self.remove_container(app.tmp_container)
@@ -79,6 +81,7 @@ class DockerStack:
             self.sh,
             ("up", "-d", "--no-deps", "--force-recreate", self.stack.router),
             action="recreate router",
+            stream=True,
         )
 
     def recreate_gate(self) -> None:
@@ -88,6 +91,7 @@ class DockerStack:
             ("up", "-d", "--no-deps", "--force-recreate", self.stack.gate),
             action="recreate gate",
             hint="after edge port changes in ~/.raft/settings.yaml",
+            stream=True,
         )
 
     def gate_published_ports(self) -> list[int]:
@@ -119,6 +123,7 @@ class DockerStack:
             self.sh,
             ("up", "-d", "--build", "--no-deps", service),
             action=f"rebuild service {service}",
+            stream=True,
         )
 
     def recreate_pulled_service(self, app: App, *, pull_ref: str) -> None:
@@ -145,6 +150,7 @@ class DockerStack:
             self.sh,
             ("up", "-d", "--no-deps", "--no-build", "--force-recreate", app.compose_id),
             action=f"recreate service {app.compose_id}",
+            stream=True,
         )
 
     def service_container_id(self, service: str) -> str:

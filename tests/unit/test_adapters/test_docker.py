@@ -35,10 +35,10 @@ class TestDockerStack(AdapterTestCase):
         self.docker.start_stack()
         self.docker.stop_stack()
         self.shell.compose.assert_any_call(
-            "up", "-d", "--build", "--remove-orphans", capture=True, check=False
+            "up", "-d", "--build", "--remove-orphans", capture=False, check=False
         )
         self.shell.compose.assert_any_call(
-            "down", "--remove-orphans", capture=True, check=False
+            "down", "--remove-orphans", capture=False, check=False
         )
         self.shell.docker.assert_called()
 
@@ -48,10 +48,10 @@ class TestDockerStack(AdapterTestCase):
         self.docker.rebuild_service("app")
         self.shell.compose.assert_any_call(
             "up", "-d", "--no-deps", "--force-recreate", "raft-raft-router",
-            capture=True, check=False,
+            capture=False, check=False,
         )
         self.shell.compose.assert_any_call(
-            "up", "-d", "--build", "--no-deps", "app", capture=True, check=False
+            "up", "-d", "--build", "--no-deps", "app", capture=False, check=False
         )
 
     def test_recreate_pulled_service_tags_then_up(self) -> None:
@@ -68,7 +68,7 @@ class TestDockerStack(AdapterTestCase):
         )
         self.shell.compose.assert_any_call(
             "up", "-d", "--no-deps", "--no-build", "--force-recreate", "raft-hub",
-            capture=True, check=False,
+            capture=False, check=False,
         )
 
     def test_recreate_pulled_service_skips_tag_when_pin(self) -> None:
@@ -248,7 +248,7 @@ class TestDockerStack(AdapterTestCase):
         self.docker.recreate_gate()
         self.shell.compose.assert_any_call(
             "up", "-d", "--no-deps", "--force-recreate", "raft-raft-gate",
-            capture=True, check=False,
+            capture=False, check=False,
         )
         self.shell.docker.return_value = self.ok("80/tcp 443/tcp\n")
         assert self.docker.gate_published_ports() == [80, 443]
