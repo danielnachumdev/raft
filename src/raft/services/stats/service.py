@@ -14,6 +14,7 @@ from ...adapters.host import (
 from ...errors import OperatorError
 from ...models import Stack
 from ...models.app import App
+from ...models.stack import load_stack
 from .models import (
     EDGE_CPUS_LIMIT,
     EDGE_CPUS_RESERVATION,
@@ -161,7 +162,14 @@ class Stats:
         self.sh = Shell(stack.root)
         self.docker = DockerStack(stack, self.sh)
 
-    def collect(self) -> StatsSnapshot:
+    def _reload_stack(self) -> None:
+        """Re-read applied apps so live mode picks up apply/delete/start changes."""
+        self.stack = load_stack(self.stack.root)
+        self.docker = DockerStack(self.stack, self.sh)
+
+    def collect(self, *, refresh_apps: bool = False) -> StatsSnapshot:
+        if refresh_apps:
+            self._reload_stack()
         host = _host_stats(collect_host_resources(disk_path=self.stack.root))
         targets: list[tuple[str, str, Optional[str], Optional[str], AllocatedResources]] = [
             (self.stack.gate, "gate", None, None, _edge_allocated()),
@@ -228,5 +236,5 @@ class Stats:
         if as_json and live:
             raise OperatorError("raft stats: --json and --live cannot be combined")
         if live:
-            return write_live_report(self.collect)
+            return write_live_report(lambda: self.collect(refresh_apps=True))
         return write_report(self.collect(), as_json=as_json)

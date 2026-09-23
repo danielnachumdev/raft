@@ -239,9 +239,36 @@ class TestStatsService(RaftTestCase):
             ) as live:
                 assert stats.report(live=True) == 0
                 live.assert_called_once()
+                # Live frames must refresh applied apps each tick.
+                frame_collect = live.call_args.args[0]
+                with patch.object(
+                    stats, "collect", return_value=snapshot
+                ) as collect:
+                    frame_collect()
+                collect.assert_called_once_with(refresh_apps=True)
 
         with pytest.raises(OperatorError, match="--json and --live"):
             stats.report(as_json=True, live=True)
+
+    def test_collect_refresh_apps_reloads_registry(self) -> None:
+        write_applied_app(self.tmp_path, "app")
+        stack = make_stack(self.tmp_path, (make_app("app"),))
+        stats = Stats(stack)
+        stats.docker = MagicMock()
+        stats.docker.try_service_container_id.return_value = None
+        stats.docker.containers_stats.return_value = {}
+
+        write_applied_app(self.tmp_path, "newbie")
+        with patch(
+            "raft.services.stats.service.collect_host_resources",
+            return_value=_fake_host(),
+        ):
+            snap = stats.collect(refresh_apps=True)
+
+        names = [c.service for c in snap.containers]
+        assert "app" in names
+        assert "newbie" in names
+        assert len(stats.stack.apps) == 2
 
     def test_live_keyboard_interrupt(self) -> None:
         from raft.services.stats.models import (
