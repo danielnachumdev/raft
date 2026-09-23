@@ -68,8 +68,9 @@ Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 4. If any app uses `tls: origin`, install PEMs under `~/.raft/certs/<name>/` before first deploy.
 5. Manual cold start without apply: `raft up` (refuses if stack already up; `down` first).
 6. `raft doctor` before trusting the site (certs only for `tls: origin`; gate drift → `raft gate recreate`). Doctor is group-first: built-in **`raft`** (edge services; healthy docker/compose/generated/stack/port probes stay hidden), then App `spec.group` (at most one); ungrouped apps appear without a heading. Member labels are Compose service ids (`NAME` / `GROUP-NAME`; edge `raft-gate` / `raft-router`). Healthy OK lines append ports in use (gate: published host ports; apps/router: contract / listen ports).
-7. Updates: `raft apply …` again, or `raft redeploy <app>` / `raft redeploy router`. New edge listeners: `raft gate recreate`.
-8. Tear down: `raft down`.
+7. `raft stats` (optional `--json`) for a point-in-time host + container CPU/memory/uptime snapshot — declared Compose limits vs live `docker stats` usage. History/averages for scaling come later.
+8. Updates: `raft apply …` again, or `raft redeploy <app>` / `raft redeploy router`. New edge listeners: `raft gate recreate`.
+9. Tear down: `raft down`.
 
 Useful checks: `curl -H 'Host: <publicHost>' http://127.0.0.1/`. Optional local hosts: `sudo python3 scripts/hosts.py hold` (reads applied `publicHost` values; errors if none applied). See [`scripts/README.md`](scripts/README.md).
 
@@ -138,6 +139,7 @@ Top-level **commands** (not nested groups, except `auth` and `gate`):
 | `redeploy` | App cutover or `router` (`gate` refused) |
 | `gate recreate` | Recreate gate for new published edge ports |
 | `doctor` | Health + fix hints |
+| `stats` | Host + container resource usage (point-in-time; `--json` for machines) |
 | `update` | Re-install CLI from GitHub (`install.sh`) |
 | `uninstall` | Full removal (`--yes`; optional `--uv` to remove uv too) |
 | `auth` | `setup` / `list` / `show` / `test` / `remove` |
@@ -153,7 +155,7 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | `src/raft/cli/` | Fire root + auth + gate; `deps.py` patched in tests |
 | `src/raft/models/` | `App`, `AppSpec` (`manifest.py`), `PortSpec`, `Stack` (`stack.py`) |
 | `src/raft/adapters/` | shell, docker, nginx upstreams, HTTP/TCP probe |
-| `src/raft/services/` | apply, auth, sync, render, edge handlers, cutover, orchestrator, doctor; `manifest_env` (`${VAR}` at apply) |
+| `src/raft/services/` | apply, auth, sync, render, edge handlers, cutover, orchestrator, doctor, stats; `manifest_env` (`${VAR}` at apply) |
 | `src/raft/config/` | `~/.raft` paths, `settings.yaml` (logging + edge), logging setup |
 | `src/raft/share/` | Product Compose + nginx templates (synced into data home) |
 | `tests/` | `unit/` (100% cov), `integration/` (render artifacts), `e2e/` (Docker Compose) |

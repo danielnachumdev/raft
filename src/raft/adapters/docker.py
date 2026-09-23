@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import subprocess
+from typing import Any, Optional
 
 from raft.errors import (
     OperatorError,
@@ -167,6 +169,89 @@ class DockerStack:
         if not cid:
             raise service_not_running(service)
         return cid
+
+    def try_service_container_id(self, service: str) -> Optional[str]:
+        """Return the running container id for ``service``, or ``None`` if absent."""
+        result = self.sh.compose("ps", "-q", service, capture=True, check=False)
+        if result.returncode != 0:
+            return None
+        cid = (result.stdout or "").strip()
+        return cid or None
+
+    def containers_stats(self, container_ids: list[str]) -> dict[str, dict[str, Any]]:
+        """One-shot ``docker stats --no-stream`` keyed by container id prefix/full id.
+
+        Returns an empty dict when no ids are given or docker fails.
+        """
+        if not container_ids:
+            return {}
+        result = self.sh.docker(
+            "stats",
+            "--no-stream",
+            "--format",
+            "{{json .}}",
+            *container_ids,
+            capture=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            logger.debug(
+                "docker stats failed rc=%s: %s",
+                result.returncode,
+                (result.stderr or "").strip(),
+            )
+            return {}
+        by_id: dict[str, dict[str, Any]] = {}
+        for line in (result.stdout or "").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                logger.debug("skip unparseable docker stats line: %r", line)
+                continue
+            if not isinstance(row, dict):
+                continue
+            raw_id = str(row.get("ID") or row.get("Container") or "").strip()
+            if not raw_id:
+                continue
+            by_id[raw_id] = row
+            # Compose ps -q may return a full id while stats shortens it.
+            for cid in container_ids:
+                if cid.startswith(raw_id) or raw_id.startswith(cid):
+                    by_id[cid] = row
+        return by_id
+
+    def container_inspect_runtime(self, container_id: str) -> Optional[dict[str, Any]]:
+        """Status, start time, and HostConfig resource limits for one container."""
+        result = self.sh.docker(
+            "inspect",
+            "-f",
+            "{{.State.Status}}|{{.State.StartedAt}}|"
+            "{{.HostConfig.NanoCpus}}|{{.HostConfig.Memory}}",
+            container_id,
+            capture=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            return None
+        parts = (result.stdout or "").strip().split("|")
+        if len(parts) < 4:
+            return None
+        status, started_at, nano_raw, mem_raw = parts[0], parts[1], parts[2], parts[3]
+        nano_cpus: Optional[int] = None
+        memory_bytes: Optional[int] = None
+        if nano_raw.isdigit():
+            nano_cpus = int(nano_raw)
+        if mem_raw.isdigit():
+            memory_bytes = int(mem_raw)
+        return {
+            "status": status or "unknown",
+            "started_at": started_at or "",
+            "nano_cpus": nano_cpus,
+            "memory_bytes": memory_bytes,
+        }
 
     def service_is_ready(self, service: str) -> bool:
         """True when the Compose service is running and healthy (or has no healthcheck).

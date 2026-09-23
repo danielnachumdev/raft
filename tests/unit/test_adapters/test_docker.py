@@ -274,3 +274,59 @@ class TestDockerStack(AdapterTestCase):
         assert self.docker.gate_published_ports() == [80, 443]
         self.shell.compose.return_value = self.ok("  \n")
         assert self.docker.gate_published_ports() == []
+
+    def test_try_service_container_id(self) -> None:
+        self.shell.compose.return_value = self.ok("abc123\n")
+        assert self.docker.try_service_container_id("app") == "abc123"
+        self.shell.compose.return_value = self.ok("", returncode=1)
+        assert self.docker.try_service_container_id("app") is None
+        self.shell.compose.return_value = self.ok("  \n")
+        assert self.docker.try_service_container_id("app") is None
+
+    def test_containers_stats(self) -> None:
+        assert self.docker.containers_stats([]) == {}
+        self.shell.docker.return_value = self.ok(returncode=1, stderr="boom")
+        assert self.docker.containers_stats(["cid1"]) == {}
+        payload = (
+            '{"ID":"cid1","CPUPerc":"1.2%","MemUsage":"1MiB / 64MiB",'
+            '"MemPerc":"1.5%","NetIO":"1kB / 2kB","BlockIO":"0B / 0B","PIDs":"3"}\n'
+            "\n"
+            "not-json\n"
+            "42\n"
+            '{"ID":""}\n'
+            '{"ID":"other","CPUPerc":"0%"}\n'
+        )
+        self.shell.docker.return_value = self.ok(payload)
+        by_id = self.docker.containers_stats(["cid1full"])
+        assert "cid1" in by_id
+        assert by_id["cid1full"]["CPUPerc"] == "1.2%"
+        assert "other" in by_id
+        assert "cid1full" not in by_id or by_id["cid1full"]["CPUPerc"] == "1.2%"
+        self.shell.docker.return_value = self.ok(
+            '{"Container":"short","CPUPerc":"0%","MemUsage":"0B / 0B",'
+            '"MemPerc":"0%","NetIO":"0B / 0B","BlockIO":"0B / 0B","PIDs":"1"}\n'
+        )
+        by_container = self.docker.containers_stats(["short"])
+        assert by_container["short"]["CPUPerc"] == "0%"
+
+
+    def test_container_inspect_runtime(self) -> None:
+        self.shell.docker.return_value = self.ok(
+            "running|2024-01-01T00:00:00Z|250000000|67108864\n"
+        )
+        info = self.docker.container_inspect_runtime("cid")
+        assert info == {
+            "status": "running",
+            "started_at": "2024-01-01T00:00:00Z",
+            "nano_cpus": 250000000,
+            "memory_bytes": 67108864,
+        }
+        self.shell.docker.return_value = self.ok(returncode=1)
+        assert self.docker.container_inspect_runtime("cid") is None
+        self.shell.docker.return_value = self.ok("only-one-field\n")
+        assert self.docker.container_inspect_runtime("cid") is None
+        self.shell.docker.return_value = self.ok("exited|0001-01-01T00:00:00Z|x|y\n")
+        info = self.docker.container_inspect_runtime("cid")
+        assert info is not None
+        assert info["nano_cpus"] is None
+        assert info["memory_bytes"] is None

@@ -128,6 +128,13 @@ class RaftCLI:
         if code:
             raise SystemExit(code)
 
+    def stats(self, json: bool = False) -> None:
+        """Show host and container resource usage (point-in-time snapshot).
+
+        Pass ``--json`` for a machine-readable snapshot (basis for future scaling).
+        """
+        deps.Stats(self._stack).report(as_json=json)
+
     def update(self) -> None:
         """Re-install raft from GitHub (re-run install.sh / uv tool install)."""
         deps.SelfUpdate(self._stack).run()

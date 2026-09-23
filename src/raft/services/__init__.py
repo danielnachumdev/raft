@@ -21,6 +21,7 @@ __all__ = [
     "SelfUpdate",
     "SourceSync",
     "StackRenderer",
+    "Stats",
     "Uninstall",
     "wait_until",
 ]
@@ -37,6 +38,7 @@ _EXPORTS = {
     "SelfUpdate": (".update", "SelfUpdate"),
     "SourceSync": (".sync", "SourceSync"),
     "StackRenderer": (".render", "StackRenderer"),
+    "Stats": (".stats", "Stats"),
     "Uninstall": (".uninstall", "Uninstall"),
     "wait_until": (".cutover", "wait_until"),
 }
