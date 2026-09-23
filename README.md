@@ -1,8 +1,8 @@
 # raft
 
-**One cheap VPS. Many sites. No Kubernetes.**
+**Kubernetes-ish behaviour with Docker and nginx — built to reduce resource use under constrained hosting.**
 
-`raft` is a small control plane for a single machine: a stable public **gate**, an inner **router**, and your apps — declared as App manifests and driven by a kubectl-ish CLI (`apply`, `get`, `up`, `redeploy`).
+`raft` is a small control plane — a stable public **gate**, an inner **router**, and your apps — driven by App manifests and a kubectl-style CLI (`apply`, `get`, `up`, `redeploy`).
 
 ```text
 Internet  →  gate (edge: http/https/streams)  →  router (Host:)  →  your apps
@@ -12,7 +12,7 @@ You keep writing services in their own repos. On the VPS you **apply** a `.raft/
 
 ## Why it exists
 
-Kubernetes (and most “platform” stacks) are overkill when you have one VM and a handful of sites. Compose alone does not give you a desired-state registry, zero-downtime app cutover, or a boring operator CLI. raft does — and stays readable.
+An attempt to learn the problems Kubernetes solved by tackling them without a full cluster: desired-state apps, a boring operator CLI, and cutover that does not take the public edge down. Docker and nginx keep the footprint small enough for constrained hosting; Compose alone does not give you a registry, zero-downtime cutover, or that CLI. raft does — and stays readable.
 
 ## Install
 
