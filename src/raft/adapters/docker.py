@@ -168,6 +168,33 @@ class DockerStack:
             raise service_not_running(service)
         return cid
 
+    def service_is_ready(self, service: str) -> bool:
+        """True when the Compose service is running and healthy (or has no healthcheck).
+
+        Used for ``expose: none`` TCP readiness — those ports are not on the host.
+        """
+        try:
+            cid = self.service_container_id(service)
+        except OperatorError:
+            return False
+        result = self.sh.docker(
+            "inspect",
+            "-f",
+            "{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+            cid,
+            capture=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            return False
+        parts = (result.stdout or "").strip().split()
+        if not parts or parts[0] != "running":
+            return False
+        health = parts[1] if len(parts) > 1 else "none"
+        ready = health in ("none", "healthy")
+        logger.debug("service_is_ready %s -> %s (%s)", service, ready, " ".join(parts))
+        return ready
+
     def container_image_ref(self, container_id: str) -> str:
         try:
             named = run_docker_checked(

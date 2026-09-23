@@ -64,7 +64,12 @@ class CutoverSession:
 
     def _wait_ready(self, label: str, *, timeout: float = 30) -> None:
         strategy = self._strategy()
-        predicate = strategy.wait_predicate(self.app, self.stack, self.http)
+        predicate = strategy.wait_predicate(
+            self.app,
+            self.stack,
+            self.http,
+            compose_ready=lambda: self.docker.service_is_ready(self.app.compose_id),
+        )
         if predicate is None:
             return
         wait_until(

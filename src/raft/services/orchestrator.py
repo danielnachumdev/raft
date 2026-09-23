@@ -72,14 +72,20 @@ class Orchestrator:
     def _wait_app_ready(self, app, *, timeout: float = 45) -> None:
         spec = self.stack.spec_for(app)
         strategy = ReadinessStrategy.from_spec(spec)
-        predicate = strategy.wait_predicate(app, self.stack, self.http)
+        predicate = strategy.wait_predicate(
+            app,
+            self.stack,
+            self.http,
+            compose_ready=lambda: self.docker.service_is_ready(app.compose_id),
+        )
         if predicate is None:
             return
-        label = (
-            f"Host {app.public_host}"
-            if strategy.kind == "http"
-            else f"{strategy.kind} readiness for {app.name}"
-        )
+        if strategy.kind == "http":
+            label = f"Host {app.public_host}"
+        elif strategy.port is not None and strategy.port.expose == "none":
+            label = f"compose readiness for {app.name}"
+        else:
+            label = f"{strategy.kind} readiness for {app.name}"
         wait_until(label, predicate, timeout=timeout, interval=1.0)
 
     def start(self) -> None:
