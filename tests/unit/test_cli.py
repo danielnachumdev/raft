@@ -484,6 +484,32 @@ class TestCliApplyGetDelete(RaftTestCase):
             with patch("raft.cli.deps.AppApply", return_value=applier):
                 assert cli.main(["apply", "--file", "app.yaml", "--no-deploy"]) == 0
                 applier.apply_file.assert_called_once()
+                call_kw = applier.apply_file.call_args.kwargs
+                assert call_kw.get("env_file") is None
+                assert call_kw.get("env_overrides") is None
+                applier.apply_file.reset_mock()
+                assert (
+                    cli.main(
+                        [
+                            "apply",
+                            "--file",
+                            "app.yaml",
+                            "--no-deploy",
+                            "--env-file",
+                            "vars.env",
+                            "--env",
+                            "A=1",
+                            "--env",
+                            "B=2",
+                        ]
+                    )
+                    == 0
+                )
+                applier.apply_file.assert_called_once()
+                kw = applier.apply_file.call_args.kwargs
+                assert kw["env_file"] == Path("vars.env")
+                # Fire may pass repeated --env as a tuple/list.
+                assert list(kw["env_overrides"]) == ["A=1", "B=2"]
                 assert (
                     cli.main(
                         [

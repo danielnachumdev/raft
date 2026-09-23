@@ -14,6 +14,8 @@ User-facing samples live under **[`examples/`](examples/)**: operator settings (
 
 **Shipped:** App `volumes` / `envFile` / `group` / `expose: none` — see [`docs/app-volumes-groups-plan.md`](docs/app-volumes-groups-plan.md) (required for multi-App stacks).
 
+**Shipped:** App-manifest `${VAR}` / `${VAR:-default}` expansion at `raft apply` — see [`docs/manifest-env-expansion-plan.md`](docs/manifest-env-expansion-plan.md) (one template for Dev/Prod; registry stores expanded YAML).
+
 ---
 
 ## Architecture (hard rules)
@@ -62,7 +64,7 @@ Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 
 1. `install.sh` (or `uv sync` in a clone; Python **3.8+**).
 2. Private git apps: `raft auth setup <name> --repo git@host:owner/repo.git` (works before apply) → paste pubkey as read-only deploy key (`~/.ssh/raft/`). Then `raft auth test <name> --repo …` and `raft apply --git …`.
-3. `raft apply --file …` or `raft apply --git …` → writes `~/.raft/state/apps/<name>.yaml`; with deploy (default) always brings the app live (cutover if running, start the service if gate is up, else full `up`).
+3. `raft apply --file …` or `raft apply --git …` → writes `~/.raft/state/apps/<name>.yaml`; with deploy (default) always brings the app live (cutover if running, start the service if gate is up, else full `up`). Optional `--env-file` / `--env` expand `${VAR}` in the manifest text only (not container env).
 4. If any app uses `tls: origin`, install PEMs under `~/.raft/certs/<name>/` before first deploy.
 5. Manual cold start without apply: `raft up` (refuses if stack already up; `down` first).
 6. `raft doctor` before trusting the site (certs only for `tls: origin`; gate drift → `raft gate recreate`). Doctor is group-first: built-in **`raft`** (edge services; healthy docker/compose/generated/stack/port probes stay hidden), then App `spec.group` (at most one); ungrouped apps appear without a heading. Member labels are Compose service ids (`NAME` / `GROUP-NAME`; edge `raft-gate` / `raft-router`). Healthy OK lines append ports in use (gate: published host ports; apps/router: contract / listen ports).
@@ -128,7 +130,7 @@ Top-level **commands** (not nested groups, except `auth` and `gate`):
 
 | Command | Purpose |
 |---------|---------|
-| `apply` | `--file` or `--git` (+ `--ref`, `--no-deploy`, `--force-sync`) |
+| `apply` | `--file` or `--git` (+ `--ref`, `--no-deploy`, `--force-sync`, `--env-file`, repeatable `--env`) — `--env*` expand `${VAR}` in the manifest only |
 | `get` | `get apps` / `get app NAME` |
 | `delete` | `delete app NAME` |
 | `up` / `down` | Stack bring-up / tear-down |
@@ -151,7 +153,7 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | `src/raft/cli/` | Fire root + auth + gate; `deps.py` patched in tests |
 | `src/raft/models/` | `App`, `AppSpec` (`manifest.py`), `PortSpec`, `Stack` (`stack.py`) |
 | `src/raft/adapters/` | shell, docker, nginx upstreams, HTTP/TCP probe |
-| `src/raft/services/` | apply, auth, sync, render, edge handlers, cutover, orchestrator, doctor |
+| `src/raft/services/` | apply, auth, sync, render, edge handlers, cutover, orchestrator, doctor; `manifest_env` (`${VAR}` at apply) |
 | `src/raft/config/` | `~/.raft` paths, `settings.yaml` (logging + edge), logging setup |
 | `src/raft/share/` | Product Compose + nginx templates (synced into data home) |
 | `tests/` | `unit/` (100% cov), `integration/` (render artifacts), `e2e/` (Docker Compose) — see [`docs/testing-plan.md`](docs/testing-plan.md) |

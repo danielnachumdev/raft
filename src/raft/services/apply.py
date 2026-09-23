@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import logging
 import shutil
-import subprocess
 import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import Mapping, Optional, Sequence, Union
 
 import yaml
 
@@ -24,9 +23,12 @@ from ..models.manifest import (
 from ..models.stack import Stack, load_stack
 from ..ui import say
 from .auth import GitAuthManager
+from .manifest_env import build_apply_env, expand_manifest_text
 from .orchestrator import Orchestrator
 
 logger = logging.getLogger(__name__)
+
+EnvOverrides = Union[None, str, Sequence[str]]
 
 
 class AppApply:
@@ -41,12 +43,21 @@ class AppApply:
         ref_override: Optional[str] = None,
         deploy: bool = True,
         force_sync: bool = False,
+        env_file: Optional[Path] = None,
+        env_overrides: EnvOverrides = None,
+        environ: Optional[Mapping[str, str]] = None,
     ) -> str:
         if not path.is_file():
             raise missing_manifest(path)
         try:
             raw = path.read_text(encoding="utf-8")
-            data = yaml.safe_load(raw)
+            env = build_apply_env(
+                environ=environ,
+                env_file=env_file,
+                env_overrides=env_overrides,
+            )
+            expanded = expand_manifest_text(raw, env, path=path)
+            data = yaml.safe_load(expanded)
         except yaml.YAMLError as exc:
             raise OperatorError(
                 f"invalid App manifest YAML at {path}: {exc}\n"
@@ -82,6 +93,9 @@ class AppApply:
         ref: str = "main",
         deploy: bool = True,
         force_sync: bool = False,
+        env_file: Optional[Path] = None,
+        env_overrides: EnvOverrides = None,
+        environ: Optional[Mapping[str, str]] = None,
     ) -> str:
         auth = GitAuthManager(self.stack)
         clone_urls = auth.clone_urls_for_repo(repo)
@@ -142,7 +156,16 @@ class AppApply:
                     f"Fix: add that file on the ref, or: raft apply --git {repo} --ref <other>"
                 )
             try:
-                data = yaml.safe_load(manifest.read_text(encoding="utf-8"))
+                raw = manifest.read_text(encoding="utf-8")
+                env = build_apply_env(
+                    environ=environ,
+                    env_file=env_file,
+                    env_overrides=env_overrides,
+                )
+                expanded = expand_manifest_text(
+                    raw, env, path=f"{repo}@{ref}:{CONTRACT_REL_PATH.as_posix()}"
+                )
+                data = yaml.safe_load(expanded)
             except yaml.YAMLError as exc:
                 raise OperatorError(
                     f"invalid App manifest YAML in {repo}@{ref}: {exc}\n"

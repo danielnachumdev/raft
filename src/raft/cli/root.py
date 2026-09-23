@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Sequence, Union
 
 from raft.errors import OperatorError, apply_requires_source, redeploy_requires_app, unknown_app
 
 from . import delete as delete_cmd
 from . import deps
 from . import get as get_cmd
+from .argv import get_apply_env_overrides
 from .auth import AuthCLI
 from .gate import GateCLI
 
@@ -44,16 +45,34 @@ class RaftCLI:
         ref: Optional[str] = None,
         no_deploy: bool = False,
         force_sync: bool = False,
+        env_file: Optional[str] = None,
+        env: Optional[Union[str, Sequence[str]]] = None,
     ) -> None:
-        """Register an App manifest on this VPS (from file or git URL)."""
+        """Register an App manifest on this VPS (from file or git URL).
+
+        ``--env-file`` / repeatable ``--env KEY=VALUE`` expand ``${VAR}``
+        placeholders in the App manifest text only (before YAML parse). They
+        do **not** set Compose container environment (use ``spec.envFile`` /
+        ``spec.env`` for that).
+        """
         applier = deps.AppApply(self._stack)
         deploy = not no_deploy
+        env_path = Path(env_file) if env_file else None
+        # Prefer argv-peeled repeats (see cli.entry); fall back to Fire's env.
+        peeled = get_apply_env_overrides()
+        env_overrides: Union[None, str, Sequence[str]]
+        if peeled:
+            env_overrides = list(peeled)
+        else:
+            env_overrides = env
         if file is not None:
             applier.apply_file(
                 Path(file),
                 ref_override=ref,
                 deploy=deploy,
                 force_sync=force_sync,
+                env_file=env_path,
+                env_overrides=env_overrides,
             )
             return
         if git:
@@ -62,6 +81,8 @@ class RaftCLI:
                 ref=ref or "main",
                 deploy=deploy,
                 force_sync=force_sync,
+                env_file=env_path,
+                env_overrides=env_overrides,
             )
             return
         raise apply_requires_source()

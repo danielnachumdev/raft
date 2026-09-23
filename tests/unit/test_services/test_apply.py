@@ -345,3 +345,113 @@ class TestAppApply(RaftTestCase):
         orch.ensure_app_deployed.assert_called_once_with(
             "img", ref_override="main", force_sync=False
         )
+
+    def test_apply_file_expands_env_into_registry(self) -> None:
+        path = self.tmp_path / "manifest.yaml"
+        path.write_text(
+            "apiVersion: raft/v1\n"
+            "kind: App\n"
+            "metadata:\n"
+            "  name: ${RAFT_APP_NAME}\n"
+            "spec:\n"
+            "  publicHost: ${RAFT_APP_HOST:-web.test}\n"
+            "  source: local\n"
+            "  path: apps/${RAFT_APP_NAME}\n"
+            "  ref: main\n"
+            "  www: true\n"
+            "  ports:\n"
+            "    - name: http\n"
+            "      containerPort: 80\n"
+            "      expose: http\n"
+            "  build:\n"
+            "    context: .\n",
+            encoding="utf-8",
+        )
+        env_file = self.tmp_path / "apply.env"
+        env_file.write_text("RAFT_APP_NAME=from-file\n", encoding="utf-8")
+        stack = load_stack(self.tmp_path)
+        name = AppApply(stack).apply_file(
+            path,
+            deploy=False,
+            environ={"RAFT_APP_NAME": "from-process"},
+            env_file=env_file,
+            env_overrides=["RAFT_APP_NAME=expanded-web"],
+        )
+        assert name == "expanded-web"
+        data = yaml.safe_load(
+            (self.tmp_path / "state" / "apps" / "expanded-web.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        assert data["metadata"]["name"] == "expanded-web"
+        assert data["spec"]["publicHost"] == "web.test"
+        assert data["spec"]["path"] == "apps/expanded-web"
+        # Registry must store concrete YAML — no placeholders left.
+        raw_registry = (self.tmp_path / "state" / "apps" / "expanded-web.yaml").read_text(
+            encoding="utf-8"
+        )
+        assert "${" not in raw_registry
+
+    def test_apply_file_missing_var_fails(self) -> None:
+        path = self.tmp_path / "manifest.yaml"
+        path.write_text(
+            "apiVersion: raft/v1\n"
+            "kind: App\n"
+            "metadata:\n"
+            "  name: ${MISSING}\n"
+            "spec:\n"
+            "  publicHost: web.test\n"
+            "  source: local\n"
+            "  path: apps/x\n"
+            "  ref: main\n"
+            "  ports:\n"
+            "    - name: http\n"
+            "      containerPort: 80\n"
+            "      expose: http\n"
+            "  build: {context: .}\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(RuntimeError, match="undefined variable MISSING"):
+            AppApply(load_stack(self.tmp_path)).apply_file(
+                path, deploy=False, environ={}
+            )
+    def test_apply_git_expands_env(self) -> None:
+        stack = load_stack(self.tmp_path)
+        shell = MagicMock()
+
+        def clone_with_placeholders(*args, **kwargs):
+            if "clone" not in args:
+                return
+            target = Path(args[-1])
+            (target / ".raft").mkdir(parents=True, exist_ok=True)
+            (target / ".raft" / "app.yaml").write_text(
+                "apiVersion: raft/v1\n"
+                "kind: App\n"
+                "metadata:\n"
+                "  name: ${APP_NAME}\n"
+                "spec:\n"
+                "  publicHost: git.test\n"
+                "  source: git\n"
+                "  path: apps/${APP_NAME}\n"
+                "  ports:\n"
+                "    - name: http\n"
+                "      containerPort: 80\n"
+                "      expose: http\n"
+                "  build: {context: .}\n",
+                encoding="utf-8",
+            )
+
+        shell.git.side_effect = clone_with_placeholders
+        name = _apply(stack, shell).apply_git(
+            "git@github.com:org/x.git",
+            deploy=False,
+            environ={"APP_NAME": "from-git"},
+        )
+        assert name == "from-git"
+        data = yaml.safe_load(
+            (self.tmp_path / "state" / "apps" / "from-git.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        assert data["metadata"]["name"] == "from-git"
+        assert data["spec"]["path"] == "apps/from-git"

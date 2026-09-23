@@ -38,6 +38,8 @@ raft gate recreate    # only when edge: published ports change
 raft get apps
 ```
 
+One committed App manifest can serve Dev and Prod via `${VAR}` / `${VAR:-default}` placeholders. Expansion runs at `raft apply` (process env, optional `--env-file`, repeatable `--env`) and the registry stores the expanded concrete YAML — those flags do **not** set container env (`spec.envFile` / `spec.env` do). Details: [`docs/manifest-env-expansion-plan.md`](docs/manifest-env-expansion-plan.md).
+
 Apps own their contract (`.raft/app.yaml`). The VPS stores applied desired state under `~/.raft/state/apps/` and generated Compose/nginx under `~/.raft/generated/`. Settings: `~/.raft/settings.yaml` (logging + **edge** listeners).
 
 ## Examples

@@ -4,6 +4,13 @@
 #
 # When to use: a normal website/API behind the gate+router with no HTTPS
 # Origin certs on the VPS (Cloudflare Flexible, or TLS terminated elsewhere).
+#
+# Stage-aware apply (Dev/Prod): placeholders expand at `raft apply` only —
+#   name: ${RAFT_APP_NAME}
+#   publicHost: ${RAFT_APP_PUBLIC_HOST:-site.example.com}
+# Pass process env and/or --env-file / --env (manifest expansion only; not
+# container env — use spec.envFile / spec.env for that). Registry stores the
+# expanded concrete YAML. See docs/manifest-env-expansion-plan.md.
 
 apiVersion: raft/v1
 kind: App
