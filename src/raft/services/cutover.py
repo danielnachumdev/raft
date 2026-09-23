@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Optional
 
-from raft.errors import OperatorError
+from raft.errors import OperatorError, append_diagnostics
 
 from ..adapters.docker import DockerStack
 from ..adapters.http import HttpProbe
@@ -33,6 +33,7 @@ def wait_until(
     timeout: float,
     interval: float = 1.0,
     fix: str = "",
+    diagnostics: Optional[Callable[[], str]] = None,
 ) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -41,6 +42,11 @@ def wait_until(
         time.sleep(interval)
     logger.error("timed out waiting for: %s", description)
     message = f"timed out waiting for: {description}"
+    if diagnostics is not None:
+        try:
+            message = append_diagnostics(message, diagnostics())
+        except Exception:  # noqa: BLE001 — never mask the timeout
+            logger.debug("diagnostics callback failed", exc_info=True)
     if fix:
         message = f"{message}\nFix: {fix}"
     raise OperatorError(message, has_fix=bool(fix))
@@ -62,6 +68,14 @@ class CutoverSession:
     def _strategy(self) -> ReadinessStrategy:
         return ReadinessStrategy.from_spec(self.stack.spec_for(self.app))
 
+    def _app_diagnostics(self) -> str:
+        return self.docker.diagnostics_for(self.app.compose_id)
+
+    def _tmp_diagnostics(self) -> str:
+        return self.docker.diagnostics_for(
+            containers=(self.app.tmp_container,),
+        )
+
     def _wait_ready(self, label: str, *, timeout: float = 30) -> None:
         strategy = self._strategy()
         predicate = strategy.wait_predicate(
@@ -81,6 +95,7 @@ class CutoverSession:
                 f"check readiness/health for {self.app.name}; "
                 f"raft doctor; raft redeploy {self.app.name}"
             ),
+            diagnostics=self._app_diagnostics,
         )
 
     def snapshot_previous_image(self) -> None:
@@ -118,6 +133,7 @@ class CutoverSession:
                     f"inspect tmp container / upstreams; then: "
                     f"raft redeploy {self.app.name} or raft doctor"
                 ),
+                diagnostics=self._tmp_diagnostics,
             )
 
     def shift_traffic_to_tmp(self) -> None:
@@ -148,6 +164,7 @@ class CutoverSession:
                     f"check build/pull logs; traffic may still be on "
                     f"{self.app.tmp_alias} — raft doctor / raft redeploy {self.app.name}"
                 ),
+                diagnostics=self._app_diagnostics,
             )
 
     def _docker_wanted_tag(self) -> str:

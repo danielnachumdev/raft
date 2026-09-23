@@ -5,20 +5,26 @@ from __future__ import annotations
 import json
 import logging
 import subprocess
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 
 from raft.errors import (
     OperatorError,
+    append_diagnostics,
+    compose_services_from_failure_text,
     format_missing_origin_certs,
+    format_service_log_block,
+    join_diagnostic_blocks,
     looks_like_missing_origin_cert,
     missing_origin_certs_fallback,
     nginx_rejected,
     nginx_reload_failed,
+    prefer_errorish_lines,
     raise_for_compose_failure,
     raise_for_docker_pull_failure,
     run_compose_checked,
     run_docker_checked,
     service_not_running,
+    summarize_health_inspect,
 )
 
 from ..models.app import COMPOSE_PROJECT, App
@@ -29,6 +35,10 @@ from .shell import Shell
 
 logger = logging.getLogger(__name__)
 
+# Keep OperatorError / doctor messages short but include the fatal line.
+_DIAG_LOG_TAIL = 40
+_DIAG_MAX_LINES = 16
+
 
 class DockerStack:
     def __init__(self, stack: Stack, shell: Shell) -> None:
@@ -37,12 +47,15 @@ class DockerStack:
 
     def start_stack(self) -> None:
         logger.info("compose up -d --build --remove-orphans")
-        run_compose_checked(
-            self.sh,
-            ("up", "-d", "--build", "--remove-orphans"),
-            action="bring the stack up",
-            stream=True,
-        )
+        try:
+            run_compose_checked(
+                self.sh,
+                ("up", "-d", "--build", "--remove-orphans"),
+                action="bring the stack up",
+                stream=True,
+            )
+        except OperatorError as exc:
+            raise self.enrich_compose_failure(exc) from exc
 
     def stop_stack(self) -> None:
         logger.info("compose down --remove-orphans")
@@ -121,12 +134,15 @@ class DockerStack:
 
     def rebuild_service(self, service: str) -> None:
         logger.info("rebuild service %s", service)
-        run_compose_checked(
-            self.sh,
-            ("up", "-d", "--build", "--no-deps", service),
-            action=f"rebuild service {service}",
-            stream=True,
-        )
+        try:
+            run_compose_checked(
+                self.sh,
+                ("up", "-d", "--build", "--no-deps", service),
+                action=f"rebuild service {service}",
+                stream=True,
+            )
+        except OperatorError as exc:
+            raise self.enrich_compose_failure(exc, services=(service,)) from exc
 
     def recreate_pulled_service(self, app: App, *, pull_ref: str) -> None:
         pin = app.compose_pin_image
@@ -148,12 +164,24 @@ class DockerStack:
                 ("tag", pull_ref, pin),
                 action=f"tag {pull_ref} as {pin}",
             )
-        run_compose_checked(
-            self.sh,
-            ("up", "-d", "--no-deps", "--no-build", "--force-recreate", app.compose_id),
-            action=f"recreate service {app.compose_id}",
-            stream=True,
-        )
+        try:
+            run_compose_checked(
+                self.sh,
+                (
+                    "up",
+                    "-d",
+                    "--no-deps",
+                    "--no-build",
+                    "--force-recreate",
+                    app.compose_id,
+                ),
+                action=f"recreate service {app.compose_id}",
+                stream=True,
+            )
+        except OperatorError as exc:
+            raise self.enrich_compose_failure(
+                exc, services=(app.compose_id,)
+            ) from exc
 
     def service_container_id(self, service: str) -> str:
         result = self.sh.compose("ps", "-q", service, capture=True, check=False)
@@ -450,3 +478,147 @@ class DockerStack:
             capture=True,
         )
         return result.returncode == 0
+
+    def compose_logs(self, *services: str, tail: int = _DIAG_LOG_TAIL) -> str:
+        """Tail recent Compose logs for ``services`` (declarative log relay)."""
+        names = [s for s in services if s]
+        if not names:
+            return ""
+        result = self.sh.compose(
+            "logs",
+            "--no-color",
+            "--tail",
+            str(tail),
+            *names,
+            capture=True,
+            check=False,
+        )
+        return (result.stdout or result.stderr or "").strip()
+
+    def container_logs(self, name: str, *, tail: int = _DIAG_LOG_TAIL) -> str:
+        """Tail logs for a named container (e.g. cutover ``_tmp``)."""
+        if not name:
+            return ""
+        result = self.sh.docker(
+            "logs",
+            "--tail",
+            str(tail),
+            name,
+            capture=True,
+            check=False,
+        )
+        # docker logs writes the container stream to stderr by default.
+        return (result.stderr or result.stdout or "").strip()
+
+    def service_health_summary(self, service: str) -> str:
+        """Short status/health (+ last healthcheck output when present)."""
+        cid = self.try_service_container_id(service)
+        if not cid:
+            return "absent"
+        result = self.sh.docker(
+            "inspect",
+            "--format",
+            "{{json .State}}",
+            cid,
+            capture=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            return "unknown"
+        raw = (result.stdout or "").strip()
+        try:
+            state = json.loads(raw)
+        except json.JSONDecodeError:
+            return "unknown"
+        if not isinstance(state, dict):
+            return "unknown"
+        status = str(state.get("Status") or "unknown")
+        health_obj = state.get("Health")
+        health = "none"
+        last_out = ""
+        if isinstance(health_obj, dict):
+            health = str(health_obj.get("Status") or "none")
+            log = health_obj.get("Log")
+            if isinstance(log, list) and log:
+                last = log[-1]
+                if isinstance(last, dict):
+                    last_out = str(last.get("Output") or "")
+        return summarize_health_inspect(status, health, last_output=last_out)
+
+    def not_ready_services(self, services: Optional[list[str]] = None) -> list[str]:
+        """Compose services that are missing, exited, or unhealthy."""
+        names = services if services is not None else list(self.stack.core_services)
+        return [name for name in names if not self.service_is_ready(name)]
+
+    def diagnostics_for(
+        self,
+        *services: str,
+        containers: Sequence[str] = (),
+        tail: int = _DIAG_LOG_TAIL,
+        max_lines: int = _DIAG_MAX_LINES,
+    ) -> str:
+        """Readable log/health blocks for Compose services and/or containers."""
+        blocks: list[str] = []
+        for service in services:
+            if not service:
+                continue
+            health = self.service_health_summary(service)
+            logs = prefer_errorish_lines(
+                self.compose_logs(service, tail=tail),
+                max_lines=max_lines,
+            )
+            blocks.append(
+                format_service_log_block(
+                    service, logs, health=health, max_lines=max_lines
+                )
+            )
+        for name in containers:
+            if not name:
+                continue
+            logs = prefer_errorish_lines(
+                self.container_logs(name, tail=tail),
+                max_lines=max_lines,
+            )
+            blocks.append(
+                format_service_log_block(
+                    name, logs, health="container", max_lines=max_lines
+                )
+            )
+        return join_diagnostic_blocks(*blocks)
+
+    def enrich_compose_failure(
+        self,
+        exc: OperatorError,
+        *,
+        services: Optional[Sequence[str]] = None,
+        detail: str = "",
+    ) -> OperatorError:
+        """Append recent logs for unhealthy/exited services to a compose CTA."""
+        blob = str(exc)
+        known = list(self.stack.core_services)
+        mentioned = compose_services_from_failure_text(
+            f"{blob}\n{detail}",
+            known_services=known,
+        )
+        targets: list[str] = []
+        if services:
+            targets.extend(services)
+        targets.extend(mentioned)
+        if not targets:
+            targets = self.not_ready_services()
+        # De-dupe while preserving order.
+        seen: set[str] = set()
+        ordered: list[str] = []
+        for name in targets:
+            if name and name not in seen:
+                seen.add(name)
+                ordered.append(name)
+        if not ordered:
+            return exc
+        diagnostics = self.diagnostics_for(*ordered)
+        if not diagnostics:
+            return exc
+        return OperatorError(
+            append_diagnostics(blob, diagnostics),
+            has_fix=exc.has_fix,
+        )

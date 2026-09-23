@@ -26,6 +26,15 @@ from .classify import (
     generic_command_failed,
 )
 from .cta import OperatorError, first_line, format_cta, operator, subprocess_detail
+from .diagnostics import (
+    append_diagnostics,
+    compact_log_lines,
+    compose_services_from_failure_text,
+    format_service_log_block,
+    join_diagnostic_blocks,
+    prefer_errorish_lines,
+    summarize_health_inspect,
+)
 from .docker_msgs import (
     compose_failure_message,
     docker_daemon_message,
@@ -75,11 +84,14 @@ __all__ = [
     "operator",
     "SUBPROCESS_RULES",
     "SubprocessCtx",
+    "append_diagnostics",
     "app_not_applied",
     "apply_requires_source",
     "auth_requires_service",
     "classify_subprocess",
+    "compact_log_lines",
     "compose_failure_message",
+    "compose_services_from_failure_text",
     "docker_daemon_message",
     "docker_failure_message",
     "docker_pull_failure_message",
@@ -87,6 +99,7 @@ __all__ = [
     "first_line",
     "format_cta",
     "format_missing_origin_certs",
+    "format_service_log_block",
     "generic_command_failed",
     "ghcr_pat_create_url",
     "git_auth_failure_message",
@@ -94,6 +107,7 @@ __all__ = [
     "git_network_failure_message",
     "invalid_yaml",
     "is_ghcr_image",
+    "join_diagnostic_blocks",
     "looks_like_docker_daemon_down",
     "looks_like_git_auth_failure",
     "looks_like_git_network_failure",
@@ -109,6 +123,7 @@ __all__ = [
     "nginx_reload_failed",
     "nginx_reload_failed_message",
     "port_in_use_message",
+    "prefer_errorish_lines",
     "raise_for_compose_failure",
     "raise_for_docker_pull_failure",
     "raise_for_git_failure",
@@ -123,5 +138,6 @@ __all__ = [
     "run_docker_checked",
     "service_not_running",
     "subprocess_detail",
+    "summarize_health_inspect",
     "unknown_app",
 ]

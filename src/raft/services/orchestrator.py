@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from raft.errors import OperatorError
+from raft.errors import OperatorError, append_diagnostics
 
 from ..adapters.docker import DockerStack
 from ..adapters.http import HttpProbe
@@ -86,7 +86,13 @@ class Orchestrator:
             label = f"compose readiness for {app.name}"
         else:
             label = f"{strategy.kind} readiness for {app.name}"
-        wait_until(label, predicate, timeout=timeout, interval=1.0)
+        wait_until(
+            label,
+            predicate,
+            timeout=timeout,
+            interval=1.0,
+            diagnostics=lambda: self.docker.diagnostics_for(app.compose_id),
+        )
 
     def start(self) -> None:
         running = self.docker.running_services()
@@ -118,11 +124,17 @@ class Orchestrator:
         running = set(self.docker.running_services())
         missing = [name for name in expected if name not in running]
         if missing:
-            raise OperatorError(
+            message = (
                 f"stack start incomplete — missing running services: {missing}.\n"
                 f"Fix: docker compose -f ~/.raft/compose.yaml logs "
                 f"{self.stack.gate} {self.stack.router}\n"
                 f"     raft render && raft doctor"
+            )
+            raise OperatorError(
+                append_diagnostics(
+                    message,
+                    self.docker.diagnostics_for(*missing),
+                )
             )
 
     def stop(self) -> None:

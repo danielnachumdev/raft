@@ -700,6 +700,10 @@ class TestDoctor(ServicesTestCase):
         docker = MagicMock()
         docker.running_services.return_value = ["raft-gate", "raft-router", "app"]
         docker.gate_published_ports.return_value = [80, 443]
+        docker.diagnostics_for.return_value = (
+            '--- app (running/unhealthy) ---\n'
+            'nginx: [emerg] host not found in upstream "old-backend:8000"'
+        )
         with patch("raft.services.doctor.shutil.which", return_value="/bin/docker"):
             with patch(
                 "raft.services.doctor.checks.public_host.HttpProbe.public_host_ok",
@@ -710,7 +714,54 @@ class TestDoctor(ServicesTestCase):
                 )
         assert results[("app", "host")].status == "fail"
         assert "not OK" in results[("app", "host")].detail
+        assert "host not found" in results[("app", "host")].detail
         assert "redeploy router" in (results[("app", "host")].fix or "")
+        assert "logs --tail=40 app" in (results[("app", "host")].fix or "")
+
+    def test_public_host_probe_survives_diagnostics_errors(self) -> None:
+        from raft.services.doctor.checks.public_host import PublicHostChecks
+        from raft.services.doctor.context import DoctorContext
+
+        write_applied_app(self.tmp_path, "app")
+        stack = load_stack(self.tmp_path)
+        docker = MagicMock()
+        docker.diagnostics_for.side_effect = RuntimeError("docker down")
+        ctx = DoctorContext(
+            stack=stack,
+            shell=MagicMock(),
+            auth=MagicMock(),
+            docker=docker,
+        )
+        with patch(
+            "raft.services.doctor.checks.public_host.HttpProbe.public_host_ok",
+            return_value=False,
+        ):
+            results = PublicHostChecks().run(ctx)
+        assert results[0].status == "fail"
+        assert "not OK" in results[0].detail
+        assert "—" not in results[0].detail
+
+    def test_public_host_probe_header_only_diagnostics(self) -> None:
+        from raft.services.doctor.checks.public_host import PublicHostChecks
+        from raft.services.doctor.context import DoctorContext
+
+        write_applied_app(self.tmp_path, "app")
+        stack = load_stack(self.tmp_path)
+        docker = MagicMock()
+        docker.diagnostics_for.return_value = "--- app (absent) ---"
+        ctx = DoctorContext(
+            stack=stack,
+            shell=MagicMock(),
+            auth=MagicMock(),
+            docker=docker,
+        )
+        with patch(
+            "raft.services.doctor.checks.public_host.HttpProbe.public_host_ok",
+            return_value=False,
+        ):
+            results = PublicHostChecks().run(ctx)
+        assert results[0].status == "fail"
+        assert "—" not in results[0].detail
 
     def test_public_host_probe_skips_blank_host(self) -> None:
         from raft.models.app import App

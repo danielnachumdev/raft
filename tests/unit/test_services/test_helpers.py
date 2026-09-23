@@ -24,6 +24,36 @@ class TestWaitUntil:
         with pytest.raises(RuntimeError, match="timed out waiting"):
             wait_until("never", lambda: False, timeout=0.05, interval=0.01)
 
+    def test_times_out_includes_diagnostics(self) -> None:
+        with pytest.raises(RuntimeError, match="host not found") as caught:
+            wait_until(
+                "app_tmp reachable from router",
+                lambda: False,
+                timeout=0.05,
+                interval=0.01,
+                fix="raft doctor",
+                diagnostics=lambda: (
+                    '--- raft-app_tmp ---\n'
+                    'nginx: [emerg] host not found in upstream "old:8000"'
+                ),
+            )
+        text = str(caught.value)
+        assert "timed out waiting for: app_tmp" in text
+        assert "Fix: raft doctor" in text
+
+    def test_diagnostics_failure_does_not_mask_timeout(self) -> None:
+        def boom() -> str:
+            raise RuntimeError("diag failed")
+
+        with pytest.raises(RuntimeError, match="timed out waiting"):
+            wait_until(
+                "never",
+                lambda: False,
+                timeout=0.05,
+                interval=0.01,
+                diagnostics=boom,
+            )
+
 
 class TestDeployCutover:
     def test_step_keys(self) -> None:

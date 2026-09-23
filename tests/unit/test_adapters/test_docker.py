@@ -359,3 +359,169 @@ class TestDockerStack(AdapterTestCase):
         assert info is not None
         assert info["nano_cpus"] is None
         assert info["memory_bytes"] is None
+
+    def test_compose_and_container_logs(self) -> None:
+        self.shell.compose.return_value = self.ok(
+            'nginx: [emerg] host not found in upstream "old-backend:8000"\n'
+        )
+        assert "host not found" in self.docker.compose_logs("app")
+        self.shell.compose.assert_any_call(
+            "logs",
+            "--no-color",
+            "--tail",
+            "40",
+            "app",
+            capture=True,
+            check=False,
+        )
+        assert self.docker.compose_logs() == ""
+        self.shell.docker.return_value = self.ok(
+            "", returncode=0, stderr="oauth missing CLIENT_ID\n"
+        )
+        assert "CLIENT_ID" in self.docker.container_logs("raft-app_tmp")
+        assert self.docker.container_logs("") == ""
+
+    def test_service_health_summary_and_diagnostics(self) -> None:
+        self.shell.compose.return_value = self.ok("cid\n")
+        self.shell.docker.return_value = self.ok(
+            '{"Status":"running","Health":{"Status":"unhealthy",'
+            '"Log":[{"Output":"wget failed\\n"}]}}\n'
+        )
+        summary = self.docker.service_health_summary("app")
+        assert "running/unhealthy" in summary
+        assert "healthcheck:" in summary
+
+        self.shell.compose.return_value = self.ok("  \n")
+        assert self.docker.service_health_summary("app") == "absent"
+
+        self.shell.compose.return_value = self.ok("cid\n")
+        self.shell.docker.return_value = self.ok(returncode=1)
+        assert self.docker.service_health_summary("app") == "unknown"
+        self.shell.docker.return_value = self.ok("not-json\n")
+        assert self.docker.service_health_summary("app") == "unknown"
+        self.shell.docker.return_value = self.ok("[]\n")
+        assert self.docker.service_health_summary("app") == "unknown"
+
+        def compose(*args, **kwargs):
+            if args[:1] == ("ps",):
+                return self.ok("cid\n")
+            if args[:1] == ("logs",):
+                return self.ok(
+                    'nginx: [emerg] host not found in upstream "old-backend:8000"\n'
+                )
+            return self.ok()
+
+        self.shell.compose.side_effect = compose
+        self.shell.docker.return_value = self.ok(
+            '{"Status":"running","Health":{"Status":"unhealthy","Log":[]}}\n'
+        )
+        diag = self.docker.diagnostics_for("app")
+        assert "host not found" in diag
+        assert "--- app" in diag
+
+        self.shell.docker.return_value = self.ok(
+            "", returncode=0, stderr="oauth crash: missing env\n"
+        )
+        tmp_diag = self.docker.diagnostics_for(containers=("raft-app_tmp",))
+        assert "oauth crash" in tmp_diag
+
+    def test_enrich_compose_failure_relays_logs(self) -> None:
+        from raft.errors import OperatorError
+
+        def compose(*args, **kwargs):
+            if args[:1] == ("ps",):
+                return self.ok("cid\n")
+            if args[:1] == ("logs",):
+                return self.ok(
+                    'nginx: [emerg] host not found in upstream "old-backend:8000"\n'
+                )
+            return self.ok(returncode=1)
+
+        self.shell.compose.side_effect = compose
+        self.shell.docker.return_value = self.ok(
+            '{"Status":"running","Health":{"Status":"unhealthy","Log":[]}}\n'
+        )
+        base = OperatorError(
+            "docker compose failed while trying to bring the stack up.\n"
+            "dependency failed to start: container raft-app-1 is unhealthy",
+            has_fix=True,
+        )
+        enriched = self.docker.enrich_compose_failure(base, services=("app",))
+        assert "host not found" in str(enriched)
+        assert enriched.has_fix is True
+
+        # start_stack should enrich on failure (services inferred from not-ready).
+        with patch.object(
+            self.docker,
+            "enrich_compose_failure",
+            side_effect=lambda exc, **kw: OperatorError(
+                f"{exc}\n\n--- app ---\nnginx: [emerg] host not found",
+                has_fix=exc.has_fix,
+            ),
+        ):
+            self.shell.compose.side_effect = None
+            self.shell.compose.return_value = self.ok(returncode=1)
+            with pytest.raises(RuntimeError, match="host not found"):
+                self.docker.start_stack()
+            with pytest.raises(RuntimeError, match="host not found"):
+                self.docker.rebuild_service("app")
+
+        # recreate_pulled_service enrich path
+        app = make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
+        self.shell.docker.return_value = self.ok()
+        with patch.object(
+            self.docker,
+            "enrich_compose_failure",
+            side_effect=lambda exc, **kw: OperatorError(
+                f"{exc}\n\n--- hub ---\nbad",
+                has_fix=True,
+            ),
+        ):
+            self.shell.compose.return_value = self.ok(returncode=1)
+            with pytest.raises(RuntimeError, match="--- hub ---"):
+                self.docker.recreate_pulled_service(
+                    app, pull_ref="ghcr.io/org/hub:main"
+                )
+
+        # enrich falls back to not_ready_services / returns original when empty
+        self.shell.compose.side_effect = None
+        self.shell.compose.return_value = self.ok("")
+        self.shell.docker.return_value = self.ok("exited none\n")
+        bare = OperatorError("compose failed", has_fix=False)
+        # no services, no mention, not_ready empty → original
+        with patch.object(self.docker, "not_ready_services", return_value=[]):
+            assert self.docker.enrich_compose_failure(bare) is bare
+        with patch.object(self.docker, "diagnostics_for", return_value=""):
+            assert (
+                self.docker.enrich_compose_failure(bare, services=("app",)) is bare
+            )
+        # empty service names skipped; health log last entry not a dict
+        self.shell.compose.return_value = self.ok("cid\n")
+        self.shell.docker.return_value = self.ok(
+            '{"Status":"running","Health":{"Status":"unhealthy","Log":["x"]}}\n'
+        )
+        assert "running/unhealthy" in self.docker.service_health_summary("app")
+        self.shell.docker.return_value = self.ok(
+            '{"Status":"","Health":{"Log":[]}}\n'
+        )
+        assert self.docker.service_health_summary("app") == "unknown"
+        self.shell.docker.return_value = self.ok('{"Status":"exited"}\n')
+        assert self.docker.service_health_summary("app") == "exited"
+        assert self.docker.diagnostics_for("", containers=("",)) == ""
+        self.shell.docker.return_value = self.ok(
+            "", returncode=0, stderr=""
+        )
+        # container with empty logs still emits header via health="container"
+        assert "raft-app_tmp" in self.docker.diagnostics_for(
+            containers=("raft-app_tmp",)
+        )
+
+    def test_not_ready_services(self) -> None:
+        def compose(*args, **kwargs):
+            if "app" in args:
+                return self.ok("cid\n")
+            return self.ok("")
+
+        self.shell.compose.side_effect = compose
+        self.shell.docker.return_value = self.ok("running unhealthy\n")
+        assert "app" in self.docker.not_ready_services(["app", "missing"])

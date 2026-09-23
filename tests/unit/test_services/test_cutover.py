@@ -138,6 +138,36 @@ class TestCutoverSession(ServicesTestCase):
             session.app, pull_ref="ghcr.io/org/hub:main"
         )
 
+    def test_start_tmp_timeout_includes_container_logs(self) -> None:
+        s = self.session
+        s.previous_image = "img:old"
+        s.network = "net1"
+        s.docker.router_can_fetch.return_value = False
+        s.docker.diagnostics_for.return_value = (
+            '--- raft-app_tmp (container) ---\n'
+            'Error: OAUTH_CLIENT_ID is required'
+        )
+        with patch("raft.services.cutover.time.sleep"):
+            with pytest.raises(RuntimeError, match="OAUTH_CLIENT_ID") as caught:
+                s.start_tmp_from_previous()
+        assert "timed out waiting for: app_tmp reachable" in str(caught.value)
+        s.docker.diagnostics_for.assert_called()
+        kwargs = s.docker.diagnostics_for.call_args.kwargs
+        assert s.app.tmp_container in kwargs.get("containers", ())
+
+    def test_rebuild_stable_timeout_uses_app_diagnostics(self) -> None:
+        s = self.session
+        s.docker.rebuild_service.return_value = None
+        s.docker.router_can_fetch.return_value = False
+        s.docker.diagnostics_for.return_value = (
+            '--- app (running/unhealthy) ---\n'
+            'nginx: [emerg] host not found in upstream "old:8000"'
+        )
+        with patch("raft.services.cutover.time.sleep"):
+            with pytest.raises(RuntimeError, match="host not found"):
+                s.rebuild_stable_service()
+        s.docker.diagnostics_for.assert_called_with(s.app.compose_id)
+
     def test_log_prints(self, caplog: pytest.LogCaptureFixture) -> None:
         with caplog.at_level("INFO"):
             self.session.log("hello")
