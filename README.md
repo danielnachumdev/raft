@@ -24,21 +24,34 @@ Operator data lives under **`~/.raft/`**. Override with `RAFT_DATA_HOME`. Refres
 
 ```bash
 raft doctor
-raft up
+# Then apply an App (deploy on by default), e.g.:
+#   raft apply --file .raft/app.yaml --ref "$SHA"
 ```
 
 ## Feel of the CLI
 
+**Recommended (CI and operators):** one `apply` with deploy on (the default). That registers the App and calls `ensure_app_deployed` — cutover if the service is already running, start it if the gate is up, else bring the stack up. Same command for first boot and later releases:
+
 ```bash
-raft apply --git git@github.com:org/my-site.git
-raft up
+raft apply --file .raft/app.yaml --ref "$SHA" --env CI_DATABASE_URL=…
+# or: raft apply --git git@github.com:org/my-site.git --ref "$SHA"
 raft doctor
-raft redeploy my-site
-raft gate recreate    # only when edge: published ports change
 raft get apps
 ```
 
-One committed App manifest can serve Dev and Prod via `${VAR}` / `${VAR:-default}` placeholders. Expansion runs at `raft apply` (process env → optional `--env-file` → repeatable `--env`; later wins). Registry stores expanded YAML.
+Do **not** use `--no-deploy` + `raft sync` + `raft redeploy` as the default pipeline. `redeploy` requires the app Compose service to already be running; on a **new** App it fails with `service '…' is not running — bring the stack up first`.
+
+```bash
+# Optional: cutover only (app already running; registry unchanged)
+raft redeploy my-site --ref "$SHA"
+
+# Only when edge: published ports change
+raft gate recreate
+```
+
+`--no-deploy` is for register-only (several apps then one `raft up`, or apply before Origin PEMs exist). Afterwards deploy with apply again (deploy on) or `raft up`.
+
+One committed App manifest can serve Dev and Prod via `${VAR}` / `${VAR:-default}` placeholders. Expansion runs at `raft apply` on the **entire** manifest text — including comments — (process env → optional `--env-file` → repeatable `--env`; later wins). Registry stores expanded YAML. Escape literal demo placeholders in comments as `$${NAME}`.
 
 To pass a CI value into the **container**, declare the Docker name in `spec.env` (or path in `spec.envFile`) and template the CI name:
 

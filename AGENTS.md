@@ -14,7 +14,7 @@ User-facing samples live under **[`examples/`](examples/)**: operator settings (
 
 **Shipped:** App `volumes` / `envFile` / `group` / `expose: none` (required for multi-App stacks).
 
-**Shipped:** App-manifest `${VAR}` / `${VAR:-default}` expansion at `raft apply` (one template for Dev/Prod; registry stores expanded YAML). Bridge CI values into the container via `spec.env` / `spec.envFile` placeholders (`DATABASE_URL: ${CI_DATABASE_URL}`).
+**Shipped:** App-manifest `${VAR}` / `${VAR:-default}` expansion at `raft apply` (one template for Dev/Prod; registry stores expanded YAML). Expansion runs on the **entire** manifest text (including comments) before YAML parse — escape demo placeholders as `$${NAME}` or omit them from comments. Bridge CI values into the container via `spec.env` / `spec.envFile` placeholders (`DATABASE_URL: ${CI_DATABASE_URL}`).
 
 ---
 
@@ -64,13 +64,14 @@ Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 
 1. `install.sh` (or `uv sync` in a clone; Python **3.8+**).
 2. Private git apps: `raft auth setup <name> --repo git@host:owner/repo.git` (works before apply) → paste pubkey as read-only deploy key (`~/.ssh/raft/`). Then `raft auth test <name> --repo …` and `raft apply --git …`.
-3. `raft apply --file …` or `raft apply --git …` → writes `~/.raft/state/apps/<name>.yaml`; with deploy (default) always brings the app live (cutover if running, start the service if gate is up, else full `up`). Optional `--env-file` / `--env` expand `${VAR}` in the manifest text only (not container env).
-4. If any app uses `tls: origin`, install PEMs under `~/.raft/certs/<name>/` before first deploy.
-5. Manual cold start without apply: `raft up` (refuses if stack already up; `down` first).
-6. `raft doctor` before trusting the site (certs only for `tls: origin`; gate drift → `raft gate recreate`). Doctor is group-first: built-in **`raft`** (edge services; healthy docker/compose/generated/stack/port probes stay hidden), then App `spec.group` (at most one); ungrouped apps appear without a heading. Member labels are Compose service ids (`NAME` / `GROUP-NAME`; edge `raft-gate` / `raft-router`). Healthy OK lines append ports in use (gate: published host ports; apps/router: contract / listen ports).
-7. `raft stats` (optional `--json`, or `--live` to refresh the human table until Ctrl+C) for a point-in-time host + container CPU/memory/uptime snapshot — declared Compose limits vs live `docker stats` usage. History/averages for scaling come later.
-8. Updates: `raft apply …` again, or `raft redeploy <app>` / `raft redeploy router`. New edge listeners: `raft gate recreate`.
-9. Tear down: `raft down`.
+3. **Recommended ship path:** `raft apply --file …` or `raft apply --git …` with deploy **on** (default). Writes `~/.raft/state/apps/<name>.yaml`, then `ensure_app_deployed`: cutover if the Compose service is already running, start that service if the gate is up, else full stack `up`. Pass `--ref SHA` (and optional `--env-file` / `--env`) so CI first-boot and later cutovers share one command. Do **not** default to `--no-deploy` + `sync` + `redeploy` — `redeploy` requires the app service to already be running and fails on a new App with `service '…' is not running — bring the stack up first`.
+4. If any app uses `tls: origin`, install PEMs under `~/.raft/certs/<name>/` **before** first deploy (apply-with-deploy or `raft up`).
+5. `--no-deploy` only when you intentionally register desired state without bringing the app live (e.g. apply several manifests, then one `raft up`; or register before Origin PEMs exist). After that, deploy with `raft apply …` again (deploy on) or `raft up` / `raft redeploy` as appropriate.
+6. Manual cold start when apps are already applied: `raft up` (refuses if stack already up; `down` first).
+7. `raft doctor` before trusting the site (certs only for `tls: origin`; gate drift → `raft gate recreate`). Doctor is group-first: built-in **`raft`** (edge services; healthy docker/compose/generated/stack/port probes stay hidden), then App `spec.group` (at most one); ungrouped apps appear without a heading. Member labels are Compose service ids (`NAME` / `GROUP-NAME`; edge `raft-gate` / `raft-router`). Healthy OK lines append ports in use (gate: published host ports; apps/router: contract / listen ports).
+8. `raft stats` (optional `--json`, or `--live` to refresh the human table until Ctrl+C) for a point-in-time host + container CPU/memory/uptime snapshot — declared Compose limits vs live `docker stats` usage. History/averages for scaling come later.
+9. Updates: prefer `raft apply … --ref …` again (handles first-boot and cutover). Use `raft redeploy <app>` only when the app Compose service is **already running** and you want cutover without re-writing the registry (optional `--ref` / `--force-sync`). `raft redeploy router` for the inner nginx. New edge listeners: `raft gate recreate`.
+10. Tear down: `raft down`.
 
 Useful checks: `curl -H 'Host: <publicHost>' http://127.0.0.1/`. Optional local hosts: `sudo python3 scripts/hosts.py hold` (reads applied `publicHost` values; errors if none applied). See [`scripts/README.md`](scripts/README.md).
 
@@ -131,12 +132,12 @@ Top-level **commands** (not nested groups, except `auth` and `gate`):
 
 | Command | Purpose |
 |---------|---------|
-| `apply` | `--file` or `--git` (+ `--ref`, `--no-deploy`, `--force-sync`, `--env-file`, repeatable `--env`) — `--env*` expand `${VAR}` in the manifest only |
+| `apply` | `--file` or `--git` (+ `--ref`, `--no-deploy`, `--force-sync`, `--env-file`, repeatable `--env`) — default **deploys** via `ensure_app_deployed`; `--no-deploy` registers only; `--env*` expand `${VAR}` in the manifest text (incl. comments) |
 | `get` | `get apps` / `get app NAME` |
 | `delete` | `delete app NAME` |
-| `up` / `down` | Stack bring-up / tear-down |
+| `up` / `down` | Stack bring-up / tear-down (when apps already applied; not the usual CI path) |
 | `sync` / `render` | Sources / regenerate `~/.raft/generated/` |
-| `redeploy` | App cutover or `router` (`gate` refused) |
+| `redeploy` | Cutover for an **already-running** app, or recreate `router` (`gate` refused). Fails if the app service is not up — use apply-with-deploy (or `raft up`) for first boot |
 | `gate recreate` | Recreate gate for new published edge ports |
 | `doctor` | Health + fix hints |
 | `stats` | Host + container resource usage (point-in-time; `--json` or `--live`) |
@@ -170,7 +171,7 @@ Compose mounts `generated/nginx/upstreams` into the router. Upstream files are k
 |------|------|
 | **raft** (this) | Product + **Test** CI (Py 3.8–3.13). No Terraform here. |
 | **Private ops** | GCP/VM + SSH job that pulls this repo onto the VPS |
-| **Service repos** | Own `.raft/app.yaml` + their CI (apply/redeploy against the VPS) |
+| **Service repos** | Own `.raft/app.yaml` + their CI. **CI should** `raft apply --file .raft/app.yaml --ref $SHA --env …` (deploy on). Avoid `--no-deploy` + `raft redeploy` as the default pipeline — that breaks on a new App. |
 
 Gate is never auto-recreated by service CI.
 

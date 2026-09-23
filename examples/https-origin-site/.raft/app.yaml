@@ -1,7 +1,7 @@
 # HTTPS via Cloudflare Origin certs on the gate (`tls: origin`).
-# Apply: raft apply --file examples/https-origin-site/.raft/app.yaml
+# Apply (deploy on by default): raft apply --file examples/https-origin-site/.raft/app.yaml
 #
-# Install PEMs before `raft up` / recreating gate:
+# Install PEMs before first deploy (apply with deploy, or raft up after --no-deploy):
 #   ~/.raft/certs/https-origin-site/origin.pem
 #   ~/.raft/certs/https-origin-site/origin.key
 # Missing PEMs make nginx reject the gate config → HTTP and HTTPS die.

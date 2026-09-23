@@ -1,11 +1,11 @@
 # Host-published ports (mail-shaped) — app binds public ports itself.
-# Apply: raft apply --file examples/host-published-ports/.raft/app.yaml
+# Apply (deploy on by default): raft apply --file examples/host-published-ports/.raft/app.yaml
 #
 # expose: host skips the gate for those ports (recommended when the app must
 # see the real client IP, e.g. SMTP/IMAP). No edge.streams entries needed for
 # host ports. HTTP admin UI still goes through gate+router via expose: http.
 #
-# This example uses tls: origin for the web UI — install PEMs first:
+# This example uses tls: origin for the web UI — install PEMs before first deploy:
 #   ~/.raft/certs/host-published-ports/origin.pem
 #   ~/.raft/certs/host-published-ports/origin.key
 # Use tls: off if you do not want HTTPS for the admin host.

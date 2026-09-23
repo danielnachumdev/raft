@@ -10,7 +10,7 @@ Origin TLS for this hostname.
 
 ## Certs
 
-Before `raft up` or any gate recreate:
+Install PEMs **before** first deploy (apply-with-deploy or `raft up`):
 
 ```text
 ~/.raft/certs/https-origin-site/origin.pem
@@ -19,11 +19,17 @@ Before `raft up` or any gate recreate:
 
 `raft doctor` treats missing certs for `tls: origin` apps as failure.
 
-## Apply
+If PEMs are not ready yet, register only with
+`raft apply --file … --no-deploy`, install certs, then apply again **without**
+`--no-deploy` (or `raft up`).
+
+## Apply (recommended)
 
 ```bash
 raft apply --file examples/https-origin-site/.raft/app.yaml
-# or: raft apply --git git@github.com:example/https-origin-site.git
-raft up
+# or: raft apply --git git@github.com:example/https-origin-site.git --ref "$SHA"
 raft doctor
 ```
+
+Deploy is on by default (first boot or cutover). Prefer the same apply command in
+CI rather than `--no-deploy` + `redeploy`.

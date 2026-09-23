@@ -18,8 +18,10 @@ when the sample builds on the VPS.
 
 1. Copy [`settings.yaml`](settings.yaml) ideas into `~/.raft/settings.yaml`.
 2. Pick a service folder that matches your exposure model.
-3. `raft apply --file examples/<folder>/.raft/app.yaml` (or `--git` from a real repo).
-4. For `tls: origin`, install PEMs under `~/.raft/certs/<metadata.name>/`.
-5. `raft up` then `raft doctor`.
+3. For `tls: origin`, install PEMs under `~/.raft/certs/<metadata.name>/` **before** deploy.
+4. `raft apply --file examples/<folder>/.raft/app.yaml` (or `--git` from a real repo) — **deploy is on by default** (first boot or cutover). Pass `--ref` / `--env` in CI the same way.
+5. `raft doctor`.
+
+Do not treat `--no-deploy` + `raft redeploy` as the default: `redeploy` needs the app service already running. Use `--no-deploy` only to register without starting (e.g. several apps, then one `raft up`).
 
 After changing gate-published ports in settings, run `raft gate recreate`.

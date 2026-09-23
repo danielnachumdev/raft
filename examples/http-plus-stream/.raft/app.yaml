@@ -1,5 +1,5 @@
 # HTTP Host routing + a gate stream listener (SMTP-shaped example).
-# Apply: raft apply --file examples/http-plus-stream/.raft/app.yaml
+# Apply (deploy on by default): raft apply --file examples/http-plus-stream/.raft/app.yaml
 #
 # Required operator settings (examples/settings.yaml) — then `raft gate recreate`:
 #   edge:

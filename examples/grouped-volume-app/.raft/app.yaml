@@ -1,5 +1,6 @@
 # Grouped docker app with an internal-only port and a bind volume.
-# Apply: raft apply --file examples/grouped-volume-app/.raft/app.yaml
+# Apply (deploy on by default): raft apply --file examples/grouped-volume-app/.raft/app.yaml
+# CI: raft apply --file .raft/app.yaml --ref SHA
 #
 # Demonstrates: spec.group, spec.envFile, spec.volumes, expose: none.
 # Replace image/ref/paths for a real service before production use.

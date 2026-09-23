@@ -19,15 +19,18 @@ in settings.
 ~/.raft/certs/host-published-ports/origin.key
 ```
 
-Set `tls: off` in the manifest if you skip PEMs.
+Install PEMs **before** first deploy. Set `tls: off` in the manifest if you skip PEMs.
 
-## Apply
+## Apply (recommended)
 
 ```bash
 raft apply --file examples/host-published-ports/.raft/app.yaml
-raft up
+# CI: raft apply --file .raft/app.yaml --ref "$SHA"
 raft doctor
 ```
+
+Deploy is on by default (first boot or cutover). Prefer that over
+`--no-deploy` + `redeploy` for new apps.
 
 After changing `edge:` published ports (not host-exposed ones), run
 `raft gate recreate`.

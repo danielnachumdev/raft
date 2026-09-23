@@ -29,13 +29,16 @@ edge:
 raft gate recreate
 ```
 
-## Apply
+## Apply (recommended)
 
 ```bash
 raft apply --file examples/http-plus-stream/.raft/app.yaml
-raft up
+# CI: raft apply --file .raft/app.yaml --ref "$SHA"
 raft doctor
 ```
+
+Deploy is on by default (first boot or cutover). No separate `raft up` needed
+after apply unless you used `--no-deploy`.
 
 No Dockerfile here — `source: docker` pulls `image:ref`. Swap to `source: git` +
 `build:` if you build on the VPS.

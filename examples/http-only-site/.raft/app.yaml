@@ -1,16 +1,18 @@
 # Minimal HTTP-only site — TLS off, one Host-routed port.
-# Apply: raft apply --file examples/http-only-site/.raft/app.yaml
-# Or from a real service repo: raft apply --git git@github.com:ORG/REPO.git
+# Apply (deploy on by default): raft apply --file examples/http-only-site/.raft/app.yaml
+# CI: raft apply --file .raft/app.yaml --ref SHA   # first boot + later cutovers
+# Or from a real service repo: raft apply --git git@github.com:ORG/REPO.git --ref SHA
 #
 # When to use: a normal website/API behind the gate+router with no HTTPS
 # Origin certs on the VPS (Cloudflare Flexible, or TLS terminated elsewhere).
 #
-# Stage-aware apply (Dev/Prod): placeholders expand at `raft apply` only —
-#   name: ${RAFT_APP_NAME}
-#   publicHost: ${RAFT_APP_PUBLIC_HOST:-site.example.com}
+# Stage-aware apply (Dev/Prod): placeholders expand at `raft apply` on the
+# entire file text (including these comments). Escape demo placeholders:
+#   name: $${RAFT_APP_NAME}
+#   publicHost: $${RAFT_APP_PUBLIC_HOST:-site.example.com}
 #   env:
-#     DATABASE_URL: ${CI_DATABASE_URL}   # Docker name ← CI/process/--env name
-# Pass process env and/or --env-file / --env to fill those templates (later wins).
+#     DATABASE_URL: $${CI_DATABASE_URL}   # Docker name ← CI/process/--env name
+# Pass process env and/or --env-file / --env to fill real templates (later wins).
 # CLI --env alone does not inject Compose env without a spec.env / envFile bridge.
 # Registry stores the expanded concrete YAML.
 
