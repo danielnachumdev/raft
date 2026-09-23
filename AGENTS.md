@@ -12,9 +12,9 @@ Desired apps are **not** a committed inventory. Operators `apply` App manifests;
 
 User-facing samples live under **[`examples/`](examples/)**: operator settings (`examples/settings.yaml`) and named service scenarios (`http-only-site`, `https-origin-site`, `http-plus-stream`, `host-published-ports`, `grouped-volume-app`).
 
-**Shipped:** App `volumes` / `envFile` / `group` / `expose: none` — see [`docs/app-volumes-groups-plan.md`](docs/app-volumes-groups-plan.md) (required for multi-App stacks).
+**Shipped:** App `volumes` / `envFile` / `group` / `expose: none` (required for multi-App stacks).
 
-**Shipped:** App-manifest `${VAR}` / `${VAR:-default}` expansion at `raft apply` — see [`docs/manifest-env-expansion-plan.md`](docs/manifest-env-expansion-plan.md) (one template for Dev/Prod; registry stores expanded YAML).
+**Shipped:** App-manifest `${VAR}` / `${VAR:-default}` expansion at `raft apply` (one template for Dev/Prod; registry stores expanded YAML).
 
 ---
 
@@ -39,7 +39,7 @@ Cutover reloads **router** nginx. Render reloads **gate** nginx when on-disk `ga
 - `expose: stream` → gate `stream {}` (port must be declared in settings `edge.streams`).
 - `expose: host` → app publishes the host port itself (gate not involved).
 - `expose: none` → Compose `expose` only (internal); no host publish; no router; no `publicHost` required.
-- Optional multi-app stacks: `spec.group`, `spec.dependsOn`, `spec.envFile` / `spec.env`, `spec.volumes` — see [`docs/app-volumes-groups-plan.md`](docs/app-volumes-groups-plan.md).
+- Optional multi-app stacks: `spec.group`, `spec.dependsOn`, `spec.envFile` / `spec.env`, `spec.volumes`.
 - `spec.tls`: **`off` (default)** or **`origin`**. HTTP-only apps need no PEMs. `tls: origin` requires `~/.raft/certs/<app>/origin.{pem,key}` and `edge.https`.
 - Gate published ports come from `~/.raft/settings.yaml` `edge:` (`http`, `https`, `streams[]`), rendered into `generated/compose.edge.yaml`.
 
@@ -156,7 +156,7 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | `src/raft/services/` | apply, auth, sync, render, edge handlers, cutover, orchestrator, doctor; `manifest_env` (`${VAR}` at apply) |
 | `src/raft/config/` | `~/.raft` paths, `settings.yaml` (logging + edge), logging setup |
 | `src/raft/share/` | Product Compose + nginx templates (synced into data home) |
-| `tests/` | `unit/` (100% cov), `integration/` (render artifacts), `e2e/` (Docker Compose) — see [`docs/testing-plan.md`](docs/testing-plan.md) |
+| `tests/` | `unit/` (100% cov), `integration/` (render artifacts), `e2e/` (Docker Compose) |
 
 Compose mounts `generated/nginx/upstreams` into the router. Upstream files are keyed by app + port name (`<app>-<port>.conf`).
 
@@ -182,7 +182,7 @@ If the host is rooted, container-readable secrets are burned. Prefer external st
 
 ## Tests & commits
 
-- `uv sync --extra dev` then see [`docs/testing-plan.md`](docs/testing-plan.md):
+- `uv sync --extra dev` then:
   - `uv run pytest tests/unit --cov=raft --cov-fail-under=100` — **100%** branch coverage
   - `uv run pytest` — unit + integration (default)
   - `uv run pytest tests/e2e -m e2e` — Docker required; runs on all CI Python versions

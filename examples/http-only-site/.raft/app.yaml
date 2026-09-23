@@ -10,7 +10,7 @@
 #   publicHost: ${RAFT_APP_PUBLIC_HOST:-site.example.com}
 # Pass process env and/or --env-file / --env (manifest expansion only; not
 # container env — use spec.envFile / spec.env for that). Registry stores the
-# expanded concrete YAML. See docs/manifest-env-expansion-plan.md.
+# expanded concrete YAML.
 
 apiVersion: raft/v1
 kind: App
