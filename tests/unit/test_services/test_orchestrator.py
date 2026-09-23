@@ -198,6 +198,23 @@ class TestOrchestrator(ServicesTestCase):
         predicate = wait.call_args.args[1]
         assert predicate() is True
         orch.docker.service_is_ready.assert_called_with(app.compose_id)
+        # Py3.8 branch coverage: the diagnostics lambda must run at least once.
+        diag = wait.call_args.kwargs["diagnostics"]
+        orch.docker.diagnostics_for.return_value = "--- app ---"
+        assert diag() == "--- app ---"
+        orch.docker.diagnostics_for.assert_called_with(app.compose_id)
+
+    def test_wait_app_ready_skips_when_readiness_none(self) -> None:
+        write_applied_app(
+            self.tmp_path,
+            "app",
+            extra={"readiness": {"type": "none"}},
+        )
+        orch = self.orchestrator()
+        app = orch.stack.app("app")
+        with patch("raft.services.orchestrator.wait_until") as wait:
+            orch._wait_app_ready(app, timeout=5)
+        wait.assert_not_called()
 
     def test_wait_app_ready_label_for_published_tcp(self) -> None:
         write_applied_app(

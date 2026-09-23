@@ -168,6 +168,47 @@ class TestCutoverSession(ServicesTestCase):
                 s.rebuild_stable_service()
         s.docker.diagnostics_for.assert_called_with(s.app.compose_id)
 
+    def test_wait_ready_invokes_compose_ready_for_expose_none(self) -> None:
+        write_applied_app(
+            self.tmp_path,
+            "app",
+            public_host="",
+            source="docker",
+            image="redis",
+            build_context=None,
+            extra={
+                "ports": [
+                    {"name": "http", "containerPort": 8000, "expose": "none"},
+                ],
+                "readiness": {"type": "tcp", "port": "http"},
+            },
+        )
+        app = make_app("app", source="docker", image="redis", public_host="")
+        stack = make_stack(self.tmp_path, (app,), drain_seconds=0.0)
+        docker = MagicMock()
+        docker.service_is_ready.return_value = True
+        session = CutoverSession(
+            stack=stack,
+            app=app,
+            docker=docker,
+            nginx=MagicMock(),
+            http=MagicMock(),
+        )
+        with patch("raft.services.cutover.time.sleep"):
+            session._wait_ready("compose ready")
+        docker.service_is_ready.assert_called_with(app.compose_id)
+
+    def test_wait_ready_skips_when_readiness_none(self) -> None:
+        write_applied_app(
+            self.tmp_path,
+            "app",
+            extra={"readiness": {"type": "none"}},
+        )
+        s = self.session
+        with patch("raft.services.cutover.wait_until") as wait:
+            s._wait_ready("noop")
+        wait.assert_not_called()
+
     def test_log_prints(self, caplog: pytest.LogCaptureFixture) -> None:
         with caplog.at_level("INFO"):
             self.session.log("hello")
