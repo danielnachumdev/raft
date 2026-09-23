@@ -14,7 +14,7 @@ User-facing samples live under **[`examples/`](examples/)**: operator settings (
 
 **Shipped:** App `volumes` / `envFile` / `group` / `expose: none` (required for multi-App stacks).
 
-**Shipped:** App-manifest `${VAR}` / `${VAR:-default}` expansion at `raft apply` (one template for Dev/Prod; registry stores expanded YAML).
+**Shipped:** App-manifest `${VAR}` / `${VAR:-default}` expansion at `raft apply` (one template for Dev/Prod; registry stores expanded YAML). Bridge CI values into the container via `spec.env` / `spec.envFile` placeholders (`DATABASE_URL: ${CI_DATABASE_URL}`).
 
 ---
 

@@ -13,12 +13,15 @@ from raft.services.auth import GitAuthManager
 from ..base import RaftTestCase, write_applied_app
 from .base import ServicesTestCase
 from .fixtures import (
+    CI_TO_CONTAINER_APPLY_ENV,
+    CI_TO_CONTAINER_ENV_MANIFEST,
+    CI_TO_CONTAINER_FLAG_OVERRIDES,
     MISSING_VAR_FILE_MANIFEST,
     PLACEHOLDER_FILE_MANIFEST,
     clone_writes_missing_var_manifest,
     clone_writes_placeholder_manifest,
 )
-
+from raft.services.render import StackRenderer
 
 def _apply(stack, shell):
     applier = AppApply(stack)
@@ -393,6 +396,49 @@ class TestAppApply(RaftTestCase):
 
         error = str(caught.value)
         assert "MISSING" in error
+
+    def test_apply_expands_ci_env_into_container_spec_then_compose(self) -> None:
+        """CI/process/--env fill ``spec.env`` templates; render writes Compose env.
+
+        Bridge (required in app.yaml):
+          container key (Docker) ← ``${CI_TEMPLATE}`` (apply-time name)
+
+        Precedence: process env ← overridden by ``--env`` for the same key.
+        ``LOG_LEVEL`` uses ``${CI_LOG_LEVEL:-info}`` (default when CI omits it).
+        """
+        manifest = self.tmp_path / "manifest.yaml"
+        manifest.write_text(CI_TO_CONTAINER_ENV_MANIFEST, encoding="utf-8")
+
+        applied_name = AppApply(load_stack(self.tmp_path)).apply_file(
+            manifest,
+            deploy=False,
+            environ=CI_TO_CONTAINER_APPLY_ENV,
+            env_overrides=CI_TO_CONTAINER_FLAG_OVERRIDES,
+        )
+
+        registry = yaml.safe_load(
+            (self.tmp_path / "state" / "apps" / f"{applied_name}.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        container_env = registry["spec"]["env"]
+
+        assert applied_name == "api-dev"
+        assert registry["spec"]["envFile"] == "/home/raft/.raft/api-dev.env"
+        assert container_env["DATABASE_URL"] == "postgres://from-ci-flag"
+        assert container_env["LOG_LEVEL"] == "info"
+        assert "${" not in yaml.safe_dump(registry)
+
+        StackRenderer(load_stack(self.tmp_path)).render()
+        compose = (
+            self.tmp_path / "generated" / "compose.apps.yaml"
+        ).read_text(encoding="utf-8")
+
+        assert "environment:" in compose
+        assert 'DATABASE_URL: "postgres://from-ci-flag"' in compose
+        assert "LOG_LEVEL: info" in compose
+        assert "env_file:" in compose
+        assert "/home/raft/.raft/api-dev.env" in compose
 
     def test_apply_git_expands_env_into_registry(self) -> None:
         stack = load_stack(self.tmp_path)

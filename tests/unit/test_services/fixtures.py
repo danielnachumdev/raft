@@ -166,6 +166,39 @@ spec:
   build: {context: .}
 """
 
+# CI → apply expansion → Compose container env (bridge via spec.env / envFile)
+CI_TO_CONTAINER_ENV_MANIFEST = """\
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: ${RAFT_APP_NAME}
+spec:
+  source: docker
+  image: redis
+  ref: alpine
+  path: apps/${RAFT_APP_NAME}
+  envFile: ${CI_ENV_FILE}
+  env:
+    DATABASE_URL: ${CI_DATABASE_URL}
+    LOG_LEVEL: ${CI_LOG_LEVEL:-info}
+  ports:
+    - name: redis
+      containerPort: 6379
+      expose: none
+  readiness:
+    type: none
+"""
+
+CI_TO_CONTAINER_APPLY_ENV: dict[str, str] = {
+    "RAFT_APP_NAME": "api-dev",
+    "CI_ENV_FILE": "/home/raft/.raft/api-dev.env",
+    "CI_DATABASE_URL": "postgres://from-process",
+}
+
+CI_TO_CONTAINER_FLAG_OVERRIDES: list[str] = [
+    "CI_DATABASE_URL=postgres://from-ci-flag",
+]
+
 
 def clone_writes_manifest(text: str) -> Callable[..., None]:
     """Return a git side_effect that writes ``.raft/app.yaml`` on clone."""

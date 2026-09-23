@@ -51,9 +51,14 @@ class RaftCLI:
         """Register an App manifest on this VPS (from file or git URL).
 
         ``--env-file`` / repeatable ``--env KEY=VALUE`` expand ``${VAR}``
-        placeholders in the App manifest text only (before YAML parse). They
-        do **not** set Compose container environment (use ``spec.envFile`` /
-        ``spec.env`` for that).
+        placeholders in the App manifest text (before YAML parse). They do not
+        inject Compose env by themselves — bridge CI values into the container
+        by templating ``spec.env`` / ``spec.envFile``::
+
+            env:
+              DATABASE_URL: ${CI_DATABASE_URL}   # Docker name ← CI template name
+
+        Precedence: process env → ``--env-file`` → ``--env`` (later wins).
         """
         applier = deps.AppApply(self._stack)
         deploy = not no_deploy
