@@ -471,6 +471,49 @@ class TestCliAuth(RaftTestCase):
 
 
 class TestCliApplyGetDelete(RaftTestCase):
+    def test_apply_passes_env_file_and_env_overrides_to_apply_file(self) -> None:
+        write_demo_inventory(self.tmp_path)
+        stack = make_stack(self.tmp_path, (make_app("app"),))
+        applier = MagicMock()
+        applier.apply_file.return_value = "web"
+        argv = [
+            "apply",
+            "--file",
+            "app.yaml",
+            "--no-deploy",
+            "--env-file",
+            "vars.env",
+            "--env",
+            "A=1",
+            "--env",
+            "B=2",
+        ]
+
+        with patch("raft.cli.deps.load_stack", return_value=stack):
+            with patch("raft.cli.deps.AppApply", return_value=applier):
+                exit_code = cli.main(argv)
+
+        call_kwargs = applier.apply_file.call_args.kwargs
+        assert exit_code == 0
+        assert call_kwargs["env_file"] == Path("vars.env")
+        # Fire may pass repeated --env as a tuple/list.
+        assert list(call_kwargs["env_overrides"]) == ["A=1", "B=2"]
+
+    def test_apply_without_env_flags_passes_none(self) -> None:
+        write_demo_inventory(self.tmp_path)
+        stack = make_stack(self.tmp_path, (make_app("app"),))
+        applier = MagicMock()
+        applier.apply_file.return_value = "web"
+
+        with patch("raft.cli.deps.load_stack", return_value=stack):
+            with patch("raft.cli.deps.AppApply", return_value=applier):
+                exit_code = cli.main(["apply", "--file", "app.yaml", "--no-deploy"])
+
+        call_kwargs = applier.apply_file.call_args.kwargs
+        assert exit_code == 0
+        assert call_kwargs.get("env_file") is None
+        assert call_kwargs.get("env_overrides") is None
+
     def test_apply_get_delete_dispatch(self, capsys) -> None:
         write_demo_inventory(self.tmp_path)
         stack = make_stack(
@@ -484,32 +527,6 @@ class TestCliApplyGetDelete(RaftTestCase):
             with patch("raft.cli.deps.AppApply", return_value=applier):
                 assert cli.main(["apply", "--file", "app.yaml", "--no-deploy"]) == 0
                 applier.apply_file.assert_called_once()
-                call_kw = applier.apply_file.call_args.kwargs
-                assert call_kw.get("env_file") is None
-                assert call_kw.get("env_overrides") is None
-                applier.apply_file.reset_mock()
-                assert (
-                    cli.main(
-                        [
-                            "apply",
-                            "--file",
-                            "app.yaml",
-                            "--no-deploy",
-                            "--env-file",
-                            "vars.env",
-                            "--env",
-                            "A=1",
-                            "--env",
-                            "B=2",
-                        ]
-                    )
-                    == 0
-                )
-                applier.apply_file.assert_called_once()
-                kw = applier.apply_file.call_args.kwargs
-                assert kw["env_file"] == Path("vars.env")
-                # Fire may pass repeated --env as a tuple/list.
-                assert list(kw["env_overrides"]) == ["A=1", "B=2"]
                 assert (
                     cli.main(
                         [

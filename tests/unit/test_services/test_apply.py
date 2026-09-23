@@ -20,6 +20,92 @@ def _apply(stack, shell):
     return applier
 
 
+_PLACEHOLDER_FILE_MANIFEST = """\
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: ${RAFT_APP_NAME}
+spec:
+  publicHost: ${RAFT_APP_HOST:-web.test}
+  source: local
+  path: apps/${RAFT_APP_NAME}
+  ref: main
+  www: true
+  ports:
+    - name: http
+      containerPort: 80
+      expose: http
+  build:
+    context: .
+"""
+
+_MISSING_VAR_FILE_MANIFEST = """\
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: ${MISSING}
+spec:
+  publicHost: web.test
+  source: local
+  path: apps/x
+  ref: main
+  ports:
+    - name: http
+      containerPort: 80
+      expose: http
+  build: {context: .}
+"""
+
+_PLACEHOLDER_GIT_MANIFEST = """\
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: ${APP_NAME}
+spec:
+  publicHost: git.test
+  source: git
+  path: apps/${APP_NAME}
+  ports:
+    - name: http
+      containerPort: 80
+      expose: http
+  build: {context: .}
+"""
+
+_MISSING_VAR_GIT_MANIFEST = """\
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: ${MISSING}
+spec:
+  publicHost: git.test
+  source: git
+  path: apps/x
+  ports:
+    - name: http
+      containerPort: 80
+      expose: http
+  build: {context: .}
+"""
+
+
+def _clone_writes_manifest(text: str):
+    """Return a git side_effect that writes ``.raft/app.yaml`` on clone."""
+
+    def clone(*args, **kwargs):
+        if "clone" not in args:
+            return
+        target = Path(args[-1])
+        (target / ".raft").mkdir(parents=True, exist_ok=True)
+        (target / ".raft" / "app.yaml").write_text(text, encoding="utf-8")
+
+    return clone
+
+
+_clone_writes_placeholder_manifest = _clone_writes_manifest(_PLACEHOLDER_GIT_MANIFEST)
+_clone_writes_missing_var_manifest = _clone_writes_manifest(_MISSING_VAR_GIT_MANIFEST)
+
+
 def _manifest(
     name: str = "web",
     *,
@@ -346,112 +432,77 @@ class TestAppApply(RaftTestCase):
             "img", ref_override="main", force_sync=False
         )
 
-    def test_apply_file_expands_env_into_registry(self) -> None:
-        path = self.tmp_path / "manifest.yaml"
-        path.write_text(
-            "apiVersion: raft/v1\n"
-            "kind: App\n"
-            "metadata:\n"
-            "  name: ${RAFT_APP_NAME}\n"
-            "spec:\n"
-            "  publicHost: ${RAFT_APP_HOST:-web.test}\n"
-            "  source: local\n"
-            "  path: apps/${RAFT_APP_NAME}\n"
-            "  ref: main\n"
-            "  www: true\n"
-            "  ports:\n"
-            "    - name: http\n"
-            "      containerPort: 80\n"
-            "      expose: http\n"
-            "  build:\n"
-            "    context: .\n",
-            encoding="utf-8",
-        )
+    def test_apply_file_expands_env_into_registry_before_parse(self) -> None:
+        """Expand happens before YAML parse; registry stores concrete values.
+
+        Precedence for this apply: process → --env-file → --env (flag wins).
+        """
+        manifest = self.tmp_path / "manifest.yaml"
+        manifest.write_text(_PLACEHOLDER_FILE_MANIFEST, encoding="utf-8")
         env_file = self.tmp_path / "apply.env"
         env_file.write_text("RAFT_APP_NAME=from-file\n", encoding="utf-8")
-        stack = load_stack(self.tmp_path)
-        name = AppApply(stack).apply_file(
-            path,
+        process_env = {"RAFT_APP_NAME": "from-process"}
+        flag_overrides = ["RAFT_APP_NAME=expanded-web"]
+
+        applied_name = AppApply(load_stack(self.tmp_path)).apply_file(
+            manifest,
             deploy=False,
-            environ={"RAFT_APP_NAME": "from-process"},
+            environ=process_env,
             env_file=env_file,
-            env_overrides=["RAFT_APP_NAME=expanded-web"],
+            env_overrides=flag_overrides,
         )
-        assert name == "expanded-web"
-        data = yaml.safe_load(
-            (self.tmp_path / "state" / "apps" / "expanded-web.yaml").read_text(
-                encoding="utf-8"
-            )
-        )
-        assert data["metadata"]["name"] == "expanded-web"
-        assert data["spec"]["publicHost"] == "web.test"
-        assert data["spec"]["path"] == "apps/expanded-web"
-        # Registry must store concrete YAML — no placeholders left.
-        raw_registry = (self.tmp_path / "state" / "apps" / "expanded-web.yaml").read_text(
-            encoding="utf-8"
-        )
-        assert "${" not in raw_registry
+
+        registry_path = self.tmp_path / "state" / "apps" / f"{applied_name}.yaml"
+        registry_text = registry_path.read_text(encoding="utf-8")
+        registry = yaml.safe_load(registry_text)
+
+        assert applied_name == "expanded-web"
+        assert registry["metadata"]["name"] == "expanded-web"
+        assert registry["spec"]["publicHost"] == "web.test"  # :-default
+        assert registry["spec"]["path"] == "apps/expanded-web"
+        assert "${" not in registry_text
 
     def test_apply_file_missing_var_fails(self) -> None:
-        path = self.tmp_path / "manifest.yaml"
-        path.write_text(
-            "apiVersion: raft/v1\n"
-            "kind: App\n"
-            "metadata:\n"
-            "  name: ${MISSING}\n"
-            "spec:\n"
-            "  publicHost: web.test\n"
-            "  source: local\n"
-            "  path: apps/x\n"
-            "  ref: main\n"
-            "  ports:\n"
-            "    - name: http\n"
-            "      containerPort: 80\n"
-            "      expose: http\n"
-            "  build: {context: .}\n",
-            encoding="utf-8",
-        )
-        with pytest.raises(RuntimeError, match="undefined variable MISSING"):
+        manifest = self.tmp_path / "manifest.yaml"
+        manifest.write_text(_MISSING_VAR_FILE_MANIFEST, encoding="utf-8")
+
+        with pytest.raises(RuntimeError, match="undefined variable MISSING") as caught:
             AppApply(load_stack(self.tmp_path)).apply_file(
-                path, deploy=False, environ={}
+                manifest, deploy=False, environ={}
             )
-    def test_apply_git_expands_env(self) -> None:
+
+        error = str(caught.value)
+        assert "MISSING" in error
+
+    def test_apply_git_expands_env_into_registry(self) -> None:
         stack = load_stack(self.tmp_path)
         shell = MagicMock()
+        shell.git.side_effect = _clone_writes_placeholder_manifest
 
-        def clone_with_placeholders(*args, **kwargs):
-            if "clone" not in args:
-                return
-            target = Path(args[-1])
-            (target / ".raft").mkdir(parents=True, exist_ok=True)
-            (target / ".raft" / "app.yaml").write_text(
-                "apiVersion: raft/v1\n"
-                "kind: App\n"
-                "metadata:\n"
-                "  name: ${APP_NAME}\n"
-                "spec:\n"
-                "  publicHost: git.test\n"
-                "  source: git\n"
-                "  path: apps/${APP_NAME}\n"
-                "  ports:\n"
-                "    - name: http\n"
-                "      containerPort: 80\n"
-                "      expose: http\n"
-                "  build: {context: .}\n",
-                encoding="utf-8",
-            )
-
-        shell.git.side_effect = clone_with_placeholders
-        name = _apply(stack, shell).apply_git(
+        applied_name = _apply(stack, shell).apply_git(
             "git@github.com:org/x.git",
             deploy=False,
             environ={"APP_NAME": "from-git"},
         )
-        assert name == "from-git"
-        data = yaml.safe_load(
-            (self.tmp_path / "state" / "apps" / "from-git.yaml").read_text(
-                encoding="utf-8"
+
+        registry_path = self.tmp_path / "state" / "apps" / f"{applied_name}.yaml"
+        registry = yaml.safe_load(registry_path.read_text(encoding="utf-8"))
+
+        assert applied_name == "from-git"
+        assert registry["metadata"]["name"] == "from-git"
+        assert registry["spec"]["path"] == "apps/from-git"
+
+    def test_apply_git_missing_var_fails(self) -> None:
+        stack = load_stack(self.tmp_path)
+        shell = MagicMock()
+        shell.git.side_effect = _clone_writes_missing_var_manifest
+
+        with pytest.raises(RuntimeError, match="undefined variable MISSING") as caught:
+            _apply(stack, shell).apply_git(
+                "git@github.com:org/x.git",
+                deploy=False,
+                environ={},
             )
-        )
-        assert data["metadata"]["name"] == "from-git"
-        assert data["spec"]["path"] == "apps/from-git"
+
+        error = str(caught.value)
+        assert "MISSING" in error
