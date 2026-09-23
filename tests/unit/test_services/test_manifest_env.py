@@ -11,9 +11,7 @@ Contract under test (apply-time only):
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping
 
 import pytest
 import yaml
@@ -29,61 +27,17 @@ from raft.services.manifest_env import (
     parse_env_assignment,
 )
 
-# ---------------------------------------------------------------------------
-# Declarative fixtures (shared setup text / expectations)
-# ---------------------------------------------------------------------------
-
-PLACEHOLDER_MANIFEST = """\
-apiVersion: raft/v1
-kind: App
-metadata:
-  name: ${RAFT_APP_NAME}
-spec:
-  publicHost: ${RAFT_APP_PUBLIC_HOST:-}
-  group: ${RAFT_APP_GROUP}
-  source: docker
-  image: ghcr.io/example/app
-  ref: ${RAFT_APP_REF}
-  path: ${RAFT_APP_PATH}
-  ports:
-    - name: http
-      containerPort: 80
-      expose: http
-"""
-
-PLACEHOLDER_ENV: dict[str, str] = {
-    "RAFT_APP_NAME": "frontend-dev",
-    "RAFT_APP_GROUP": "limudpsanter-dev",
-    "RAFT_APP_REF": "abc123",
-    "RAFT_APP_PATH": "apps/frontend-dev",
-}
-
-EXPECTED_EXPANDED_SNIPPET = """\
-name: web
-host: a.example
-literal: ${NAME}
-"""
-
-
-@dataclass(frozen=True)
-class ExpandCase:
-    """One declarative expand example: input text + env → expected output."""
-
-    id: str
-    text: str
-    env: Mapping[str, str]
-    expected: str
-
-
-@dataclass(frozen=True)
-class ErrorCase:
-    """One declarative expand failure: input text + env → error substring."""
-
-    id: str
-    text: str
-    env: Mapping[str, str]
-    match: str
-
+from .fixtures import (
+    DEFAULT_PLACEHOLDER_CASES,
+    EXPECTED_EXPANDED_SNIPPET,
+    ExpandCase,
+    ErrorCase,
+    INVALID_PLACEHOLDER_CASES,
+    MIXED_PLACEHOLDERS_ENV,
+    MIXED_PLACEHOLDERS_TEXT,
+    PLACEHOLDER_ENV,
+    PLACEHOLDER_MANIFEST,
+)
 
 # ---------------------------------------------------------------------------
 # ${NAME} / ${NAME:-default} / $${
@@ -133,13 +87,7 @@ class TestRequiredPlaceholder:
 class TestDefaultPlaceholder:
     @pytest.mark.parametrize(
         "case",
-        [
-            ExpandCase("unset", "${X:-hi}", {}, "hi"),
-            ExpandCase("empty", "${X:-hi}", {"X": ""}, "hi"),
-            ExpandCase("set", "${X:-hi}", {"X": "set"}, "set"),
-            ExpandCase("unset_empty_default", "${X:-}", {}, ""),
-            ExpandCase("empty_empty_default", "${X:-}", {"X": ""}, ""),
-        ],
+        DEFAULT_PLACEHOLDER_CASES,
         ids=lambda c: c.id,
     )
     def test_uses_default_when_unset_or_empty(self, case: ExpandCase) -> None:
@@ -200,16 +148,7 @@ class TestLiteralEscape:
 class TestInvalidPlaceholder:
     @pytest.mark.parametrize(
         "case",
-        [
-            ErrorCase("empty_name", "${}", {}, "invalid placeholder"),
-            ErrorCase("numeric_name", "${123}", {}, "invalid placeholder"),
-            ErrorCase("hyphen_in_name", "${FOO-bar}", {"FOO": "1"}, "invalid placeholder"),
-            ErrorCase("colon_without_dash", "${FOO:}", {"FOO": "1"}, "invalid placeholder"),
-            ErrorCase("colon_equals", "${FOO:=x}", {"FOO": "1"}, "invalid placeholder"),
-            ErrorCase("unclosed_required", "${FOO", {"FOO": "1"}, "invalid placeholder"),
-            ErrorCase("unclosed_default", "${FOO:-bar", {"FOO": "1"}, "invalid placeholder"),
-            ErrorCase("leading_dash", "${-x}", {}, "invalid placeholder"),
-        ],
+        INVALID_PLACEHOLDER_CASES,
         ids=lambda c: c.id,
     )
     def test_rejects_invalid_syntax(self, case: ErrorCase) -> None:
@@ -238,8 +177,8 @@ class TestMultiplePlaceholders:
         assert expanded == "xy"
 
     def test_required_default_and_escape_in_one_document(self) -> None:
-        text = "name: ${NAME}\nhost: ${HOST:-fallback}\nliteral: $${NAME}\n"
-        env = {"NAME": "web", "HOST": "a.example"}
+        text = MIXED_PLACEHOLDERS_TEXT
+        env = MIXED_PLACEHOLDERS_ENV
 
         expanded = expand_manifest_text(text, env)
 

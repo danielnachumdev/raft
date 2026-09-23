@@ -12,98 +12,18 @@ from raft.services.auth import GitAuthManager
 
 from ..base import RaftTestCase, write_applied_app
 from .base import ServicesTestCase
+from .fixtures import (
+    MISSING_VAR_FILE_MANIFEST,
+    PLACEHOLDER_FILE_MANIFEST,
+    clone_writes_missing_var_manifest,
+    clone_writes_placeholder_manifest,
+)
 
 
 def _apply(stack, shell):
     applier = AppApply(stack)
     applier.sh = shell
     return applier
-
-
-_PLACEHOLDER_FILE_MANIFEST = """\
-apiVersion: raft/v1
-kind: App
-metadata:
-  name: ${RAFT_APP_NAME}
-spec:
-  publicHost: ${RAFT_APP_HOST:-web.test}
-  source: local
-  path: apps/${RAFT_APP_NAME}
-  ref: main
-  www: true
-  ports:
-    - name: http
-      containerPort: 80
-      expose: http
-  build:
-    context: .
-"""
-
-_MISSING_VAR_FILE_MANIFEST = """\
-apiVersion: raft/v1
-kind: App
-metadata:
-  name: ${MISSING}
-spec:
-  publicHost: web.test
-  source: local
-  path: apps/x
-  ref: main
-  ports:
-    - name: http
-      containerPort: 80
-      expose: http
-  build: {context: .}
-"""
-
-_PLACEHOLDER_GIT_MANIFEST = """\
-apiVersion: raft/v1
-kind: App
-metadata:
-  name: ${APP_NAME}
-spec:
-  publicHost: git.test
-  source: git
-  path: apps/${APP_NAME}
-  ports:
-    - name: http
-      containerPort: 80
-      expose: http
-  build: {context: .}
-"""
-
-_MISSING_VAR_GIT_MANIFEST = """\
-apiVersion: raft/v1
-kind: App
-metadata:
-  name: ${MISSING}
-spec:
-  publicHost: git.test
-  source: git
-  path: apps/x
-  ports:
-    - name: http
-      containerPort: 80
-      expose: http
-  build: {context: .}
-"""
-
-
-def _clone_writes_manifest(text: str):
-    """Return a git side_effect that writes ``.raft/app.yaml`` on clone."""
-
-    def clone(*args, **kwargs):
-        if "clone" not in args:
-            return
-        target = Path(args[-1])
-        (target / ".raft").mkdir(parents=True, exist_ok=True)
-        (target / ".raft" / "app.yaml").write_text(text, encoding="utf-8")
-
-    return clone
-
-
-_clone_writes_placeholder_manifest = _clone_writes_manifest(_PLACEHOLDER_GIT_MANIFEST)
-_clone_writes_missing_var_manifest = _clone_writes_manifest(_MISSING_VAR_GIT_MANIFEST)
 
 
 def _manifest(
@@ -438,7 +358,7 @@ class TestAppApply(RaftTestCase):
         Precedence for this apply: process → --env-file → --env (flag wins).
         """
         manifest = self.tmp_path / "manifest.yaml"
-        manifest.write_text(_PLACEHOLDER_FILE_MANIFEST, encoding="utf-8")
+        manifest.write_text(PLACEHOLDER_FILE_MANIFEST, encoding="utf-8")
         env_file = self.tmp_path / "apply.env"
         env_file.write_text("RAFT_APP_NAME=from-file\n", encoding="utf-8")
         process_env = {"RAFT_APP_NAME": "from-process"}
@@ -464,7 +384,7 @@ class TestAppApply(RaftTestCase):
 
     def test_apply_file_missing_var_fails(self) -> None:
         manifest = self.tmp_path / "manifest.yaml"
-        manifest.write_text(_MISSING_VAR_FILE_MANIFEST, encoding="utf-8")
+        manifest.write_text(MISSING_VAR_FILE_MANIFEST, encoding="utf-8")
 
         with pytest.raises(RuntimeError, match="undefined variable MISSING") as caught:
             AppApply(load_stack(self.tmp_path)).apply_file(
@@ -477,7 +397,7 @@ class TestAppApply(RaftTestCase):
     def test_apply_git_expands_env_into_registry(self) -> None:
         stack = load_stack(self.tmp_path)
         shell = MagicMock()
-        shell.git.side_effect = _clone_writes_placeholder_manifest
+        shell.git.side_effect = clone_writes_placeholder_manifest
 
         applied_name = _apply(stack, shell).apply_git(
             "git@github.com:org/x.git",
@@ -495,7 +415,7 @@ class TestAppApply(RaftTestCase):
     def test_apply_git_missing_var_fails(self) -> None:
         stack = load_stack(self.tmp_path)
         shell = MagicMock()
-        shell.git.side_effect = _clone_writes_missing_var_manifest
+        shell.git.side_effect = clone_writes_missing_var_manifest
 
         with pytest.raises(RuntimeError, match="undefined variable MISSING") as caught:
             _apply(stack, shell).apply_git(
