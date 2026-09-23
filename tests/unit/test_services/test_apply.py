@@ -9,6 +9,8 @@ import yaml
 from raft.models.stack import load_stack
 from raft.services.apply import AppApply
 from raft.services.auth import GitAuthManager
+from raft.services.manifest_env import ApplyEnvSources
+from raft.services.render import StackRenderer
 
 from ..base import RaftTestCase, write_applied_app
 from .base import ServicesTestCase
@@ -21,8 +23,6 @@ from .fixtures import (
     clone_writes_missing_var_manifest,
     clone_writes_placeholder_manifest,
 )
-from raft.services.render import StackRenderer
-
 def _apply(stack, shell):
     applier = AppApply(stack)
     applier.sh = shell
@@ -358,21 +358,22 @@ class TestAppApply(RaftTestCase):
     def test_apply_file_expands_env_into_registry_before_parse(self) -> None:
         """Expand happens before YAML parse; registry stores concrete values.
 
-        Precedence for this apply: process → --env-file → --env (flag wins).
+        Caller merges process → --env-file → --env once, then passes ``env=``.
         """
         manifest = self.tmp_path / "manifest.yaml"
         manifest.write_text(PLACEHOLDER_FILE_MANIFEST, encoding="utf-8")
         env_file = self.tmp_path / "apply.env"
         env_file.write_text("RAFT_APP_NAME=from-file\n", encoding="utf-8")
-        process_env = {"RAFT_APP_NAME": "from-process"}
-        flag_overrides = ["RAFT_APP_NAME=expanded-web"]
+        apply_env = ApplyEnvSources(
+            environ={"RAFT_APP_NAME": "from-process"},
+            env_file=env_file,
+            overrides=["RAFT_APP_NAME=expanded-web"],
+        ).build()
 
         applied_name = AppApply(load_stack(self.tmp_path)).apply_file(
             manifest,
             deploy=False,
-            environ=process_env,
-            env_file=env_file,
-            env_overrides=flag_overrides,
+            env=apply_env,
         )
 
         registry_path = self.tmp_path / "state" / "apps" / f"{applied_name}.yaml"
@@ -391,29 +392,32 @@ class TestAppApply(RaftTestCase):
 
         with pytest.raises(RuntimeError, match="undefined variable MISSING") as caught:
             AppApply(load_stack(self.tmp_path)).apply_file(
-                manifest, deploy=False, environ={}
+                manifest, deploy=False, env={}
             )
 
         error = str(caught.value)
         assert "MISSING" in error
 
     def test_apply_expands_ci_env_into_container_spec_then_compose(self) -> None:
-        """CI/process/--env fill ``spec.env`` templates; render writes Compose env.
+        """Finalized apply ``env`` fills ``spec.env`` templates; render → Compose.
 
         Bridge (required in app.yaml):
           container key (Docker) ← ``${CI_TEMPLATE}`` (apply-time name)
 
-        Precedence: process env ← overridden by ``--env`` for the same key.
+        Merge (process → flags) happens before ``apply_file``; apply only expands.
         ``LOG_LEVEL`` uses ``${CI_LOG_LEVEL:-info}`` (default when CI omits it).
         """
         manifest = self.tmp_path / "manifest.yaml"
         manifest.write_text(CI_TO_CONTAINER_ENV_MANIFEST, encoding="utf-8")
+        apply_env = ApplyEnvSources(
+            environ=CI_TO_CONTAINER_APPLY_ENV,
+            overrides=CI_TO_CONTAINER_FLAG_OVERRIDES,
+        ).build()
 
         applied_name = AppApply(load_stack(self.tmp_path)).apply_file(
             manifest,
             deploy=False,
-            environ=CI_TO_CONTAINER_APPLY_ENV,
-            env_overrides=CI_TO_CONTAINER_FLAG_OVERRIDES,
+            env=apply_env,
         )
 
         registry = yaml.safe_load(
@@ -448,7 +452,7 @@ class TestAppApply(RaftTestCase):
         applied_name = _apply(stack, shell).apply_git(
             "git@github.com:org/x.git",
             deploy=False,
-            environ={"APP_NAME": "from-git"},
+            env={"APP_NAME": "from-git"},
         )
 
         registry_path = self.tmp_path / "state" / "apps" / f"{applied_name}.yaml"
@@ -467,7 +471,7 @@ class TestAppApply(RaftTestCase):
             _apply(stack, shell).apply_git(
                 "git@github.com:org/x.git",
                 deploy=False,
-                environ={},
+                env={},
             )
 
         error = str(caught.value)

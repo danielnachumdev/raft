@@ -471,18 +471,20 @@ class TestCliAuth(RaftTestCase):
 
 
 class TestCliApplyGetDelete(RaftTestCase):
-    def test_apply_passes_env_file_and_env_overrides_to_apply_file(self) -> None:
+    def test_apply_merges_env_file_and_flags_into_single_env_map(self) -> None:
         write_demo_inventory(self.tmp_path)
         stack = make_stack(self.tmp_path, (make_app("app"),))
         applier = MagicMock()
         applier.apply_file.return_value = "web"
+        env_path = self.tmp_path / "vars.env"
+        env_path.write_text("FROM_FILE=yes\nA=from-file\n", encoding="utf-8")
         argv = [
             "apply",
             "--file",
             "app.yaml",
             "--no-deploy",
             "--env-file",
-            "vars.env",
+            str(env_path),
             "--env",
             "A=1",
             "--env",
@@ -494,12 +496,15 @@ class TestCliApplyGetDelete(RaftTestCase):
                 exit_code = cli.main(argv)
 
         call_kwargs = applier.apply_file.call_args.kwargs
+        apply_env = call_kwargs["env"]
         assert exit_code == 0
-        assert call_kwargs["env_file"] == Path("vars.env")
-        # Fire may pass repeated --env as a tuple/list.
-        assert list(call_kwargs["env_overrides"]) == ["A=1", "B=2"]
+        assert "env_file" not in call_kwargs
+        assert "env_overrides" not in call_kwargs
+        assert apply_env["FROM_FILE"] == "yes"
+        assert apply_env["A"] == "1"  # --env wins over env-file
+        assert apply_env["B"] == "2"
 
-    def test_apply_without_env_flags_passes_none(self) -> None:
+    def test_apply_without_env_flags_still_passes_process_env_map(self) -> None:
         write_demo_inventory(self.tmp_path)
         stack = make_stack(self.tmp_path, (make_app("app"),))
         applier = MagicMock()
@@ -511,8 +516,9 @@ class TestCliApplyGetDelete(RaftTestCase):
 
         call_kwargs = applier.apply_file.call_args.kwargs
         assert exit_code == 0
-        assert call_kwargs.get("env_file") is None
-        assert call_kwargs.get("env_overrides") is None
+        assert isinstance(call_kwargs["env"], dict)
+        assert "env_file" not in call_kwargs
+        assert "env_overrides" not in call_kwargs
 
     def test_apply_get_delete_dispatch(self, capsys) -> None:
         write_demo_inventory(self.tmp_path)

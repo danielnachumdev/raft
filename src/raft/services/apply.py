@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import shutil
 import tempfile
 from pathlib import Path
@@ -23,7 +24,7 @@ from ..models.manifest import (
 from ..models.stack import Stack, load_stack
 from ..ui import say
 from .auth import GitAuthManager
-from .manifest_env import EnvOverrides, ManifestYamlLoader
+from .manifest_env import ManifestYamlLoader
 from .orchestrator import Orchestrator
 
 logger = logging.getLogger(__name__)
@@ -41,18 +42,15 @@ class AppApply:
         ref_override: Optional[str] = None,
         deploy: bool = True,
         force_sync: bool = False,
-        env_file: Optional[Path] = None,
-        env_overrides: EnvOverrides = None,
-        environ: Optional[Mapping[str, str]] = None,
+        env: Optional[Mapping[str, str]] = None,
     ) -> str:
         if not path.is_file():
             raise missing_manifest(path)
         try:
-            data = ManifestYamlLoader(
-                env_file=env_file,
-                env_overrides=env_overrides,
-                environ=environ,
-            ).load(path.read_text(encoding="utf-8"), path=path)
+            data = ManifestYamlLoader(env=self._expansion_env(env)).load(
+                path.read_text(encoding="utf-8"),
+                path=path,
+            )
         except yaml.YAMLError as exc:
             raise OperatorError(
                 f"invalid App manifest YAML at {path}: {exc}\n"
@@ -88,9 +86,7 @@ class AppApply:
         ref: str = "main",
         deploy: bool = True,
         force_sync: bool = False,
-        env_file: Optional[Path] = None,
-        env_overrides: EnvOverrides = None,
-        environ: Optional[Mapping[str, str]] = None,
+        env: Optional[Mapping[str, str]] = None,
     ) -> str:
         auth = GitAuthManager(self.stack)
         clone_urls = auth.clone_urls_for_repo(repo)
@@ -151,11 +147,7 @@ class AppApply:
                     f"Fix: add that file on the ref, or: raft apply --git {repo} --ref <other>"
                 )
             try:
-                data = ManifestYamlLoader(
-                    env_file=env_file,
-                    env_overrides=env_overrides,
-                    environ=environ,
-                ).load(
+                data = ManifestYamlLoader(env=self._expansion_env(env)).load(
                     manifest.read_text(encoding="utf-8"),
                     path=f"{repo}@{ref}:{CONTRACT_REL_PATH.as_posix()}",
                 )
@@ -222,3 +214,8 @@ class AppApply:
     ) -> None:
         orch = Orchestrator(load_stack(self.stack.root))
         orch.ensure_app_deployed(name, ref_override=ref_override, force_sync=force_sync)
+
+    @staticmethod
+    def _expansion_env(env: Optional[Mapping[str, str]]) -> Mapping[str, str]:
+        """Use the caller's finalized map, or process env when omitted."""
+        return os.environ if env is None else env

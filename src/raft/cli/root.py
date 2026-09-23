@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Optional, Sequence, Union
 
 from raft.errors import OperatorError, apply_requires_source, redeploy_requires_app, unknown_app
+from raft.services.manifest_env import ApplyEnvSources
 
 from . import delete as delete_cmd
 from . import deps
@@ -14,7 +15,6 @@ from . import get as get_cmd
 from .argv import ApplyEnvOverrides
 from .auth import AuthCLI
 from .gate import GateCLI
-
 logger = logging.getLogger(__name__)
 
 
@@ -59,19 +59,18 @@ class RaftCLI:
               DATABASE_URL: ${CI_DATABASE_URL}   # Docker name ← CI template name
 
         Precedence: process env → ``--env-file`` → ``--env`` (later wins).
+        Merging happens here once; ``AppApply`` receives only the finalized map.
         """
         applier = deps.AppApply(self._stack)
         deploy = not no_deploy
-        env_path = self._env_file_path(env_file)
-        env_overrides = self._resolve_env_overrides(env)
+        apply_env = self._build_apply_env(env_file=env_file, env=env)
         if file is not None:
             applier.apply_file(
                 Path(file),
                 ref_override=ref,
                 deploy=deploy,
                 force_sync=force_sync,
-                env_file=env_path,
-                env_overrides=env_overrides,
+                env=apply_env,
             )
             return
         if git:
@@ -80,8 +79,7 @@ class RaftCLI:
                 ref=ref or "main",
                 deploy=deploy,
                 force_sync=force_sync,
-                env_file=env_path,
-                env_overrides=env_overrides,
+                env=apply_env,
             )
             return
         raise apply_requires_source()
@@ -179,15 +177,15 @@ class RaftCLI:
         orch.redeploy_app(name, ref_override=ref, force_sync=force_sync)
 
     @staticmethod
-    def _env_file_path(env_file: Optional[str]) -> Optional[Path]:
-        return Path(env_file) if env_file else None
-
-    @staticmethod
-    def _resolve_env_overrides(
-        fire_env: Optional[Union[str, Sequence[str]]],
-    ) -> Union[None, str, Sequence[str]]:
-        """Prefer argv-peeled repeats (see ``cli.entry``); fall back to Fire's ``env``."""
+    def _build_apply_env(
+        *,
+        env_file: Optional[str],
+        env: Optional[Union[str, Sequence[str]]],
+    ) -> dict[str, str]:
+        """Merge process → ``--env-file`` → peeled/Fire ``--env`` once for apply."""
         peeled = ApplyEnvOverrides.get()
-        if peeled:
-            return list(peeled)
-        return fire_env
+        overrides: Union[None, str, Sequence[str]] = list(peeled) if peeled else env
+        return ApplyEnvSources.from_apply(
+            env_file=Path(env_file) if env_file else None,
+            env_overrides=overrides,
+        ).build()

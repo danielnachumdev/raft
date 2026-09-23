@@ -287,15 +287,8 @@ class ManifestTextExpander:
 class ManifestYamlLoader:
     """Expand apply-time placeholders, then ``yaml.safe_load`` the result."""
 
-    env_file: Optional[Path] = None
-    env_overrides: EnvOverrides = None
-    environ: Optional[Mapping[str, str]] = None
+    env: Mapping[str, str]
 
     def load(self, raw: str, *, path: Union[Path, str]):
-        env = ApplyEnvSources.from_apply(
-            environ=self.environ,
-            env_file=self.env_file,
-            env_overrides=self.env_overrides,
-        ).build()
-        expanded = ManifestTextExpander(env, path=path).expand(raw)
+        expanded = ManifestTextExpander(self.env, path=path).expand(raw)
         return yaml.safe_load(expanded)
