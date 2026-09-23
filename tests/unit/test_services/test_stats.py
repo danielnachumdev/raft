@@ -181,7 +181,7 @@ class TestStatsService(RaftTestCase):
             assert stats.report(as_json=False) == 0
 
     def test_report_live_and_rejects_json_combo(self) -> None:
-        from raft.services.stats.report import write_live_report
+        from raft.services.stats.report import overwrite_block, write_live_report
 
         write_applied_app(self.tmp_path, "app")
         stack = make_stack(self.tmp_path, (make_app("app"),))
@@ -196,24 +196,41 @@ class TestStatsService(RaftTestCase):
             snapshot = stats.collect()
 
         sleeps: list[float] = []
-        clears: list[int] = []
         out = StringIO()
+        collect_calls = {"n": 0}
+
+        def collect():
+            collect_calls["n"] += 1
+            # First frame must not erase — old content would flash blank.
+            if collect_calls["n"] == 1:
+                assert out.getvalue() == ""
+            return snapshot
 
         assert (
             write_live_report(
-                lambda: snapshot,
+                collect,
                 interval=0.01,
                 out=out,
                 color=False,
                 sleep=sleeps.append,
-                clear=lambda _s: clears.append(1),
                 max_frames=2,
             )
             == 0
         )
-        assert len(clears) == 2
+        assert collect_calls["n"] == 2
         assert sleeps == [0.01]
-        assert "Ctrl+C to exit" in out.getvalue()
+        text = out.getvalue()
+        assert "Ctrl+C to exit" in text
+        # Second frame rewinds only our prior lines, then erases downward.
+        assert "\033[" in text and "A\033[G\033[J" in text
+        # Full-screen clear must not be used.
+        assert "\033[2J" not in text
+        assert "\033[H" not in text
+
+        block = StringIO()
+        assert overwrite_block(block, "a\nb\n", 0) == 2
+        assert overwrite_block(block, "x\n", 2) == 1
+        assert block.getvalue().startswith("a\nb\n\033[2A\033[G\033[J")
 
         with patch.object(stats, "collect", return_value=snapshot):
             with patch(
@@ -231,11 +248,11 @@ class TestStatsService(RaftTestCase):
             HostStats,
             StatsSnapshot,
         )
-        from raft.services.stats.report import clear_screen, write_live_report
+        from raft.services.stats.report import _line_count, write_live_report
 
-        cleared = StringIO()
-        clear_screen(cleared)
-        assert "\033[H" in cleared.getvalue()
+        assert _line_count("") == 0
+        assert _line_count("one") == 1
+        assert _line_count("a\nb\n") == 2
 
         snap = StatsSnapshot(
             host=HostStats(
@@ -266,7 +283,6 @@ class TestStatsService(RaftTestCase):
                 out=out,
                 color=False,
                 sleep=sleep,
-                clear=lambda _s: None,
             )
             == 0
         )

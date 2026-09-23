@@ -5,19 +5,36 @@ from __future__ import annotations
 import json
 import sys
 import time
+from io import StringIO
 from typing import Callable, Optional, TextIO
 
 from ...ui import BOLD, CYAN, DIM, paint, want_color
 from .models import ContainerStats, HostStats, StatsSnapshot
 
-# Cursor home + erase display + erase scrollback (best-effort terminals).
-_CLEAR_SCREEN = "\033[H\033[2J\033[3J"
 _DEFAULT_LIVE_INTERVAL = 1.0
 
 
-def clear_screen(stream: TextIO) -> None:
-    stream.write(_CLEAR_SCREEN)
+def _line_count(text: str) -> int:
+    """Number of terminal lines occupied by ``text`` (trailing newline-aware)."""
+    if not text:
+        return 0
+    return text.count("\n") if text.endswith("\n") else text.count("\n") + 1
+
+
+def overwrite_block(stream: TextIO, text: str, prev_lines: int) -> int:
+    """Replace the previous ``prev_lines`` of our output with ``text``.
+
+    Collect/render first, then call this so the old frame stays visible until
+    the new one is ready. Only the block we wrote is erased (cursor up + erase
+    to end of screen), not the whole terminal.
+    """
+    if prev_lines > 0:
+        # Move to the first column of the first line we previously wrote, then
+        # erase downward so leftover lines from a taller previous frame vanish.
+        stream.write(f"\033[{prev_lines}A\033[G\033[J")
+    stream.write(text)
     stream.flush()
+    return _line_count(text)
 
 
 def _fmt_bytes(n: Optional[int]) -> str:
@@ -183,23 +200,28 @@ def write_live_report(
     out: Optional[TextIO] = None,
     color: Optional[bool] = None,
     sleep: Callable[[float], None] = time.sleep,
-    clear: Callable[[TextIO], None] = clear_screen,
     max_frames: Optional[int] = None,
 ) -> int:
-    """Clear, resample, and reprint until Ctrl+C (or ``max_frames`` for tests)."""
+    """Resample and overwrite only our previous lines until Ctrl+C.
+
+    Collects the next snapshot before rewriting so the last frame stays on
+    screen (no blank flash). Pass ``max_frames`` in tests.
+    """
     stream = out if out is not None else sys.stdout
     frames = 0
+    prev_lines = 0
     try:
         while True:
-            clear(stream)
+            snapshot = collect()
+            buf = StringIO()
             write_report(
-                collect(),
+                snapshot,
                 as_json=False,
-                out=stream,
+                out=buf,
                 color=color,
                 live_footer=True,
             )
-            stream.flush()
+            prev_lines = overwrite_block(stream, buf.getvalue(), prev_lines)
             frames += 1
             if max_frames is not None and frames >= max_frames:
                 break
