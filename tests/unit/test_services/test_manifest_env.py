@@ -20,11 +20,8 @@ from raft.errors import OperatorError
 from raft.services.manifest_env import (
     ApplyEnvSources,
     DotenvLoader,
+    EnvAssignment,
     ManifestTextExpander,
-    build_apply_env,
-    expand_manifest_text,
-    normalize_env_flags,
-    parse_env_assignment,
 )
 
 from .fixtures import (
@@ -49,7 +46,7 @@ class TestRequiredPlaceholder:
         text = "name: ${NAME}"
         env = {"NAME": "web"}
 
-        expanded = expand_manifest_text(text, env)
+        expanded = ManifestTextExpander(env).expand(text)
 
         assert expanded == "name: web"
 
@@ -58,7 +55,7 @@ class TestRequiredPlaceholder:
         env: dict[str, str] = {}
 
         with pytest.raises(OperatorError, match=r"undefined variable FOO in \$\{FOO\}") as caught:
-            expand_manifest_text(text, env)
+            ManifestTextExpander(env).expand(text)
 
         error = str(caught.value)
         assert "export FOO=" in error
@@ -69,7 +66,7 @@ class TestRequiredPlaceholder:
         env = {"FOO": ""}
 
         with pytest.raises(OperatorError, match="undefined variable FOO"):
-            expand_manifest_text(text, env)
+            ManifestTextExpander(env).expand(text)
 
     def test_error_includes_manifest_path(self) -> None:
         text = "${FOO}"
@@ -77,7 +74,7 @@ class TestRequiredPlaceholder:
         path = "/tmp/app.yaml"
 
         with pytest.raises(OperatorError, match="manifest at /tmp/app.yaml") as caught:
-            expand_manifest_text(text, env, path=path)
+            ManifestTextExpander(env, path=path).expand(text)
 
         error = str(caught.value)
         assert "export FOO=" in error
@@ -91,7 +88,7 @@ class TestDefaultPlaceholder:
         ids=lambda c: c.id,
     )
     def test_uses_default_when_unset_or_empty(self, case: ExpandCase) -> None:
-        expanded = expand_manifest_text(case.text, case.env)
+        expanded = ManifestTextExpander(case.env).expand(case.text)
 
         assert expanded == case.expected
 
@@ -101,8 +98,8 @@ class TestDefaultPlaceholder:
         set_env = {"A": "set", "B": "inner"}
         text = "${A:-${B}}"
 
-        when_unset = expand_manifest_text(text, unset_env)
-        when_set = expand_manifest_text(text, set_env)
+        when_unset = ManifestTextExpander(unset_env).expand(text)
+        when_set = ManifestTextExpander(set_env).expand(text)
 
         # Unset A → default literal `${B` plus leftover `}` → `${B}`
         assert when_unset == "${B}"
@@ -115,7 +112,7 @@ class TestLiteralEscape:
         text = "$${NAME}"
         env = {"NAME": "nope"}
 
-        expanded = expand_manifest_text(text, env)
+        expanded = ManifestTextExpander(env).expand(text)
 
         assert expanded == "${NAME}"
 
@@ -123,7 +120,7 @@ class TestLiteralEscape:
         text = "pre$${NAME}post"
         env: dict[str, str] = {}
 
-        expanded = expand_manifest_text(text, env)
+        expanded = ManifestTextExpander(env).expand(text)
 
         assert expanded == "pre${NAME}post"
 
@@ -132,7 +129,7 @@ class TestLiteralEscape:
         text = "$${${REAL}}"
         env = {"REAL": "ok"}
 
-        expanded = expand_manifest_text(text, env)
+        expanded = ManifestTextExpander(env).expand(text)
 
         assert expanded == "${ok}"
 
@@ -140,7 +137,7 @@ class TestLiteralEscape:
         text = "cost is $5 and $FOO"
         env = {"FOO": "x"}
 
-        expanded = expand_manifest_text(text, env)
+        expanded = ManifestTextExpander(env).expand(text)
 
         assert expanded == "cost is $5 and $FOO"
 
@@ -153,7 +150,7 @@ class TestInvalidPlaceholder:
     )
     def test_rejects_invalid_syntax(self, case: ErrorCase) -> None:
         with pytest.raises(OperatorError, match=case.match) as caught:
-            expand_manifest_text(case.text, case.env)
+            ManifestTextExpander(case.env).expand(case.text)
 
         error = str(caught.value)
         assert "$${ for a literal" in error or "$${" in error
@@ -164,7 +161,7 @@ class TestMultiplePlaceholders:
         text = "${A}${B}"
         env = {"A": "1", "B": "2"}
 
-        expanded = expand_manifest_text(text, env)
+        expanded = ManifestTextExpander(env).expand(text)
 
         assert expanded == "12"
 
@@ -172,7 +169,7 @@ class TestMultiplePlaceholders:
         text = "${A:-x}${B:-y}"
         env: dict[str, str] = {}
 
-        expanded = expand_manifest_text(text, env)
+        expanded = ManifestTextExpander(env).expand(text)
 
         assert expanded == "xy"
 
@@ -180,7 +177,7 @@ class TestMultiplePlaceholders:
         text = MIXED_PLACEHOLDERS_TEXT
         env = MIXED_PLACEHOLDERS_ENV
 
-        expanded = expand_manifest_text(text, env)
+        expanded = ManifestTextExpander(env).expand(text)
 
         assert expanded == EXPECTED_EXPANDED_SNIPPET
 
@@ -190,7 +187,7 @@ class TestExpandBeforeYamlParse:
         text = PLACEHOLDER_MANIFEST
         env = PLACEHOLDER_ENV
 
-        expanded = expand_manifest_text(text, env, path="app.yaml")
+        expanded = ManifestTextExpander(env, path="app.yaml").expand(text)
         data = yaml.safe_load(expanded)
 
         assert data["metadata"]["name"] == "frontend-dev"
@@ -200,15 +197,6 @@ class TestExpandBeforeYamlParse:
         assert data["spec"]["ref"] == "abc123"
         assert data["spec"]["path"] == "apps/frontend-dev"
         assert "${" not in expanded
-
-    def test_expander_class_matches_module_function(self) -> None:
-        text = "x: ${N}"
-        env = {"N": "v"}
-
-        via_class = ManifestTextExpander(env).expand(text)
-        via_function = expand_manifest_text(text, env)
-
-        assert via_class == via_function == "x: v"
 
 
 # ---------------------------------------------------------------------------
@@ -255,25 +243,25 @@ class TestDotenvLoader:
             DotenvLoader(bad).load()
 
 
-class TestEnvAssignmentFlags:
+class TestEnvAssignment:
     def test_parse_key_equals_value(self) -> None:
-        key, value = parse_env_assignment("FOO=bar")
+        key, value = EnvAssignment.parse("FOO=bar")
 
         assert (key, value) == ("FOO", "bar")
 
     def test_parse_export_prefix(self) -> None:
-        key, value = parse_env_assignment("export FOO=bar")
+        key, value = EnvAssignment.parse("export FOO=bar")
 
         assert (key, value) == ("FOO", "bar")
 
     def test_parse_rejects_non_assignment(self) -> None:
         with pytest.raises(OperatorError, match="invalid --env value"):
-            parse_env_assignment("nope")
+            EnvAssignment.parse("nope")
 
     def test_normalize_none_str_and_sequence(self) -> None:
-        none_result = normalize_env_flags(None)
-        str_result = normalize_env_flags("A=1")
-        seq_result = normalize_env_flags(["A=1", "B=2"])
+        none_result = EnvAssignment.normalize_flags(None)
+        str_result = EnvAssignment.normalize_flags("A=1")
+        seq_result = EnvAssignment.normalize_flags(["A=1", "B=2"])
 
         assert none_result == []
         assert str_result == ["A=1"]
@@ -302,12 +290,12 @@ class TestApplyEnvPrecedence:
             "E": "flag",  # flag only
         }
 
-    def test_build_apply_env_reads_os_environ(
+    def test_from_apply_reads_os_environ(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setenv("RAFT_SMOKE", "yes")
 
-        env = build_apply_env(env_overrides=["EXTRA=1"])
+        env = ApplyEnvSources.from_apply(env_overrides=["EXTRA=1"]).build()
 
         assert env["RAFT_SMOKE"] == "yes"
         assert env["EXTRA"] == "1"

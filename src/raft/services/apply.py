@@ -6,7 +6,7 @@ import logging
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Mapping, Optional, Sequence, Union
+from typing import Mapping, Optional
 
 import yaml
 
@@ -23,30 +23,10 @@ from ..models.manifest import (
 from ..models.stack import Stack, load_stack
 from ..ui import say
 from .auth import GitAuthManager
-from .manifest_env import build_apply_env, expand_manifest_text
+from .manifest_env import EnvOverrides, ManifestYamlLoader
 from .orchestrator import Orchestrator
 
 logger = logging.getLogger(__name__)
-
-EnvOverrides = Union[None, str, Sequence[str]]
-
-
-def _expand_and_load_yaml(
-    raw: str,
-    *,
-    path: Union[Path, str],
-    env_file: Optional[Path],
-    env_overrides: EnvOverrides,
-    environ: Optional[Mapping[str, str]],
-):
-    """Build apply env, expand ``${VAR}`` in ``raw``, then YAML-load."""
-    env = build_apply_env(
-        environ=environ,
-        env_file=env_file,
-        env_overrides=env_overrides,
-    )
-    expanded = expand_manifest_text(raw, env, path=path)
-    return yaml.safe_load(expanded)
 
 
 class AppApply:
@@ -68,13 +48,11 @@ class AppApply:
         if not path.is_file():
             raise missing_manifest(path)
         try:
-            data = _expand_and_load_yaml(
-                path.read_text(encoding="utf-8"),
-                path=path,
+            data = ManifestYamlLoader(
                 env_file=env_file,
                 env_overrides=env_overrides,
                 environ=environ,
-            )
+            ).load(path.read_text(encoding="utf-8"), path=path)
         except yaml.YAMLError as exc:
             raise OperatorError(
                 f"invalid App manifest YAML at {path}: {exc}\n"
@@ -173,12 +151,13 @@ class AppApply:
                     f"Fix: add that file on the ref, or: raft apply --git {repo} --ref <other>"
                 )
             try:
-                data = _expand_and_load_yaml(
-                    manifest.read_text(encoding="utf-8"),
-                    path=f"{repo}@{ref}:{CONTRACT_REL_PATH.as_posix()}",
+                data = ManifestYamlLoader(
                     env_file=env_file,
                     env_overrides=env_overrides,
                     environ=environ,
+                ).load(
+                    manifest.read_text(encoding="utf-8"),
+                    path=f"{repo}@{ref}:{CONTRACT_REL_PATH.as_posix()}",
                 )
             except yaml.YAMLError as exc:
                 raise OperatorError(

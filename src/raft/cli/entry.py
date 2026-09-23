@@ -23,11 +23,7 @@ from raft.errors import (
 from ..models.stack import load_stack
 from ..services.certs import missing_origin_certs
 from ..ui import say_err
-from .argv import (
-    peel_repeatable_flag,
-    reset_apply_env_overrides,
-    set_apply_env_overrides,
-)
+from .argv import ApplyEnvArgvBridge
 from .root import RaftCLI
 
 
@@ -75,17 +71,12 @@ def _format_called_process_error(exc: subprocess.CalledProcessError) -> str:
 def main(argv: Optional[list[str]] = None) -> int:
     os.environ["PAGER"] = "cat"
     raw = list(argv) if argv is not None else sys.argv[1:]
-    return _run_fire_with_peeled_env(raw)
-
-
-def _run_fire_with_peeled_env(raw: list[str]) -> int:
-    """Peel repeatable ``--env`` before Fire (which keeps only the last value)."""
-    env_overrides, command = peel_repeatable_flag(raw, "--env")
-    token = set_apply_env_overrides(env_overrides)
+    bridge = ApplyEnvArgvBridge()
+    command, token = bridge.bind(raw)
     try:
         fire.Fire(RaftCLI, command=command, name="raft")
     finally:
-        reset_apply_env_overrides(token)
+        bridge.reset(token)
     return 0
 
 

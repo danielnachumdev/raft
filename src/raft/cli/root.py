@@ -11,7 +11,7 @@ from raft.errors import OperatorError, apply_requires_source, redeploy_requires_
 from . import delete as delete_cmd
 from . import deps
 from . import get as get_cmd
-from .argv import get_apply_env_overrides
+from .argv import ApplyEnvOverrides
 from .auth import AuthCLI
 from .gate import GateCLI
 
@@ -62,8 +62,8 @@ class RaftCLI:
         """
         applier = deps.AppApply(self._stack)
         deploy = not no_deploy
-        env_path = _env_file_path(env_file)
-        env_overrides = _resolve_env_overrides(env)
+        env_path = self._env_file_path(env_file)
+        env_overrides = self._resolve_env_overrides(env)
         if file is not None:
             applier.apply_file(
                 Path(file),
@@ -178,16 +178,16 @@ class RaftCLI:
             raise unknown_app(name, self._known)
         orch.redeploy_app(name, ref_override=ref, force_sync=force_sync)
 
+    @staticmethod
+    def _env_file_path(env_file: Optional[str]) -> Optional[Path]:
+        return Path(env_file) if env_file else None
 
-def _env_file_path(env_file: Optional[str]) -> Optional[Path]:
-    return Path(env_file) if env_file else None
-
-
-def _resolve_env_overrides(
-    fire_env: Optional[Union[str, Sequence[str]]],
-) -> Union[None, str, Sequence[str]]:
-    """Prefer argv-peeled repeats (see ``cli.entry``); fall back to Fire's ``env``."""
-    peeled = get_apply_env_overrides()
-    if peeled:
-        return list(peeled)
-    return fire_env
+    @staticmethod
+    def _resolve_env_overrides(
+        fire_env: Optional[Union[str, Sequence[str]]],
+    ) -> Union[None, str, Sequence[str]]:
+        """Prefer argv-peeled repeats (see ``cli.entry``); fall back to Fire's ``env``."""
+        peeled = ApplyEnvOverrides.get()
+        if peeled:
+            return list(peeled)
+        return fire_env
