@@ -23,6 +23,8 @@ from .fixtures import (
     clone_writes_missing_var_manifest,
     clone_writes_placeholder_manifest,
 )
+
+
 def _apply(stack, shell):
     applier = AppApply(stack)
     applier.sh = shell
