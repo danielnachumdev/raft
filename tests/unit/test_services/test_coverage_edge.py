@@ -274,6 +274,23 @@ class TestAdapterCoverage(RaftTestCase):
         )
         assert tcp.wait_predicate(app, stack, http)() is True
         assert tcp.wait_predicate(app, stack, http, tcp_ok=lambda p: p == 25)() is True
+        internal = ReadinessStrategy(
+            kind="tcp",
+            port=PortSpec(name="http", container_port=8000, expose="none"),
+        )
+        assert internal.wait_predicate(app, stack, http)() is False
+        assert (
+            internal.wait_predicate(
+                app, stack, http, compose_ready=lambda: True
+            )()
+            is True
+        )
+        assert (
+            internal.wait_predicate(
+                app, stack, http, tcp_ok=lambda p: p == 8000
+            )()
+            is True
+        )
         with pytest.raises(ValueError):
             ReadinessStrategy(
                 kind="weird",

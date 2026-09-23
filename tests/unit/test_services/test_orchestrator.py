@@ -170,6 +170,65 @@ class TestOrchestrator(ServicesTestCase):
         self.orch.redeploy_router()
         self.orch.docker.recreate_router.assert_called_once()
 
+    def test_wait_app_ready_uses_compose_for_expose_none_tcp(self) -> None:
+        write_applied_app(
+            self.tmp_path,
+            "app",
+            public_host="",
+            source="docker",
+            image="redis",
+            build_context=None,
+            extra={
+                "ports": [
+                    {"name": "http", "containerPort": 8000, "expose": "none"},
+                ],
+                "readiness": {"type": "tcp", "port": "http"},
+            },
+        )
+        orch = self.orchestrator()
+        orch.docker.service_is_ready.return_value = True
+        app = orch.stack.app("app")
+
+        with patch("raft.services.orchestrator.wait_until") as wait:
+            orch._wait_app_ready(app, timeout=5)
+
+        wait.assert_called_once()
+        label = wait.call_args.args[0]
+        assert label == "compose readiness for app"
+        predicate = wait.call_args.args[1]
+        assert predicate() is True
+        orch.docker.service_is_ready.assert_called_with(app.compose_id)
+
+    def test_wait_app_ready_label_for_published_tcp(self) -> None:
+        write_applied_app(
+            self.tmp_path,
+            "app",
+            public_host="",
+            source="docker",
+            image="redis",
+            build_context=None,
+            extra={
+                "ports": [
+                    {
+                        "name": "smtp",
+                        "containerPort": 25,
+                        "expose": "host",
+                        "publicPort": 25,
+                    },
+                ],
+                "readiness": {"type": "tcp", "port": "smtp"},
+            },
+        )
+        orch = self.orchestrator()
+        orch.http.tcp_port_ok.return_value = True
+        app = orch.stack.app("app")
+
+        with patch("raft.services.orchestrator.wait_until") as wait:
+            orch._wait_app_ready(app, timeout=5)
+
+        label = wait.call_args.args[0]
+        assert label == "tcp readiness for app"
+
     def test_redeploy_app_runs_cutover(self) -> None:
         with patch("raft.services.orchestrator.CutoverSession") as Session:
             session = MagicMock()

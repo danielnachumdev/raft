@@ -95,6 +95,26 @@ class TestDockerStack(AdapterTestCase):
         with pytest.raises(RuntimeError, match="not running"):
             self.docker.service_container_id("app")
 
+    def test_service_is_ready_running_healthy_or_no_healthcheck(self) -> None:
+        self.shell.compose.return_value = self.ok("cid\n")
+        self.shell.docker.return_value = self.ok("running healthy\n")
+        assert self.docker.service_is_ready("app") is True
+
+        self.shell.docker.return_value = self.ok("running none\n")
+        assert self.docker.service_is_ready("app") is True
+
+        self.shell.docker.return_value = self.ok("running starting\n")
+        assert self.docker.service_is_ready("app") is False
+
+        self.shell.docker.return_value = self.ok("exited none\n")
+        assert self.docker.service_is_ready("app") is False
+
+        self.shell.docker.return_value = self.ok("", returncode=1)
+        assert self.docker.service_is_ready("app") is False
+
+        self.shell.compose.return_value = self.ok("  \n")
+        assert self.docker.service_is_ready("app") is False
+
     def test_container_image_ref_named_ok(self) -> None:
         self.shell.docker.side_effect = [
             self.ok("raft-app:latest\n"),
