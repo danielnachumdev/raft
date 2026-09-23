@@ -118,9 +118,29 @@ spec:
     type: http                  # http | tcp | none
     port: http                  # port name
     path: /
+  resources:                    # optional; rendered as Compose deploy.resources
+    limits:                     # ceiling (cpus / memory)
+      cpu: "0.50"               # → deploy.resources.limits.cpus
+      memory: 128M              # → deploy.resources.limits.memory
+    reservations:               # floor / alias: requests
+      cpu: "0.10"               # → deploy.resources.reservations.cpus
+      memory: 32M               # → deploy.resources.reservations.memory
 ```
 
 `apply --git` clones briefly, reads `.raft/app.yaml`, copies into `~/.raft/state/apps/`. `sync` refreshes sources then `render` regenerates `~/.raft/generated/`.
+
+### `spec.resources` → Compose
+
+App manifests declare CPU/memory under `spec.resources`. `raft render` emits Compose Swarm-style `deploy.resources` (same shape as Compose `limits` / `reservations`):
+
+| App (`spec.resources`) | Compose (`deploy.resources`) | Role | Defaults |
+|------------------------|------------------------------|------|----------|
+| `limits.cpu` | `limits.cpus` | Ceiling — max CPU cores | `"0.50"` |
+| `limits.memory` | `limits.memory` | Ceiling — max RAM | `128M` |
+| `reservations.cpu` (or `requests.cpu`) | `reservations.cpus` | Floor — guaranteed CPU share | `"0.10"` |
+| `reservations.memory` (or `requests.memory`) | `reservations.memory` | Floor — guaranteed RAM | `32M` |
+
+Omit `resources` to get the defaults. Flat keys `cpus_limit` / `memory_limit` / `cpus_reservation` / `memory_reservation` under `resources` are also accepted. `raft stats` shows these allocated limits next to live usage.
 
 Private remotes stay as `git@github.com:…` in the manifest; auth rewrites clone URLs to `Host` aliases (`github.com-raft-<service>`).
 

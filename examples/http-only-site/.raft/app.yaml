@@ -78,11 +78,24 @@ spec:
     port: http                 # ports[].name
     path: /                    # only for type: http
 
-  # Optional Compose resource limits / reservations (defaults shown).
+  # Optional CPU/RAM — rendered as Compose deploy.resources (defaults shown).
+  # App keys use singular `cpu`; Compose output uses plural `cpus`.
+  # `reservations` (Compose name) and `requests` (k8s-style alias) are both accepted.
+  #
   # resources:
-  #   limits:
-  #     cpu: "0.50"
-  #     memory: 128M
-  #   requests:
-  #     cpu: "0.10"
-  #     memory: 32M
+  #   limits:                 # ceiling
+  #     cpu: "0.50"           # → deploy.resources.limits.cpus
+  #     memory: 128M          # → deploy.resources.limits.memory
+  #   reservations:           # floor (or: requests:)
+  #     cpu: "0.10"           # → deploy.resources.reservations.cpus
+  #     memory: 32M           # → deploy.resources.reservations.memory
+  #
+  # Equivalent Compose after `raft render`:
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: "0.50"
+  #         memory: 128M
+  #       reservations:
+  #         cpus: "0.10"
+  #         memory: 32M

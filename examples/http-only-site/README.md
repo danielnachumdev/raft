@@ -7,7 +7,8 @@ HTTP behind the gate, or when TLS is handled upstream (e.g. Cloudflare Flexible)
 
 - One website/API on a public hostname
 - No VPS-side HTTPS for this app
-- You want the richest field comments in one place (see `.raft/app.yaml`)
+- You want the richest field comments in one place (see `.raft/app.yaml`),
+  including optional `spec.resources` (Compose `deploy.resources` limits/reservations)
 
 ## Apply (recommended)
 

@@ -6,7 +6,7 @@ Copy-paste samples for operator settings and App manifests. Hostnames use
 | Path | Scenario |
 |------|----------|
 | [`settings.yaml`](settings.yaml) | Operator settings (`logging` + `edge`) → `~/.raft/settings.yaml` |
-| [`http-only-site/`](http-only-site/) | TLS off, single `expose: http` port (richest field comments) |
+| [`http-only-site/`](http-only-site/) | TLS off, single `expose: http` port (richest field comments, including `spec.resources` → Compose `deploy.resources`) |
 | [`https-origin-site/`](https-origin-site/) | `tls: origin` + Origin PEM notes |
 | [`http-plus-stream/`](http-plus-stream/) | HTTP + `expose: stream` (needs `edge.streams`) |
 | [`host-published-ports/`](host-published-ports/) | HTTP + `expose: host` mail-shaped ports |

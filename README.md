@@ -64,7 +64,7 @@ spec:
 
 Then: `raft apply --file .raft/app.yaml --env CI_DATABASE_URL=…` (or export it in the job). CLI `--env` alone does not inject Compose env without that bridge.
 
-Apps own their contract (`.raft/app.yaml`). The VPS stores applied desired state under `~/.raft/state/apps/` and generated Compose/nginx under `~/.raft/generated/`. Settings: `~/.raft/settings.yaml` (logging + **edge** listeners).
+Apps own their contract (`.raft/app.yaml`). Optional `spec.resources.limits` / `reservations` (alias `requests`) become Compose `deploy.resources` — see [`examples/http-only-site/.raft/app.yaml`](examples/http-only-site/.raft/app.yaml) and [`AGENTS.md`](AGENTS.md). The VPS stores applied desired state under `~/.raft/state/apps/` and generated Compose/nginx under `~/.raft/generated/`. Settings: `~/.raft/settings.yaml` (logging + **edge** listeners).
 
 ## Examples
 
