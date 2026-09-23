@@ -48,6 +48,8 @@ INVALID_PLACEHOLDER_CASES: tuple[ErrorCase, ...] = (
     ErrorCase("unclosed_required", "${FOO", {"FOO": "1"}, "invalid placeholder"),
     ErrorCase("unclosed_default", "${FOO:-bar", {"FOO": "1"}, "invalid placeholder"),
     ErrorCase("leading_dash", "${-x}", {}, "invalid placeholder"),
+    # Exercises error-message truncation for long ``near`` snippets.
+    ErrorCase("long_invalid", "${" + ("!" * 50), {}, "invalid placeholder"),
 )
 
 # ---------------------------------------------------------------------------

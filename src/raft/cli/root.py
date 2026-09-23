@@ -57,14 +57,8 @@ class RaftCLI:
         """
         applier = deps.AppApply(self._stack)
         deploy = not no_deploy
-        env_path = Path(env_file) if env_file else None
-        # Prefer argv-peeled repeats (see cli.entry); fall back to Fire's env.
-        peeled = get_apply_env_overrides()
-        env_overrides: Union[None, str, Sequence[str]]
-        if peeled:
-            env_overrides = list(peeled)
-        else:
-            env_overrides = env
+        env_path = _env_file_path(env_file)
+        env_overrides = _resolve_env_overrides(env)
         if file is not None:
             applier.apply_file(
                 Path(file),
@@ -178,3 +172,17 @@ class RaftCLI:
         if name not in self._app_names:
             raise unknown_app(name, self._known)
         orch.redeploy_app(name, ref_override=ref, force_sync=force_sync)
+
+
+def _env_file_path(env_file: Optional[str]) -> Optional[Path]:
+    return Path(env_file) if env_file else None
+
+
+def _resolve_env_overrides(
+    fire_env: Optional[Union[str, Sequence[str]]],
+) -> Union[None, str, Sequence[str]]:
+    """Prefer argv-peeled repeats (see ``cli.entry``); fall back to Fire's ``env``."""
+    peeled = get_apply_env_overrides()
+    if peeled:
+        return list(peeled)
+    return fire_env

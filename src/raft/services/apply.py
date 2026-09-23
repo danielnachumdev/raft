@@ -31,6 +31,24 @@ logger = logging.getLogger(__name__)
 EnvOverrides = Union[None, str, Sequence[str]]
 
 
+def _expand_and_load_yaml(
+    raw: str,
+    *,
+    path: Union[Path, str],
+    env_file: Optional[Path],
+    env_overrides: EnvOverrides,
+    environ: Optional[Mapping[str, str]],
+):
+    """Build apply env, expand ``${VAR}`` in ``raw``, then YAML-load."""
+    env = build_apply_env(
+        environ=environ,
+        env_file=env_file,
+        env_overrides=env_overrides,
+    )
+    expanded = expand_manifest_text(raw, env, path=path)
+    return yaml.safe_load(expanded)
+
+
 class AppApply:
     def __init__(self, stack: Stack) -> None:
         self.stack = stack
@@ -50,14 +68,13 @@ class AppApply:
         if not path.is_file():
             raise missing_manifest(path)
         try:
-            raw = path.read_text(encoding="utf-8")
-            env = build_apply_env(
-                environ=environ,
+            data = _expand_and_load_yaml(
+                path.read_text(encoding="utf-8"),
+                path=path,
                 env_file=env_file,
                 env_overrides=env_overrides,
+                environ=environ,
             )
-            expanded = expand_manifest_text(raw, env, path=path)
-            data = yaml.safe_load(expanded)
         except yaml.YAMLError as exc:
             raise OperatorError(
                 f"invalid App manifest YAML at {path}: {exc}\n"
@@ -156,16 +173,13 @@ class AppApply:
                     f"Fix: add that file on the ref, or: raft apply --git {repo} --ref <other>"
                 )
             try:
-                raw = manifest.read_text(encoding="utf-8")
-                env = build_apply_env(
-                    environ=environ,
+                data = _expand_and_load_yaml(
+                    manifest.read_text(encoding="utf-8"),
+                    path=f"{repo}@{ref}:{CONTRACT_REL_PATH.as_posix()}",
                     env_file=env_file,
                     env_overrides=env_overrides,
+                    environ=environ,
                 )
-                expanded = expand_manifest_text(
-                    raw, env, path=f"{repo}@{ref}:{CONTRACT_REL_PATH.as_posix()}"
-                )
-                data = yaml.safe_load(expanded)
             except yaml.YAMLError as exc:
                 raise OperatorError(
                     f"invalid App manifest YAML in {repo}@{ref}: {exc}\n"
