@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import subprocess
+import sys
 from typing import Optional, Union
 
 import fire
@@ -22,6 +23,7 @@ from raft.errors import (
 from ..models.stack import load_stack
 from ..services.certs import missing_origin_certs
 from ..ui import say_err
+from .argv import ApplyEnvArgvBridge
 from .root import RaftCLI
 
 
@@ -68,8 +70,13 @@ def _format_called_process_error(exc: subprocess.CalledProcessError) -> str:
 
 def main(argv: Optional[list[str]] = None) -> int:
     os.environ["PAGER"] = "cat"
-    command = list(argv) if argv is not None else None
-    fire.Fire(RaftCLI, command=command, name="raft")
+    raw = list(argv) if argv is not None else sys.argv[1:]
+    bridge = ApplyEnvArgvBridge()
+    command, token = bridge.bind(raw)
+    try:
+        fire.Fire(RaftCLI, command=command, name="raft")
+    finally:
+        bridge.reset(token)
     return 0
 
 

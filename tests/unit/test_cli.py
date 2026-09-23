@@ -471,6 +471,55 @@ class TestCliAuth(RaftTestCase):
 
 
 class TestCliApplyGetDelete(RaftTestCase):
+    def test_apply_merges_env_file_and_flags_into_single_env_map(self) -> None:
+        write_demo_inventory(self.tmp_path)
+        stack = make_stack(self.tmp_path, (make_app("app"),))
+        applier = MagicMock()
+        applier.apply_file.return_value = "web"
+        env_path = self.tmp_path / "vars.env"
+        env_path.write_text("FROM_FILE=yes\nA=from-file\n", encoding="utf-8")
+        argv = [
+            "apply",
+            "--file",
+            "app.yaml",
+            "--no-deploy",
+            "--env-file",
+            str(env_path),
+            "--env",
+            "A=1",
+            "--env",
+            "B=2",
+        ]
+
+        with patch("raft.cli.deps.load_stack", return_value=stack):
+            with patch("raft.cli.deps.AppApply", return_value=applier):
+                exit_code = cli.main(argv)
+
+        call_kwargs = applier.apply_file.call_args.kwargs
+        apply_env = call_kwargs["env"]
+        assert exit_code == 0
+        assert "env_file" not in call_kwargs
+        assert "env_overrides" not in call_kwargs
+        assert apply_env["FROM_FILE"] == "yes"
+        assert apply_env["A"] == "1"  # --env wins over env-file
+        assert apply_env["B"] == "2"
+
+    def test_apply_without_env_flags_still_passes_process_env_map(self) -> None:
+        write_demo_inventory(self.tmp_path)
+        stack = make_stack(self.tmp_path, (make_app("app"),))
+        applier = MagicMock()
+        applier.apply_file.return_value = "web"
+
+        with patch("raft.cli.deps.load_stack", return_value=stack):
+            with patch("raft.cli.deps.AppApply", return_value=applier):
+                exit_code = cli.main(["apply", "--file", "app.yaml", "--no-deploy"])
+
+        call_kwargs = applier.apply_file.call_args.kwargs
+        assert exit_code == 0
+        assert isinstance(call_kwargs["env"], dict)
+        assert "env_file" not in call_kwargs
+        assert "env_overrides" not in call_kwargs
+
     def test_apply_get_delete_dispatch(self, capsys) -> None:
         write_demo_inventory(self.tmp_path)
         stack = make_stack(

@@ -38,6 +38,19 @@ raft gate recreate    # only when edge: published ports change
 raft get apps
 ```
 
+One committed App manifest can serve Dev and Prod via `${VAR}` / `${VAR:-default}` placeholders. Expansion runs at `raft apply` (process env → optional `--env-file` → repeatable `--env`; later wins). Registry stores expanded YAML.
+
+To pass a CI value into the **container**, declare the Docker name in `spec.env` (or path in `spec.envFile`) and template the CI name:
+
+```yaml
+spec:
+  envFile: ${CI_ENV_FILE}
+  env:
+    DATABASE_URL: ${CI_DATABASE_URL}   # container key ← apply-time template
+```
+
+Then: `raft apply --file .raft/app.yaml --env CI_DATABASE_URL=…` (or export it in the job). CLI `--env` alone does not inject Compose env without that bridge.
+
 Apps own their contract (`.raft/app.yaml`). The VPS stores applied desired state under `~/.raft/state/apps/` and generated Compose/nginx under `~/.raft/generated/`. Settings: `~/.raft/settings.yaml` (logging + **edge** listeners).
 
 ## Examples
@@ -62,4 +75,4 @@ uv run pytest tests/e2e -m e2e             # needs Docker; all CI Py versions
 uv run raft -- --help  # or re-run ./install.sh / uv tool install --force -e .
 ```
 
-Working on the codebase? See **[AGENTS.md](AGENTS.md)** and **[docs/testing-plan.md](docs/testing-plan.md)**.
+Working on the codebase? See **[AGENTS.md](AGENTS.md)**.

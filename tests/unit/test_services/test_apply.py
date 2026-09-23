@@ -9,9 +9,20 @@ import yaml
 from raft.models.stack import load_stack
 from raft.services.apply import AppApply
 from raft.services.auth import GitAuthManager
+from raft.services.manifest_env import ApplyEnvSources
+from raft.services.render import StackRenderer
 
 from ..base import RaftTestCase, write_applied_app
 from .base import ServicesTestCase
+from .fixtures import (
+    CI_TO_CONTAINER_APPLY_ENV,
+    CI_TO_CONTAINER_ENV_MANIFEST,
+    CI_TO_CONTAINER_FLAG_OVERRIDES,
+    MISSING_VAR_FILE_MANIFEST,
+    PLACEHOLDER_FILE_MANIFEST,
+    clone_writes_missing_var_manifest,
+    clone_writes_placeholder_manifest,
+)
 
 
 def _apply(stack, shell):
@@ -345,3 +356,125 @@ class TestAppApply(RaftTestCase):
         orch.ensure_app_deployed.assert_called_once_with(
             "img", ref_override="main", force_sync=False
         )
+
+    def test_apply_file_expands_env_into_registry_before_parse(self) -> None:
+        """Expand happens before YAML parse; registry stores concrete values.
+
+        Caller merges process → --env-file → --env once, then passes ``env=``.
+        """
+        manifest = self.tmp_path / "manifest.yaml"
+        manifest.write_text(PLACEHOLDER_FILE_MANIFEST, encoding="utf-8")
+        env_file = self.tmp_path / "apply.env"
+        env_file.write_text("RAFT_APP_NAME=from-file\n", encoding="utf-8")
+        apply_env = ApplyEnvSources(
+            environ={"RAFT_APP_NAME": "from-process"},
+            env_file=env_file,
+            overrides=["RAFT_APP_NAME=expanded-web"],
+        ).build()
+
+        applied_name = AppApply(load_stack(self.tmp_path)).apply_file(
+            manifest,
+            deploy=False,
+            env=apply_env,
+        )
+
+        registry_path = self.tmp_path / "state" / "apps" / f"{applied_name}.yaml"
+        registry_text = registry_path.read_text(encoding="utf-8")
+        registry = yaml.safe_load(registry_text)
+
+        assert applied_name == "expanded-web"
+        assert registry["metadata"]["name"] == "expanded-web"
+        assert registry["spec"]["publicHost"] == "web.test"  # :-default
+        assert registry["spec"]["path"] == "apps/expanded-web"
+        assert "${" not in registry_text
+
+    def test_apply_file_missing_var_fails(self) -> None:
+        manifest = self.tmp_path / "manifest.yaml"
+        manifest.write_text(MISSING_VAR_FILE_MANIFEST, encoding="utf-8")
+
+        with pytest.raises(RuntimeError, match="undefined variable MISSING") as caught:
+            AppApply(load_stack(self.tmp_path)).apply_file(
+                manifest, deploy=False, env={}
+            )
+
+        error = str(caught.value)
+        assert "MISSING" in error
+
+    def test_apply_expands_ci_env_into_container_spec_then_compose(self) -> None:
+        """Finalized apply ``env`` fills ``spec.env`` templates; render → Compose.
+
+        Bridge (required in app.yaml):
+          container key (Docker) ← ``${CI_TEMPLATE}`` (apply-time name)
+
+        Merge (process → flags) happens before ``apply_file``; apply only expands.
+        ``LOG_LEVEL`` uses ``${CI_LOG_LEVEL:-info}`` (default when CI omits it).
+        """
+        manifest = self.tmp_path / "manifest.yaml"
+        manifest.write_text(CI_TO_CONTAINER_ENV_MANIFEST, encoding="utf-8")
+        apply_env = ApplyEnvSources(
+            environ=CI_TO_CONTAINER_APPLY_ENV,
+            overrides=CI_TO_CONTAINER_FLAG_OVERRIDES,
+        ).build()
+
+        applied_name = AppApply(load_stack(self.tmp_path)).apply_file(
+            manifest,
+            deploy=False,
+            env=apply_env,
+        )
+
+        registry = yaml.safe_load(
+            (self.tmp_path / "state" / "apps" / f"{applied_name}.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        container_env = registry["spec"]["env"]
+
+        assert applied_name == "api-dev"
+        assert registry["spec"]["envFile"] == "/home/raft/.raft/api-dev.env"
+        assert container_env["DATABASE_URL"] == "postgres://from-ci-flag"
+        assert container_env["LOG_LEVEL"] == "info"
+        assert "${" not in yaml.safe_dump(registry)
+
+        StackRenderer(load_stack(self.tmp_path)).render()
+        compose = (
+            self.tmp_path / "generated" / "compose.apps.yaml"
+        ).read_text(encoding="utf-8")
+
+        assert "environment:" in compose
+        assert 'DATABASE_URL: "postgres://from-ci-flag"' in compose
+        assert "LOG_LEVEL: info" in compose
+        assert "env_file:" in compose
+        assert "/home/raft/.raft/api-dev.env" in compose
+
+    def test_apply_git_expands_env_into_registry(self) -> None:
+        stack = load_stack(self.tmp_path)
+        shell = MagicMock()
+        shell.git.side_effect = clone_writes_placeholder_manifest
+
+        applied_name = _apply(stack, shell).apply_git(
+            "git@github.com:org/x.git",
+            deploy=False,
+            env={"APP_NAME": "from-git"},
+        )
+
+        registry_path = self.tmp_path / "state" / "apps" / f"{applied_name}.yaml"
+        registry = yaml.safe_load(registry_path.read_text(encoding="utf-8"))
+
+        assert applied_name == "from-git"
+        assert registry["metadata"]["name"] == "from-git"
+        assert registry["spec"]["path"] == "apps/from-git"
+
+    def test_apply_git_missing_var_fails(self) -> None:
+        stack = load_stack(self.tmp_path)
+        shell = MagicMock()
+        shell.git.side_effect = clone_writes_missing_var_manifest
+
+        with pytest.raises(RuntimeError, match="undefined variable MISSING") as caught:
+            _apply(stack, shell).apply_git(
+                "git@github.com:org/x.git",
+                deploy=False,
+                env={},
+            )
+
+        error = str(caught.value)
+        assert "MISSING" in error
