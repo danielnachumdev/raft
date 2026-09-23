@@ -154,11 +154,40 @@ class TestDockerStack(AdapterTestCase):
         self.docker.run_tmp(name="n", alias="a", image="img", network="net")
         assert self.shell.docker.call_count >= 2
 
+    def test_run_tmp_passes_env_file(self) -> None:
+        self.shell.docker.return_value = self.ok()
+        self.docker.run_tmp(
+            name="n",
+            alias="a",
+            image="img",
+            network="net",
+            env_file="/tmp/app.env",
+        )
+        run_call = next(
+            c
+            for c in self.shell.docker.call_args_list
+            if c.args and c.args[0] == "run"
+        )
+        assert "--env-file" in run_call.args
+        assert "/tmp/app.env" in run_call.args
+
     def test_router_can_fetch_and_nginx_reload(self) -> None:
         self.shell.compose.return_value = self.ok(returncode=0)
         assert self.docker.router_can_fetch("app") is True
         self.shell.compose.return_value = self.ok(returncode=1)
         assert self.docker.router_can_fetch("app") is False
+        self.shell.compose.return_value = self.ok()
+        assert self.docker.router_can_fetch("app", path="/ping") is True
+        self.shell.compose.assert_any_call(
+            "exec",
+            "-T",
+            "raft-router",
+            "wget",
+            "-qO-",
+            "http://app:80/ping",
+            check=False,
+            capture=True,
+        )
         self.shell.compose.return_value = self.ok()
         self.docker.nginx_test_and_reload()
         self.shell.compose.assert_any_call(

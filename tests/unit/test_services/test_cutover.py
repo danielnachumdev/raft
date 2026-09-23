@@ -61,7 +61,13 @@ class TestCutoverSession(ServicesTestCase):
             assert (self.tmp_path / "deploy" / "app.image").is_file()
 
             s.start_tmp_from_previous()
-            s.docker.run_tmp.assert_called_once()
+            s.docker.run_tmp.assert_called_once_with(
+                name=s.app.tmp_container,
+                alias=s.app.tmp_alias,
+                image="img:old",
+                network="net1",
+                env_file=None,
+            )
 
             s.shift_traffic_to_tmp()
             s.nginx.point_at.assert_called_with(s.app, "app_tmp")
@@ -74,6 +80,34 @@ class TestCutoverSession(ServicesTestCase):
 
             s.remove_tmp()
             assert "sha_new" in (self.tmp_path / "deploy" / "app.image").read_text(encoding="utf-8")
+
+    def test_start_tmp_passes_env_file_and_readiness_path(self) -> None:
+        write_applied_app(
+            self.tmp_path,
+            "app",
+            extra={
+                "envFile": "/home/raft/.raft/app.env",
+                "readiness": {"type": "http", "port": "http", "path": "/ping"},
+            },
+        )
+        s = self.session
+        s.previous_image = "img:old"
+        s.network = "net1"
+        s.docker.router_can_fetch.return_value = True
+
+        with patch("raft.services.cutover.time.sleep"):
+            s.start_tmp_from_previous()
+
+        s.docker.run_tmp.assert_called_once_with(
+            name=s.app.tmp_container,
+            alias=s.app.tmp_alias,
+            image="img:old",
+            network="net1",
+            env_file="/home/raft/.raft/app.env",
+        )
+        s.docker.router_can_fetch.assert_called_with(
+            s.app.tmp_alias, port=80, path="/ping"
+        )
 
     def test_rebuild_stable_docker_pulls(self) -> None:
         session = self._docker_session(ref_text="digest\n# requested: abc123\n")

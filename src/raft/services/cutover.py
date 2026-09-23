@@ -97,18 +97,22 @@ class CutoverSession:
     def start_tmp_from_previous(self) -> None:
         assert self.previous_image
         self.log(f"start {self.app.tmp_alias} from previous image")
+        spec = self.stack.spec_for(self.app)
         self.docker.run_tmp(
             name=self.app.tmp_container,
             alias=self.app.tmp_alias,
             image=self.previous_image,
             network=self.network,
+            env_file=spec.env_file,
         )
         strategy = self._strategy()
         if strategy.kind == "http":
             fetch_port = strategy.port.container_port if strategy.port is not None else 80
             wait_until(
                 f"{self.app.tmp_alias} reachable from router",
-                lambda: self.docker.router_can_fetch(self.app.tmp_alias, port=fetch_port),
+                lambda: self.docker.router_can_fetch(
+                    self.app.tmp_alias, port=fetch_port, path=strategy.path
+                ),
                 timeout=self.stack.ready_timeout_seconds,
                 fix=(
                     f"inspect tmp container / upstreams; then: "
@@ -136,7 +140,9 @@ class CutoverSession:
             fetch_port = strategy.port.container_port if strategy.port is not None else 80
             wait_until(
                 f"{self.app.compose_id} reachable from router",
-                lambda: self.docker.router_can_fetch(self.app.compose_id, port=fetch_port),
+                lambda: self.docker.router_can_fetch(
+                    self.app.compose_id, port=fetch_port, path=strategy.path
+                ),
                 timeout=self.stack.ready_timeout_seconds,
                 fix=(
                     f"check build/pull logs; traffic may still be on "

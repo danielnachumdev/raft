@@ -334,41 +334,55 @@ class DockerStack:
         logger.debug("remove container %s", name)
         self.sh.docker("rm", "-f", name, check=False, capture=True)
 
-    def run_tmp(self, *, name: str, alias: str, image: str, network: str) -> None:
+    def run_tmp(
+        self,
+        *,
+        name: str,
+        alias: str,
+        image: str,
+        network: str,
+        env_file: Optional[str] = None,
+    ) -> None:
         logger.info("run tmp container name=%s alias=%s image=%s", name, alias, image)
         self.remove_container(name)
+        args: list[str] = [
+            "run",
+            "-d",
+            "--name",
+            name,
+            "--network",
+            network,
+            "--network-alias",
+            alias,
+            "--restart",
+            "no",
+        ]
+        if env_file:
+            args.extend(["--env-file", env_file])
+        args.append(image)
         run_docker_checked(
             self.sh,
-            (
-                "run",
-                "-d",
-                "--name",
-                name,
-                "--network",
-                network,
-                "--network-alias",
-                alias,
-                "--restart",
-                "no",
-                image,
-            ),
+            tuple(args),
             action=f"start cutover tmp container {name}",
             hint="raft doctor; docker compose ps",
         )
 
-    def router_can_fetch(self, hostname: str, *, port: int = 80) -> bool:
+    def router_can_fetch(
+        self, hostname: str, *, port: int = 80, path: str = "/"
+    ) -> bool:
+        fetch_path = path if path.startswith("/") else f"/{path}"
         result = self.sh.compose(
             "exec",
             "-T",
             self.stack.router,
             "wget",
             "-qO-",
-            f"http://{hostname}:{port}/",
+            f"http://{hostname}:{port}{fetch_path}",
             check=False,
             capture=True,
         )
         ok = result.returncode == 0
-        logger.debug("router_can_fetch %s:%s -> %s", hostname, port, ok)
+        logger.debug("router_can_fetch %s:%s%s -> %s", hostname, port, fetch_path, ok)
         return ok
 
     def reload_router_nginx(self) -> None:
