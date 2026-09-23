@@ -128,12 +128,14 @@ class RaftCLI:
         if code:
             raise SystemExit(code)
 
-    def stats(self, json: bool = False) -> None:
+    def stats(self, json: bool = False, live: bool = False) -> None:
         """Show host and container resource usage (point-in-time snapshot).
 
         Pass ``--json`` for a machine-readable snapshot (basis for future scaling).
+        Pass ``--live`` to clear and refresh the human table until Ctrl+C
+        (not combinable with ``--json``).
         """
-        deps.Stats(self._stack).report(as_json=json)
+        deps.Stats(self._stack).report(as_json=json, live=live)
 
     def update(self) -> None:
         """Re-install raft from GitHub (re-run install.sh / uv tool install)."""

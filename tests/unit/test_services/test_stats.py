@@ -7,6 +7,8 @@ from datetime import datetime, timedelta, timezone
 from io import StringIO
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from raft.adapters.host import HostDisk, HostMemory, HostResources
 from raft.errors import OperatorError
 from raft.services.stats import Stats
@@ -177,6 +179,99 @@ class TestStatsService(RaftTestCase):
 
         with patch.object(stats, "collect", return_value=snap):
             assert stats.report(as_json=False) == 0
+
+    def test_report_live_and_rejects_json_combo(self) -> None:
+        from raft.services.stats.report import write_live_report
+
+        write_applied_app(self.tmp_path, "app")
+        stack = make_stack(self.tmp_path, (make_app("app"),))
+        stats = Stats(stack)
+        stats.docker = MagicMock()
+        stats.docker.try_service_container_id.return_value = None
+        stats.docker.containers_stats.return_value = {}
+        with patch(
+            "raft.services.stats.service.collect_host_resources",
+            return_value=_fake_host(),
+        ):
+            snapshot = stats.collect()
+
+        sleeps: list[float] = []
+        clears: list[int] = []
+        out = StringIO()
+
+        assert (
+            write_live_report(
+                lambda: snapshot,
+                interval=0.01,
+                out=out,
+                color=False,
+                sleep=sleeps.append,
+                clear=lambda _s: clears.append(1),
+                max_frames=2,
+            )
+            == 0
+        )
+        assert len(clears) == 2
+        assert sleeps == [0.01]
+        assert "Ctrl+C to exit" in out.getvalue()
+
+        with patch.object(stats, "collect", return_value=snapshot):
+            with patch(
+                "raft.services.stats.service.write_live_report",
+                return_value=0,
+            ) as live:
+                assert stats.report(live=True) == 0
+                live.assert_called_once()
+
+        with pytest.raises(OperatorError, match="--json and --live"):
+            stats.report(as_json=True, live=True)
+
+    def test_live_keyboard_interrupt(self) -> None:
+        from raft.services.stats.models import (
+            HostStats,
+            StatsSnapshot,
+        )
+        from raft.services.stats.report import clear_screen, write_live_report
+
+        cleared = StringIO()
+        clear_screen(cleared)
+        assert "\033[H" in cleared.getvalue()
+
+        snap = StatsSnapshot(
+            host=HostStats(
+                cpus=1,
+                loadavg=None,
+                memory=None,
+                memory_total_bytes=None,
+                memory_available_bytes=None,
+                disk_path=None,
+                disk_total_bytes=None,
+                disk_used_bytes=None,
+                disk_free_bytes=None,
+                disk_used_percent=None,
+                uptime_seconds=None,
+            ),
+            containers=(),
+        )
+        out = StringIO()
+        calls = {"n": 0}
+
+        def sleep(_interval: float) -> None:
+            calls["n"] += 1
+            raise KeyboardInterrupt
+
+        assert (
+            write_live_report(
+                lambda: snap,
+                out=out,
+                color=False,
+                sleep=sleep,
+                clear=lambda _s: None,
+            )
+            == 0
+        )
+        assert calls["n"] == 1
+        assert out.getvalue().endswith("\n")
 
     def test_models_to_dict(self) -> None:
         allocated = AllocatedResources("0.5", "128M", "0.1", "32M")

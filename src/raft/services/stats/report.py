@@ -4,10 +4,20 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Optional, TextIO
+import time
+from typing import Callable, Optional, TextIO
 
 from ...ui import BOLD, CYAN, DIM, paint, want_color
 from .models import ContainerStats, HostStats, StatsSnapshot
+
+# Cursor home + erase display + erase scrollback (best-effort terminals).
+_CLEAR_SCREEN = "\033[H\033[2J\033[3J"
+_DEFAULT_LIVE_INTERVAL = 1.0
+
+
+def clear_screen(stream: TextIO) -> None:
+    stream.write(_CLEAR_SCREEN)
+    stream.flush()
 
 
 def _fmt_bytes(n: Optional[int]) -> str:
@@ -96,6 +106,7 @@ def _write_containers(
     containers: tuple[ContainerStats, ...],
     *,
     color: bool,
+    live_footer: bool = False,
 ) -> None:
     title = paint("Containers", BOLD, stream=stream, color=color)
     print(title, file=stream)
@@ -136,6 +147,9 @@ def _write_containers(
     )
     print(file=stream)
     print(hint, file=stream)
+    if live_footer:
+        footer = paint("  Ctrl+C to exit", DIM, stream=stream, color=color)
+        print(footer, file=stream)
 
 
 def write_report(
@@ -144,6 +158,7 @@ def write_report(
     as_json: bool = False,
     out: Optional[TextIO] = None,
     color: Optional[bool] = None,
+    live_footer: bool = False,
 ) -> int:
     stream = out if out is not None else sys.stdout
     if as_json:
@@ -152,5 +167,44 @@ def write_report(
         return 0
     use_color = want_color(stream, color)
     _write_host(stream, snapshot.host, color=use_color)
-    _write_containers(stream, snapshot.containers, color=use_color)
+    _write_containers(
+        stream,
+        snapshot.containers,
+        color=use_color,
+        live_footer=live_footer,
+    )
+    return 0
+
+
+def write_live_report(
+    collect: Callable[[], StatsSnapshot],
+    *,
+    interval: float = _DEFAULT_LIVE_INTERVAL,
+    out: Optional[TextIO] = None,
+    color: Optional[bool] = None,
+    sleep: Callable[[float], None] = time.sleep,
+    clear: Callable[[TextIO], None] = clear_screen,
+    max_frames: Optional[int] = None,
+) -> int:
+    """Clear, resample, and reprint until Ctrl+C (or ``max_frames`` for tests)."""
+    stream = out if out is not None else sys.stdout
+    frames = 0
+    try:
+        while True:
+            clear(stream)
+            write_report(
+                collect(),
+                as_json=False,
+                out=stream,
+                color=color,
+                live_footer=True,
+            )
+            stream.flush()
+            frames += 1
+            if max_frames is not None and frames >= max_frames:
+                break
+            sleep(interval)
+    except KeyboardInterrupt:
+        stream.write("\n")
+        stream.flush()
     return 0

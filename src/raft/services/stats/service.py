@@ -26,6 +26,7 @@ from .models import (
     MemoryUsage,
     StatsSnapshot,
 )
+from .report import write_live_report, write_report
 
 
 def _edge_allocated() -> AllocatedResources:
@@ -223,7 +224,9 @@ class Stats:
             )
         return StatsSnapshot(host=host, containers=tuple(containers))
 
-    def report(self, *, as_json: bool = False) -> int:
-        from .report import write_report
-
+    def report(self, *, as_json: bool = False, live: bool = False) -> int:
+        if as_json and live:
+            raise OperatorError("raft stats: --json and --live cannot be combined")
+        if live:
+            return write_live_report(self.collect)
         return write_report(self.collect(), as_json=as_json)

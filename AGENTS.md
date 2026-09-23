@@ -68,7 +68,7 @@ Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 4. If any app uses `tls: origin`, install PEMs under `~/.raft/certs/<name>/` before first deploy.
 5. Manual cold start without apply: `raft up` (refuses if stack already up; `down` first).
 6. `raft doctor` before trusting the site (certs only for `tls: origin`; gate drift → `raft gate recreate`). Doctor is group-first: built-in **`raft`** (edge services; healthy docker/compose/generated/stack/port probes stay hidden), then App `spec.group` (at most one); ungrouped apps appear without a heading. Member labels are Compose service ids (`NAME` / `GROUP-NAME`; edge `raft-gate` / `raft-router`). Healthy OK lines append ports in use (gate: published host ports; apps/router: contract / listen ports).
-7. `raft stats` (optional `--json`) for a point-in-time host + container CPU/memory/uptime snapshot — declared Compose limits vs live `docker stats` usage. History/averages for scaling come later.
+7. `raft stats` (optional `--json`, or `--live` to refresh the human table until Ctrl+C) for a point-in-time host + container CPU/memory/uptime snapshot — declared Compose limits vs live `docker stats` usage. History/averages for scaling come later.
 8. Updates: `raft apply …` again, or `raft redeploy <app>` / `raft redeploy router`. New edge listeners: `raft gate recreate`.
 9. Tear down: `raft down`.
 
@@ -139,7 +139,7 @@ Top-level **commands** (not nested groups, except `auth` and `gate`):
 | `redeploy` | App cutover or `router` (`gate` refused) |
 | `gate recreate` | Recreate gate for new published edge ports |
 | `doctor` | Health + fix hints |
-| `stats` | Host + container resource usage (point-in-time; `--json` for machines) |
+| `stats` | Host + container resource usage (point-in-time; `--json` or `--live`) |
 | `update` | Re-install CLI from GitHub (`install.sh`) |
 | `uninstall` | Full removal (`--yes`; optional `--uv` to remove uv too) |
 | `auth` | `setup` / `list` / `show` / `test` / `remove` |
