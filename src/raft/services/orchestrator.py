@@ -225,10 +225,18 @@ class Orchestrator:
                 step.run(session)
         except Exception:
             logger.exception(
-                "ERROR during redeploy of %s; traffic may still be on tmp or "
-                "previous upstream — inspect before retrying",
+                "ERROR during redeploy of %s; running abort cleanup "
+                "(restore stable upstream, remove tmp)",
                 app.name,
             )
+            try:
+                session.abort_cleanup()
+            except Exception:  # noqa: BLE001 — never mask the cutover error
+                logger.warning(
+                    "abort cleanup raised while handling redeploy failure for %s",
+                    app.name,
+                    exc_info=True,
+                )
             raise
         say(f"redeployed {app.name}", style="ok")
 

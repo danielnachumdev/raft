@@ -68,6 +68,7 @@ class TestCutoverSession(ServicesTestCase):
                 network="net1",
                 env_file=None,
             )
+            assert s.tmp_active is True
 
             s.shift_traffic_to_tmp()
             s.nginx.point_at.assert_called_with(s.app, "app_tmp")
@@ -79,6 +80,7 @@ class TestCutoverSession(ServicesTestCase):
             s.nginx.point_at.assert_called_with(s.app, "app")
 
             s.remove_tmp()
+            assert s.tmp_active is False
             assert "sha_new" in (self.tmp_path / "deploy" / "app.image").read_text(encoding="utf-8")
 
     def test_start_tmp_passes_env_file_and_readiness_path(self) -> None:
@@ -197,6 +199,29 @@ class TestCutoverSession(ServicesTestCase):
         with patch("raft.services.cutover.time.sleep"):
             session._wait_ready("compose ready")
         docker.service_is_ready.assert_called_with(app.compose_id)
+
+    def test_wait_ready_uses_stack_ready_timeout(self) -> None:
+        s = self.session
+        s.http.public_host_ok.return_value = False
+        with patch("raft.services.cutover.wait_until") as wait:
+            s._wait_ready("slow ready")
+        assert wait.call_args.kwargs["timeout"] == s.stack.ready_timeout_seconds
+
+    def test_abort_cleanup_restores_stable_and_removes_tmp(self) -> None:
+        s = self.session
+        s.tmp_active = True
+        s.abort_cleanup()
+        s.nginx.point_at.assert_called_once_with(s.app, s.app.compose_id)
+        s.docker.nginx_test_and_reload.assert_called_once()
+        s.docker.remove_container.assert_called_once_with(s.app.tmp_container)
+        assert s.tmp_active is False
+
+    def test_abort_cleanup_noop_when_tmp_inactive(self) -> None:
+        s = self.session
+        s.tmp_active = False
+        s.abort_cleanup()
+        s.nginx.point_at.assert_not_called()
+        s.docker.remove_container.assert_not_called()
 
     def test_wait_ready_skips_when_readiness_none(self) -> None:
         write_applied_app(

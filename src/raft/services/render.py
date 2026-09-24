@@ -268,7 +268,9 @@ class StackRenderer:
                 lines.append("      interval: 2s")
                 lines.append("      timeout: 2s")
                 lines.append("      retries: 15")
-                lines.append("      start_period: 2s")
+                # Cold start (e.g. Alembic) often exceeds a few seconds; keep
+                # health "starting" long enough for cutover TCP waits.
+                lines.append("      start_period: 45s")
             lines.append("    restart: unless-stopped")
             lines.append("    deploy:")
             lines.append("      resources:")

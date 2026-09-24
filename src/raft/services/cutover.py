@@ -61,6 +61,8 @@ class CutoverSession:
     http: HttpProbe
     previous_image: Optional[str] = None
     network: str = f"{COMPOSE_PROJECT}_default"
+    # True after tmp is started until remove_tmp / abort_cleanup succeeds.
+    tmp_active: bool = False
 
     def log(self, message: str) -> None:
         logger.info("%s", message)
@@ -76,7 +78,7 @@ class CutoverSession:
             containers=(self.app.tmp_container,),
         )
 
-    def _wait_ready(self, label: str, *, timeout: float = 30) -> None:
+    def _wait_ready(self, label: str, *, timeout: Optional[float] = None) -> None:
         strategy = self._strategy()
         predicate = strategy.wait_predicate(
             self.app,
@@ -89,7 +91,7 @@ class CutoverSession:
         wait_until(
             label,
             predicate,
-            timeout=timeout,
+            timeout=self.stack.ready_timeout_seconds if timeout is None else timeout,
             interval=0.5,
             fix=(
                 f"check readiness/health for {self.app.name}; "
@@ -120,6 +122,7 @@ class CutoverSession:
             network=self.network,
             env_file=spec.env_file,
         )
+        self.tmp_active = True
         strategy = self._strategy()
         if strategy.kind == "http":
             fetch_port = strategy.port.container_port if strategy.port is not None else 80
@@ -189,10 +192,44 @@ class CutoverSession:
     def remove_tmp(self) -> None:
         self.log(f"remove temp {self.app.tmp_container}")
         self.docker.remove_container(self.app.tmp_container)
+        self.tmp_active = False
         cid = self.docker.service_container_id(self.app.compose_id)
         new_image = self.docker.container_image_id(cid)
         self.stack.image_state_file(self.app).write_text(new_image + "\n", encoding="utf-8")
         self.log(f"done: {self.app.name} live on {new_image}")
+
+    def abort_cleanup(self) -> None:
+        """Best-effort restore after a failed cutover: stable upstream + drop tmp.
+
+        Idempotent. Safe to call when tmp was never started.
+        """
+        if not self.tmp_active:
+            # Still rm in case a prior crash left a container without flipping the flag
+            # on a resumed process — only when we know cutover started tmp this session.
+            return
+        self.log(
+            f"cutover abort cleanup: restore nginx → {self.app.compose_id}, "
+            f"remove {self.app.tmp_container}"
+        )
+        try:
+            self.nginx.point_at(self.app, self.app.compose_id)
+            self.docker.nginx_test_and_reload()
+        except Exception:  # noqa: BLE001 — best-effort cleanup
+            logger.warning(
+                "abort cleanup: could not point nginx at %s",
+                self.app.compose_id,
+                exc_info=True,
+            )
+        try:
+            self.docker.remove_container(self.app.tmp_container)
+        except Exception:  # noqa: BLE001 — best-effort cleanup
+            logger.warning(
+                "abort cleanup: could not remove %s",
+                self.app.tmp_container,
+                exc_info=True,
+            )
+        else:
+            self.tmp_active = False
 
 
 DEPLOY_CUTOVER: tuple[Step, ...] = (

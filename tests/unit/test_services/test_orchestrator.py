@@ -261,8 +261,26 @@ class TestOrchestrator(ServicesTestCase):
         step.run.side_effect = RuntimeError("cutover failed")
         with patch("raft.services.orchestrator.DEPLOY_CUTOVER", new=(step,)):
             with patch.object(self.orch, "sync"):
-                with pytest.raises(RuntimeError, match="cutover failed"):
-                    self.orch.redeploy_app("app")
+                with patch("raft.services.orchestrator.CutoverSession") as Session:
+                    session = MagicMock()
+                    Session.return_value = session
+                    with pytest.raises(RuntimeError, match="cutover failed"):
+                        self.orch.redeploy_app("app")
+                    session.abort_cleanup.assert_called_once()
+
+    def test_redeploy_app_abort_cleanup_failure_still_reraises(self) -> None:
+        step = MagicMock()
+        step.key = "boom"
+        step.run.side_effect = RuntimeError("cutover failed")
+        with patch("raft.services.orchestrator.DEPLOY_CUTOVER", new=(step,)):
+            with patch.object(self.orch, "sync"):
+                with patch("raft.services.orchestrator.CutoverSession") as Session:
+                    session = MagicMock()
+                    session.abort_cleanup.side_effect = RuntimeError("cleanup boom")
+                    Session.return_value = session
+                    with pytest.raises(RuntimeError, match="cutover failed"):
+                        self.orch.redeploy_app("app")
+                    session.abort_cleanup.assert_called_once()
 
     def test_ensure_app_deployed_redeploys_when_running(self) -> None:
         self.orch.docker.running_services.return_value = ["raft-gate", "raft-router", "app"]
