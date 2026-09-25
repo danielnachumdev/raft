@@ -131,16 +131,38 @@ class TestStatsService(RaftTestCase):
         gate, router, app = snap.containers
         assert gate.service == "raft-gate"
         assert gate.role == "gate"
+        assert gate.group is None
         assert gate.status == "running"
         assert gate.cpu_percent == 0.5
         assert gate.allocated.cpus_limit == EDGE_CPUS_LIMIT
         assert gate.uptime_seconds is not None and gate.uptime_seconds >= 86000
         assert router.service == "raft-router"
+        assert router.group is None
         assert app.service == "app"
         assert app.status == "not running"
         assert app.app == "app"
+        assert app.group is None
         assert app.cpu_percent is None
         assert app.allocated.cpus_limit == "0.50"
+
+    def test_collect_app_group(self) -> None:
+        write_applied_app(self.tmp_path, "web")
+        stack = make_stack(self.tmp_path, (make_app("web", group="demo"),))
+        stats = Stats(stack)
+        stats.docker = MagicMock()
+        stats.docker.try_service_container_id.return_value = None
+        stats.docker.containers_stats.return_value = {}
+        with patch(
+            "raft.services.stats.service.collect_host_resources",
+            return_value=_fake_host(),
+        ):
+            snap = stats.collect()
+        gate, router, app = snap.containers
+        assert gate.group is None
+        assert router.group is None
+        assert app.service == "demo-web"
+        assert app.app == "web"
+        assert app.group == "demo"
 
     def test_app_allocated_fallback(self) -> None:
         stack = make_stack(self.tmp_path, (make_app("missing"),))
@@ -167,7 +189,14 @@ class TestStatsService(RaftTestCase):
         text = out.getvalue()
         assert "Host" in text
         assert "Containers" in text
+        assert "NAME" in text and "GROUP" in text
         assert "raft-gate" in text
+        # Header order: NAME then GROUP (edge rows have no group → "-").
+        name_idx = text.index("NAME")
+        group_idx = text.index("GROUP")
+        assert name_idx < group_idx
+        gate_line = next(line for line in text.splitlines() if "raft-gate" in line)
+        assert "-" in gate_line.split()
         assert "CPUs: 4" in text
 
         jout = StringIO()
@@ -175,10 +204,79 @@ class TestStatsService(RaftTestCase):
         payload = json.loads(jout.getvalue())
         assert payload["host"]["cpus"] == 4
         assert payload["containers"][0]["service"] == "raft-gate"
+        assert payload["containers"][0]["group"] is None
         assert "allocated" in payload["containers"][0]
 
         with patch.object(stats, "collect", return_value=snap):
             assert stats.report(as_json=False) == 0
+
+    def test_report_group_column(self) -> None:
+        from raft.services.stats.models import (
+            ContainerStats,
+            IoPair,
+            MemoryUsage,
+            StatsSnapshot,
+            HostStats,
+        )
+
+        host = HostStats(
+            cpus=1,
+            loadavg=None,
+            memory=None,
+            memory_total_bytes=None,
+            memory_available_bytes=None,
+            disk_path=None,
+            disk_total_bytes=None,
+            disk_used_bytes=None,
+            disk_free_bytes=None,
+            disk_used_percent=None,
+            uptime_seconds=None,
+        )
+        allocated = AllocatedResources("0.5", "128M", "0.1", "32M")
+        snap = StatsSnapshot(
+            host=host,
+            containers=(
+                ContainerStats(
+                    service="raft-gate",
+                    role="gate",
+                    app=None,
+                    group=None,
+                    status="running",
+                    uptime_seconds=1.0,
+                    cpu_percent=0.1,
+                    memory=MemoryUsage(1024, 2048, 50.0),
+                    allocated=allocated,
+                    network=IoPair(None, None),
+                    block_io=IoPair(None, None),
+                    pids=1,
+                ),
+                ContainerStats(
+                    service="demo-web",
+                    role="app",
+                    app="web",
+                    group="demo",
+                    status="running",
+                    uptime_seconds=1.0,
+                    cpu_percent=1.0,
+                    memory=MemoryUsage(1024, 2048, 50.0),
+                    allocated=allocated,
+                    network=IoPair(None, None),
+                    block_io=IoPair(None, None),
+                    pids=1,
+                ),
+            ),
+        )
+        out = StringIO()
+        assert write_report(snap, out=out, color=False) == 0
+        text = out.getvalue()
+        header = next(line for line in text.splitlines() if "NAME" in line and "GROUP" in line)
+        cols = header.split()
+        assert cols.index("NAME") == 0
+        assert cols.index("GROUP") == 1
+        gate_line = next(line for line in text.splitlines() if "raft-gate" in line)
+        web_line = next(line for line in text.splitlines() if "demo-web" in line)
+        assert gate_line.split()[1] == "-"
+        assert web_line.split()[1] == "demo"
 
     def test_report_live_and_rejects_json_combo(self) -> None:
         from raft.services.stats.report import overwrite_block, write_live_report
