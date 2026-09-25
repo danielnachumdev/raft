@@ -155,7 +155,7 @@ def _container_from_row(
 
 
 class Stats:
-    """Point-in-time resource snapshot for operators (`raft stats`)."""
+    """Point-in-time resource snapshot for operators (`raft status`)."""
 
     def __init__(self, stack: Stack) -> None:
         self.stack = stack
@@ -234,7 +234,7 @@ class Stats:
 
     def report(self, *, as_json: bool = False, live: bool = False) -> int:
         if as_json and live:
-            raise OperatorError("raft stats: --json and --live cannot be combined")
+            raise OperatorError("raft status: --json and --live cannot be combined")
         if live:
             return write_live_report(lambda: self.collect(refresh_apps=True))
         return write_report(self.collect(), as_json=as_json)

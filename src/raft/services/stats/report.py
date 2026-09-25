@@ -1,4 +1,4 @@
-"""Human and JSON renderers for ``raft stats``."""
+"""Human and JSON renderers for ``raft status``."""
 
 from __future__ import annotations
 
@@ -128,7 +128,8 @@ def _write_containers(
     title = paint("Containers", BOLD, stream=stream, color=color)
     print(title, file=stream)
     headers = (
-        "SERVICE",
+        "NAME",
+        "GROUP",
         "STATUS",
         "CPU",
         "MEM USED / LIMIT",
@@ -141,6 +142,7 @@ def _write_containers(
         rows.append(
             (
                 c.service,
+                c.group or "-",
                 c.status,
                 _fmt_percent(c.cpu_percent),
                 _mem_cell(c),

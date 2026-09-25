@@ -54,14 +54,14 @@ class TestCli(RaftTestCase):
                 assert cli.main(["doctor"]) == 0
         doctor.report.assert_called_once()
 
-    def test_stats_dispatches(self) -> None:
+    def test_status_dispatches(self) -> None:
         stats = MagicMock()
         stats.report.return_value = 0
         with patch("raft.cli.deps.load_stack", return_value=self.stack):
             with patch("raft.cli.deps.Stats", return_value=stats) as ctor:
-                assert cli.main(["stats"]) == 0
-                assert cli.main(["stats", "--json"]) == 0
-                assert cli.main(["stats", "--live"]) == 0
+                assert cli.main(["status"]) == 0
+                assert cli.main(["status", "--json"]) == 0
+                assert cli.main(["status", "--live"]) == 0
         ctor.assert_called_with(self.stack)
         assert stats.report.call_args_list[0].kwargs == {
             "as_json": False,

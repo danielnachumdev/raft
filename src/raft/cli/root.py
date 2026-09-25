@@ -128,7 +128,7 @@ class RaftCLI:
         if code:
             raise SystemExit(code)
 
-    def stats(self, json: bool = False, live: bool = False) -> None:
+    def status(self, json: bool = False, live: bool = False) -> None:
         """Show host and container resource usage (point-in-time snapshot).
 
         Pass ``--json`` for a machine-readable snapshot (basis for future scaling).

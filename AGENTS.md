@@ -69,7 +69,7 @@ Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 5. `--no-deploy` only when you intentionally register desired state without bringing the app live (e.g. apply several manifests, then one `raft up`; or register before Origin PEMs exist). After that, deploy with `raft apply …` again (deploy on) or `raft up` / `raft redeploy` as appropriate.
 6. Manual cold start when apps are already applied: `raft up` (refuses if stack already up; `down` first).
 7. `raft doctor` before trusting the site (certs only for `tls: origin`; gate drift → `raft gate recreate`). Doctor is group-first: built-in **`raft`** (edge services; healthy docker/compose/generated/stack/port probes stay hidden), then App `spec.group` (at most one); ungrouped apps appear without a heading. Member labels are Compose service ids (`NAME` / `GROUP-NAME`; edge `raft-gate` / `raft-router`). Healthy OK lines append ports in use (gate: published host ports; apps/router: contract / listen ports).
-8. `raft stats` (optional `--json`, or `--live` to refresh the human table until Ctrl+C) for a point-in-time host + container CPU/memory/uptime snapshot — declared Compose limits vs live `docker stats` usage. History/averages for scaling come later.
+8. `raft status` (optional `--json`, or `--live` to refresh the human table until Ctrl+C) for a point-in-time host + container CPU/memory/uptime snapshot — declared Compose limits vs live `docker stats` usage. History/averages for scaling come later.
 9. Updates: prefer `raft apply … --ref …` again (handles first-boot and cutover). Use `raft redeploy <app>` only when the app Compose service is **already running** and you want cutover without re-writing the registry (optional `--ref` / `--force-sync`). `raft redeploy router` for the inner nginx. New edge listeners: `raft gate recreate`.
 10. Tear down: `raft down`.
 
@@ -147,7 +147,7 @@ App manifests declare CPU/memory under `spec.resources`. `raft render` emits Com
 | `reservations.cpu` (or `requests.cpu`) | `reservations.cpus` | Floor — guaranteed CPU share | `"0.10"` |
 | `reservations.memory` (or `requests.memory`) | `reservations.memory` | Floor — guaranteed RAM | `32M` |
 
-Omit `resources` to get the defaults. Flat keys `cpus_limit` / `memory_limit` / `cpus_reservation` / `memory_reservation` under `resources` are also accepted. `raft stats` shows these allocated limits next to live usage.
+Omit `resources` to get the defaults. Flat keys `cpus_limit` / `memory_limit` / `cpus_reservation` / `memory_reservation` under `resources` are also accepted. `raft status` shows these allocated limits next to live usage.
 
 Private remotes stay as `git@github.com:…` in the manifest; auth rewrites clone URLs to `Host` aliases (`github.com-raft-<service>`).
 
@@ -167,7 +167,7 @@ Top-level **commands** (not nested groups, except `auth` and `gate`):
 | `redeploy` | Cutover for an **already-running** app, or recreate `router` (`gate` refused). Fails if the app service is not up — use apply-with-deploy (or `raft up`) for first boot |
 | `gate recreate` | Recreate gate for new published edge ports |
 | `doctor` | Health + fix hints |
-| `stats` | Host + container resource usage (point-in-time; `--json` or `--live`) |
+| `status` | Host + container resource usage (point-in-time; `--json` or `--live`) |
 | `update` | Re-install CLI from GitHub (`install.sh`) |
 | `uninstall` | Full removal (`--yes`; optional `--uv` to remove uv too) |
 | `auth` | `setup` / `list` / `show` / `test` / `remove` |

@@ -1,4 +1,4 @@
-"""Host and container resource statistics (`raft stats`)."""
+"""Host and container resource statistics (`raft status`)."""
 
 from .models import (
     EDGE_CPUS_LIMIT,
