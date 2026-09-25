@@ -6,7 +6,7 @@ import re
 import sys
 from typing import Optional, TextIO
 
-from ...models import Stack
+from ...models import Stack, display_service_label
 from ...ui import BOLD, CYAN, DIM, GREEN, RED, YELLOW, paint, want_color
 from .models import (
     INFRA,
@@ -105,10 +105,13 @@ class GroupReportWriter:
         warns = sum(1 for r in results if r.status == "warn")
         first_block = True
 
-        def emit_member(member: str, *, indent: str) -> None:
+        def emit_member(
+            member: str, *, indent: str, group: Optional[str] = None
+        ) -> None:
             items = by_member.get(member, [])
             bad = [r for r in items if r.status != "ok"]
-            print(tint(f"{indent}{member}", BOLD, CYAN), file=stream)
+            label = display_service_label(member, group)
+            print(tint(f"{indent}{label}", BOLD, CYAN), file=stream)
             body = indent + "  "
             if not bad:
                 label = tint(_STATUS_LABEL["ok"], _STATUS_COLOR["ok"], BOLD)
@@ -145,7 +148,7 @@ class GroupReportWriter:
             assert group_name is not None
             print(tint(group_name, BOLD, YELLOW), file=stream)
             for member in members:
-                emit_member(member, indent="  ")
+                emit_member(member, indent="  ", group=group_name)
 
         if ungrouped:
             print(file=stream)

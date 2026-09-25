@@ -12,7 +12,7 @@ from ...adapters.host import (
     parse_percent,
 )
 from ...errors import OperatorError
-from ...models import Stack
+from ...models import EDGE_GROUP, Stack
 from ...models.app import App
 from ...models.stack import load_stack
 from .models import (
@@ -172,8 +172,8 @@ class Stats:
             self._reload_stack()
         host = _host_stats(collect_host_resources(disk_path=self.stack.root))
         targets: list[tuple[str, str, Optional[str], Optional[str], AllocatedResources]] = [
-            (self.stack.gate, "gate", None, None, _edge_allocated()),
-            (self.stack.router, "router", None, None, _edge_allocated()),
+            (self.stack.gate, "gate", None, EDGE_GROUP, _edge_allocated()),
+            (self.stack.router, "router", None, EDGE_GROUP, _edge_allocated()),
         ]
         for app in self.stack.apps:
             targets.append(

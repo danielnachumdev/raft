@@ -22,6 +22,20 @@ def compose_service_id(name: str, group: Optional[str] = None) -> str:
     return name
 
 
+def display_service_label(compose_id: str, group: Optional[str] = None) -> str:
+    """Operator-facing member name when shown under ``group``.
+
+    Compose ids stay ``GROUP-NAME`` for Docker/nginx; UI drops the redundant
+    ``GROUP-`` prefix so the heading already names the namespace
+    (e.g. ``raft-gate`` → ``gate`` under group ``raft``).
+    """
+    if group:
+        prefix = f"{group}-"
+        if compose_id.startswith(prefix):
+            return compose_id[len(prefix) :]
+    return compose_id
+
+
 GATE_COMPOSE_ID = compose_service_id("gate", EDGE_GROUP)
 ROUTER_COMPOSE_ID = compose_service_id("router", EDGE_GROUP)
 

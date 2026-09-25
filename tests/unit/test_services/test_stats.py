@@ -131,13 +131,13 @@ class TestStatsService(RaftTestCase):
         gate, router, app = snap.containers
         assert gate.service == "raft-gate"
         assert gate.role == "gate"
-        assert gate.group is None
+        assert gate.group == "raft"
         assert gate.status == "running"
         assert gate.cpu_percent == 0.5
         assert gate.allocated.cpus_limit == EDGE_CPUS_LIMIT
         assert gate.uptime_seconds is not None and gate.uptime_seconds >= 86000
         assert router.service == "raft-router"
-        assert router.group is None
+        assert router.group == "raft"
         assert app.service == "app"
         assert app.status == "not running"
         assert app.app == "app"
@@ -158,8 +158,8 @@ class TestStatsService(RaftTestCase):
         ):
             snap = stats.collect()
         gate, router, app = snap.containers
-        assert gate.group is None
-        assert router.group is None
+        assert gate.group == "raft"
+        assert router.group == "raft"
         assert app.service == "demo-web"
         assert app.app == "web"
         assert app.group == "demo"
@@ -190,13 +190,14 @@ class TestStatsService(RaftTestCase):
         assert "Host" in text
         assert "Containers" in text
         assert "NAME" in text and "GROUP" in text
-        assert "raft-gate" in text
-        # Header order: NAME then GROUP (edge rows have no group → "-").
+        assert "gate" in text
+        assert "raft-gate" not in text
+        # Header order: NAME then GROUP (edge rows use built-in group ``raft``).
         name_idx = text.index("NAME")
         group_idx = text.index("GROUP")
         assert name_idx < group_idx
-        gate_line = next(line for line in text.splitlines() if "raft-gate" in line)
-        assert "-" in gate_line.split()
+        gate_line = next(line for line in text.splitlines() if line.strip().startswith("gate "))
+        assert "raft" in gate_line.split()
         assert "CPUs: 4" in text
 
         jout = StringIO()
@@ -204,7 +205,7 @@ class TestStatsService(RaftTestCase):
         payload = json.loads(jout.getvalue())
         assert payload["host"]["cpus"] == 4
         assert payload["containers"][0]["service"] == "raft-gate"
-        assert payload["containers"][0]["group"] is None
+        assert payload["containers"][0]["group"] == "raft"
         assert "allocated" in payload["containers"][0]
 
         with patch.object(stats, "collect", return_value=snap):
@@ -240,7 +241,7 @@ class TestStatsService(RaftTestCase):
                     service="raft-gate",
                     role="gate",
                     app=None,
-                    group=None,
+                    group="raft",
                     status="running",
                     uptime_seconds=1.0,
                     cpu_percent=0.1,
@@ -273,9 +274,11 @@ class TestStatsService(RaftTestCase):
         cols = header.split()
         assert cols.index("NAME") == 0
         assert cols.index("GROUP") == 1
-        gate_line = next(line for line in text.splitlines() if "raft-gate" in line)
-        web_line = next(line for line in text.splitlines() if "demo-web" in line)
-        assert gate_line.split()[1] == "-"
+        gate_line = next(line for line in text.splitlines() if line.strip().startswith("gate "))
+        web_line = next(line for line in text.splitlines() if line.strip().startswith("web "))
+        assert "raft-gate" not in text
+        assert "demo-web" not in text
+        assert gate_line.split()[1] == "raft"
         assert web_line.split()[1] == "demo"
 
     def test_report_live_and_rejects_json_combo(self) -> None:

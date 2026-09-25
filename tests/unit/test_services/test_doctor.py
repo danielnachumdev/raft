@@ -66,8 +66,10 @@ class TestDoctor(ServicesTestCase):
         out = capsys.readouterr().out
         assert "raft\n" in out
         assert "  docker\n" not in out  # healthy infra hidden
-        assert "  raft-gate\n" in out
-        assert "  raft-router\n" in out
+        assert "  gate\n" in out
+        assert "  router\n" in out
+        assert "  raft-gate\n" not in out
+        assert "  raft-router\n" not in out
         assert "infra\n" not in out
         assert "  OK  \n" in out or "  OK\n" in out or "OK" in out
         assert "svc\n" in out
@@ -613,11 +615,13 @@ class TestDoctor(ServicesTestCase):
         assert "raft\n" in out
         assert "  compose.yaml\n" not in out
         assert "  port 80\n" not in out
-        assert "  raft-gate\n" in out
+        assert "  gate\n" in out
         assert "  OK    80, 443" in out or "OK    80, 443" in out
-        assert "  raft-router\n" in out
+        assert "  router\n" in out
         assert "  OK    80" in out
-        assert "  raft-raftling\n" in out
+        assert "  raftling\n" in out
+        assert "  raft-gate\n" not in out
+        assert "  raft-raftling\n" not in out
         assert "ungrouped\n" not in out
         assert "solo\n" in out
         assert "orphan\n" in out
@@ -659,7 +663,8 @@ class TestDoctor(ServicesTestCase):
         )
         out = capsys.readouterr().out
         assert "raft\n" in out
-        assert GATE_COMPOSE_ID in out
+        assert "  gate\n" in out
+        assert GATE_COMPOSE_ID not in out
         assert "ungrouped\n" not in out
 
         assert "github.com/acme/site/settings/keys/new" in Doctor._auth_deploy_key_fix(

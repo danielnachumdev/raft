@@ -250,3 +250,18 @@ class TestApp(RaftTestCase):
         app = make_app("d", public_host="d.example.com", path="apps/d")
         (self.tmp_path / "apps" / "d").mkdir(parents=True)
         assert app.abs_path(self.tmp_path) == (self.tmp_path / "apps" / "d").resolve()
+
+    def test_display_service_label(self) -> None:
+        from raft.models import (
+            EDGE_GROUP,
+            GATE_COMPOSE_ID,
+            ROUTER_COMPOSE_ID,
+            display_service_label,
+        )
+
+        assert display_service_label(GATE_COMPOSE_ID, EDGE_GROUP) == "gate"
+        assert display_service_label(ROUTER_COMPOSE_ID, EDGE_GROUP) == "router"
+        assert display_service_label("demo-web", "demo") == "web"
+        assert display_service_label("solo", None) == "solo"
+        assert display_service_label("solo", "demo") == "solo"
+        assert display_service_label("raft-gate", None) == "raft-gate"

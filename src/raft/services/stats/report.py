@@ -8,6 +8,7 @@ import time
 from io import StringIO
 from typing import Callable, Optional, TextIO
 
+from ...models import display_service_label
 from ...ui import BOLD, CYAN, DIM, paint, want_color
 from .models import ContainerStats, HostStats, StatsSnapshot
 
@@ -141,7 +142,7 @@ def _write_containers(
     for c in containers:
         rows.append(
             (
-                c.service,
+                display_service_label(c.service, c.group),
                 c.group or "-",
                 c.status,
                 _fmt_percent(c.cpu_percent),
