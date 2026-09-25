@@ -9,6 +9,14 @@ from ..adapters.http import HttpProbe
 from ..models.app import App
 from ..models.manifest import AppSpec
 from ..models.ports import PortSpec
+from ..models.readiness import (
+    DEFAULT_INTERVAL_SECONDS,
+    DEFAULT_PROBE_TIMEOUT_SECONDS,
+    DEFAULT_RETRIES,
+    DEFAULT_START_PERIOD_SECONDS,
+    DEFAULT_TIMEOUT_SECONDS,
+    format_duration_seconds,
+)
 from ..models.stack import Stack
 
 
@@ -17,14 +25,35 @@ class ReadinessStrategy:
     kind: str
     port: Optional[PortSpec] = None
     path: str = "/"
+    timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS
+    start_period_seconds: float = DEFAULT_START_PERIOD_SECONDS
+    interval_seconds: float = DEFAULT_INTERVAL_SECONDS
+    probe_timeout_seconds: float = DEFAULT_PROBE_TIMEOUT_SECONDS
+    retries: int = DEFAULT_RETRIES
 
     @classmethod
     def from_spec(cls, spec: AppSpec) -> "ReadinessStrategy":
         readiness = spec.readiness
         if readiness.type == "none":
-            return cls(kind="none")
+            return cls(
+                kind="none",
+                timeout_seconds=readiness.timeout_seconds,
+                start_period_seconds=readiness.start_period_seconds,
+                interval_seconds=readiness.interval_seconds,
+                probe_timeout_seconds=readiness.probe_timeout_seconds,
+                retries=readiness.retries,
+            )
         port = readiness.resolve_port(spec.ports)
-        return cls(kind=readiness.type, port=port, path=readiness.path)
+        return cls(
+            kind=readiness.type,
+            port=port,
+            path=readiness.path,
+            timeout_seconds=readiness.timeout_seconds,
+            start_period_seconds=readiness.start_period_seconds,
+            interval_seconds=readiness.interval_seconds,
+            probe_timeout_seconds=readiness.probe_timeout_seconds,
+            retries=readiness.retries,
+        )
 
     def healthcheck_test(self) -> Optional[list[str]]:
         if self.kind == "none" or self.port is None:
@@ -43,6 +72,31 @@ class ReadinessStrategy:
                 f"nc -z 127.0.0.1 {self.port.container_port} || exit 1",
             ]
         raise ValueError(f"unknown readiness kind {self.kind!r}")
+
+    def healthcheck_compose_lines(self) -> list[str]:
+        """Compose ``healthcheck:`` block lines (indented under the service)."""
+        test = self.healthcheck_test()
+        if test is None:
+            return []
+        quoted = ", ".join(f'"{part}"' for part in test)
+        return [
+            "    healthcheck:",
+            f"      test: [{quoted}]",
+            f"      interval: {format_duration_seconds(self.interval_seconds)}",
+            f"      timeout: {format_duration_seconds(self.probe_timeout_seconds)}",
+            f"      retries: {self.retries}",
+            # Cold start (e.g. Alembic) often exceeds a few seconds; keep
+            # health "starting" long enough for cutover TCP waits.
+            f"      start_period: {format_duration_seconds(self.start_period_seconds)}",
+        ]
+
+    def timing_summary(self) -> str:
+        return (
+            f"timeoutSeconds={format_duration_seconds(self.timeout_seconds)}, "
+            f"startPeriodSeconds={format_duration_seconds(self.start_period_seconds)}, "
+            f"interval={format_duration_seconds(self.interval_seconds)}, "
+            f"retries={self.retries}"
+        )
 
     def wait_predicate(
         self,

@@ -29,7 +29,21 @@ class ServicesTestCase(RaftTestCase):
         return orch
 
     def cutover_session(self) -> CutoverSession:
-        write_applied_app(self.tmp_path, "app")
+        # Short readiness budget so timeout-path tests (sleep mocked) finish quickly.
+        write_applied_app(
+            self.tmp_path,
+            "app",
+            extra={
+                "readiness": {
+                    "type": "http",
+                    "port": "http",
+                    "timeoutSeconds": 1,
+                    "startPeriodSeconds": 0.25,
+                    "intervalSeconds": 0.25,
+                    "retries": 1,
+                },
+            },
+        )
         stack = make_local_stack(
             self.tmp_path,
             drain_seconds=0.0,

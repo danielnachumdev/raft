@@ -133,6 +133,8 @@ class TestPortsAndReadinessCoverage(RaftTestCase):
             parse_readiness({"readiness": {"type": "http", "port": "smtp"}}, ports, path)
         r = parse_readiness({"readiness": {"type": "none"}}, ports, path)
         assert r.type == "none"
+        assert r.timeout_seconds == 120.0
+        assert r.start_period_seconds == 45.0
         r2 = parse_readiness({"readiness": {"type": "http", "path": "ready"}}, ports, path)
         assert r2.path == "/ready"
         r3 = parse_readiness({}, ports, path)
@@ -149,6 +151,94 @@ class TestPortsAndReadinessCoverage(RaftTestCase):
             ReadinessSpec(type="tcp", port="nope").resolve_port(ports)
         assert ReadinessSpec(type="none").resolve_port(ports) is None
         assert ReadinessSpec(type="tcp").resolve_port(()) is None
+
+    def test_readiness_timing_defaults_and_overrides(self) -> None:
+        path = Path("app.yaml")
+        ports = (PortSpec(name="http", container_port=80, expose="http"),)
+        defaults = parse_readiness(
+            {"readiness": {"type": "tcp", "port": "http"}},
+            ports,
+            path,
+        )
+        assert defaults.timeout_seconds == 120.0
+        assert defaults.start_period_seconds == 45.0
+        assert defaults.interval_seconds == 2.0
+        assert defaults.retries == 15
+        assert "timeoutSeconds=120s" in defaults.timing_summary()
+
+        custom = parse_readiness(
+            {
+                "readiness": {
+                    "type": "tcp",
+                    "port": "http",
+                    "timeoutSeconds": 180,
+                    "startPeriodSeconds": 60,
+                    "intervalSeconds": 3,
+                    "probeTimeoutSeconds": 2,
+                    "retries": 10,
+                },
+            },
+            ports,
+            path,
+        )
+        assert custom.timeout_seconds == 180.0
+        assert custom.start_period_seconds == 60.0
+        assert custom.interval_seconds == 3.0
+        assert custom.retries == 10
+
+        # Raising startPeriod without timeoutSeconds auto-bumps the wait budget.
+        long_start = parse_readiness(
+            {
+                "readiness": {
+                    "type": "tcp",
+                    "port": "http",
+                    "startPeriodSeconds": 90,
+                },
+            },
+            ports,
+            path,
+        )
+        assert long_start.timeout_seconds >= 90 + 15 * 2 + 15
+
+        with pytest.raises(ValueError, match="greater than startPeriodSeconds"):
+            parse_readiness(
+                {
+                    "readiness": {
+                        "type": "tcp",
+                        "port": "http",
+                        "timeoutSeconds": 30,
+                        "startPeriodSeconds": 45,
+                    },
+                },
+                ports,
+                path,
+            )
+        with pytest.raises(ValueError, match="at least startPeriodSeconds \\+ interval"):
+            parse_readiness(
+                {
+                    "readiness": {
+                        "type": "tcp",
+                        "port": "http",
+                        "timeoutSeconds": 46,
+                        "startPeriodSeconds": 45,
+                        "intervalSeconds": 2,
+                    },
+                },
+                ports,
+                path,
+            )
+        with pytest.raises(ValueError, match="must be > 0"):
+            parse_readiness(
+                {
+                    "readiness": {
+                        "type": "tcp",
+                        "port": "http",
+                        "retries": 0,
+                    },
+                },
+                ports,
+                path,
+            )
 
 
 class TestManifestCoverage(RaftTestCase):

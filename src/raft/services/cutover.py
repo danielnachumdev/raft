@@ -34,14 +34,37 @@ def wait_until(
     interval: float = 1.0,
     fix: str = "",
     diagnostics: Optional[Callable[[], str]] = None,
+    progress_every: float = 15.0,
 ) -> None:
-    deadline = time.monotonic() + timeout
+    started = time.monotonic()
+    deadline = started + timeout
+    next_progress = started + progress_every
     while time.monotonic() < deadline:
         if predicate():
             return
+        now = time.monotonic()
+        if progress_every > 0 and now >= next_progress:
+            remaining = max(0.0, deadline - now)
+            logger.info(
+                "still waiting for: %s (%.0fs of %.0fs elapsed, %.0fs left)",
+                description,
+                now - started,
+                timeout,
+                remaining,
+            )
+            next_progress = now + progress_every
         time.sleep(interval)
-    logger.error("timed out waiting for: %s", description)
-    message = f"timed out waiting for: {description}"
+    waited = time.monotonic() - started
+    logger.error(
+        "timed out waiting for: %s (waited %.0fs of %.0fs budget)",
+        description,
+        waited,
+        timeout,
+    )
+    message = (
+        f"timed out waiting for: {description} "
+        f"(waited {waited:.0f}s of {timeout:.0f}s budget)"
+    )
     if diagnostics is not None:
         try:
             message = append_diagnostics(message, diagnostics())
@@ -88,14 +111,21 @@ class CutoverSession:
         )
         if predicate is None:
             return
+        wait_budget = (
+            timeout if timeout is not None else strategy.timeout_seconds
+        )
         wait_until(
             label,
             predicate,
-            timeout=self.stack.ready_timeout_seconds if timeout is None else timeout,
+            timeout=wait_budget,
             interval=0.5,
             fix=(
                 f"check readiness/health for {self.app.name}; "
-                f"raft doctor; raft redeploy {self.app.name}"
+                f"raft doctor; raft redeploy {self.app.name}. "
+                f"If Compose health stays 'starting'/'unhealthy', inspect logs "
+                f"and raise readiness.timeoutSeconds (and optionally "
+                f"startPeriodSeconds) in .raft/app.yaml "
+                f"[{strategy.timing_summary()}]"
             ),
             diagnostics=self._app_diagnostics,
         )
@@ -131,10 +161,11 @@ class CutoverSession:
                 lambda: self.docker.router_can_fetch(
                     self.app.tmp_alias, port=fetch_port, path=strategy.path
                 ),
-                timeout=self.stack.ready_timeout_seconds,
+                timeout=strategy.timeout_seconds,
                 fix=(
                     f"inspect tmp container / upstreams; then: "
-                    f"raft redeploy {self.app.name} or raft doctor"
+                    f"raft redeploy {self.app.name} or raft doctor "
+                    f"[{strategy.timing_summary()}]"
                 ),
                 diagnostics=self._tmp_diagnostics,
             )
@@ -162,10 +193,11 @@ class CutoverSession:
                 lambda: self.docker.router_can_fetch(
                     self.app.compose_id, port=fetch_port, path=strategy.path
                 ),
-                timeout=self.stack.ready_timeout_seconds,
+                timeout=strategy.timeout_seconds,
                 fix=(
                     f"check build/pull logs; traffic may still be on "
-                    f"{self.app.tmp_alias} — raft doctor / raft redeploy {self.app.name}"
+                    f"{self.app.tmp_alias} — raft doctor / raft redeploy "
+                    f"{self.app.name} [{strategy.timing_summary()}]"
                 ),
                 diagnostics=self._app_diagnostics,
             )

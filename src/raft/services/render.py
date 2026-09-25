@@ -260,17 +260,7 @@ class StackRenderer:
                     lines.append(f"      {dep}:")
                     lines.append("        condition: service_started")
             strategy = ReadinessStrategy.from_spec(c)
-            test = strategy.healthcheck_test()
-            if test is not None:
-                lines.append("    healthcheck:")
-                quoted = ", ".join(f'"{part}"' for part in test)
-                lines.append(f"      test: [{quoted}]")
-                lines.append("      interval: 2s")
-                lines.append("      timeout: 2s")
-                lines.append("      retries: 15")
-                # Cold start (e.g. Alembic) often exceeds a few seconds; keep
-                # health "starting" long enough for cutover TCP waits.
-                lines.append("      start_period: 45s")
+            lines.extend(strategy.healthcheck_compose_lines())
             lines.append("    restart: unless-stopped")
             lines.append("    deploy:")
             lines.append("      resources:")

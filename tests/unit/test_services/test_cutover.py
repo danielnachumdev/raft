@@ -8,7 +8,7 @@ import pytest
 
 from raft.services import CutoverSession
 
-from ..base import make_app, make_stack, write_applied_app
+from ..base import make_app, make_local_stack, make_stack, write_applied_app
 from .base import ServicesTestCase
 
 
@@ -200,12 +200,71 @@ class TestCutoverSession(ServicesTestCase):
             session._wait_ready("compose ready")
         docker.service_is_ready.assert_called_with(app.compose_id)
 
-    def test_wait_ready_uses_stack_ready_timeout(self) -> None:
-        s = self.session
+    def test_wait_ready_uses_app_readiness_timeout(self) -> None:
+        write_applied_app(
+            self.tmp_path,
+            "app",
+            extra={
+                "readiness": {
+                    "type": "http",
+                    "port": "http",
+                    "timeoutSeconds": 90,
+                },
+            },
+        )
+        stack = make_local_stack(
+            self.tmp_path,
+            drain_seconds=0.0,
+            ready_timeout_seconds=1.0,
+        )
+        s = CutoverSession(
+            stack=stack,
+            app=stack.apps[0],
+            docker=MagicMock(),
+            nginx=MagicMock(),
+            http=MagicMock(),
+        )
         s.http.public_host_ok.return_value = False
         with patch("raft.services.cutover.wait_until") as wait:
             s._wait_ready("slow ready")
-        assert wait.call_args.kwargs["timeout"] == s.stack.ready_timeout_seconds
+        assert wait.call_args.kwargs["timeout"] == 90.0
+        assert "timeoutSeconds=90s" in wait.call_args.kwargs["fix"]
+
+    def test_wait_until_reports_budget_and_diagnostics(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        from raft.errors import OperatorError
+        from raft.services.cutover import wait_until
+
+        clock = {"t": 0.0}
+
+        def mono() -> float:
+            return clock["t"]
+
+        def sleep(_seconds: float) -> None:
+            clock["t"] += 0.02
+
+        with caplog.at_level("ERROR"), patch(
+            "raft.services.cutover.time.sleep", side_effect=sleep
+        ), patch(
+            "raft.services.cutover.time.monotonic", side_effect=mono
+        ):
+            with pytest.raises(OperatorError) as exc:
+                wait_until(
+                    "demo ready",
+                    lambda: False,
+                    timeout=0.01,
+                    interval=0.01,
+                    progress_every=0,
+                    fix="raise readiness.timeoutSeconds",
+                    diagnostics=lambda: "--- svc (running/starting) ---",
+                )
+        message = str(exc.value)
+        assert "timed out waiting for: demo ready" in message
+        assert "budget" in message
+        assert "running/starting" in message
+        assert "raise readiness.timeoutSeconds" in message
+        assert "timed out waiting for: demo ready" in caplog.text
 
     def test_abort_cleanup_restores_stable_and_removes_tmp(self) -> None:
         s = self.session

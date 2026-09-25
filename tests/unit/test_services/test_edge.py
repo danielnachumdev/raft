@@ -106,12 +106,39 @@ class TestReadinessStrategy(RaftTestCase):
         t = ReadinessStrategy.from_spec(tcp)
         assert t.healthcheck_test()[0] == "CMD-SHELL"
         assert "nc -z" in t.healthcheck_test()[1]
+        lines = t.healthcheck_compose_lines()
+        assert "      start_period: 45s" in lines
+        assert "      retries: 15" in lines
+
+        custom = AppSpec(
+            ports=(
+                PortSpec(
+                    name="smtp",
+                    container_port=25,
+                    expose="stream",
+                    public_port=25,
+                ),
+            ),
+            readiness=ReadinessSpec(
+                type="tcp",
+                port="smtp",
+                start_period_seconds=60,
+                timeout_seconds=180,
+                retries=10,
+                interval_seconds=3,
+            ),
+        )
+        custom_lines = ReadinessStrategy.from_spec(custom).healthcheck_compose_lines()
+        assert "      start_period: 60s" in custom_lines
+        assert "      interval: 3s" in custom_lines
+        assert "      retries: 10" in custom_lines
 
         none = AppSpec(
             ports=(PortSpec(name="http", container_port=80, expose="http"),),
             readiness=ReadinessSpec(type="none"),
         )
         assert ReadinessStrategy.from_spec(none).healthcheck_test() is None
+        assert ReadinessStrategy.from_spec(none).healthcheck_compose_lines() == []
         assert (
             ReadinessStrategy.from_spec(none).wait_predicate(
                 make_app(), self.local_stack(), MagicMock()

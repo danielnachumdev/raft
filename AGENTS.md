@@ -118,6 +118,13 @@ spec:
     type: http                  # http | tcp | none
     port: http                  # port name
     path: /
+    # Optional timing (defaults shown). timeoutSeconds must cover
+    # startPeriodSeconds + retries×intervalSeconds (+ buffer).
+    # timeoutSeconds: 120
+    # startPeriodSeconds: 45
+    # intervalSeconds: 2
+    # probeTimeoutSeconds: 2
+    # retries: 15
   resources:                    # optional; rendered as Compose deploy.resources
     limits:                     # ceiling (cpus / memory)
       cpu: "0.50"               # → deploy.resources.limits.cpus

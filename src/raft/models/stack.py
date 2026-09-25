@@ -43,7 +43,8 @@ class Stack:
     public_base_url: str = "http://127.0.0.1"
     state_dir: str = DEPLOY_DIRNAME
     drain_seconds: float = 3.0
-    ready_timeout_seconds: float = 60.0
+    # Fallback only; App ``spec.readiness.timeoutSeconds`` (default 120s) wins.
+    ready_timeout_seconds: float = 120.0
 
     def app(self, name: str) -> App:
         for app in self.apps:

@@ -69,7 +69,7 @@ class Orchestrator:
             self.stack.root, fingerprint_gate_nginx(self.stack.root)
         )
 
-    def _wait_app_ready(self, app, *, timeout: float = 45) -> None:
+    def _wait_app_ready(self, app, *, timeout: Optional[float] = None) -> None:
         spec = self.stack.spec_for(app)
         strategy = ReadinessStrategy.from_spec(spec)
         predicate = strategy.wait_predicate(
@@ -86,11 +86,18 @@ class Orchestrator:
             label = f"compose readiness for {app.name}"
         else:
             label = f"{strategy.kind} readiness for {app.name}"
+        wait_budget = timeout if timeout is not None else strategy.timeout_seconds
         wait_until(
             label,
             predicate,
-            timeout=timeout,
+            timeout=wait_budget,
             interval=1.0,
+            fix=(
+                f"check readiness/health for {app.name}; raft doctor. "
+                f"If Compose health stays 'starting'/'unhealthy', raise "
+                f"readiness.timeoutSeconds in .raft/app.yaml "
+                f"[{strategy.timing_summary()}]"
+            ),
             diagnostics=lambda: self.docker.diagnostics_for(app.compose_id),
         )
 
@@ -114,7 +121,7 @@ class Orchestrator:
         self._mark_gate_nginx_loaded()
         logger.info("waiting for readiness checks")
         for app in self.stack.apps:
-            self._wait_app_ready(app, timeout=45)
+            self._wait_app_ready(app)
         say("stack is up", style="ok")
         say("redeploy with: raft redeploy <app>", style="info")
 
@@ -197,7 +204,7 @@ class Orchestrator:
         self.docker.recreate_router()
         logger.info("waiting for readiness via gate")
         for app in self.stack.apps:
-            self._wait_app_ready(app, timeout=45)
+            self._wait_app_ready(app)
         say("router redeployed", style="ok")
 
     def redeploy_app(
@@ -272,7 +279,7 @@ class Orchestrator:
         self.sync([app.name], ref_override=ref_override, force=force_sync)
         self.docker.rebuild_service(app.compose_id)
         self.docker.nginx_test_and_reload()
-        self._wait_app_ready(app, timeout=45)
+        self._wait_app_ready(app)
         say(f"deployed {app.name}", style="ok")
 
     def _start_stack_for_app(
@@ -305,6 +312,6 @@ class Orchestrator:
         self._mark_gate_nginx_loaded()
         logger.info("waiting for readiness checks")
         for app in self.stack.apps:
-            self._wait_app_ready(app, timeout=45)
+            self._wait_app_ready(app)
         say("stack is up", style="ok")
         say(f"deployed {app_name}", style="ok")
