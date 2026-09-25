@@ -44,6 +44,22 @@ def apply_requires_source() -> OperatorError:
     )
 
 
+def deploy_lock_busy(kind: str, path: Union[Path, str]) -> OperatorError:
+    return OperatorError(
+        f"another raft operation holds the {kind} lock "
+        f"(timed out waiting for {path}).\n"
+        f"Fix: wait for the other apply/redeploy/render to finish, then retry; "
+        f"or raise RAFT_LOCK_TIMEOUT_SECONDS (default 300)"
+    )
+
+
+def invalid_lock_timeout(raw: object) -> OperatorError:
+    return OperatorError(
+        f"RAFT_LOCK_TIMEOUT_SECONDS must be a non-negative number, got {raw!r}.\n"
+        f"Fix: unset it or set e.g. RAFT_LOCK_TIMEOUT_SECONDS=300"
+    )
+
+
 def auth_requires_service(cmd: str) -> OperatorError:
     return OperatorError(
         f"auth {cmd} requires SERVICE.\n"
@@ -127,7 +143,9 @@ __all__ = [
     "app_not_applied",
     "apply_requires_source",
     "auth_requires_service",
+    "deploy_lock_busy",
     "filesystem_error",
+    "invalid_lock_timeout",
     "invalid_yaml",
     "missing_manifest",
     "nginx_rejected",

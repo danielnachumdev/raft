@@ -17,6 +17,7 @@ APPS_DIRNAME = "apps"
 CERTS_DIRNAME = "certs"
 LOGS_DIRNAME = "logs"
 STATE_DIR = Path("state") / "apps"
+LOCKS_DIR = Path("state") / "locks"
 
 _TEMPLATE_FILES = ("compose.yaml",)
 _TEMPLATE_DIRS = ("nginx",)
@@ -78,6 +79,7 @@ def ensure_raft_home(
         CERTS_DIRNAME,
         LOGS_DIRNAME,
         str(STATE_DIR),
+        str(LOCKS_DIR),
         f"{GENERATED_DIRNAME}/nginx/gate-tls",
         f"{GENERATED_DIRNAME}/nginx/gate-http",
         f"{GENERATED_DIRNAME}/nginx/gate-stream",
