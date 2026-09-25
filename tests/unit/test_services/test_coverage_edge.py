@@ -239,6 +239,42 @@ class TestPortsAndReadinessCoverage(RaftTestCase):
                 ports,
                 path,
             )
+        with pytest.raises(ValueError, match="timeoutSeconds must be a number"):
+            parse_readiness(
+                {
+                    "readiness": {
+                        "type": "tcp",
+                        "port": "http",
+                        "timeoutSeconds": "slow",
+                    },
+                },
+                ports,
+                path,
+            )
+        with pytest.raises(ValueError, match="startPeriodSeconds must be > 0"):
+            parse_readiness(
+                {
+                    "readiness": {
+                        "type": "tcp",
+                        "port": "http",
+                        "startPeriodSeconds": 0,
+                    },
+                },
+                ports,
+                path,
+            )
+        with pytest.raises(ValueError, match="retries must be an integer"):
+            parse_readiness(
+                {
+                    "readiness": {
+                        "type": "tcp",
+                        "port": "http",
+                        "retries": "many",
+                    },
+                },
+                ports,
+                path,
+            )
 
 
 class TestManifestCoverage(RaftTestCase):

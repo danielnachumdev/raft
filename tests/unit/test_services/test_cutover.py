@@ -266,6 +266,33 @@ class TestCutoverSession(ServicesTestCase):
         assert "raise readiness.timeoutSeconds" in message
         assert "timed out waiting for: demo ready" in caplog.text
 
+    def test_wait_until_logs_progress(self, caplog: pytest.LogCaptureFixture) -> None:
+        from raft.errors import OperatorError
+        from raft.services.cutover import wait_until
+
+        clock = {"t": 0.0}
+
+        def mono() -> float:
+            return clock["t"]
+
+        def sleep(_seconds: float) -> None:
+            clock["t"] += 0.1
+
+        with caplog.at_level("INFO"), patch(
+            "raft.services.cutover.time.sleep", side_effect=sleep
+        ), patch(
+            "raft.services.cutover.time.monotonic", side_effect=mono
+        ):
+            with pytest.raises(OperatorError, match="timed out waiting"):
+                wait_until(
+                    "slow ready",
+                    lambda: False,
+                    timeout=0.25,
+                    interval=0.05,
+                    progress_every=0.1,
+                )
+        assert "still waiting for: slow ready" in caplog.text
+
     def test_abort_cleanup_restores_stable_and_removes_tmp(self) -> None:
         s = self.session
         s.tmp_active = True
@@ -274,6 +301,19 @@ class TestCutoverSession(ServicesTestCase):
         s.docker.nginx_test_and_reload.assert_called_once()
         s.docker.remove_container.assert_called_once_with(s.app.tmp_container)
         assert s.tmp_active is False
+
+    def test_abort_cleanup_swallows_restore_and_remove_errors(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        s = self.session
+        s.tmp_active = True
+        s.nginx.point_at.side_effect = RuntimeError("nginx down")
+        s.docker.remove_container.side_effect = RuntimeError("rm failed")
+        with caplog.at_level("WARNING"):
+            s.abort_cleanup()
+        assert "could not point nginx" in caplog.text
+        assert "could not remove" in caplog.text
+        assert s.tmp_active is True
 
     def test_abort_cleanup_noop_when_tmp_inactive(self) -> None:
         s = self.session
