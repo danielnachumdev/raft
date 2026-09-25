@@ -11,7 +11,9 @@ Locks live under ``~/.raft/state/locks/`` (``RAFT_DATA_HOME``):
 * ``stack.lock`` — render, nginx reload, cutover, compose up/recreate, gate
 
 Wait (with timeout) so a later-started deploy still runs after an earlier one
-and becomes the final live state. Override budget via ``RAFT_LOCK_TIMEOUT_SECONDS``.
+and becomes the final live state. Contended waiters log ``waiting for … lock``
+once, then ``acquired … lock`` when held. Override budget via
+``RAFT_LOCK_TIMEOUT_SECONDS``.
 """
 
 from __future__ import annotations
@@ -114,6 +116,7 @@ def exclusive_lock(
     path.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(str(path), os.O_RDWR | os.O_CREAT, 0o644)
     deadline = time.monotonic() + budget
+    waited = False
     try:
         while True:
             try:
@@ -122,6 +125,9 @@ def exclusive_lock(
             except BlockingIOError:
                 if time.monotonic() >= deadline:
                     raise deploy_lock_busy(kind, path)
+                if not waited:
+                    logger.info("waiting for %s lock", kind)
+                    waited = True
                 time.sleep(_POLL_INTERVAL_SECONDS)
     except BaseException:
         try:
@@ -132,7 +138,10 @@ def exclusive_lock(
 
     held = _Held(path, fd)
     held_map[key] = held
-    logger.debug("acquired %s lock %s", kind, path)
+    if waited:
+        logger.info("acquired %s lock", kind)
+    else:
+        logger.debug("acquired %s lock %s", kind, path)
     try:
         yield
     finally:

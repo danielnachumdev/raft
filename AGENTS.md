@@ -43,7 +43,7 @@ nginx reload and `docker compose up` alone are **not** enough for correctness. O
 | `app-<name>.lock` | `apply` (registry + deploy), `redeploy` / `ensure_app_deployed`, `delete app` | One mutative pipeline per app; later-started waits then runs → newer deploy wins |
 | `stack.lock` | render, sync, cutover, compose up/recreate, gate recreate, up/down | No torn `generated/` or mid-cutover upstream reset across apps |
 
-Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**), then `OperatorError` with a Fix CTA. Same-process nesting (redeploy → sync → render) re-enters safely. `doctor` / `stats` do not take these locks.
+Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**), then `OperatorError` with a Fix CTA. Contended waiters log `waiting for … lock`, then `acquired … lock`. Same-process nesting (redeploy → sync → render) re-enters safely. `doctor` / `status` do not take these locks.
 
 ### Ports and TLS
 

@@ -71,7 +71,7 @@ class TestExclusiveLock(RaftTestCase):
             with exclusive_lock(path, kind="stack", timeout=1):
                 assert path.is_file()
 
-    def test_busy_times_out(self) -> None:
+    def test_busy_times_out(self, caplog: pytest.LogCaptureFixture) -> None:
         path = stack_lock_path(self.root)
         held = threading.Event()
         release = threading.Event()
@@ -84,13 +84,17 @@ class TestExclusiveLock(RaftTestCase):
         thread = threading.Thread(target=holder)
         thread.start()
         assert held.wait(timeout=2)
-        with pytest.raises(OperatorError, match="holds the stack lock"):
+        with caplog.at_level("INFO"), pytest.raises(
+            OperatorError, match="holds the stack lock"
+        ):
             with exclusive_lock(path, kind="stack", timeout=0.15):
                 pass
+        assert "waiting for stack lock" in caplog.text
+        assert "acquired stack lock" not in caplog.text
         release.set()
         thread.join(timeout=2)
 
-    def test_waiter_runs_after_holder(self) -> None:
+    def test_waiter_runs_after_holder(self, caplog: pytest.LogCaptureFixture) -> None:
         path = stack_lock_path(self.root)
         order: list[str] = []
         held = threading.Event()
@@ -110,13 +114,16 @@ class TestExclusiveLock(RaftTestCase):
 
         t_a = threading.Thread(target=slow)
         t_b = threading.Thread(target=later)
-        t_a.start()
-        t_b.start()
-        time.sleep(0.05)
-        release.set()
-        t_a.join(timeout=2)
-        t_b.join(timeout=2)
+        with caplog.at_level("INFO"):
+            t_a.start()
+            t_b.start()
+            time.sleep(0.05)
+            release.set()
+            t_a.join(timeout=2)
+            t_b.join(timeout=2)
         assert order == ["A-start", "A-end", "B"]
+        assert "waiting for stack lock" in caplog.text
+        assert "acquired stack lock" in caplog.text
 
     def test_app_and_stack_helpers(self) -> None:
         with app_and_stack_locks(self.root, "web", timeout=1):
