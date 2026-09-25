@@ -32,6 +32,19 @@ gate (public edge listeners from settings) → router (Host routing) → apps
 
 Cutover reloads **router** nginx. Render reloads **gate** nginx when on-disk `gate-{tls,http,stream}` differs from the last reload stamp (`state/gate-nginx.fingerprint`) and gate is running — so stale nginx (files already written, process never reloaded) is recovered on the next apply/render. Never use `redeploy` for gate — published-port changes need `gate recreate` (brief edge downtime).
 
+### Concurrent apply / redeploy
+
+nginx reload and `docker compose up` alone are **not** enough for correctness. Overlapping cutovers share tmp container names, upstream files, and `generated/` compose/nginx. A slow older deploy that finishes last can overwrite a newer one's image/upstream (last-finisher wins incorrectly). A second app's `render` mid-cutover rewrites all upstreams back to steady Compose names and tears live traffic.
+
+**Intended behavior:** serialize mutative work with `flock` under `~/.raft/state/locks/`:
+
+| Lock | Held by | Guarantees |
+|------|---------|------------|
+| `app-<name>.lock` | `apply` (registry + deploy), `redeploy` / `ensure_app_deployed`, `delete app` | One mutative pipeline per app; later-started waits then runs → newer deploy wins |
+| `stack.lock` | render, sync, cutover, compose up/recreate, gate recreate, up/down | No torn `generated/` or mid-cutover upstream reset across apps |
+
+Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**), then `OperatorError` with a Fix CTA. Same-process nesting (redeploy → sync → render) re-enters safely. `doctor` / `stats` do not take these locks.
+
 ### Ports and TLS
 
 - Each app declares `spec.ports[]` with `expose: http | stream | host | none`.
@@ -53,6 +66,7 @@ Cutover reloads **router** nginx. Render reloads **gate** nginx when on-disk `ga
 | `~/.raft/generated/` | Compose apps + compose.edge + router hosts + gate-http/stream/tls + **upstreams** |
 | `~/.raft/apps/` | Sync checkouts |
 | `~/.raft/deploy/` | Image/ref pins from sync/cutover |
+| `~/.raft/state/locks/` | `flock` files serializing apply/redeploy/render (`app-<name>.lock`, `stack.lock`) |
 | `~/.raft/certs/` | Origin PEMs (only for `tls: origin`) |
 | `~/.raft/logs/` | Structured log file (default) |
 

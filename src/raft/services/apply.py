@@ -24,6 +24,7 @@ from ..models.manifest import (
 from ..models.stack import Stack, load_stack
 from ..ui import say
 from .auth import GitAuthManager
+from .locking import app_and_stack_locks, app_deploy_lock
 from .manifest_env import ManifestYamlLoader
 from .orchestrator import Orchestrator
 
@@ -73,10 +74,11 @@ class AppApply:
                 f"(ok if you apply them next)",
                 style="warn",
             )
-        dest = write_registry_app(self.stack.root, data)
-        say(f"applied {app.name} → {dest.relative_to(self.stack.root)}", style="ok")
-        if deploy:
-            self._deploy(app.name, ref_override=ref_override, force_sync=force_sync)
+        with app_deploy_lock(self.stack.root, app.name):
+            dest = write_registry_app(self.stack.root, data)
+            say(f"applied {app.name} → {dest.relative_to(self.stack.root)}", style="ok")
+            if deploy:
+                self._deploy(app.name, ref_override=ref_override, force_sync=force_sync)
         return app.name
 
     def apply_git(
@@ -177,33 +179,35 @@ class AppApply:
                     f"(ok if you apply them next)",
                     style="warn",
                 )
-            dest = write_registry_app(self.stack.root, data)
-            say(
-                f"applied {app.name} from {repo}@{ref} → "
-                f"{dest.relative_to(self.stack.root)}",
-                style="ok",
-            )
-            if deploy:
-                self._deploy(app.name, ref_override=ref, force_sync=force_sync)
+            with app_deploy_lock(self.stack.root, app.name):
+                dest = write_registry_app(self.stack.root, data)
+                say(
+                    f"applied {app.name} from {repo}@{ref} → "
+                    f"{dest.relative_to(self.stack.root)}",
+                    style="ok",
+                )
+                if deploy:
+                    self._deploy(app.name, ref_override=ref, force_sync=force_sync)
             return app.name
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
     def delete(self, name: str) -> None:
-        if not delete_registry_app(self.stack.root, name):
-            known = ", ".join(a.name for a in self.stack.apps) or "(none)"
-            raise app_not_applied(name, known)
-        say(f"deleted {name} from registry", style="ok")
-        fresh = load_stack(self.stack.root)
-        Orchestrator(fresh).render()
-        if fresh.apps:
-            say(
-                "re-rendered generated/; remove the Compose service if it is still running "
-                f"(docker compose -f {fresh.root / 'compose.yaml'} rm -sf {name})",
-                style="info",
-            )
-        else:
-            say("re-rendered generated/ (no apps applied)", style="info")
+        with app_and_stack_locks(self.stack.root, name):
+            if not delete_registry_app(self.stack.root, name):
+                known = ", ".join(a.name for a in self.stack.apps) or "(none)"
+                raise app_not_applied(name, known)
+            say(f"deleted {name} from registry", style="ok")
+            fresh = load_stack(self.stack.root)
+            Orchestrator(fresh).render()
+            if fresh.apps:
+                say(
+                    "re-rendered generated/; remove the Compose service if it is still running "
+                    f"(docker compose -f {fresh.root / 'compose.yaml'} rm -sf {name})",
+                    style="info",
+                )
+            else:
+                say("re-rendered generated/ (no apps applied)", style="info")
 
     def _deploy(
         self,
@@ -212,6 +216,7 @@ class AppApply:
         ref_override: Optional[str],
         force_sync: bool,
     ) -> None:
+        # App lock already held by apply; ensure_app_deployed re-enters it.
         orch = Orchestrator(load_stack(self.stack.root))
         orch.ensure_app_deployed(name, ref_override=ref_override, force_sync=force_sync)
 
