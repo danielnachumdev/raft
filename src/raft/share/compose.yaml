@@ -58,12 +58,15 @@ services:
     build:
       context: ./controller
     working_dir: /raft
+-+    user: "${RAFT_HOST_UID:-0}:${RAFT_HOST_GID:-0}"
     environment:
       RAFT_DATA_HOME: /raft
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      # Read-only: controller runs as root; writing here creates root-owned files
-      # that break host ``raft`` template sync. Logs go to stdout instead.
+      # Data home read-only (avoid root-owned template files). Locks need write
+      # for flock during heal; host Shell injects RAFT_HOST_UID/GID so this
+      # process matches the operator user.
       - .:/raft:ro
+      - ./state/locks:/raft/state/locks
     restart: unless-stopped
     <<: *resources-controller

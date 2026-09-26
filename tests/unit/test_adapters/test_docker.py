@@ -115,6 +115,46 @@ class TestDockerStack(AdapterTestCase):
         self.shell.compose.return_value = self.ok("  \n")
         assert self.docker.service_is_ready("app") is False
 
+    def test_service_runtime_and_heal_actions(self) -> None:
+        self.shell.compose.return_value = self.ok("cid\n")
+        self.shell.docker.return_value = self.ok("running unhealthy\n")
+        assert self.docker.service_runtime("app") == ("running", "unhealthy")
+        self.shell.docker.return_value = self.ok("exited none\n")
+        assert self.docker.service_runtime("app") == ("exited", "none")
+        self.shell.compose.return_value = self.ok("", returncode=1)
+        assert self.docker.service_runtime("app") == ("missing", "none")
+        self.shell.compose.return_value = self.ok("cid\n")
+        self.shell.docker.return_value = self.ok("", returncode=1)
+        assert self.docker.service_runtime("app") == ("missing", "none")
+        self.shell.docker.return_value = self.ok("\n")
+        assert self.docker.service_runtime("app") == ("missing", "none")
+        self.shell.compose.return_value = self.ok()
+        self.docker.restart_service("app")
+        self.shell.compose.assert_any_call(
+            "restart", "app", capture=False, check=False
+        )
+        self.docker.start_service("app")
+        self.shell.compose.assert_any_call(
+            "up", "-d", "--no-deps", "--no-build", "app", capture=False, check=False
+        )
+
+    def test_restart_and_start_service_enrich_failures(self) -> None:
+        from raft.errors import OperatorError
+
+        with patch.object(
+            self.docker,
+            "enrich_compose_failure",
+            side_effect=lambda exc, **kw: OperatorError(
+                f"{exc}\n\n--- app ---\nbad",
+                has_fix=True,
+            ),
+        ):
+            self.shell.compose.return_value = self.ok(returncode=1)
+            with pytest.raises(RuntimeError, match="--- app ---"):
+                self.docker.restart_service("app")
+            with pytest.raises(RuntimeError, match="--- app ---"):
+                self.docker.start_service("app")
+
     def test_container_image_ref_named_ok(self) -> None:
         self.shell.docker.side_effect = [
             self.ok("raft-app:latest\n"),

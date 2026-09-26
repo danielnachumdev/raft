@@ -30,6 +30,69 @@ class TestConfig(RaftTestCase):
         assert cfg.logging.dir == "logs"
         assert cfg.logging.file == "raft.log"
         assert cfg.logging.level == "INFO"
+        assert cfg.healing.enabled is False
+        assert cfg.healing.fail_threshold == 3
+
+    def test_load_healing_section(self) -> None:
+        (self.tmp_path / "settings.yaml").write_text(
+            """
+logging:
+  level: INFO
+healing:
+  enabled: true
+  intervalSeconds: 10
+  failThreshold: 2
+  cooldownSeconds: 30
+  maxRestarts: 4
+edge:
+  http: 80
+""",
+            encoding="utf-8",
+        )
+        cfg = load_config(self.tmp_path)
+        assert cfg.healing.enabled is True
+        assert cfg.healing.interval_seconds == 10
+        assert cfg.healing.fail_threshold == 2
+        assert cfg.healing.cooldown_seconds == 30
+        assert cfg.healing.max_restarts == 4
+
+    def test_load_healing_invalid(self) -> None:
+        (self.tmp_path / "settings.yaml").write_text(
+            "healing: []\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(RuntimeError, match="healing must be a mapping"):
+            load_config(self.tmp_path)
+        (self.tmp_path / "settings.yaml").write_text(
+            "healing:\n  failThreshold: 0\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(RuntimeError, match="failThreshold"):
+            load_config(self.tmp_path)
+        (self.tmp_path / "settings.yaml").write_text(
+            "healing:\n  intervalSeconds: abc\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(RuntimeError, match="intervalSeconds"):
+            load_config(self.tmp_path)
+        (self.tmp_path / "settings.yaml").write_text(
+            "healing:\n  cooldownSeconds: []\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(RuntimeError, match="cooldownSeconds"):
+            load_config(self.tmp_path)
+        (self.tmp_path / "settings.yaml").write_text(
+            "healing:\n  cooldownSeconds: 0\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(RuntimeError, match="cooldownSeconds"):
+            load_config(self.tmp_path)
+        (self.tmp_path / "settings.yaml").write_text(
+            "healing:\n  maxRestarts: x\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(RuntimeError, match="maxRestarts"):
+            load_config(self.tmp_path)
 
     def test_load_missing_uses_defaults(self) -> None:
         settings = self.tmp_path / "settings.yaml"
@@ -100,6 +163,8 @@ class TestRaftHome(RaftTestCase):
         assert "RAFT_DATA_HOME: /raft" in compose
         assert "/var/run/docker.sock:/var/run/docker.sock" in compose
         assert ".:/raft:ro" in compose
+        assert "./state/locks:/raft/state/locks" in compose
+        assert "RAFT_HOST_UID" in compose
         assert "working_dir: /raft" in compose
         assert "memory: 128M" in compose
         assert (home / "generated" / "compose.apps.yaml").is_file()

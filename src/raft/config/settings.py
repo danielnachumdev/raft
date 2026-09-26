@@ -64,9 +64,21 @@ class EdgeConfig:
 
 
 @dataclass(frozen=True)
+class HealingConfig:
+    """Controller self-heal (Compose restart of unhealthy/exited apps)."""
+
+    enabled: bool = False
+    interval_seconds: float = 15.0
+    fail_threshold: int = 3
+    cooldown_seconds: float = 60.0
+    max_restarts: int = 5
+
+
+@dataclass(frozen=True)
 class RaftConfig:
     logging: LoggingConfig = LoggingConfig()
     edge: EdgeConfig = field(default_factory=EdgeConfig)
+    healing: HealingConfig = field(default_factory=HealingConfig)
 
 
 def default_config() -> RaftConfig:
@@ -170,6 +182,59 @@ def _parse_edge(raw: Any) -> EdgeConfig:
     return EdgeConfig(http=http, https=https, streams=tuple(streams))
 
 
+def _parse_healing(raw: Any) -> HealingConfig:
+    if raw is None:
+        return HealingConfig()
+    if not isinstance(raw, dict):
+        raise OperatorError(
+            "settings.yaml healing must be a mapping.\n"
+            "Fix: set healing: {enabled: true, ...} in ~/.raft/settings.yaml"
+        )
+    enabled = bool(raw.get("enabled", False))
+
+    def _pos_float(key: str, default: float) -> float:
+        if key not in raw or raw[key] is None:
+            return default
+        try:
+            value = float(raw[key])
+        except (TypeError, ValueError) as exc:
+            raise OperatorError(
+                f"settings.yaml healing.{key} must be a number, got {raw[key]!r}.\n"
+                f"Fix: set healing.{key} in ~/.raft/settings.yaml"
+            ) from exc
+        if value <= 0:
+            raise OperatorError(
+                f"settings.yaml healing.{key} must be > 0, got {value}.\n"
+                f"Fix: set healing.{key} to a positive number in ~/.raft/settings.yaml"
+            )
+        return value
+
+    def _pos_int(key: str, default: int) -> int:
+        if key not in raw or raw[key] is None:
+            return default
+        try:
+            value = int(raw[key])
+        except (TypeError, ValueError) as exc:
+            raise OperatorError(
+                f"settings.yaml healing.{key} must be an integer, got {raw[key]!r}.\n"
+                f"Fix: set healing.{key} in ~/.raft/settings.yaml"
+            ) from exc
+        if value < 1:
+            raise OperatorError(
+                f"settings.yaml healing.{key} must be >= 1, got {value}.\n"
+                f"Fix: set healing.{key} to a positive integer in ~/.raft/settings.yaml"
+            )
+        return value
+
+    return HealingConfig(
+        enabled=enabled,
+        interval_seconds=_pos_float("intervalSeconds", 15.0),
+        fail_threshold=_pos_int("failThreshold", 3),
+        cooldown_seconds=_pos_float("cooldownSeconds", 60.0),
+        max_restarts=_pos_int("maxRestarts", 5),
+    )
+
+
 def load_config(data_home: Path, *, path: Optional[Path] = None) -> RaftConfig:
     config_path = path or settings_path(data_home)
     if not config_path.exists():
@@ -219,4 +284,5 @@ def load_config(data_home: Path, *, path: Optional[Path] = None) -> RaftConfig:
             level=level,
         ),
         edge=_parse_edge(data.get("edge")),
+        healing=_parse_healing(data.get("healing")),
     )

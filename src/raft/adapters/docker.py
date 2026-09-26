@@ -308,6 +308,55 @@ class DockerStack:
         logger.debug("service_is_ready %s -> %s (%s)", service, ready, " ".join(parts))
         return ready
 
+    def service_runtime(self, service: str) -> tuple[str, str]:
+        """Return ``(status, health)`` for a Compose service (``missing`` if absent)."""
+        try:
+            cid = self.service_container_id(service)
+        except OperatorError:
+            return ("missing", "none")
+        result = self.sh.docker(
+            "inspect",
+            "-f",
+            "{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+            cid,
+            capture=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            return ("missing", "none")
+        parts = (result.stdout or "").strip().split()
+        if not parts:
+            return ("missing", "none")
+        status = parts[0]
+        health = parts[1] if len(parts) > 1 else "none"
+        return (status, health)
+
+    def restart_service(self, service: str) -> None:
+        """Restart a running service (Compose ``restart``)."""
+        logger.info("compose restart %s", service)
+        try:
+            run_compose_checked(
+                self.sh,
+                ("restart", service),
+                action=f"restart service {service}",
+                stream=True,
+            )
+        except OperatorError as exc:
+            raise self.enrich_compose_failure(exc, services=(service,)) from exc
+
+    def start_service(self, service: str) -> None:
+        """Start / ensure a service is up without rebuild (Compose ``up -d --no-deps``)."""
+        logger.info("compose up -d --no-deps %s", service)
+        try:
+            run_compose_checked(
+                self.sh,
+                ("up", "-d", "--no-deps", "--no-build", service),
+                action=f"start service {service}",
+                stream=True,
+            )
+        except OperatorError as exc:
+            raise self.enrich_compose_failure(exc, services=(service,)) from exc
+
     def container_image_ref(self, container_id: str) -> str:
         try:
             named = run_docker_checked(

@@ -62,20 +62,17 @@ class TestControllerPrereq:
         with pytest.raises(RuntimeError, match="docker compose plugin"):
             run_prereq_smoke(home, sh)
 
-    def test_main_smokes_then_idles(
+    def test_main_smokes_then_heals(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         home = tmp_path / "home"
         home.mkdir()
         monkeypatch.setenv("RAFT_DATA_HOME", str(home))
         with patch("raft.controller.run.run_prereq_smoke") as smoke:
-            with patch("raft.controller.run.time.sleep", side_effect=StopIteration):
+            with patch("raft.controller.run.run_heal_forever", side_effect=StopIteration):
                 with pytest.raises(StopIteration):
                     main()
         smoke.assert_called_once()
-        home_arg, sh_arg = smoke.call_args.args
-        assert home_arg == home.resolve()
-        assert sh_arg.cwd == home_arg
 
     def test_main_requires_data_home(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

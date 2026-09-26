@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import subprocess
 from pathlib import Path
 from typing import Optional
@@ -25,6 +26,10 @@ class Shell:
     ) -> subprocess.CompletedProcess[str]:
         workdir = cwd or self.cwd
         logger.debug("run cwd=%s check=%s capture=%s cmd=%s", workdir, check, capture, args)
+        env = os.environ.copy()
+        # So compose can run raft-controller as the host operator (not root).
+        env.setdefault("RAFT_HOST_UID", str(os.getuid()))
+        env.setdefault("RAFT_HOST_GID", str(os.getgid()))
         completed = subprocess.run(
             args,
             cwd=workdir,
@@ -32,6 +37,7 @@ class Shell:
             text=True,
             input=input_text,
             capture_output=capture,
+            env=env,
         )
         if check and completed.returncode != 0:
             detail = ""

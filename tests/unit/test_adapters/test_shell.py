@@ -23,6 +23,8 @@ class TestShell(RaftTestCase):
             assert self.shell.run(["true"]) is done
         run.assert_called_once()
         assert run.call_args.kwargs["cwd"] == self.tmp_path
+        assert "RAFT_HOST_UID" in run.call_args.kwargs["env"]
+        assert "RAFT_HOST_GID" in run.call_args.kwargs["env"]
 
     def test_run_check_raises_with_captured_detail(self) -> None:
         with patch(
