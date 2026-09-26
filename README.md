@@ -66,7 +66,7 @@ Then: `raft apply --file .raft/app.yaml --env CI_DATABASE_URL=…` (or export it
 
 Apps own their contract (`.raft/app.yaml`). Optional `spec.resources.limits` / `reservations` (alias `requests`) become Compose `deploy.resources` — see [`examples/http-only-site/.raft/app.yaml`](examples/http-only-site/.raft/app.yaml) and [`AGENTS.md`](AGENTS.md). Optional per-app **scale-to-zero** is `spec.scaling` (all of `idleSeconds`, `wakeTimeoutSeconds`, `minUpSeconds` required; omit the block for no scaling) — HTTP + `publicHost` only. The VPS stores applied desired state under `~/.raft/state/apps/` and generated Compose/nginx under `~/.raft/generated/`. Settings: `~/.raft/settings.yaml` (logging + **edge** listeners + optional **healing**).
 
-The Compose stack always runs **`raft-controller`**. Two independent opt-ins:
+The Compose stack always runs **`raft-controller`**. It always records host/container resource samples (same spirit as `raft status`) into `~/.raft/state/metrics/resources.jsonl` in batches. Two independent opt-ins:
 
 - **Healing** (`healing:` in settings) — **off** by default; keys/defaults in [`examples/settings.yaml`](examples/settings.yaml). When enabled: observe apps → after `failThreshold`, one Compose restart/start → one cutover/redeploy (`ensure_app_deployed`) → give up until the controller restarts. Apps only — never gate. Skips apps intentionally `scaledToZero`.
 - **Scale-to-zero** (`spec.scaling` on the App) — **off** until you add the block. Controller idle-stops the app; gate serves a holding page (auto-reload) and wakes via an internal controller API. Holding-page hits do not count as activity. Idle stop and wake ship together.

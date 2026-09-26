@@ -15,6 +15,7 @@ from raft.models.stack import Stack
 
 from .heal import Healer
 from .logging import setup_controller_logging
+from .metrics import MetricsRecorder
 from .scale import WAKE_HTTP_PORT, Scaler
 from .smoke import run_prereq_smoke
 from .wake_http import start_wake_http
@@ -57,10 +58,12 @@ def _run_forever(
     sleep_fn: SleepFn = time.sleep,
 ) -> None:
     healer = Healer(home=home, config=healing, docker=docker)
+    metrics = MetricsRecorder(home)
     _log_startup(healing)
     while True:
         _safe_tick(healer.tick, "heal")
         _safe_tick(scaler.tick, "scale")
+        _safe_tick(metrics.tick, "metrics")
         sleep_fn(healing.interval_seconds)
 
 
@@ -81,3 +84,4 @@ def _log_startup(healing) -> None:
     else:
         logger.info("healing disabled; scale + idle wake loop active")
     logger.info("scale-to-zero enabled for apps with spec.scaling")
+    logger.info("metrics recording enabled path=state/metrics/resources.jsonl")

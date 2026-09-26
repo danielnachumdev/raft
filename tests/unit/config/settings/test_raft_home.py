@@ -61,11 +61,13 @@ class TestRaftHome(RaftTestCase):
         assert "RAFT_DATA_HOME: /raft" in compose
         assert "/var/run/docker.sock:/var/run/docker.sock" in compose
         assert ".:/raft:ro" in compose and "./state/locks:/raft/state/locks" in compose
+        assert "./state/metrics:/raft/state/metrics" in compose
         assert "RAFT_HOST_UID" in compose and "working_dir: /raft" in compose
         assert "memory: 128M" in compose
         assert (home / "generated" / "compose.apps.yaml").is_file()
         assert (home / "generated" / "compose.edge.yaml").is_file()
         assert (home / "state" / "apps").is_dir()
+        assert (home / "state" / "metrics").is_dir()
 
     def test_sync_replaces_existing_controller_package(self) -> None:
         from raft.config import paths as paths_mod

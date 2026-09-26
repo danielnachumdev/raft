@@ -67,10 +67,11 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       # Data home read-only (avoid root-owned template files). Locks need write
-      # for flock during heal/scale; scaling state is writable for markers/JSON.
+      # for flock during heal/scale; scaling + metrics dirs are writable.
       # Host Shell injects RAFT_HOST_UID/GID so this process matches the operator.
       - .:/raft:ro
       - ./state/locks:/raft/state/locks
       - ./state/scaling:/raft/state/scaling
+      - ./state/metrics:/raft/state/metrics
     restart: unless-stopped
     <<: *resources-controller

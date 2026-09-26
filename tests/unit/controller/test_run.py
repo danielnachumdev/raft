@@ -82,15 +82,19 @@ class TestControllerPrereq(ControllerTestCase):
         home = self.raft_home(tmp_path)
         scaler = MagicMock()
         sleep = MagicMock(side_effect=StopIteration)
-        with pytest.raises(StopIteration):
-            _run_forever(
-                home,
-                HealingConfig(enabled=True, interval_seconds=0.01),
-                MagicMock(),
-                scaler,
-                sleep_fn=sleep,
-            )
+        with patch("raft.controller.run.MetricsRecorder") as metrics_cls:
+            metrics = MagicMock()
+            metrics_cls.return_value = metrics
+            with pytest.raises(StopIteration):
+                _run_forever(
+                    home,
+                    HealingConfig(enabled=True, interval_seconds=0.01),
+                    MagicMock(),
+                    scaler,
+                    sleep_fn=sleep,
+                )
         scaler.tick.assert_called()
+        metrics.tick.assert_called()
 
     def test_safe_tick_swallows(self) -> None:
         from raft.controller.run import _safe_tick
