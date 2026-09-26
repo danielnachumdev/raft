@@ -61,7 +61,7 @@ Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**), then `OperatorError` w
 | Path | Role |
 |------|------|
 | `compose.yaml`, `nginx/` (`src/raft/share/`) | Product templates; synced into the data home on use |
-| `~/.raft/settings.yaml` | Operator settings (logging + **edge**); see [`examples/settings.yaml`](examples/settings.yaml) |
+| `~/.raft/settings.yaml` | Operator settings (logging + **edge** + optional **healing**); see [`examples/settings.yaml`](examples/settings.yaml) |
 | `~/.raft/state/apps/*.yaml` | Applied desired state |
 | `~/.raft/generated/` | Compose apps + compose.edge + router hosts + gate-http/stream/tls + **upstreams** |
 | `~/.raft/apps/` | Sync checkouts |
@@ -195,7 +195,7 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | Path | Notes |
 |------|-------|
 | `src/raft/cli/` | Fire root + auth + gate; `deps.py` patched in tests |
-| `src/raft/config/` | `~/.raft` paths, `settings.yaml` (logging + edge), logging setup |
+| `src/raft/config/` | `~/.raft` paths, `settings.yaml` (logging + edge + healing), logging setup |
 | `src/raft/models/` | Types + parse/registry: `App`, `AppSpec`, `AppDocument` / fields, `AppRegistry`, `PortSpec`, `Stack` |
 | `src/raft/adapters/` | `shell`; `docker/` (`DockerStack` + edge/images/inspect); nginx upstreams; HTTP probe; host |
 | `src/raft/services/apply/` | `AppApply`, `manifest_env` (`${VAR}` at apply) |
@@ -204,10 +204,10 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | `src/raft/services/render/` | `StackRenderer`, `compose_apps`, `gate_nginx`, `edge` handlers |
 | `src/raft/services/deploy/` | orchestrator, cutover, wait, locking, readiness |
 | `src/raft/services/ops/` | doctor, stats, uninstall, update, certs |
-| `src/raft/controller/` | Optional heal/smoke controller |
+| `src/raft/controller/` | Always-on Compose `raft-controller` (smoke + Phase 1 heal when `healing.enabled`) |
 | `src/raft/errors/` | Operator errors + CTAs |
 | `src/raft/share/` | Product Compose + nginx templates (synced into data home) |
-| `tests/` | `unit/` (100% cov), `integration/` (render artifacts), `e2e/` (Docker Compose) |
+| `tests/` | `unit/` (100% cov), `integration/` (render artifacts), `meta/` (size/body guards), `e2e/` (Docker Compose) |
 
 Compose mounts `generated/nginx/upstreams` into the router. Upstream files are keyed by app + port name (`<app>-<port>.conf`).
 

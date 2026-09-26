@@ -64,16 +64,18 @@ spec:
 
 Then: `raft apply --file .raft/app.yaml --env CI_DATABASE_URL=…` (or export it in the job). CLI `--env` alone does not inject Compose env without that bridge.
 
-Apps own their contract (`.raft/app.yaml`). Optional `spec.resources.limits` / `reservations` (alias `requests`) become Compose `deploy.resources` — see [`examples/http-only-site/.raft/app.yaml`](examples/http-only-site/.raft/app.yaml) and [`AGENTS.md`](AGENTS.md). The VPS stores applied desired state under `~/.raft/state/apps/` and generated Compose/nginx under `~/.raft/generated/`. Settings: `~/.raft/settings.yaml` (logging + **edge** listeners).
+Apps own their contract (`.raft/app.yaml`). Optional `spec.resources.limits` / `reservations` (alias `requests`) become Compose `deploy.resources` — see [`examples/http-only-site/.raft/app.yaml`](examples/http-only-site/.raft/app.yaml) and [`AGENTS.md`](AGENTS.md). The VPS stores applied desired state under `~/.raft/state/apps/` and generated Compose/nginx under `~/.raft/generated/`. Settings: `~/.raft/settings.yaml` (logging + **edge** listeners + optional **healing**).
+
+The Compose stack always runs **`raft-controller`**. Phase 1 self-heal is **off** by default; enable `healing:` in settings (keys/defaults in [`examples/settings.yaml`](examples/settings.yaml)). When enabled: observe apps → after `failThreshold`, one Compose restart/start → one cutover/redeploy (`ensure_app_deployed`) → give up until the controller restarts. Apps only — never gate.
 
 ## Examples
 
-See **[`examples/`](examples/)** for copy-paste samples: operator [`settings.yaml`](examples/settings.yaml) and named scenarios (`http-only-site`, `https-origin-site`, `http-plus-stream`, `host-published-ports`).
+See **[`examples/`](examples/)** for copy-paste samples: operator [`settings.yaml`](examples/settings.yaml) and named scenarios (`http-only-site`, `https-origin-site`, `http-plus-stream`, `host-published-ports`, `grouped-volume-app`).
 
 ## Requirements
 
 - **Python 3.8+** (CI: 3.8–3.13); uv can fetch an interpreter when needed  
-- Runtime settings: `~/.raft/settings.yaml` (logging + edge); template in [`examples/settings.yaml`](examples/settings.yaml)  
+- Runtime settings: `~/.raft/settings.yaml` (logging + edge + optional healing); template in [`examples/settings.yaml`](examples/settings.yaml)  
 - Docker + Compose on the host  
 - For HTTPS: set `tls: origin` on the App and install Cloudflare Origin PEMs under `~/.raft/certs/<name>/` (HTTP-only apps need no certs)
 
@@ -82,10 +84,11 @@ See **[`examples/`](examples/)** for copy-paste samples: operator [`settings.yam
 ```bash
 git clone https://github.com/danielnachumdev/raft.git && cd raft
 uv sync --extra dev
-uv run pytest                              # unit + integration (-n auto, 100% cov)
+uv run pytest                              # unit + integration + meta (-n auto, 100% cov)
 uv run pytest tests/unit                   # unit only (same defaults)
+uv run pytest tests/meta --no-cov          # codebase size/body guards
 uv run pytest tests/e2e -m e2e --no-cov -n0  # needs Docker; serial; all CI Py versions
 uv run raft -- --help  # or re-run ./install.sh / uv tool install --force -e .
 ```
 
-Working on the codebase? See **[AGENTS.md](AGENTS.md)**.
+Working on the codebase? See **[AGENTS.md](AGENTS.md)** (package map under `src/raft/`).
