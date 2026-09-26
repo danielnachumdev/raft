@@ -102,8 +102,10 @@ spec:
 
   # Optional scale-to-zero (off by default — omit the whole block).
   # When present, every field is required (no partial defaults). Eligible only
-  # with at least one expose: http + publicHost. Idle stop + gate holding page
-  # + wake ship together; holding-page reloads do not count as activity.
+  # with at least one expose: http + publicHost (not stream/host/none alone).
+  # Idle stop + gate holding page + wake ship together; holding-page reloads
+  # do not count as activity. Healing is separate (settings healing:); the
+  # healer skips intentional scaledToZero.
   #
   # scaling:
   #   idleSeconds: 300

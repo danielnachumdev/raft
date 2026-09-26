@@ -6,13 +6,13 @@ Copy-paste samples for operator settings and App manifests. Hostnames use
 | Path | Scenario |
 |------|----------|
 | [`settings.yaml`](settings.yaml) | Operator settings (`logging` + `edge` + optional `healing`) → `~/.raft/settings.yaml` |
-| [`http-only-site/`](http-only-site/) | TLS off, single `expose: http` port (richest field comments, including `spec.resources` → Compose `deploy.resources`) |
+| [`http-only-site/`](http-only-site/) | TLS off, single `expose: http` port (richest field comments: `spec.resources`, optional `spec.scaling`) |
 | [`https-origin-site/`](https-origin-site/) | `tls: origin` + Origin PEM notes |
 | [`http-plus-stream/`](http-plus-stream/) | HTTP + `expose: stream` (needs `edge.streams`) |
 | [`host-published-ports/`](host-published-ports/) | HTTP + `expose: host` mail-shaped ports |
 | [`grouped-volume-app/`](grouped-volume-app/) | `spec.group` + `volumes` + `expose: none` (manifest-only sample) |
 
-`raft-controller` always runs with the stack; self-heal stays **off** until you uncomment/enable `healing:` in settings (Phase 1: one Compose restart, then one cutover/redeploy; apps only). Per-app scale-to-zero is also **off** until you add `spec.scaling` (all fields required) on an HTTP+`publicHost` App — see comments in [`http-only-site/.raft/app.yaml`](http-only-site/.raft/app.yaml).
+`raft-controller` always runs with the stack; self-heal stays **off** until you uncomment/enable `healing:` in settings (Phase 1: one Compose restart, then one cutover/redeploy; apps only; skips intentional `scaledToZero`). Per-app scale-to-zero is also **off** until you add `spec.scaling` (all fields required) on an HTTP+`publicHost` App — see comments in [`http-only-site/.raft/app.yaml`](http-only-site/.raft/app.yaml). Healing and scaling are independent opt-ins.
 
 Each service folder has `.raft/app.yaml`; most also have a short `README.md` and a `Dockerfile`
 when the sample builds on the VPS.

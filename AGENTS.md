@@ -16,6 +16,8 @@ User-facing samples live under **[`examples/`](examples/)**: operator settings (
 
 **Shipped:** App-manifest `${VAR}` / `${VAR:-default}` expansion at `raft apply` (one template for Dev/Prod; registry stores expanded YAML). Expansion runs on the **entire** manifest text (including comments) before YAML parse — escape demo placeholders as `$${NAME}` or omit them from comments. Bridge CI values into the container via `spec.env` / `spec.envFile` placeholders (`DATABASE_URL: ${CI_DATABASE_URL}`).
 
+**Shipped:** Per-app scale-to-zero via `spec.scaling` (all fields required; omit = off). HTTP + `publicHost` only. Gate holding page + wake; controller idle-stop; healer skips intentional `scaledToZero`. Healing stays separate (`healing:` in settings).
+
 ---
 
 ## Architecture (hard rules)
@@ -26,7 +28,7 @@ gate (public edge listeners from settings) → router (Host routing) → apps
 
 | Layer | Role | Redeploy |
 |-------|------|----------|
-| **gate** | Outer nginx; http + stream; offline page when router/apps fail | **`raft redeploy gate` refuses**; **reload** on generated TLS/http/stream change; **`raft gate recreate`** only for published edge ports |
+| **gate** | Outer nginx; http + stream; offline page when router/apps fail; holding page + wake for `spec.scaling` apps at zero | **`raft redeploy gate` refuses**; **reload** on generated TLS/http/stream change; **`raft gate recreate`** only for published edge ports |
 | **router** | Inner nginx; Host → upstream | `raft redeploy router` |
 | **apps** | One Compose service per applied App | `raft redeploy <name>` (tmp cutover) |
 
@@ -152,11 +154,25 @@ spec:
   #   idleSeconds: 300          # stop after this much idle (HTTP activity via gate)
   #   wakeTimeoutSeconds: 60    # holding page → timeout page if wake exceeds this
   #   minUpSeconds: 60          # do not idle-stop until this long after wake/start
-  # Requires at least one expose: http + publicHost. Gate serves a holding page
-  # (meta-refresh) while waking; holding hits do not reset the idle timer.
+  # Requires at least one expose: http + publicHost (not stream/host/none alone).
+  # Idle stop + gate holding/wake ship together. Holding hits do not count as
+  # activity. Healer skips intentional scaledToZero. Healing is separate
+  # (settings healing:); see examples/settings.yaml.
 ```
 
 `apply --git` clones briefly, reads `.raft/app.yaml`, copies into `~/.raft/state/apps/`. `sync` refreshes sources then `render` regenerates `~/.raft/generated/`.
+
+### `spec.scaling` (scale-to-zero)
+
+Omit `spec.scaling` → no scaling. When present, **every** field is required (no defaults):
+
+| Field | Role |
+|-------|------|
+| `idleSeconds` | Stop the Compose service after this much idle (activity recorded via gate on real proxied traffic) |
+| `wakeTimeoutSeconds` | Holding page → timeout page if wake exceeds this |
+| `minUpSeconds` | Do not idle-stop until this long after wake/start |
+
+Eligible only with ≥1 `expose: http` port and `publicHost`. Not for stream/host/none-only apps. Controller idle-stops and wakes; gate serves a holding page (meta-refresh) and calls an internal wake API; holding-page reloads do not reset the idle timer. State under `~/.raft/state/scaling/`. Independent of `healing:` in settings — healer skips apps marked `scaledToZero`.
 
 ### `spec.resources` → Compose
 
@@ -204,15 +220,15 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 |------|-------|
 | `src/raft/cli/` | Fire root + auth + gate; `deps.py` patched in tests |
 | `src/raft/config/` | `~/.raft` paths, `settings.yaml` (logging + edge + healing), logging setup |
-| `src/raft/models/` | Types + parse/registry: `App`, `AppSpec`, `AppDocument` / fields, `AppRegistry`, `PortSpec`, `Stack` |
+| `src/raft/models/` | Types + parse/registry: `App`, `AppSpec`, `AppDocument` / fields, `AppRegistry`, `PortSpec`, `Stack`, `ScalingSpec` |
 | `src/raft/adapters/` | `shell`; `docker/` (`DockerStack` + edge/images/inspect); nginx upstreams; HTTP probe; host |
 | `src/raft/services/apply/` | `AppApply`, `manifest_env` (`${VAR}` at apply) |
 | `src/raft/services/auth/` | `GitAuthManager` + ssh/urls helpers |
 | `src/raft/services/sync/` | `SourceSync` |
-| `src/raft/services/render/` | `StackRenderer`, `compose_apps`, `gate_nginx`, `edge` handlers |
+| `src/raft/services/render/` | `StackRenderer`, `compose_apps`, `gate_nginx`, `edge` handlers, `scaling_gate` (holding/wake snippets) |
 | `src/raft/services/deploy/` | orchestrator, cutover, wait, locking, readiness |
 | `src/raft/services/ops/` | doctor, stats, uninstall, update, certs |
-| `src/raft/controller/` | Always-on Compose `raft-controller` (smoke + heal when `healing.enabled` + per-app scale-to-zero when `spec.scaling`) |
+| `src/raft/controller/` | Always-on Compose `raft-controller` (smoke; heal when `healing.enabled`; idle-stop + wake when `spec.scaling`; healer skips `scaledToZero`) |
 | `src/raft/errors/` | Operator errors + CTAs |
 | `src/raft/share/` | Product Compose + nginx templates (synced into data home) |
 | `tests/` | `unit/` (100% cov), `integration/` (render artifacts), `meta/` (size/body guards), `e2e/` (Docker Compose) |

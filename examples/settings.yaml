@@ -27,6 +27,8 @@ logging:
 # Apps only (never gate). Default path when enabled: observe → threshold →
 # one Compose restart/start → one ensure_app_deployed (cutover/redeploy) →
 # give up until the controller restarts.
+# Separate from per-app scale-to-zero (`spec.scaling` on the App manifest);
+# healer skips apps intentionally scaled to zero.
 # ---------------------------------------------------------------------------
 # healing:
 #   enabled: true
