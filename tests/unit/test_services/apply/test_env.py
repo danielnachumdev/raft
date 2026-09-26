@@ -9,7 +9,7 @@ import yaml
 
 from raft.models.stack import load_stack
 from raft.services.apply import AppApply
-from raft.services.manifest_env import ApplyEnvSources
+from raft.services.apply.manifest_env import ApplyEnvSources
 from raft.services.render import StackRenderer
 
 from ..fixtures import (

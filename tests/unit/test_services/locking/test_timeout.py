@@ -12,7 +12,7 @@ import pytest
 
 from raft.errors import OperatorError
 from raft.models.ports import PortSpec
-from raft.services.locking import (
+from raft.services.deploy.locking import (
     DEFAULT_LOCK_TIMEOUT_SECONDS,
     ENV_LOCK_TIMEOUT,
     app_and_stack_locks,
@@ -23,7 +23,7 @@ from raft.services.locking import (
     stack_lock,
     stack_lock_path,
 )
-from raft.services.orchestrator import Orchestrator
+from raft.services.deploy.orchestrator import Orchestrator
 from raft.services.render import StackRenderer
 
 from ...base import RaftTestCase, make_local_stack, write_applied_app

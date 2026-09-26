@@ -17,7 +17,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
         orch = self.orchestrator()
         orch.docker.service_is_ready.return_value = True
         app = orch.stack.app("app")
-        with patch("raft.services.orchestrator.wait_until") as wait:
+        with patch("raft.services.deploy.orchestrator.wait_until") as wait:
             orch._wait_app_ready(app, timeout=5)
         self._assert_compose_ready_wait(orch, app, wait)
 
@@ -49,7 +49,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
         )
         orch = self.orchestrator()
         app = orch.stack.app("app")
-        with patch("raft.services.orchestrator.wait_until") as wait:
+        with patch("raft.services.deploy.orchestrator.wait_until") as wait:
             orch._wait_app_ready(app, timeout=5)
         wait.assert_not_called()
 
@@ -83,17 +83,17 @@ class TestOrchRedeploy(OrchestratorTestCase):
         orch.http.tcp_port_ok.return_value = True
         app = orch.stack.app("app")
 
-        with patch("raft.services.orchestrator.wait_until") as wait:
+        with patch("raft.services.deploy.orchestrator.wait_until") as wait:
             orch._wait_app_ready(app, timeout=5)
 
         label = wait.call_args.args[0]
         assert label == "tcp readiness for app"
 
     def test_redeploy_app_runs_cutover(self) -> None:
-        with patch("raft.services.orchestrator_deploy.CutoverSession") as Session:
+        with patch("raft.services.deploy.orchestrator_deploy.CutoverSession") as Session:
             session = MagicMock()
             Session.return_value = session
-            with patch("raft.services.orchestrator_deploy.DEPLOY_CUTOVER", new=()):
+            with patch("raft.services.deploy.orchestrator_deploy.DEPLOY_CUTOVER", new=()):
                 with patch.object(self.orch, "sync"):
                     self.orch.redeploy_app("app", ref_override="sha", force_sync=True)
             Session.assert_called_once()
@@ -102,9 +102,9 @@ class TestOrchRedeploy(OrchestratorTestCase):
         step = MagicMock()
         step.key = "boom"
         step.run.side_effect = RuntimeError("cutover failed")
-        with patch("raft.services.orchestrator_deploy.DEPLOY_CUTOVER", new=(step,)):
+        with patch("raft.services.deploy.orchestrator_deploy.DEPLOY_CUTOVER", new=(step,)):
             with patch.object(self.orch, "sync"):
-                with patch("raft.services.orchestrator_deploy.CutoverSession") as Session:
+                with patch("raft.services.deploy.orchestrator_deploy.CutoverSession") as Session:
                     session = MagicMock()
                     Session.return_value = session
                     with pytest.raises(RuntimeError, match="cutover failed"):
@@ -115,9 +115,9 @@ class TestOrchRedeploy(OrchestratorTestCase):
         step = MagicMock()
         step.key = "boom"
         step.run.side_effect = RuntimeError("cutover failed")
-        with patch("raft.services.orchestrator_deploy.DEPLOY_CUTOVER", new=(step,)):
+        with patch("raft.services.deploy.orchestrator_deploy.DEPLOY_CUTOVER", new=(step,)):
             with patch.object(self.orch, "sync"):
-                with patch("raft.services.orchestrator_deploy.CutoverSession") as Session:
+                with patch("raft.services.deploy.orchestrator_deploy.CutoverSession") as Session:
                     session = MagicMock()
                     session.abort_cleanup.side_effect = RuntimeError("cleanup boom")
                     Session.return_value = session

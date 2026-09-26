@@ -6,9 +6,9 @@ import json
 from io import StringIO
 from unittest.mock import patch
 
-from raft.services.stats import Stats
-from raft.services.stats.models import AllocatedResources
-from raft.services.stats.report import write_report
+from raft.services.ops.stats import Stats
+from raft.services.ops.stats.models import AllocatedResources
+from raft.services.ops.stats.report import write_report
 
 from ...base import RaftTestCase, make_app, make_stack, write_applied_app
 from .fixtures import StatsFixtures
@@ -20,7 +20,7 @@ class TestStatsReportHuman(RaftTestCase):
         stats = Stats(make_stack(self.tmp_path, (make_app("app"),)))
         StatsFixtures.mock_docker_idle(stats)
         with patch(
-            "raft.services.stats.service.collect_host_resources",
+            "raft.services.ops.stats.service.collect_host_resources",
             return_value=StatsFixtures.host(),
         ):
             return stats, stats.collect()
@@ -82,13 +82,13 @@ class TestStatsReportHuman(RaftTestCase):
     def test_models_to_dict(self) -> None:
         allocated = AllocatedResources("0.5", "128M", "0.1", "32M")
         assert allocated.to_dict()["cpus_limit"] == "0.5"
-        from raft.services.stats.models import IoPair, MemoryUsage
+        from raft.services.ops.stats.models import IoPair, MemoryUsage
 
         assert IoPair(1, 2).to_dict()["rx_or_read_bytes"] == 1
         assert MemoryUsage(1, 2, 3.0).to_dict()["used_percent"] == 3.0
 
     def test_inspect_memory_fills_limit_and_bad_pids(self) -> None:
-        from raft.services.stats.service import _container_from_row, _pids
+        from raft.services.ops.stats.service import _container_from_row, _pids
 
         assert _pids(None) is None and _pids("nope") is None and _pids("7") == 7
         row = _container_from_row(

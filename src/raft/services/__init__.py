@@ -28,19 +28,19 @@ __all__ = [
 
 _EXPORTS = {
     "AppApply": (".apply", "AppApply"),
-    "CheckResult": (".doctor", "CheckResult"),
-    "DEPLOY_CUTOVER": (".cutover", "DEPLOY_CUTOVER"),
-    "CutoverSession": (".cutover", "CutoverSession"),
-    "Doctor": (".doctor", "Doctor"),
+    "CheckResult": (".ops.doctor", "CheckResult"),
+    "DEPLOY_CUTOVER": (".deploy.cutover", "DEPLOY_CUTOVER"),
+    "CutoverSession": (".deploy.cutover", "CutoverSession"),
+    "Doctor": (".ops.doctor", "Doctor"),
     "GitAuthManager": (".auth", "GitAuthManager"),
-    "Orchestrator": (".orchestrator", "Orchestrator"),
-    "ReadinessStrategy": (".readiness", "ReadinessStrategy"),
-    "SelfUpdate": (".update", "SelfUpdate"),
+    "Orchestrator": (".deploy.orchestrator", "Orchestrator"),
+    "ReadinessStrategy": (".deploy.readiness", "ReadinessStrategy"),
+    "SelfUpdate": (".ops.update", "SelfUpdate"),
     "SourceSync": (".sync", "SourceSync"),
     "StackRenderer": (".render", "StackRenderer"),
-    "Stats": (".stats", "Stats"),
-    "Uninstall": (".uninstall", "Uninstall"),
-    "wait_until": (".wait", "wait_until"),
+    "Stats": (".ops.stats", "Stats"),
+    "Uninstall": (".ops.uninstall", "Uninstall"),
+    "wait_until": (".deploy.wait", "wait_until"),
 }
 
 

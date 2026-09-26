@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from raft.models.ports import PortSpec
-from raft.services.certs import MissingOriginCerts
+from raft.services.ops.certs import MissingOriginCerts
 
 from ...base import make_app
 from .base import DockerTestCase
@@ -71,7 +71,7 @@ class TestDockerNginxReload(DockerTestCase):
         )
         missing = [MissingOriginCerts("web", ("origin.pem",))]
         with patch(
-            "raft.adapters.docker_edge.missing_origin_certs",
+            "raft.adapters.docker.edge.missing_origin_certs",
             return_value=missing,
         ):
             with pytest.raises(RuntimeError, match="Origin certs missing"):

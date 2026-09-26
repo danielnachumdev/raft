@@ -195,10 +195,17 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | Path | Notes |
 |------|-------|
 | `src/raft/cli/` | Fire root + auth + gate; `deps.py` patched in tests |
-| `src/raft/models/` | `App`, `AppSpec` (`manifest.py`), `AppDocument` / `AppSpecFields` / `AppMountFields` / `AppRegistry`, `PortSpec`, `Stack` (`stack.py`) |
-| `src/raft/adapters/` | shell, docker, nginx upstreams, HTTP/TCP probe |
-| `src/raft/services/` | apply, auth, sync, render, edge handlers, cutover, orchestrator, doctor, stats; `manifest_env` (`${VAR}` at apply) |
 | `src/raft/config/` | `~/.raft` paths, `settings.yaml` (logging + edge), logging setup |
+| `src/raft/models/` | Types + parse/registry: `App`, `AppSpec`, `AppDocument` / fields, `AppRegistry`, `PortSpec`, `Stack` |
+| `src/raft/adapters/` | `shell`; `docker/` (`DockerStack` + edge/images/inspect); nginx upstreams; HTTP probe; host |
+| `src/raft/services/apply/` | `AppApply`, `manifest_env` (`${VAR}` at apply) |
+| `src/raft/services/auth/` | `GitAuthManager` + ssh/urls helpers |
+| `src/raft/services/sync/` | `SourceSync` |
+| `src/raft/services/render/` | `StackRenderer`, `compose_apps`, `gate_nginx`, `edge` handlers |
+| `src/raft/services/deploy/` | orchestrator, cutover, wait, locking, readiness |
+| `src/raft/services/ops/` | doctor, stats, uninstall, update, certs |
+| `src/raft/controller/` | Optional heal/smoke controller |
+| `src/raft/errors/` | Operator errors + CTAs |
 | `src/raft/share/` | Product Compose + nginx templates (synced into data home) |
 | `tests/` | `unit/` (100% cov), `integration/` (render artifacts), `e2e/` (Docker Compose) |
 

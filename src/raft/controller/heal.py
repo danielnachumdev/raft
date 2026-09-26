@@ -13,7 +13,7 @@ from raft.config.settings_types import HealingConfig
 from raft.errors import OperatorError
 from raft.models.registry import AppRegistry
 from raft.models.stack import Stack
-from raft.services.locking import app_and_stack_locks
+from raft.services.deploy.locking import app_and_stack_locks
 
 __all__ = ["Healer", "needs_heal", "run_heal_forever"]
 

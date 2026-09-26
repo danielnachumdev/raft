@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from raft.services.doctor import INFRA
+from raft.services.ops.doctor import INFRA
 
 from ...base import make_app, make_git_app, make_stack, write_applied_app
 from .base import DoctorTestCase
@@ -64,9 +64,9 @@ class TestDoctorLocalGit(DoctorTestCase):
     def test_docker_missing_and_daemon_fail(self) -> None:
         self.seed_compose()
         shell = MagicMock()
-        with patch("raft.services.doctor.shutil.which", return_value=None):
+        with patch("raft.services.ops.doctor.shutil.which", return_value=None):
             with patch(
-                "raft.services.doctor.socket.create_connection", side_effect=OSError()
+                "raft.services.ops.doctor.socket.create_connection", side_effect=OSError()
             ):
                 results = self.by_key(self.doctor(shell=shell).run())
         assert results[(INFRA, "docker")].status == "fail"

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import raft.services as services
-from raft.services.stats import Stats
+from raft.services.ops.stats import Stats
 
 
 class TestStatsExport:

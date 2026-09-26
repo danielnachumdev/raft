@@ -16,7 +16,7 @@ class DoctorTestCase(ServicesTestCase):
     @pytest.fixture(autouse=True)
     def _public_host_ok(self):
         with patch(
-            "raft.services.doctor.checks.public_host.HttpProbe.public_host_ok",
+            "raft.services.ops.doctor.checks.public_host.HttpProbe.public_host_ok",
             return_value=True,
         ):
             yield
@@ -66,13 +66,13 @@ class DoctorTestCase(ServicesTestCase):
 
     @contextmanager
     def doctor_env(self, *, connect: bool = False):
-        with patch("raft.services.doctor.shutil.which", return_value="/usr/bin/docker"):
+        with patch("raft.services.ops.doctor.shutil.which", return_value="/usr/bin/docker"):
             if connect:
-                with patch("raft.services.doctor.socket.create_connection"):
+                with patch("raft.services.ops.doctor.socket.create_connection"):
                     yield
             else:
                 with patch(
-                    "raft.services.doctor.socket.create_connection",
+                    "raft.services.ops.doctor.socket.create_connection",
                     side_effect=OSError("refused"),
                 ):
                     yield

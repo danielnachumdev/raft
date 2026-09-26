@@ -9,7 +9,7 @@ import pytest
 from raft.adapters.docker import DockerStack
 from raft.adapters.nginx import NginxUpstreams
 from raft.models.ports import PortSpec
-from raft.services.readiness import ReadinessStrategy
+from raft.services.deploy.readiness import ReadinessStrategy
 
 from ...base import RaftTestCase, make_app, make_stack
 

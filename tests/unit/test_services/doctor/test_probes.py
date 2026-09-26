@@ -8,9 +8,9 @@ from raft.models.app import App
 from raft.models.manifest import AppSpec
 from raft.models.ports import PortSpec
 from raft.models.stack import Stack, load_stack
-from raft.services.doctor.checks.ports_summary import PortSummaryChecks, _port_number
-from raft.services.doctor.checks.public_host import PublicHostChecks
-from raft.services.doctor.context import DoctorContext
+from raft.services.ops.doctor.checks.ports_summary import PortSummaryChecks, _port_number
+from raft.services.ops.doctor.checks.public_host import PublicHostChecks
+from raft.services.ops.doctor.context import DoctorContext
 
 from ...base import make_stack, write_applied_app
 from .base import DoctorTestCase
@@ -30,7 +30,7 @@ class TestDoctorProbes(DoctorTestCase):
             'nginx: [emerg] host not found in upstream "old-backend:8000"'
         )
         with patch(
-            "raft.services.doctor.checks.public_host.HttpProbe.public_host_ok",
+            "raft.services.ops.doctor.checks.public_host.HttpProbe.public_host_ok",
             return_value=False,
         ):
             results = self.run_keyed(
@@ -59,7 +59,7 @@ class TestDoctorProbes(DoctorTestCase):
         docker.diagnostics_for.side_effect = RuntimeError("docker down")
         ctx = self._probe_ctx(docker)
         with patch(
-            "raft.services.doctor.checks.public_host.HttpProbe.public_host_ok",
+            "raft.services.ops.doctor.checks.public_host.HttpProbe.public_host_ok",
             return_value=False,
         ):
             results = PublicHostChecks().run(ctx)
@@ -72,7 +72,7 @@ class TestDoctorProbes(DoctorTestCase):
         docker.diagnostics_for.return_value = "--- app (absent) ---"
         ctx = self._probe_ctx(docker)
         with patch(
-            "raft.services.doctor.checks.public_host.HttpProbe.public_host_ok",
+            "raft.services.ops.doctor.checks.public_host.HttpProbe.public_host_ok",
             return_value=False,
         ):
             results = PublicHostChecks().run(ctx)
@@ -83,7 +83,7 @@ class TestDoctorProbes(DoctorTestCase):
         docker = MagicMock()
         ctx = self._probe_ctx(docker)
         with patch(
-            "raft.services.doctor.checks.public_host.HttpProbe.public_host_ok",
+            "raft.services.ops.doctor.checks.public_host.HttpProbe.public_host_ok",
             return_value=False,
         ):
             docker.diagnostics_for.return_value = ""

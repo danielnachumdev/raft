@@ -10,7 +10,7 @@ from raft.config.settings_types import EdgeConfig, EdgeStream
 from raft.models.manifest import AppSpec
 from raft.models.ports import PortSpec
 from raft.models.stack import load_stack
-from raft.services.edge import StreamEdge
+from raft.services.render.edge import StreamEdge
 from raft.services.render import StackRenderer
 
 from ...base import RaftTestCase, make_app, write_applied_app

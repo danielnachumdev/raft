@@ -10,12 +10,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from raft.models.ports import PortSpec
-from raft.services.locking import (
+from raft.services.deploy.locking import (
     ENV_LOCK_TIMEOUT,
     app_and_stack_locks,
     stack_lock,
 )
-from raft.services.orchestrator import Orchestrator
+from raft.services.deploy.orchestrator import Orchestrator
 from raft.services.render import StackRenderer
 
 from ...base import RaftTestCase, make_local_stack, write_applied_app

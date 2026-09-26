@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 
 from raft.services import CheckResult
-from raft.services.doctor import INFRA
+from raft.services.ops.doctor import INFRA
 
 
 class ReportCases:

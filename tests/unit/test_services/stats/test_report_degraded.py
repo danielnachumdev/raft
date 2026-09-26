@@ -5,9 +5,9 @@ from __future__ import annotations
 from io import StringIO
 
 from raft.adapters.host import HostResources
-from raft.services.stats.models import AllocatedResources
-from raft.services.stats.report import write_report
-from raft.services.stats.service import _host_stats
+from raft.services.ops.stats.models import AllocatedResources
+from raft.services.ops.stats.report import write_report
+from raft.services.ops.stats.service import _host_stats
 
 from ...base import RaftTestCase
 from .fixtures import StatsFixtures

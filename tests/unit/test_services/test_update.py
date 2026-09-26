@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Optional
 from unittest.mock import MagicMock
 
-from raft.services import update as update_mod
-from raft.services.update import DEFAULT_INSTALL_URL, SelfUpdate, install_identity
+from raft.services.ops import update as update_mod
+from raft.services.ops.update import DEFAULT_INSTALL_URL, SelfUpdate, install_identity
 
 from .base import ServicesTestCase
 

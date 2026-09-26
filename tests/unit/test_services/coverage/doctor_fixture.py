@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from raft.services.doctor import Doctor
+from raft.services.ops.doctor import Doctor
 
 
 class CoverageDoctor:
@@ -20,7 +20,7 @@ class CoverageDoctor:
 
         def run_with_host_ok():
             with patch(
-                "raft.services.doctor.checks.public_host.HttpProbe.public_host_ok",
+                "raft.services.ops.doctor.checks.public_host.HttpProbe.public_host_ok",
                 return_value=True,
             ):
                 return original_run()

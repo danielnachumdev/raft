@@ -2,7 +2,7 @@
 
 import pytest
 
-from raft.services.certs import (
+from raft.services.ops.certs import (
     looks_like_missing_origin_cert,
     missing_origin_certs,
     require_origin_certs,

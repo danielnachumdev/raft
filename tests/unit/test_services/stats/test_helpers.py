@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from raft.services.stats.report import (
+from raft.services.ops.stats.report import (
     _fmt_bytes,
     _fmt_percent,
     _fmt_uptime,
 )
-from raft.services.stats.service import _parse_started_at
+from raft.services.ops.stats.service import _parse_started_at
 
 
 class TestStatsHelpers:

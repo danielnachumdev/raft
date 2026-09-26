@@ -66,16 +66,16 @@ class TestApplyFile(ApplyTestCase):
         applier = AppApply(stack)
 
         orch = MagicMock()
-        with patch("raft.services.apply.Orchestrator", return_value=orch):
-            with patch("raft.services.apply.load_stack", return_value=stack):
+        with patch("raft.services.apply.service.Orchestrator", return_value=orch):
+            with patch("raft.services.apply.service.load_stack", return_value=stack):
                 applier.apply_file(path, deploy=True)
         orch.ensure_app_deployed.assert_called_once_with(
             "web", ref_override=None, force_sync=False
         )
 
         orch2 = MagicMock()
-        with patch("raft.services.apply.Orchestrator", return_value=orch2):
-            with patch("raft.services.apply.load_stack", return_value=stack):
+        with patch("raft.services.apply.service.Orchestrator", return_value=orch2):
+            with patch("raft.services.apply.service.load_stack", return_value=stack):
                 applier.apply_file(path, deploy=True, force_sync=True)
         orch2.ensure_app_deployed.assert_called_once_with(
             "web", ref_override=None, force_sync=True

@@ -7,9 +7,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from raft.errors import OperatorError
-from raft.services.stats import Stats
-from raft.services.stats.models import EDGE_CPUS_LIMIT
-from raft.services.stats.service import _app_allocated
+from raft.services.ops.stats import Stats
+from raft.services.ops.stats.models import EDGE_CPUS_LIMIT
+from raft.services.ops.stats.service import _app_allocated
 
 from ...base import RaftTestCase, make_app, make_stack, write_applied_app
 from .fixtures import StatsFixtures
@@ -24,7 +24,7 @@ class TestStatsCollect(RaftTestCase):
 
     def _patch_host(self):
         return patch(
-            "raft.services.stats.service.collect_host_resources",
+            "raft.services.ops.stats.service.collect_host_resources",
             return_value=StatsFixtures.host(),
         )
 

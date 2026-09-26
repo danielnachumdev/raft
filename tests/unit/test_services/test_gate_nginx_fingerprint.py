@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from raft.config.paths import GENERATED_DIRNAME
-from raft.services.gate_nginx import GateNginxStamp
+from raft.services.render.gate_nginx import GateNginxStamp
 
 from ..base import RaftTestCase
 

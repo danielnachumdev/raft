@@ -8,8 +8,8 @@ from unittest.mock import patch
 import pytest
 
 from raft.errors import OperatorError
-from raft.services.stats import Stats
-from raft.services.stats.report import overwrite_block, write_live_report
+from raft.services.ops.stats import Stats
+from raft.services.ops.stats.report import overwrite_block, write_live_report
 
 from ...base import RaftTestCase, make_app, make_stack, write_applied_app
 from .fixtures import StatsFixtures
@@ -21,7 +21,7 @@ class TestStatsReportLive(RaftTestCase):
         stats = Stats(make_stack(self.tmp_path, (make_app("app"),)))
         StatsFixtures.mock_docker_idle(stats)
         with patch(
-            "raft.services.stats.service.collect_host_resources",
+            "raft.services.ops.stats.service.collect_host_resources",
             return_value=StatsFixtures.host(),
         ):
             return stats, stats.collect()
@@ -63,7 +63,7 @@ class TestStatsReportLive(RaftTestCase):
     def _assert_stats_live_refresh(self, stats, snapshot) -> None:
         with patch.object(stats, "collect", return_value=snapshot):
             with patch(
-                "raft.services.stats.service.write_live_report", return_value=0
+                "raft.services.ops.stats.service.write_live_report", return_value=0
             ) as live:
                 assert stats.report(live=True) == 0
                 live.assert_called_once()
@@ -78,7 +78,7 @@ class TestStatsReportLive(RaftTestCase):
         StatsFixtures.mock_docker_idle(stats)
         write_applied_app(self.tmp_path, "newbie")
         with patch(
-            "raft.services.stats.service.collect_host_resources",
+            "raft.services.ops.stats.service.collect_host_resources",
             return_value=StatsFixtures.host(),
         ):
             snap = stats.collect(refresh_apps=True)
@@ -87,7 +87,7 @@ class TestStatsReportLive(RaftTestCase):
         assert len(stats.stack.apps) == 2
 
     def test_live_keyboard_interrupt(self) -> None:
-        from raft.services.stats.report import _line_count
+        from raft.services.ops.stats.report import _line_count
 
         assert _line_count("") == 0
         assert _line_count("one") == 1

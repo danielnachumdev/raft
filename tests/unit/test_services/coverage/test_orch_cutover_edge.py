@@ -5,8 +5,8 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 from raft.models.stack import load_stack
-from raft.services.cutover import CutoverSession
-from raft.services.orchestrator import Orchestrator
+from raft.services.deploy.cutover import CutoverSession
+from raft.services.deploy.orchestrator import Orchestrator
 
 from ...base import RaftTestCase, make_app, make_stack, write_applied_app
 
@@ -38,7 +38,7 @@ class TestOrchCutoverEdgeCoverage(RaftTestCase):
         session.previous_image = "img:old"
         session.start_tmp_from_previous()
         session.docker.router_can_fetch.assert_not_called()
-        with patch("raft.services.cutover.time.sleep"):
+        with patch("raft.services.deploy.cutover.time.sleep"):
             session.shift_traffic_to_tmp()
             session.rebuild_stable_service()
 

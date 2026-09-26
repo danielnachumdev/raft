@@ -87,7 +87,7 @@ class TestMiscCoverage(RaftTestCase):
         )
         (self.tmp_path / "apps" / "web").mkdir(parents=True)
         stack = load_stack(self.tmp_path)
-        with patch("raft.services.render.logger") as log:
+        with patch("raft.services.render.service.logger") as log:
             StackRenderer(stack).render()
             assert log.debug.called
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from raft.models.app import GATE_COMPOSE_ID, ROUTER_COMPOSE_ID
 from raft.models.stack import load_stack
 from raft.services import CheckResult, Doctor
-from raft.services.doctor import INFRA
+from raft.services.ops.doctor import INFRA
 
 from ...base import make_stack, write_applied_app
 from .base import DoctorTestCase

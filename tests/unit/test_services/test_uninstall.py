@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from raft.errors import OperatorError
-from raft.services.uninstall import Uninstall
+from raft.services.ops.uninstall import Uninstall
 
 from .base import ServicesTestCase
 
@@ -98,7 +98,7 @@ class TestUninstall(ServicesTestCase):
 
     def test_removes_uv_when_requested(self, capsys, monkeypatch) -> None:
         uv_bin, uvx_bin, share, tool_dir = self._seed_uv_home(monkeypatch, "-uvhome")
-        monkeypatch.setattr("raft.services.uninstall.shutil.which", lambda _n: str(uv_bin))
+        monkeypatch.setattr("raft.services.ops.uninstall.shutil.which", lambda _n: str(uv_bin))
         self._env_ssh_home(monkeypatch, "-uv")
         mgr = self._mgr()
         mgr.sh.docker.return_value = MagicMock(returncode=0, stdout="")
@@ -131,7 +131,7 @@ class TestUninstall(ServicesTestCase):
 
     def test_remove_uv_handles_resolve_error_and_no_which(self, monkeypatch, capsys) -> None:
         uv_bin, *_ = self._seed_uv_home(monkeypatch, "-uvhome2")
-        monkeypatch.setattr("raft.services.uninstall.shutil.which", lambda _n: None)
+        monkeypatch.setattr("raft.services.ops.uninstall.shutil.which", lambda _n: None)
         monkeypatch.delenv("UV_TOOL_DIR", raising=False)
         self._env_ssh_home(monkeypatch, "-uv2")
         self._patch_uv_resolve_boom(monkeypatch, uv_bin)

@@ -6,7 +6,7 @@ import pytest
 
 from raft.models.stack import Stack
 from raft.services.auth import GitAuthManager
-from raft.services.auth_urls import (
+from raft.services.auth.urls import (
     default_ssh_dir,
     host_alias,
     parse_ssh_git_url,
@@ -48,7 +48,7 @@ class TestDefaultSshDir(ServicesTestCase):
 
     def test_home_fallback(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("RAFT_SSH_DIR", raising=False)
-        monkeypatch.setattr("raft.services.auth_urls.Path.home", lambda: self.tmp_path)
+        monkeypatch.setattr("raft.services.auth.urls.Path.home", lambda: self.tmp_path)
         assert default_ssh_dir() == (self.tmp_path / ".ssh").resolve()
 
 

@@ -11,7 +11,7 @@ import yaml
 from raft.cli import get as get_cmd
 from raft.models.stack import load_stack
 from raft.services.apply import AppApply
-from raft.services.doctor import INFRA, CheckResult, Doctor
+from raft.services.ops.doctor import INFRA, CheckResult, Doctor
 from raft.services.render import StackRenderer
 
 from ...base import write_applied_app
@@ -33,7 +33,7 @@ class TestVolumesIntegration(VolumesTestCase):
         doc = self.base_docker(name="stack-front")
         doc["spec"]["dependsOn"] = ["stack-redis"]
         path.write_text(yaml.safe_dump(doc), encoding="utf-8")
-        with patch("raft.services.apply.say") as say:
+        with patch("raft.services.apply.service.say") as say:
             AppApply(load_stack(self.tmp_path)).apply_file(path, deploy=False)
         assert any("dependsOn not yet applied" in str(c) for c in say.call_args_list)
         self._assert_git_apply_warns_depends_on()
@@ -43,7 +43,7 @@ class TestVolumesIntegration(VolumesTestCase):
         shell.git.side_effect = self._clone_with_depends_on
         applier = AppApply(load_stack(self.tmp_path))
         applier.sh = shell
-        with patch("raft.services.apply.say") as say_git:
+        with patch("raft.services.apply.service.say") as say_git:
             applier.apply_git("git@github.com:org/stack.git", deploy=False)
         assert any("dependsOn not yet applied" in str(c) for c in say_git.call_args_list)
 

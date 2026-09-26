@@ -8,7 +8,7 @@ import pytest
 import yaml
 
 from raft.errors import OperatorError
-from raft.services.manifest_env import ManifestTextExpander
+from raft.services.apply.manifest_env import ManifestTextExpander
 
 from ..fixtures import (
     DEFAULT_PLACEHOLDER_CASES,

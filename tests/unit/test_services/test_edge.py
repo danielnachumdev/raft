@@ -9,14 +9,14 @@ from raft.config.settings_types import EdgeConfig, EdgeStream
 from raft.models.manifest import AppSpec
 from raft.models.ports import PortSpec
 from raft.models.readiness_spec import ReadinessSpec
-from raft.services.edge import (
+from raft.services.render.edge import (
     HostEdge,
     HttpEdge,
     StreamEdge,
     TlsEdge,
     handler_for,
 )
-from raft.services.readiness import ReadinessStrategy
+from raft.services.deploy.readiness import ReadinessStrategy
 
 from ..base import RaftTestCase, make_app
 

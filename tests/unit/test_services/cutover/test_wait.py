@@ -29,7 +29,7 @@ class TestCutoverWait(CutoverTestCase):
             stack=make_stack(self.tmp_path, (app,), drain_seconds=0.0),
             app=app, docker=docker, nginx=MagicMock(), http=MagicMock(),
         )
-        with patch("raft.services.cutover.time.sleep"):
+        with patch("raft.services.deploy.cutover.time.sleep"):
             session._wait_ready("compose ready")
         docker.service_is_ready.assert_called_with(app.compose_id)
 
@@ -44,7 +44,7 @@ class TestCutoverWait(CutoverTestCase):
             docker=MagicMock(), nginx=MagicMock(), http=MagicMock(),
         )
         s.http.public_host_ok.return_value = False
-        with patch("raft.services.cutover.wait_until") as wait:
+        with patch("raft.services.deploy.cutover.wait_until") as wait:
             s._wait_ready("slow ready")
         assert wait.call_args.kwargs["timeout"] == 90.0
         assert "timeoutSeconds=90s" in wait.call_args.kwargs["fix"]
@@ -59,13 +59,13 @@ class TestCutoverWait(CutoverTestCase):
             clock["t"] += step
 
         return (
-            patch("raft.services.cutover.time.sleep", side_effect=sleep),
-            patch("raft.services.cutover.time.monotonic", side_effect=mono),
+            patch("raft.services.deploy.cutover.time.sleep", side_effect=sleep),
+            patch("raft.services.deploy.cutover.time.monotonic", side_effect=mono),
         )
 
     def test_wait_until_reports_budget_and_diagnostics(self, caplog) -> None:
         from raft.errors import OperatorError
-        from raft.services.wait import wait_until
+        from raft.services.deploy.wait import wait_until
 
         sleep_p, mono_p = self._clock_patches(0.02)
         with caplog.at_level("ERROR"), sleep_p, mono_p:
@@ -83,7 +83,7 @@ class TestCutoverWait(CutoverTestCase):
 
     def test_wait_until_logs_progress(self, caplog) -> None:
         from raft.errors import OperatorError
-        from raft.services.wait import wait_until
+        from raft.services.deploy.wait import wait_until
 
         sleep_p, mono_p = self._clock_patches(0.1)
         with caplog.at_level("INFO"), sleep_p, mono_p:
@@ -123,7 +123,7 @@ class TestCutoverWait(CutoverTestCase):
 
     def test_wait_ready_skips_when_readiness_none(self) -> None:
         write_applied_app(self.tmp_path, "app", extra={"readiness": {"type": "none"}})
-        with patch("raft.services.cutover.wait_until") as wait:
+        with patch("raft.services.deploy.cutover.wait_until") as wait:
             self.session._wait_ready("noop")
         wait.assert_not_called()
 

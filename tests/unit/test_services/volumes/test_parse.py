@@ -8,7 +8,7 @@ import pytest
 
 from raft.models.app_document import AppDocument
 from raft.models.ports import PortSpec, port_by_name
-from raft.services.compose_apps import compose_str
+from raft.services.render.compose_apps import compose_str
 
 from .base import VolumesTestCase
 

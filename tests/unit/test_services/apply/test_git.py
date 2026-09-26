@@ -122,7 +122,7 @@ class TestApplyGit(ApplyTestCase):
         stack = load_stack(self.tmp_path)
         shell, mgr, calls = self._alias_shell_and_manager()
         shell.git.side_effect = self._alias_clone(calls)
-        with patch("raft.services.apply.GitAuthManager", return_value=mgr):
+        with patch("raft.services.apply.service.GitAuthManager", return_value=mgr):
             name = self.applier(stack, shell).apply_git(
                 "git@github.com:Playloft-Studio/playloftstudio.com.git", deploy=False
             )
@@ -162,7 +162,7 @@ class TestApplyGit(ApplyTestCase):
     def test_delete_re_renders(self, capsys) -> None:
         write_applied_app(self.tmp_path, "web", public_host="web.test")
         write_applied_app(self.tmp_path, "other", public_host="other.test")
-        with patch("raft.services.apply.Orchestrator") as orch_cls:
+        with patch("raft.services.apply.service.Orchestrator") as orch_cls:
             AppApply(load_stack(self.tmp_path)).delete("web")
             orch_cls.return_value.render.assert_called_once()
         assert not (self.tmp_path / "state" / "apps" / "web.yaml").is_file()
@@ -173,7 +173,7 @@ class TestApplyGit(ApplyTestCase):
         for leftover in ("other", "app"):
             path = self.tmp_path / "state" / "apps" / f"{leftover}.yaml"
             if path.is_file():
-                with patch("raft.services.apply.Orchestrator") as orch_cls:
+                with patch("raft.services.apply.service.Orchestrator") as orch_cls:
                     AppApply(load_stack(self.tmp_path)).delete(leftover)
                     orch_cls.return_value.render.assert_called_once()
         assert "no apps applied" in capsys.readouterr().out.lower()
@@ -185,8 +185,8 @@ class TestApplyGit(ApplyTestCase):
         shell = MagicMock()
         shell.git.side_effect = self.clone_side_effect(self._image_only_doc())
         orch = MagicMock()
-        with patch("raft.services.apply.Orchestrator", return_value=orch):
-            with patch("raft.services.apply.load_stack", return_value=stack):
+        with patch("raft.services.apply.service.Orchestrator", return_value=orch):
+            with patch("raft.services.apply.service.load_stack", return_value=stack):
                 name = self.applier(stack, shell).apply_git(
                     "git@github.com:org/img.git", deploy=True
                 )

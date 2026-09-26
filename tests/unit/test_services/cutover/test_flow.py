@@ -13,7 +13,7 @@ from ...base import write_applied_app
 class TestCutoverFlow(CutoverTestCase):
     def test_full_cutover_happy_path(self) -> None:
         s = self._wired_session()
-        with patch("raft.services.cutover.time.sleep"):
+        with patch("raft.services.deploy.cutover.time.sleep"):
             self._run_snapshot_and_tmp(s)
             self._run_shift_rebuild_cleanup(s)
 
@@ -61,7 +61,7 @@ class TestCutoverFlow(CutoverTestCase):
         s.previous_image = "img:old"
         s.network = "net1"
         s.docker.router_can_fetch.return_value = True
-        with patch("raft.services.cutover.time.sleep"):
+        with patch("raft.services.deploy.cutover.time.sleep"):
             s.start_tmp_from_previous()
         s.docker.run_tmp.assert_called_once_with(
             name=s.app.tmp_container, alias=s.app.tmp_alias,
@@ -106,7 +106,7 @@ class TestCutoverFlow(CutoverTestCase):
         s.docker.diagnostics_for.return_value = (
             "--- raft-app_tmp (container) ---\nError: OAUTH_CLIENT_ID is required"
         )
-        with patch("raft.services.cutover.time.sleep"):
+        with patch("raft.services.deploy.cutover.time.sleep"):
             with pytest.raises(RuntimeError, match="OAUTH_CLIENT_ID") as caught:
                 s.start_tmp_from_previous()
         assert "timed out waiting for: app_tmp reachable" in str(caught.value)
@@ -121,7 +121,7 @@ class TestCutoverFlow(CutoverTestCase):
             '--- app (running/unhealthy) ---\n'
             'nginx: [emerg] host not found in upstream "old:8000"'
         )
-        with patch("raft.services.cutover.time.sleep"):
+        with patch("raft.services.deploy.cutover.time.sleep"):
             with pytest.raises(RuntimeError, match="host not found"):
                 s.rebuild_stable_service()
         s.docker.diagnostics_for.assert_called_with(s.app.compose_id)

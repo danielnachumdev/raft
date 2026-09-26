@@ -20,7 +20,7 @@ from raft.errors import (
 )
 
 from ..models.stack import load_stack
-from ..services.certs import missing_origin_certs
+from ..services.ops.certs import missing_origin_certs
 from ..ui import say_err
 from .argv import ApplyEnvArgvBridge
 from .fire_run import run_fire

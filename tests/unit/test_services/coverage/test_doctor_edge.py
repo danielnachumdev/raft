@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 from raft.models.stack import load_stack
-from raft.services.doctor import INFRA
+from raft.services.ops.doctor import INFRA
 
 from ...base import RaftTestCase, write_applied_app
 from .doctor_fixture import CoverageDoctor
@@ -18,14 +18,14 @@ class TestDoctorEdgeCoverage(RaftTestCase):
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")
 
     def _run(self, stack, shell, docker, *, connect: bool = False):
-        with patch("raft.services.doctor.shutil.which", return_value="/bin/docker"):
+        with patch("raft.services.ops.doctor.shutil.which", return_value="/bin/docker"):
             if connect:
                 return {
                     (r.service, r.check): r
                     for r in CoverageDoctor.for_stack(stack, shell=shell, docker=docker).run()
                 }
             with patch(
-                "raft.services.doctor.socket.create_connection", side_effect=OSError()
+                "raft.services.ops.doctor.socket.create_connection", side_effect=OSError()
             ):
                 return {
                     (r.service, r.check): r

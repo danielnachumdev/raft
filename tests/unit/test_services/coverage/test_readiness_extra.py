@@ -11,7 +11,7 @@ from raft.adapters.docker import DockerStack
 from raft.models.ports import PortSpec
 from raft.models.readiness_parser import parse_readiness
 from raft.models.readiness_spec import ReadinessSpec
-from raft.services.readiness import ReadinessStrategy
+from raft.services.deploy.readiness import ReadinessStrategy
 
 from ...base import RaftTestCase, make_app, make_stack
 

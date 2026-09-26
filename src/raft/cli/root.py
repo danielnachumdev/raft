@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional, Sequence, Union
 
 from raft.errors import OperatorError, apply_requires_source, redeploy_requires_app, unknown_app
-from raft.services.manifest_env import ApplyEnvSources
+from raft.services.apply.manifest_env import ApplyEnvSources
 
 from . import delete as delete_cmd
 from . import deps

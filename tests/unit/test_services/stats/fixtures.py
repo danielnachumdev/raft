@@ -7,7 +7,7 @@ from typing import Optional
 from unittest.mock import MagicMock
 
 from raft.adapters.host import HostDisk, HostMemory, HostResources
-from raft.services.stats.models import (
+from raft.services.ops.stats.models import (
     AllocatedResources,
     ContainerStats,
     HostStats,

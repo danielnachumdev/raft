@@ -1,6 +1,5 @@
 """Inventory-backed stack model."""
 
-from ..config.paths import ensure_raft_home, find_package_root, raft_home
 from .app import (
     COMPOSE_PROJECT,
     CONTROLLER_COMPOSE_ID,
@@ -44,10 +43,7 @@ __all__ = [
     "Stack",
     "compose_service_id",
     "display_service_label",
-    "ensure_raft_home",
-    "find_package_root",
     "load_stack",
     "parse_ports",
     "parse_readiness",
-    "raft_home",
 ]

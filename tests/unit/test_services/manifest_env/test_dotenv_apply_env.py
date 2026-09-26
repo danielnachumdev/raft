@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from raft.errors import OperatorError
-from raft.services.manifest_env import ApplyEnvSources, DotenvLoader, EnvAssignment
+from raft.services.apply.manifest_env import ApplyEnvSources, DotenvLoader, EnvAssignment
 
 DOTENV_SAMPLE = (
     "# comment\n\nA=one\nA=two\nexport B=bee\n"
