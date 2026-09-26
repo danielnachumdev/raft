@@ -207,7 +207,7 @@ class TestDoctor(ServicesTestCase):
         shell = MagicMock()
         shell.run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         docker = MagicMock()
-        docker.running_services.return_value = ["raft-gate", "raft-router", "app"]
+        docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller", "app"]
         auth = MagicMock()
 
         with patch("raft.services.doctor.shutil.which", return_value="/usr/bin/docker"):
@@ -703,7 +703,7 @@ class TestDoctor(ServicesTestCase):
         shell = MagicMock()
         shell.run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         docker = MagicMock()
-        docker.running_services.return_value = ["raft-gate", "raft-router", "app"]
+        docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller", "app"]
         docker.gate_published_ports.return_value = [80, 443]
         docker.diagnostics_for.return_value = (
             '--- app (running/unhealthy) ---\n'

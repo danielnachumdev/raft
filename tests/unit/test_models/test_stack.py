@@ -183,7 +183,12 @@ services:
         )
         assert self.stack.upstream_name(self.app, port) == "app_http"
         assert self.stack.certs_dir == self.tmp_path / "certs"
-        assert self.stack.core_services == ("raft-gate", "raft-router", "app")
+        assert self.stack.core_services == (
+            "raft-gate",
+            "raft-router",
+            "raft-controller",
+            "app",
+        )
         with pytest.raises(RuntimeError, match="unknown app"):
             self.stack.app("nope")
 
@@ -253,6 +258,7 @@ class TestApp(RaftTestCase):
 
     def test_display_service_label(self) -> None:
         from raft.models import (
+            CONTROLLER_COMPOSE_ID,
             EDGE_GROUP,
             GATE_COMPOSE_ID,
             ROUTER_COMPOSE_ID,
@@ -261,6 +267,7 @@ class TestApp(RaftTestCase):
 
         assert display_service_label(GATE_COMPOSE_ID, EDGE_GROUP) == "gate"
         assert display_service_label(ROUTER_COMPOSE_ID, EDGE_GROUP) == "router"
+        assert display_service_label(CONTROLLER_COMPOSE_ID, EDGE_GROUP) == "controller"
         assert display_service_label("demo-web", "demo") == "web"
         assert display_service_label("solo", None) == "solo"
         assert display_service_label("solo", "demo") == "solo"

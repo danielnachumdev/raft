@@ -488,7 +488,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
         shell = MagicMock()
         shell.run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         docker = MagicMock()
-        docker.running_services.return_value = ["raft-gate", "raft-router", "app"]
+        docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller", "app"]
         docker.gate_published_ports.return_value = [80, 999]
         with patch("raft.services.doctor.shutil.which", return_value="/bin/docker"):
             with patch(
@@ -554,7 +554,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
         orch.syncer = MagicMock()
         orch.docker.running_services.side_effect = [
             [],
-            ["raft-gate", "raft-router", "app"],
+            ["raft-gate", "raft-router", "raft-controller", "app"],
         ]
         with patch.object(orch, "sync"):
             orch.start()

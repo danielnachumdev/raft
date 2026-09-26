@@ -37,7 +37,7 @@ class TestOrchestrator(ServicesTestCase):
             self.orch.docker.reload_gate_nginx.assert_not_called()
 
     def test_render_reloads_gate_when_stamp_differs_from_disk(self) -> None:
-        self.orch.docker.running_services.return_value = ["raft-gate", "raft-router"]
+        self.orch.docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller"]
         with patch(
             "raft.services.orchestrator.fingerprint_gate_nginx",
             return_value="disk-fp",
@@ -57,7 +57,7 @@ class TestOrchestrator(ServicesTestCase):
 
     def test_render_reloads_gate_when_stamp_missing(self) -> None:
         """Disk already has config but gate never recorded a reload (stale process)."""
-        self.orch.docker.running_services.return_value = ["raft-gate", "raft-router"]
+        self.orch.docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller"]
         with patch(
             "raft.services.orchestrator.fingerprint_gate_nginx",
             return_value="on-disk",
@@ -75,7 +75,7 @@ class TestOrchestrator(ServicesTestCase):
     def test_render_blocks_gate_reload_when_origin_certs_missing(self) -> None:
         write_applied_app(self.tmp_path, "app", public_host="app.test", tls="origin")
         orch = self.orchestrator()
-        orch.docker.running_services.return_value = ["raft-gate", "raft-router"]
+        orch.docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller"]
         with patch(
             "raft.services.orchestrator.fingerprint_gate_nginx",
             return_value="disk-fp",
@@ -90,7 +90,7 @@ class TestOrchestrator(ServicesTestCase):
         orch.docker.reload_gate_nginx.assert_not_called()
 
     def test_render_skips_gate_reload_when_stamp_matches_disk(self) -> None:
-        self.orch.docker.running_services.return_value = ["raft-gate", "raft-router"]
+        self.orch.docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller"]
         with patch(
             "raft.services.orchestrator.fingerprint_gate_nginx",
             return_value="same",
@@ -120,7 +120,7 @@ class TestOrchestrator(ServicesTestCase):
     def test_start_happy_path(self) -> None:
         self.orch.docker.running_services.side_effect = [
             [],
-            ["raft-gate", "raft-router", "app"],
+            ["raft-gate", "raft-router", "raft-controller", "app"],
         ]
         self.orch.http.public_host_ok.return_value = True
         with patch.object(self.orch, "sync") as sync:
@@ -134,12 +134,15 @@ class TestOrchestrator(ServicesTestCase):
             ["raft-router", "app"],
         ]
         with patch.object(self.orch, "sync"):
-            with pytest.raises(RuntimeError, match="missing running services: \\['raft-gate'\\]"):
+            with pytest.raises(
+                RuntimeError,
+                match="missing running services: \\['raft-gate', 'raft-controller'\\]",
+            ):
                 self.orch.start()
         self.orch.docker.start_stack.assert_called_once()
 
     def test_recreate_gate_happy(self) -> None:
-        self.orch.docker.running_services.return_value = ["raft-gate", "raft-router"]
+        self.orch.docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller"]
         self.orch.http.tcp_port_ok.return_value = True
         with patch.object(self.orch, "render"):
             self.orch.recreate_gate()
@@ -165,7 +168,7 @@ class TestOrchestrator(ServicesTestCase):
         ra.assert_called_once_with("app")
 
     def test_redeploy_router_happy(self) -> None:
-        self.orch.docker.running_services.return_value = ["raft-gate", "raft-router"]
+        self.orch.docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller"]
         self.orch.http.public_host_ok.return_value = True
         self.orch.redeploy_router()
         self.orch.docker.recreate_router.assert_called_once()
@@ -283,13 +286,13 @@ class TestOrchestrator(ServicesTestCase):
                     session.abort_cleanup.assert_called_once()
 
     def test_ensure_app_deployed_redeploys_when_running(self) -> None:
-        self.orch.docker.running_services.return_value = ["raft-gate", "raft-router", "app"]
+        self.orch.docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller", "app"]
         with patch.object(self.orch, "redeploy_app") as redeploy:
             self.orch.ensure_app_deployed("app", ref_override="sha", force_sync=True)
         redeploy.assert_called_once_with("app", ref_override="sha", force_sync=True)
 
     def test_ensure_app_deployed_starts_app_when_edge_up(self) -> None:
-        self.orch.docker.running_services.return_value = ["raft-gate", "raft-router"]
+        self.orch.docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller"]
         self.orch.http.public_host_ok.return_value = True
         with patch.object(self.orch, "sync") as sync:
             self.orch.ensure_app_deployed("app", ref_override="v1", force_sync=True)
@@ -301,7 +304,7 @@ class TestOrchestrator(ServicesTestCase):
         self.orch.docker.running_services.side_effect = [
             [],
             [],
-            ["raft-gate", "raft-router", "app"],
+            ["raft-gate", "raft-router", "raft-controller", "app"],
         ]
         self.orch.http.public_host_ok.return_value = True
         with patch.object(self.orch, "sync") as sync:
@@ -320,7 +323,7 @@ class TestOrchestrator(ServicesTestCase):
         orch.docker.running_services.side_effect = [
             [],
             [],
-            ["raft-gate", "raft-router", "app", "other"],
+            ["raft-gate", "raft-router", "raft-controller", "app", "other"],
         ]
         orch.http.public_host_ok.return_value = True
         with patch.object(orch, "sync") as sync:

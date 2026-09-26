@@ -86,7 +86,7 @@ class TestStatsService(RaftTestCase):
         docker.containers_stats.return_value = {
             "gatecid": {
                 "CPUPerc": "0.5%",
-                "MemUsage": "3.0MiB / 64MiB",
+                "MemUsage": "3.0MiB / 32MiB",
                 "MemPerc": "4.7%",
                 "NetIO": "1kB / 2kB",
                 "BlockIO": "0B / 0B",
@@ -94,7 +94,7 @@ class TestStatsService(RaftTestCase):
             },
             "routercid": {
                 "CPUPerc": "0.1%",
-                "MemUsage": "2.0MiB / 64MiB",
+                "MemUsage": "2.0MiB / 32MiB",
                 "MemPerc": "3.1%",
                 "NetIO": "0B / 0B",
                 "BlockIO": "1B / 2B",
@@ -109,7 +109,7 @@ class TestStatsService(RaftTestCase):
                 "status": "running",
                 "started_at": started,
                 "nano_cpus": 250000000,
-                "memory_bytes": 67108864,
+                "memory_bytes": 33554432,
             },
             {
                 "status": "running",
@@ -127,8 +127,8 @@ class TestStatsService(RaftTestCase):
 
         assert snap.host.cpus == 4
         assert snap.host.memory_total_bytes == 8 * 1024**3
-        assert len(snap.containers) == 3
-        gate, router, app = snap.containers
+        assert len(snap.containers) == 4
+        gate, router, controller, app = snap.containers
         assert gate.service == "raft-gate"
         assert gate.role == "gate"
         assert gate.group == "raft"
@@ -138,6 +138,10 @@ class TestStatsService(RaftTestCase):
         assert gate.uptime_seconds is not None and gate.uptime_seconds >= 86000
         assert router.service == "raft-router"
         assert router.group == "raft"
+        assert controller.service == "raft-controller"
+        assert controller.role == "controller"
+        assert controller.group == "raft"
+        assert controller.status == "not running"
         assert app.service == "app"
         assert app.status == "not running"
         assert app.app == "app"
@@ -157,9 +161,10 @@ class TestStatsService(RaftTestCase):
             return_value=_fake_host(),
         ):
             snap = stats.collect()
-        gate, router, app = snap.containers
+        gate, router, controller, app = snap.containers
         assert gate.group == "raft"
         assert router.group == "raft"
+        assert controller.group == "raft"
         assert app.service == "demo-web"
         assert app.app == "web"
         assert app.group == "demo"

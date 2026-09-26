@@ -20,7 +20,10 @@ STATE_DIR = Path("state") / "apps"
 LOCKS_DIR = Path("state") / "locks"
 
 _TEMPLATE_FILES = ("compose.yaml",)
-_TEMPLATE_DIRS = ("nginx",)
+_TEMPLATE_DIRS = ("nginx", "controller")
+# Synced into ~/.raft/controller/raft so Compose can build raft-controller.
+_CONTROLLER_BUILD_DIR = "controller"
+_CONTROLLER_PACKAGE_DIR = "raft"
 
 
 def raft_home() -> Path:
@@ -126,3 +129,23 @@ def sync_product_templates(home: Path, package_root: Path) -> None:
         if dest.exists():
             shutil.rmtree(dest)
         shutil.copytree(src, dest)
+    _sync_controller_package(home, package_root)
+
+
+def _sync_controller_package(home: Path, package_root: Path) -> None:
+    """Copy the installable ``raft`` package into the controller build context.
+
+    ``package_root`` is ``…/raft/share``; the Python package lives one level up.
+    Fake test package roots without a parent package are skipped.
+    """
+    raft_src = package_root.parent
+    if not (raft_src / "__init__.py").is_file():
+        return
+    dest = home / _CONTROLLER_BUILD_DIR / _CONTROLLER_PACKAGE_DIR
+    if dest.exists():
+        shutil.rmtree(dest)
+    shutil.copytree(
+        raft_src,
+        dest,
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo", ".pytest_cache"),
+    )

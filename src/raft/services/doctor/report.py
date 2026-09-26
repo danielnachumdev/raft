@@ -65,7 +65,7 @@ class GroupReportWriter:
             if marker in raft_members:
                 insert_at = raft_members.index(marker) + 1
                 break
-        for edge in (stack.gate, stack.router):
+        for edge in (stack.gate, stack.router, stack.controller):
             if edge not in raft_members:
                 raft_members.insert(insert_at, edge)
                 insert_at += 1

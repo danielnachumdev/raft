@@ -3,6 +3,7 @@
 from ..config.paths import ensure_raft_home, find_package_root, raft_home
 from .app import (
     COMPOSE_PROJECT,
+    CONTROLLER_COMPOSE_ID,
     EDGE_GROUP,
     GATE_COMPOSE_ID,
     ROUTER_COMPOSE_ID,
@@ -31,6 +32,7 @@ __all__ = [
     "CONTRACT_API_VERSION",
     "CONTRACT_KIND",
     "CONTRACT_REL_PATH",
+    "CONTROLLER_COMPOSE_ID",
     "EDGE_GROUP",
     "GATE_COMPOSE_ID",
     "ROUTER_COMPOSE_ID",

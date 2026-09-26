@@ -17,6 +17,7 @@ from ..config.paths import (
 )
 from .app import (
     COMPOSE_PROJECT,
+    CONTROLLER_COMPOSE_ID,
     GATE_COMPOSE_ID,
     ROUTER_COMPOSE_ID,
     App,
@@ -26,6 +27,7 @@ from .ports import PortSpec
 
 __all__ = [
     "COMPOSE_PROJECT",
+    "CONTROLLER_COMPOSE_ID",
     "GATE_COMPOSE_ID",
     "ROUTER_COMPOSE_ID",
     "App",
@@ -40,6 +42,7 @@ class Stack:
     apps: tuple[App, ...]
     gate: str = GATE_COMPOSE_ID
     router: str = ROUTER_COMPOSE_ID
+    controller: str = CONTROLLER_COMPOSE_ID
     public_base_url: str = "http://127.0.0.1"
     state_dir: str = DEPLOY_DIRNAME
     drain_seconds: float = 3.0
@@ -55,7 +58,12 @@ class Stack:
 
     @property
     def core_services(self) -> tuple[str, ...]:
-        return (self.gate, self.router, *(app.compose_id for app in self.apps))
+        return (
+            self.gate,
+            self.router,
+            self.controller,
+            *(app.compose_id for app in self.apps),
+        )
 
     @property
     def upstreams_dir(self) -> Path:

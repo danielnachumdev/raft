@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Optional
 
 COMPOSE_PROJECT = "raft"
-# Built-in edge group so gate/router compose ids are raft-gate / raft-router
-# (containers raft-raft-gate-1 via project name).
+# Built-in edge group so gate/router/controller compose ids are raft-gate /
+# raft-router / raft-controller (containers raft-raft-gate-1 via project name).
 EDGE_GROUP = "raft"
 
 
@@ -38,6 +38,7 @@ def display_service_label(compose_id: str, group: Optional[str] = None) -> str:
 
 GATE_COMPOSE_ID = compose_service_id("gate", EDGE_GROUP)
 ROUTER_COMPOSE_ID = compose_service_id("router", EDGE_GROUP)
+CONTROLLER_COMPOSE_ID = compose_service_id("controller", EDGE_GROUP)
 
 
 @dataclass(frozen=True)

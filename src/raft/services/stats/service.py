@@ -174,6 +174,7 @@ class Stats:
         targets: list[tuple[str, str, Optional[str], Optional[str], AllocatedResources]] = [
             (self.stack.gate, "gate", None, EDGE_GROUP, _edge_allocated()),
             (self.stack.router, "router", None, EDGE_GROUP, _edge_allocated()),
+            (self.stack.controller, "controller", None, EDGE_GROUP, _edge_allocated()),
         ]
         for app in self.stack.apps:
             targets.append(

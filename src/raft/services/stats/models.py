@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 # Matches ``x-resources-edge`` in ``share/compose.yaml``.
 EDGE_CPUS_LIMIT = "0.25"
-EDGE_MEMORY_LIMIT = "64M"
+EDGE_MEMORY_LIMIT = "32M"
 EDGE_CPUS_RESERVATION = "0.05"
 EDGE_MEMORY_RESERVATION = "16M"
 

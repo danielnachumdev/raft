@@ -131,14 +131,14 @@ class Orchestrator:
 
     def _assert_core_edge_running(self) -> None:
         """Compose can report Started even when nginx then exits on bad config."""
-        expected = (self.stack.gate, self.stack.router)
+        expected = (self.stack.gate, self.stack.router, self.stack.controller)
         running = set(self.docker.running_services())
         missing = [name for name in expected if name not in running]
         if missing:
             message = (
                 f"stack start incomplete — missing running services: {missing}.\n"
                 f"Fix: docker compose -f ~/.raft/compose.yaml logs "
-                f"{self.stack.gate} {self.stack.router}\n"
+                f"{self.stack.gate} {self.stack.router} {self.stack.controller}\n"
                 f"     raft render && raft doctor"
             )
             raise OperatorError(

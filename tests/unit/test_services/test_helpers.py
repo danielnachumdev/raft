@@ -83,7 +83,7 @@ class TestOrchestratorPolicy(ServicesTestCase):
                 self.orch.recreate_gate()
 
     def test_start_refuses_if_running(self) -> None:
-        with patch.object(self.orch.docker, "running_services", return_value=["raft-gate", "raft-router"]):
+        with patch.object(self.orch.docker, "running_services", return_value=["raft-gate", "raft-router", "raft-controller"]):
             with pytest.raises(RuntimeError, match="already running"):
                 self.orch.start()
 

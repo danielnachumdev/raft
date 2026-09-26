@@ -82,11 +82,29 @@ class TestRaftHome(RaftTestCase):
         ensure_raft_home(home)
         assert (home / "compose.yaml").is_file()
         assert (home / "nginx" / "gate" / "nginx.conf").is_file()
+        assert (home / "controller" / "Dockerfile").is_file()
+        assert (home / "controller" / "raft" / "__init__.py").is_file()
+        assert (home / "controller" / "raft" / "controller" / "__init__.py").is_file()
+        compose = (home / "compose.yaml").read_text(encoding="utf-8")
+        assert "raft-controller:" in compose
+        assert "context: ./controller" in compose
         assert (home / "generated" / "compose.apps.yaml").is_file()
         assert (home / "generated" / "compose.edge.yaml").is_file()
         assert (home / "state" / "apps").is_dir()
         ensure_raft_home(home)
         assert (home / "nginx" / "gate" / "nginx.conf").is_file()
+        assert (home / "controller" / "raft" / "controller" / "__init__.py").is_file()
+
+    def test_sync_replaces_existing_controller_package(self) -> None:
+        from raft.config import paths as paths_mod
+
+        home = self.tmp_path / "home"
+        ensure_raft_home(home)
+        marker = home / "controller" / "raft" / "stale-marker"
+        marker.write_text("old\n", encoding="utf-8")
+        paths_mod._sync_controller_package(home, find_package_root())
+        assert not marker.is_file()
+        assert (home / "controller" / "raft" / "__init__.py").is_file()
 
     def test_gate_nginx_conf_uses_builtin_stream(self) -> None:
         """nginx:alpine builds stream in; load_module ngx_stream_module.so crashes gate."""
@@ -153,6 +171,18 @@ edge:
         dest.mkdir()
         with pytest.raises(FileNotFoundError, match="missing package template dir"):
             sync_product_templates(dest, pkg)
+
+    def test_sync_skips_controller_package_without_parent_init(self) -> None:
+        pkg = self.tmp_path / "share-only"
+        (pkg / "nginx").mkdir(parents=True)
+        (pkg / "controller").mkdir()
+        (pkg / "compose.yaml").write_text("name: raft\n", encoding="utf-8")
+        (pkg / "controller" / "Dockerfile").write_text("FROM scratch\n", encoding="utf-8")
+        dest = self.tmp_path / "dest"
+        dest.mkdir()
+        sync_product_templates(dest, pkg)
+        assert (dest / "controller" / "Dockerfile").is_file()
+        assert not (dest / "controller" / "raft").exists()
 
     def test_find_package_root_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(paths, "_bundled_share", lambda: self.tmp_path / "nope")

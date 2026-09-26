@@ -30,6 +30,7 @@ where = ["src"]
 raft = [
     "share/compose.yaml",
     "share/nginx/**/*",
+    "share/controller/**/*",
 ]
 
 [tool.pytest.ini_options]

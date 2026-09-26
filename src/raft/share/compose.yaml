@@ -5,7 +5,7 @@ x-resources-edge: &resources-edge
     resources:
       limits:
         cpus: "0.25"
-        memory: 64M
+        memory: 32M
       reservations:
         cpus: "0.05"
         memory: 16M
@@ -39,5 +39,11 @@ services:
       - ./generated/nginx/router:/etc/nginx/router-generated:ro
       - ./generated/nginx/upstreams:/etc/nginx/upstreams:ro
       - ./nginx/errors:/usr/share/nginx/errors:ro
+    restart: unless-stopped
+    <<: *resources-edge
+
+  raft-controller:
+    build:
+      context: ./controller
     restart: unless-stopped
     <<: *resources-edge
