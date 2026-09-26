@@ -22,11 +22,10 @@ class TestWakeHttp:
         assert server._httpd is not None
         port = server._httpd.server_address[1]
         client = HttpClient(f"http://127.0.0.1:{port}", timeout=2)
-        client.get("/activity/web")
-        client.post("/wake/web")
+        client.get("/activity/web", expect_status=204)
+        client.post("/wake/web", expect_status=202)
         scaler.record_activity.assert_called_once_with("web")
         scaler.request_wake.assert_called_once_with("web")
-        status, _ = client.get("/missing")
-        assert status == 404
+        client.get("/missing", expect_status=404)
         server.stop()
         server.stop()

@@ -16,7 +16,7 @@ from raft.models.stack import load_stack
 from raft.services.render import StackRenderer
 
 from tests.e2e.shared.compose import new_project_name
-from tests.shared.http import HttpClient
+from tests.shared.http import HttpClient, HttpResponse
 from tests.shared.raft_home import RaftHomeFixtures
 from tests.shared.wait import Wait
 
@@ -106,8 +106,12 @@ class ScaleE2EStack:
         )
 
     def _is_live_body(self) -> bool:
-        status, body = self.curl_host()
-        return status == 200 and "Starting" not in body and "Unavailable" not in body
+        resp = self.curl_host(expect_status=None)
+        return (
+            resp.status == 200
+            and "Starting" not in resp.body
+            and "Unavailable" not in resp.body
+        )
 
     def wait_app_stopped(self, *, timeout: float = 45.0) -> None:
         Wait.until(
@@ -117,8 +121,8 @@ class ScaleE2EStack:
             message=f"{APP} still running",
         )
 
-    def curl_host(self) -> tuple[int, str]:
-        return self.http.get("/", host=PUBLIC_HOST)
+    def curl_host(self, *, expect_status: Optional[int] = 200) -> HttpResponse:
+        return self.http.get("/", host=PUBLIC_HOST, expect_status=expect_status)
 
     def scale_to_zero(self) -> None:
         self.docker.stop_service(APP)
