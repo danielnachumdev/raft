@@ -11,7 +11,7 @@ letsencrypt/
 htmlcov/
 
 certs/
-deploy/
+/deploy/
 .deploy/
 generated/
 .generated/
