@@ -83,6 +83,9 @@ class TestRaftHome(RaftTestCase):
         assert (home / "compose.yaml").is_file()
         assert (home / "nginx" / "gate" / "nginx.conf").is_file()
         assert (home / "controller" / "Dockerfile").is_file()
+        dockerfile = (home / "controller" / "Dockerfile").read_text(encoding="utf-8")
+        assert "PyYAML" in dockerfile
+        assert "fire" in dockerfile
         assert (home / "controller" / "raft" / "__init__.py").is_file()
         assert (home / "controller" / "raft" / "controller" / "__init__.py").is_file()
         compose = (home / "compose.yaml").read_text(encoding="utf-8")

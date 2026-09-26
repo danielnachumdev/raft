@@ -28,6 +28,9 @@ RUN set -eux; \
     apt-get autoremove -y; \
     rm -rf /var/lib/apt/lists/* /tmp/docker
 
+# Same runtime deps as pyproject.toml (package is on PYTHONPATH, not pip-installed).
+RUN pip install --no-cache-dir "PyYAML>=6.0" "fire>=0.7.1"
+
 WORKDIR /opt
 COPY raft/ /opt/raft/
 ENV PYTHONPATH=/opt
