@@ -135,36 +135,58 @@ class DockerInspect:
         return row if isinstance(row, dict) else None
 
     def container_inspect_runtime(self, container_id: str) -> Optional[dict[str, Any]]:
-        """Status, health, start time, and HostConfig limits for one container."""
+        """Status, health, start time, and HostConfig limits for one container.
+
+        JSON inspect avoids a Docker Go-template bug: mixing ``.State.Health``
+        with ``.HostConfig.*`` fails when the container has no healthcheck
+        (nginx edge), which surfaced as STATUS ``unknown`` in ``raft status``.
+        """
         result = self.sh.docker(
             "inspect",
-            "-f",
-            "{{.State.Status}}|"
-            "{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}|"
-            "{{.State.StartedAt}}|"
-            "{{.HostConfig.NanoCpus}}|{{.HostConfig.Memory}}",
+            "--format",
+            "{{json .}}",
             container_id,
             capture=True,
             check=False,
         )
         if result.returncode != 0:
             return None
-        parts = (result.stdout or "").strip().split("|")
-        if len(parts) < 5:
-            return None
-        return self._runtime_from_parts(parts)
+        return self._runtime_from_inspect_json(result.stdout or "")
 
     @staticmethod
-    def _runtime_from_parts(parts: list[str]) -> dict[str, Any]:
-        status, health, started_at = parts[0], parts[1], parts[2]
-        nano_raw, mem_raw = parts[3], parts[4]
+    def _runtime_from_inspect_json(stdout: str) -> Optional[dict[str, Any]]:
+        try:
+            data = json.loads(stdout.strip())
+        except json.JSONDecodeError:
+            return None
+        if not isinstance(data, dict):
+            return None
+        return DockerInspect._runtime_from_inspect_dict(data)
+
+    @staticmethod
+    def _runtime_from_inspect_dict(data: dict[str, Any]) -> dict[str, Any]:
+        state = data.get("State") if isinstance(data.get("State"), dict) else {}
+        host = data.get("HostConfig") if isinstance(data.get("HostConfig"), dict) else {}
+        health_obj = state.get("Health")
+        health = "none"
+        if isinstance(health_obj, dict):
+            health = str(health_obj.get("Status") or "none")
         return {
-            "status": status or "unknown",
+            "status": str(state.get("Status") or "unknown"),
             "health": health or "none",
-            "started_at": started_at or "",
-            "nano_cpus": int(nano_raw) if nano_raw.isdigit() else None,
-            "memory_bytes": int(mem_raw) if mem_raw.isdigit() else None,
+            "started_at": str(state.get("StartedAt") or ""),
+            "nano_cpus": DockerInspect._optional_int(host.get("NanoCpus")),
+            "memory_bytes": DockerInspect._optional_int(host.get("Memory")),
         }
+
+    @staticmethod
+    def _optional_int(raw: Any) -> Optional[int]:
+        if isinstance(raw, bool) or raw is None:
+            return None
+        if isinstance(raw, int):
+            return raw
+        text = str(raw).strip()
+        return int(text) if text.isdigit() else None
 
     def service_is_ready(self, service: str) -> bool:
         """True when running and healthy (or no healthcheck); for expose:none."""

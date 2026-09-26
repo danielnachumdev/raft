@@ -1,5 +1,9 @@
 """Docker stats, logs, health, and compose enrich."""
 
+from __future__ import annotations
+
+import json
+from typing import Any, Optional
 from unittest.mock import patch
 
 import pytest
@@ -46,9 +50,7 @@ class TestDockerStatsHealth(DockerTestCase):
         assert by_container["short"]["CPUPerc"] == "0%"
 
     def test_container_inspect_runtime(self) -> None:
-        self.shell.docker.return_value = self.ok(
-            "running|healthy|2024-01-01T00:00:00Z|250000000|67108864\n"
-        )
+        self.shell.docker.return_value = self.ok(self._inspect_json(health="healthy"))
         info = self.docker.container_inspect_runtime("cid")
         assert info == {
             "status": "running",
@@ -59,16 +61,49 @@ class TestDockerStatsHealth(DockerTestCase):
         }
         self._assert_inspect_edge_cases()
 
+    @staticmethod
+    def _inspect_json(
+        *,
+        status: str = "running",
+        health: Optional[str] = "healthy",
+        started: str = "2024-01-01T00:00:00Z",
+        nano: Any = 250000000,
+        memory: Any = 67108864,
+    ) -> str:
+        state: dict = {"Status": status, "StartedAt": started}
+        if health is not None:
+            state["Health"] = {"Status": health}
+        return json.dumps({"State": state, "HostConfig": {"NanoCpus": nano, "Memory": memory}})
+
     def _assert_inspect_edge_cases(self) -> None:
         self.shell.docker.return_value = self.ok(returncode=1)
         assert self.docker.container_inspect_runtime("cid") is None
-        self.shell.docker.return_value = self.ok("only-one-field\n")
+        self.shell.docker.return_value = self.ok("not-json\n")
         assert self.docker.container_inspect_runtime("cid") is None
-        self.shell.docker.return_value = self.ok("exited|none|0001-01-01T00:00:00Z|x|y\n")
+        self.shell.docker.return_value = self.ok("[]\n")
+        assert self.docker.container_inspect_runtime("cid") is None
+        self._assert_inspect_no_health_and_coercion()
+
+    def _assert_inspect_no_health_and_coercion(self) -> None:
+        # No Health key (nginx edge) must still yield running + none.
+        self.shell.docker.return_value = self.ok(self._inspect_json(health=None, nano=0, memory=0))
+        info = self.docker.container_inspect_runtime("cid")
+        assert info is not None
+        assert info["status"] == "running" and info["health"] == "none"
+        assert info["nano_cpus"] == 0 and info["memory_bytes"] == 0
+        self.shell.docker.return_value = self.ok(
+            self._inspect_json(status="exited", health="", nano=None, memory=True)
+        )
         info = self.docker.container_inspect_runtime("cid")
         assert info is not None
         assert info["health"] == "none"
         assert info["nano_cpus"] is None and info["memory_bytes"] is None
+        self.shell.docker.return_value = self.ok(
+            self._inspect_json(health=None, nano="12", memory="bad")
+        )
+        info = self.docker.container_inspect_runtime("cid")
+        assert info is not None
+        assert info["nano_cpus"] == 12 and info["memory_bytes"] is None
 
     def test_compose_and_container_logs(self) -> None:
         self.shell.compose.return_value = self.ok(NginxEmerg.host_not_found() + "\n")
