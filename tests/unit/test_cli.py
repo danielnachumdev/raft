@@ -76,6 +76,25 @@ class TestCli(RaftTestCase):
             "live": True,
         }
 
+    def test_status_unknown_flag_fails_before_report(self, capsys) -> None:
+        stats = MagicMock()
+        with patch("raft.cli.deps.load_stack", return_value=self.stack):
+            with patch("raft.cli.deps.Stats", return_value=stats):
+                with pytest.raises(SystemExit) as exc:
+                    cli.main(["status", "--leiv"])
+        assert exc.value.code == 2
+        stats.report.assert_not_called()
+        assert "Could not consume arg: --leiv" in capsys.readouterr().err
+
+    def test_up_unknown_flag_fails_before_start(self, capsys) -> None:
+        with patch("raft.cli.deps.load_stack", return_value=self.stack):
+            with patch("raft.cli.deps.Orchestrator", return_value=self.orch):
+                with pytest.raises(SystemExit) as exc:
+                    cli.main(["up", "--bogus"])
+        assert exc.value.code == 2
+        self.orch.start.assert_not_called()
+        assert "Could not consume arg: --bogus" in capsys.readouterr().err
+
     def test_update_dispatches(self) -> None:
         updater = MagicMock()
         with patch("raft.cli.deps.load_stack", return_value=self.stack):

@@ -8,7 +8,6 @@ import subprocess
 import sys
 from typing import Optional, Union
 
-import fire
 import yaml
 
 from raft.errors import (
@@ -24,6 +23,7 @@ from ..models.stack import load_stack
 from ..services.certs import missing_origin_certs
 from ..ui import say_err
 from .argv import ApplyEnvArgvBridge
+from .fire_run import run_fire
 from .root import RaftCLI
 
 
@@ -74,7 +74,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     bridge = ApplyEnvArgvBridge()
     command, token = bridge.bind(raw)
     try:
-        fire.Fire(RaftCLI, command=command, name="raft")
+        run_fire(RaftCLI, command=command, name="raft")
     finally:
         bridge.reset(token)
     return 0
