@@ -88,26 +88,29 @@ def _write_host(stream: TextIO, host: HostStats, *, color: bool) -> None:
     title = paint("Host", BOLD, stream=stream, color=color)
     print(title, file=stream)
     cpus = str(host.cpus) if host.cpus is not None else "-"
-    print(
-        f"  CPUs: {cpus}   load: {_fmt_load(host.loadavg)}",
-        file=stream,
-    )
+    print(f"  CPUs: {cpus}   load: {_fmt_load(host.loadavg)}", file=stream)
+    print(f"  {_host_memory_line(host)}", file=stream)
+    print(f"  {_host_disk_line(host)}", file=stream)
+    print(f"  Uptime: {_fmt_uptime(host.uptime_seconds)}", file=stream)
+    print(file=stream)
+
+
+def _host_memory_line(host: HostStats) -> str:
     mem_used = host.memory.used_bytes if host.memory else None
-    mem_line = (
-        f"  Memory: {_fmt_bytes(mem_used)} / {_fmt_bytes(host.memory_total_bytes)}"
+    return (
+        f"Memory: {_fmt_bytes(mem_used)} / {_fmt_bytes(host.memory_total_bytes)}"
         f" ({_fmt_percent(host.memory.used_percent if host.memory else None)})"
         f"  available {_fmt_bytes(host.memory_available_bytes)}"
     )
-    print(mem_line, file=stream)
+
+
+def _host_disk_line(host: HostStats) -> str:
     disk_path = host.disk_path or "-"
-    print(
-        f"  Disk ({disk_path}): {_fmt_bytes(host.disk_used_bytes)} / "
+    return (
+        f"Disk ({disk_path}): {_fmt_bytes(host.disk_used_bytes)} / "
         f"{_fmt_bytes(host.disk_total_bytes)}"
-        f" ({_fmt_percent(host.disk_used_percent)})",
-        file=stream,
+        f" ({_fmt_percent(host.disk_used_percent)})"
     )
-    print(f"  Uptime: {_fmt_uptime(host.uptime_seconds)}", file=stream)
-    print(file=stream)
 
 
 def _mem_cell(c: ContainerStats) -> str:
@@ -128,15 +131,27 @@ def _write_containers(
 ) -> None:
     title = paint("Containers", BOLD, stream=stream, color=color)
     print(title, file=stream)
+    rows = _container_table_rows(containers)
+    _print_table(stream, rows, color=color)
+    hint = paint(
+        "  Limits are Compose deploy limits; usage is a live docker stats sample.",
+        CYAN,
+        stream=stream,
+        color=color,
+    )
+    print(file=stream)
+    print(hint, file=stream)
+    if live_footer:
+        footer = paint("  Ctrl+C to exit", DIM, stream=stream, color=color)
+        print(footer, file=stream)
+
+
+def _container_table_rows(
+    containers: tuple[ContainerStats, ...],
+) -> list[tuple[str, ...]]:
     headers = (
-        "NAME",
-        "GROUP",
-        "STATUS",
-        "CPU",
-        "MEM USED / LIMIT",
-        "MEM%",
-        "ALLOC CPU",
-        "UPTIME",
+        "NAME", "GROUP", "STATUS", "CPU", "MEM USED / LIMIT",
+        "MEM%", "ALLOC CPU", "UPTIME",
     )
     rows: list[tuple[str, ...]] = [headers]
     for c in containers:
@@ -152,24 +167,19 @@ def _write_containers(
                 _fmt_uptime(c.uptime_seconds),
             )
         )
-    widths = [max(len(row[i]) for row in rows) for i in range(len(headers))]
+    return rows
+
+
+def _print_table(
+    stream: TextIO, rows: list[tuple[str, ...]], *, color: bool
+) -> None:
+    widths = [max(len(row[i]) for row in rows) for i in range(len(rows[0]))]
     for idx, row in enumerate(rows):
         line = "  ".join(cell.ljust(widths[i]) for i, cell in enumerate(row))
         if idx == 0:
             print(paint(f"  {line}", DIM, stream=stream, color=color), file=stream)
         else:
             print(f"  {line}", file=stream)
-    hint = paint(
-        "  Limits are Compose deploy limits; usage is a live docker stats sample.",
-        CYAN,
-        stream=stream,
-        color=color,
-    )
-    print(file=stream)
-    print(hint, file=stream)
-    if live_footer:
-        footer = paint("  Ctrl+C to exit", DIM, stream=stream, color=color)
-        print(footer, file=stream)
 
 
 def write_report(
@@ -211,25 +221,40 @@ def write_live_report(
     screen (no blank flash). Pass ``max_frames`` in tests.
     """
     stream = out if out is not None else sys.stdout
-    frames = 0
-    prev_lines = 0
     try:
-        while True:
-            snapshot = collect()
-            buf = StringIO()
-            write_report(
-                snapshot,
-                as_json=False,
-                out=buf,
-                color=color,
-                live_footer=True,
-            )
-            prev_lines = overwrite_block(stream, buf.getvalue(), prev_lines)
-            frames += 1
-            if max_frames is not None and frames >= max_frames:
-                break
-            sleep(interval)
+        _live_loop(
+            collect,
+            stream=stream,
+            interval=interval,
+            color=color,
+            sleep=sleep,
+            max_frames=max_frames,
+        )
     except KeyboardInterrupt:
         stream.write("\n")
         stream.flush()
     return 0
+
+
+def _live_loop(
+    collect: Callable[[], StatsSnapshot],
+    *,
+    stream: TextIO,
+    interval: float,
+    color: Optional[bool],
+    sleep: Callable[[float], None],
+    max_frames: Optional[int],
+) -> None:
+    frames = 0
+    prev_lines = 0
+    while True:
+        snapshot = collect()
+        buf = StringIO()
+        write_report(
+            snapshot, as_json=False, out=buf, color=color, live_footer=True
+        )
+        prev_lines = overwrite_block(stream, buf.getvalue(), prev_lines)
+        frames += 1
+        if max_frames is not None and frames >= max_frames:
+            break
+        sleep(interval)

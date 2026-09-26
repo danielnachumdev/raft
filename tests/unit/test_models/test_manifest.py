@@ -7,18 +7,13 @@ from pathlib import Path
 import pytest
 import yaml
 
-from raft.config.settings import EdgeConfig, EdgeStream
-from raft.models import find_package_root, load_registry
-from raft.models.manifest import (
-    AppSpec,
-    delete_registry_app,
-    load_app_file,
-    load_contract,
-    parse_app_document,
-    write_registry_app,
-)
+from raft.config.paths import find_package_root
+from raft.config.settings_types import EdgeConfig, EdgeStream
+from raft.models.app_document import AppDocument
+from raft.models.manifest import AppSpec
 from raft.models.ports import PortSpec
-from raft.models.readiness import ReadinessSpec
+from raft.models.readiness_spec import ReadinessSpec
+from raft.models.registry import AppRegistry
 from raft.models.stack import load_stack
 from raft.services.render import StackRenderer
 
@@ -105,7 +100,7 @@ class TestAppSpec(RaftTestCase):
         checkout = self.tmp_path / "app"
         checkout.mkdir()
         _write_manifest(checkout, www=True, extra_hosts=["alias.test"])
-        c = load_contract(checkout)
+        c = AppDocument.load_contract(checkout)
         assert c.ports[0].container_port == 80
         assert c.tls == "off"
         assert c.build_context == "."
@@ -131,7 +126,7 @@ class TestAppSpec(RaftTestCase):
         checkout = self.tmp_path / "app"
         checkout.mkdir()
         _write_manifest(checkout, context="svc", dockerfile="Dockerfile.web", resources=True)
-        c = load_contract(checkout)
+        c = AppDocument.load_contract(checkout)
         assert c.dockerfile == "Dockerfile.web"
         assert c.cpus_limit == "0.25"
         assert c.memory_limit == "64M"
@@ -148,7 +143,7 @@ class TestAppSpec(RaftTestCase):
             encoding="utf-8",
         )
         with pytest.raises(ValueError, match="kind must be"):
-            load_contract(checkout)
+            AppDocument.load_contract(checkout)
         (checkout / ".raft" / "app.yaml").write_text(
             "apiVersion: raft/v1\nkind: App\nmetadata:\n  name: web\nspec:\n"
             "  publicHost: web.test\n  source: local\n  port: 80\n"
@@ -156,7 +151,7 @@ class TestAppSpec(RaftTestCase):
             encoding="utf-8",
         )
         with pytest.raises(ValueError, match="spec.port is not supported"):
-            load_contract(checkout)
+            AppDocument.load_contract(checkout)
 
     def test_rejects_readiness_probe_legacy(self) -> None:
         checkout = self.tmp_path / "app"
@@ -169,7 +164,7 @@ class TestAppSpec(RaftTestCase):
             encoding="utf-8",
         )
         with pytest.raises(ValueError, match="readinessProbe is not supported"):
-            load_contract(checkout)
+            AppDocument.load_contract(checkout)
 
     def test_rejects_service_yaml_only(self) -> None:
         checkout = self.tmp_path / "app"
@@ -181,7 +176,7 @@ class TestAppSpec(RaftTestCase):
             encoding="utf-8",
         )
         with pytest.raises(FileNotFoundError, match="missing App manifest"):
-            load_contract(checkout)
+            AppDocument.load_contract(checkout)
 
     def test_stream_and_host_ports(self) -> None:
         checkout = self.tmp_path / "app"
@@ -215,7 +210,7 @@ spec:
 """,
             encoding="utf-8",
         )
-        c = load_contract(checkout)
+        c = AppDocument.load_contract(checkout)
         assert c.tls == "origin"
         assert [p.expose for p in c.ports] == ["http", "stream", "host"]
         assert c.readiness.type == "tcp"
@@ -234,10 +229,9 @@ spec:
                 "build": {"context": "."},
             },
         }
-        write_registry_app(self.tmp_path, doc)
+        AppRegistry(self.tmp_path).write(doc)
         with pytest.raises(ValueError, match="already used"):
-            write_registry_app(
-                self.tmp_path,
+            AppRegistry(self.tmp_path).write(
                 {
                     **doc,
                     "metadata": {"name": "other"},
@@ -248,19 +242,19 @@ spec:
                     },
                 },
             )
-        assert delete_registry_app(self.tmp_path, "web") is True
-        assert delete_registry_app(self.tmp_path, "missing") is False
+        assert AppRegistry(self.tmp_path).delete("web") is True
+        assert AppRegistry(self.tmp_path).delete("missing") is False
 
     def test_parse_rejects_bad_yaml_and_api(self) -> None:
         path = self.tmp_path / "bad.yaml"
         path.write_text(":\n", encoding="utf-8")
         with pytest.raises(RuntimeError, match="invalid YAML"):
-            load_app_file(path)
+            AppDocument.load(path)
         path.write_text("- list\n", encoding="utf-8")
         with pytest.raises(ValueError, match="mapping"):
-            load_app_file(path)
+            AppDocument.load(path)
         with pytest.raises(ValueError, match="apiVersion"):
-            parse_app_document(
+            AppDocument.parse(
                 {"apiVersion": "x", "kind": "App", "metadata": {"name": "a"}},
                 path=path,
             )
@@ -279,17 +273,17 @@ spec:
             },
         }
         with pytest.raises(RuntimeError, match="spec.www must be a boolean"):
-            parse_app_document(
+            AppDocument.parse(
                 {**base, "spec": {**base["spec"], "www": "yes"}},
                 path=path,
             )
         with pytest.raises(RuntimeError, match="build.context must be a string"):
-            parse_app_document(
+            AppDocument.parse(
                 {**base, "spec": {**base["spec"], "build": {"context": 1}}},
                 path=path,
             )
         with pytest.raises(RuntimeError, match="build.dockerfile must be a string"):
-            parse_app_document(
+            AppDocument.parse(
                 {
                     **base,
                     "spec": {**base["spec"], "build": {"dockerfile": ["Dockerfile"]}},
@@ -306,7 +300,7 @@ spec:
             lambda self, *a, **k: (_ for _ in ()).throw(OSError("EACCES")),
         )
         with pytest.raises(RuntimeError, match="cannot read App manifest"):
-            load_app_file(path)
+            AppDocument.load(path)
 
 
 class TestStackRenderer(RaftTestCase):
@@ -507,7 +501,7 @@ class TestAppSpecExtensions(RaftTestCase):
                 "readiness": {"type": "tcp", "port": "redis"},
             },
         }
-        app, spec = parse_app_document(data, path=Path("app.yaml"))
+        app, spec = AppDocument.parse(data, path=Path("app.yaml"))
         assert app.public_host == ""
         assert spec.group == "demo"
         assert spec.depends_on == ("stack-front",)
@@ -533,13 +527,13 @@ class TestAppSpecExtensions(RaftTestCase):
         bad_group = yaml.safe_load(yaml.safe_dump(base))
         bad_group["spec"]["group"] = "Mailu"
         with pytest.raises(ValueError, match="spec.group"):
-            parse_app_document(bad_group, path=Path("g.yaml"))
+            AppDocument.parse(bad_group, path=Path("g.yaml"))
         bad_vol = yaml.safe_load(yaml.safe_dump(base))
         bad_vol["spec"]["volumes"] = [
             {"hostPath": "/tmp/../etc/passwd", "containerPath": "/data"}
         ]
         with pytest.raises(ValueError, match="must not contain"):
-            parse_app_document(bad_vol, path=Path("v.yaml"))
+            AppDocument.parse(bad_vol, path=Path("v.yaml"))
 
 
 class TestFindPackageRoot(RaftTestCase):

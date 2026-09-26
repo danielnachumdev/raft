@@ -26,10 +26,6 @@ class Shell:
     ) -> subprocess.CompletedProcess[str]:
         workdir = cwd or self.cwd
         logger.debug("run cwd=%s check=%s capture=%s cmd=%s", workdir, check, capture, args)
-        env = os.environ.copy()
-        # So compose can run raft-controller as the host operator (not root).
-        env.setdefault("RAFT_HOST_UID", str(os.getuid()))
-        env.setdefault("RAFT_HOST_GID", str(os.getgid()))
         completed = subprocess.run(
             args,
             cwd=workdir,
@@ -37,29 +33,46 @@ class Shell:
             text=True,
             input=input_text,
             capture_output=capture,
-            env=env,
+            env=self._run_env(),
         )
         if check and completed.returncode != 0:
-            detail = ""
-            if capture:
-                err = (completed.stderr or completed.stdout or "").strip()
-                if err:
-                    detail = f"\n{err}"
-            logger.error(
-                "command failed rc=%s cmd=%s%s",
-                completed.returncode,
-                args,
-                detail,
-            )
-            raise subprocess.CalledProcessError(
-                completed.returncode,
-                args,
-                output=completed.stdout,
-                stderr=(completed.stderr or "") + detail,
-            )
+            self._raise_failed(args, completed, capture=capture)
         if completed.returncode != 0:
             logger.debug("command returned rc=%s cmd=%s", completed.returncode, args)
         return completed
+
+    @staticmethod
+    def _run_env() -> dict:
+        env = os.environ.copy()
+        # So compose can run raft-controller as the host operator (not root).
+        env.setdefault("RAFT_HOST_UID", str(os.getuid()))
+        env.setdefault("RAFT_HOST_GID", str(os.getgid()))
+        return env
+
+    @staticmethod
+    def _raise_failed(
+        args: list[str],
+        completed: subprocess.CompletedProcess[str],
+        *,
+        capture: bool,
+    ) -> None:
+        detail = ""
+        if capture:
+            err = (completed.stderr or completed.stdout or "").strip()
+            if err:
+                detail = f"\n{err}"
+        logger.error(
+            "command failed rc=%s cmd=%s%s",
+            completed.returncode,
+            args,
+            detail,
+        )
+        raise subprocess.CalledProcessError(
+            completed.returncode,
+            args,
+            output=completed.stdout,
+            stderr=(completed.stderr or "") + detail,
+        )
 
     def compose(
         self, *args: str, check: bool = True, capture: bool = False

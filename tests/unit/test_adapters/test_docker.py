@@ -264,7 +264,7 @@ class TestDockerStack(AdapterTestCase):
         )
         missing = [MissingOriginCerts("web", ("origin.pem",))]
         with patch(
-            "raft.adapters.docker.missing_origin_certs",
+            "raft.adapters.docker_edge.missing_origin_certs",
             return_value=missing,
         ):
             with pytest.raises(RuntimeError, match="Origin certs missing"):

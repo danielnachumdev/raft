@@ -40,7 +40,7 @@ _EXPORTS = {
     "StackRenderer": (".render", "StackRenderer"),
     "Stats": (".stats", "Stats"),
     "Uninstall": (".uninstall", "Uninstall"),
-    "wait_until": (".cutover", "wait_until"),
+    "wait_until": (".wait", "wait_until"),
 }
 
 

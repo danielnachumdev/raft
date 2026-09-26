@@ -85,24 +85,24 @@ def run(argv: Optional[list[str]] = None) -> None:
     try:
         raise SystemExit(main(argv))
     except subprocess.CalledProcessError as exc:
-        shown = _format_called_process_error(exc)
-        _suggest_doctor(argv, message=shown)
-        raise SystemExit(exc.returncode) from exc
+        _exit_called_process(argv, exc)
     except yaml.YAMLError as exc:
-        err = invalid_yaml("~/.raft/settings.yaml or an App manifest", exc)
-        say_err(str(err))
-        _suggest_doctor(argv, message=str(err), err=err)
-        raise SystemExit(1) from exc
+        _exit_operator(argv, invalid_yaml("~/.raft/settings.yaml or an App manifest", exc), 1)
     except OSError as exc:
-        err = filesystem_error(exc)
-        say_err(str(err))
-        _suggest_doctor(argv, message=str(err), err=err)
-        raise SystemExit(1) from exc
+        _exit_operator(argv, filesystem_error(exc), 1)
     except OperatorError as exc:
-        say_err(str(exc))
-        _suggest_doctor(argv, message=str(exc), err=exc)
-        raise SystemExit(1) from exc
+        _exit_operator(argv, exc, 1)
     except (RuntimeError, TimeoutError, ValueError, FileNotFoundError) as exc:
-        say_err(str(exc))
-        _suggest_doctor(argv, message=str(exc), err=exc)
-        raise SystemExit(1) from exc
+        _exit_operator(argv, exc, 1)
+
+
+def _exit_called_process(argv, exc: subprocess.CalledProcessError) -> None:
+    shown = _format_called_process_error(exc)
+    _suggest_doctor(argv, message=shown)
+    raise SystemExit(exc.returncode) from exc
+
+
+def _exit_operator(argv, err, code: int) -> None:
+    say_err(str(err))
+    _suggest_doctor(argv, message=str(err), err=err)
+    raise SystemExit(code) from err

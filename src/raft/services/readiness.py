@@ -9,7 +9,7 @@ from ..adapters.http import HttpProbe
 from ..models.app import App
 from ..models.manifest import AppSpec
 from ..models.ports import PortSpec
-from ..models.readiness import (
+from ..models.readiness_spec import (
     DEFAULT_INTERVAL_SECONDS,
     DEFAULT_PROBE_TIMEOUT_SECONDS,
     DEFAULT_RETRIES,
@@ -34,26 +34,25 @@ class ReadinessStrategy:
     @classmethod
     def from_spec(cls, spec: AppSpec) -> "ReadinessStrategy":
         readiness = spec.readiness
+        timing = cls._timing_kwargs(readiness)
         if readiness.type == "none":
-            return cls(
-                kind="none",
-                timeout_seconds=readiness.timeout_seconds,
-                start_period_seconds=readiness.start_period_seconds,
-                interval_seconds=readiness.interval_seconds,
-                probe_timeout_seconds=readiness.probe_timeout_seconds,
-                retries=readiness.retries,
-            )
-        port = readiness.resolve_port(spec.ports)
+            return cls(kind="none", **timing)
         return cls(
             kind=readiness.type,
-            port=port,
+            port=readiness.resolve_port(spec.ports),
             path=readiness.path,
-            timeout_seconds=readiness.timeout_seconds,
-            start_period_seconds=readiness.start_period_seconds,
-            interval_seconds=readiness.interval_seconds,
-            probe_timeout_seconds=readiness.probe_timeout_seconds,
-            retries=readiness.retries,
+            **timing,
         )
+
+    @staticmethod
+    def _timing_kwargs(readiness) -> dict:
+        return {
+            "timeout_seconds": readiness.timeout_seconds,
+            "start_period_seconds": readiness.start_period_seconds,
+            "interval_seconds": readiness.interval_seconds,
+            "probe_timeout_seconds": readiness.probe_timeout_seconds,
+            "retries": readiness.retries,
+        }
 
     def healthcheck_test(self) -> Optional[list[str]]:
         if self.kind == "none" or self.port is None:

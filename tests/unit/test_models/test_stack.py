@@ -5,7 +5,9 @@ from pathlib import Path
 import pytest
 
 import raft.config.paths as paths
-from raft.models import find_package_root, load_registry, load_stack
+from raft.config.paths import find_package_root
+from raft.models.registry import AppRegistry
+from raft.models.stack import load_stack
 from raft.models.ports import PortSpec
 
 from ..base import RaftTestCase, make_app, write_inventory
@@ -29,7 +31,7 @@ services:
     path: apps/other
 """,
         )
-        apps = load_registry(self.tmp_path)
+        apps = AppRegistry(self.tmp_path).load()
         assert len(apps) == 2
         assert apps[0].name == "app"
         assert apps[0].source == "local"
@@ -47,7 +49,7 @@ services:
 """,
         )
         with pytest.raises(ValueError, match="repo is required"):
-            load_registry(self.tmp_path)
+            AppRegistry(self.tmp_path).load()
 
     def test_rejects_bad_source(self) -> None:
         write_inventory(
@@ -60,7 +62,7 @@ services:
 """,
         )
         with pytest.raises(ValueError, match="must be 'local', 'git', or 'docker'"):
-            load_registry(self.tmp_path)
+            AppRegistry(self.tmp_path).load()
 
     def test_docker_source(self) -> None:
         write_inventory(
@@ -74,7 +76,7 @@ services:
     ref: main
 """,
         )
-        apps = load_registry(self.tmp_path)
+        apps = AppRegistry(self.tmp_path).load()
         assert apps[0].source == "docker"
         assert apps[0].image_ref() == "ghcr.io/org/hub:main"
         assert apps[0].compose_pin_image == "ghcr.io/org/hub:main"
@@ -98,7 +100,7 @@ services:
 """,
         )
         with pytest.raises(ValueError, match="image is required"):
-            load_registry(self.tmp_path)
+            AppRegistry(self.tmp_path).load()
 
     def test_rejects_docker_image_with_tag(self) -> None:
         write_inventory(
@@ -112,7 +114,7 @@ services:
 """,
         )
         with pytest.raises(ValueError, match="without a tag"):
-            load_registry(self.tmp_path)
+            AppRegistry(self.tmp_path).load()
 
     def test_requires_public_host_for_http(self) -> None:
         dest = self.tmp_path / "state" / "apps" / "x.yaml"
@@ -124,15 +126,15 @@ services:
             encoding="utf-8",
         )
         with pytest.raises(ValueError, match="publicHost is required"):
-            load_registry(self.tmp_path)
+            AppRegistry(self.tmp_path).load()
 
     def test_empty_registry(self) -> None:
-        assert load_registry(self.tmp_path) == ()
+        assert AppRegistry(self.tmp_path).load() == ()
 
     def test_registry_dir_missing(self) -> None:
         bare = self.tmp_path / "bare"
         bare.mkdir()
-        assert load_registry(bare) == ()
+        assert AppRegistry(bare).load() == ()
 
     def test_default_path_and_blank_ref(self) -> None:
         write_inventory(
@@ -145,7 +147,7 @@ services:
     ref: "   "
 """,
         )
-        apps = load_registry(self.tmp_path)
+        apps = AppRegistry(self.tmp_path).load()
         assert apps[0].path == "apps/app"
         assert apps[0].ref == "main"
 
@@ -154,7 +156,7 @@ services:
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text("- not a mapping\n", encoding="utf-8")
         with pytest.raises(ValueError, match="mapping"):
-            load_registry(self.tmp_path)
+            AppRegistry(self.tmp_path).load()
 
 
 class TestStack(RaftTestCase):

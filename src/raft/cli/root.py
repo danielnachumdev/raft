@@ -48,41 +48,59 @@ class RaftCLI:
         env_file: Optional[str] = None,
         env: Optional[Union[str, Sequence[str]]] = None,
     ) -> None:
-        """Register an App manifest on this VPS (from file or git URL).
+        """Register an App from ``--file`` or ``--git``; expand env, then deploy.
 
-        ``--env-file`` / repeatable ``--env KEY=VALUE`` expand ``${VAR}``
-        placeholders in the App manifest text (before YAML parse). They do not
-        inject Compose env by themselves — bridge CI values into the container
-        by templating ``spec.env`` / ``spec.envFile``::
-
-            env:
-              DATABASE_URL: ${CI_DATABASE_URL}   # Docker name ← CI template name
-
-        Precedence: process env → ``--env-file`` → ``--env`` (later wins).
-        Merging happens here once; ``AppApply`` receives only the finalized map.
+        ``--env-file`` / ``--env`` expand ``${VAR}`` in the manifest text (not
+        Compose inject). Precedence: process → ``--env-file`` → ``--env``.
         """
+        self._dispatch_apply(
+            file=file,
+            git=git,
+            ref=ref,
+            deploy=not no_deploy,
+            force_sync=force_sync,
+            env_file=env_file,
+            env=env,
+        )
+
+    def _dispatch_apply(
+        self,
+        *,
+        file: Optional[str],
+        git: Optional[str],
+        ref: Optional[str],
+        deploy: bool,
+        force_sync: bool,
+        env_file: Optional[str],
+        env: Optional[Union[str, Sequence[str]]],
+    ) -> None:
         applier = deps.AppApply(self._stack)
-        deploy = not no_deploy
         apply_env = self._build_apply_env(env_file=env_file, env=env)
         if file is not None:
-            applier.apply_file(
-                Path(file),
-                ref_override=ref,
-                deploy=deploy,
-                force_sync=force_sync,
-                env=apply_env,
+            self._apply_from_file(
+                applier, Path(file), ref=ref, deploy=deploy,
+                force_sync=force_sync, env=apply_env,
             )
             return
         if git:
-            applier.apply_git(
-                git,
-                ref=ref or "main",
-                deploy=deploy,
-                force_sync=force_sync,
-                env=apply_env,
+            self._apply_from_git(
+                applier, git, ref=ref, deploy=deploy,
+                force_sync=force_sync, env=apply_env,
             )
             return
         raise apply_requires_source()
+
+    @staticmethod
+    def _apply_from_file(applier, path, *, ref, deploy, force_sync, env) -> None:
+        applier.apply_file(
+            path, ref_override=ref, deploy=deploy, force_sync=force_sync, env=env
+        )
+
+    @staticmethod
+    def _apply_from_git(applier, git, *, ref, deploy, force_sync, env) -> None:
+        applier.apply_git(
+            git, ref=ref or "main", deploy=deploy, force_sync=force_sync, env=env
+        )
 
     def get(
         self,

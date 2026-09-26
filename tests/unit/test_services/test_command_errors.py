@@ -31,7 +31,7 @@ from raft.errors import (
     run_compose_checked,
     run_docker_checked,
 )
-from raft.services.cutover import wait_until
+from raft.services.wait import wait_until
 from raft.services.update import SelfUpdate
 
 from ..base import RaftTestCase, make_stack

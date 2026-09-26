@@ -768,6 +768,32 @@ class TestDoctor(ServicesTestCase):
         assert results[0].status == "fail"
         assert "—" not in results[0].detail
 
+    def test_public_host_probe_empty_or_non_str_diagnostics(self) -> None:
+        from raft.services.doctor.checks.public_host import PublicHostChecks
+        from raft.services.doctor.context import DoctorContext
+
+        write_applied_app(self.tmp_path, "app")
+        stack = load_stack(self.tmp_path)
+        docker = MagicMock()
+        ctx = DoctorContext(
+            stack=stack,
+            shell=MagicMock(),
+            auth=MagicMock(),
+            docker=docker,
+        )
+        with patch(
+            "raft.services.doctor.checks.public_host.HttpProbe.public_host_ok",
+            return_value=False,
+        ):
+            docker.diagnostics_for.return_value = ""
+            empty = PublicHostChecks().run(ctx)
+            docker.diagnostics_for.return_value = {"not": "a string"}
+            non_str = PublicHostChecks().run(ctx)
+        assert empty[0].status == "fail"
+        assert "—" not in empty[0].detail
+        assert non_str[0].status == "fail"
+        assert "—" not in non_str[0].detail
+
     def test_public_host_probe_skips_blank_host(self) -> None:
         from raft.models.app import App
         from raft.services.doctor.checks.public_host import PublicHostChecks

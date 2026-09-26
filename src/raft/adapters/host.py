@@ -45,16 +45,7 @@ def _read_text(path: Path) -> Optional[str]:
 
 
 def _parse_meminfo(text: str) -> Optional[HostMemory]:
-    values: dict[str, int] = {}
-    for line in text.splitlines():
-        if ":" not in line:
-            continue
-        key, rest = line.split(":", 1)
-        parts = rest.split()
-        if not parts or not parts[0].isdigit():
-            continue
-        # Values are KiB.
-        values[key.strip()] = int(parts[0]) * 1024
+    values = _meminfo_kib_to_bytes(text)
     total = values.get("MemTotal")
     available = values.get("MemAvailable")
     if total is None or available is None or total <= 0:
@@ -66,6 +57,19 @@ def _parse_meminfo(text: str) -> Optional[HostMemory]:
         used_bytes=used,
         used_percent=round(100.0 * used / total, 2),
     )
+
+
+def _meminfo_kib_to_bytes(text: str) -> dict[str, int]:
+    values: dict[str, int] = {}
+    for line in text.splitlines():
+        if ":" not in line:
+            continue
+        key, rest = line.split(":", 1)
+        parts = rest.split()
+        if not parts or not parts[0].isdigit():
+            continue
+        values[key.strip()] = int(parts[0]) * 1024
+    return values
 
 
 def _parse_loadavg(text: str) -> Optional[Tuple[float, float, float]]:
@@ -130,6 +134,16 @@ def parse_docker_size(value: str) -> Optional[int]:
     text = (value or "").strip()
     if not text or text in ("--", "0"):
         return 0 if text == "0" else None
+    parsed = _size_with_unit(text)
+    if parsed is not None:
+        return parsed
+    try:
+        return int(float(text))
+    except ValueError:
+        return None
+
+
+def _size_with_unit(text: str) -> Optional[int]:
     units: Sequence[tuple[str, int]] = (
         ("KiB", 1024),
         ("MiB", 1024**2),
@@ -148,10 +162,7 @@ def parse_docker_size(value: str) -> Optional[int]:
                 return int(float(number) * factor)
             except ValueError:
                 return None
-    try:
-        return int(float(text))
-    except ValueError:
-        return None
+    return None
 
 
 def parse_docker_pair(value: str) -> tuple[Optional[int], Optional[int]]:

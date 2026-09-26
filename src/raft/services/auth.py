@@ -3,12 +3,8 @@
 from __future__ import annotations
 
 import logging
-import os
-import re
 import socket
 import subprocess
-from dataclasses import dataclass
-from pathlib import Path
 from typing import Optional
 
 from raft.errors import OperatorError, raise_for_git_failure
@@ -17,80 +13,57 @@ from ..adapters.shell import Shell
 from ..models.app import App
 from ..models.stack import Stack
 from ..ui import say
+from .auth_ssh import SshDeployKeys
+from .auth_urls import host_alias, parse_ssh_git_url, real_git_host
+
 logger = logging.getLogger(__name__)
-
-_BEGIN = "# BEGIN raft:{name}"
-_END = "# END raft:{name}"
-_SSH_GIT_RE = re.compile(r"^(?:ssh://)?(?:git@)?(?P<host>[^/:]+)[:/](?P<path>.+?)(?:\.git)?/?$")
-
-
-@dataclass(frozen=True)
-class SshGitUrl:
-    host: str
-    path: str
-
-    @property
-    def canonical(self) -> str:
-        return f"git@{self.host}:{self.path}.git"
-
-    def with_host_alias(self, alias: str) -> str:
-        return f"git@{alias}:{self.path}.git"
-
-
-def parse_ssh_git_url(url: str) -> SshGitUrl:
-    raw = url.strip()
-    if raw.startswith("https://") or raw.startswith("http://"):
-        raise ValueError(
-            f"HTTPS remotes are not managed by raft auth ({url!r}); "
-            "use an SSH URL like git@github.com:owner/repo.git"
-        )
-    match = _SSH_GIT_RE.match(raw)
-    if not match:
-        raise ValueError(f"cannot parse SSH git URL: {url!r}")
-    host = match.group("host")
-    path = match.group("path").strip("/")
-    if not path or "/" not in path:
-        raise ValueError(f"SSH git URL must include owner/repo: {url!r}")
-    return SshGitUrl(host=host, path=path)
-
-
-def default_ssh_dir() -> Path:
-    override = os.environ.get("RAFT_SSH_DIR")
-    if override:
-        return Path(override).expanduser().resolve()
-    return (Path.home() / ".ssh").resolve()
-
-
-def host_alias(service: str, git_host: str) -> str:
-    marker = f"-raft-{service}"
-    if git_host.endswith(marker):
-        return git_host
-    return f"{git_host}-raft-{service}"
-
-
-def real_git_host(service: str, git_host: str) -> str:
-    marker = f"-raft-{service}"
-    if git_host.endswith(marker):
-        return git_host[: -len(marker)] or git_host
-    return git_host
 
 
 class GitAuthManager:
     def __init__(self, stack: Stack) -> None:
         self.stack = stack
-        self.sh = Shell(stack.root)
-        self.ssh_dir = default_ssh_dir()
-        self.keys_dir = self.ssh_dir / "raft"
-        self.config_path = self.ssh_dir / "config"
+        self.keys = SshDeployKeys(Shell(stack.root))
 
-    def key_path(self, service: str) -> Path:
-        return self.keys_dir / f"{service}_ed25519"
+    @property
+    def sh(self) -> Shell:
+        return self.keys.sh
 
-    def pub_path(self, service: str) -> Path:
-        return Path(str(self.key_path(service)) + ".pub")
+    @sh.setter
+    def sh(self, value: Shell) -> None:
+        self.keys.sh = value
+
+    @property
+    def ssh_dir(self):
+        return self.keys.ssh_dir
+
+    @ssh_dir.setter
+    def ssh_dir(self, value) -> None:
+        self.keys.ssh_dir = value
+
+    @property
+    def keys_dir(self):
+        return self.keys.keys_dir
+
+    @keys_dir.setter
+    def keys_dir(self, value) -> None:
+        self.keys.keys_dir = value
+
+    @property
+    def config_path(self):
+        return self.keys.config_path
+
+    @config_path.setter
+    def config_path(self, value) -> None:
+        self.keys.config_path = value
+
+    def key_path(self, service: str):
+        return self.keys.key_path(service)
+
+    def pub_path(self, service: str):
+        return self.keys.pub_path(service)
 
     def is_configured(self, service: str) -> bool:
-        return self.key_path(service).is_file() and self.pub_path(service).is_file()
+        return self.keys.is_configured(service)
 
     def effective_clone_url(self, app: App) -> str:
         if not app.repo:
@@ -135,33 +108,36 @@ class GitAuthManager:
         parsed = parse_ssh_git_url(repo_url)
         base_host = real_git_host(service, parsed.host)
         alias = host_alias(service, base_host)
+        self.keys.ensure_layout()
+        self._prepare_key(service, force=force)
+        self.keys.upsert_ssh_config(service, alias=alias, hostname=base_host)
+        logger.info("auth %s: SSH Host %s → %s", service, alias, base_host)
+        self._announce_key(service, base_host, parsed)
+        logger.info(
+            "auth %s: clone URL will be %s", service, parsed.with_host_alias(alias)
+        )
+        self._say_auth_next_steps(service, repo_url)
 
-        self._ensure_ssh_layout()
-        if self.is_configured(service) and not force:
+    def _prepare_key(self, service: str, *, force: bool) -> None:
+        existed = self.is_configured(service)
+        if existed and not force:
             logger.info("auth %s: key already exists (%s)", service, self.key_path(service))
-        else:
-            if force and self.is_configured(service):
-                logger.info("auth %s: rotating key", service)
-                self.key_path(service).unlink(missing_ok=True)
-                self.pub_path(service).unlink(missing_ok=True)
-            self._generate_key(service)
+        elif force and existed:
+            logger.info("auth %s: rotating key", service)
+        self.keys.ensure_key(service, force=force, title=self.key_title(service))
+        if not existed or force:
             logger.info("auth %s: created %s", service, self.key_path(service))
 
-        self._upsert_ssh_config(service, alias=alias, hostname=base_host)
-        logger.info("auth %s: SSH Host %s → %s", service, alias, base_host)
-
-        pubkey = self.pub_path(service).read_text(encoding="utf-8").strip()
-        title = self.key_title(service)
+    def _announce_key(self, service: str, base_host: str, parsed) -> None:
         self._print_deploy_key_for_copy(
             service,
             host=base_host,
             repo_path=parsed.path,
-            pubkey=pubkey,
-            title=title,
+            pubkey=self.pub_path(service).read_text(encoding="utf-8").strip(),
+            title=self.key_title(service),
         )
 
-        clone_url = parsed.with_host_alias(alias)
-        logger.info("auth %s: clone URL will be %s", service, clone_url)
+    def _say_auth_next_steps(self, service: str, repo_url: str) -> None:
         applied = any(a.name == service for a in self.stack.apps)
         if applied:
             say(f"next: raft auth test {service} && raft sync {service}", style="info")
@@ -173,14 +149,7 @@ class GitAuthManager:
             )
 
     def list_services(self) -> list[str]:
-        if not self.keys_dir.is_dir():
-            return []
-        names: list[str] = []
-        for pub in sorted(self.keys_dir.glob("*_ed25519.pub")):
-            name = pub.name[: -len("_ed25519.pub")]
-            if self.key_path(name).is_file():
-                names.append(name)
-        return names
+        return self.keys.list_services()
 
     def key_title(self, service: str) -> str:
         return f"raft:{service}@{socket.gethostname()}"
@@ -249,26 +218,26 @@ class GitAuthManager:
             )
         url = self.rewrite_clone_url(service, repo_url)
         logger.info("auth test %s: git ls-remote %s", service, url)
-        result = self.sh.git("ls-remote", url, "HEAD", check=False, capture=True)
-        if result.returncode != 0:
-            detail = (result.stderr or result.stdout or "").strip()
-            exc = subprocess.CalledProcessError(
-                result.returncode,
-                ["git", "ls-remote", url, "HEAD"],
-                stderr=detail,
-            )
-            raise_for_git_failure(exc, repo_url, app=service, always=True)
-            return  # pragma: no cover — always raises
+        self._assert_ls_remote(service, repo_url, url)
         if not quiet:
             say(f"auth test {service}: ok", style="ok")
         else:
             logger.info("auth test %s: ok", service)
 
+    def _assert_ls_remote(self, service: str, repo_url: str, url: str) -> None:
+        result = self.sh.git("ls-remote", url, "HEAD", check=False, capture=True)
+        if result.returncode == 0:
+            return
+        detail = (result.stderr or result.stdout or "").strip()
+        exc = subprocess.CalledProcessError(
+            result.returncode, ["git", "ls-remote", url, "HEAD"], stderr=detail,
+        )
+        raise_for_git_failure(exc, repo_url, app=service, always=True)
+
     def remove(self, service: str, *, remove_files: bool = True) -> None:
-        self._remove_ssh_config(service)
+        self.keys.remove_ssh_config(service)
         if remove_files:
-            self.key_path(service).unlink(missing_ok=True)
-            self.pub_path(service).unlink(missing_ok=True)
+            self.keys.remove_key_files(service)
         suffix = " and key files" if remove_files else ""
         say(f"auth {service}: removed local SSH config{suffix}", style="ok")
         say(
@@ -276,82 +245,6 @@ class GitAuthManager:
             "(GitHub → repo Settings → Deploy keys).",
             style="info",
         )
-
-    def _ensure_ssh_layout(self) -> None:
-        self.ssh_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-        os.chmod(self.ssh_dir, 0o700)
-        self.keys_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-        os.chmod(self.keys_dir, 0o700)
-        if not self.config_path.exists():
-            self.config_path.touch(mode=0o600)
-        os.chmod(self.config_path, 0o600)
-
-    def _generate_key(self, service: str) -> None:
-        comment = self.key_title(service)
-        try:
-            self.sh.run(
-                [
-                    "ssh-keygen",
-                    "-t",
-                    "ed25519",
-                    "-f",
-                    str(self.key_path(service)),
-                    "-N",
-                    "",
-                    "-C",
-                    comment,
-                    "-q",
-                ],
-                capture=True,
-            )
-        except Exception as exc:
-            raise OperatorError(
-                f"ssh-keygen failed while creating a deploy key for {service!r}.\n"
-                f"Fix: install openssh-client, ensure ~/.ssh/raft is writable, "
-                f"then: raft auth setup {service}"
-            ) from exc
-        os.chmod(self.key_path(service), 0o600)
-        os.chmod(self.pub_path(service), 0o644)
-
-    def _upsert_ssh_config(self, service: str, *, alias: str, hostname: str) -> None:
-        self._ensure_ssh_layout()
-        block = "\n".join(
-            [
-                _BEGIN.format(name=service),
-                f"Host {alias}",
-                f"  HostName {hostname}",
-                "  User git",
-                f"  IdentityFile {self.key_path(service)}",
-                "  IdentitiesOnly yes",
-                _END.format(name=service),
-                "",
-            ]
-        )
-        text = self.config_path.read_text(encoding="utf-8")
-        text = self._strip_block(text, service)
-        if text and not text.endswith("\n"):
-            text += "\n"
-        if text and not text.endswith("\n\n"):
-            text += "\n"
-        self.config_path.write_text(text + block, encoding="utf-8")
-        os.chmod(self.config_path, 0o600)
-
-    def _remove_ssh_config(self, service: str) -> None:
-        if not self.config_path.is_file():
-            return
-        text = self._strip_block(self.config_path.read_text(encoding="utf-8"), service)
-        self.config_path.write_text(text, encoding="utf-8")
-        os.chmod(self.config_path, 0o600)
-
-    @staticmethod
-    def _strip_block(text: str, service: str) -> str:
-        begin = _BEGIN.format(name=service)
-        end = _END.format(name=service)
-        pattern = re.compile(
-            re.escape(begin) + r".*?" + re.escape(end) + r"\n?",
-            re.DOTALL,
-        )
-        return pattern.sub("", text)
 
     @staticmethod
     def _pubkey_for_paste(pubkey: str) -> str:

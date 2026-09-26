@@ -22,7 +22,8 @@ from .app import (
     ROUTER_COMPOSE_ID,
     App,
 )
-from .manifest import load_app_file, load_registry, registry_path
+from .app_document import AppDocument
+from .registry import AppRegistry
 from .ports import PortSpec
 
 __all__ = [
@@ -93,8 +94,8 @@ class Stack:
         return self.root / GENERATED_DIRNAME
 
     def spec_for(self, app: App):
-        path = registry_path(self.root, app.name)
-        _, app_spec = load_app_file(path, expect_name=app.name)
+        path = AppRegistry(self.root).path_for(app.name)
+        _, app_spec = AppDocument.load(path, expect_name=app.name)
         return app_spec
 
     def contract_for(self, app: App):
@@ -104,4 +105,4 @@ class Stack:
 def load_stack(root: Optional[Path] = None) -> Stack:
     data_home = root if root is not None else raft_home()
     ensure_raft_home(data_home)
-    return Stack(root=data_home, apps=load_registry(data_home))
+    return Stack(root=data_home, apps=AppRegistry(data_home).load())

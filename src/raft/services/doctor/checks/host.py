@@ -44,9 +44,8 @@ class HostChecks:
         )
 
     def _docker(self, ctx: DoctorContext) -> list[CheckResult]:
-        out: list[CheckResult] = []
         if not shutil.which("docker"):
-            out.append(
+            return [
                 CheckResult(
                     INFRA,
                     "docker",
@@ -54,21 +53,20 @@ class HostChecks:
                     "docker CLI not found on PATH",
                     fix="install Docker Engine and ensure `docker` is on PATH",
                 )
-            )
-            return out
+            ]
         probe = ctx.shell.run(["docker", "info"], check=False, capture=True)
         if probe.returncode != 0:
-            detail = (probe.stderr or probe.stdout or "docker info failed").strip().splitlines()
-            brief = detail[-1] if detail else "docker info failed"
-            out.append(
-                CheckResult(
-                    INFRA,
-                    "docker",
-                    "fail",
-                    brief,
-                    fix="start the Docker daemon (and join the `docker` group if permission denied)",
-                )
-            )
-            return out
-        out.append(CheckResult(INFRA, "docker", "ok", "CLI and daemon reachable"))
-        return out
+            return [self._docker_daemon_fail(probe)]
+        return [CheckResult(INFRA, "docker", "ok", "CLI and daemon reachable")]
+
+    @staticmethod
+    def _docker_daemon_fail(probe) -> CheckResult:
+        detail = (probe.stderr or probe.stdout or "docker info failed").strip().splitlines()
+        brief = detail[-1] if detail else "docker info failed"
+        return CheckResult(
+            INFRA,
+            "docker",
+            "fail",
+            brief,
+            fix="start the Docker daemon (and join the `docker` group if permission denied)",
+        )

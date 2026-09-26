@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Optional
+
 from raft.errors import OperatorError
 
 from ....models.ports import PortSpec
@@ -26,21 +28,24 @@ class PortSummaryChecks:
             CheckResult(ctx.stack.router, "ports", "ok", "80"),
         ]
         for app in ctx.stack.apps:
-            try:
-                spec = ctx.stack.spec_for(app)
-            except (OSError, OperatorError, ValueError, FileNotFoundError):
-                continue
-            if not spec.ports:
-                continue
-            seen: set[str] = set()
-            ordered: list[str] = []
-            for port in spec.ports:
-                label = _port_number(port)
-                if label in seen:
-                    continue
+            detail = self._app_ports_detail(ctx, app)
+            if detail is not None:
+                results.append(CheckResult(app.compose_id, "ports", "ok", detail))
+        return results
+
+    @staticmethod
+    def _app_ports_detail(ctx: DoctorContext, app) -> Optional[str]:
+        try:
+            spec = ctx.stack.spec_for(app)
+        except (OSError, OperatorError, ValueError, FileNotFoundError):
+            return None
+        if not spec.ports:
+            return None
+        seen: set[str] = set()
+        ordered: list[str] = []
+        for port in spec.ports:
+            label = _port_number(port)
+            if label not in seen:
                 seen.add(label)
                 ordered.append(label)
-            results.append(
-                CheckResult(app.compose_id, "ports", "ok", ", ".join(ordered))
-            )
-        return results
+        return ", ".join(ordered)

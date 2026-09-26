@@ -195,7 +195,7 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | Path | Notes |
 |------|-------|
 | `src/raft/cli/` | Fire root + auth + gate; `deps.py` patched in tests |
-| `src/raft/models/` | `App`, `AppSpec` (`manifest.py`), `PortSpec`, `Stack` (`stack.py`) |
+| `src/raft/models/` | `App`, `AppSpec` (`manifest.py`), `AppDocument` / `AppSpecFields` / `AppMountFields` / `AppRegistry`, `PortSpec`, `Stack` (`stack.py`) |
 | `src/raft/adapters/` | shell, docker, nginx upstreams, HTTP/TCP probe |
 | `src/raft/services/` | apply, auth, sync, render, edge handlers, cutover, orchestrator, doctor, stats; `manifest_env` (`${VAR}` at apply) |
 | `src/raft/config/` | `~/.raft` paths, `settings.yaml` (logging + edge), logging setup |
@@ -224,12 +224,27 @@ If the host is rooted, container-readable secrets are burned. Prefer external st
 
 ---
 
+## Code style / structure
+
+Enforceable defaults when adding or reshaping code under `src/raft/`:
+
+- **File size:** aim for **~200 lines**; treat **300+** as a smell — split by responsibility before growing further.
+- **Method size:** methods/functions **max ~20 lines**. Longer bodies **must delegate** to private helpers (`_…`) with **declarative names**.
+- **Class-first:** prefer **almost no module-level functions**. Behavior lives on classes with a small, declarative public surface; helpers are **private** methods or composed collaborators.
+- **SRP:** one class, one reason to change. Prefer inherit or **compose** over god-objects; extract when a module mixes parse/I/O/orchestration/diagnostics.
+- **No re-export shims:** do not add functions that only forward to logic another module owns. Callers import the **owning** class/module directly (`AppDocument`, `AppRegistry`, …).
+- **Imports:** all `import` / `from … import` at **module scope** (no function-local imports; fix cycles by restructuring).
+- **Renames:** `git mv` when the path is already in git.
+
+Exceptions: tiny pure helpers (e.g. path constants) and `@dataclass` field types — not compatibility wrappers.
+
+---
+
 ## Tests & commits
 
 - `uv sync --extra dev` then:
   - `uv run pytest tests/unit --cov=raft --cov-fail-under=100` — **100%** branch coverage
   - `uv run pytest` — unit + integration (default)
   - `uv run pytest tests/e2e -m e2e` — Docker required; runs on all CI Python versions
-- **No function-local imports** — all `import` / `from … import` belong at module scope (fix cycles by restructuring, not by lazy imports).
 - Only commit when asked. Prefer `git mv` for renames.
 - Do not reintroduce committed consumer app names, upstreams, or PEMs.

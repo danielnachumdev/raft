@@ -5,9 +5,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
-from typing import Callable, Optional
-
-from raft.errors import OperatorError, append_diagnostics
+from typing import Optional
 
 from ..adapters.docker import DockerStack
 from ..adapters.http import HttpProbe
@@ -15,64 +13,9 @@ from ..adapters.nginx import NginxUpstreams
 from ..models.app import COMPOSE_PROJECT, App
 from ..models.stack import Stack
 from .readiness import ReadinessStrategy
+from .wait import Step, wait_until
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class Step:
-    key: str
-    summary: str
-    run: Callable[["CutoverSession"], None]
-
-
-def wait_until(
-    description: str,
-    predicate: Callable[[], bool],
-    *,
-    timeout: float,
-    interval: float = 1.0,
-    fix: str = "",
-    diagnostics: Optional[Callable[[], str]] = None,
-    progress_every: float = 15.0,
-) -> None:
-    started = time.monotonic()
-    deadline = started + timeout
-    next_progress = started + progress_every
-    while time.monotonic() < deadline:
-        if predicate():
-            return
-        now = time.monotonic()
-        if progress_every > 0 and now >= next_progress:
-            remaining = max(0.0, deadline - now)
-            logger.info(
-                "still waiting for: %s (%.0fs of %.0fs elapsed, %.0fs left)",
-                description,
-                now - started,
-                timeout,
-                remaining,
-            )
-            next_progress = now + progress_every
-        time.sleep(interval)
-    waited = time.monotonic() - started
-    logger.error(
-        "timed out waiting for: %s (waited %.0fs of %.0fs budget)",
-        description,
-        waited,
-        timeout,
-    )
-    message = (
-        f"timed out waiting for: {description} "
-        f"(waited {waited:.0f}s of {timeout:.0f}s budget)"
-    )
-    if diagnostics is not None:
-        try:
-            message = append_diagnostics(message, diagnostics())
-        except Exception:  # noqa: BLE001 — never mask the timeout
-            logger.debug("diagnostics callback failed", exc_info=True)
-    if fix:
-        message = f"{message}\nFix: {fix}"
-    raise OperatorError(message, has_fix=bool(fix))
 
 
 @dataclass
@@ -111,23 +54,24 @@ class CutoverSession:
         )
         if predicate is None:
             return
-        wait_budget = (
-            timeout if timeout is not None else strategy.timeout_seconds
-        )
+        wait_budget = timeout if timeout is not None else strategy.timeout_seconds
         wait_until(
             label,
             predicate,
             timeout=wait_budget,
             interval=0.5,
-            fix=(
-                f"check readiness/health for {self.app.name}; "
-                f"raft doctor; raft redeploy {self.app.name}. "
-                f"If Compose health stays 'starting'/'unhealthy', inspect logs "
-                f"and raise readiness.timeoutSeconds (and optionally "
-                f"startPeriodSeconds) in .raft/app.yaml "
-                f"[{strategy.timing_summary()}]"
-            ),
+            fix=self._ready_fix(strategy),
             diagnostics=self._app_diagnostics,
+        )
+
+    def _ready_fix(self, strategy: ReadinessStrategy) -> str:
+        return (
+            f"check readiness/health for {self.app.name}; "
+            f"raft doctor; raft redeploy {self.app.name}. "
+            f"If Compose health stays 'starting'/'unhealthy', inspect logs "
+            f"and raise readiness.timeoutSeconds (and optionally "
+            f"startPeriodSeconds) in .raft/app.yaml "
+            f"[{strategy.timing_summary()}]"
         )
 
     def snapshot_previous_image(self) -> None:
@@ -153,22 +97,26 @@ class CutoverSession:
             env_file=spec.env_file,
         )
         self.tmp_active = True
+        self._wait_tmp_reachable()
+
+    def _wait_tmp_reachable(self) -> None:
         strategy = self._strategy()
-        if strategy.kind == "http":
-            fetch_port = strategy.port.container_port if strategy.port is not None else 80
-            wait_until(
-                f"{self.app.tmp_alias} reachable from router",
-                lambda: self.docker.router_can_fetch(
-                    self.app.tmp_alias, port=fetch_port, path=strategy.path
-                ),
-                timeout=strategy.timeout_seconds,
-                fix=(
-                    f"inspect tmp container / upstreams; then: "
-                    f"raft redeploy {self.app.name} or raft doctor "
-                    f"[{strategy.timing_summary()}]"
-                ),
-                diagnostics=self._tmp_diagnostics,
-            )
+        if strategy.kind != "http":
+            return
+        fetch_port = strategy.port.container_port if strategy.port is not None else 80
+        wait_until(
+            f"{self.app.tmp_alias} reachable from router",
+            lambda: self.docker.router_can_fetch(
+                self.app.tmp_alias, port=fetch_port, path=strategy.path
+            ),
+            timeout=strategy.timeout_seconds,
+            fix=(
+                f"inspect tmp container / upstreams; then: "
+                f"raft redeploy {self.app.name} or raft doctor "
+                f"[{strategy.timing_summary()}]"
+            ),
+            diagnostics=self._tmp_diagnostics,
+        )
 
     def shift_traffic_to_tmp(self) -> None:
         self.log(f"point nginx at {self.app.tmp_alias} (old code) + reload + drain")
@@ -185,22 +133,26 @@ class CutoverSession:
         else:
             self.log(f"rebuild stable service {self.app.name} (new code)")
             self.docker.rebuild_service(self.app.compose_id)
+        self._wait_stable_reachable()
+
+    def _wait_stable_reachable(self) -> None:
         strategy = self._strategy()
-        if strategy.kind == "http":
-            fetch_port = strategy.port.container_port if strategy.port is not None else 80
-            wait_until(
-                f"{self.app.compose_id} reachable from router",
-                lambda: self.docker.router_can_fetch(
-                    self.app.compose_id, port=fetch_port, path=strategy.path
-                ),
-                timeout=strategy.timeout_seconds,
-                fix=(
-                    f"check build/pull logs; traffic may still be on "
-                    f"{self.app.tmp_alias} — raft doctor / raft redeploy "
-                    f"{self.app.name} [{strategy.timing_summary()}]"
-                ),
-                diagnostics=self._app_diagnostics,
-            )
+        if strategy.kind != "http":
+            return
+        fetch_port = strategy.port.container_port if strategy.port is not None else 80
+        wait_until(
+            f"{self.app.compose_id} reachable from router",
+            lambda: self.docker.router_can_fetch(
+                self.app.compose_id, port=fetch_port, path=strategy.path
+            ),
+            timeout=strategy.timeout_seconds,
+            fix=(
+                f"check build/pull logs; traffic may still be on "
+                f"{self.app.tmp_alias} — raft doctor / raft redeploy "
+                f"{self.app.name} [{strategy.timing_summary()}]"
+            ),
+            diagnostics=self._app_diagnostics,
+        )
 
     def _docker_wanted_tag(self) -> str:
         state = self.stack.ref_state_file(self.app)
@@ -243,6 +195,10 @@ class CutoverSession:
             f"cutover abort cleanup: restore nginx → {self.app.compose_id}, "
             f"remove {self.app.tmp_container}"
         )
+        self._abort_restore_nginx()
+        self._abort_remove_tmp()
+
+    def _abort_restore_nginx(self) -> None:
         try:
             self.nginx.point_at(self.app, self.app.compose_id)
             self.docker.nginx_test_and_reload()
@@ -252,6 +208,8 @@ class CutoverSession:
                 self.app.compose_id,
                 exc_info=True,
             )
+
+    def _abort_remove_tmp(self) -> None:
         try:
             self.docker.remove_container(self.app.tmp_container)
         except Exception:  # noqa: BLE001 — best-effort cleanup

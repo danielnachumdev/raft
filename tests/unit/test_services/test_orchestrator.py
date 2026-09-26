@@ -38,83 +38,59 @@ class TestOrchestrator(ServicesTestCase):
 
     def test_render_reloads_gate_when_stamp_differs_from_disk(self) -> None:
         self.orch.docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller"]
-        with patch(
-            "raft.services.orchestrator.fingerprint_gate_nginx",
-            return_value="disk-fp",
-        ):
-            with patch(
-                "raft.services.orchestrator.read_gate_nginx_reload_stamp",
-                return_value="stale-fp",
-            ):
-                with patch(
-                    "raft.services.orchestrator.write_gate_nginx_reload_stamp"
-                ) as write_stamp:
-                    with patch("raft.services.orchestrator.StackRenderer"):
-                        with patch("raft.services.orchestrator.require_origin_certs"):
-                            self.orch.render()
+        with patch("raft.services.orchestrator.GateNginxStamp") as stamp_cls:
+            stamp = stamp_cls.return_value
+            stamp.fingerprint.return_value = "disk-fp"
+            stamp.read.return_value = "stale-fp"
+            with patch("raft.services.orchestrator.StackRenderer"):
+                with patch("raft.services.orchestrator.require_origin_certs"):
+                    self.orch.render()
         self.orch.docker.reload_gate_nginx.assert_called_once()
-        write_stamp.assert_called_once_with(self.orch.stack.root, "disk-fp")
+        stamp.write.assert_called_once_with("disk-fp")
 
     def test_render_reloads_gate_when_stamp_missing(self) -> None:
         """Disk already has config but gate never recorded a reload (stale process)."""
         self.orch.docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller"]
-        with patch(
-            "raft.services.orchestrator.fingerprint_gate_nginx",
-            return_value="on-disk",
-        ):
-            with patch(
-                "raft.services.orchestrator.read_gate_nginx_reload_stamp",
-                return_value=None,
-            ):
-                with patch("raft.services.orchestrator.write_gate_nginx_reload_stamp"):
-                    with patch("raft.services.orchestrator.StackRenderer"):
-                        with patch("raft.services.orchestrator.require_origin_certs"):
-                            self.orch.render()
+        with patch("raft.services.orchestrator.GateNginxStamp") as stamp_cls:
+            stamp = stamp_cls.return_value
+            stamp.fingerprint.return_value = "on-disk"
+            stamp.read.return_value = None
+            with patch("raft.services.orchestrator.StackRenderer"):
+                with patch("raft.services.orchestrator.require_origin_certs"):
+                    self.orch.render()
         self.orch.docker.reload_gate_nginx.assert_called_once()
 
     def test_render_blocks_gate_reload_when_origin_certs_missing(self) -> None:
         write_applied_app(self.tmp_path, "app", public_host="app.test", tls="origin")
         orch = self.orchestrator()
         orch.docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller"]
-        with patch(
-            "raft.services.orchestrator.fingerprint_gate_nginx",
-            return_value="disk-fp",
-        ):
-            with patch(
-                "raft.services.orchestrator.read_gate_nginx_reload_stamp",
-                return_value="stale",
-            ):
-                with patch("raft.services.orchestrator.StackRenderer"):
-                    with pytest.raises(RuntimeError, match="Origin certs missing"):
-                        orch.render()
+        with patch("raft.services.orchestrator.GateNginxStamp") as stamp_cls:
+            stamp = stamp_cls.return_value
+            stamp.fingerprint.return_value = "disk-fp"
+            stamp.read.return_value = "stale"
+            with patch("raft.services.orchestrator.StackRenderer"):
+                with pytest.raises(RuntimeError, match="Origin certs missing"):
+                    orch.render()
         orch.docker.reload_gate_nginx.assert_not_called()
 
     def test_render_skips_gate_reload_when_stamp_matches_disk(self) -> None:
         self.orch.docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller"]
-        with patch(
-            "raft.services.orchestrator.fingerprint_gate_nginx",
-            return_value="same",
-        ):
-            with patch(
-                "raft.services.orchestrator.read_gate_nginx_reload_stamp",
-                return_value="same",
-            ):
-                with patch("raft.services.orchestrator.StackRenderer"):
-                    self.orch.render()
+        with patch("raft.services.orchestrator.GateNginxStamp") as stamp_cls:
+            stamp = stamp_cls.return_value
+            stamp.fingerprint.return_value = "same"
+            stamp.read.return_value = "same"
+            with patch("raft.services.orchestrator.StackRenderer"):
+                self.orch.render()
         self.orch.docker.reload_gate_nginx.assert_not_called()
 
     def test_render_skips_gate_reload_when_gate_down(self) -> None:
         self.orch.docker.running_services.return_value = ["raft-router"]
-        with patch(
-            "raft.services.orchestrator.fingerprint_gate_nginx",
-            return_value="disk-fp",
-        ):
-            with patch(
-                "raft.services.orchestrator.read_gate_nginx_reload_stamp",
-                return_value="stale",
-            ):
-                with patch("raft.services.orchestrator.StackRenderer"):
-                    self.orch.render()
+        with patch("raft.services.orchestrator.GateNginxStamp") as stamp_cls:
+            stamp = stamp_cls.return_value
+            stamp.fingerprint.return_value = "disk-fp"
+            stamp.read.return_value = "stale"
+            with patch("raft.services.orchestrator.StackRenderer"):
+                self.orch.render()
         self.orch.docker.reload_gate_nginx.assert_not_called()
 
     def test_start_happy_path(self) -> None:
@@ -250,10 +226,10 @@ class TestOrchestrator(ServicesTestCase):
         assert label == "tcp readiness for app"
 
     def test_redeploy_app_runs_cutover(self) -> None:
-        with patch("raft.services.orchestrator.CutoverSession") as Session:
+        with patch("raft.services.orchestrator_deploy.CutoverSession") as Session:
             session = MagicMock()
             Session.return_value = session
-            with patch("raft.services.orchestrator.DEPLOY_CUTOVER", new=()):
+            with patch("raft.services.orchestrator_deploy.DEPLOY_CUTOVER", new=()):
                 with patch.object(self.orch, "sync"):
                     self.orch.redeploy_app("app", ref_override="sha", force_sync=True)
             Session.assert_called_once()
@@ -262,9 +238,9 @@ class TestOrchestrator(ServicesTestCase):
         step = MagicMock()
         step.key = "boom"
         step.run.side_effect = RuntimeError("cutover failed")
-        with patch("raft.services.orchestrator.DEPLOY_CUTOVER", new=(step,)):
+        with patch("raft.services.orchestrator_deploy.DEPLOY_CUTOVER", new=(step,)):
             with patch.object(self.orch, "sync"):
-                with patch("raft.services.orchestrator.CutoverSession") as Session:
+                with patch("raft.services.orchestrator_deploy.CutoverSession") as Session:
                     session = MagicMock()
                     Session.return_value = session
                     with pytest.raises(RuntimeError, match="cutover failed"):
@@ -275,9 +251,9 @@ class TestOrchestrator(ServicesTestCase):
         step = MagicMock()
         step.key = "boom"
         step.run.side_effect = RuntimeError("cutover failed")
-        with patch("raft.services.orchestrator.DEPLOY_CUTOVER", new=(step,)):
+        with patch("raft.services.orchestrator_deploy.DEPLOY_CUTOVER", new=(step,)):
             with patch.object(self.orch, "sync"):
-                with patch("raft.services.orchestrator.CutoverSession") as Session:
+                with patch("raft.services.orchestrator_deploy.CutoverSession") as Session:
                     session = MagicMock()
                     session.abort_cleanup.side_effect = RuntimeError("cleanup boom")
                     Session.return_value = session

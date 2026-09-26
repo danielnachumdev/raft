@@ -10,12 +10,13 @@ import pytest
 import yaml
 
 from raft.cli import get as get_cmd
-from raft.models.manifest import parse_app_document
+from raft.models.app_document import AppDocument
 from raft.models.ports import PortSpec, port_by_name
 from raft.models.stack import load_stack
 from raft.services.apply import AppApply
 from raft.services.doctor import CheckResult, Doctor, INFRA
-from raft.services.render import StackRenderer, _compose_str
+from raft.services.compose_apps import compose_str
+from raft.services.render import StackRenderer
 
 from ..base import RaftTestCase, write_applied_app
 
@@ -37,9 +38,9 @@ def _base_docker(*, name: str = "x") -> dict:
 
 class TestVolumesGroupsCoverage(RaftTestCase):
     def test_compose_str_and_port_by_name_empty(self) -> None:
-        assert _compose_str("") == '""'
-        assert _compose_str("a:b") == '"a:b"'
-        assert _compose_str("plain") == "plain"
+        assert compose_str("") == '""'
+        assert compose_str("a:b") == '"a:b"'
+        assert compose_str("plain") == "plain"
         with pytest.raises(KeyError, match="unknown port"):
             port_by_name((), "x")
         ports = (
@@ -65,118 +66,118 @@ class TestVolumesGroupsCoverage(RaftTestCase):
     def test_parse_name_list_and_env_volume_errors(self) -> None:
         data = _base_docker()
         data["spec"]["group"] = "demo"
-        _, spec = parse_app_document(data, path=Path("a.yaml"))
+        _, spec = AppDocument.parse(data, path=Path("a.yaml"))
         assert spec.group == "demo"
 
         data2 = _base_docker()
         data2["spec"]["group"] = 123
         with pytest.raises(ValueError, match="spec.group must be a string"):
-            parse_app_document(data2, path=Path("b.yaml"))
+            AppDocument.parse(data2, path=Path("b.yaml"))
 
         data2b = _base_docker()
         data2b["spec"]["groups"] = ["demo"]
         with pytest.raises(ValueError, match="use spec.group"):
-            parse_app_document(data2b, path=Path("b2.yaml"))
+            AppDocument.parse(data2b, path=Path("b2.yaml"))
 
         data2c = _base_docker()
         data2c["spec"]["group"] = ["demo", "other"]
         with pytest.raises(ValueError, match="not a list"):
-            parse_app_document(data2c, path=Path("b3.yaml"))
+            AppDocument.parse(data2c, path=Path("b3.yaml"))
 
         data2d = _base_docker()
         data2d["spec"]["dependsOn"] = "stack-redis"
-        _, spec2d = parse_app_document(data2d, path=Path("b4.yaml"))
+        _, spec2d = AppDocument.parse(data2d, path=Path("b4.yaml"))
         assert spec2d.depends_on == ("stack-redis",)
 
         data2e = _base_docker()
         data2e["spec"]["dependsOn"] = 123
         with pytest.raises(ValueError, match="must be a string or array"):
-            parse_app_document(data2e, path=Path("b5.yaml"))
+            AppDocument.parse(data2e, path=Path("b5.yaml"))
 
         data2f = _base_docker()
         data2f["spec"]["dependsOn"] = ["a", "a", ""]
-        _, spec2f = parse_app_document(data2f, path=Path("b6.yaml"))
+        _, spec2f = AppDocument.parse(data2f, path=Path("b6.yaml"))
         assert spec2f.depends_on == ("a",)
 
         data3 = _base_docker()
         data3["spec"]["envFile"] = 1
         with pytest.raises(ValueError, match="envFile must be a string"):
-            parse_app_document(data3, path=Path("c.yaml"))
+            AppDocument.parse(data3, path=Path("c.yaml"))
 
         data4 = _base_docker()
         data4["spec"]["envFile"] = "   "
-        _, spec4 = parse_app_document(data4, path=Path("d.yaml"))
+        _, spec4 = AppDocument.parse(data4, path=Path("d.yaml"))
         assert spec4.env_file is None
 
         data5 = _base_docker()
         data5["spec"]["envFile"] = "/tmp/../secret"
         with pytest.raises(ValueError, match="must not contain"):
-            parse_app_document(data5, path=Path("e.yaml"))
+            AppDocument.parse(data5, path=Path("e.yaml"))
 
         data6 = _base_docker()
         data6["spec"]["env"] = {"K": None}
         with pytest.raises(ValueError, match="must not be null"):
-            parse_app_document(data6, path=Path("f.yaml"))
+            AppDocument.parse(data6, path=Path("f.yaml"))
 
         data7 = _base_docker()
         data7["spec"]["env"] = []
         with pytest.raises(ValueError, match="spec.env must be an object"):
-            parse_app_document(data7, path=Path("g.yaml"))
+            AppDocument.parse(data7, path=Path("g.yaml"))
 
         data8 = _base_docker()
         data8["spec"]["volumes"] = "nope"
         with pytest.raises(ValueError, match="volumes must be a list"):
-            parse_app_document(data8, path=Path("h.yaml"))
+            AppDocument.parse(data8, path=Path("h.yaml"))
 
         data9 = _base_docker()
         data9["spec"]["volumes"] = ["x"]
         with pytest.raises(ValueError, match="must be an object"):
-            parse_app_document(data9, path=Path("i.yaml"))
+            AppDocument.parse(data9, path=Path("i.yaml"))
 
         data10 = _base_docker()
         data10["spec"]["volumes"] = [{"containerPath": "/data"}]
         with pytest.raises(ValueError, match="hostPath is required"):
-            parse_app_document(data10, path=Path("j.yaml"))
+            AppDocument.parse(data10, path=Path("j.yaml"))
 
         data11 = _base_docker()
         data11["spec"]["volumes"] = [{"hostPath": "/data"}]
         with pytest.raises(ValueError, match="containerPath is required"):
-            parse_app_document(data11, path=Path("k.yaml"))
+            AppDocument.parse(data11, path=Path("k.yaml"))
 
         data12 = _base_docker()
         data12["spec"]["volumes"] = [
             {"hostPath": "/data", "containerPath": "relative"}
         ]
         with pytest.raises(ValueError, match="must be absolute"):
-            parse_app_document(data12, path=Path("l.yaml"))
+            AppDocument.parse(data12, path=Path("l.yaml"))
 
         data13 = _base_docker()
         data13["spec"]["volumes"] = [
             {"hostPath": "/data", "containerPath": "/x", "readOnly": "yes"}
         ]
         with pytest.raises(ValueError, match="readOnly must be a boolean"):
-            parse_app_document(data13, path=Path("m.yaml"))
+            AppDocument.parse(data13, path=Path("m.yaml"))
 
         data14 = _base_docker()
         data14["spec"]["env"] = {"": "x"}
         with pytest.raises(ValueError, match="non-empty"):
-            parse_app_document(data14, path=Path("n.yaml"))
+            AppDocument.parse(data14, path=Path("n.yaml"))
 
         data15 = _base_docker()
         data15["spec"]["group"] = "  "
-        _, spec15 = parse_app_document(data15, path=Path("o.yaml"))
+        _, spec15 = AppDocument.parse(data15, path=Path("o.yaml"))
         assert spec15.group is None
 
         data15b = _base_docker()
         data15b["spec"]["group"] = "Bad_Name"
         with pytest.raises(ValueError, match="spec.group"):
-            parse_app_document(data15b, path=Path("o2.yaml"))
+            AppDocument.parse(data15b, path=Path("o2.yaml"))
 
         data16 = _base_docker()
         data16["spec"]["volumes"] = [
             {"hostPath": "/data", "containerPath": "/x", "name": ""}
         ]
-        _, spec16 = parse_app_document(data16, path=Path("p.yaml"))
+        _, spec16 = AppDocument.parse(data16, path=Path("p.yaml"))
         assert spec16.volumes[0].name is None
 
     def test_get_apps_group_filter_and_spec_errors(self) -> None:

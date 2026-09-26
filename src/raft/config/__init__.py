@@ -16,7 +16,8 @@ from .paths import (
     settings_path,
     sync_product_templates,
 )
-from .settings import (
+from .settings import load_config
+from .settings_types import (
     CONFIG_FILENAME,
     EdgeConfig,
     EdgeStream,
@@ -24,7 +25,6 @@ from .settings import (
     LoggingConfig,
     RaftConfig,
     default_config,
-    load_config,
 )
 
 __all__ = [

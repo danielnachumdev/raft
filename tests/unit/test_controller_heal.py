@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from raft.config.paths import ensure_raft_home
-from raft.config.settings import HealingConfig
+from raft.config.settings_types import HealingConfig
 from raft.controller.heal import Healer, needs_heal, run_heal_forever
 from raft.errors import OperatorError
 

@@ -9,17 +9,16 @@ import pytest
 
 from raft.adapters.docker import DockerStack
 from raft.adapters.nginx import NginxUpstreams
-from raft.config.settings import EdgeConfig, EdgeStream, load_config
-from raft.models import manifest as manifest_mod
+from raft.config.settings import load_config
+from raft.config.settings_types import EdgeConfig, EdgeStream
 from raft.models.app import App
-from raft.models.manifest import (
-    AppSpec,
-    load_contract,
-    parse_app_document,
-    write_registry_app,
-)
+from raft.models.app_document import AppDocument
+from raft.models.app_spec_fields import AppSpecFields
+from raft.models.manifest import AppSpec
+from raft.models.registry import AppRegistry
 from raft.models.ports import PortSpec, parse_ports
-from raft.models.readiness import ReadinessSpec, parse_readiness
+from raft.models.readiness_parser import parse_readiness
+from raft.models.readiness_spec import ReadinessSpec
 from raft.models.stack import load_stack
 from raft.services.cutover import CutoverSession
 from raft.services.doctor import INFRA, Doctor
@@ -281,17 +280,17 @@ class TestManifestCoverage(RaftTestCase):
     def test_more_parse_errors(self) -> None:
         path = Path("x.yaml")
         with pytest.raises(ValueError, match="metadata must be an object"):
-            parse_app_document(
+            AppDocument.parse(
                 {"apiVersion": "raft/v1", "kind": "App", "metadata": "nope"},
                 path=path,
             )
         with pytest.raises(ValueError, match="metadata.name is required"):
-            parse_app_document(
+            AppDocument.parse(
                 {"apiVersion": "raft/v1", "kind": "App", "metadata": {}},
                 path=path,
             )
         with pytest.raises(ValueError, match="spec must be an object"):
-            parse_app_document(
+            AppDocument.parse(
                 {
                     "apiVersion": "raft/v1",
                     "kind": "App",
@@ -301,7 +300,7 @@ class TestManifestCoverage(RaftTestCase):
                 path=path,
             )
         with pytest.raises(ValueError, match="YAML true is not valid"):
-            parse_app_document(
+            AppDocument.parse(
                 {
                     "apiVersion": "raft/v1",
                     "kind": "App",
@@ -316,7 +315,7 @@ class TestManifestCoverage(RaftTestCase):
                 path=path,
             )
         with pytest.raises(ValueError, match="tls=origin requires"):
-            parse_app_document(
+            AppDocument.parse(
                 {
                     "apiVersion": "raft/v1",
                     "kind": "App",
@@ -362,7 +361,7 @@ spec:
 """,
             encoding="utf-8",
         )
-        c = load_contract(checkout)
+        c = AppDocument.load_contract(checkout)
         assert c.cpus_limit == "0.50"
         assert c.memory_limit == "128M"
 
@@ -669,9 +668,9 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
             },
         }
         with pytest.raises(ValueError, match="resources must be an object"):
-            parse_app_document({**base, "spec": {**base["spec"], "resources": []}}, path=path)
+            AppDocument.parse({**base, "spec": {**base["spec"], "resources": []}}, path=path)
         with pytest.raises(ValueError, match="limits/requests"):
-            parse_app_document(
+            AppDocument.parse(
                 {
                     **base,
                     "spec": {
@@ -682,16 +681,16 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
                 path=path,
             )
         with pytest.raises(ValueError, match="extraHosts"):
-            parse_app_document(
+            AppDocument.parse(
                 {**base, "spec": {**base["spec"], "extraHosts": {"a": 1}}},
                 path=path,
             )
         with pytest.raises(ValueError, match="spec.build"):
-            parse_app_document(
+            AppDocument.parse(
                 {**base, "spec": {**base["spec"], "build": []}},
                 path=path,
             )
-        app, spec = parse_app_document(
+        app, spec = AppDocument.parse(
             {
                 **base,
                 "spec": {
@@ -767,12 +766,12 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
         assert spec.host_ports() == ()
 
     def test_parse_memory_gi_and_cpu_millis(self) -> None:
-        assert manifest_mod._parse_memory("2Gi", default="1M") == "2G"
-        assert manifest_mod._parse_memory(None, default="1M") == "1M"
-        assert manifest_mod._parse_memory("  ", default="1M") == "1M"
-        assert manifest_mod._parse_cpu(None, default="0.1") == "0.1"
-        assert manifest_mod._parse_cpu("  ", default="0.1") == "0.1"
-        assert manifest_mod._parse_cpu("500m", default="0.1") == "0.5"
+        assert AppSpecFields._parse_memory("2Gi", default="1M") == "2G"
+        assert AppSpecFields._parse_memory(None, default="1M") == "1M"
+        assert AppSpecFields._parse_memory("  ", default="1M") == "1M"
+        assert AppSpecFields._parse_cpu(None, default="0.1") == "0.1"
+        assert AppSpecFields._parse_cpu("  ", default="0.1") == "0.1"
+        assert AppSpecFields._parse_cpu("500m", default="0.1") == "0.5"
 
     def test_remaining_coverage_bits(self) -> None:
         (self.tmp_path / "settings.yaml").write_text("edge:\n  streams: null\n", encoding="utf-8")
@@ -780,7 +779,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
 
         path = Path("x.yaml")
         with pytest.raises(ValueError, match="does not match expected"):
-            parse_app_document(
+            AppDocument.parse(
                 {
                     "apiVersion": "raft/v1",
                     "kind": "App",
@@ -795,7 +794,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
                 expect_name="other",
             )
         with pytest.raises(ValueError, match="spec.source must be"):
-            parse_app_document(
+            AppDocument.parse(
                 {
                     "apiVersion": "raft/v1",
                     "kind": "App",
@@ -808,7 +807,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
                 },
                 path=path,
             )
-        app, _ = parse_app_document(
+        app, _ = AppDocument.parse(
             {
                 "apiVersion": "raft/v1",
                 "kind": "App",
@@ -884,13 +883,13 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
         )
         assert app.image_ref("sha256:abc") == "ghcr.io/org/hub@sha256:abc"
 
-        assert manifest_mod._parse_cpu(2.5, default="0.1") == "2.5"
-        assert manifest_mod._parse_cpu("0.75", default="0.1") == "0.75"
-        assert manifest_mod._parse_memory("10Mi", default="1M") == "10M"
-        assert manifest_mod._parse_memory("128M", default="1M") == "128M"
+        assert AppSpecFields._parse_cpu(2.5, default="0.1") == "2.5"
+        assert AppSpecFields._parse_cpu("0.75", default="0.1") == "0.75"
+        assert AppSpecFields._parse_memory("10Mi", default="1M") == "10M"
+        assert AppSpecFields._parse_memory("128M", default="1M") == "128M"
 
         with pytest.raises(ValueError, match="spec.ports is required"):
-            parse_app_document(
+            AppDocument.parse(
                 {
                     "apiVersion": "raft/v1",
                     "kind": "App",
@@ -900,7 +899,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
                 path=Path("bare.yaml"),
             )
         with pytest.raises(ValueError, match="spec.tls must be"):
-            parse_app_document(
+            AppDocument.parse(
                 {
                     "apiVersion": "raft/v1",
                     "kind": "App",
@@ -914,7 +913,7 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
                 },
                 path=Path("x.yaml"),
             )
-        _app2, spec2 = parse_app_document(
+        _app2, spec2 = AppDocument.parse(
             {
                 "apiVersion": "raft/v1",
                 "kind": "App",
@@ -943,15 +942,14 @@ class TestRenderDoctorOrchCoverage(RaftTestCase):
                 "build": {"context": "."},
             },
         }
-        write_registry_app(self.tmp_path, doc)
+        AppRegistry(self.tmp_path).write(doc)
         with pytest.raises(ValueError, match="already used"):
-            write_registry_app(
-                self.tmp_path,
+            AppRegistry(self.tmp_path).write(
                 {
                     **doc,
                     "metadata": {"name": "other"},
                     "spec": {**doc["spec"], "path": "apps/other"},
-                },
+                }
             )
         other = self.tmp_path / "state" / "apps" / "clash.yaml"
         other.write_text(

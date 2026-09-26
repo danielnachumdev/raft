@@ -9,9 +9,9 @@ from pathlib import Path
 from typing import Callable, Dict, Optional
 
 from raft.adapters.docker import DockerStack
-from raft.config.settings import HealingConfig
+from raft.config.settings_types import HealingConfig
 from raft.errors import OperatorError
-from raft.models.manifest import load_registry
+from raft.models.registry import AppRegistry
 from raft.models.stack import Stack
 from raft.services.locking import app_and_stack_locks
 
@@ -43,39 +43,41 @@ class Healer:
             logger.debug("healing disabled; skip tick")
             return
         when = time.monotonic() if now is None else now
-        stack = Stack(root=self.home, apps=load_registry(self.home))
+        stack = Stack(root=self.home, apps=AppRegistry(self.home).load())
         for app in stack.apps:
             self._consider(app.name, app.compose_id, when)
 
     def _consider(self, name: str, compose_id: str, when: float) -> None:
         status, health = self.docker.service_runtime(compose_id)
-        if status == "running" and health in ("healthy", "none", "starting"):
-            if self.fail_counts.pop(name, None):
-                logger.info(
-                    "heal clear app=%s compose=%s status=%s health=%s",
-                    name,
-                    compose_id,
-                    status,
-                    health,
-                )
+        if self._clear_if_healthy(name, compose_id, status, health):
             return
         if not needs_heal(status, health):
             return
-
         fails = self.fail_counts.get(name, 0) + 1
         self.fail_counts[name] = fails
         logger.info(
             "heal observe app=%s compose=%s status=%s health=%s fails=%s/%s",
-            name,
-            compose_id,
-            status,
-            health,
-            fails,
-            self.config.fail_threshold,
+            name, compose_id, status, health, fails, self.config.fail_threshold,
         )
-        if fails < self.config.fail_threshold:
-            return
+        if fails >= self.config.fail_threshold and not self._blocked_by_limits(name, when):
+            self._restart(name, compose_id, status, when)
 
+    def _clear_if_healthy(
+        self, name: str, compose_id: str, status: str, health: str
+    ) -> bool:
+        if not (status == "running" and health in ("healthy", "none", "starting")):
+            return False
+        if self.fail_counts.pop(name, None):
+            logger.info(
+                "heal clear app=%s compose=%s status=%s health=%s",
+                name,
+                compose_id,
+                status,
+                health,
+            )
+        return True
+
+    def _blocked_by_limits(self, name: str, when: float) -> bool:
         restarts = self.restart_counts.get(name, 0)
         if restarts >= self.config.max_restarts:
             logger.warning(
@@ -84,8 +86,7 @@ class Healer:
                 restarts,
                 self.config.max_restarts,
             )
-            return
-
+            return True
         last = self.last_restart_at.get(name)
         if last is not None and (when - last) < self.config.cooldown_seconds:
             logger.info(
@@ -93,9 +94,8 @@ class Healer:
                 name,
                 self.config.cooldown_seconds - (when - last),
             )
-            return
-
-        self._restart(name, compose_id, status, when)
+            return True
+        return False
 
     def _restart(self, name: str, compose_id: str, status: str, when: float) -> None:
         logger.info(
@@ -104,14 +104,7 @@ class Healer:
             compose_id,
             status,
         )
-        try:
-            with app_and_stack_locks(self.home, name):
-                if status in ("exited", "dead", "missing"):
-                    self.docker.start_service(compose_id)
-                else:
-                    self.docker.restart_service(compose_id)
-        except OperatorError as exc:
-            logger.error("heal failed app=%s: %s", name, exc)
+        if not self._do_restart(name, compose_id, status):
             return
         self.fail_counts[name] = 0
         self.restart_counts[name] = self.restart_counts.get(name, 0) + 1
@@ -121,6 +114,18 @@ class Healer:
             name,
             self.restart_counts[name],
         )
+
+    def _do_restart(self, name: str, compose_id: str, status: str) -> bool:
+        try:
+            with app_and_stack_locks(self.home, name):
+                if status in ("exited", "dead", "missing"):
+                    self.docker.start_service(compose_id)
+                else:
+                    self.docker.restart_service(compose_id)
+        except OperatorError as exc:
+            logger.error("heal failed app=%s: %s", name, exc)
+            return False
+        return True
 
 
 def run_heal_forever(

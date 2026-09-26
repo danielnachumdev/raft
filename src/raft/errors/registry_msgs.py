@@ -38,6 +38,19 @@ def registry_login_fix_steps(
     repo: Optional[str] = None,
 ) -> list[str]:
     """Ordered operator steps to pull a (likely private) image on the VPS."""
+    token_step, login = _registry_credential_steps(image, app=app)
+    return [
+        token_step,
+        "Generate the token and copy it once",
+        login,
+        f"docker pull {image}",
+        _registry_retry_step(app=app, repo=repo),
+    ]
+
+
+def _registry_credential_steps(
+    image: str, *, app: Optional[str]
+) -> tuple[str, str]:
     if is_ghcr_image(image):
         desc = f"raft-ghcr-{app}" if app else "raft-ghcr-pull"
         token_step = (
@@ -48,28 +61,23 @@ def registry_login_fix_steps(
             "echo 'YOUR_PAT' | docker login ghcr.io -u YOUR_GITHUB_USERNAME "
             "--password-stdin"
         )
-    else:
-        token_step = "Create a registry credential that can pull this image"
-        login = "docker login <registry>   # credentials for this image's registry"
+        return token_step, login
+    return (
+        "Create a registry credential that can pull this image",
+        "docker login <registry>   # credentials for this image's registry",
+    )
 
+
+def _registry_retry_step(*, app: Optional[str], repo: Optional[str]) -> str:
     if repo:
-        retry = (
+        return (
             f"raft sync {app}   # or: raft apply --git {repo}"
             if app
             else f"raft apply --git {repo}"
         )
-    elif app:
-        retry = f"raft sync {app}   # or re-run: raft apply --git <repo>"
-    else:
-        retry = "raft sync <app>   # or re-run: raft apply --git <repo>"
-
-    return [
-        token_step,
-        "Generate the token and copy it once",
-        login,
-        f"docker pull {image}",
-        retry,
-    ]
+    if app:
+        return f"raft sync {app}   # or re-run: raft apply --git <repo>"
+    return "raft sync <app>   # or re-run: raft apply --git <repo>"
 
 
 def registry_unauthorized_message(

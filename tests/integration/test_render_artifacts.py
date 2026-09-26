@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from raft.config.settings import EdgeConfig
+from raft.config.settings_types import EdgeConfig
 
 from tests.integration.shared.artifacts import load_compose_apps, read_text
 from tests.shared.raft_home import (

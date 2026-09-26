@@ -8,7 +8,7 @@ from typing import Optional, Sequence
 import yaml
 
 from raft.config.paths import ensure_raft_home
-from raft.config.settings import EdgeConfig, EdgeStream
+from raft.config.settings_types import EdgeConfig, EdgeStream
 from raft.models.stack import load_stack
 from raft.services.apply import AppApply
 from raft.services.render import StackRenderer

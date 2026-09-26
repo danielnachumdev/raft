@@ -59,6 +59,22 @@ class SelfUpdate:
         url = os.environ.get("RAFT_INSTALL_URL", DEFAULT_INSTALL_URL)
         before = install_identity()
         say("Updating raft…", style="info")
+        self._run_installer(url)
+        after = install_identity()
+        if before is not None and before == after:
+            say("raft is already up to date", style="info")
+            return
+        say("OK: raft updated", style="ok")
+        say(
+            "Next: align the running stack with this release — templates and "
+            "Compose ids can change. Typical path: `raft render`, then "
+            "`raft redeploy <app|router>` for targeted updates, or "
+            "`raft down && raft up` when edge/service names or schemas shifted. "
+            "Finish with `raft doctor`.",
+            style="info",
+        )
+
+    def _run_installer(self, url: str) -> None:
         try:
             self.sh.run(
                 [
@@ -75,16 +91,3 @@ class SelfUpdate:
                 f"Fix: check outbound HTTPS, then retry `raft update`\n"
                 f"     or run manually: curl -fsSL {url} | bash"
             ) from exc
-        after = install_identity()
-        if before is not None and before == after:
-            say("raft is already up to date", style="info")
-            return
-        say("OK: raft updated", style="ok")
-        say(
-            "Next: align the running stack with this release — templates and "
-            "Compose ids can change. Typical path: `raft render`, then "
-            "`raft redeploy <app|router>` for targeted updates, or "
-            "`raft down && raft up` when edge/service names or schemas shifted. "
-            "Finish with `raft doctor`.",
-            style="info",
-        )

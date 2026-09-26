@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import sys
 
-from raft.config.settings import RaftConfig
+from raft.config.settings_types import RaftConfig
 
 __all__ = ["setup_controller_logging"]
 

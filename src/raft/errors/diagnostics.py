@@ -78,23 +78,25 @@ def compose_services_from_failure_text(
             seen.add(service)
             found.append(service)
 
+    _add_from_container_names(text, _add)
+    _add_known_tokens(text, known_services, _add)
+    return found
+
+
+def _add_from_container_names(text: str, add) -> None:
     for match in _CONTAINER_FAIL_RE.finditer(text or ""):
         name = match.group("name")
         mapped = _PROJECT_CONTAINER_RE.match(name)
-        if mapped:
-            _add(mapped.group("service"))
-        else:
-            _add(name)
+        add(mapped.group("service") if mapped else name)
 
-    # Prefer known compose ids that appear as whole tokens (longer first).
+
+def _add_known_tokens(text: str, known_services: Sequence[str], add) -> None:
     ordered = sorted(known_services, key=len, reverse=True)
     lower = (text or "").lower()
     for service in ordered:
         token = service.lower()
         if token and token in lower:
-            _add(service)
-
-    return found
+            add(service)
 
 
 def prefer_errorish_lines(text: str, *, max_lines: int = 12) -> str:

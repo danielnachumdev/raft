@@ -6,13 +6,14 @@ import os
 import re
 import shutil
 from pathlib import Path
+from typing import Optional
 
 from raft.errors import OperatorError
 
 from ..adapters.shell import Shell
 from ..models import Stack
 from ..ui import say
-from .auth import default_ssh_dir
+from .auth_urls import default_ssh_dir
 
 _RAFT_SSH_BLOCKS = re.compile(
     r"# BEGIN raft:[^\n]*\n.*?# END raft:[^\n]*\n?",
@@ -35,33 +36,8 @@ class Uninstall:
         keep_checkout = Path(
             os.environ.get("RAFT_HOME", str(Path.home() / "raft"))
         ).expanduser()
-
         if not yes:
-            say("This permanently removes raft from this machine:", style="warn")
-            say(f"  • Docker Compose project in {home} (containers, orphans, volumes)")
-            say(f"  • Data home {home} (settings, applied apps, certs, generated, …)")
-            say(f"  • Deploy keys {keys_dir}/ and raft Host blocks in {config_path}")
-            if self._looks_like_raft_checkout(keep_checkout):
-                say(f"  • Optional checkout {keep_checkout}")
-            say("  • `uv tool uninstall raft` (removes the CLI from PATH)")
-            if uv:
-                say("  • `uv` itself (~/.local/bin/uv, uv data dirs) — requested via --uv")
-            else:
-                say(
-                    "  • leaves `uv` installed (add --uv only if nothing else needs it)",
-                    style="info",
-                )
-            say(
-                "Git-host deploy keys and Cloudflare Origin certs on the CDN "
-                "are not revoked — remove those manually if needed.",
-                style="info",
-            )
-            raise OperatorError(
-                "refusing to uninstall without confirmation.\n"
-                "Fix: raft uninstall --yes\n"
-                "     raft uninstall --yes --uv   # also remove the uv installer"
-            )
-
+            self._refuse_without_yes(home, keys_dir, config_path, keep_checkout, uv=uv)
         self._compose_down()
         self._remove_raft_images()
         self._scrub_ssh(keys_dir, config_path)
@@ -72,6 +48,74 @@ class Uninstall:
         if uv:
             self._remove_uv()
         say("OK: raft uninstalled", style="ok")
+
+    def _refuse_without_yes(
+        self,
+        home: Path,
+        keys_dir: Path,
+        config_path: Path,
+        keep_checkout: Path,
+        *,
+        uv: bool,
+    ) -> None:
+        self._print_uninstall_plan(home, keys_dir, config_path, keep_checkout, uv=uv)
+        raise OperatorError(
+            "refusing to uninstall without confirmation.\n"
+            "Fix: raft uninstall --yes\n"
+            "     raft uninstall --yes --uv   # also remove the uv installer"
+        )
+
+    def _print_uninstall_plan(
+        self, home, keys_dir, config_path, keep_checkout, *, uv: bool
+    ) -> None:
+        say("This permanently removes raft from this machine:", style="warn")
+        say(f"  • Docker Compose project in {home} (containers, orphans, volumes)")
+        say(f"  • Data home {home} (settings, applied apps, certs, generated, …)")
+        say(f"  • Deploy keys {keys_dir}/ and raft Host blocks in {config_path}")
+        if self._looks_like_raft_checkout(keep_checkout):
+            say(f"  • Optional checkout {keep_checkout}")
+        say("  • `uv tool uninstall raft` (removes the CLI from PATH)")
+        if uv:
+            say("  • `uv` itself (~/.local/bin/uv, uv data dirs) — requested via --uv")
+        else:
+            say(
+                "  • leaves `uv` installed (add --uv only if nothing else needs it)",
+                style="info",
+            )
+        say(
+            "Git-host deploy keys and Cloudflare Origin certs on the CDN "
+            "are not revoked — remove those manually if needed.",
+            style="info",
+        )
+
+    def _remove_uv_binaries(self) -> None:
+        home = Path.home()
+        binaries = self._uv_binary_candidates(home)
+        seen: set[Path] = set()
+        for path in binaries:
+            try:
+                resolved = path.resolve()
+            except OSError:
+                resolved = path
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            if path.is_file() or path.is_symlink():
+                say(f"Removing {path}", style="info")
+                path.unlink(missing_ok=True)
+
+    @staticmethod
+    def _uv_binary_candidates(home: Path) -> list[Path]:
+        binaries: list[Path] = []
+        which = shutil.which("uv")
+        if which:
+            binaries.append(Path(which))
+        binaries.extend([
+            home / ".local" / "bin" / "uv",
+            home / ".local" / "bin" / "uvx",
+            home / ".cargo" / "bin" / "uv",
+        ])
+        return binaries
 
     def _compose_down(self) -> None:
         compose = self.stack.root / "compose.yaml"
@@ -92,6 +136,22 @@ class Uninstall:
 
     def _remove_raft_images(self) -> None:
         """Remove locally built ``raft-*`` images (not shared base images)."""
+        for ref in self._list_raft_image_refs():
+            say(f"Removing image {ref}", style="info")
+            self.sh.docker("rmi", "-f", ref, check=False, capture=True)
+
+    def _list_raft_image_refs(self) -> list[str]:
+        listed = self._docker_image_list_stdout()
+        if listed is None:
+            return []
+        return [
+            line.strip()
+            for line in listed.splitlines()
+            if line.strip().startswith("raft-")
+            and not line.strip().endswith(":<none>")
+        ]
+
+    def _docker_image_list_stdout(self) -> Optional[str]:
         try:
             listed = self.sh.docker(
                 "images",
@@ -101,17 +161,10 @@ class Uninstall:
                 capture=True,
             )
         except Exception:  # noqa: BLE001
-            return
+            return None
         if listed.returncode != 0:
-            return
-        targets = [
-            line.strip()
-            for line in (listed.stdout or "").splitlines()
-            if line.strip().startswith("raft-") and not line.strip().endswith(":<none>")
-        ]
-        for ref in targets:
-            say(f"Removing image {ref}", style="info")
-            self.sh.docker("rmi", "-f", ref, check=False, capture=True)
+            return None
+        return listed.stdout or ""
 
     def _scrub_ssh(self, keys_dir: Path, config_path: Path) -> None:
         if keys_dir.is_dir():
@@ -162,31 +215,12 @@ class Uninstall:
     def _remove_uv(self) -> None:
         """Best-effort removal of the uv binary and its data dirs (opt-in)."""
         say("Removing uv (requested via --uv)…", style="info")
-        home = Path.home()
-        binaries: list[Path] = []
-        which = shutil.which("uv")
-        if which:
-            binaries.append(Path(which))
-        binaries.extend(
-            [
-                home / ".local" / "bin" / "uv",
-                home / ".local" / "bin" / "uvx",
-                home / ".cargo" / "bin" / "uv",
-            ]
-        )
-        seen: set[Path] = set()
-        for path in binaries:
-            try:
-                resolved = path.resolve()
-            except OSError:
-                resolved = path
-            if resolved in seen:
-                continue
-            seen.add(resolved)
-            if path.is_file() or path.is_symlink():
-                say(f"Removing {path}", style="info")
-                path.unlink(missing_ok=True)
+        self._remove_uv_binaries()
+        self._remove_uv_data_dirs()
 
+    @staticmethod
+    def _remove_uv_data_dirs() -> None:
+        home = Path.home()
         data_dirs = [
             Path(os.environ["UV_TOOL_DIR"]) if os.environ.get("UV_TOOL_DIR") else None,
             home / ".local" / "share" / "uv",
@@ -194,8 +228,6 @@ class Uninstall:
             home / ".cache" / "uv",
         ]
         for path in data_dirs:
-            if path is None:
-                continue
-            if path.is_dir():
+            if path is not None and path.is_dir():
                 say(f"Removing {path}", style="info")
                 shutil.rmtree(path, ignore_errors=True)

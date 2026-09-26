@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 
 from raft.adapters.shell import Shell
-from raft.models.manifest import load_registry
+from raft.models.registry import AppRegistry
 from raft.models.stack import Stack
 
 __all__ = ["run_prereq_smoke"]
@@ -16,15 +16,27 @@ logger = logging.getLogger(__name__)
 
 def run_prereq_smoke(home: Path, sh: Shell) -> None:
     """Verify Docker API + Compose plugin + registry are readable."""
+    _smoke_docker(sh)
+    _smoke_compose(sh)
+    # Do not call load_stack/ensure_raft_home: data home is mounted :ro.
+    stack = Stack(root=home, apps=AppRegistry(home).load())
+    logger.info(
+        "data home ok root=%s apps=%s core=%s",
+        home,
+        len(stack.apps),
+        ",".join(stack.core_services),
+    )
+
+
+def _smoke_docker(sh: Shell) -> None:
     version = sh.docker(
-        "version",
-        "--format",
-        "{{.Server.Version}}",
-        capture=True,
+        "version", "--format", "{{.Server.Version}}", capture=True
     )
     server = (version.stdout or "").strip() or "(unknown)"
     logger.info("docker engine reachable version=%s", server)
 
+
+def _smoke_compose(sh: Shell) -> None:
     compose = sh.compose("version", capture=True, check=False)
     if compose.returncode != 0:
         raise RuntimeError(
@@ -32,12 +44,3 @@ def run_prereq_smoke(home: Path, sh: Shell) -> None:
             "Fix: rebuild raft-controller image (`raft down && raft up`)"
         )
     logger.info("docker compose reachable")
-
-    # Do not call load_stack/ensure_raft_home: data home is mounted :ro.
-    stack = Stack(root=home, apps=load_registry(home))
-    logger.info(
-        "data home ok root=%s apps=%s core=%s",
-        home,
-        len(stack.apps),
-        ",".join(stack.core_services),
-    )

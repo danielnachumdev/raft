@@ -14,49 +14,40 @@ class PublicHostChecks:
         http = HttpProbe(ctx.stack)
         results: list[CheckResult] = []
         for app in ctx.stack.apps:
-            if not app.public_host:
-                continue
-            host = app.public_host
-            if http.public_host_ok(app):
-                results.append(
-                    CheckResult(
-                        app.compose_id,
-                        "host",
-                        "ok",
-                        f"Host {host}",
-                    )
-                )
-            else:
-                detail = f"Host {host} not OK on {ctx.stack.public_base_url}"
-                try:
-                    raw = ctx.docker.diagnostics_for(app.compose_id)
-                except Exception:  # noqa: BLE001 — doctor must still report host fail
-                    raw = ""
-                diag = raw if isinstance(raw, str) else ""
-                if diag:
-                    # Keep the first log line in the detail so the table stays scannable.
-                    first = next(
-                        (
-                            line
-                            for line in diag.splitlines()
-                            if line and not line.startswith("---")
-                        ),
-                        "",
-                    )
-                    if first:
-                        detail = f"{detail} — {first}"
-                results.append(
-                    CheckResult(
-                        app.compose_id,
-                        "host",
-                        "fail",
-                        detail,
-                        fix=(
-                            "raft render && raft redeploy router   "
-                            "# gate must reach raft-router; check certs / upstream; "
-                            f"docker compose -f ~/.raft/compose.yaml logs --tail=40 "
-                            f"{app.compose_id}"
-                        ),
-                    )
-                )
+            if app.public_host:
+                results.append(self._probe(ctx, http, app))
         return results
+
+    def _probe(self, ctx: DoctorContext, http: HttpProbe, app) -> CheckResult:
+        host = app.public_host
+        if http.public_host_ok(app):
+            return CheckResult(app.compose_id, "host", "ok", f"Host {host}")
+        detail = f"Host {host} not OK on {ctx.stack.public_base_url}"
+        first = self._first_diag_line(ctx, app)
+        if first:
+            detail = f"{detail} — {first}"
+        return CheckResult(
+            app.compose_id,
+            "host",
+            "fail",
+            detail,
+            fix=(
+                "raft render && raft redeploy router   "
+                "# gate must reach raft-router; check certs / upstream; "
+                f"docker compose -f ~/.raft/compose.yaml logs --tail=40 "
+                f"{app.compose_id}"
+            ),
+        )
+
+    @staticmethod
+    def _first_diag_line(ctx: DoctorContext, app) -> str:
+        try:
+            raw = ctx.docker.diagnostics_for(app.compose_id)
+        except Exception:  # noqa: BLE001 — doctor must still report host fail
+            return ""
+        if not isinstance(raw, str) or not raw:
+            return ""
+        return next(
+            (line for line in raw.splitlines() if line and not line.startswith("---")),
+            "",
+        )

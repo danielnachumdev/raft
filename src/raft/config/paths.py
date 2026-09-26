@@ -77,6 +77,14 @@ def ensure_raft_home(
 ) -> Path:
     root = home if home is not None else raft_home()
     root.mkdir(parents=True, exist_ok=True)
+    _ensure_data_dirs(root)
+    pkg = package_root if package_root is not None else find_package_root()
+    sync_product_templates(root, pkg)
+    _ensure_compose_stubs(root)
+    return root
+
+
+def _ensure_data_dirs(root: Path) -> None:
     for rel in (
         GENERATED_DIRNAME,
         DEPLOY_DIRNAME,
@@ -93,9 +101,8 @@ def ensure_raft_home(
     ):
         (root / rel).mkdir(parents=True, exist_ok=True)
 
-    pkg = package_root if package_root is not None else find_package_root()
-    sync_product_templates(root, pkg)
 
+def _ensure_compose_stubs(root: Path) -> None:
     stub = root / GENERATED_DIRNAME / "compose.apps.yaml"
     if not stub.is_file():
         stub.write_text(
@@ -113,7 +120,6 @@ def ensure_raft_home(
             '      - "443:443"\n',
             encoding="utf-8",
         )
-    return root
 
 
 def sync_product_templates(home: Path, package_root: Path) -> None:
@@ -199,6 +205,30 @@ def _write_controller_pyproject_from_installed(dest: Path) -> None:
             "controller build needs pyproject.toml (checkout) or an installed raft "
             "distribution to read dependencies"
         ) from exc
+    deps = _main_deps_from_requires(reqs)
+    if not deps:
+        raise FileNotFoundError(
+            "installed raft distribution has no main dependencies for controller"
+        )
+    dest.write_text(_controller_pyproject_text(deps), encoding="utf-8")
+
+
+def _controller_pyproject_text(deps: list[str]) -> str:
+    lines = [
+        "[project]",
+        'name = "raft-controller-deps"',
+        'version = "0"',
+        'requires-python = ">=3.8"',
+        "dependencies = [",
+    ]
+    for dep in deps:
+        escaped = dep.replace("\\", "\\\\").replace('"', '\\"')
+        lines.append(f'  "{escaped}",')
+    lines.append("]")
+    return "\n".join(lines) + "\n"
+
+
+def _main_deps_from_requires(reqs) -> list[str]:
     if not reqs:
         raise FileNotFoundError(
             "installed raft distribution has no requires; cannot build controller deps"
@@ -212,19 +242,4 @@ def _write_controller_pyproject_from_installed(dest: Path) -> None:
             deps.append(name_part.strip())
         else:
             deps.append(raw.strip())
-    if not deps:
-        raise FileNotFoundError(
-            "installed raft distribution has no main dependencies for controller"
-        )
-    lines = [
-        "[project]",
-        'name = "raft-controller-deps"',
-        'version = "0"',
-        'requires-python = ">=3.8"',
-        "dependencies = [",
-    ]
-    for dep in deps:
-        escaped = dep.replace("\\", "\\\\").replace('"', '\\"')
-        lines.append(f'  "{escaped}",')
-    lines.append("]")
-    dest.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return deps

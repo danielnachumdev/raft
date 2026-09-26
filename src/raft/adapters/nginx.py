@@ -44,28 +44,36 @@ class NginxUpstreams:
     ) -> None:
         ports = (port,) if port is not None else self._http_ports(app)
         for p in ports:
-            path = self.stack.upstream_file(app, p)
-            upstream = self.stack.upstream_name(app, p)
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(
-                "# Managed by raft — do not hand-edit while deploying.\n"
-                f"upstream {upstream} {{\n"
-                f"    server {target_hostname}:{p.container_port};\n"
-                "}\n",
-                encoding="utf-8",
-            )
-            logger.info(
-                "point %s/%s upstream at %s:%s",
-                app.name,
-                p.name,
-                target_hostname,
-                p.container_port,
-            )
-            if not reload:
-                continue
-            if not self.docker.router_sees_upstream_target(app, target_hostname, p):
-                raise OperatorError(
-                    f"router container does not see upstream target {target_hostname!r} yet.\n"
-                    f"Fix: wait for the router mount sync, or: raft redeploy router; "
-                    f"verify generated/nginx/upstreams/"
-                )
+            self._write_upstream(app, target_hostname, p)
+            if reload:
+                self._assert_router_sees(app, target_hostname, p)
+
+    def _write_upstream(self, app: App, target_hostname: str, p: PortSpec) -> None:
+        path = self.stack.upstream_file(app, p)
+        upstream = self.stack.upstream_name(app, p)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            "# Managed by raft — do not hand-edit while deploying.\n"
+            f"upstream {upstream} {{\n"
+            f"    server {target_hostname}:{p.container_port};\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        logger.info(
+            "point %s/%s upstream at %s:%s",
+            app.name,
+            p.name,
+            target_hostname,
+            p.container_port,
+        )
+
+    def _assert_router_sees(
+        self, app: App, target_hostname: str, p: PortSpec
+    ) -> None:
+        if self.docker.router_sees_upstream_target(app, target_hostname, p):
+            return
+        raise OperatorError(
+            f"router container does not see upstream target {target_hostname!r} yet.\n"
+            f"Fix: wait for the router mount sync, or: raft redeploy router; "
+            f"verify generated/nginx/upstreams/"
+        )

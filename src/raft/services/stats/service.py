@@ -97,16 +97,7 @@ def _pids(raw: Any) -> Optional[int]:
 
 
 def _host_stats(resources: HostResources) -> HostStats:
-    mem = None
-    total = available = None
-    if resources.memory is not None:
-        total = resources.memory.total_bytes
-        available = resources.memory.available_bytes
-        mem = MemoryUsage(
-            used_bytes=resources.memory.used_bytes,
-            limit_bytes=resources.memory.total_bytes,
-            used_percent=resources.memory.used_percent,
-        )
+    mem, total, available = _host_memory(resources)
     disk = resources.disk
     return HostStats(
         cpus=resources.cpus,
@@ -123,6 +114,19 @@ def _host_stats(resources: HostResources) -> HostStats:
     )
 
 
+def _host_memory(
+    resources: HostResources,
+) -> tuple[Optional[MemoryUsage], Optional[int], Optional[int]]:
+    if resources.memory is None:
+        return None, None, None
+    mem = MemoryUsage(
+        used_bytes=resources.memory.used_bytes,
+        limit_bytes=resources.memory.total_bytes,
+        used_percent=resources.memory.used_percent,
+    )
+    return mem, resources.memory.total_bytes, resources.memory.available_bytes
+
+
 def _container_from_row(
     *,
     service: str,
@@ -135,20 +139,7 @@ def _container_from_row(
     stats_row: Optional[dict[str, Any]],
     inspect_memory: Optional[int],
 ) -> ContainerStats:
-    cpu = mem_pct = None
-    used = limit = None
-    net = IoPair(None, None)
-    block = IoPair(None, None)
-    pids = None
-    if stats_row:
-        cpu = parse_percent(str(stats_row.get("CPUPerc", "")))
-        mem_pct = parse_percent(str(stats_row.get("MemPerc", "")))
-        used, limit = parse_docker_pair(str(stats_row.get("MemUsage", "")))
-        rx, tx = parse_docker_pair(str(stats_row.get("NetIO", "")))
-        rd, wr = parse_docker_pair(str(stats_row.get("BlockIO", "")))
-        net = IoPair(rx, tx)
-        block = IoPair(rd, wr)
-        pids = _pids(stats_row.get("PIDs"))
+    cpu, mem_pct, used, limit, net, block, pids = _row_metrics(stats_row)
     if limit is None and inspect_memory and inspect_memory > 0:
         limit = inspect_memory
     return ContainerStats(
@@ -164,6 +155,35 @@ def _container_from_row(
         network=net,
         block_io=block,
         pids=pids,
+    )
+
+
+def _row_metrics(
+    stats_row: Optional[dict[str, Any]],
+) -> tuple[
+    Optional[float],
+    Optional[float],
+    Optional[int],
+    Optional[int],
+    IoPair,
+    IoPair,
+    Optional[int],
+]:
+    if not stats_row:
+        return None, None, None, None, IoPair(None, None), IoPair(None, None), None
+    cpu = parse_percent(str(stats_row.get("CPUPerc", "")))
+    mem_pct = parse_percent(str(stats_row.get("MemPerc", "")))
+    used, limit = parse_docker_pair(str(stats_row.get("MemUsage", "")))
+    rx, tx = parse_docker_pair(str(stats_row.get("NetIO", "")))
+    rd, wr = parse_docker_pair(str(stats_row.get("BlockIO", "")))
+    return (
+        cpu,
+        mem_pct,
+        used,
+        limit,
+        IoPair(rx, tx),
+        IoPair(rd, wr),
+        _pids(stats_row.get("PIDs")),
     )
 
 
@@ -184,6 +204,20 @@ class Stats:
         if refresh_apps:
             self._reload_stack()
         host = _host_stats(collect_host_resources(disk_path=self.stack.root))
+        targets = self._targets()
+        id_by_service = self._container_ids(targets)
+        stats_by_id = self.docker.containers_stats(list(id_by_service.values()))
+        containers = [
+            self._one_container(
+                service, role, app_name, group, allocated, id_by_service, stats_by_id
+            )
+            for service, role, app_name, group, allocated in targets
+        ]
+        return StatsSnapshot(host=host, containers=tuple(containers))
+
+    def _targets(
+        self,
+    ) -> list[tuple[str, str, Optional[str], Optional[str], AllocatedResources]]:
         targets: list[tuple[str, str, Optional[str], Optional[str], AllocatedResources]] = [
             (self.stack.gate, "gate", None, EDGE_GROUP, _edge_allocated()),
             (self.stack.router, "router", None, EDGE_GROUP, _edge_allocated()),
@@ -199,52 +233,52 @@ class Stats:
                     _app_allocated(self.stack, app),
                 )
             )
+        return targets
 
+    def _container_ids(
+        self,
+        targets: list[tuple[str, str, Optional[str], Optional[str], AllocatedResources]],
+    ) -> dict[str, str]:
         id_by_service: dict[str, str] = {}
         for service, *_rest in targets:
             cid = self.docker.try_service_container_id(service)
             if cid:
                 id_by_service[service] = cid
+        return id_by_service
 
-        stats_by_id = self.docker.containers_stats(list(id_by_service.values()))
+    def _one_container(
+        self,
+        service: str,
+        role: str,
+        app_name: Optional[str],
+        group: Optional[str],
+        allocated: AllocatedResources,
+        id_by_service: dict[str, str],
+        stats_by_id: dict[str, dict[str, Any]],
+    ) -> ContainerStats:
+        cid = id_by_service.get(service)
+        if not cid:
+            return self._missing_container(service, role, app_name, group, allocated)
+        runtime = self.docker.container_inspect_runtime(cid) or {}
+        inspect_mem = runtime.get("memory_bytes")
+        return _container_from_row(
+            service=service, role=role, app=app_name, group=group,
+            allocated=allocated,
+            status=str(runtime.get("status") or "unknown"),
+            uptime_seconds=_parse_started_at(str(runtime.get("started_at") or "")),
+            stats_row=stats_by_id.get(cid),
+            inspect_memory=inspect_mem if isinstance(inspect_mem, int) else None,
+        )
 
-        containers: list[ContainerStats] = []
-        for service, role, app_name, group, allocated in targets:
-            cid = id_by_service.get(service)
-            if not cid:
-                containers.append(
-                    _container_from_row(
-                        service=service,
-                        role=role,
-                        app=app_name,
-                        group=group,
-                        allocated=allocated,
-                        status="not running",
-                        uptime_seconds=None,
-                        stats_row=None,
-                        inspect_memory=None,
-                    )
-                )
-                continue
-            runtime = self.docker.container_inspect_runtime(cid) or {}
-            status = str(runtime.get("status") or "unknown")
-            uptime = _parse_started_at(str(runtime.get("started_at") or ""))
-            inspect_mem = runtime.get("memory_bytes")
-            mem_limit = inspect_mem if isinstance(inspect_mem, int) else None
-            containers.append(
-                _container_from_row(
-                    service=service,
-                    role=role,
-                    app=app_name,
-                    group=group,
-                    allocated=allocated,
-                    status=status,
-                    uptime_seconds=uptime,
-                    stats_row=stats_by_id.get(cid),
-                    inspect_memory=mem_limit,
-                )
-            )
-        return StatsSnapshot(host=host, containers=tuple(containers))
+    @staticmethod
+    def _missing_container(
+        service, role, app_name, group, allocated
+    ) -> ContainerStats:
+        return _container_from_row(
+            service=service, role=role, app=app_name, group=group,
+            allocated=allocated, status="not running",
+            uptime_seconds=None, stats_row=None, inspect_memory=None,
+        )
 
     def report(self, *, as_json: bool = False, live: bool = False) -> int:
         if as_json and live:

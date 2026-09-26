@@ -5,8 +5,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from raft.models.stack import Stack
-from raft.services.auth import (
-    GitAuthManager,
+from raft.services.auth import GitAuthManager
+from raft.services.auth_urls import (
     default_ssh_dir,
     host_alias,
     parse_ssh_git_url,
@@ -48,7 +48,7 @@ class TestDefaultSshDir(ServicesTestCase):
 
     def test_home_fallback(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("RAFT_SSH_DIR", raising=False)
-        monkeypatch.setattr("raft.services.auth.Path.home", lambda: self.tmp_path)
+        monkeypatch.setattr("raft.services.auth_urls.Path.home", lambda: self.tmp_path)
         assert default_ssh_dir() == (self.tmp_path / ".ssh").resolve()
 
 
@@ -95,7 +95,7 @@ class TestGitAuthManager(ServicesTestCase):
     def test_generate_key_failure(self) -> None:
         self.shell.run.side_effect = RuntimeError("ssh-keygen missing")
         with pytest.raises(RuntimeError, match="ssh-keygen failed"):
-            self.mgr._generate_key("svc")
+            self.mgr.keys._generate_key("svc", comment="test")
 
     def test_setup_with_repo_before_apply(
         self, capsys: pytest.CaptureFixture[str]
@@ -194,9 +194,9 @@ class TestGitAuthManager(ServicesTestCase):
         assert self.mgr.list_services() == ["svc"]
         assert "AAAA" in self.mgr.show_pubkey("svc")
 
-        self.mgr._ensure_ssh_layout()
+        self.mgr.keys.ensure_layout()
         self.mgr.config_path.write_text("Host keep\n  HostName z", encoding="utf-8")
-        self.mgr._upsert_ssh_config("svc", alias="github.com-raft-svc", hostname="github.com")
+        self.mgr.keys.upsert_ssh_config("svc", alias="github.com-raft-svc", hostname="github.com")
         assert self.mgr.config_path.read_text(encoding="utf-8").endswith("\n")
 
         self.shell.git.return_value = MagicMock(returncode=0, stdout="abc\tHEAD\n", stderr="")

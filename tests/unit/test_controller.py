@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from raft.config.paths import ensure_raft_home
-from raft.config.settings import default_config
+from raft.config.settings_types import default_config
 from raft.controller import main, run_prereq_smoke
 from raft.controller.logging import setup_controller_logging
 from raft.controller.run import main as main_impl
@@ -37,7 +37,8 @@ class TestControllerPrereq:
         sh.docker.return_value = version
         sh.compose.return_value = compose
 
-        with patch("raft.controller.smoke.load_registry", return_value=()):
+        with patch("raft.controller.smoke.AppRegistry") as registry_cls:
+            registry_cls.return_value.load.return_value = ()
             run_prereq_smoke(home, sh)
 
         sh.docker.assert_called_once_with(

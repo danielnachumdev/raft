@@ -234,7 +234,7 @@ class TestCutoverSession(ServicesTestCase):
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
         from raft.errors import OperatorError
-        from raft.services.cutover import wait_until
+        from raft.services.wait import wait_until
 
         clock = {"t": 0.0}
 
@@ -268,7 +268,7 @@ class TestCutoverSession(ServicesTestCase):
 
     def test_wait_until_logs_progress(self, caplog: pytest.LogCaptureFixture) -> None:
         from raft.errors import OperatorError
-        from raft.services.cutover import wait_until
+        from raft.services.wait import wait_until
 
         clock = {"t": 0.0}
 

@@ -104,12 +104,25 @@ def run_compose_checked(
 ):
     """Run ``docker compose *args``; raise OperatorError on failure.
 
-    When ``stream`` is True, compose stdout/stderr inherit the terminal so
-    operators see live ``up``/``down`` progress (no capture buffering).
+    When ``stream`` is True, live progress goes to the terminal (no capture).
     """
     result = shell.compose(*args, capture=not stream, check=False)
     if result.returncode == 0:
         return result
+    _raise_compose_checked_failure(
+        result, args, action=action, hint=hint, stream=stream
+    )
+    return result  # pragma: no cover
+
+
+def _raise_compose_checked_failure(
+    result: Any,
+    args: Sequence[str],
+    *,
+    action: str,
+    hint: str,
+    stream: bool,
+) -> None:
     if stream:
         # Failure details already printed by compose on the terminal.
         raise OperatorError(
@@ -126,7 +139,6 @@ def run_compose_checked(
         stderr=(result.stderr or "").strip(),
     )
     raise_for_compose_failure(exc, action=action, hint=hint)
-    return result  # pragma: no cover
 
 
 def run_docker_checked(
