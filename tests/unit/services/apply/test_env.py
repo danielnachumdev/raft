@@ -12,7 +12,7 @@ from raft.services.apply import AppApply
 from raft.services.apply.manifest_env import ApplyEnvSources
 from raft.services.render import StackRenderer
 
-from ..fixtures import (
+from .manifest_env.fixtures import (
     CI_TO_CONTAINER_APPLY_ENV,
     CI_TO_CONTAINER_ENV_MANIFEST,
     CI_TO_CONTAINER_FLAG_OVERRIDES,

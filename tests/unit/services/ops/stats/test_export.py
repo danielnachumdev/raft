@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import raft.services as services
+from raft.services.ops import stats as stats_pkg
 from raft.services.ops.stats import Stats
 
 
 class TestStatsExport:
-    def test_lazy_export(self) -> None:
-        assert services.Stats is Stats
+    def test_package_exports_stats(self) -> None:
+        assert stats_pkg.Stats is Stats

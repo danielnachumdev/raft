@@ -10,7 +10,7 @@ import yaml
 from raft.errors import OperatorError
 from raft.services.apply.manifest_env import ManifestTextExpander
 
-from ...fixtures import (
+from .fixtures import (
     DEFAULT_PLACEHOLDER_CASES,
     EXPECTED_EXPANDED_SNIPPET,
     ExpandCase,

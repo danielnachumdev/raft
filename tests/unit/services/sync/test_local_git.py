@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from raft.services import SourceSync
+from raft.services.sync import SourceSync
 
 from ...base import git_call_args, make_app, make_stack
 from .base import SyncTestCase

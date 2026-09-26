@@ -20,7 +20,7 @@ from ...models.stack import Stack
 from ..shell import Shell
 
 if TYPE_CHECKING:
-    from .docker import DockerStack
+    from .stack import DockerStack
 
 logger = logging.getLogger(__name__)
 

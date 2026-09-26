@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from raft.services import CheckResult, Doctor
+from raft.services.ops.doctor import CheckResult, Doctor
 
 from ...base import ServicesTestCase
 
@@ -66,13 +66,13 @@ class DoctorTestCase(ServicesTestCase):
 
     @contextmanager
     def doctor_env(self, *, connect: bool = False):
-        with patch("raft.services.ops.doctor.shutil.which", return_value="/usr/bin/docker"):
+        with patch("shutil.which", return_value="/usr/bin/docker"):
             if connect:
-                with patch("raft.services.ops.doctor.socket.create_connection"):
+                with patch("socket.create_connection"):
                     yield
             else:
                 with patch(
-                    "raft.services.ops.doctor.socket.create_connection",
+                    "socket.create_connection",
                     side_effect=OSError("refused"),
                 ):
                     yield

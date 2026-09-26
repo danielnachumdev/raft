@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from raft.models.stack import load_stack
-from raft.services import Orchestrator
+from raft.services.deploy.orchestrator import Orchestrator
 
 from ....base import write_applied_app
 from .base import OrchestratorTestCase

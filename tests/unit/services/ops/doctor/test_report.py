@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from raft.models.app import GATE_COMPOSE_ID, ROUTER_COMPOSE_ID
 from raft.models.stack import load_stack
-from raft.services import CheckResult, Doctor
-from raft.services.ops.doctor import INFRA
+from raft.services.ops.doctor import INFRA, CheckResult, Doctor
+from raft.services.ops.doctor.checks.apps import auth_deploy_key_fix
 
 from ....base import make_stack, write_applied_app
 from .base import DoctorTestCase
@@ -122,12 +122,12 @@ class TestDoctorReport(DoctorTestCase):
         self._assert_auth_fix_urls()
 
     def _assert_auth_fix_urls(self) -> None:
-        assert "github.com/acme/site/settings/keys/new" in Doctor._auth_deploy_key_fix(
+        assert "github.com/acme/site/settings/keys/new" in auth_deploy_key_fix(
             "svc", "git@github.com:acme/site.git"
         )
-        assert "Title + Key" in Doctor._auth_deploy_key_fix("svc", "git@github.com:acme/site.git")
-        assert "gitlab.com" in Doctor._auth_deploy_key_fix("svc", "git@gitlab.com:acme/site.git")
-        assert "on the git host" in Doctor._auth_deploy_key_fix("svc", "not-a-url")
+        assert "Title + Key" in auth_deploy_key_fix("svc", "git@github.com:acme/site.git")
+        assert "gitlab.com" in auth_deploy_key_fix("svc", "git@gitlab.com:acme/site.git")
+        assert "on the git host" in auth_deploy_key_fix("svc", "not-a-url")
 
     def test_report_blank_lines_between_ok_and_issues(self, capsys) -> None:
         d = self.doctor()

@@ -7,7 +7,7 @@ from typing import Optional, TextIO
 from ....adapters import DockerStack, Shell
 from ....models import Stack
 from ...auth import GitAuthManager
-from .checks import CHECK_SUITES, auth_deploy_key_fix
+from .checks import CHECK_SUITES
 from .context import DoctorContext
 from .models import CheckResult
 from .report import GroupReportWriter
@@ -45,8 +45,3 @@ class Doctor:
     ) -> int:
         resolved = results if results is not None else self.run()
         return self._reporter.write(self.stack, resolved, out=out, color=color)
-
-    @staticmethod
-    def _auth_deploy_key_fix(service: str, repo_url: str) -> str:
-        """Compat shim for unit tests; prefer ``auth_deploy_key_fix``."""
-        return auth_deploy_key_fix(service, repo_url)

@@ -5,7 +5,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from raft.services import CutoverSession, Orchestrator
+from raft.services.deploy.cutover import CutoverSession
+from raft.services.deploy.orchestrator import Orchestrator
 from raft.services.auth import GitAuthManager
 
 from ..base import RaftTestCase, make_git_stack, make_local_stack, write_applied_app

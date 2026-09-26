@@ -64,9 +64,9 @@ class TestDoctorLocalGit(DoctorTestCase):
     def test_docker_missing_and_daemon_fail(self) -> None:
         self.seed_compose()
         shell = MagicMock()
-        with patch("raft.services.ops.doctor.shutil.which", return_value=None):
+        with patch("shutil.which", return_value=None):
             with patch(
-                "raft.services.ops.doctor.socket.create_connection", side_effect=OSError()
+                "socket.create_connection", side_effect=OSError()
             ):
                 results = self.by_key(self.doctor(shell=shell).run())
         assert results[(INFRA, "docker")].status == "fail"

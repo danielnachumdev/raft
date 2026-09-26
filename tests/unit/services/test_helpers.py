@@ -4,7 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
-from raft.services import DEPLOY_CUTOVER, wait_until
+from raft.services.deploy.cutover import DEPLOY_CUTOVER
+from raft.services.deploy.wait import wait_until
 
 from .base import ServicesTestCase
 

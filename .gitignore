@@ -4,20 +4,19 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
-proxy-data/
-letsencrypt/
 *.backup
 .coverage
 htmlcov/
 
-certs/
+# Operator data if accidentally created in a checkout
+/certs/
 /deploy/
 .deploy/
-generated/
+/generated/
 .generated/
-logs/
-apps/
-state/
+/logs/
+/apps/
+/state/
 
 # Local-only notes / plans (not committed)
 /local/

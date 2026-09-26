@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from raft.services import CutoverSession
+from raft.services.deploy.cutover import CutoverSession
 
 from ....base import make_app, make_local_stack, make_stack, write_applied_app
 from .base import CutoverTestCase

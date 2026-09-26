@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from raft.services import SourceSync
+from raft.services.sync import SourceSync
 
 from ...base import make_git_app, make_stack
 from ..base import ServicesTestCase
