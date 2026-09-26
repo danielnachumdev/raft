@@ -86,3 +86,20 @@ class TestStatusCollect(RaftTestCase):
         names = [c.service for c in snap.containers]
         assert "app" in names and "newbie" in names
         assert len(status.stack.apps) == 2
+
+    def test_collect_refresh_apps_skips_ensure_raft_home(self) -> None:
+        write_applied_app(self.tmp_path, "app")
+        status = self._idle_status(make_app("app"))
+        reloaded = make_stack(self.tmp_path, (make_app("app"),))
+        with self._patch_host():
+            with patch(
+                "raft.services.ops.status.service.Stack.load_apps",
+                return_value=reloaded,
+            ) as load_apps:
+                with patch("raft.models.stack.load_stack") as load_stack_fn:
+                    with patch("raft.models.stack.ensure_raft_home") as ensure:
+                        status.collect(refresh_apps=True)
+        load_apps.assert_called_once_with(self.tmp_path)
+        load_stack_fn.assert_not_called()
+        ensure.assert_not_called()
+        assert status.stack is reloaded

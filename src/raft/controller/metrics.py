@@ -70,8 +70,8 @@ class MetricsRecorder:
         return self._with_timestamp(payload)
 
     def _collect_status(self) -> Dict[str, Any]:
-        status = Status(Stack(root=self.home, apps=()))
-        return status.collect(refresh_apps=True).to_dict()
+        # Stack.load_apps skips ensure_raft_home: data home is mounted :ro.
+        return Status(Stack.load_apps(self.home)).collect().to_dict()
 
     @staticmethod
     def _with_timestamp(payload: Dict[str, Any]) -> Dict[str, Any]:

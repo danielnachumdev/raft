@@ -9,7 +9,6 @@ from ....adapters import DockerStack, Shell
 from ....adapters.host import DockerStatsText, HostProbe, HostResources
 from ....errors import OperatorError
 from ....models import EDGE_GROUP, Stack
-from ....models.stack import load_stack
 from .allocated import StatusAllocated
 from .models import (
     AllocatedResources,
@@ -31,8 +30,12 @@ class Status:
         self.docker = DockerStack(stack, self.sh)
 
     def _reload_stack(self) -> None:
-        """Re-read applied apps so live mode picks up apply/delete/start changes."""
-        self.stack = load_stack(self.stack.root)
+        """Re-read applied apps without ``ensure_raft_home`` / template sync.
+
+        Host CLI still ensures via ``load_stack`` before constructing ``Status``.
+        Controllers (RO data home) and live refresh only need registry re-read.
+        """
+        self.stack = Stack.load_apps(self.stack.root)
         self.docker = DockerStack(self.stack, self.sh)
 
     def collect(self, *, refresh_apps: bool = False) -> StatusSnapshot:

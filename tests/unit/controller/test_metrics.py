@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from raft.controller.metrics import MetricsRecorder
 from raft.services.ops.status.models import StatusSnapshot
@@ -99,14 +99,30 @@ class TestMetricsRecorder(ControllerTestCase):
             host=StatusFixtures.empty_host_status(),
             containers=(),
         )
-        with patch("raft.controller.metrics.Status") as status_cls:
-            status_cls.return_value.collect.return_value = snap
-            rec = MetricsRecorder(home, batch_size=1, clock=lambda: 0.0)
-            rec.tick()
-        status_cls.assert_called_once()
-        status_cls.return_value.collect.assert_called_once_with(refresh_apps=True)
+        stack = MagicMock(name="loaded_stack")
+        with patch("raft.controller.metrics.Stack.load_apps", return_value=stack) as load:
+            with patch("raft.controller.metrics.Status") as status_cls:
+                status_cls.return_value.collect.return_value = snap
+                rec = MetricsRecorder(home, batch_size=1, clock=lambda: 0.0)
+                rec.tick()
+        load.assert_called_once_with(home)
+        status_cls.assert_called_once_with(stack)
+        status_cls.return_value.collect.assert_called_once_with()
         row = json.loads(rec.path.read_text(encoding="utf-8").strip())
         assert "host" in row and "containers" in row and "ts" in row
+
+    def test_collect_status_skips_ensure_raft_home(self, tmp_path: Path) -> None:
+        home = self.raft_home(tmp_path)
+        snap = StatusSnapshot(
+            host=StatusFixtures.empty_host_status(),
+            containers=(),
+        )
+        with patch("raft.controller.metrics.Status") as status_cls:
+            status_cls.return_value.collect.return_value = snap
+            with patch("raft.models.stack.ensure_raft_home") as ensure:
+                MetricsRecorder(home, batch_size=1, clock=lambda: 0.0).tick()
+        ensure.assert_not_called()
+        status_cls.return_value.collect.assert_called_once_with()
 
     def test_appends_across_flushes(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
