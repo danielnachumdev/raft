@@ -149,7 +149,7 @@ class TestCliErrorRewrite(CliTestCase):
     def test_run_rewrites_docker_pull_unauthorized(self, capsys) -> None:
         err = subprocess.CalledProcessError(
             1,
-            ["docker", "pull", "ghcr.io/playloft-studio/playcrate:main"],
+            ["docker", "pull", "ghcr.io/example/app:main"],
             stderr="Error response from daemon: unauthorized\nunauthorized\n",
         )
         self.orch.stop.side_effect = err
@@ -157,7 +157,7 @@ class TestCliErrorRewrite(CliTestCase):
             self.run_cli(["down"])
         assert exc.value.code == 1
         err_out = capsys.readouterr().err
-        assert "cannot pull ghcr.io/playloft-studio/playcrate:main" in err_out
+        assert "cannot pull ghcr.io/example/app:main" in err_out
         assert "docker login ghcr.io" in err_out
         assert "command failed" not in err_out
         assert "Hint: run `raft doctor`" not in err_out

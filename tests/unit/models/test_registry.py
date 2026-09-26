@@ -16,10 +16,10 @@ def test_looks_like_registry_unauthorized() -> None:
 
 
 def test_ghcr_pat_create_url() -> None:
-    url = ghcr_pat_create_url(description="raft-ghcr-playcrate")
+    url = ghcr_pat_create_url(description="raft-ghcr-app")
     assert url.startswith("https://github.com/settings/tokens/new?")
     assert "scopes=read:packages" in url
-    assert "description=raft-ghcr-playcrate" in url
+    assert "description=raft-ghcr-app" in url
 
 
 def test_registry_unauthorized_message() -> None:

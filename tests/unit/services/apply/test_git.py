@@ -95,7 +95,7 @@ class TestApplyGit(ApplyTestCase):
         shell.git.side_effect = denied
         with pytest.raises(RuntimeError, match="auth setup .* --repo"):
             self.applier(load_stack(self.tmp_path), shell).apply_git(
-                "git@github.com:Playloft-Studio/playloftstudio.com.git", deploy=False
+                "git@github.com:example/site.git", deploy=False
             )
 
     def test_apply_git_non_auth_clone_error_reraises(self) -> None:
@@ -124,10 +124,10 @@ class TestApplyGit(ApplyTestCase):
         shell.git.side_effect = self._alias_clone(calls)
         with patch("raft.services.apply.service.GitAuthManager", return_value=mgr):
             name = self.applier(stack, shell).apply_git(
-                "git@github.com:Playloft-Studio/playloftstudio.com.git", deploy=False
+                "git@github.com:example/site.git", deploy=False
             )
-        assert name == "playloftstudio"
-        assert any("raft-playloftstudio" in u for u in calls)
+        assert name == "site"
+        assert any("raft-site" in u for u in calls)
 
     def _alias_shell_and_manager(self):
         shell = MagicMock()
@@ -137,7 +137,7 @@ class TestApplyGit(ApplyTestCase):
         mgr.ssh_dir = auth_dir
         mgr.keys_dir = auth_dir / "raft"
         mgr.config_path = auth_dir / "config"
-        ServicesTestCase.write_keypair(mgr, "playloftstudio")
+        ServicesTestCase.write_keypair(mgr, "site")
         return shell, mgr, []
 
     def _alias_clone(self, calls: list):
@@ -146,14 +146,14 @@ class TestApplyGit(ApplyTestCase):
                 return MagicMock(returncode=0)
             url = args[-2]
             calls.append(url)
-            if "raft-playloftstudio" not in url:
+            if "raft-site" not in url:
                 raise RuntimeError("Permission denied (publickey)")
             self.write_clone_manifest(
                 Path(args[-1]),
                 self.manifest(
-                    "playloftstudio", source="git",
-                    repo="git@github.com:Playloft-Studio/playloftstudio.com.git",
-                    public_host="playloftstudio.com",
+                    "site", source="git",
+                    repo="git@github.com:example/site.git",
+                    public_host="site.example.com",
                 ),
             )
 

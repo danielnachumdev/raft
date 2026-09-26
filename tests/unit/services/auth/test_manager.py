@@ -102,14 +102,14 @@ class TestGitAuthManager(ServicesTestCase):
     ) -> None:
         mgr = self._empty_auth_mgr()
         with pytest.raises(RuntimeError, match="Pass --repo"):
-            mgr.setup("playloftstudio")
+            mgr.setup("site")
         mgr.setup(
-            "playloftstudio",
-            repo="git@github.com:Playloft-Studio/playloftstudio.com.git",
+            "site",
+            repo="git@github.com:example/site.git",
         )
-        assert mgr.is_configured("playloftstudio")
+        assert mgr.is_configured("site")
         out = capsys.readouterr().out
-        assert "apply --git" in out and "auth test playloftstudio --repo" in out
+        assert "apply --git" in out and "auth test site --repo" in out
         self._test_repo(mgr)
 
     def _empty_auth_mgr(self) -> GitAuthManager:
@@ -124,9 +124,9 @@ class TestGitAuthManager(ServicesTestCase):
         return mgr
 
     def _test_repo(self, mgr: GitAuthManager) -> None:
-        repo = "git@github.com:Playloft-Studio/playloftstudio.com.git"
-        mgr.test("playloftstudio", repo=repo, quiet=True)
-        mgr.test("playloftstudio", repo=repo)
+        repo = "git@github.com:example/site.git"
+        mgr.test("site", repo=repo, quiet=True)
+        mgr.test("site", repo=repo)
 
     def test_clone_urls_for_repo_includes_aliases(self) -> None:
         self.write_keypair(self.mgr, "svc")

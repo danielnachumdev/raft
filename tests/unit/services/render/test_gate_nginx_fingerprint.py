@@ -25,7 +25,7 @@ class TestFingerprintGateNginx(RaftTestCase):
         before = self._stamp().fingerprint()
         tls = self._nginx_root() / "gate-tls"
         tls.mkdir(parents=True)
-        (tls / "playcrate.conf").write_text("server {}\n", encoding="utf-8")
+        (tls / "app.conf").write_text("server {}\n", encoding="utf-8")
         after = self._stamp().fingerprint()
         assert after != before
 
