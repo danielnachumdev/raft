@@ -7,6 +7,8 @@ from unittest.mock import MagicMock, patch
 from raft.models.stack import load_stack
 from raft.services.ops.doctor import INFRA
 
+from tests.shared.compose_ids import RunningServices
+
 from ...base import RaftTestCase, write_applied_app
 from .doctor_fixture import CoverageDoctor
 
@@ -14,7 +16,7 @@ from .doctor_fixture import CoverageDoctor
 class TestDoctorEdgeCoverage(RaftTestCase):
     def _seed_app(self) -> None:
         write_applied_app(self.tmp_path, "app")
-        (self.tmp_path / "apps" / "app").mkdir(parents=True)
+        self.ensure_checkouts("app")
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")
 
     def _run(self, stack, shell, docker, *, connect: bool = False):
@@ -42,9 +44,7 @@ class TestDoctorEdgeCoverage(RaftTestCase):
         shell = MagicMock()
         shell.run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         docker = MagicMock()
-        docker.running_services.return_value = [
-            "raft-gate", "raft-router", "raft-controller", "app"
-        ]
+        docker.running_services.return_value = RunningServices.with_apps("app")
         docker.gate_published_ports.return_value = [80, 999]
         results = self._run(load_stack(self.tmp_path), shell, docker)
         assert results[("raft-gate", "ports")].status == "fail"

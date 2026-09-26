@@ -22,6 +22,7 @@ from raft.services.deploy.locking import (
 
 from ....base import RaftTestCase
 from ....cta_asserts import assert_logged, assert_operator
+from .hold import LockHoldThread
 
 
 class TestExclusiveLock(RaftTestCase):
@@ -37,28 +38,19 @@ class TestExclusiveLock(RaftTestCase):
 
     def test_busy_times_out(self, caplog: pytest.LogCaptureFixture) -> None:
         path = stack_lock_path(self.root)
-        held = threading.Event()
-        release = threading.Event()
-        thread = threading.Thread(target=self._hold, args=(path, held, release))
-        thread.start()
-        assert held.wait(timeout=2)
-
-        with caplog.at_level("INFO"), pytest.raises(OperatorError) as caught:
-            with exclusive_lock(path, kind="stack", timeout=0.15):
-                pass
-        assert_operator(
-            caught.value,
-            contains=("stack", "RAFT_LOCK_TIMEOUT_SECONDS"),
-        )
-        assert_logged(caplog, level="INFO", contains=("waiting for", "stack"))
-        assert not any("acquired" in r.getMessage() for r in caplog.records)
-        release.set()
-        thread.join(timeout=2)
-
-    def _hold(self, path, held, release) -> None:
-        with exclusive_lock(path, kind="stack", timeout=5):
-            held.set()
-            release.wait(timeout=5)
+        holder = LockHoldThread(path).start()
+        try:
+            with caplog.at_level("INFO"), pytest.raises(OperatorError) as caught:
+                with exclusive_lock(path, kind="stack", timeout=0.15):
+                    pass
+            assert_operator(
+                caught.value,
+                contains=("stack", "RAFT_LOCK_TIMEOUT_SECONDS"),
+            )
+            assert_logged(caplog, level="INFO", contains=("waiting for", "stack"))
+            assert not any("acquired" in r.getMessage() for r in caplog.records)
+        finally:
+            holder.stop()
 
     def test_waiter_runs_after_holder(self, caplog: pytest.LogCaptureFixture) -> None:
         path = stack_lock_path(self.root)
@@ -106,14 +98,11 @@ class TestExclusiveLock(RaftTestCase):
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         path = stack_lock_path(self.root)
-        held = threading.Event()
-        release = threading.Event()
-        thread = threading.Thread(target=self._hold, args=(path, held, release))
-        thread.start()
-        assert held.wait(timeout=2)
-        self._flaky_close_timeout(path, monkeypatch)
-        release.set()
-        thread.join(timeout=2)
+        holder = LockHoldThread(path).start()
+        try:
+            self._flaky_close_timeout(path, monkeypatch)
+        finally:
+            holder.stop()
         self._flaky_close_success(path, monkeypatch)
 
     def _flaky_close_timeout(self, path, monkeypatch) -> None:

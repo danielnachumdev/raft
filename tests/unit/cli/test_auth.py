@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -27,10 +27,8 @@ class TestCliAuth(CliTestCase):
         self.auth.show_pubkey.return_value = "ssh-ed25519 AAAA"
 
     def auth_main(self, argv: list[str]) -> int:
-        with patch("raft.cli.deps.load_stack", return_value=self.stack):
-            with patch("raft.cli.deps.Orchestrator"):
-                with patch("raft.cli.deps.GitAuthManager", return_value=self.auth):
-                    return cli.main(argv)
+        with self.patched_deps(Orchestrator=MagicMock(), GitAuthManager=self.auth):
+            return cli.main(argv)
 
     def test_auth_setup_list_show_test_remove(self, capsys) -> None:
         self._test_auth_setup_list_show_test_remove_p1()
@@ -65,17 +63,15 @@ class TestCliAuth(CliTestCase):
         self.auth.remove.assert_called_once_with("svc", remove_files=False)
 
     def test_auth_requires_service(self) -> None:
-        with patch("raft.cli.deps.load_stack", return_value=self.stack):
-            with patch("raft.cli.deps.Orchestrator"):
-                with patch("raft.cli.deps.GitAuthManager", return_value=self.auth):
-                    with pytest.raises(RuntimeError, match="auth setup requires SERVICE"):
-                        cli.main(["auth", "setup"])
-                    with pytest.raises(RuntimeError, match="auth show requires SERVICE"):
-                        cli.main(["auth", "show"])
-                    with pytest.raises(RuntimeError, match="auth test requires SERVICE"):
-                        cli.main(["auth", "test"])
-                    with pytest.raises(RuntimeError, match="auth remove requires SERVICE"):
-                        cli.main(["auth", "remove"])
+        with self.patched_deps(Orchestrator=MagicMock(), GitAuthManager=self.auth):
+            with pytest.raises(RuntimeError, match="auth setup requires SERVICE"):
+                cli.main(["auth", "setup"])
+            with pytest.raises(RuntimeError, match="auth show requires SERVICE"):
+                cli.main(["auth", "show"])
+            with pytest.raises(RuntimeError, match="auth test requires SERVICE"):
+                cli.main(["auth", "test"])
+            with pytest.raises(RuntimeError, match="auth remove requires SERVICE"):
+                cli.main(["auth", "remove"])
 
     def test_auth_list_empty(self, capsys) -> None:
         self.auth.list_services.return_value = []

@@ -8,6 +8,8 @@ import pytest
 
 from raft.errors import OperatorError
 
+from tests.shared.nginx import NginxEmerg
+
 from .base import CutoverTestCase
 from ....base import write_applied_app
 from ....cta_asserts import assert_operator
@@ -125,8 +127,7 @@ class TestCutoverFlow(CutoverTestCase):
         s.docker.rebuild_service.return_value = None
         s.docker.router_can_fetch.return_value = False
         s.docker.diagnostics_for.return_value = (
-            '--- app (running/unhealthy) ---\n'
-            'nginx: [emerg] host not found in upstream "old:8000"'
+            "--- app (running/unhealthy) ---\n" + NginxEmerg.host_not_found("old")
         )
         with patch("raft.services.deploy.cutover.time.sleep"):
             with pytest.raises(RuntimeError, match="host not found"):

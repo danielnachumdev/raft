@@ -5,8 +5,9 @@ from __future__ import annotations
 import pytest
 
 from raft.config.settings_types import EdgeConfig, EdgeStream
-from raft.models.stack import load_stack
-from raft.services.render import StackRenderer
+
+from tests.shared.artifacts import GeneratedArtifacts
+from tests.shared.files import FileText
 
 from ...base import write_applied_app
 from .base import ManifestTestCase
@@ -45,27 +46,25 @@ FRONT_EXTRA = {
 class TestStackRenderer(ManifestTestCase):
     def test_render_http_only_no_tls_snippets(self) -> None:
         write_applied_app(self.tmp_path, "web", public_host="web.test", tls="off")
-        (self.tmp_path / "apps" / "web").mkdir(parents=True)
-        StackRenderer(load_stack(self.tmp_path)).render()
-        apps_yaml = (self.tmp_path / "generated" / "compose.apps.yaml").read_text(encoding="utf-8")
-        assert "wget" in apps_yaml and 'expose:\n      - "80"' in apps_yaml
-        edge_yaml = (self.tmp_path / "generated" / "compose.edge.yaml").read_text(encoding="utf-8")
-        assert '"80:80"' in edge_yaml and '"443:443"' in edge_yaml
-        hosts = (self.tmp_path / "generated" / "nginx" / "router" / "hosts.conf").read_text(
-            encoding="utf-8"
+        gen = GeneratedArtifacts(self.render_applied())
+        FileText.contains(
+            gen.path("compose.apps.yaml"), "wget", 'expose:\n      - "80"'
         )
-        assert "proxy_pass http://web_http" in hosts
-        assert list((self.tmp_path / "generated" / "nginx" / "gate-tls").glob("*.conf")) == []
-        assert (self.tmp_path / "generated" / "nginx" / "upstreams" / "web-http.conf").is_file()
+        FileText.contains(gen.path("compose.edge.yaml"), '"80:80"', '"443:443"')
+        FileText.contains(
+            gen.path("nginx", "router", "hosts.conf"), "proxy_pass http://web_http"
+        )
+        assert list(gen.path("nginx", "gate-tls").glob("*.conf")) == []
+        assert gen.path("nginx", "upstreams", "web-http.conf").is_file()
 
     def test_render_tls_origin_writes_snippet(self) -> None:
         write_applied_app(self.tmp_path, "web", public_host="web.test", tls="origin")
-        (self.tmp_path / "apps" / "web").mkdir(parents=True)
-        StackRenderer(load_stack(self.tmp_path)).render()
-        tls = (self.tmp_path / "generated" / "nginx" / "gate-tls" / "web.conf").read_text(
-            encoding="utf-8"
+        gen = GeneratedArtifacts(self.render_applied())
+        FileText.contains(
+            gen.path("nginx", "gate-tls", "web.conf"),
+            "listen 443 ssl",
+            "certs/web/origin.pem",
         )
-        assert "listen 443 ssl" in tls and "certs/web/origin.pem" in tls
 
     def test_render_rejects_undeclared_stream_port(self) -> None:
         write_applied_app(
@@ -75,51 +74,47 @@ class TestStackRenderer(ManifestTestCase):
                 "readiness": {"type": "tcp", "port": "smtp"},
             },
         )
-        (self.tmp_path / "apps" / "mail").mkdir(parents=True)
         with pytest.raises(RuntimeError, match="not declared in settings edge.streams"):
-            StackRenderer(
-                load_stack(self.tmp_path), edge=EdgeConfig(http=80, https=None, streams=())
-            ).render()
+            self.render_applied(edge=EdgeConfig(http=80, https=None, streams=()))
 
     def test_render_stream_and_host(self) -> None:
         write_applied_app(
             self.tmp_path, "mail", public_host="mail.example.com", extra=MAIL_PORTS_EXTRA
         )
-        (self.tmp_path / "apps" / "mail").mkdir(parents=True)
         edge = EdgeConfig(
             http=80, https=443, streams=(EdgeStream(name="smtp", port=25, protocol="tcp"),)
         )
-        StackRenderer(load_stack(self.tmp_path), edge=edge).render()
+        self.render_applied(edge=edge)
         self._assert_stream_host_artifacts()
 
     def _assert_stream_host_artifacts(self) -> None:
-        apps = (self.tmp_path / "generated" / "compose.apps.yaml").read_text(encoding="utf-8")
-        assert '"587:587"' in apps and "nc -z" in apps
-        streams = (
-            self.tmp_path / "generated" / "nginx" / "gate-stream" / "streams.conf"
-        ).read_text(encoding="utf-8")
-        assert "listen 25" in streams
-        edge_yaml = (self.tmp_path / "generated" / "compose.edge.yaml").read_text(encoding="utf-8")
-        assert '"25:25"' in edge_yaml
+        gen = GeneratedArtifacts.under(self.tmp_path)
+        FileText.contains(gen.path("compose.apps.yaml"), '"587:587"', "nc -z")
+        FileText.contains(gen.path("nginx", "gate-stream", "streams.conf"), "listen 25")
+        FileText.contains(gen.path("compose.edge.yaml"), '"25:25"')
 
     def test_render_empty_apps(self) -> None:
-        StackRenderer(load_stack(self.tmp_path)).render()
-        text = (self.tmp_path / "generated" / "compose.apps.yaml").read_text(encoding="utf-8")
-        assert "services: {}" in text
+        gen = GeneratedArtifacts(self.render_applied())
+        FileText.contains(gen.path("compose.apps.yaml"), "services: {}")
 
     def test_validate_requires_build_context(self) -> None:
         write_applied_app(self.tmp_path, "web", build_context=None, extra={"build": {}})
         with pytest.raises(ValueError, match="context is required"):
-            StackRenderer(load_stack(self.tmp_path)).render()
+            self.render_applied()
 
     def test_render_volumes_env_depends_on(self) -> None:
         self._seed_redis_and_front()
-        StackRenderer(load_stack(self.tmp_path)).render()
-        apps = (self.tmp_path / "generated" / "compose.apps.yaml").read_text(encoding="utf-8")
-        assert "env_file:" in apps and "/home/raft/.raft/demo.env" in apps
-        assert "FOO: bar" in apps and "/mnt/raft-data/demo/redis:/data" in apps
-        assert "demo-stack-redis:" in apps and "condition: service_started" in apps
-        assert '"25:25"' in apps
+        gen = GeneratedArtifacts(self.render_applied())
+        FileText.contains(
+            gen.path("compose.apps.yaml"),
+            "env_file:",
+            "/home/raft/.raft/demo.env",
+            "FOO: bar",
+            "/mnt/raft-data/demo/redis:/data",
+            "demo-stack-redis:",
+            "condition: service_started",
+            '"25:25"',
+        )
 
     def _seed_redis_and_front(self) -> None:
         write_applied_app(

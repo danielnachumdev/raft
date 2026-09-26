@@ -8,6 +8,8 @@ from raft.models.stack import load_stack
 from raft.services.deploy.cutover import CutoverSession
 from raft.services.deploy.orchestrator import Orchestrator
 
+from tests.shared.compose_ids import RunningServices
+
 from ...base import RaftTestCase, make_app, make_stack, write_applied_app
 
 
@@ -26,7 +28,7 @@ class TestOrchCutoverEdgeCoverage(RaftTestCase):
         orch.syncer = MagicMock()
         orch.docker.running_services.side_effect = [
             [],
-            ["raft-gate", "raft-router", "raft-controller", "app"],
+            RunningServices.with_apps("app"),
         ]
         with patch.object(orch, "sync"):
             orch.start()

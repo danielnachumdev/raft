@@ -12,6 +12,7 @@ from typing import Any, Optional
 import yaml
 
 from raft.models.app import ROUTER_COMPOSE_ID
+from tests.shared.artifacts import GeneratedArtifacts
 from tests.shared.wait import Wait
 
 
@@ -36,7 +37,7 @@ def new_project_name() -> str:
 
 def apps_only_compose(generated: Path, dest: Path) -> Path:
     """Write compose with only App services (drop router stub; drop healthchecks)."""
-    raw = yaml.safe_load((generated / "compose.apps.yaml").read_text(encoding="utf-8"))
+    raw = GeneratedArtifacts(generated).compose_apps()
     services = _strip_router_and_health(dict(raw.get("services") or {}))
     dest.write_text(
         yaml.safe_dump({"services": services}, sort_keys=False), encoding="utf-8"

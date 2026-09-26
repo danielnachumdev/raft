@@ -12,13 +12,15 @@ from raft.errors import (
     summarize_health_inspect,
 )
 
+from tests.shared.nginx import NginxEmerg
+
 
 class TestDiagnosticsHelpers:
     def test_compact_and_prefer_errorish(self) -> None:
         blob = "\n".join(
             [
                 "info starting",
-                "nginx: [emerg] host not found in upstream \"old-backend:8000\"",
+                NginxEmerg.host_not_found(),
                 "info other",
             ]
         )
@@ -31,7 +33,7 @@ class TestDiagnosticsHelpers:
     def test_format_service_log_block(self) -> None:
         block = format_service_log_block(
             "frontend-dev",
-            'nginx: [emerg] host not found in upstream "backend:8000"',
+            NginxEmerg.host_not_found("backend"),
             health="running/unhealthy",
         )
         assert "--- frontend-dev (running/unhealthy) ---" in block

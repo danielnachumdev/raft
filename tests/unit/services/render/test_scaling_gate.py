@@ -9,9 +9,9 @@ from raft.models.app import App
 from raft.models.manifest import AppSpec
 from raft.models.ports import PortSpec
 from raft.models.scaling_spec import ScalingSpec
-from raft.models.stack import load_stack
-from raft.services.render import StackRenderer
 from raft.services.render.scaling_gate import ScalingGate
+
+from tests.shared.files import FileText
 
 from ...base import RaftTestCase, write_applied_app
 
@@ -20,6 +20,7 @@ _SCALING = {
     "wakeTimeoutSeconds": 120,
     "minUpSeconds": 30,
 }
+_EDGE = EdgeConfig(http=80, https=443, streams=())
 
 
 class TestScalingRender(RaftTestCase):
@@ -27,31 +28,26 @@ class TestScalingRender(RaftTestCase):
         write_applied_app(
             self.tmp_path, "web", public_host="web.test", extra={"scaling": _SCALING}
         )
-        (self.tmp_path / "apps" / "web").mkdir(parents=True)
-        stack = load_stack(self.tmp_path)
-        StackRenderer(stack, edge=EdgeConfig(http=80, https=443, streams=())).render()
-        listeners = (
-            self.tmp_path / "generated/nginx/gate-http/listeners.conf"
-        ).read_text(encoding="utf-8")
-        assert "scaling:web" in listeners
-        assert "holding.html" in listeners
-        assert "/wake/web" in listeners
-        assert "/activity/web" in listeners
-        assert "server_name web.test" in listeners
+        gen = self.render_applied(edge=_EDGE)
+        FileText.contains(
+            gen / "nginx/gate-http/listeners.conf",
+            "scaling:web",
+            "holding.html",
+            "/wake/web",
+            "/activity/web",
+            "server_name web.test",
+        )
 
     def test_tls_scaling_snippet(self) -> None:
         write_applied_app(
             self.tmp_path, "web", public_host="web.test", tls="origin",
             extra={"scaling": _SCALING},
         )
-        (self.tmp_path / "apps" / "web").mkdir(parents=True)
         (self.tmp_path / "certs" / "web").mkdir(parents=True)
-        stack = load_stack(self.tmp_path)
-        StackRenderer(stack, edge=EdgeConfig(http=80, https=443, streams=())).render()
-        tls = (self.tmp_path / "generated/nginx/gate-tls/web.conf").read_text(
-            encoding="utf-8"
+        gen = self.render_applied(edge=_EDGE)
+        FileText.contains(
+            gen / "nginx/gate-tls/web.conf", "holding.html", "listen 443 ssl"
         )
-        assert "holding.html" in tls and "listen 443 ssl" in tls
 
     def test_contribute_http_skips(self) -> None:
         gate = ScalingGate()
@@ -70,9 +66,5 @@ class TestScalingRender(RaftTestCase):
             tls="origin",
             extra={"scaling": _SCALING},
         )
-        (self.tmp_path / "apps" / "web").mkdir(parents=True)
-        stack = load_stack(self.tmp_path)
         with pytest.raises(Exception, match="edge.https"):
-            StackRenderer(
-                stack, edge=EdgeConfig(http=80, https=None, streams=())
-            ).render()
+            self.render_applied(edge=EdgeConfig(http=80, https=None, streams=()))

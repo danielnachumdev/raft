@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
-
 import pytest
 
 from raft.config.settings_types import EdgeConfig, EdgeStream
@@ -12,6 +10,9 @@ from raft.models.ports import PortSpec
 from raft.models.stack import load_stack
 from raft.services.render.edge import StreamEdge
 from raft.services.render import StackRenderer
+
+from tests.shared.artifacts import GeneratedArtifacts
+from tests.shared.files import FileText
 
 from ...base import RaftTestCase, make_app, write_applied_app
 
@@ -32,18 +33,17 @@ class TestRenderEdgeCoverage(RaftTestCase):
             StreamEdge().contribute(app, spec, port, edge=edge)
 
         write_applied_app(self.tmp_path, "web")
-        (self.tmp_path / "apps" / "web").mkdir(parents=True)
-        stack = load_stack(self.tmp_path)
-        StackRenderer(stack, edge=EdgeConfig(http=None, https=None, streams=())).render()
-        edge_yaml = (self.tmp_path / "generated" / "compose.edge.yaml").read_text(encoding="utf-8")
-        assert "ports:\n      []" in edge_yaml
+        gen = GeneratedArtifacts(
+            self.render_applied(edge=EdgeConfig(http=None, https=None, streams=()))
+        )
+        FileText.contains(gen.path("compose.edge.yaml"), "ports:\n      []")
 
     def test_render_dockerfile_and_stale_prune(self) -> None:
         write_applied_app(
             self.tmp_path, "web",
             extra={"build": {"context": ".", "dockerfile": "Dockerfile.web"}},
         )
-        (self.tmp_path / "apps" / "web").mkdir(parents=True)
+        self.ensure_checkouts("web")
         stack = load_stack(self.tmp_path)
         self._seed_stale_nginx(stack)
         StackRenderer(stack).render()
@@ -63,18 +63,20 @@ class TestRenderEdgeCoverage(RaftTestCase):
         assert not (gen / "nginx" / "gate-tls" / "stale.conf").exists()
         assert not (gen / "nginx" / "gate-http" / "old.conf").exists()
         assert not (stack.upstreams_dir / "old.conf").exists()
-        apps = (gen / "compose.apps.yaml").read_text(encoding="utf-8")
-        assert "dockerfile: Dockerfile.web" in apps
+        FileText.contains(gen / "compose.apps.yaml", "dockerfile: Dockerfile.web")
 
     def test_render_aliases_and_errors(self) -> None:
         write_applied_app(self.tmp_path, "web")
-        (self.tmp_path / "apps" / "web").mkdir(parents=True)
+        self.ensure_checkouts("web")
         stack = load_stack(self.tmp_path)
         renderer = StackRenderer(stack)
         specs = renderer.load_all_contracts()
         assert "web" in specs
         with pytest.raises(RuntimeError, match="missing AppSpec"):
             renderer.render(specs={})
+        self._render_docker_image_alias()
+
+    def _render_docker_image_alias(self) -> None:
         write_applied_app(
             self.tmp_path,
             "hub",
@@ -84,8 +86,10 @@ class TestRenderEdgeCoverage(RaftTestCase):
         )
         stack2 = load_stack(self.tmp_path)
         StackRenderer(stack2).render()
-        text = (stack2.generated_dir() / "compose.apps.yaml").read_text(encoding="utf-8")
-        assert "image: ghcr.io/org/hub:main" in text
+        FileText.contains(
+            stack2.generated_dir() / "compose.apps.yaml",
+            "image: ghcr.io/org/hub:main",
+        )
 
     def test_render_build_outside_home(self) -> None:
         write_applied_app(
@@ -94,14 +98,12 @@ class TestRenderEdgeCoverage(RaftTestCase):
             path="apps/web",
             extra={"build": {"context": "/tmp/outside-raft-build"}},
         )
-        (self.tmp_path / "apps" / "web").mkdir(parents=True)
-        stack = load_stack(self.tmp_path)
         with pytest.raises(ValueError, match="outside raft data home"):
-            StackRenderer(stack).render()
+            self.render_applied()
 
     def test_stream_dir_stale_prune(self) -> None:
         write_applied_app(self.tmp_path, "web")
-        (self.tmp_path / "apps" / "web").mkdir(parents=True)
+        self.ensure_checkouts("web")
         stack = load_stack(self.tmp_path)
         stream_dir = stack.generated_dir() / "nginx" / "gate-stream"
         stream_dir.mkdir(parents=True, exist_ok=True)
@@ -122,12 +124,9 @@ class TestRenderEdgeCoverage(RaftTestCase):
 
     def test_gate_listener_https_only(self) -> None:
         write_applied_app(self.tmp_path, "web", tls="origin")
-        (self.tmp_path / "apps" / "web").mkdir(parents=True)
-        stack = load_stack(self.tmp_path)
-        StackRenderer(stack, edge=EdgeConfig(http=None, https=443, streams=())).render()
-        listeners = (stack.generated_dir() / "nginx" / "gate-http" / "listeners.conf").read_text(
-            encoding="utf-8"
+        gen = GeneratedArtifacts(
+            self.render_applied(edge=EdgeConfig(http=None, https=443, streams=()))
         )
+        listeners = FileText.read(gen.path("nginx", "gate-http", "listeners.conf"))
         assert "listen 443 ssl" in listeners
         assert "listen 80" not in listeners
-

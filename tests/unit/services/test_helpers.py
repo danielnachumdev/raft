@@ -8,6 +8,9 @@ from raft.errors import OperatorError
 from raft.services.deploy.cutover import DEPLOY_CUTOVER
 from raft.services.deploy.wait import wait_until
 
+from tests.shared.compose_ids import RunningServices
+from tests.shared.nginx import NginxEmerg
+
 from ..cta_asserts import assert_operator
 from .base import ServicesTestCase
 
@@ -37,8 +40,7 @@ class TestWaitUntil:
                 interval=0.01,
                 fix="raft doctor",
                 diagnostics=lambda: (
-                    '--- raft-app_tmp ---\n'
-                    'nginx: [emerg] host not found in upstream "old:8000"'
+                    "--- raft-app_tmp ---\n" + NginxEmerg.host_not_found("old")
                 ),
             )
         assert_operator(
@@ -93,7 +95,7 @@ class TestOrchestratorPolicy(ServicesTestCase):
         with patch.object(
             self.orch.docker,
             "running_services",
-            return_value=["raft-gate", "raft-router", "raft-controller"],
+            return_value=RunningServices.edge(),
         ):
             with pytest.raises(OperatorError, match="already running"):
                 self.orch.start()

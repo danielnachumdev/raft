@@ -1,11 +1,10 @@
 """Orchestrator sync/render/start/stop."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from raft.models.stack import load_stack
-from raft.services.deploy.orchestrator import Orchestrator
+from tests.shared.compose_ids import RunningServices
 
 from ....base import write_applied_app
 from .base import OrchestratorTestCase
@@ -24,7 +23,7 @@ class TestOrchRenderStart(OrchestratorTestCase):
         assert self.orch.syncer.sync.call_args.args[0] == list(self.orch.stack.apps)
 
     def test_render_invokes_stack_renderer(self) -> None:
-        self.orch.docker.running_services.return_value = []
+        self.set_running()
         with patch("raft.services.deploy.orchestrator.StackRenderer") as renderer_cls:
             instance = renderer_cls.return_value
             self.orch.render()
@@ -33,68 +32,50 @@ class TestOrchRenderStart(OrchestratorTestCase):
             self.orch.docker.reload_gate_nginx.assert_not_called()
 
     def test_render_reloads_gate_when_stamp_differs_from_disk(self) -> None:
-        self.orch.docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller"]
-        with patch("raft.services.deploy.orchestrator.GateNginxStamp") as stamp_cls:
-            stamp = stamp_cls.return_value
-            stamp.fingerprint.return_value = "disk-fp"
-            stamp.read.return_value = "stale-fp"
-            with patch("raft.services.deploy.orchestrator.StackRenderer"):
-                with patch("raft.services.deploy.orchestrator.require_origin_certs"):
-                    self.orch.render()
+        self.set_edge_only()
+        with self.render_with_gate_stamp(
+            fingerprint="disk-fp", read="stale-fp", patch_certs=True
+        ) as stamp:
+            self.orch.render()
         self.orch.docker.reload_gate_nginx.assert_called_once()
         stamp.write.assert_called_once_with("disk-fp")
 
     def test_render_reloads_gate_when_stamp_missing(self) -> None:
         """Disk already has config but gate never recorded a reload (stale process)."""
-        self.orch.docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller"]
-        with patch("raft.services.deploy.orchestrator.GateNginxStamp") as stamp_cls:
-            stamp = stamp_cls.return_value
-            stamp.fingerprint.return_value = "on-disk"
-            stamp.read.return_value = None
-            with patch("raft.services.deploy.orchestrator.StackRenderer"):
-                with patch("raft.services.deploy.orchestrator.require_origin_certs"):
-                    self.orch.render()
+        self.set_edge_only()
+        with self.render_with_gate_stamp(
+            fingerprint="on-disk", read=None, patch_certs=True
+        ):
+            self.orch.render()
         self.orch.docker.reload_gate_nginx.assert_called_once()
 
     def test_render_blocks_gate_reload_when_origin_certs_missing(self) -> None:
         write_applied_app(self.tmp_path, "app", public_host="app.test", tls="origin")
         orch = self.orchestrator()
-        orch.docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller"]
-        with patch("raft.services.deploy.orchestrator.GateNginxStamp") as stamp_cls:
-            stamp = stamp_cls.return_value
-            stamp.fingerprint.return_value = "disk-fp"
-            stamp.read.return_value = "stale"
-            with patch("raft.services.deploy.orchestrator.StackRenderer"):
-                with pytest.raises(RuntimeError, match="Origin certs missing"):
-                    orch.render()
+        self.set_edge_only(orch=orch)
+        with self.render_with_gate_stamp(fingerprint="disk-fp", read="stale"):
+            with pytest.raises(RuntimeError, match="Origin certs missing"):
+                orch.render()
         orch.docker.reload_gate_nginx.assert_not_called()
 
     def test_render_skips_gate_reload_when_stamp_matches_disk(self) -> None:
-        self.orch.docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller"]
-        with patch("raft.services.deploy.orchestrator.GateNginxStamp") as stamp_cls:
-            stamp = stamp_cls.return_value
-            stamp.fingerprint.return_value = "same"
-            stamp.read.return_value = "same"
-            with patch("raft.services.deploy.orchestrator.StackRenderer"):
-                self.orch.render()
+        self.set_edge_only()
+        with self.render_with_gate_stamp(fingerprint="same", read="same"):
+            self.orch.render()
         self.orch.docker.reload_gate_nginx.assert_not_called()
 
     def test_render_skips_gate_reload_when_gate_down(self) -> None:
-        self.orch.docker.running_services.return_value = ["raft-router"]
-        with patch("raft.services.deploy.orchestrator.GateNginxStamp") as stamp_cls:
-            stamp = stamp_cls.return_value
-            stamp.fingerprint.return_value = "disk-fp"
-            stamp.read.return_value = "stale"
-            with patch("raft.services.deploy.orchestrator.StackRenderer"):
-                self.orch.render()
+        self.set_running(*RunningServices.router_only())
+        with self.render_with_gate_stamp(fingerprint="disk-fp", read="stale"):
+            self.orch.render()
         self.orch.docker.reload_gate_nginx.assert_not_called()
 
     def test_start_happy_path(self) -> None:
         self.orch.docker.running_services.side_effect = [
             [],
-            ["raft-gate", "raft-router", "raft-controller", "app"],
+            RunningServices.with_apps("app"),
         ]
-        self.orch.http.public_host_ok.return_value = True
+        self.stub_http_ready(self.orch.http)
         with patch.object(self.orch, "sync") as sync:
             self.orch.start()
         sync.assert_called_once()
@@ -114,20 +95,20 @@ class TestOrchRenderStart(OrchestratorTestCase):
         self.orch.docker.start_stack.assert_called_once()
 
     def test_recreate_gate_happy(self) -> None:
-        self.orch.docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller"]
-        self.orch.http.tcp_port_ok.return_value = True
+        self.set_edge_only()
+        self.stub_http_ready(self.orch.http)
         with patch.object(self.orch, "render"):
             self.orch.recreate_gate()
         self.orch.docker.recreate_gate.assert_called_once()
 
     def test_stop_already_stopped(self) -> None:
-        self.orch.docker.running_services.return_value = []
+        self.set_running()
         self.orch.stop()
         self.orch.docker.remove_container.assert_called()
         self.orch.docker.stop_stack.assert_not_called()
 
     def test_stop_running(self) -> None:
-        self.orch.docker.running_services.return_value = ["raft-gate"]
+        self.set_running(*RunningServices.gate_only())
         self.orch.stop()
         self.orch.docker.stop_stack.assert_called_once()
 
@@ -140,8 +121,7 @@ class TestOrchRenderStart(OrchestratorTestCase):
         ra.assert_called_once_with("app")
 
     def test_redeploy_router_happy(self) -> None:
-        self.orch.docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller"]
-        self.orch.http.public_host_ok.return_value = True
+        self.set_edge_only()
+        self.stub_http_ready(self.orch.http)
         self.orch.redeploy_router()
         self.orch.docker.recreate_router.assert_called_once()
-

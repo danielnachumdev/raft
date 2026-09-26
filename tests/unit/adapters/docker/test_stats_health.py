@@ -6,6 +6,8 @@ import pytest
 
 from raft.errors import OperatorError
 
+from tests.shared.nginx import NginxEmerg
+
 from ...base import make_app
 from .base import DockerTestCase
 
@@ -68,9 +70,7 @@ class TestDockerStatsHealth(DockerTestCase):
         assert info["nano_cpus"] is None and info["memory_bytes"] is None
 
     def test_compose_and_container_logs(self) -> None:
-        self.shell.compose.return_value = self.ok(
-            'nginx: [emerg] host not found in upstream "old-backend:8000"\n'
-        )
+        self.shell.compose.return_value = self.ok(NginxEmerg.host_not_found() + "\n")
         assert "host not found" in self.docker.compose_logs("app")
         self.shell.compose.assert_any_call(
             "logs", "--no-color", "--tail", "40", "app", capture=True, check=False
@@ -112,9 +112,7 @@ class TestDockerStatsHealth(DockerTestCase):
             if args[:1] == ("ps",):
                 return self.ok("cid\n")
             if args[:1] == ("logs",):
-                return self.ok(
-                    'nginx: [emerg] host not found in upstream "old-backend:8000"\n'
-                )
+                return self.ok(NginxEmerg.host_not_found() + "\n")
             return self.ok()
 
         return compose

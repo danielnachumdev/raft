@@ -14,8 +14,9 @@ from raft.controller.heal import Healer
 from raft.models.stack import load_stack
 
 from tests.e2e.shared.compose import apps_only_compose, new_project_name
+from tests.e2e.shared.runtime import ServiceRuntimeWait
 from tests.shared.raft_home import RaftHomeFixtures
-from tests.shared.wait import Wait
+from tests.shared.yaml_doc import YamlDoc
 
 # Fast CI knobs (Healer.tick(now=…) bypasses wall-clock interval sleep).
 HEAL_INTERVAL_SECONDS = 1.0
@@ -85,9 +86,7 @@ class HealE2EStack:
 
     def wait_not_running(self, *, timeout: float = 45.0) -> None:
         """Compose ``ps -q`` hides stopped containers → raft sees ``missing``."""
-        Wait.until(
-            lambda: self.docker.service_runtime(self.APP)[0]
-            in ("exited", "dead", "missing"),
+        ServiceRuntimeWait(self.docker, self.APP).until_stopped(
             timeout=timeout,
             message=(
                 f"{self.APP} still running "
@@ -96,8 +95,8 @@ class HealE2EStack:
         )
 
     def wait_runtime(self, status: str, *, timeout: float = 45.0) -> None:
-        Wait.until(
-            lambda: self.docker.service_runtime(self.APP)[0] == status,
+        ServiceRuntimeWait(self.docker, self.APP).until_status(
+            status,
             timeout=timeout,
             message=(
                 f"{self.APP} wanted status={status!r} "
@@ -118,17 +117,17 @@ class HealE2EStack:
 
     @staticmethod
     def _write_heal_settings(home: Path) -> None:
-        path = home / "settings.yaml"
-        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-        data["healing"] = {
-            "enabled": True,
-            "intervalSeconds": HEAL_INTERVAL_SECONDS,
-            "failThreshold": HEAL_FAIL_THRESHOLD,
-            "cooldownSeconds": HEAL_COOLDOWN_SECONDS,
-            "maxRestarts": HEAL_MAX_RESTARTS,
-            "escalateAfterRestarts": HEAL_ESCALATE_AFTER,
-        }
-        path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+        YamlDoc(home / "settings.yaml").merge_root(
+            "healing",
+            {
+                "enabled": True,
+                "intervalSeconds": HEAL_INTERVAL_SECONDS,
+                "failThreshold": HEAL_FAIL_THRESHOLD,
+                "cooldownSeconds": HEAL_COOLDOWN_SECONDS,
+                "maxRestarts": HEAL_MAX_RESTARTS,
+                "escalateAfterRestarts": HEAL_ESCALATE_AFTER,
+            },
+        )
 
     @staticmethod
     def _install_apps_compose(home: Path, project: str) -> None:

@@ -6,6 +6,9 @@ from unittest.mock import MagicMock, patch
 
 from raft.services.ops.doctor import INFRA
 
+from tests.shared.compose_ids import RunningServices
+from tests.shared.nginx import UpstreamFile
+
 from ....base import make_app, make_git_app, make_stack, write_applied_app
 from .base import DoctorTestCase
 
@@ -13,16 +16,15 @@ from .base import DoctorTestCase
 class TestDoctorLocalGit(DoctorTestCase):
     def test_local_app_path_and_upstream(self) -> None:
         self.seed_compose()
-        (self.tmp_path / "apps" / "app").mkdir(parents=True)
-        up = self.tmp_path / "generated" / "nginx" / "upstreams"
-        up.mkdir(parents=True)
-        (up / "app-http.conf").write_text(
-            "upstream app_http { server app:80; }\n", encoding="utf-8"
+        self.ensure_checkouts("app")
+        UpstreamFile.write(
+            self.tmp_path / "generated" / "nginx" / "upstreams",
+            "app-http.conf",
+            upstream="app_http",
+            target="app",
         )
         self.write_certs("app")
-        docker = self.mock_docker(
-            running=["raft-gate", "raft-router", "raft-controller", "app"]
-        )
+        docker = self.mock_docker(running=RunningServices.with_apps("app"))
         results = self.run_keyed(
             shell=self.mock_shell(), auth=MagicMock(), docker=docker, connect=True
         )
@@ -99,7 +101,7 @@ class TestDoctorLocalGit(DoctorTestCase):
 
     def test_missing_compose_and_port_conflict(self) -> None:
         stack = make_stack(self.tmp_path, (make_app("app"),))
-        (self.tmp_path / "apps" / "app").mkdir(parents=True)
+        self.ensure_checkouts("app")
         for path in (
             self.tmp_path / "compose.yaml",
             self.tmp_path / "generated" / "compose.apps.yaml",
@@ -145,7 +147,7 @@ class TestDoctorLocalGit(DoctorTestCase):
 
     def test_stack_query_error_and_port_query_error(self) -> None:
         self.seed_compose()
-        (self.tmp_path / "apps" / "app").mkdir(parents=True)
+        self.ensure_checkouts("app")
         docker = MagicMock()
         docker.running_services.side_effect = RuntimeError("compose broke")
         results = self.run_keyed(

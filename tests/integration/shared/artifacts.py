@@ -1,23 +1,22 @@
-"""Helpers for loading generated compose/nginx artifacts."""
+"""Helpers for loading generated compose/nginx artifacts.
+
+Prefer ``tests.shared.artifacts.GeneratedArtifacts`` for new code.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
 
-import yaml
+from tests.shared.artifacts import GeneratedArtifacts
 
 
 def load_compose_apps(generated: Path) -> dict[str, Any]:
-    data = yaml.safe_load((generated / "compose.apps.yaml").read_text(encoding="utf-8"))
-    assert isinstance(data, dict)
-    return data
+    return GeneratedArtifacts(generated).compose_apps()
 
 
 def load_compose_edge(generated: Path) -> dict[str, Any]:
-    data = yaml.safe_load((generated / "compose.edge.yaml").read_text(encoding="utf-8"))
-    assert isinstance(data, dict)
-    return data
+    return GeneratedArtifacts(generated).compose_edge()
 
 
 def read_text(path: Path) -> str:

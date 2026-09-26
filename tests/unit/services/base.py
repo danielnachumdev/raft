@@ -29,6 +29,17 @@ class ServicesTestCase(RaftTestCase):
             orch.syncer = MagicMock()
         return orch
 
+    @staticmethod
+    def stub_http_ready(
+        http: MagicMock,
+        *,
+        public_host_ok: bool = True,
+        tcp_port_ok: bool = True,
+    ) -> MagicMock:
+        http.public_host_ok.return_value = public_host_ok
+        http.tcp_port_ok.return_value = tcp_port_ok
+        return http
+
     def cutover_session(self) -> CutoverSession:
         write_applied_app(self.tmp_path, "app", extra=self._short_readiness())
         stack = make_local_stack(

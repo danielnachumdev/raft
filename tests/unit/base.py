@@ -10,6 +10,8 @@ import pytest
 import yaml
 
 from raft.models import App, Stack
+from raft.models.stack import load_stack
+from raft.services.render import StackRenderer
 
 
 def make_app(
@@ -92,6 +94,22 @@ def ensure_orchestrator_root(root: Path) -> None:
     (root / "certs").mkdir(parents=True, exist_ok=True)
     (root / "apps").mkdir(parents=True, exist_ok=True)
     (root / "logs").mkdir(parents=True, exist_ok=True)
+
+
+def ensure_app_checkouts(root: Path, *names: str) -> None:
+    for name in names:
+        (root / "apps" / name).mkdir(parents=True, exist_ok=True)
+
+
+def render_stack(root: Path, *, edge: Any = None) -> Path:
+    """Ensure checkouts for applied apps, then ``StackRenderer.render()``."""
+    stack = load_stack(root)
+    ensure_app_checkouts(root, *(app.name for app in stack.apps))
+    kwargs: dict[str, Any] = {}
+    if edge is not None:
+        kwargs["edge"] = edge
+    StackRenderer(stack, **kwargs).render()
+    return root / "generated"
 
 
 def _applied_app_spec(
@@ -218,3 +236,9 @@ class RaftTestCase:
 
     def demo_repo(self) -> Path:
         return write_demo_inventory(self.tmp_path)
+
+    def ensure_checkouts(self, *names: str) -> None:
+        ensure_app_checkouts(self.tmp_path, *names)
+
+    def render_applied(self, *, edge: Any = None) -> Path:
+        return render_stack(self.tmp_path, edge=edge)

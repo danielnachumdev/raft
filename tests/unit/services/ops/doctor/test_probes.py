@@ -12,6 +12,9 @@ from raft.services.ops.doctor.checks.ports_summary import PortSummaryChecks, _po
 from raft.services.ops.doctor.checks.public_host import PublicHostChecks
 from raft.services.ops.doctor.context import DoctorContext
 
+from tests.shared.compose_ids import RunningServices
+from tests.shared.nginx import NginxEmerg
+
 from ....base import make_stack, write_applied_app
 from .base import DoctorTestCase
 
@@ -19,15 +22,12 @@ from .base import DoctorTestCase
 class TestDoctorProbes(DoctorTestCase):
     def test_public_host_probe_fails_when_unreachable(self) -> None:
         write_applied_app(self.tmp_path, "app")
-        (self.tmp_path / "apps" / "app").mkdir(parents=True)
+        self.ensure_checkouts("app")
         self.seed_compose()
-        docker = self.mock_docker(
-            running=["raft-gate", "raft-router", "raft-controller", "app"]
-        )
+        docker = self.mock_docker(running=RunningServices.with_apps("app"))
         docker.gate_published_ports.return_value = [80, 443]
         docker.diagnostics_for.return_value = (
-            "--- app (running/unhealthy) ---\n"
-            'nginx: [emerg] host not found in upstream "old-backend:8000"'
+            "--- app (running/unhealthy) ---\n" + NginxEmerg.host_not_found()
         )
         with patch(
             "raft.services.ops.doctor.checks.public_host.HttpProbe.public_host_ok",

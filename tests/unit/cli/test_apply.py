@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -24,9 +24,8 @@ class TestCliApplyGetDelete(CliTestCase):
             "apply", "--file", "app.yaml", "--no-deploy",
             "--env-file", str(env_path), "--env", "A=1", "--env", "B=2",
         ]
-        with patch("raft.cli.deps.load_stack", return_value=stack):
-            with patch("raft.cli.deps.AppApply", return_value=applier):
-                exit_code = cli.main(argv)
+        with self.patched_deps(stack=stack, AppApply=applier):
+            exit_code = cli.main(argv)
         self._assert_merged_env(applier, exit_code)
 
     def _assert_merged_env(self, applier, exit_code) -> None:
@@ -42,9 +41,8 @@ class TestCliApplyGetDelete(CliTestCase):
         stack = make_stack(self.tmp_path, (make_app("app"),))
         applier = MagicMock()
         applier.apply_file.return_value = "web"
-        with patch("raft.cli.deps.load_stack", return_value=stack):
-            with patch("raft.cli.deps.AppApply", return_value=applier):
-                exit_code = cli.main(["apply", "--file", "app.yaml", "--no-deploy"])
+        with self.patched_deps(stack=stack, AppApply=applier):
+            exit_code = cli.main(["apply", "--file", "app.yaml", "--no-deploy"])
         call_kwargs = applier.apply_file.call_args.kwargs
         assert exit_code == 0 and isinstance(call_kwargs["env"], dict)
         assert "env_file" not in call_kwargs and "env_overrides" not in call_kwargs
@@ -60,24 +58,23 @@ class TestCliApplyGetDelete(CliTestCase):
         self._assert_delete_dispatch(stack, applier)
 
     def _assert_apply_dispatch(self, stack, applier) -> None:
-        with patch("raft.cli.deps.load_stack", return_value=stack):
-            with patch("raft.cli.deps.AppApply", return_value=applier):
-                assert cli.main(["apply", "--file", "app.yaml", "--no-deploy"]) == 0
-                applier.apply_file.assert_called_once()
-                assert cli.main([
-                    "apply", "--git", "git@github.com:org/hub.git",
-                    "--ref", "main", "--force-sync",
-                ]) == 0
-                applier.apply_git.assert_called_once()
-                with pytest.raises(RuntimeError, match="apply requires"):
-                    cli.main(["apply"])
+        with self.patched_deps(stack=stack, AppApply=applier):
+            assert cli.main(["apply", "--file", "app.yaml", "--no-deploy"]) == 0
+            applier.apply_file.assert_called_once()
+            assert cli.main([
+                "apply", "--git", "git@github.com:org/hub.git",
+                "--ref", "main", "--force-sync",
+            ]) == 0
+            applier.apply_git.assert_called_once()
+            with pytest.raises(RuntimeError, match="apply requires"):
+                cli.main(["apply"])
 
     def _assert_get_dispatch(self, stack, capsys) -> None:
         empty = make_stack(self.tmp_path, ())
-        with patch("raft.cli.deps.load_stack", return_value=empty):
+        with self.patched_deps(stack=empty):
             assert cli.main(["get", "apps"]) == 0
             assert "No apps applied" in capsys.readouterr().out
-        with patch("raft.cli.deps.load_stack", return_value=stack):
+        with self.patched_deps(stack=stack):
             assert cli.main(["get", "apps"]) == 0
             assert "app" in capsys.readouterr().out
             assert cli.main(["get", "app", "app"]) == 0
@@ -87,11 +84,10 @@ class TestCliApplyGetDelete(CliTestCase):
                 cli.main(["get", "nope"])
 
     def _assert_delete_dispatch(self, stack, applier) -> None:
-        with patch("raft.cli.deps.load_stack", return_value=stack):
-            with patch("raft.cli.deps.AppApply", return_value=applier):
-                assert cli.main(["delete", "app", "app"]) == 0
-                applier.delete.assert_called_once_with("app")
-                with pytest.raises(SystemExit):
-                    cli.main(["delete", "app"])
-                with pytest.raises(SystemExit):
-                    cli.main(["delete", "nope"])
+        with self.patched_deps(stack=stack, AppApply=applier):
+            assert cli.main(["delete", "app", "app"]) == 0
+            applier.delete.assert_called_once_with("app")
+            with pytest.raises(SystemExit):
+                cli.main(["delete", "app"])
+            with pytest.raises(SystemExit):
+                cli.main(["delete", "nope"])

@@ -16,9 +16,12 @@ from raft.models.stack import load_stack
 from raft.services.render import StackRenderer
 
 from tests.e2e.shared.compose import new_project_name
+from tests.e2e.shared.runtime import ServiceRuntimeWait
+from tests.shared.artifacts import GeneratedArtifacts
 from tests.shared.http import HttpClient, HttpResponse
 from tests.shared.raft_home import RaftHomeFixtures
 from tests.shared.wait import Wait
+from tests.shared.yaml_doc import YamlDoc
 
 APP = "http-only"
 PUBLIC_HOST = "site.test"
@@ -92,11 +95,7 @@ class ScaleE2EStack:
         self.close()
 
     def wait_app_running(self, *, timeout: float = 45.0) -> None:
-        Wait.until(
-            lambda: self.docker.service_runtime(APP)[0] == "running",
-            timeout=timeout,
-            message=f"{APP} not running",
-        )
+        ServiceRuntimeWait(self.docker, APP).until_running(timeout=timeout)
 
     def wait_live(self, *, timeout: float = 45.0) -> None:
         Wait.until(
@@ -114,12 +113,7 @@ class ScaleE2EStack:
         )
 
     def wait_app_stopped(self, *, timeout: float = 45.0) -> None:
-        Wait.until(
-            lambda: self.docker.service_runtime(APP)[0]
-            in ("exited", "dead", "missing"),
-            timeout=timeout,
-            message=f"{APP} still running",
-        )
+        ServiceRuntimeWait(self.docker, APP).until_stopped(timeout=timeout)
 
     def curl_host(self, *, expect_status: Optional[int] = 200) -> HttpResponse:
         return self.http.get("/", host=PUBLIC_HOST, expect_status=expect_status)
@@ -131,10 +125,9 @@ class ScaleE2EStack:
 
     @staticmethod
     def _inject_scaling(home: Path) -> None:
-        path = home / "state" / "apps" / f"{APP}.yaml"
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-        data["spec"]["scaling"] = dict(SCALING)
-        path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+        YamlDoc(home / "state" / "apps" / f"{APP}.yaml").merge_spec(
+            {"scaling": dict(SCALING)}
+        )
 
     @staticmethod
     def _rewrite_wake_port(home: Path, port: int) -> None:
@@ -147,9 +140,7 @@ class ScaleE2EStack:
 
     @staticmethod
     def _install_edge_compose(home: Path, project: str) -> None:
-        apps = yaml.safe_load(
-            (home / "generated" / "compose.apps.yaml").read_text(encoding="utf-8")
-        )
+        apps = GeneratedArtifacts.under(home).compose_apps()
         services = dict(apps.get("services") or {})
         services.pop("router", None)
         services.update(_edge_services())

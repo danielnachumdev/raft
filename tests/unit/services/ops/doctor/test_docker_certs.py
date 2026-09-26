@@ -35,7 +35,7 @@ class TestDoctorDockerCerts(DoctorTestCase):
 
     def test_docker_with_repo_checks_contract_and_auth(self) -> None:
         app = self._hub_with_repo()
-        (self.tmp_path / "apps" / "hub").mkdir(parents=True)
+        self.ensure_checkouts("hub")
         self._write_hub_registry()
         auth = MagicMock()
         auth.is_configured.return_value = True
@@ -63,7 +63,7 @@ class TestDoctorDockerCerts(DoctorTestCase):
 
     def test_docker_with_repo_warns_without_deploy_key(self) -> None:
         app = self._hub_with_repo()
-        (self.tmp_path / "apps" / "hub").mkdir(parents=True)
+        self.ensure_checkouts("hub")
         auth = MagicMock()
         auth.is_configured.return_value = False
         results = self.run_keyed(
@@ -79,7 +79,7 @@ class TestDoctorDockerCerts(DoctorTestCase):
         self.seed_compose()
         self.seed_generated_apps()
         self.write_certs("app")
-        (self.tmp_path / "apps" / "app").mkdir(parents=True)
+        self.ensure_checkouts("app")
         self._write_bad_registry()
         results = self.run_keyed(
             make_stack(self.tmp_path, (make_app("app"),)),
@@ -114,7 +114,7 @@ class TestDoctorDockerCerts(DoctorTestCase):
 
     def test_certs_partial_pair_fails(self) -> None:
         self.seed_compose()
-        (self.tmp_path / "apps" / "app").mkdir(parents=True)
+        self.ensure_checkouts("app")
         write_applied_app(self.tmp_path, "app", tls="origin")
         d = self.tmp_path / "certs" / "app"
         d.mkdir(parents=True)

@@ -7,6 +7,8 @@ import pytest
 from raft.models.stack import load_stack
 from raft.services.deploy.orchestrator import Orchestrator
 
+from tests.shared.compose_ids import RunningServices
+
 from ....base import write_applied_app
 from .base import OrchestratorTestCase
 
@@ -126,14 +128,14 @@ class TestOrchRedeploy(OrchestratorTestCase):
                     session.abort_cleanup.assert_called_once()
 
     def test_ensure_app_deployed_redeploys_when_running(self) -> None:
-        self.orch.docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller", "app"]
+        self.set_edge_running("app")
         with patch.object(self.orch, "redeploy_app") as redeploy:
             self.orch.ensure_app_deployed("app", ref_override="sha", force_sync=True)
         redeploy.assert_called_once_with("app", ref_override="sha", force_sync=True)
 
     def test_ensure_app_deployed_starts_app_when_edge_up(self) -> None:
-        self.orch.docker.running_services.return_value = ["raft-gate", "raft-router", "raft-controller"]
-        self.orch.http.public_host_ok.return_value = True
+        self.set_edge_only()
+        self.stub_http_ready(self.orch.http)
         with patch.object(self.orch, "sync") as sync:
             self.orch.ensure_app_deployed("app", ref_override="v1", force_sync=True)
         sync.assert_called_once_with(["app"], ref_override="v1", force=True)
@@ -144,9 +146,9 @@ class TestOrchRedeploy(OrchestratorTestCase):
         self.orch.docker.running_services.side_effect = [
             [],
             [],
-            ["raft-gate", "raft-router", "raft-controller", "app"],
+            RunningServices.with_apps("app"),
         ]
-        self.orch.http.public_host_ok.return_value = True
+        self.stub_http_ready(self.orch.http)
         with patch.object(self.orch, "sync") as sync:
             self.orch.ensure_app_deployed("app", ref_override="main", force_sync=False)
         sync.assert_called_once_with(["app"], ref_override="main", force=False)
@@ -163,9 +165,9 @@ class TestOrchRedeploy(OrchestratorTestCase):
         orch.docker.running_services.side_effect = [
             [],
             [],
-            ["raft-gate", "raft-router", "raft-controller", "app", "other"],
+            RunningServices.with_apps("app", "other"),
         ]
-        orch.http.public_host_ok.return_value = True
+        self.stub_http_ready(orch.http)
         with patch.object(orch, "sync") as sync:
             orch.ensure_app_deployed("app", force_sync=True)
         assert sync.call_args_list[0].args[0] == ["app"]
