@@ -20,9 +20,7 @@ class YamlDoc:
         return data
 
     def dump(self, data: Mapping[str, Any]) -> None:
-        self.path.write_text(
-            yaml.safe_dump(dict(data), sort_keys=False), encoding="utf-8"
-        )
+        self.path.write_text(yaml.safe_dump(dict(data), sort_keys=False), encoding="utf-8")
 
     def merge_root(self, key: str, value: Any) -> MutableMapping[str, Any]:
         data = self.load()

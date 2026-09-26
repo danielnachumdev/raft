@@ -38,7 +38,10 @@ class TestManifestResourceCoverage(RaftTestCase):
             )
         with pytest.raises(ValueError, match="limits/requests"):
             AppDocument.parse(
-                {**BASE_DOC, "spec": {**BASE_DOC["spec"], "resources": {"limits": [], "requests": {}}}},
+                {
+                    **BASE_DOC,
+                    "spec": {**BASE_DOC["spec"], "resources": {"limits": [], "requests": {}}},
+                },
                 path=PATH,
             )
         with pytest.raises(ValueError, match="extraHosts"):
@@ -46,9 +49,7 @@ class TestManifestResourceCoverage(RaftTestCase):
                 {**BASE_DOC, "spec": {**BASE_DOC["spec"], "extraHosts": {"a": 1}}}, path=PATH
             )
         with pytest.raises(ValueError, match="spec.build"):
-            AppDocument.parse(
-                {**BASE_DOC, "spec": {**BASE_DOC["spec"], "build": []}}, path=PATH
-            )
+            AppDocument.parse({**BASE_DOC, "spec": {**BASE_DOC["spec"], "build": []}}, path=PATH)
 
     def _assert_tls_build_extra_hosts(self) -> None:
         _app, spec = AppDocument.parse(

@@ -97,7 +97,9 @@ class StatusFixtures:
         )
 
     @classmethod
-    def snapshot(cls, *containers: ContainerStatus, host: Optional[HostStatus] = None) -> StatusSnapshot:
+    def snapshot(
+        cls, *containers: ContainerStatus, host: Optional[HostStatus] = None
+    ) -> StatusSnapshot:
         return StatusSnapshot(host=host or cls.empty_host_status(), containers=containers)
 
     @staticmethod
@@ -110,9 +112,7 @@ class StatusFixtures:
 
     @staticmethod
     def started_iso(days: int = 1) -> str:
-        return (datetime.now(timezone.utc) - timedelta(days=days)).strftime(
-            "%Y-%m-%dT%H:%M:%SZ"
-        )
+        return (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     @staticmethod
     def gate_router_stats_rows() -> dict:

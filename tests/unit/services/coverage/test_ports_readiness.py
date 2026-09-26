@@ -84,7 +84,10 @@ class TestPortsAndReadinessCoverage(RaftTestCase):
         r = parse_readiness({"readiness": {"type": "none"}}, ports, PATH)
         assert r.type == "none" and r.timeout_seconds == 120.0
         assert r.start_period_seconds == 45.0
-        assert parse_readiness({"readiness": {"type": "http", "path": "ready"}}, ports, PATH).path == "/ready"
+        assert (
+            parse_readiness({"readiness": {"type": "http", "path": "ready"}}, ports, PATH).path
+            == "/ready"
+        )
         assert parse_readiness({}, ports, PATH).port == "http"
         r4 = parse_readiness({}, (ports[1],), PATH)
         assert r4.type == "tcp"
@@ -111,18 +114,26 @@ class TestPortsAndReadinessCoverage(RaftTestCase):
     def test_readiness_timing_custom_and_auto_bump(self) -> None:
         ports = self._http_ports()
         custom = parse_readiness(
-            {"readiness": {
-                "type": "tcp", "port": "http", "timeoutSeconds": 180,
-                "startPeriodSeconds": 60, "intervalSeconds": 3,
-                "probeTimeoutSeconds": 2, "retries": 10,
-            }},
-            ports, PATH,
+            {
+                "readiness": {
+                    "type": "tcp",
+                    "port": "http",
+                    "timeoutSeconds": 180,
+                    "startPeriodSeconds": 60,
+                    "intervalSeconds": 3,
+                    "probeTimeoutSeconds": 2,
+                    "retries": 10,
+                }
+            },
+            ports,
+            PATH,
         )
         assert custom.timeout_seconds == 180.0 and custom.start_period_seconds == 60.0
         assert custom.interval_seconds == 3.0 and custom.retries == 10
         long_start = parse_readiness(
             {"readiness": {"type": "tcp", "port": "http", "startPeriodSeconds": 90}},
-            ports, PATH,
+            ports,
+            PATH,
         )
         assert long_start.timeout_seconds >= 90 + 15 * 2 + 15
 

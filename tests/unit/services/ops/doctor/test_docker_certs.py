@@ -12,15 +12,11 @@ class TestDoctorDockerCerts(DoctorTestCase):
     def _hub_docker_app(self, **kwargs):
         self.seed_compose()
         self.write_certs("hub")
-        return make_app(
-            "hub", source="docker", image="ghcr.io/org/hub", ref="main", **kwargs
-        )
+        return make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main", **kwargs)
 
     def _hub_with_repo(self):
         self.seed_generated_apps()
-        return self._hub_docker_app(
-            repo="git@github.com:org/hub.git", path="apps/hub"
-        )
+        return self._hub_docker_app(repo="git@github.com:org/hub.git", path="apps/hub")
 
     def test_docker_source_image_checks(self) -> None:
         stack = make_stack(self.tmp_path, (self._hub_docker_app(),))
@@ -119,7 +115,9 @@ class TestDoctorDockerCerts(DoctorTestCase):
         d = self.tmp_path / "certs" / "app"
         d.mkdir(parents=True)
         (d / "origin.pem").write_text("pem\n", encoding="utf-8")
-        results = self.run_keyed(shell=self.mock_shell(), docker=self.mock_docker(), auth=MagicMock())
+        results = self.run_keyed(
+            shell=self.mock_shell(), docker=self.mock_docker(), auth=MagicMock()
+        )
         assert results[("app", "certs")].status == "fail"
         assert "origin.key" in results[("app", "certs")].detail
         assert "tls: origin" in results[("app", "certs")].fix

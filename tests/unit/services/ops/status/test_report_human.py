@@ -92,12 +92,20 @@ class TestStatusReportHuman(RaftTestCase):
 
         assert _pids(None) is None and _pids("nope") is None and _pids("7") == 7
         row = _container_from_row(
-            service="app", role="app", app="app", group=None,
+            service="app",
+            role="app",
+            app="app",
+            group=None,
             allocated=AllocatedResources("0.5", "128M", "0.1", "32M"),
-            status="running", uptime_seconds=10.0,
+            status="running",
+            uptime_seconds=10.0,
             stats_row={
-                "CPUPerc": "1%", "MemUsage": "1MiB / --", "MemPerc": "1%",
-                "NetIO": "0B / 0B", "BlockIO": "0B / 0B", "PIDs": "bad",
+                "CPUPerc": "1%",
+                "MemUsage": "1MiB / --",
+                "MemPerc": "1%",
+                "NetIO": "0B / 0B",
+                "BlockIO": "0B / 0B",
+                "PIDs": "bad",
             },
             inspect_memory=67108864,
         )

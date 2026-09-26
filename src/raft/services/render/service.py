@@ -129,16 +129,12 @@ class StackRenderer:
         self.gate_stream_dir().mkdir(parents=True, exist_ok=True)
         self.stack.upstreams_dir.mkdir(parents=True, exist_ok=True)
 
-    def _write_all(
-        self, resolved: dict[str, AppSpec], fragments: EdgeFragments
-    ) -> None:
+    def _write_all(self, resolved: dict[str, AppSpec], fragments: EdgeFragments) -> None:
         self.compose_apps_path().write_text(
             ComposeAppsYaml(self.stack).build(resolved, fragments), encoding="utf-8"
         )
         self.compose_edge_path().write_text(self._compose_edge_yaml(), encoding="utf-8")
-        self.router_hosts_path().write_text(
-            self._router_hosts_conf(fragments), encoding="utf-8"
-        )
+        self.router_hosts_path().write_text(self._router_hosts_conf(fragments), encoding="utf-8")
         self._write_gate_http(fragments)
         self._write_gate_stream(fragments)
         self._write_gate_tls(fragments)

@@ -75,4 +75,3 @@ class DockerImages:
         )
         networks = [line.strip() for line in (result.stdout or "").splitlines() if line.strip()]
         return networks[0] if networks else f"{COMPOSE_PROJECT}_default"
-

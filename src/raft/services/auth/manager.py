@@ -113,9 +113,7 @@ class GitAuthManager:
         self.keys.upsert_ssh_config(service, alias=alias, hostname=base_host)
         logger.info("auth %s: SSH Host %s → %s", service, alias, base_host)
         self._announce_key(service, base_host, parsed)
-        logger.info(
-            "auth %s: clone URL will be %s", service, parsed.with_host_alias(alias)
-        )
+        logger.info("auth %s: clone URL will be %s", service, parsed.with_host_alias(alias))
         self._say_auth_next_steps(service, repo_url)
 
     def _prepare_key(self, service: str, *, force: bool) -> None:
@@ -230,7 +228,9 @@ class GitAuthManager:
             return
         detail = (result.stderr or result.stdout or "").strip()
         exc = subprocess.CalledProcessError(
-            result.returncode, ["git", "ls-remote", url, "HEAD"], stderr=detail,
+            result.returncode,
+            ["git", "ls-remote", url, "HEAD"],
+            stderr=detail,
         )
         raise_for_git_failure(exc, repo_url, app=service, always=True)
 

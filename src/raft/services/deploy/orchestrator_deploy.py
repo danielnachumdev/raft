@@ -75,18 +75,14 @@ class OrchestratorDeploy:
             app = self.stack.app(app_name)
             running = self.docker.running_services()
             if app.compose_id in running:
-                self.redeploy_app(
-                    app_name, ref_override=ref_override, force_sync=force_sync
-                )
+                self.redeploy_app(app_name, ref_override=ref_override, force_sync=force_sync)
                 return
             if self.stack.gate in running:
                 self._start_app_on_running_edge(
                     app, ref_override=ref_override, force_sync=force_sync
                 )
                 return
-            self._start_stack_for_app(
-                app_name, ref_override=ref_override, force_sync=force_sync
-            )
+            self._start_stack_for_app(app_name, ref_override=ref_override, force_sync=force_sync)
 
     def _start_app_on_running_edge(
         self,

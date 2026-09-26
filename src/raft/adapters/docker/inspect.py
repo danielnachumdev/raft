@@ -19,8 +19,7 @@ from ..shell import Shell
 logger = logging.getLogger(__name__)
 
 _STATUS_HEALTH_FMT = (
-    "{{.State.Status}} "
-    "{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}"
+    "{{.State.Status}} " "{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}"
 )
 
 
@@ -108,9 +107,7 @@ class DockerInspect:
         return result.stdout or ""
 
     @staticmethod
-    def _index_stats_rows(
-        stdout: str, container_ids: list[str]
-    ) -> dict[str, dict[str, Any]]:
+    def _index_stats_rows(stdout: str, container_ids: list[str]) -> dict[str, dict[str, Any]]:
         by_id: dict[str, dict[str, Any]] = {}
         for line in stdout.splitlines():
             line = line.strip()
@@ -214,4 +211,3 @@ class DockerInspect:
         status = parts[0]
         health = parts[1] if len(parts) > 1 else "none"
         return (status, health)
-

@@ -46,8 +46,7 @@ class PortSpec:
             )
         if self.public_port is not None and not (1 <= self.public_port <= 65535):
             raise ValueError(
-                f"{path}: ports[{self.name!r}].publicPort out of range: "
-                f"{self.public_port}"
+                f"{path}: ports[{self.name!r}].publicPort out of range: " f"{self.public_port}"
             )
 
     def _validate_public_port_rules(self, *, path: Path) -> None:
@@ -58,13 +57,11 @@ class PortSpec:
             )
         if self.expose in {"http", "none"} and self.public_port is not None:
             raise ValueError(
-                f"{path}: ports[{self.name!r}].publicPort is only valid for "
-                f"expose stream|host"
+                f"{path}: ports[{self.name!r}].publicPort is only valid for " f"expose stream|host"
             )
         if self.proxy_protocol and self.expose != "stream":
             raise ValueError(
-                f"{path}: ports[{self.name!r}].proxyProtocol only applies to "
-                f"expose=stream"
+                f"{path}: ports[{self.name!r}].proxyProtocol only applies to " f"expose=stream"
             )
 
 
@@ -121,9 +118,7 @@ class PortListParser:
         )
 
     @staticmethod
-    def _entry_name(
-        entry: dict, *, index: int, path: Path, seen: set[str]
-    ) -> str:
+    def _entry_name(entry: dict, *, index: int, path: Path, seen: set[str]) -> str:
         name = str(entry.get("name", "")).strip()
         if not name:
             raise ValueError(f"{path}: spec.ports[{index}].name is required")
@@ -137,9 +132,7 @@ class PortListParser:
         public_raw = entry.get("publicPort")
         if public_raw is None:
             return None
-        return require_int(
-            public_raw, label=f"spec.ports[{name!r}].publicPort", path=path
-        )
+        return require_int(public_raw, label=f"spec.ports[{name!r}].publicPort", path=path)
 
 
 def parse_ports(spec: dict[str, Any], path: Path) -> tuple[PortSpec, ...]:

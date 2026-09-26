@@ -15,11 +15,11 @@ from raft.errors import (
 
 from ...models.app import App
 from ...models.stack import Stack
-from .compose_diagnostics import ComposeDiagnostics, DIAG_LOG_TAIL, DIAG_MAX_LINES
+from ..shell import Shell
+from .compose_diagnostics import DIAG_LOG_TAIL, DIAG_MAX_LINES, ComposeDiagnostics
 from .edge import DockerEdge
 from .images import DockerImages
 from .inspect import DockerInspect
-from ..shell import Shell
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,9 @@ class DockerStack(DockerInspect, DockerImages, DockerEdge):
         pin = app.compose_pin_image
         logger.info(
             "pull %s then recreate compose service %s (pin %s)",
-            pull_ref, app.compose_id, pin,
+            pull_ref,
+            app.compose_id,
+            pin,
         )
         self._pull_and_tag(app, pull_ref=pull_ref, pin=pin)
         self._force_recreate_service(app.compose_id)
@@ -120,8 +122,12 @@ class DockerStack(DockerInspect, DockerImages, DockerEdge):
             run_compose_checked(
                 self.sh,
                 (
-                    "up", "-d", "--no-deps", "--no-build",
-                    "--force-recreate", compose_id,
+                    "up",
+                    "-d",
+                    "--no-deps",
+                    "--no-build",
+                    "--force-recreate",
+                    compose_id,
                 ),
                 action=f"recreate service {compose_id}",
                 stream=True,
@@ -133,9 +139,7 @@ class DockerStack(DockerInspect, DockerImages, DockerEdge):
         result = self.sh.docker("pull", pull_ref, capture=True, check=False)
         if result.returncode != 0:
             detail = (result.stderr or result.stdout or "").strip()
-            raise_for_docker_pull_failure(
-                pull_ref, detail=detail, app=app.name, repo=app.repo
-            )
+            raise_for_docker_pull_failure(pull_ref, detail=detail, app=app.name, repo=app.repo)
         if pull_ref != pin:
             run_docker_checked(
                 self.sh,
@@ -214,8 +218,16 @@ class DockerStack(DockerInspect, DockerImages, DockerEdge):
         env_file: Optional[str],
     ) -> list[str]:
         args: list[str] = [
-            "run", "-d", "--name", name, "--network", network,
-            "--network-alias", alias, "--restart", "no",
+            "run",
+            "-d",
+            "--name",
+            name,
+            "--network",
+            network,
+            "--network-alias",
+            alias,
+            "--restart",
+            "no",
         ]
         if env_file:
             args.extend(["--env-file", env_file])
@@ -258,6 +270,4 @@ class DockerStack(DockerInspect, DockerImages, DockerEdge):
         detail: str = "",
     ) -> OperatorError:
         """Append recent logs for unhealthy/exited services to a compose CTA."""
-        return self._diagnostics.enrich_compose_failure(
-            exc, services=services, detail=detail
-        )
+        return self._diagnostics.enrich_compose_failure(exc, services=services, detail=detail)

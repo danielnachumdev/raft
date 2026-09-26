@@ -64,9 +64,7 @@ class TestUpstreamRaceWithoutLock(RaftTestCase):
     def _run_locked_cutover_and_render(self, nginx, saw_tmp, release_cutover, done_render):
         def cutover_holder() -> None:
             with stack_lock(self.stack.root, timeout=5):
-                nginx.point_at(
-                    self.alpha, self.alpha.tmp_alias, port=self.port, reload=False
-                )
+                nginx.point_at(self.alpha, self.alpha.tmp_alias, port=self.port, reload=False)
                 saw_tmp.set()
                 release_cutover.wait(timeout=5)
 

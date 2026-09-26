@@ -6,12 +6,11 @@ import pytest
 
 import raft.config.paths as paths
 from raft.config.paths import find_package_root
+from raft.models.ports import PortSpec
 from raft.models.registry import AppRegistry
 from raft.models.stack import load_stack
-from raft.models.ports import PortSpec
 
 from ..base import RaftTestCase, make_app, write_inventory
-
 
 LOCAL_GIT_INVENTORY = """
 services:

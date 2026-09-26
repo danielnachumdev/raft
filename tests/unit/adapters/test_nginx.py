@@ -6,7 +6,6 @@ import pytest
 
 from raft.adapters import NginxUpstreams
 from raft.models.ports import PortSpec
-
 from tests.shared.nginx import UpstreamFile
 
 from .base import AdapterTestCase
@@ -32,9 +31,7 @@ class TestNginxUpstreams(AdapterTestCase):
         nginx = NginxUpstreams(self.stack, docker)
         nginx.point_at(self.app, "app_tmp")
         port = PortSpec(name="http", container_port=80, expose="http")
-        UpstreamFile.assert_contains(
-            self.stack.upstream_file(self.app, port), "server app_tmp:80"
-        )
+        UpstreamFile.assert_contains(self.stack.upstream_file(self.app, port), "server app_tmp:80")
         docker.router_sees_upstream_target.return_value = False
         with pytest.raises(RuntimeError, match="does not see upstream target"):
             nginx.point_at(self.app, "missing")

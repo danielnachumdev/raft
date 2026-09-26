@@ -18,7 +18,6 @@ from raft.services.render import StackRenderer
 
 from ...base import RaftTestCase, write_applied_app
 
-
 UNIQ_DOC = {
     "apiVersion": "raft/v1",
     "kind": "App",
@@ -35,9 +34,7 @@ UNIQ_DOC = {
 
 class TestMiscCoverage(RaftTestCase):
     def test_null_streams_loads_empty(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
-            "edge:\n  streams: null\n", encoding="utf-8"
-        )
+        (self.tmp_path / "settings.yaml").write_text("edge:\n  streams: null\n", encoding="utf-8")
         assert load_config(self.tmp_path).edge.streams == ()
 
     def test_parse_expect_name_and_bad_source(self) -> None:
@@ -128,9 +125,7 @@ class TestMiscCoverage(RaftTestCase):
         ).render()
         apps = (stack.generated_dir() / "compose.apps.yaml").read_text(encoding="utf-8")
         assert "587:587/udp" in apps
-        edge_yaml = (stack.generated_dir() / "compose.edge.yaml").read_text(
-            encoding="utf-8"
-        )
+        edge_yaml = (stack.generated_dir() / "compose.edge.yaml").read_text(encoding="utf-8")
         assert "53:53/udp" in edge_yaml
         mail_block = apps.split("  mail:\n", 1)[1]
         assert "healthcheck:" not in mail_block.split("    restart:", 1)[0]
@@ -178,9 +173,7 @@ class TestMiscCoverage(RaftTestCase):
                         "publicHost": "a.test",
                         "source": "local",
                         "tls": "bogus",
-                        "ports": [
-                            {"name": "http", "containerPort": 80, "expose": "http"}
-                        ],
+                        "ports": [{"name": "http", "containerPort": 80, "expose": "http"}],
                     },
                 },
                 path=Path("x.yaml"),
@@ -209,8 +202,11 @@ class TestMiscCoverage(RaftTestCase):
         AppRegistry(self.tmp_path).write(doc)
         with pytest.raises(ValueError, match="already used"):
             AppRegistry(self.tmp_path).write(
-                {**doc, "metadata": {"name": "other"},
-                 "spec": {**doc["spec"], "path": "apps/other"}}
+                {
+                    **doc,
+                    "metadata": {"name": "other"},
+                    "spec": {**doc["spec"], "path": "apps/other"},
+                }
             )
         self._write_clash_host()
         with pytest.raises(ValueError, match="publicHost values must be unique"):

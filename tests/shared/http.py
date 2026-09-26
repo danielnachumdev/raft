@@ -101,9 +101,7 @@ class HttpClient:
         suffix = path if path.startswith("/") else f"/{path}"
         return f"{self.base}{suffix}" if self.base else suffix
 
-    def _merge_headers(
-        self, host: Optional[str], headers: Optional[Mapping[str, str]]
-    ) -> dict:
+    def _merge_headers(self, host: Optional[str], headers: Optional[Mapping[str, str]]) -> dict:
         merged = dict(self.headers)
         if headers:
             merged.update(headers)
@@ -125,7 +123,9 @@ class HttpClient:
     def _open(req: Request, timeout: float, method: str, url: str) -> HttpResponse:
         try:
             with urllib.request.urlopen(req, timeout=timeout) as resp:
-                return HttpClient._response(method, url, int(resp.status), resp.read(), resp.headers)
+                return HttpClient._response(
+                    method, url, int(resp.status), resp.read(), resp.headers
+                )
         except urllib.error.HTTPError as exc:
             return HttpClient._response(method, url, int(exc.code), exc.read(), exc.headers)
 

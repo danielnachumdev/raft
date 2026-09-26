@@ -26,9 +26,7 @@ class TestGitErrors:
         self._assert_generic_messages()
 
     def _assert_auth_messages(self) -> None:
-        auth = subprocess.CalledProcessError(
-            1, ["git"], stderr="Permission denied (publickey)"
-        )
+        auth = subprocess.CalledProcessError(1, ["git"], stderr="Permission denied (publickey)")
         assert looks_like_git_auth_failure(auth)
         assert_cta(
             git_auth_failure_message("git@h:o/r.git", app="web", detail="nope\n"),
@@ -56,9 +54,7 @@ class TestGitErrors:
             tag="git",
         )
         assert_cta(git_network_failure_message("r", detail=""), contains=("auth test",))
-        assert_cta(
-            git_network_failure_message("r", detail="\n  \n"), contains=("auth test",)
-        )
+        assert_cta(git_network_failure_message("r", detail="\n  \n"), contains=("auth test",))
 
     def _assert_generic_messages(self) -> None:
         assert_cta(

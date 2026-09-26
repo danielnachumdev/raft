@@ -59,9 +59,7 @@ class DoctorTestCase(ServicesTestCase):
     def mock_docker(self, running=None, image_rc: int = 0, image_out: str = "sha256:abc\n"):
         docker = MagicMock()
         docker.running_services.return_value = list(running or [])
-        docker.sh.docker.return_value = MagicMock(
-            returncode=image_rc, stdout=image_out, stderr=""
-        )
+        docker.sh.docker.return_value = MagicMock(returncode=image_rc, stdout=image_out, stderr="")
         return docker
 
     @contextmanager

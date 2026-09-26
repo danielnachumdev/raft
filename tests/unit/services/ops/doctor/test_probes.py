@@ -11,7 +11,6 @@ from raft.models.stack import Stack, load_stack
 from raft.services.ops.doctor.checks.ports_summary import PortSummaryChecks, _port_number
 from raft.services.ops.doctor.checks.public_host import PublicHostChecks
 from raft.services.ops.doctor.context import DoctorContext
-
 from tests.shared.compose_ids import RunningServices
 from tests.shared.nginx import NginxEmerg
 
@@ -98,7 +97,9 @@ class TestDoctorProbes(DoctorTestCase):
         app = App(name="internal", public_host="", source="local", path="apps/internal")
         ctx = DoctorContext(
             stack=make_stack(self.tmp_path, (app,)),
-            shell=MagicMock(), auth=MagicMock(), docker=MagicMock(),
+            shell=MagicMock(),
+            auth=MagicMock(),
+            docker=MagicMock(),
         )
         assert PublicHostChecks().run(ctx) == []
 
@@ -106,7 +107,9 @@ class TestDoctorProbes(DoctorTestCase):
         self._seed_web_and_mail()
         ctx = DoctorContext(
             stack=load_stack(self.tmp_path),
-            shell=MagicMock(), auth=MagicMock(), docker=MagicMock(),
+            shell=MagicMock(),
+            auth=MagicMock(),
+            docker=MagicMock(),
         )
         by_key = self.by_key(PortSummaryChecks().run(ctx))
         assert by_key[("raft-router", "ports")].detail == "80"
@@ -119,12 +122,17 @@ class TestDoctorProbes(DoctorTestCase):
     def _seed_web_and_mail(self) -> None:
         write_applied_app(self.tmp_path, "web")
         write_applied_app(
-            self.tmp_path, "mail",
+            self.tmp_path,
+            "mail",
             extra={
-                "ports": [{
-                    "name": "smtp", "containerPort": 25,
-                    "expose": "stream", "publicPort": 25,
-                }],
+                "ports": [
+                    {
+                        "name": "smtp",
+                        "containerPort": 25,
+                        "expose": "stream",
+                        "publicPort": 25,
+                    }
+                ],
                 "readiness": {"type": "none"},
             },
         )
@@ -142,10 +150,12 @@ class TestDoctorProbes(DoctorTestCase):
     def _assert_spec_empty_or_dup(self, ctx: DoctorContext) -> None:
         def empty_or_dup(_self, app):
             if app.name == "mail":
-                return AppSpec(ports=(
-                    PortSpec(name="a", container_port=80, expose="http"),
-                    PortSpec(name="b", container_port=80, expose="none"),
-                ))
+                return AppSpec(
+                    ports=(
+                        PortSpec(name="a", container_port=80, expose="http"),
+                        PortSpec(name="b", container_port=80, expose="none"),
+                    )
+                )
             return AppSpec(ports=())
 
         with patch.object(Stack, "spec_for", empty_or_dup):

@@ -39,9 +39,7 @@ class TestDockerLifecycle(DockerTestCase):
         self.shell.compose.assert_any_call(
             "up", "-d", "--build", "--remove-orphans", capture=False, check=False
         )
-        self.shell.compose.assert_any_call(
-            "down", "--remove-orphans", capture=False, check=False
-        )
+        self.shell.compose.assert_any_call("down", "--remove-orphans", capture=False, check=False)
         self.shell.docker.assert_called()
 
     def test_recreate_rebuild(self) -> None:
@@ -49,8 +47,13 @@ class TestDockerLifecycle(DockerTestCase):
         self.docker.recreate_router()
         self.docker.rebuild_service("app")
         self.shell.compose.assert_any_call(
-            "up", "-d", "--no-deps", "--force-recreate", "raft-router",
-            capture=False, check=False,
+            "up",
+            "-d",
+            "--no-deps",
+            "--force-recreate",
+            "raft-router",
+            capture=False,
+            check=False,
         )
         self.shell.compose.assert_any_call(
             "up", "-d", "--build", "--no-deps", "app", capture=False, check=False
@@ -61,16 +64,23 @@ class TestDockerLifecycle(DockerTestCase):
         self.shell.docker.return_value = self.ok()
         app = make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
         self.docker.recreate_pulled_service(app, pull_ref="ghcr.io/org/hub:abc")
+        self.shell.docker.assert_any_call("pull", "ghcr.io/org/hub:abc", capture=True, check=False)
         self.shell.docker.assert_any_call(
-            "pull", "ghcr.io/org/hub:abc", capture=True, check=False
-        )
-        self.shell.docker.assert_any_call(
-            "tag", "ghcr.io/org/hub:abc", "ghcr.io/org/hub:main",
-            capture=True, check=False,
+            "tag",
+            "ghcr.io/org/hub:abc",
+            "ghcr.io/org/hub:main",
+            capture=True,
+            check=False,
         )
         self.shell.compose.assert_any_call(
-            "up", "-d", "--no-deps", "--no-build", "--force-recreate", "hub",
-            capture=False, check=False,
+            "up",
+            "-d",
+            "--no-deps",
+            "--no-build",
+            "--force-recreate",
+            "hub",
+            capture=False,
+            check=False,
         )
 
     def test_recreate_pulled_service_skips_tag_when_pin(self) -> None:
@@ -78,9 +88,7 @@ class TestDockerLifecycle(DockerTestCase):
         self.shell.docker.return_value = self.ok()
         app = make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
         self.docker.recreate_pulled_service(app, pull_ref="ghcr.io/org/hub:main")
-        self.shell.docker.assert_any_call(
-            "pull", "ghcr.io/org/hub:main", capture=True, check=False
-        )
+        self.shell.docker.assert_any_call("pull", "ghcr.io/org/hub:main", capture=True, check=False)
         assert not any(c.args[:1] == ("tag",) for c in self.shell.docker.call_args_list)
 
     def test_recreate_pulled_service_unauthorized(self) -> None:
@@ -136,16 +144,12 @@ class TestDockerLifecycle(DockerTestCase):
         assert self.docker.service_runtime("app") == ("missing", "none")
         self.shell.compose.return_value = self.ok()
         self.docker.restart_service("app")
-        self.shell.compose.assert_any_call(
-            "restart", "app", capture=False, check=False
-        )
+        self.shell.compose.assert_any_call("restart", "app", capture=False, check=False)
         self.docker.start_service("app")
 
     def _test_service_runtime_and_heal_actions_p2(self) -> None:
         self.docker.stop_service("app")
-        self.shell.compose.assert_any_call(
-            "stop", "app", capture=False, check=False
-        )
+        self.shell.compose.assert_any_call("stop", "app", capture=False, check=False)
         self.shell.compose.assert_any_call(
             "up", "-d", "--no-deps", "--no-build", "app", capture=False, check=False
         )
@@ -168,4 +172,3 @@ class TestDockerLifecycle(DockerTestCase):
                 self.docker.start_service("app")
             with pytest.raises(RuntimeError, match="--- app ---"):
                 self.docker.stop_service("app")
-

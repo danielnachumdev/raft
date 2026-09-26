@@ -109,9 +109,7 @@ class TestCliDispatch(CliTestCase):
 
     def test_redeploy_app_dispatch(self) -> None:
         assert self.run_main(["redeploy", "app", "--ref", "sha1", "--force-sync"]) == 0
-        self.orch.redeploy_app.assert_called_once_with(
-            "app", ref_override="sha1", force_sync=True
-        )
+        self.orch.redeploy_app.assert_called_once_with("app", ref_override="sha1", force_sync=True)
 
     def test_redeploy_router_dispatch(self) -> None:
         assert self.run_main(["redeploy", "router"]) == 0

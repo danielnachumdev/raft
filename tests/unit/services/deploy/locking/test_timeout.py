@@ -28,6 +28,7 @@ from raft.services.render import StackRenderer
 
 from ....base import RaftTestCase, make_local_stack, write_applied_app
 
+
 class TestResolveLockTimeout:
     def test_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(ENV_LOCK_TIMEOUT, raising=False)
@@ -57,5 +58,3 @@ class TestResolveLockTimeout:
     def test_negative(self) -> None:
         with pytest.raises(OperatorError, match="non-negative"):
             resolve_lock_timeout(-1)
-
-

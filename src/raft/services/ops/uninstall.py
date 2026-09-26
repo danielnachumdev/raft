@@ -33,9 +33,7 @@ class Uninstall:
         ssh_dir = default_ssh_dir()
         keys_dir = ssh_dir / "raft"
         config_path = ssh_dir / "config"
-        keep_checkout = Path(
-            os.environ.get("RAFT_HOME", str(Path.home() / "raft"))
-        ).expanduser()
+        keep_checkout = Path(os.environ.get("RAFT_HOME", str(Path.home() / "raft"))).expanduser()
         if not yes:
             self._refuse_without_yes(home, keys_dir, config_path, keep_checkout, uv=uv)
         self._compose_down()
@@ -110,11 +108,13 @@ class Uninstall:
         which = shutil.which("uv")
         if which:
             binaries.append(Path(which))
-        binaries.extend([
-            home / ".local" / "bin" / "uv",
-            home / ".local" / "bin" / "uvx",
-            home / ".cargo" / "bin" / "uv",
-        ])
+        binaries.extend(
+            [
+                home / ".local" / "bin" / "uv",
+                home / ".local" / "bin" / "uvx",
+                home / ".cargo" / "bin" / "uv",
+            ]
+        )
         return binaries
 
     def _compose_down(self) -> None:
@@ -147,8 +147,7 @@ class Uninstall:
         return [
             line.strip()
             for line in listed.splitlines()
-            if line.strip().startswith("raft-")
-            and not line.strip().endswith(":<none>")
+            if line.strip().startswith("raft-") and not line.strip().endswith(":<none>")
         ]
 
     def _docker_image_list_stdout(self) -> Optional[str]:

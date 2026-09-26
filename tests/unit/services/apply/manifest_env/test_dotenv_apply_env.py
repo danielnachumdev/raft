@@ -10,16 +10,20 @@ from raft.errors import OperatorError
 from raft.services.apply.manifest_env import ApplyEnvSources, DotenvLoader, EnvAssignment
 
 DOTENV_SAMPLE = (
-    "# comment\n\nA=one\nA=two\nexport B=bee\n"
-    "C='quoted'\nD=\"dquoted\"\nE= spaced \n"
+    "# comment\n\nA=one\nA=two\nexport B=bee\n" "C='quoted'\nD=\"dquoted\"\nE= spaced \n"
 )
+
 
 class TestDotenvLoader:
     def test_parses_comments_quotes_and_later_key_wins(self, tmp_path: Path) -> None:
         path = tmp_path / "vars.env"
         path.write_text(DOTENV_SAMPLE, encoding="utf-8")
         assert DotenvLoader(path).load() == {
-            "A": "two", "B": "bee", "C": "quoted", "D": "dquoted", "E": "spaced",
+            "A": "two",
+            "B": "bee",
+            "C": "quoted",
+            "D": "dquoted",
+            "E": "spaced",
         }
 
     def test_missing_file_errors(self, tmp_path: Path) -> None:
@@ -83,9 +87,7 @@ class TestApplyEnvPrecedence:
             "E": "flag",  # flag only
         }
 
-    def test_from_apply_reads_os_environ(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_from_apply_reads_os_environ(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("RAFT_SMOKE", "yes")
 
         env = ApplyEnvSources.from_apply(env_overrides=["EXTRA=1"]).build()

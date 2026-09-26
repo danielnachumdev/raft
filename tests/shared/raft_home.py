@@ -40,8 +40,7 @@ class RaftHomeFixtures:
             )
         elif not (home / "settings.yaml").is_file():
             (home / "settings.yaml").write_text(
-                "logging:\n  level: INFO\n"
-                "edge:\n  http: 80\n  https: 443\n  streams: []\n",
+                "logging:\n  level: INFO\n" "edge:\n  http: 80\n  https: 443\n  streams: []\n",
                 encoding="utf-8",
             )
         return home

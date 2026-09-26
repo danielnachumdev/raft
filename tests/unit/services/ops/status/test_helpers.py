@@ -36,5 +36,3 @@ class TestStatusHelpers:
         assert _fmt_uptime(45) == "45s"
         assert _fmt_uptime(3661) == "1h 1m"
         assert _fmt_uptime(90061) == "1d 1h 1m"
-
-

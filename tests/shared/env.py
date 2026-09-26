@@ -19,9 +19,7 @@ class IsolatedRaftEnv:
     log_dir: Path
 
     @classmethod
-    def install(
-        cls, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> "IsolatedRaftEnv":
+    def install(cls, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> "IsolatedRaftEnv":
         home = tmp_path / "raft-data-home"
         home.mkdir()
         ssh_dir = tmp_path / ".ssh-raft-test"

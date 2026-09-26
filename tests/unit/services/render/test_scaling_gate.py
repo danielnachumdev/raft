@@ -10,7 +10,6 @@ from raft.models.manifest import AppSpec
 from raft.models.ports import PortSpec
 from raft.models.scaling_spec import ScalingSpec
 from raft.services.render.scaling_gate import ScalingGate
-
 from tests.shared.files import FileText
 
 from ...base import RaftTestCase, write_applied_app
@@ -25,9 +24,7 @@ _EDGE = EdgeConfig(http=80, https=443, streams=())
 
 class TestScalingRender(RaftTestCase):
     def test_gate_http_includes_holding_and_wake(self) -> None:
-        write_applied_app(
-            self.tmp_path, "web", public_host="web.test", extra={"scaling": _SCALING}
-        )
+        write_applied_app(self.tmp_path, "web", public_host="web.test", extra={"scaling": _SCALING})
         gen = self.render_applied(edge=_EDGE)
         FileText.contains(
             gen / "nginx/gate-http/listeners.conf",
@@ -40,14 +37,15 @@ class TestScalingRender(RaftTestCase):
 
     def test_tls_scaling_snippet(self) -> None:
         write_applied_app(
-            self.tmp_path, "web", public_host="web.test", tls="origin",
+            self.tmp_path,
+            "web",
+            public_host="web.test",
+            tls="origin",
             extra={"scaling": _SCALING},
         )
         (self.tmp_path / "certs" / "web").mkdir(parents=True)
         gen = self.render_applied(edge=_EDGE)
-        FileText.contains(
-            gen / "nginx/gate-tls/web.conf", "holding.html", "listen 443 ssl"
-        )
+        FileText.contains(gen / "nginx/gate-tls/web.conf", "holding.html", "listen 443 ssl")
 
     def test_contribute_http_skips(self) -> None:
         gate = ScalingGate()

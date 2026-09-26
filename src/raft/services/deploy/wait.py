@@ -73,9 +73,7 @@ class WaitUntil:
             time.sleep(self.interval)
         self._raise_timeout(started)
 
-    def _maybe_progress(
-        self, started: float, deadline: float, next_progress: float
-    ) -> float:
+    def _maybe_progress(self, started: float, deadline: float, next_progress: float) -> float:
         now = time.monotonic()
         if self.progress_every <= 0 or now < next_progress:
             return next_progress
@@ -114,5 +112,3 @@ class WaitUntil:
         except Exception:  # noqa: BLE001 — never mask the timeout
             logger.debug("diagnostics callback failed", exc_info=True)
             return message
-
-

@@ -41,8 +41,14 @@ class TestDockerNginxReload(DockerTestCase):
             "exec", "-T", "raft-router", "nginx", "-t", capture=True, check=False
         )
         self.shell.compose.assert_any_call(
-            "exec", "-T", "raft-router", "nginx", "-s", "reload",
-            capture=True, check=False,
+            "exec",
+            "-T",
+            "raft-router",
+            "nginx",
+            "-s",
+            "reload",
+            capture=True,
+            check=False,
         )
 
     def test_reload_gate_nginx(self) -> None:
@@ -52,8 +58,14 @@ class TestDockerNginxReload(DockerTestCase):
             "exec", "-T", "raft-gate", "nginx", "-t", capture=True, check=False
         )
         self.shell.compose.assert_any_call(
-            "exec", "-T", "raft-gate", "nginx", "-s", "reload",
-            capture=True, check=False,
+            "exec",
+            "-T",
+            "raft-gate",
+            "nginx",
+            "-s",
+            "reload",
+            capture=True,
+            check=False,
         )
 
     def test_reload_gate_nginx_captures_cert_failure(self) -> None:
@@ -143,11 +155,15 @@ class TestDockerNginxReload(DockerTestCase):
         self.shell.compose.return_value = self.ok("gatecid\n")
         self.docker.recreate_gate()
         self.shell.compose.assert_any_call(
-            "up", "-d", "--no-deps", "--force-recreate", "raft-gate",
-            capture=False, check=False,
+            "up",
+            "-d",
+            "--no-deps",
+            "--force-recreate",
+            "raft-gate",
+            capture=False,
+            check=False,
         )
         self.shell.docker.return_value = self.ok("80/tcp 443/tcp\n")
         assert self.docker.gate_published_ports() == [80, 443]
         self.shell.compose.return_value = self.ok("  \n")
         assert self.docker.gate_published_ports() == []
-

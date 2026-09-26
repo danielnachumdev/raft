@@ -150,8 +150,14 @@ def _container_table_rows(
     containers: tuple[ContainerStatus, ...],
 ) -> list[tuple[str, ...]]:
     headers = (
-        "NAME", "GROUP", "STATUS", "CPU", "MEM USED / LIMIT",
-        "MEM%", "ALLOC CPU", "UPTIME",
+        "NAME",
+        "GROUP",
+        "STATUS",
+        "CPU",
+        "MEM USED / LIMIT",
+        "MEM%",
+        "ALLOC CPU",
+        "UPTIME",
     )
     rows: list[tuple[str, ...]] = [headers]
     for c in containers:
@@ -170,9 +176,7 @@ def _container_table_rows(
     return rows
 
 
-def _print_table(
-    stream: TextIO, rows: list[tuple[str, ...]], *, color: bool
-) -> None:
+def _print_table(stream: TextIO, rows: list[tuple[str, ...]], *, color: bool) -> None:
     widths = [max(len(row[i]) for row in rows) for i in range(len(rows[0]))]
     for idx, row in enumerate(rows):
         line = "  ".join(cell.ljust(widths[i]) for i, cell in enumerate(row))
@@ -250,9 +254,7 @@ def _live_loop(
     while True:
         snapshot = collect()
         buf = StringIO()
-        write_report(
-            snapshot, as_json=False, out=buf, color=color, live_footer=True
-        )
+        write_report(snapshot, as_json=False, out=buf, color=color, live_footer=True)
         prev_lines = overwrite_block(stream, buf.getvalue(), prev_lines)
         frames += 1
         if max_frames is not None and frames >= max_frames:

@@ -21,8 +21,16 @@ class TestCliApplyGetDelete(CliTestCase):
         env_path = self.tmp_path / "vars.env"
         env_path.write_text("FROM_FILE=yes\nA=from-file\n", encoding="utf-8")
         argv = [
-            "apply", "--file", "app.yaml", "--no-deploy",
-            "--env-file", str(env_path), "--env", "A=1", "--env", "B=2",
+            "apply",
+            "--file",
+            "app.yaml",
+            "--no-deploy",
+            "--env-file",
+            str(env_path),
+            "--env",
+            "A=1",
+            "--env",
+            "B=2",
         ]
         with self.patched_deps(stack=stack, AppApply=applier):
             exit_code = cli.main(argv)
@@ -61,10 +69,19 @@ class TestCliApplyGetDelete(CliTestCase):
         with self.patched_deps(stack=stack, AppApply=applier):
             assert cli.main(["apply", "--file", "app.yaml", "--no-deploy"]) == 0
             applier.apply_file.assert_called_once()
-            assert cli.main([
-                "apply", "--git", "git@github.com:org/hub.git",
-                "--ref", "main", "--force-sync",
-            ]) == 0
+            assert (
+                cli.main(
+                    [
+                        "apply",
+                        "--git",
+                        "git@github.com:org/hub.git",
+                        "--ref",
+                        "main",
+                        "--force-sync",
+                    ]
+                )
+                == 0
+            )
             applier.apply_git.assert_called_once()
             with pytest.raises(RuntimeError, match="apply requires"):
                 cli.main(["apply"])

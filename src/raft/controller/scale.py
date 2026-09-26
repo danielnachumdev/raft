@@ -67,9 +67,7 @@ class Scaler:
             return False
         return self._do_wake(name, compose_id, scaling, when)
 
-    def _consider(
-        self, name: str, compose_id: str, scaling: ScalingSpec, when: float
-    ) -> None:
+    def _consider(self, name: str, compose_id: str, scaling: ScalingSpec, when: float) -> None:
         state = self.store.load(name)
         if state.scaled_to_zero:
             self._consider_scaled(name, compose_id, scaling, state, when)
@@ -121,9 +119,7 @@ class Scaler:
             return
         logger.info("scale idle-stop ok app=%s", name)
 
-    def _do_wake(
-        self, name: str, compose_id: str, scaling: ScalingSpec, when: float
-    ) -> bool:
+    def _do_wake(self, name: str, compose_id: str, scaling: ScalingSpec, when: float) -> bool:
         logger.info("scale wake app=%s compose=%s", name, compose_id)
         try:
             with app_and_stack_locks(self.home, name):

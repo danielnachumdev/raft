@@ -53,6 +53,4 @@ def require_origin_certs(stack: Stack) -> None:
     missing = missing_origin_certs(stack)
     if not missing:
         return
-    raise OperatorError(
-        format_missing_origin_certs(missing, include_doctor_footer=True)
-    )
+    raise OperatorError(format_missing_origin_certs(missing, include_doctor_footer=True))

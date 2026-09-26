@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 from raft.services.ops.doctor import INFRA
-
 from tests.shared.compose_ids import RunningServices
 from tests.shared.nginx import UpstreamFile
 
@@ -42,14 +41,19 @@ class TestDoctorLocalGit(DoctorTestCase):
     def test_git_app_missing_auth_and_checkout(self) -> None:
         self.seed_compose()
         write_applied_app(
-            self.tmp_path, "svc", source="git",
-            repo="git@github.com:org/svc.git", public_host="svc.test",
+            self.tmp_path,
+            "svc",
+            source="git",
+            repo="git@github.com:org/svc.git",
+            public_host="svc.test",
         )
         auth = MagicMock()
         auth.is_configured.return_value = False
         results = self.run_keyed(
             make_stack(self.tmp_path, (make_git_app("svc"),)),
-            shell=self.mock_shell(), auth=auth, docker=self.mock_docker(),
+            shell=self.mock_shell(),
+            auth=auth,
+            docker=self.mock_docker(),
         )
         self._assert_git_missing(results)
 
@@ -66,14 +70,10 @@ class TestDoctorLocalGit(DoctorTestCase):
         self.seed_compose()
         shell = MagicMock()
         with patch("shutil.which", return_value=None):
-            with patch(
-                "socket.create_connection", side_effect=OSError()
-            ):
+            with patch("socket.create_connection", side_effect=OSError()):
                 results = self.by_key(self.doctor(shell=shell).run())
         assert results[(INFRA, "docker")].status == "fail"
-        shell.run.return_value = MagicMock(
-            returncode=1, stdout="", stderr="Cannot connect\n"
-        )
+        shell.run.return_value = MagicMock(returncode=1, stdout="", stderr="Cannot connect\n")
         results = self.run_keyed(shell=shell)
         assert results[(INFRA, "docker")].status == "fail"
         assert results[(INFRA, "docker")].detail
@@ -84,15 +84,20 @@ class TestDoctorLocalGit(DoctorTestCase):
         dest.mkdir(parents=True)
         (dest / "README").write_text("x", encoding="utf-8")
         write_applied_app(
-            self.tmp_path, "svc", source="git",
-            repo="git@github.com:org/svc.git", public_host="svc.test",
+            self.tmp_path,
+            "svc",
+            source="git",
+            repo="git@github.com:org/svc.git",
+            public_host="svc.test",
         )
         auth = MagicMock()
         auth.is_configured.return_value = True
         auth.test.side_effect = RuntimeError("auth test failed")
         results = self.run_keyed(
             make_stack(self.tmp_path, (make_git_app("svc"),)),
-            shell=self.mock_shell(), auth=auth, docker=self.mock_docker(),
+            shell=self.mock_shell(),
+            auth=auth,
+            docker=self.mock_docker(),
         )
         assert results[("svc", "auth")].status == "fail"
         assert results[("svc", "sync")].status == "fail"
@@ -109,8 +114,11 @@ class TestDoctorLocalGit(DoctorTestCase):
             if path.is_file():
                 path.unlink()
         results = self.run_keyed(
-            stack, shell=self.mock_shell(), docker=self.mock_docker(),
-            auth=MagicMock(), connect=True,
+            stack,
+            shell=self.mock_shell(),
+            docker=self.mock_docker(),
+            auth=MagicMock(),
+            connect=True,
         )
         assert results[(INFRA, "compose.yaml")].status == "fail"
         assert results[(INFRA, "generated")].status == "fail"
@@ -123,16 +131,21 @@ class TestDoctorLocalGit(DoctorTestCase):
         (dest / ".git").mkdir()
         self.write_certs("svc")
         write_applied_app(
-            self.tmp_path, "svc", source="git",
-            repo="git@github.com:org/svc.git", public_host="svc.test",
+            self.tmp_path,
+            "svc",
+            source="git",
+            repo="git@github.com:org/svc.git",
+            public_host="svc.test",
         )
         auth = MagicMock()
         auth.is_configured.return_value = True
         auth.test.return_value = None
         results = self.run_keyed(
             make_stack(self.tmp_path, (make_git_app("svc"),)),
-            shell=self.mock_shell(), auth=auth,
-            docker=self.mock_docker(running=["raft-gate"]), connect=True,
+            shell=self.mock_shell(),
+            auth=auth,
+            docker=self.mock_docker(running=["raft-gate"]),
+            connect=True,
         )
         self._assert_git_partial(results)
 

@@ -19,13 +19,15 @@ class CutoverTestCase(ServicesTestCase):
 
     def docker_session(self, *, ref_text: str | None = None) -> CutoverSession:
         write_applied_app(
-            self.tmp_path, "hub", source="docker", image="ghcr.io/org/hub",
-            public_host="hub.test", build_context=None,
+            self.tmp_path,
+            "hub",
+            source="docker",
+            image="ghcr.io/org/hub",
+            public_host="hub.test",
+            build_context=None,
         )
         app = make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
-        stack = make_stack(
-            self.tmp_path, (app,), drain_seconds=0.0, ready_timeout_seconds=1.0
-        )
+        stack = make_stack(self.tmp_path, (app,), drain_seconds=0.0, ready_timeout_seconds=1.0)
         if ref_text is not None:
             (self.tmp_path / "deploy").mkdir(parents=True, exist_ok=True)
             (self.tmp_path / "deploy" / "hub.ref").write_text(ref_text, encoding="utf-8")

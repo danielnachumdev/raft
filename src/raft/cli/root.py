@@ -15,6 +15,7 @@ from . import get as get_cmd
 from .argv import ApplyEnvOverrides
 from .auth import AuthCLI
 from .gate import GateCLI
+
 logger = logging.getLogger(__name__)
 
 
@@ -78,29 +79,33 @@ class RaftCLI:
         apply_env = self._build_apply_env(env_file=env_file, env=env)
         if file is not None:
             self._apply_from_file(
-                applier, Path(file), ref=ref, deploy=deploy,
-                force_sync=force_sync, env=apply_env,
+                applier,
+                Path(file),
+                ref=ref,
+                deploy=deploy,
+                force_sync=force_sync,
+                env=apply_env,
             )
             return
         if git:
             self._apply_from_git(
-                applier, git, ref=ref, deploy=deploy,
-                force_sync=force_sync, env=apply_env,
+                applier,
+                git,
+                ref=ref,
+                deploy=deploy,
+                force_sync=force_sync,
+                env=apply_env,
             )
             return
         raise apply_requires_source()
 
     @staticmethod
     def _apply_from_file(applier, path, *, ref, deploy, force_sync, env) -> None:
-        applier.apply_file(
-            path, ref_override=ref, deploy=deploy, force_sync=force_sync, env=env
-        )
+        applier.apply_file(path, ref_override=ref, deploy=deploy, force_sync=force_sync, env=env)
 
     @staticmethod
     def _apply_from_git(applier, git, *, ref, deploy, force_sync, env) -> None:
-        applier.apply_git(
-            git, ref=ref or "main", deploy=deploy, force_sync=force_sync, env=env
-        )
+        applier.apply_git(git, ref=ref or "main", deploy=deploy, force_sync=force_sync, env=env)
 
     def get(
         self,

@@ -117,8 +117,6 @@ class TestVolumesParse(VolumesTestCase):
             with pytest.raises(ValueError, match=match):
                 AppDocument.parse(data, path=Path("v.yaml"))
         data16 = self.base_docker()
-        data16["spec"]["volumes"] = [
-            {"hostPath": "/data", "containerPath": "/x", "name": ""}
-        ]
+        data16["spec"]["volumes"] = [{"hostPath": "/data", "containerPath": "/x", "name": ""}]
         _, spec16 = AppDocument.parse(data16, path=Path("p.yaml"))
         assert spec16.volumes[0].name is None

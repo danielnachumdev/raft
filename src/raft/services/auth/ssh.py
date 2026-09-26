@@ -64,9 +64,16 @@ class SshDeployKeys:
         try:
             self.sh.run(
                 [
-                    "ssh-keygen", "-t", "ed25519",
-                    "-f", str(self.key_path(service)),
-                    "-N", "", "-C", comment, "-q",
+                    "ssh-keygen",
+                    "-t",
+                    "ed25519",
+                    "-f",
+                    str(self.key_path(service)),
+                    "-N",
+                    "",
+                    "-C",
+                    comment,
+                    "-q",
                 ],
                 capture=True,
             )

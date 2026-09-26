@@ -166,9 +166,18 @@ def write_applied_app(
 ) -> Path:
     ensure_orchestrator_root(root)
     spec = _applied_app_spec(
-        name, public_host=public_host, source=source, path=path, repo=repo,
-        ref=ref, image=image, www=www, build_context=build_context,
-        port=port, tls=tls, extra=extra,
+        name,
+        public_host=public_host,
+        source=source,
+        path=path,
+        repo=repo,
+        ref=ref,
+        image=image,
+        www=www,
+        build_context=build_context,
+        port=port,
+        tls=tls,
+        extra=extra,
     )
     doc = {"apiVersion": "raft/v1", "kind": "App", "metadata": {"name": name}, "spec": spec}
     dest = root / "state" / "apps" / f"{name}.yaml"

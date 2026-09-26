@@ -40,9 +40,7 @@ def raise_for_compose_failure(
         raise OperatorError(docker_daemon_message(detail=detail)) from exc
     if looks_like_port_in_use(exc):
         raise OperatorError(port_in_use_message(detail=detail)) from exc
-    raise OperatorError(
-        compose_failure_message(action, detail=detail, hint=hint)
-    ) from exc
+    raise OperatorError(compose_failure_message(action, detail=detail, hint=hint)) from exc
 
 
 def raise_for_docker_pull_failure(
@@ -54,19 +52,16 @@ def raise_for_docker_pull_failure(
 ) -> None:
     """Always raise OperatorError for a failed ``docker pull``."""
     if looks_like_registry_unauthorized(detail):
-        raise OperatorError(
-            registry_unauthorized_message(
-                image, detail=detail, app=app, repo=repo
-            )
-        )
+        raise OperatorError(registry_unauthorized_message(image, detail=detail, app=app, repo=repo))
     blob = detail.lower()
-    if looks_like_docker_daemon_down(
-        subprocess.CalledProcessError(1, ["docker", "pull"], stderr=detail)
-    ) or "cannot connect to the docker daemon" in blob:
+    if (
+        looks_like_docker_daemon_down(
+            subprocess.CalledProcessError(1, ["docker", "pull"], stderr=detail)
+        )
+        or "cannot connect to the docker daemon" in blob
+    ):
         raise OperatorError(docker_daemon_message(detail=detail))
-    raise OperatorError(
-        docker_pull_failure_message(image, detail=detail, app=app)
-    )
+    raise OperatorError(docker_pull_failure_message(image, detail=detail, app=app))
 
 
 def raise_for_git_failure(
@@ -81,17 +76,11 @@ def raise_for_git_failure(
     if not detail and not isinstance(exc, subprocess.CalledProcessError):
         detail = str(exc)
     if looks_like_git_auth_failure(exc):
-        raise OperatorError(
-            git_auth_failure_message(repo, app=app, detail=detail)
-        ) from exc
+        raise OperatorError(git_auth_failure_message(repo, app=app, detail=detail)) from exc
     if looks_like_git_network_failure(exc):
-        raise OperatorError(
-            git_network_failure_message(repo, detail=detail)
-        ) from exc
+        raise OperatorError(git_network_failure_message(repo, detail=detail)) from exc
     if always:
-        raise OperatorError(
-            git_generic_failure_message(repo, app=app, detail=detail)
-        ) from exc
+        raise OperatorError(git_generic_failure_message(repo, app=app, detail=detail)) from exc
 
 
 def run_compose_checked(
@@ -109,9 +98,7 @@ def run_compose_checked(
     result = shell.compose(*args, capture=not stream, check=False)
     if result.returncode == 0:
         return result
-    _raise_compose_checked_failure(
-        result, args, action=action, hint=hint, stream=stream
-    )
+    _raise_compose_checked_failure(result, args, action=action, hint=hint, stream=stream)
     return result  # pragma: no cover
 
 
@@ -161,9 +148,7 @@ def run_docker_checked(
     )
     if looks_like_docker_daemon_down(exc):
         raise OperatorError(docker_daemon_message(detail=detail)) from exc
-    raise OperatorError(
-        docker_failure_message(action, detail=detail, hint=hint)
-    ) from exc
+    raise OperatorError(docker_failure_message(action, detail=detail, hint=hint)) from exc
 
 
 def run_checked(

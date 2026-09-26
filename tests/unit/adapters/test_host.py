@@ -114,9 +114,7 @@ class TestCollectHostResources:
             total = 0
             free = 0
 
-        monkeypatch.setattr(
-            "raft.adapters.host.shutil.disk_usage", lambda _p: Zero()
-        )
+        monkeypatch.setattr("raft.adapters.host.shutil.disk_usage", lambda _p: Zero())
         assert collect_host_resources(disk_path=tmp_path, proc=proc).disk is None
 
     def test_more_size_units(self) -> None:

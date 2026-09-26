@@ -23,8 +23,8 @@ from .app import (
     App,
 )
 from .app_document import AppDocument
-from .registry import AppRegistry
 from .ports import PortSpec
+from .registry import AppRegistry
 
 __all__ = [
     "COMPOSE_PROJECT",

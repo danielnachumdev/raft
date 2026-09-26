@@ -25,12 +25,14 @@ GROUP_VOL_DOC = {
         "dependsOn": ["stack-front"],
         "envFile": "/home/raft/.raft/demo.env",
         "env": {"A": "1"},
-        "volumes": [{
-            "name": "data",
-            "hostPath": "/mnt/raft-data/demo/redis",
-            "containerPath": "/data",
-            "readOnly": True,
-        }],
+        "volumes": [
+            {
+                "name": "data",
+                "hostPath": "/mnt/raft-data/demo/redis",
+                "containerPath": "/data",
+                "readOnly": True,
+            }
+        ],
         "ports": [{"name": "redis", "containerPort": 6379, "expose": "none"}],
         "readiness": {"type": "tcp", "port": "redis"},
     },
@@ -67,9 +69,7 @@ class TestAppSpecExtensions(ManifestTestCase):
         with pytest.raises(ValueError, match="spec.group"):
             AppDocument.parse(bad_group, path=Path("g.yaml"))
         bad_vol = yaml.safe_load(yaml.safe_dump(BAD_BASE))
-        bad_vol["spec"]["volumes"] = [
-            {"hostPath": "/tmp/../etc/passwd", "containerPath": "/data"}
-        ]
+        bad_vol["spec"]["volumes"] = [{"hostPath": "/tmp/../etc/passwd", "containerPath": "/data"}]
         with pytest.raises(ValueError, match="must not contain"):
             AppDocument.parse(bad_vol, path=Path("v.yaml"))
 

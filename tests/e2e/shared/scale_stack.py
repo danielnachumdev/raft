@@ -14,7 +14,6 @@ from raft.controller.scaling_store import ScalingStore
 from raft.controller.wake_http import start_wake_http
 from raft.models.stack import load_stack
 from raft.services.render import StackRenderer
-
 from tests.e2e.shared.compose import new_project_name
 from tests.e2e.shared.runtime import ServiceRuntimeWait
 from tests.shared.artifacts import GeneratedArtifacts
@@ -77,9 +76,7 @@ class ScaleE2EStack:
 
     @classmethod
     def _prepare_home(cls, home: Path) -> None:
-        RaftHomeFixtures.apply_and_render(
-            home, RaftHomeFixtures.fixture_app_yamls("http_only")
-        )
+        RaftHomeFixtures.apply_and_render(home, RaftHomeFixtures.fixture_app_yamls("http_only"))
         cls._inject_scaling(home)
         StackRenderer(load_stack(home)).render()
 
@@ -106,11 +103,7 @@ class ScaleE2EStack:
 
     def _is_live_body(self) -> bool:
         resp = self.curl_host(expect_status=None)
-        return (
-            resp.status == 200
-            and "Starting" not in resp.body
-            and "Unavailable" not in resp.body
-        )
+        return resp.status == 200 and "Starting" not in resp.body and "Unavailable" not in resp.body
 
     def wait_app_stopped(self, *, timeout: float = 45.0) -> None:
         ServiceRuntimeWait(self.docker, APP).until_stopped(timeout=timeout)
@@ -125,9 +118,7 @@ class ScaleE2EStack:
 
     @staticmethod
     def _inject_scaling(home: Path) -> None:
-        YamlDoc(home / "state" / "apps" / f"{APP}.yaml").merge_spec(
-            {"scaling": dict(SCALING)}
-        )
+        YamlDoc(home / "state" / "apps" / f"{APP}.yaml").merge_spec({"scaling": dict(SCALING)})
 
     @staticmethod
     def _rewrite_wake_port(home: Path, port: int) -> None:
@@ -145,9 +136,7 @@ class ScaleE2EStack:
         services.pop("router", None)
         services.update(_edge_services())
         doc = {"name": project, "services": services}
-        (home / "compose.yaml").write_text(
-            yaml.safe_dump(doc, sort_keys=False), encoding="utf-8"
-        )
+        (home / "compose.yaml").write_text(yaml.safe_dump(doc, sort_keys=False), encoding="utf-8")
 
     @staticmethod
     def _wait_gate_port(docker: DockerStack, *, timeout: float) -> int:
@@ -155,9 +144,7 @@ class ScaleE2EStack:
 
         def ready() -> bool:
             nonlocal port
-            result = docker.sh.compose(
-                "port", "raft-gate", "80", capture=True, check=False
-            )
+            result = docker.sh.compose("port", "raft-gate", "80", capture=True, check=False)
             out = (result.stdout or "").strip()
             if result.returncode == 0 and out:
                 port = int(out.rsplit(":", 1)[-1])

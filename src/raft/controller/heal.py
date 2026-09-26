@@ -68,14 +68,17 @@ class Healer:
         self.fail_counts[name] = fails
         logger.info(
             "heal observe app=%s compose=%s status=%s health=%s fails=%s/%s",
-            name, compose_id, status, health, fails, self.config.fail_threshold,
+            name,
+            compose_id,
+            status,
+            health,
+            fails,
+            self.config.fail_threshold,
         )
         if fails >= self.config.fail_threshold:
             self._heal_action(name, compose_id, status, when)
 
-    def _clear_if_healthy(
-        self, name: str, compose_id: str, status: str, health: str
-    ) -> bool:
+    def _clear_if_healthy(self, name: str, compose_id: str, status: str, health: str) -> bool:
         if not (status == "running" and health in ("healthy", "none", "starting")):
             return False
         if self.fail_counts.pop(name, None):
@@ -88,9 +91,7 @@ class Healer:
             )
         return True
 
-    def _heal_action(
-        self, name: str, compose_id: str, status: str, when: float
-    ) -> None:
+    def _heal_action(self, name: str, compose_id: str, status: str, when: float) -> None:
         if self._cooldown_blocks(name, when):
             return
         if self.escalate_counts.get(name, 0) >= 1:
@@ -115,8 +116,7 @@ class Healer:
     def _ready_to_escalate(self, name: str) -> bool:
         restarts = self.restart_counts.get(name, 0)
         return (
-            restarts >= self.config.escalate_after_restarts
-            or restarts >= self.config.max_restarts
+            restarts >= self.config.escalate_after_restarts or restarts >= self.config.max_restarts
         )
 
     def _restart(self, name: str, compose_id: str, status: str, when: float) -> None:
@@ -202,9 +202,7 @@ def run_heal_forever(
 
 def _log_heal_startup(config: HealingConfig) -> None:
     if not config.enabled:
-        logger.info(
-            "healing disabled (settings healing.enabled=false); idle loop only"
-        )
+        logger.info("healing disabled (settings healing.enabled=false); idle loop only")
         return
     logger.info(
         "healing enabled interval=%ss failThreshold=%s cooldown=%ss "

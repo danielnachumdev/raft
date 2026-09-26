@@ -5,8 +5,15 @@ from __future__ import annotations
 from raft.cli.argv import ApplyEnvOverrides, RepeatableFlagPeeler
 
 APPLY_ENV_ARGV = [
-    "apply", "--file", "a.yaml", "--env", "A=1",
-    "--env-file", "vars.env", "--env=B=2", "--no-deploy",
+    "apply",
+    "--file",
+    "a.yaml",
+    "--env",
+    "A=1",
+    "--env-file",
+    "vars.env",
+    "--env=B=2",
+    "--no-deploy",
 ]
 
 
@@ -14,7 +21,12 @@ def test_peel_repeatable_env_keeps_env_file_and_other_flags() -> None:
     env_values, remaining = RepeatableFlagPeeler().peel(APPLY_ENV_ARGV, "--env")
     assert env_values == ["A=1", "B=2"]
     assert remaining == [
-        "apply", "--file", "a.yaml", "--env-file", "vars.env", "--no-deploy",
+        "apply",
+        "--file",
+        "a.yaml",
+        "--env-file",
+        "vars.env",
+        "--no-deploy",
     ]
 
 

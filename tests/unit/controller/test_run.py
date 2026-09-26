@@ -64,17 +64,13 @@ class TestControllerPrereq(ControllerTestCase):
         with pytest.raises(RuntimeError, match="docker compose plugin"):
             run_prereq_smoke(home, sh)
 
-    def test_main_smokes_then_loops(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_main_smokes_then_loops(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         home = tmp_path / "home"
         home.mkdir()
         monkeypatch.setenv("RAFT_DATA_HOME", str(home))
         with patch("raft.controller.run.run_prereq_smoke") as smoke:
             with patch("raft.controller.run.start_wake_http"):
-                with patch(
-                    "raft.controller.run._run_forever", side_effect=StopIteration
-                ):
+                with patch("raft.controller.run._run_forever", side_effect=StopIteration):
                     with pytest.raises(StopIteration):
                         main()
         smoke.assert_called_once()
@@ -88,8 +84,11 @@ class TestControllerPrereq(ControllerTestCase):
         sleep = MagicMock(side_effect=StopIteration)
         with pytest.raises(StopIteration):
             _run_forever(
-                home, HealingConfig(enabled=True, interval_seconds=0.01),
-                MagicMock(), scaler, sleep_fn=sleep,
+                home,
+                HealingConfig(enabled=True, interval_seconds=0.01),
+                MagicMock(),
+                scaler,
+                sleep_fn=sleep,
             )
         scaler.tick.assert_called()
 
@@ -107,9 +106,7 @@ class TestControllerPrereq(ControllerTestCase):
 
         _log_startup(HealingConfig(enabled=False))
 
-    def test_main_requires_data_home(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_main_requires_data_home(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         missing = tmp_path / "nope"
         monkeypatch.setenv("RAFT_DATA_HOME", str(missing))
         with pytest.raises(OperatorError, match="data home missing"):

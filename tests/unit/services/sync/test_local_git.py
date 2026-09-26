@@ -18,9 +18,7 @@ class TestSyncLocalGit(SyncTestCase):
         with caplog.at_level("INFO"):
             self.syncer.sync([self.app])
         self.shell.git.assert_not_called()
-        assert any(
-            self.app.path in r.getMessage() for r in caplog.records
-        )
+        assert any(self.app.path in r.getMessage() for r in caplog.records)
 
     def test_sync_local_missing_path(self) -> None:
         with pytest.raises(RuntimeError, match="local app path missing"):
@@ -112,8 +110,12 @@ class TestSyncLocalGit(SyncTestCase):
 
     def test_sync_replaces_contract_stub_then_docker_pull(self) -> None:
         app = make_app(
-            "hub", source="docker", image="ghcr.io/org/hub", ref="main",
-            repo="git@example.com:org/hub.git", path="apps/hub",
+            "hub",
+            source="docker",
+            image="ghcr.io/org/hub",
+            ref="main",
+            repo="git@example.com:org/hub.git",
+            path="apps/hub",
         )
         self.stack = make_stack(self.tmp_path, (app,))
         self.app = app

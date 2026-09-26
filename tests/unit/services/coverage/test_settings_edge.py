@@ -15,8 +15,7 @@ EDGE_ERROR_CASES = [
     ("edge:\n  streams:\n    - x\n", "must be an object"),
     ("edge:\n  streams:\n    - port: 25\n", "name is required"),
     (
-        "edge:\n  streams:\n    - name: a\n      port: 25\n"
-        "    - name: a\n      port: 26\n",
+        "edge:\n  streams:\n    - name: a\n      port: 25\n" "    - name: a\n      port: 26\n",
         "duplicate name",
     ),
     ("edge:\n  streams:\n    - name: a\n", "port is required"),

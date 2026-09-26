@@ -8,9 +8,8 @@ from raft.config.settings_types import EdgeConfig, EdgeStream
 from raft.models.manifest import AppSpec
 from raft.models.ports import PortSpec
 from raft.models.stack import load_stack
-from raft.services.render.edge import StreamEdge
 from raft.services.render import StackRenderer
-
+from raft.services.render.edge import StreamEdge
 from tests.shared.artifacts import GeneratedArtifacts
 from tests.shared.files import FileText
 
@@ -40,7 +39,8 @@ class TestRenderEdgeCoverage(RaftTestCase):
 
     def test_render_dockerfile_and_stale_prune(self) -> None:
         write_applied_app(
-            self.tmp_path, "web",
+            self.tmp_path,
+            "web",
             extra={"build": {"context": ".", "dockerfile": "Dockerfile.web"}},
         )
         self.ensure_checkouts("web")

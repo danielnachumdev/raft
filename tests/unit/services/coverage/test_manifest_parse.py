@@ -23,17 +23,22 @@ PARSE_ERROR_DOCS = [
     ),
     (
         {
-            "apiVersion": "raft/v1", "kind": "App",
-            "metadata": {"name": "a"}, "spec": [],
+            "apiVersion": "raft/v1",
+            "kind": "App",
+            "metadata": {"name": "a"},
+            "spec": [],
         },
         "spec must be an object",
     ),
     (
         {
-            "apiVersion": "raft/v1", "kind": "App",
+            "apiVersion": "raft/v1",
+            "kind": "App",
             "metadata": {"name": "a"},
             "spec": {
-                "publicHost": "a.test", "source": "local", "tls": True,
+                "publicHost": "a.test",
+                "source": "local",
+                "tls": True,
                 "ports": [{"name": "http", "containerPort": 80, "expose": "http"}],
             },
         },
@@ -41,14 +46,20 @@ PARSE_ERROR_DOCS = [
     ),
     (
         {
-            "apiVersion": "raft/v1", "kind": "App",
+            "apiVersion": "raft/v1",
+            "kind": "App",
             "metadata": {"name": "a"},
             "spec": {
-                "source": "local", "tls": "origin",
-                "ports": [{
-                    "name": "smtp", "containerPort": 25,
-                    "expose": "stream", "publicPort": 25,
-                }],
+                "source": "local",
+                "tls": "origin",
+                "ports": [
+                    {
+                        "name": "smtp",
+                        "containerPort": 25,
+                        "expose": "stream",
+                        "publicPort": 25,
+                    }
+                ],
             },
         },
         "tls=origin requires",

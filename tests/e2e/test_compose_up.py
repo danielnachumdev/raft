@@ -16,9 +16,7 @@ pytestmark = pytest.mark.e2e
 
 @pytest.mark.parametrize("compose_project", ["http_only"], indirect=True)
 class TestE2ESingleHttp:
-    def test_e2e_single_http_echo(
-        self, compose_project: tuple[ComposeProject, Path, Path]
-    ) -> None:
+    def test_e2e_single_http_echo(self, compose_project: tuple[ComposeProject, Path, Path]) -> None:
         cp, _home, _vol = compose_project
         cp.wait_running("http-only")
         port = cp.published_port("http-only", 5678)
@@ -39,9 +37,7 @@ class TestE2EExposeNoneAndVolume:
         assert port is not None
         assert tcp_connect("127.0.0.1", port)
 
-    def test_e2e_volume_bind(
-        self, compose_project: tuple[ComposeProject, Path, Path]
-    ) -> None:
+    def test_e2e_volume_bind(self, compose_project: tuple[ComposeProject, Path, Path]) -> None:
         cp, _home, vol = compose_project
         cp.wait_running("demo-expose-none-vol")
         assert (vol / "raft-e2e-marker.txt").is_file()
@@ -51,18 +47,29 @@ class TestE2EExposeNoneAndVolume:
     def _exec_cat(self, cp: ComposeProject):
         return subprocess.run(
             [
-                "docker", "compose", "-p", cp.project, "-f", str(cp.compose_file),
-                "exec", "-T", "demo-expose-none-vol", "cat", "/data/raft-e2e-marker.txt",
+                "docker",
+                "compose",
+                "-p",
+                cp.project,
+                "-f",
+                str(cp.compose_file),
+                "exec",
+                "-T",
+                "demo-expose-none-vol",
+                "cat",
+                "/data/raft-e2e-marker.txt",
             ],
-            check=True, cwd=cp.workdir, capture_output=True, text=True, timeout=30,
+            check=True,
+            cwd=cp.workdir,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
 
 
 @pytest.mark.parametrize("compose_project", ["multi_app_group"], indirect=True)
 class TestE2EMultiApp:
-    def test_e2e_depends_on_order(
-        self, compose_project: tuple[ComposeProject, Path, Path]
-    ) -> None:
+    def test_e2e_depends_on_order(self, compose_project: tuple[ComposeProject, Path, Path]) -> None:
         cp, home, _vol = compose_project
         apps = (home / "generated" / "compose.apps.yaml").read_text(encoding="utf-8")
         assert "demo-stack-redis:" in apps
@@ -86,10 +93,24 @@ class TestE2EMultiApp:
         while time.time() < deadline:
             proc = subprocess.run(
                 [
-                    "docker", "compose", "-p", cp.project, "-f", str(cp.compose_file),
-                    "exec", "-T", "demo-stack-front", "getent", "hosts", "demo-stack-redis",
+                    "docker",
+                    "compose",
+                    "-p",
+                    cp.project,
+                    "-f",
+                    str(cp.compose_file),
+                    "exec",
+                    "-T",
+                    "demo-stack-front",
+                    "getent",
+                    "hosts",
+                    "demo-stack-redis",
                 ],
-                check=False, cwd=cp.workdir, capture_output=True, text=True, timeout=30,
+                check=False,
+                cwd=cp.workdir,
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
             last = proc.stdout + proc.stderr
             if proc.returncode == 0 and "demo-stack-redis" in last:

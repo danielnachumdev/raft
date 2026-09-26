@@ -54,9 +54,7 @@ class TestCliAuth(CliTestCase):
         )
 
     def _test_auth_setup_list_show_test_remove_p2(self) -> None:
-        self.auth.setup.assert_called_with(
-            "newsvc", force=False, repo="git@github.com:org/new.git"
-        )
+        self.auth.setup.assert_called_with("newsvc", force=False, repo="git@github.com:org/new.git")
         assert self.auth_main(["auth", "test", "svc"]) == 0
         self.auth.test.assert_called_with("svc", repo=None)
         assert self.auth_main(["auth", "remove", "svc", "--keep-key"]) == 0

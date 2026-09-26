@@ -5,7 +5,6 @@ from pathlib import Path
 import pytest
 
 from raft.config import default_config
-
 from tests.shared.env import IsolatedRaftEnv
 
 

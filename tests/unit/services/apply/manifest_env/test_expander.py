@@ -14,14 +14,15 @@ from ....cta_asserts import assert_operator
 from .fixtures import (
     DEFAULT_PLACEHOLDER_CASES,
     EXPECTED_EXPANDED_SNIPPET,
-    ExpandCase,
-    ErrorCase,
     INVALID_PLACEHOLDER_CASES,
     MIXED_PLACEHOLDERS_ENV,
     MIXED_PLACEHOLDERS_TEXT,
     PLACEHOLDER_ENV,
     PLACEHOLDER_MANIFEST,
+    ErrorCase,
+    ExpandCase,
 )
+
 
 class TestRequiredPlaceholder:
     def test_substitutes_nonempty_env_value(self) -> None:
@@ -39,7 +40,6 @@ class TestRequiredPlaceholder:
         with pytest.raises(OperatorError, match=r"undefined variable FOO in \$\{FOO\}") as caught:
             ManifestTextExpander(env).expand(text)
 
-
         assert_operator(caught.value, contains=("--env-file", "FOO"))
 
     def test_errors_when_variable_empty(self) -> None:
@@ -56,7 +56,6 @@ class TestRequiredPlaceholder:
 
         with pytest.raises(OperatorError, match="manifest at /tmp/app.yaml") as caught:
             ManifestTextExpander(env, path=path).expand(text)
-
 
         assert_operator(caught.value, contains=("--env-file", "FOO"))
 
@@ -132,7 +131,6 @@ class TestInvalidPlaceholder:
         with pytest.raises(OperatorError, match=case.match) as caught:
             ManifestTextExpander(case.env).expand(case.text)
 
-
         assert_operator(caught.value, contains=("$${",))
 
 
@@ -182,5 +180,3 @@ class TestExpandBeforeYamlParse:
 # ---------------------------------------------------------------------------
 # dotenv / --env / merge precedence
 # ---------------------------------------------------------------------------
-
-

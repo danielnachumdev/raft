@@ -23,9 +23,7 @@ class CertChecks:
                 results.append(result)
         return results
 
-    def _check_app(
-        self, ctx: DoctorContext, app, missing_by_name
-    ) -> Optional[CheckResult]:
+    def _check_app(self, ctx: DoctorContext, app, missing_by_name) -> Optional[CheckResult]:
         try:
             app_spec = ctx.stack.spec_for(app)
         except (ValueError, FileNotFoundError, OperatorError):
@@ -40,6 +38,4 @@ class CertChecks:
                 "ok",
                 f"certs/{app.name}/origin.pem+key",
             )
-        return CheckResult(
-            app.compose_id, "certs", "fail", item.detail, fix=item.fix
-        )
+        return CheckResult(app.compose_id, "certs", "fail", item.detail, fix=item.fix)

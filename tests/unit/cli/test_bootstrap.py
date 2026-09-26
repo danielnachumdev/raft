@@ -78,5 +78,3 @@ class TestCliBootstrap(CliTestCase):
         with pytest.raises(SystemExit) as exc:
             self.run_cli(["sync"])
         assert exc.value.code == 3
-
-

@@ -16,15 +16,20 @@ from .fixtures import StatusFixtures
 class TestStatusReportDegraded(RaftTestCase):
     def test_report_degraded_host(self) -> None:
         empty = _host_status(
-            HostResources(
-                cpus=None, loadavg=None, memory=None, disk=None, uptime_seconds=None
-            )
+            HostResources(cpus=None, loadavg=None, memory=None, disk=None, uptime_seconds=None)
         )
         assert empty.memory is None and empty.disk_path is None
         snap = StatusFixtures.snapshot(
             StatusFixtures.container(
-                "app", app="app", status="not running", uptime=None, cpu=None,
-                mem_used=None, mem_limit=None, mem_pct=None, pids=None,
+                "app",
+                app="app",
+                status="not running",
+                uptime=None,
+                cpu=None,
+                mem_used=None,
+                mem_limit=None,
+                mem_pct=None,
+                pids=None,
                 allocated=AllocatedResources("0.5", "", "0.1", "32M"),
             ),
             StatusFixtures.container("app2", app="app2"),

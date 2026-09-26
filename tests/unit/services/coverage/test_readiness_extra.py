@@ -63,4 +63,3 @@ class TestReadinessExtraCoverage(RaftTestCase):
         )
         assert strategy.wait_predicate(app, stack, http)() is True
         http.tcp_port_ok.assert_called_with(8080)
-

@@ -15,13 +15,13 @@ from ...config.settings import load_config
 from ...models.stack import Stack
 from ...ui import say
 from ..ops.certs import require_origin_certs
-from .orchestrator_deploy import OrchestratorDeploy
-from .wait import wait_until
-from .locking import stack_lock
-from .readiness import ReadinessStrategy
-from ..render.gate_nginx import GateNginxStamp
 from ..render import StackRenderer
+from ..render.gate_nginx import GateNginxStamp
 from ..sync import SourceSync
+from .locking import stack_lock
+from .orchestrator_deploy import OrchestratorDeploy
+from .readiness import ReadinessStrategy
+from .wait import wait_until
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +71,9 @@ class Orchestrator(OrchestratorDeploy):
     def _wait_app_ready(self, app, *, timeout: Optional[float] = None) -> None:
         strategy = ReadinessStrategy.from_spec(self.stack.spec_for(app))
         predicate = strategy.wait_predicate(
-            app, self.stack, self.http,
+            app,
+            self.stack,
+            self.http,
             compose_ready=lambda: self.docker.service_is_ready(app.compose_id),
         )
         if predicate is None:

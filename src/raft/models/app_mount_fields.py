@@ -32,9 +32,7 @@ class AppMountFields:
             return ()
         if not isinstance(raw, dict):
             raise ValueError(f"{path}: spec.env must be an object")
-        return tuple(
-            AppMountFields._env_pair(key, value, path) for key, value in raw.items()
-        )
+        return tuple(AppMountFields._env_pair(key, value, path) for key, value in raw.items())
 
     @staticmethod
     def _env_pair(key: Any, value: Any, path: Path) -> tuple[str, str]:
@@ -53,8 +51,7 @@ class AppMountFields:
         if not isinstance(raw, list):
             raise ValueError(f"{path}: spec.volumes must be a list")
         return tuple(
-            AppMountFields._volume_entry(entry, index, path)
-            for index, entry in enumerate(raw)
+            AppMountFields._volume_entry(entry, index, path) for index, entry in enumerate(raw)
         )
 
     @staticmethod
@@ -64,9 +61,7 @@ class AppMountFields:
         host_s, container_s = AppMountFields._volume_paths(entry, index, path)
         read_only = entry.get("readOnly", entry.get("read_only", False))
         if not isinstance(read_only, bool):
-            raise ValueError(
-                f"{path}: spec.volumes[{index}].readOnly must be a boolean"
-            )
+            raise ValueError(f"{path}: spec.volumes[{index}].readOnly must be a boolean")
         name_raw = entry.get("name")
         name = str(name_raw).strip() if name_raw is not None else None
         return VolumeSpec(
@@ -77,9 +72,7 @@ class AppMountFields:
         )
 
     @staticmethod
-    def _volume_paths(
-        entry: dict[str, Any], index: int, path: Path
-    ) -> tuple[str, str]:
+    def _volume_paths(entry: dict[str, Any], index: int, path: Path) -> tuple[str, str]:
         host = entry.get("hostPath", entry.get("host_path"))
         container = entry.get("containerPath", entry.get("container_path"))
         host_s = AppMountFields._required_host(host, index, path)
@@ -92,20 +85,14 @@ class AppMountFields:
             raise ValueError(f"{path}: spec.volumes[{index}].hostPath is required")
         host_s = str(host).strip()
         if ".." in Path(host_s).parts:
-            raise ValueError(
-                f"{path}: spec.volumes[{index}].hostPath must not contain '..'"
-            )
+            raise ValueError(f"{path}: spec.volumes[{index}].hostPath must not contain '..'")
         return host_s
 
     @staticmethod
     def _required_container(container: Any, index: int, path: Path) -> str:
         if container is None or not str(container).strip():
-            raise ValueError(
-                f"{path}: spec.volumes[{index}].containerPath is required"
-            )
+            raise ValueError(f"{path}: spec.volumes[{index}].containerPath is required")
         container_s = str(container).strip()
         if not container_s.startswith("/"):
-            raise ValueError(
-                f"{path}: spec.volumes[{index}].containerPath must be absolute"
-            )
+            raise ValueError(f"{path}: spec.volumes[{index}].containerPath must be absolute")
         return container_s

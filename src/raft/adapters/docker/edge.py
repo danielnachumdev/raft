@@ -28,9 +28,7 @@ class DockerEdge:
     stack: Stack
     sh: Shell
 
-    def router_can_fetch(
-        self, hostname: str, *, port: int = 80, path: str = "/"
-    ) -> bool:
+    def router_can_fetch(self, hostname: str, *, port: int = 80, path: str = "/") -> bool:
         fetch_path = path if path.startswith("/") else f"/{path}"
         result = self.sh.compose(
             "exec",
@@ -55,8 +53,14 @@ class DockerEdge:
             detail = (result.stderr or result.stdout or "").strip()
             raise nginx_rejected("router", detail)
         reload = self.sh.compose(
-            "exec", "-T", self.stack.router, "nginx", "-s", "reload",
-            capture=True, check=False,
+            "exec",
+            "-T",
+            self.stack.router,
+            "nginx",
+            "-s",
+            "reload",
+            capture=True,
+            check=False,
         )
         if reload.returncode != 0:
             detail = (reload.stderr or reload.stdout or "").strip()
@@ -74,8 +78,14 @@ class DockerEdge:
         if result.returncode != 0:
             self._raise_gate_nginx_test_failure(result.stderr or result.stdout or "")
         reload = self.sh.compose(
-            "exec", "-T", self.stack.gate, "nginx", "-s", "reload",
-            capture=True, check=False,
+            "exec",
+            "-T",
+            self.stack.gate,
+            "nginx",
+            "-s",
+            "reload",
+            capture=True,
+            check=False,
         )
         if reload.returncode != 0:
             detail = (reload.stderr or reload.stdout or "").strip()
@@ -88,9 +98,7 @@ class DockerEdge:
             missing = missing_origin_certs(self.stack)
             if missing:
                 raise OperatorError(
-                    format_missing_origin_certs(
-                        missing, include_doctor_footer=False
-                    )
+                    format_missing_origin_certs(missing, include_doctor_footer=False)
                 )
             raise OperatorError(missing_origin_certs_fallback(detail=detail))
         raise nginx_rejected("gate", detail)
@@ -114,4 +122,3 @@ class DockerEdge:
             capture=True,
         )
         return result.returncode == 0
-

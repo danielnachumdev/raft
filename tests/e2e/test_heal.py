@@ -19,9 +19,7 @@ class TestE2EHeal:
       maxRestarts=1, escalateAfterRestarts=1
     """
 
-    def test_restart_then_escalate(
-        self, isolated_raft_env: Path
-    ) -> None:
+    def test_restart_then_escalate(self, isolated_raft_env: Path) -> None:
         with HealE2EStack.create(isolated_raft_env) as stack:
             self._assert_restart_recovers(stack)
             self._assert_escalate_after_budget(stack)

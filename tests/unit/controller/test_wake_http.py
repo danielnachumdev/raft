@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from raft.controller.wake_http import start_wake_http, _parse_path
-
+from raft.controller.wake_http import _parse_path, start_wake_http
 from tests.shared.http import HttpClient
 
 

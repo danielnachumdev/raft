@@ -17,30 +17,22 @@ def unknown_app(name: str, known: str) -> OperatorError:
 
 
 def app_not_applied(name: str, known: str) -> OperatorError:
-    return OperatorError(
-        f"app {name!r} is not applied (known: {known}).\n"
-        f"Fix: raft get apps"
-    )
+    return OperatorError(f"app {name!r} is not applied (known: {known}).\n" f"Fix: raft get apps")
 
 
 def service_not_running(service: str) -> OperatorError:
     return OperatorError(
-        f"service {service!r} is not running — bring the stack up first.\n"
-        f"Fix: raft up"
+        f"service {service!r} is not running — bring the stack up first.\n" f"Fix: raft up"
     )
 
 
 def redeploy_requires_app() -> OperatorError:
-    return OperatorError(
-        "redeploy requires APP.\n"
-        "Fix: raft redeploy <app>|router"
-    )
+    return OperatorError("redeploy requires APP.\n" "Fix: raft redeploy <app>|router")
 
 
 def apply_requires_source() -> OperatorError:
     return OperatorError(
-        "apply requires --file PATH or --git URL.\n"
-        "Fix: raft apply --file path/to/app.yaml"
+        "apply requires --file PATH or --git URL.\n" "Fix: raft apply --file path/to/app.yaml"
     )
 
 
@@ -76,10 +68,7 @@ def missing_manifest(path: Path) -> OperatorError:
 
 
 def invalid_yaml(path: Union[Path, str], exc: BaseException) -> OperatorError:
-    return OperatorError(
-        f"invalid YAML in {path}: {exc}\n"
-        f"Fix: repair the YAML file"
-    )
+    return OperatorError(f"invalid YAML in {path}: {exc}\n" f"Fix: repair the YAML file")
 
 
 def filesystem_error(exc: BaseException) -> OperatorError:

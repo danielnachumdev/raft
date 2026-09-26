@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 from raft.models.stack import load_stack
 from raft.services.deploy.cutover import CutoverSession
 from raft.services.deploy.orchestrator import Orchestrator
-
 from tests.shared.compose_ids import RunningServices
 
 from ...base import RaftTestCase, make_app, make_stack, write_applied_app
@@ -49,6 +48,9 @@ class TestOrchCutoverEdgeCoverage(RaftTestCase):
             self.tmp_path, (make_app(),), drain_seconds=0.0, ready_timeout_seconds=1.0
         )
         return CutoverSession(
-            stack=stack, app=stack.apps[0],
-            docker=MagicMock(), nginx=MagicMock(), http=MagicMock(),
+            stack=stack,
+            app=stack.apps[0],
+            docker=MagicMock(),
+            nginx=MagicMock(),
+            http=MagicMock(),
         )

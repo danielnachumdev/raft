@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any, Optional
-import re
 
 from raft.errors import OperatorError
 
@@ -87,16 +87,12 @@ class AppSpecFields:
     @staticmethod
     def _parse_group(spec: dict[str, Any], path: Path) -> Optional[str]:
         if "groups" in spec and spec.get("groups") is not None:
-            raise ValueError(
-                f"{path}: use spec.group (a single string), not spec.groups"
-            )
+            raise ValueError(f"{path}: use spec.group (a single string), not spec.groups")
         raw = spec.get("group")
         if raw is None:
             return None
         if isinstance(raw, list):
-            raise ValueError(
-                f"{path}: spec.group must be a string (at most one group), not a list"
-            )
+            raise ValueError(f"{path}: spec.group must be a string (at most one group), not a list")
         if not isinstance(raw, str):
             raise ValueError(f"{path}: spec.group must be a string")
         return AppSpecFields._validated_group_name(raw.strip(), path)
@@ -106,9 +102,7 @@ class AppSpecFields:
         if not text:
             return None
         if not _GROUP_NAME.match(text):
-            raise ValueError(
-                f"{path}: spec.group {text!r} must match {_GROUP_NAME.pattern}"
-            )
+            raise ValueError(f"{path}: spec.group {text!r} must match {_GROUP_NAME.pattern}")
         return text
 
     @staticmethod
@@ -132,9 +126,7 @@ class AppSpecFields:
         )
 
     @staticmethod
-    def _resource_maps(
-        spec: dict[str, Any], path: Path
-    ) -> tuple[dict[str, Any], dict[str, Any]]:
+    def _resource_maps(spec: dict[str, Any], path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
         resources = spec.get("resources")
         if resources is None:
             resources = {}
@@ -156,9 +148,7 @@ class AppSpecFields:
     def _parse_tls(spec: dict[str, Any], path: Path, *, public_host: str) -> str:
         tls = AppSpecFields._normalize_tls(spec.get("tls", "off"), path)
         if tls not in TLS_MODES:
-            raise ValueError(
-                f"{path}: spec.tls must be one of {sorted(TLS_MODES)}, got {tls!r}"
-            )
+            raise ValueError(f"{path}: spec.tls must be one of {sorted(TLS_MODES)}, got {tls!r}")
         if tls == "origin" and not public_host:
             raise ValueError(f"{path}: spec.tls=origin requires spec.publicHost")
         return tls
@@ -181,8 +171,7 @@ class AppSpecFields:
         source = str(spec.get("source", "git")).strip().lower()
         if source not in {"local", "git", "docker"}:
             raise ValueError(
-                f"{path}: spec.source must be 'local', 'git', or 'docker' "
-                f"(got {source!r})"
+                f"{path}: spec.source must be 'local', 'git', or 'docker' " f"(got {source!r})"
             )
         ref = str(spec.get("ref", "main")).strip() or "main"
         rel_path = str(spec.get("path", f"apps/{name}")).strip() or f"apps/{name}"
@@ -205,9 +194,7 @@ class AppSpecFields:
         return repo, None
 
     @staticmethod
-    def _docker_repo_image(
-        repo_raw: Any, image_raw: Any, path: Path
-    ) -> tuple[Optional[str], str]:
+    def _docker_repo_image(repo_raw: Any, image_raw: Any, path: Path) -> tuple[Optional[str], str]:
         if not image_raw or not str(image_raw).strip():
             raise ValueError(f"{path}: spec.image is required when source=docker")
         image = str(image_raw).strip()
@@ -230,9 +217,7 @@ class AppSpecFields:
         return www_raw
 
     @staticmethod
-    def _parse_build(
-        spec: dict[str, Any], path: Path
-    ) -> tuple[Optional[str], Optional[str]]:
+    def _parse_build(spec: dict[str, Any], path: Path) -> tuple[Optional[str], Optional[str]]:
         build = spec.get("build")
         if build is None:
             build = {}

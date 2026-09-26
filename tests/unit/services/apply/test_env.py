@@ -12,6 +12,7 @@ from raft.services.apply import AppApply
 from raft.services.apply.manifest_env import ApplyEnvSources
 from raft.services.render import StackRenderer
 
+from .base import ApplyTestCase
 from .manifest_env.fixtures import (
     CI_TO_CONTAINER_APPLY_ENV,
     CI_TO_CONTAINER_ENV_MANIFEST,
@@ -21,7 +22,6 @@ from .manifest_env.fixtures import (
     clone_writes_missing_var_manifest,
     clone_writes_placeholder_manifest,
 )
-from .base import ApplyTestCase
 
 
 class TestApplyEnv(ApplyTestCase):
@@ -70,9 +70,7 @@ class TestApplyEnv(ApplyTestCase):
 
     def _assert_ci_registry(self, applied_name: str) -> None:
         registry = yaml.safe_load(
-            (self.tmp_path / "state" / "apps" / f"{applied_name}.yaml").read_text(
-                encoding="utf-8"
-            )
+            (self.tmp_path / "state" / "apps" / f"{applied_name}.yaml").read_text(encoding="utf-8")
         )
         env = registry["spec"]["env"]
         assert applied_name == "api-dev"
@@ -83,9 +81,7 @@ class TestApplyEnv(ApplyTestCase):
 
     def _assert_ci_compose(self) -> None:
         StackRenderer(load_stack(self.tmp_path)).render()
-        compose = (self.tmp_path / "generated" / "compose.apps.yaml").read_text(
-            encoding="utf-8"
-        )
+        compose = (self.tmp_path / "generated" / "compose.apps.yaml").read_text(encoding="utf-8")
         assert "environment:" in compose
         assert 'DATABASE_URL: "postgres://from-ci-flag"' in compose
         assert "LOG_LEVEL: info" in compose

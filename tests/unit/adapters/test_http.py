@@ -13,11 +13,9 @@ from .base import AdapterTestCase
 class TestHttpProbe(AdapterTestCase):
     def test_no_redirect_handler_suppresses_follow(self) -> None:
         assert (
-            _NoRedirect().redirect_request(
-                None, None, 302, "Found", {}, "http://example/"
-            )
-            is None
+            _NoRedirect().redirect_request(None, None, 302, "Found", {}, "http://example/") is None
         )
+
     def _response(self, status: int) -> MagicMock:
         resp = MagicMock()
         resp.status = status

@@ -7,12 +7,11 @@ from unittest.mock import patch
 import pytest
 
 from raft.errors import OperatorError
-
 from tests.shared.nginx import NginxEmerg
 
-from .base import CutoverTestCase
 from ....base import write_applied_app
 from ....cta_asserts import assert_operator
+from .base import CutoverTestCase
 
 
 class TestCutoverFlow(CutoverTestCase):
@@ -38,8 +37,11 @@ class TestCutoverFlow(CutoverTestCase):
         assert (self.tmp_path / "deploy" / "app.image").is_file()
         s.start_tmp_from_previous()
         s.docker.run_tmp.assert_called_once_with(
-            name=s.app.tmp_container, alias=s.app.tmp_alias,
-            image="img:old", network="net1", env_file=None,
+            name=s.app.tmp_container,
+            alias=s.app.tmp_alias,
+            image="img:old",
+            network="net1",
+            env_file=None,
         )
         assert s.tmp_active is True
 
@@ -56,7 +58,8 @@ class TestCutoverFlow(CutoverTestCase):
 
     def test_start_tmp_passes_env_file_and_readiness_path(self) -> None:
         write_applied_app(
-            self.tmp_path, "app",
+            self.tmp_path,
+            "app",
             extra={
                 "envFile": "/home/raft/.raft/app.env",
                 "readiness": {"type": "http", "port": "http", "path": "/ping"},
@@ -69,8 +72,11 @@ class TestCutoverFlow(CutoverTestCase):
         with patch("raft.services.deploy.cutover.time.sleep"):
             s.start_tmp_from_previous()
         s.docker.run_tmp.assert_called_once_with(
-            name=s.app.tmp_container, alias=s.app.tmp_alias,
-            image="img:old", network="net1", env_file="/home/raft/.raft/app.env",
+            name=s.app.tmp_container,
+            alias=s.app.tmp_alias,
+            image="img:old",
+            network="net1",
+            env_file="/home/raft/.raft/app.env",
         )
         s.docker.router_can_fetch.assert_called_with(s.app.tmp_alias, port=80, path="/ping")
 

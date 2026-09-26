@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Callable, Sequence, Union
 
 from raft.adapters.docker import DockerStack
-
 from tests.shared.wait import Wait
 
 _STOPPED = ("exited", "dead", "missing")

@@ -174,9 +174,7 @@ edge:
         with pytest.raises(FileNotFoundError, match="pyproject.toml"):
             paths._write_controller_pyproject_from_installed(dest)
 
-    def test_write_controller_pyproject_skips_extras(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_write_controller_pyproject_skips_extras(self, monkeypatch: pytest.MonkeyPatch) -> None:
         dest = self.tmp_path / "pyproject.toml"
         monkeypatch.setattr(
             paths,
@@ -201,9 +199,7 @@ edge:
         with pytest.raises(FileNotFoundError, match="no requires"):
             paths._write_controller_pyproject_from_installed(dest)
 
-    def test_write_controller_pyproject_only_extras(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_write_controller_pyproject_only_extras(self, monkeypatch: pytest.MonkeyPatch) -> None:
         dest = self.tmp_path / "pyproject.toml"
         monkeypatch.setattr(
             paths,
@@ -216,9 +212,7 @@ edge:
     def test_find_raft_pyproject_skips_unrelated_toml(self) -> None:
         other = self.tmp_path / "other"
         other.mkdir()
-        (other / "pyproject.toml").write_text(
-            'name = "something-else"\n', encoding="utf-8"
-        )
+        (other / "pyproject.toml").write_text('name = "something-else"\n', encoding="utf-8")
         nested = other / "share"
         nested.mkdir()
         assert paths._find_raft_pyproject(nested) is None
@@ -252,9 +246,7 @@ edge:
         with pytest.raises(FileNotFoundError, match="no dist"):
             paths._sync_controller_pyproject(home, self.tmp_path / "share")
 
-    def test_find_package_root_via_module_parents(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_find_package_root_via_module_parents(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Third search walks from ``paths.py`` when bundled + cwd miss."""
         monkeypatch.setattr(paths, "_bundled_share", lambda: self.tmp_path / "nope")
         orphan = self.tmp_path / "orphan"
@@ -273,5 +265,3 @@ edge:
         orphan.mkdir()
         with pytest.raises(RuntimeError, match="package templates"):
             find_package_root(orphan)
-
-

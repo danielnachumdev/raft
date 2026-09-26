@@ -112,9 +112,7 @@ def exclusive_lock(
 class _ExclusiveLock:
     """Acquire / release one flock file with re-entrancy for the same thread."""
 
-    def __init__(
-        self, path: Path, *, kind: str, timeout: Optional[float] = None
-    ) -> None:
+    def __init__(self, path: Path, *, kind: str, timeout: Optional[float] = None) -> None:
         self.path = path.resolve()
         self.kind = kind
         self.budget = resolve_lock_timeout(timeout)

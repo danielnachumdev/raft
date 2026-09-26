@@ -64,7 +64,9 @@ class TestAppSpec(ManifestTestCase):
         assert c.ports[0].container_port == 80 and c.tls == "off"
         assert c.build_context == "."
         assert c.server_names("example.com") == (
-            "example.com", "www.example.com", "alias.test",
+            "example.com",
+            "www.example.com",
+            "alias.test",
         )
 
     def test_server_names_skips_duplicates(self) -> None:
@@ -74,7 +76,9 @@ class TestAppSpec(ManifestTestCase):
             extra_hosts=("example.com", "www.example.com", "  ", "other.test"),
         )
         assert c.server_names("example.com") == (
-            "example.com", "www.example.com", "other.test",
+            "example.com",
+            "www.example.com",
+            "other.test",
         )
 
     def test_resources_and_dockerfile(self) -> None:
@@ -143,11 +147,17 @@ class TestAppSpec(ManifestTestCase):
     def test_registry_write_delete(self) -> None:
         AppRegistry(self.tmp_path).write(REGISTRY_DOC)
         with pytest.raises(ValueError, match="already used"):
-            AppRegistry(self.tmp_path).write({
-                **REGISTRY_DOC,
-                "metadata": {"name": "other"},
-                "spec": {**REGISTRY_DOC["spec"], "publicHost": "web.test", "path": "apps/other"},
-            })
+            AppRegistry(self.tmp_path).write(
+                {
+                    **REGISTRY_DOC,
+                    "metadata": {"name": "other"},
+                    "spec": {
+                        **REGISTRY_DOC["spec"],
+                        "publicHost": "web.test",
+                        "path": "apps/other",
+                    },
+                }
+            )
         assert AppRegistry(self.tmp_path).delete("web") is True
         assert AppRegistry(self.tmp_path).delete("missing") is False
 
@@ -167,9 +177,13 @@ class TestAppSpec(ManifestTestCase):
     def test_parse_rejects_bad_www_and_build_types(self) -> None:
         path = self.tmp_path / "app.yaml"
         base = {
-            "apiVersion": "raft/v1", "kind": "App", "metadata": {"name": "a"},
+            "apiVersion": "raft/v1",
+            "kind": "App",
+            "metadata": {"name": "a"},
             "spec": {
-                "source": "local", "publicHost": "a.test", "path": "apps/a",
+                "source": "local",
+                "publicHost": "a.test",
+                "path": "apps/a",
                 "ports": [{"name": "http", "containerPort": 80}],
             },
         }
@@ -189,7 +203,8 @@ class TestAppSpec(ManifestTestCase):
         path = self.tmp_path / "app.yaml"
         path.write_text("x: 1\n", encoding="utf-8")
         monkeypatch.setattr(
-            Path, "read_text",
+            Path,
+            "read_text",
             lambda self, *a, **k: (_ for _ in ()).throw(OSError("EACCES")),
         )
         with pytest.raises(RuntimeError, match="cannot read App manifest"):

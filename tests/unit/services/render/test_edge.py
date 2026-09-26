@@ -9,6 +9,7 @@ from raft.config.settings_types import EdgeConfig, EdgeStream
 from raft.models.manifest import AppSpec
 from raft.models.ports import PortSpec
 from raft.models.readiness_spec import ReadinessSpec
+from raft.services.deploy.readiness import ReadinessStrategy
 from raft.services.render.edge import (
     HostEdge,
     HttpEdge,
@@ -16,7 +17,6 @@ from raft.services.render.edge import (
     TlsEdge,
     handler_for,
 )
-from raft.services.deploy.readiness import ReadinessStrategy
 
 from ...base import RaftTestCase, make_app
 
@@ -100,9 +100,7 @@ class TestReadinessStrategy(RaftTestCase):
 
     def _smtp_spec(self, **ready_kw) -> AppSpec:
         return AppSpec(
-            ports=(PortSpec(
-                name="smtp", container_port=25, expose="stream", public_port=25
-            ),),
+            ports=(PortSpec(name="smtp", container_port=25, expose="stream", public_port=25),),
             readiness=ReadinessSpec(type="tcp", port="smtp", **ready_kw),
         )
 

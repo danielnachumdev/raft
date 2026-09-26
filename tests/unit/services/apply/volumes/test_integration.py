@@ -103,8 +103,12 @@ class TestVolumesIntegration(VolumesTestCase):
 
     def test_render_quoted_env(self) -> None:
         write_applied_app(
-            self.tmp_path, "svc", source="docker", image="redis",
-            public_host="", build_context=None,
+            self.tmp_path,
+            "svc",
+            source="docker",
+            image="redis",
+            public_host="",
+            build_context=None,
             extra={
                 "ports": [{"name": "redis", "containerPort": 6379, "expose": "none"}],
                 "readiness": {"type": "none"},

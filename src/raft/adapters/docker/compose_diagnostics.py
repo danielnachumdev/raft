@@ -42,8 +42,13 @@ class ComposeDiagnostics:
         if not names:
             return ""
         result = self.sh.compose(
-            "logs", "--no-color", "--tail", str(tail), *names,
-            capture=True, check=False,
+            "logs",
+            "--no-color",
+            "--tail",
+            str(tail),
+            *names,
+            capture=True,
+            check=False,
         )
         return (result.stdout or result.stderr or "").strip()
 
@@ -52,7 +57,12 @@ class ComposeDiagnostics:
         if not name:
             return ""
         result = self.sh.docker(
-            "logs", "--tail", str(tail), name, capture=True, check=False,
+            "logs",
+            "--tail",
+            str(tail),
+            name,
+            capture=True,
+            check=False,
         )
         return (result.stderr or result.stdout or "").strip()
 
@@ -79,15 +89,9 @@ class ComposeDiagnostics:
         max_lines: int = DIAG_MAX_LINES,
     ) -> str:
         """Readable log/health blocks for Compose services and/or containers."""
-        blocks = [
-            self._service_block(s, tail=tail, max_lines=max_lines)
-            for s in services
-            if s
-        ]
+        blocks = [self._service_block(s, tail=tail, max_lines=max_lines) for s in services if s]
         blocks.extend(
-            self._container_block(n, tail=tail, max_lines=max_lines)
-            for n in containers
-            if n
+            self._container_block(n, tail=tail, max_lines=max_lines) for n in containers if n
         )
         return join_diagnostic_blocks(*blocks)
 
@@ -113,8 +117,12 @@ class ComposeDiagnostics:
 
     def _inspect_state(self, container_id: str) -> Optional[dict[str, Any]]:
         result = self.sh.docker(
-            "inspect", "--format", "{{json .State}}", container_id,
-            capture=True, check=False,
+            "inspect",
+            "--format",
+            "{{json .State}}",
+            container_id,
+            capture=True,
+            check=False,
         )
         if result.returncode != 0:
             return None
@@ -146,9 +154,7 @@ class ComposeDiagnostics:
         return str(last.get("Output") or "")
 
     def _service_block(self, service: str, *, tail: int, max_lines: int) -> str:
-        logs = prefer_errorish_lines(
-            self.compose_logs(service, tail=tail), max_lines=max_lines
-        )
+        logs = prefer_errorish_lines(self.compose_logs(service, tail=tail), max_lines=max_lines)
         return format_service_log_block(
             service,
             logs,
@@ -157,12 +163,8 @@ class ComposeDiagnostics:
         )
 
     def _container_block(self, name: str, *, tail: int, max_lines: int) -> str:
-        logs = prefer_errorish_lines(
-            self.container_logs(name, tail=tail), max_lines=max_lines
-        )
-        return format_service_log_block(
-            name, logs, health="container", max_lines=max_lines
-        )
+        logs = prefer_errorish_lines(self.container_logs(name, tail=tail), max_lines=max_lines)
+        return format_service_log_block(name, logs, health="container", max_lines=max_lines)
 
     def _failure_targets(
         self,

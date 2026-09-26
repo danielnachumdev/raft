@@ -262,7 +262,10 @@ class Status:
         runtime = self.docker.container_inspect_runtime(cid) or {}
         inspect_mem = runtime.get("memory_bytes")
         return _container_from_row(
-            service=service, role=role, app=app_name, group=group,
+            service=service,
+            role=role,
+            app=app_name,
+            group=group,
             allocated=allocated,
             status=str(runtime.get("status") or "unknown"),
             uptime_seconds=_parse_started_at(str(runtime.get("started_at") or "")),
@@ -271,13 +274,17 @@ class Status:
         )
 
     @staticmethod
-    def _missing_container(
-        service, role, app_name, group, allocated
-    ) -> ContainerStatus:
+    def _missing_container(service, role, app_name, group, allocated) -> ContainerStatus:
         return _container_from_row(
-            service=service, role=role, app=app_name, group=group,
-            allocated=allocated, status="not running",
-            uptime_seconds=None, stats_row=None, inspect_memory=None,
+            service=service,
+            role=role,
+            app=app_name,
+            group=group,
+            allocated=allocated,
+            status="not running",
+            uptime_seconds=None,
+            stats_row=None,
+            inspect_memory=None,
         )
 
     def report(self, *, as_json: bool = False, live: bool = False) -> int:

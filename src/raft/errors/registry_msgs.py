@@ -48,19 +48,13 @@ def registry_login_fix_steps(
     ]
 
 
-def _registry_credential_steps(
-    image: str, *, app: Optional[str]
-) -> tuple[str, str]:
+def _registry_credential_steps(image: str, *, app: Optional[str]) -> tuple[str, str]:
     if is_ghcr_image(image):
         desc = f"raft-ghcr-{app}" if app else "raft-ghcr-pull"
         token_step = (
-            f"Open {ghcr_pat_create_url(description=desc)} "
-            "(classic PAT, read:packages only)"
+            f"Open {ghcr_pat_create_url(description=desc)} " "(classic PAT, read:packages only)"
         )
-        login = (
-            "echo 'YOUR_PAT' | docker login ghcr.io -u YOUR_GITHUB_USERNAME "
-            "--password-stdin"
-        )
+        login = "echo 'YOUR_PAT' | docker login ghcr.io -u YOUR_GITHUB_USERNAME " "--password-stdin"
         return token_step, login
     return (
         "Create a registry credential that can pull this image",
@@ -96,9 +90,7 @@ def registry_unauthorized_message(
         "",
         "Fix (as the raft user):",
     ]
-    for i, step in enumerate(
-        registry_login_fix_steps(image, app=app, repo=repo), start=1
-    ):
+    for i, step in enumerate(registry_login_fix_steps(image, app=app, repo=repo), start=1):
         lines.append(f"  {i}. {step}")
     first = first_line(detail)
     if first:
@@ -117,8 +109,6 @@ def missing_image_doctor_fix(
         f"image not on this VPS yet ({image}).",
         "`raft auth` does not pull images — login to the registry, then sync:",
     ]
-    for i, step in enumerate(
-        registry_login_fix_steps(image, app=app, repo=repo), start=1
-    ):
+    for i, step in enumerate(registry_login_fix_steps(image, app=app, repo=repo), start=1):
         lines.append(f"{i}. {step}")
     return "\n".join(lines)

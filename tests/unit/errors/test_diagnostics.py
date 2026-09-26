@@ -11,7 +11,6 @@ from raft.errors import (
     prefer_errorish_lines,
     summarize_health_inspect,
 )
-
 from tests.shared.nginx import NginxEmerg
 
 
@@ -52,8 +51,7 @@ class TestDiagnosticsHelpers:
 
     def test_compose_services_from_failure_text(self) -> None:
         text = (
-            "dependency failed to start: "
-            "container raft-limudpsanter-frontend-dev-1 is unhealthy"
+            "dependency failed to start: " "container raft-limudpsanter-frontend-dev-1 is unhealthy"
         )
         found = compose_services_from_failure_text(
             text,
@@ -65,9 +63,9 @@ class TestDiagnosticsHelpers:
             known_services=("limudpsanter-frontend-dev",),
         )
         # Non-project container name is kept as-is.
-        assert compose_services_from_failure_text(
-            "container weird_name is unhealthy"
-        ) == ["weird_name"]
+        assert compose_services_from_failure_text("container weird_name is unhealthy") == [
+            "weird_name"
+        ]
 
     def test_summarize_health_inspect(self) -> None:
         assert summarize_health_inspect("running", "healthy") == "running/healthy"

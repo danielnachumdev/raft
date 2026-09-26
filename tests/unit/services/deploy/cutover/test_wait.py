@@ -9,14 +9,18 @@ import pytest
 from raft.services.deploy.cutover import CutoverSession
 
 from ....base import make_app, make_local_stack, make_stack, write_applied_app
-from .base import CutoverTestCase
 from ....cta_asserts import assert_logged, assert_operator
+from .base import CutoverTestCase
 
 
 class TestCutoverWait(CutoverTestCase):
     def test_wait_ready_invokes_compose_ready_for_expose_none(self) -> None:
         write_applied_app(
-            self.tmp_path, "app", public_host="", source="docker", image="redis",
+            self.tmp_path,
+            "app",
+            public_host="",
+            source="docker",
+            image="redis",
             build_context=None,
             extra={
                 "ports": [{"name": "http", "containerPort": 8000, "expose": "none"}],
@@ -28,7 +32,10 @@ class TestCutoverWait(CutoverTestCase):
         docker.service_is_ready.return_value = True
         session = CutoverSession(
             stack=make_stack(self.tmp_path, (app,), drain_seconds=0.0),
-            app=app, docker=docker, nginx=MagicMock(), http=MagicMock(),
+            app=app,
+            docker=docker,
+            nginx=MagicMock(),
+            http=MagicMock(),
         )
         with patch("raft.services.deploy.cutover.time.sleep"):
             session._wait_ready("compose ready")
@@ -36,13 +43,17 @@ class TestCutoverWait(CutoverTestCase):
 
     def test_wait_ready_uses_app_readiness_timeout(self) -> None:
         write_applied_app(
-            self.tmp_path, "app",
+            self.tmp_path,
+            "app",
             extra={"readiness": {"type": "http", "port": "http", "timeoutSeconds": 90}},
         )
         stack = make_local_stack(self.tmp_path, drain_seconds=0.0, ready_timeout_seconds=1.0)
         s = CutoverSession(
-            stack=stack, app=stack.apps[0],
-            docker=MagicMock(), nginx=MagicMock(), http=MagicMock(),
+            stack=stack,
+            app=stack.apps[0],
+            docker=MagicMock(),
+            nginx=MagicMock(),
+            http=MagicMock(),
         )
         s.http.public_host_ok.return_value = False
         with patch("raft.services.deploy.cutover.wait_until") as wait:
@@ -68,13 +79,16 @@ class TestCutoverWait(CutoverTestCase):
         from raft.errors import OperatorError
         from raft.services.deploy.wait import wait_until
 
-
         sleep_p, mono_p = self._clock_patches(0.02)
         with caplog.at_level("ERROR"), sleep_p, mono_p:
             with pytest.raises(OperatorError) as exc:
                 wait_until(
-                    "demo ready", lambda: False, timeout=0.01, interval=0.01,
-                    progress_every=0, fix="raise readiness.timeoutSeconds",
+                    "demo ready",
+                    lambda: False,
+                    timeout=0.01,
+                    interval=0.01,
+                    progress_every=0,
+                    fix="raise readiness.timeoutSeconds",
                     diagnostics=lambda: "--- svc (running/starting) ---",
                 )
         assert_operator(
@@ -88,13 +102,15 @@ class TestCutoverWait(CutoverTestCase):
         from raft.errors import OperatorError
         from raft.services.deploy.wait import wait_until
 
-
         sleep_p, mono_p = self._clock_patches(0.1)
         with caplog.at_level("INFO"), sleep_p, mono_p:
             with pytest.raises(OperatorError) as caught:
                 wait_until(
-                    "slow ready", lambda: False, timeout=0.25,
-                    interval=0.05, progress_every=0.1,
+                    "slow ready",
+                    lambda: False,
+                    timeout=0.25,
+                    interval=0.05,
+                    progress_every=0.1,
                 )
         assert_operator(caught.value, has_fix=False, contains=("slow ready",))
         assert_logged(caplog, level="INFO", contains=("slow ready",))

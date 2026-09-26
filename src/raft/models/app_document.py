@@ -81,9 +81,7 @@ class AppDocument:
         api = str(data.get("apiVersion", "")).strip()
         kind = str(data.get("kind", "")).strip()
         if api != CONTRACT_API_VERSION:
-            raise ValueError(
-                f"{path}: apiVersion must be {CONTRACT_API_VERSION!r}, got {api!r}"
-            )
+            raise ValueError(f"{path}: apiVersion must be {CONTRACT_API_VERSION!r}, got {api!r}")
         if kind != CONTRACT_KIND:
             raise ValueError(f"{path}: kind must be {CONTRACT_KIND!r}, got {kind!r}")
 
@@ -124,9 +122,7 @@ class AppDocument:
     ) -> str:
         public_host = str(spec.get("publicHost", spec.get("public_host", ""))).strip()
         if any(p.expose == "http" for p in ports) and not public_host:
-            raise ValueError(
-                f"{path}: spec.publicHost is required when any port uses expose=http"
-            )
+            raise ValueError(f"{path}: spec.publicHost is required when any port uses expose=http")
         return public_host
 
     @classmethod
@@ -138,13 +134,17 @@ class AppDocument:
         ports: tuple[PortSpec, ...],
         path: Path,
     ) -> tuple[App, AppSpec]:
-        source, repo, image, ref, rel_path = AppSpecFields._parse_source(
-            spec, path, name=name
-        )
+        source, repo, image, ref, rel_path = AppSpecFields._parse_source(spec, path, name=name)
         group = AppSpecFields._parse_group(spec, path)
         app = App(
-            name=name, public_host=public_host, source=source, path=rel_path,
-            repo=repo, image=image, ref=ref, group=group,
+            name=name,
+            public_host=public_host,
+            source=source,
+            path=rel_path,
+            repo=repo,
+            image=image,
+            ref=ref,
+            group=group,
         )
         return app, cls._app_spec(name, public_host, spec, ports, path, group=group)
 
@@ -181,8 +181,10 @@ class AppDocument:
             "readiness": parse_readiness(spec, ports, path),
             "www": fields._parse_www(spec, path),
             "extra_hosts": fields._extra_hosts(spec, path),
-            "build_context": context, "dockerfile": dockerfile,
-            "metadata_name": name, "group": group,
+            "build_context": context,
+            "dockerfile": dockerfile,
+            "metadata_name": name,
+            "group": group,
             "scaling": ScalingSpecParser.parse(spec, ports, path),
         }
 
@@ -220,8 +222,7 @@ class AppDocument:
             ) from exc
         except yaml.YAMLError as exc:
             raise OperatorError(
-                f"{path}: invalid YAML: {exc}\n"
-                f"Fix: repair the App manifest YAML"
+                f"{path}: invalid YAML: {exc}\n" f"Fix: repair the App manifest YAML"
             ) from exc
         if not isinstance(data, dict):
             raise ValueError(f"{path}: document must be a mapping")

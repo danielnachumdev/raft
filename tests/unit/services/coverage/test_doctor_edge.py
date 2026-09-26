@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 
 from raft.models.stack import load_stack
 from raft.services.ops.doctor import INFRA
-
 from tests.shared.compose_ids import RunningServices
 
 from ...base import RaftTestCase, write_applied_app
@@ -26,9 +25,7 @@ class TestDoctorEdgeCoverage(RaftTestCase):
                     (r.service, r.check): r
                     for r in CoverageDoctor.for_stack(stack, shell=shell, docker=docker).run()
                 }
-            with patch(
-                "socket.create_connection", side_effect=OSError()
-            ):
+            with patch("socket.create_connection", side_effect=OSError()):
                 return {
                     (r.service, r.check): r
                     for r in CoverageDoctor.for_stack(stack, shell=shell, docker=docker).run()
@@ -87,9 +84,14 @@ class TestDoctorEdgeCoverage(RaftTestCase):
 
     def _seed_mail_origin(self) -> None:
         write_applied_app(
-            self.tmp_path, "mail", public_host="mail.example.com", tls="origin",
+            self.tmp_path,
+            "mail",
+            public_host="mail.example.com",
+            tls="origin",
             extra={
-                "ports": [{"name": "smtp", "containerPort": 25, "expose": "stream", "publicPort": 25}],
+                "ports": [
+                    {"name": "smtp", "containerPort": 25, "expose": "stream", "publicPort": 25}
+                ],
                 "readiness": {"type": "tcp", "port": "smtp"},
             },
         )

@@ -7,7 +7,6 @@ import pytest
 from raft.errors import OperatorError
 from raft.services.deploy.cutover import DEPLOY_CUTOVER
 from raft.services.deploy.wait import wait_until
-
 from tests.shared.compose_ids import RunningServices
 from tests.shared.nginx import NginxEmerg
 
@@ -39,9 +38,7 @@ class TestWaitUntil:
                 timeout=0.05,
                 interval=0.01,
                 fix="raft doctor",
-                diagnostics=lambda: (
-                    "--- raft-app_tmp ---\n" + NginxEmerg.host_not_found("old")
-                ),
+                diagnostics=lambda: ("--- raft-app_tmp ---\n" + NginxEmerg.host_not_found("old")),
             )
         assert_operator(
             caught.value,

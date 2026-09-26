@@ -67,9 +67,7 @@ class NginxUpstreams:
             p.container_port,
         )
 
-    def _assert_router_sees(
-        self, app: App, target_hostname: str, p: PortSpec
-    ) -> None:
+    def _assert_router_sees(self, app: App, target_hostname: str, p: PortSpec) -> None:
         if self.docker.router_sees_upstream_target(app, target_hostname, p):
             return
         raise OperatorError(

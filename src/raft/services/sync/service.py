@@ -127,13 +127,9 @@ class SourceSync:
             self._clone_fresh(app, dest, clone_url)
             return
         try:
-            self.sh.git(
-                "remote", "set-url", "origin", clone_url, cwd=dest, capture=True
-            )
+            self.sh.git("remote", "set-url", "origin", clone_url, cwd=dest, capture=True)
         except Exception as exc:
-            raise_for_git_failure(
-                exc, app.repo or clone_url, app=app.name, always=True
-            )
+            raise_for_git_failure(exc, app.repo or clone_url, app=app.name, always=True)
 
     def _clone_fresh(self, app: App, dest: Path, clone_url: str) -> None:
         if dest.exists() and any(dest.iterdir()):
@@ -153,24 +149,16 @@ class SourceSync:
         try:
             self.sh.git("clone", "--quiet", clone_url, str(dest), capture=True)
         except Exception as exc:
-            raise_for_git_failure(
-                exc, app.repo or clone_url, app=app.name, always=True
-            )
+            raise_for_git_failure(exc, app.repo or clone_url, app=app.name, always=True)
 
     def _git_fetch(self, app: App, dest: Path, clone_url: str) -> None:
         try:
-            self.sh.git(
-                "fetch", "--prune", "--tags", "origin", cwd=dest, capture=True
-            )
+            self.sh.git("fetch", "--prune", "--tags", "origin", cwd=dest, capture=True)
         except Exception as exc:
-            raise_for_git_failure(
-                exc, app.repo or clone_url, app=app.name, always=True
-            )
+            raise_for_git_failure(exc, app.repo or clone_url, app=app.name, always=True)
 
     def _resolve_ref(self, app: App, dest: Path, wanted: str) -> str:
-        checked = self.sh.git(
-            "rev-parse", "--verify", wanted, cwd=dest, check=False, capture=True
-        )
+        checked = self.sh.git("rev-parse", "--verify", wanted, cwd=dest, check=False, capture=True)
         if checked.returncode != 0:
             checked = self.sh.git(
                 "rev-parse",
@@ -187,15 +175,11 @@ class SourceSync:
             f"Fix: raft sync {app.name} --ref <existing-branch-or-tag>"
         )
 
-    def _git_checkout_sha(
-        self, app: App, dest: Path, clone_url: str, sha: str
-    ) -> None:
+    def _git_checkout_sha(self, app: App, dest: Path, clone_url: str, sha: str) -> None:
         try:
             self.sh.git("checkout", "-q", "-f", "--detach", sha, cwd=dest, capture=True)
         except Exception as exc:
-            raise_for_git_failure(
-                exc, app.repo or clone_url, app=app.name, always=True
-            )
+            raise_for_git_failure(exc, app.repo or clone_url, app=app.name, always=True)
 
     def _image_digest(self, pin: str) -> str:
         return self.sh.docker(

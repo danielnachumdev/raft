@@ -55,8 +55,12 @@ class GroupReportWriter:
             print(tint(group_name, BOLD, YELLOW), file=stream)
             for member in members:
                 self._emit_member(
-                    member, by_member=by_member, stream=stream, tint=tint,
-                    indent="  ", group=group_name,
+                    member,
+                    by_member=by_member,
+                    stream=stream,
+                    tint=tint,
+                    indent="  ",
+                    group=group_name,
                 )
 
     def _emit_ungrouped(self, ungrouped, by_member, *, stream, tint) -> None:
@@ -65,8 +69,12 @@ class GroupReportWriter:
         print(file=stream)
         for member in ungrouped:
             self._emit_member(
-                member, by_member=by_member, stream=stream, tint=tint,
-                indent="", group=None,
+                member,
+                by_member=by_member,
+                stream=stream,
+                tint=tint,
+                indent="",
+                group=None,
             )
 
     def _layout(
@@ -78,12 +86,8 @@ class GroupReportWriter:
         infra_keys = {r.check for r in by_service.get(INFRA, [])}
         by_member = self._members_from_service(by_service)
         grouped, ungrouped = self._app_groups(stack)
-        raft_members = self._assemble_raft_members(
-            stack, by_member, infra_keys, grouped
-        )
-        group_order: list[tuple[Optional[str], list[str]]] = [
-            (RAFT_GROUP, raft_members)
-        ]
+        raft_members = self._assemble_raft_members(stack, by_member, infra_keys, grouped)
+        group_order: list[tuple[Optional[str], list[str]]] = [(RAFT_GROUP, raft_members)]
         for group in sorted(grouped):
             group_order.append((group, list(grouped[group])))
         ungrouped = self._append_orphans(by_member, group_order, ungrouped)
@@ -94,9 +98,7 @@ class GroupReportWriter:
         by_service: dict[str, list[CheckResult]],
     ) -> dict[str, list[CheckResult]]:
         by_member: dict[str, list[CheckResult]] = {
-            name: list(items)
-            for name, items in by_service.items()
-            if name != INFRA
+            name: list(items) for name, items in by_service.items() if name != INFRA
         }
         for r in by_service.get(INFRA, []):
             by_member.setdefault(r.check, []).append(r)
@@ -134,11 +136,7 @@ class GroupReportWriter:
         for name in grouped.pop(RAFT_GROUP, []):
             if name not in raft_members:
                 raft_members.append(name)
-        return [
-            m
-            for m in raft_members
-            if not self._hide_healthy_infra(m, by_member.get(m, []))
-        ]
+        return [m for m in raft_members if not self._hide_healthy_infra(m, by_member.get(m, []))]
 
     def _append_orphans(
         self,
@@ -151,8 +149,7 @@ class GroupReportWriter:
         orphans = [
             n
             for n in sorted(by_member)
-            if n not in listed
-            and not self._hide_healthy_infra(n, by_member.get(n, []))
+            if n not in listed and not self._hide_healthy_infra(n, by_member.get(n, []))
         ]
         return ungrouped + orphans
 

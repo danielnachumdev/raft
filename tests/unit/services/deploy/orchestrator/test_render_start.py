@@ -43,9 +43,7 @@ class TestOrchRenderStart(OrchestratorTestCase):
     def test_render_reloads_gate_when_stamp_missing(self) -> None:
         """Disk already has config but gate never recorded a reload (stale process)."""
         self.set_edge_only()
-        with self.render_with_gate_stamp(
-            fingerprint="on-disk", read=None, patch_certs=True
-        ):
+        with self.render_with_gate_stamp(fingerprint="on-disk", read=None, patch_certs=True):
             self.orch.render()
         self.orch.docker.reload_gate_nginx.assert_called_once()
 

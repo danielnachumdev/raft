@@ -5,9 +5,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from raft.services.auth import GitAuthManager
 from raft.services.deploy.cutover import CutoverSession
 from raft.services.deploy.orchestrator import Orchestrator
-from raft.services.auth import GitAuthManager
 
 from ..base import RaftTestCase, make_git_stack, make_local_stack, write_applied_app
 
@@ -42,9 +42,7 @@ class ServicesTestCase(RaftTestCase):
 
     def cutover_session(self) -> CutoverSession:
         write_applied_app(self.tmp_path, "app", extra=self._short_readiness())
-        stack = make_local_stack(
-            self.tmp_path, drain_seconds=0.0, ready_timeout_seconds=1.0
-        )
+        stack = make_local_stack(self.tmp_path, drain_seconds=0.0, ready_timeout_seconds=1.0)
         return CutoverSession(
             stack=stack,
             app=stack.apps[0],

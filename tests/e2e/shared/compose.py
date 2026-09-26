@@ -39,9 +39,7 @@ def apps_only_compose(generated: Path, dest: Path) -> Path:
     """Write compose with only App services (drop router stub; drop healthchecks)."""
     raw = GeneratedArtifacts(generated).compose_apps()
     services = _strip_router_and_health(dict(raw.get("services") or {}))
-    dest.write_text(
-        yaml.safe_dump({"services": services}, sort_keys=False), encoding="utf-8"
-    )
+    dest.write_text(yaml.safe_dump({"services": services}, sort_keys=False), encoding="utf-8")
     return dest
 
 
@@ -101,30 +99,36 @@ class ComposeProject:
         )
         if proc.returncode != 0:
             raise RuntimeError(
-                f"compose up failed ({self.project}):\n"
-                f"{proc.stdout}\n{proc.stderr}"
+                f"compose up failed ({self.project}):\n" f"{proc.stdout}\n{proc.stderr}"
             )
 
     def down(self) -> None:
         subprocess.run(
             self._cmd("down", "-v", "--remove-orphans"),
-            check=False, cwd=self.workdir, capture_output=True, text=True, timeout=120,
+            check=False,
+            cwd=self.workdir,
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
         self._force_remove_labeled()
 
     def _force_remove_labeled(self) -> None:
         labeled = subprocess.run(
             [
-                "docker", "ps", "-aq", "--filter",
+                "docker",
+                "ps",
+                "-aq",
+                "--filter",
                 f"label=com.docker.compose.project={self.project}",
             ],
-            capture_output=True, text=True, check=False,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         ids = [x for x in labeled.stdout.split() if x]
         if ids:
-            subprocess.run(
-                ["docker", "rm", "-f", *ids], check=False, capture_output=True
-            )
+            subprocess.run(["docker", "rm", "-f", *ids], check=False, capture_output=True)
 
     def ps_json(self) -> list[dict[str, Any]]:
         proc = subprocess.run(

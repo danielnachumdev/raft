@@ -54,10 +54,13 @@ class TestDoctorReport(DoctorTestCase):
 
     def test_report_uses_ansi_when_color_enabled(self, capsys) -> None:
         d = self.doctor()
-        assert d.report(
-            [CheckResult("svc", "auth", "fail", "bad", fix="raft auth setup svc")],
-            color=True,
-        ) == 1
+        assert (
+            d.report(
+                [CheckResult("svc", "auth", "fail", "bad", fix="raft auth setup svc")],
+                color=True,
+            )
+            == 1
+        )
         assert "\033[31m" in capsys.readouterr().out
         assert d.report([CheckResult(INFRA, "docker", "ok", "fine")], color=True) == 0
         assert "\033[32m" in capsys.readouterr().out
@@ -96,25 +99,34 @@ class TestDoctorReport(DoctorTestCase):
 
     def _assert_custom_ungrouped(self, capsys) -> None:
         d2 = self.doctor(stack=make_stack(self.tmp_path, apps=()))
-        assert d2.report(
-            [CheckResult(INFRA, "docker", "ok", "fine"), CheckResult("custom", "item", "ok", "fine")],
-            color=False,
-        ) == 0
+        assert (
+            d2.report(
+                [
+                    CheckResult(INFRA, "docker", "ok", "fine"),
+                    CheckResult("custom", "item", "ok", "fine"),
+                ],
+                color=False,
+            )
+            == 0
+        )
         out2 = capsys.readouterr().out
         assert "ungrouped\n" not in out2 and "custom\n" in out2
 
     def test_report_edge_already_listed_and_raft_group_dedupe(self, capsys) -> None:
         write_applied_app(self.tmp_path, "gate", extra={"group": "raft"})
         d = self.doctor(stack=load_stack(self.tmp_path))
-        assert d.report(
-            [
-                CheckResult(INFRA, GATE_COMPOSE_ID, "ok", "probe"),
-                CheckResult(INFRA, ROUTER_COMPOSE_ID, "ok", "probe"),
-                CheckResult(INFRA, "docker", "ok", "fine"),
-                CheckResult("raft-gate", "contract", "ok", "app ok"),
-            ],
-            color=False,
-        ) == 0
+        assert (
+            d.report(
+                [
+                    CheckResult(INFRA, GATE_COMPOSE_ID, "ok", "probe"),
+                    CheckResult(INFRA, ROUTER_COMPOSE_ID, "ok", "probe"),
+                    CheckResult(INFRA, "docker", "ok", "fine"),
+                    CheckResult("raft-gate", "contract", "ok", "app ok"),
+                ],
+                color=False,
+            )
+            == 0
+        )
         out = capsys.readouterr().out
         assert "raft\n" in out and "  gate\n" in out
         assert GATE_COMPOSE_ID not in out and "ungrouped\n" not in out
@@ -123,21 +135,22 @@ class TestDoctorReport(DoctorTestCase):
     def _assert_auth_fix_urls(self) -> None:
         gh = auth_deploy_key_fix("svc", "git@github.com:acme/site.git")
         assert "github.com/acme/site/settings/keys/new" in gh
-        assert "gitlab.com" in auth_deploy_key_fix(
-            "svc", "git@gitlab.com:acme/site.git"
-        )
+        assert "gitlab.com" in auth_deploy_key_fix("svc", "git@gitlab.com:acme/site.git")
         assert auth_deploy_key_fix("svc", "not-a-url")
 
     def test_report_blank_lines_between_ok_and_issues(self, capsys) -> None:
         d = self.doctor()
-        assert d.report(
-            [
-                CheckResult(INFRA, "docker", "ok", "fine"),
-                CheckResult("svc", "auth", "fail", "bad", fix="fix"),
-                CheckResult("other", "sync", "ok", "fine"),
-            ],
-            color=False,
-        ) == 1
+        assert (
+            d.report(
+                [
+                    CheckResult(INFRA, "docker", "ok", "fine"),
+                    CheckResult("svc", "auth", "fail", "bad", fix="fix"),
+                    CheckResult("other", "sync", "ok", "fine"),
+                ],
+                color=False,
+            )
+            == 1
+        )
         out = capsys.readouterr().out
         assert "raft\n" in out and "  docker\n" not in out
         assert "svc\n" in out and "  FAIL" in out and "fix →" in out

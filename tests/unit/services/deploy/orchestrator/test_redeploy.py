@@ -6,7 +6,6 @@ import pytest
 
 from raft.models.stack import load_stack
 from raft.services.deploy.orchestrator import Orchestrator
-
 from tests.shared.compose_ids import RunningServices
 
 from ....base import write_applied_app
@@ -25,7 +24,11 @@ class TestOrchRedeploy(OrchestratorTestCase):
 
     def _seed_expose_none_tcp(self) -> None:
         write_applied_app(
-            self.tmp_path, "app", public_host="", source="docker", image="redis",
+            self.tmp_path,
+            "app",
+            public_host="",
+            source="docker",
+            image="redis",
             build_context=None,
             extra={
                 "ports": [{"name": "http", "containerPort": 8000, "expose": "none"}],

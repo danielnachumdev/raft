@@ -27,9 +27,7 @@ class ReadinessParser:
         path: Path,
     ) -> ReadinessSpec:
         if "readinessProbe" in spec:
-            raise ValueError(
-                f"{path}: readinessProbe is not supported; use spec.readiness"
-            )
+            raise ValueError(f"{path}: readinessProbe is not supported; use spec.readiness")
         raw = spec.get("readiness")
         if raw is None:
             return self._default_for_ports(ports, path)
@@ -37,9 +35,7 @@ class ReadinessParser:
             raise ValueError(f"{path}: spec.readiness must be an object")
         return self._from_raw(raw, ports, path)
 
-    def _default_for_ports(
-        self, ports: tuple[PortSpec, ...], path: Path
-    ) -> ReadinessSpec:
+    def _default_for_ports(self, ports: tuple[PortSpec, ...], path: Path) -> ReadinessSpec:
         timing = self._timing_from_raw({}, path)
         http_ports = [p for p in ports if p.expose == "http"]
         if http_ports:
@@ -67,9 +63,7 @@ class ReadinessParser:
         port_s = self._port_name(raw)
         probe_path = self._probe_path(raw)
         timing = self._timing_from_raw(raw, path)
-        readiness = ReadinessSpec(
-            type=rtype, port=port_s, path=probe_path, **timing
-        )
+        readiness = ReadinessSpec(type=rtype, port=port_s, path=probe_path, **timing)
         if rtype == "none":
             return readiness
         return self._bind_port(readiness, ports, path, probe_path=probe_path, timing=timing)
@@ -109,15 +103,27 @@ class ReadinessParser:
     def _raw_timing_fields(self, raw: dict[str, Any], path: Path) -> dict[str, Any]:
         f, i = self._optional_positive_float, self._optional_positive_int
         return dict(
-            start=f(raw.get("startPeriodSeconds", raw.get("start_period_seconds")),
-                    path=path, field="startPeriodSeconds"),
-            interval=f(raw.get("intervalSeconds", raw.get("interval_seconds")),
-                       path=path, field="intervalSeconds"),
-            probe_timeout=f(raw.get("probeTimeoutSeconds", raw.get("probe_timeout_seconds")),
-                            path=path, field="probeTimeoutSeconds"),
+            start=f(
+                raw.get("startPeriodSeconds", raw.get("start_period_seconds")),
+                path=path,
+                field="startPeriodSeconds",
+            ),
+            interval=f(
+                raw.get("intervalSeconds", raw.get("interval_seconds")),
+                path=path,
+                field="intervalSeconds",
+            ),
+            probe_timeout=f(
+                raw.get("probeTimeoutSeconds", raw.get("probe_timeout_seconds")),
+                path=path,
+                field="probeTimeoutSeconds",
+            ),
             retries=i(raw.get("retries"), path=path, field="retries"),
-            timeout=f(raw.get("timeoutSeconds", raw.get("timeout_seconds")),
-                      path=path, field="timeoutSeconds"),
+            timeout=f(
+                raw.get("timeoutSeconds", raw.get("timeout_seconds")),
+                path=path,
+                field="timeoutSeconds",
+            ),
         )
 
     def _resolve_timing(
@@ -195,9 +201,7 @@ class ReadinessParser:
         return probe_path
 
     @staticmethod
-    def _optional_positive_float(
-        raw: Any, *, path: Path, field: str
-    ) -> Optional[float]:
+    def _optional_positive_float(raw: Any, *, path: Path, field: str) -> Optional[float]:
         if raw is None:
             return None
         try:
@@ -209,9 +213,7 @@ class ReadinessParser:
         return value
 
     @staticmethod
-    def _optional_positive_int(
-        raw: Any, *, path: Path, field: str
-    ) -> Optional[int]:
+    def _optional_positive_int(raw: Any, *, path: Path, field: str) -> Optional[int]:
         if raw is None:
             return None
         try:

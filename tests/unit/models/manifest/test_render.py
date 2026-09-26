@@ -5,7 +5,6 @@ from __future__ import annotations
 import pytest
 
 from raft.config.settings_types import EdgeConfig, EdgeStream
-
 from tests.shared.artifacts import GeneratedArtifacts
 from tests.shared.files import FileText
 
@@ -27,11 +26,13 @@ REDIS_EXTRA = {
     "group": "demo",
     "envFile": "/home/raft/.raft/demo.env",
     "env": {"FOO": "bar"},
-    "volumes": [{
-        "hostPath": "/mnt/raft-data/demo/redis",
-        "containerPath": "/data",
-        "readOnly": False,
-    }],
+    "volumes": [
+        {
+            "hostPath": "/mnt/raft-data/demo/redis",
+            "containerPath": "/data",
+            "readOnly": False,
+        }
+    ],
 }
 
 FRONT_EXTRA = {
@@ -47,13 +48,9 @@ class TestStackRenderer(ManifestTestCase):
     def test_render_http_only_no_tls_snippets(self) -> None:
         write_applied_app(self.tmp_path, "web", public_host="web.test", tls="off")
         gen = GeneratedArtifacts(self.render_applied())
-        FileText.contains(
-            gen.path("compose.apps.yaml"), "wget", 'expose:\n      - "80"'
-        )
+        FileText.contains(gen.path("compose.apps.yaml"), "wget", 'expose:\n      - "80"')
         FileText.contains(gen.path("compose.edge.yaml"), '"80:80"', '"443:443"')
-        FileText.contains(
-            gen.path("nginx", "router", "hosts.conf"), "proxy_pass http://web_http"
-        )
+        FileText.contains(gen.path("nginx", "router", "hosts.conf"), "proxy_pass http://web_http")
         assert list(gen.path("nginx", "gate-tls").glob("*.conf")) == []
         assert gen.path("nginx", "upstreams", "web-http.conf").is_file()
 
@@ -68,9 +65,13 @@ class TestStackRenderer(ManifestTestCase):
 
     def test_render_rejects_undeclared_stream_port(self) -> None:
         write_applied_app(
-            self.tmp_path, "mail", public_host="mail.example.com",
+            self.tmp_path,
+            "mail",
+            public_host="mail.example.com",
             extra={
-                "ports": [{"name": "smtp", "containerPort": 25, "expose": "stream", "publicPort": 25}],
+                "ports": [
+                    {"name": "smtp", "containerPort": 25, "expose": "stream", "publicPort": 25}
+                ],
                 "readiness": {"type": "tcp", "port": "smtp"},
             },
         )
@@ -118,10 +119,20 @@ class TestStackRenderer(ManifestTestCase):
 
     def _seed_redis_and_front(self) -> None:
         write_applied_app(
-            self.tmp_path, "stack-redis", source="docker", image="redis",
-            public_host="", build_context=None, extra=REDIS_EXTRA,
+            self.tmp_path,
+            "stack-redis",
+            source="docker",
+            image="redis",
+            public_host="",
+            build_context=None,
+            extra=REDIS_EXTRA,
         )
         write_applied_app(
-            self.tmp_path, "stack-front", source="docker", image="ghcr.io/example/nginx",
-            public_host="", build_context=None, extra=FRONT_EXTRA,
+            self.tmp_path,
+            "stack-front",
+            source="docker",
+            image="ghcr.io/example/nginx",
+            public_host="",
+            build_context=None,
+            extra=FRONT_EXTRA,
         )

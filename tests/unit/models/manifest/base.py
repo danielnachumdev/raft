@@ -79,12 +79,24 @@ class ManifestTestCase(RaftTestCase):
             lines.extend(["  build:", f"    context: {context}"])
             if dockerfile:
                 lines.append(f"    dockerfile: {dockerfile}")
-        lines.extend([
-            "  readiness:", "    type: http", "    port: http", f"    path: {probe}",
-        ])
+        lines.extend(
+            [
+                "  readiness:",
+                "    type: http",
+                "    port: http",
+                f"    path: {probe}",
+            ]
+        )
         if resources:
-            lines.extend([
-                "  resources:", "    limits:", '      cpu: "250m"', "      memory: 64Mi",
-                "    requests:", '      cpu: "50m"', "      memory: 16Mi",
-            ])
+            lines.extend(
+                [
+                    "  resources:",
+                    "    limits:",
+                    '      cpu: "250m"',
+                    "      memory: 64Mi",
+                    "    requests:",
+                    '      cpu: "50m"',
+                    "      memory: 16Mi",
+                ]
+            )
         return lines

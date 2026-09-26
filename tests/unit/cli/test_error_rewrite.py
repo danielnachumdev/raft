@@ -65,9 +65,7 @@ class TestCliErrorRewrite(CliTestCase):
         self._assert_pull_fail(capsys)
 
     def _assert_compose_fail(self, capsys) -> None:
-        err = subprocess.CalledProcessError(
-            1, ["docker", "compose", "up"], stderr="explode\n"
-        )
+        err = subprocess.CalledProcessError(1, ["docker", "compose", "up"], stderr="explode\n")
         self.orch.stop.side_effect = err
         with pytest.raises(SystemExit) as exc:
             self.run_cli(["down"])
@@ -76,7 +74,8 @@ class TestCliErrorRewrite(CliTestCase):
 
     def _assert_git_auth(self, capsys) -> None:
         auth = subprocess.CalledProcessError(
-            1, ["git", "ls-remote", "git@github.com:org/x.git"],
+            1,
+            ["git", "ls-remote", "git@github.com:org/x.git"],
             stderr="Permission denied (publickey)\n",
         )
         self.orch.sync.side_effect = auth
@@ -221,7 +220,13 @@ class TestCliErrorRewrite(CliTestCase):
         err = subprocess.CalledProcessError(
             1,
             [
-                "docker", "compose", "exec", "-T", "gate", "nginx", "-t",
+                "docker",
+                "compose",
+                "exec",
+                "-T",
+                "gate",
+                "nginx",
+                "-t",
                 'cannot load certificate "/etc/nginx/certs/web/origin.pem"',
             ],
             stderr="",

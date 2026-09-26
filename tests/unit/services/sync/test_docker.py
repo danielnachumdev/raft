@@ -71,9 +71,7 @@ class TestSyncDocker(SyncTestCase):
         self.syncer.sync([app])
 
     def _test_sync_docker_pin_equals_pull_p2(self) -> None:
-        self.shell.docker.assert_any_call(
-            "pull", "ghcr.io/org/hub:main", capture=True, check=False
-        )
+        self.shell.docker.assert_any_call("pull", "ghcr.io/org/hub:main", capture=True, check=False)
         assert not any(c.args[:1] == ("tag",) for c in self.shell.docker.call_args_list)
 
     def test_sync_docker_unauthorized_clear_fix(self) -> None:

@@ -29,9 +29,7 @@ def run_prereq_smoke(home: Path, sh: Shell) -> None:
 
 
 def _smoke_docker(sh: Shell) -> None:
-    version = sh.docker(
-        "version", "--format", "{{.Server.Version}}", capture=True
-    )
+    version = sh.docker("version", "--format", "{{.Server.Version}}", capture=True)
     server = (version.stdout or "").strip() or "(unknown)"
     logger.info("docker engine reachable version=%s", server)
 

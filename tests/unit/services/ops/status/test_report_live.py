@@ -45,9 +45,12 @@ class TestStatusReportLive(RaftTestCase):
                 assert out.getvalue() == ""
             return snapshot
 
-        assert write_live_report(
-            collect, interval=0.01, out=out, color=False, sleep=sleeps.append, max_frames=2
-        ) == 0
+        assert (
+            write_live_report(
+                collect, interval=0.01, out=out, color=False, sleep=sleeps.append, max_frames=2
+            )
+            == 0
+        )
         assert calls["n"] == 2 and sleeps == [0.01]
         text = out.getvalue()
         assert "Ctrl+C to exit" in text

@@ -32,9 +32,7 @@ class EdgeSettingsParser:
         if streams_raw is None:
             streams_raw = []
         if not isinstance(streams_raw, list):
-            raise OperatorError(
-                "settings.yaml edge.streams must be a list", has_fix=False
-            )
+            raise OperatorError("settings.yaml edge.streams must be a list", has_fix=False)
         return self._parse_stream_list(streams_raw, http=http, https=https)
 
     def _parse_stream_list(
@@ -46,8 +44,12 @@ class EdgeSettingsParser:
         for index, entry in enumerate(streams_raw):
             streams.append(
                 self._parse_stream_entry(
-                    entry, index=index, http=http, https=https,
-                    seen_names=seen_names, seen_ports=seen_ports,
+                    entry,
+                    index=index,
+                    http=http,
+                    https=https,
+                    seen_names=seen_names,
+                    seen_ports=seen_ports,
                 )
             )
         return streams
@@ -68,9 +70,7 @@ class EdgeSettingsParser:
                 has_fix=False,
             )
         name = self._stream_name(entry, index=index, seen_names=seen_names)
-        port = self._stream_port(
-            entry, name=name, http=http, https=https, seen_ports=seen_ports
-        )
+        port = self._stream_port(entry, name=name, http=http, https=https, seen_ports=seen_ports)
         protocol = str(entry.get("protocol", "tcp")).strip().lower() or "tcp"
         if protocol not in STREAM_PROTOCOLS:
             raise OperatorError(

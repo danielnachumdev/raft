@@ -19,9 +19,7 @@ import yaml
 from raft.errors import OperatorError
 
 _NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
-_ASSIGN = re.compile(
-    r"^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$"
-)
+_ASSIGN = re.compile(r"^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$")
 
 EnvOverrides = Union[None, str, Sequence[str]]
 

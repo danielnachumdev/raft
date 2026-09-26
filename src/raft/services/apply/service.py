@@ -21,8 +21,8 @@ from ...models.stack import Stack, load_stack
 from ...ui import say
 from ..auth import GitAuthManager
 from ..deploy.locking import app_and_stack_locks, app_deploy_lock
-from .manifest_env import ManifestYamlLoader
 from ..deploy.orchestrator import Orchestrator
+from .manifest_env import ManifestYamlLoader
 
 logger = logging.getLogger(__name__)
 
@@ -107,9 +107,7 @@ class AppApply:
                 self._deploy(app.name, ref_override=ref_override, force_sync=force_sync)
         return app.name
 
-    def _parse_file_yaml(
-        self, path: Path, env: Optional[Mapping[str, str]]
-    ) -> dict[str, Any]:
+    def _parse_file_yaml(self, path: Path, env: Optional[Mapping[str, str]]) -> dict[str, Any]:
         try:
             data = ManifestYamlLoader(env=self._expansion_env(env)).load(
                 path.read_text(encoding="utf-8"),
@@ -213,9 +211,7 @@ class AppApply:
         return tmp
 
     @staticmethod
-    def _apply_ref_override(
-        data: dict[str, Any], path: Path, ref_override: Optional[str]
-    ) -> None:
+    def _apply_ref_override(data: dict[str, Any], path: Path, ref_override: Optional[str]) -> None:
         if not ref_override:
             return
         spec = data.setdefault("spec", {})
@@ -244,9 +240,7 @@ class AppApply:
             style="warn",
         )
 
-    def _announce_applied(
-        self, name: str, dest: Path, from_label: Optional[str]
-    ) -> None:
+    def _announce_applied(self, name: str, dest: Path, from_label: Optional[str]) -> None:
         rel = dest.relative_to(self.stack.root)
         if from_label:
             say(f"applied {name} from {from_label} → {rel}", style="ok")

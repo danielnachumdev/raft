@@ -34,9 +34,7 @@ class TestHealer(ControllerTestCase):
         docker.service_runtime.assert_not_called()
 
     def test_counts_then_restarts_unhealthy(self, tmp_path: Path) -> None:
-        cfg = HealingConfig(
-            enabled=True, fail_threshold=2, cooldown_seconds=0, max_restarts=5
-        )
+        cfg = HealingConfig(enabled=True, fail_threshold=2, cooldown_seconds=0, max_restarts=5)
         healer, docker, _ = self.unhealthy_healer(tmp_path, cfg)
         with self.with_heal_locks():
             healer.tick(now=1.0)
@@ -48,9 +46,7 @@ class TestHealer(ControllerTestCase):
         home = self.applied_home(tmp_path)
         docker = MagicMock()
         docker.service_runtime.return_value = ("exited", "none")
-        cfg = HealingConfig(
-            enabled=True, fail_threshold=1, cooldown_seconds=0, max_restarts=3
-        )
+        cfg = HealingConfig(enabled=True, fail_threshold=1, cooldown_seconds=0, max_restarts=3)
         with self.with_heal_locks():
             Healer(home, cfg, docker).tick(now=1.0)
             docker.start_service.assert_called_once_with(self.APP)
@@ -63,9 +59,7 @@ class TestHealer(ControllerTestCase):
             max_restarts=2,
             escalate_after_restarts=2,
         )
-        healer, docker, deploy = self.unhealthy_healer(
-            tmp_path, cfg, deploy=MagicMock()
-        )
+        healer, docker, deploy = self.unhealthy_healer(tmp_path, cfg, deploy=MagicMock())
         with self.with_heal_locks():
             self._run_cooldown_escalate(healer, docker, deploy)
 
@@ -90,9 +84,7 @@ class TestHealer(ControllerTestCase):
             max_restarts=5,
             escalate_after_restarts=2,
         )
-        healer, docker, deploy = self.unhealthy_healer(
-            tmp_path, cfg, deploy=MagicMock()
-        )
+        healer, docker, deploy = self.unhealthy_healer(tmp_path, cfg, deploy=MagicMock())
         with self.with_heal_locks():
             healer.tick(now=1.0)
             healer.tick(now=2.0)
@@ -147,9 +139,7 @@ class TestHealer(ControllerTestCase):
         home = self.applied_home(tmp_path)
         ScalingStore(home).mark_scaled_to_zero(self.APP)
         docker = MagicMock()
-        Healer(home, HealingConfig(enabled=True, fail_threshold=1), docker).tick(
-            now=1.0
-        )
+        Healer(home, HealingConfig(enabled=True, fail_threshold=1), docker).tick(now=1.0)
         docker.service_runtime.assert_not_called()
         docker.start_service.assert_not_called()
 
@@ -157,9 +147,7 @@ class TestHealer(ControllerTestCase):
         home = self.applied_home(tmp_path)
         docker = MagicMock()
         docker.service_runtime.return_value = ("restarting", "none")
-        Healer(home, HealingConfig(enabled=True, fail_threshold=1), docker).tick(
-            now=1.0
-        )
+        Healer(home, HealingConfig(enabled=True, fail_threshold=1), docker).tick(now=1.0)
         docker.restart_service.assert_not_called()
         docker.start_service.assert_not_called()
 

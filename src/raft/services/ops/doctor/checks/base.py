@@ -13,5 +13,4 @@ class CheckSuite(Protocol):  # pragma: no cover
 
     name: str
 
-    def run(self, ctx: DoctorContext) -> list[CheckResult]:
-        ...
+    def run(self, ctx: DoctorContext) -> list[CheckResult]: ...

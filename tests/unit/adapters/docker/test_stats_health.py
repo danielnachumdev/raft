@@ -5,7 +5,6 @@ from unittest.mock import patch
 import pytest
 
 from raft.errors import OperatorError
-
 from tests.shared.nginx import NginxEmerg
 
 from ...base import make_app
@@ -30,7 +29,7 @@ class TestDockerStatsHealth(DockerTestCase):
         payload = (
             '{"ID":"cid1","CPUPerc":"1.2%","MemUsage":"1MiB / 64MiB",'
             '"MemPerc":"1.5%","NetIO":"1kB / 2kB","BlockIO":"0B / 0B","PIDs":"3"}\n'
-            "\nnot-json\n42\n{\"ID\":\"\"}\n{\"ID\":\"other\",\"CPUPerc\":\"0%\"}\n"
+            '\nnot-json\n42\n{"ID":""}\n{"ID":"other","CPUPerc":"0%"}\n'
         )
         self.shell.docker.return_value = self.ok(payload)
         by_id = self.docker.containers_stats(["cid1full"])
@@ -154,9 +153,7 @@ class TestDockerStatsHealth(DockerTestCase):
         return patch.object(
             self.docker,
             "enrich_compose_failure",
-            side_effect=lambda exc, **kw: OperatorError(
-                f"{exc}\n\n{body}", has_fix=exc.has_fix
-            ),
+            side_effect=lambda exc, **kw: OperatorError(f"{exc}\n\n{body}", has_fix=exc.has_fix),
         )
 
     def _assert_start_and_rebuild_enrich(self) -> None:

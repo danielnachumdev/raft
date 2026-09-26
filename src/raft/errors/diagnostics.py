@@ -105,11 +105,7 @@ def prefer_errorish_lines(text: str, *, max_lines: int = 12) -> str:
     if not lines:
         return ""
     markers = ("emerg", "error", "fatal", "traceback", "exception", "panic")
-    interesting = [
-        line
-        for line in lines
-        if any(m in line.lower() for m in markers)
-    ]
+    interesting = [line for line in lines if any(m in line.lower() for m in markers)]
     chosen = interesting[-max_lines:] if interesting else lines[-max_lines:]
     return "\n".join(chosen)
 

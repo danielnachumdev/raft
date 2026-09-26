@@ -65,9 +65,7 @@ def _blob(exc: subprocess.CalledProcessError, detail: str) -> str:
     return f"{_cmd_text(exc)}\n{detail}"
 
 
-def _match_origin_cert(
-    exc: subprocess.CalledProcessError, ctx: SubprocessCtx, detail: str
-) -> bool:
+def _match_origin_cert(exc: subprocess.CalledProcessError, ctx: SubprocessCtx, detail: str) -> bool:
     return looks_like_missing_origin_cert(_blob(exc, detail))
 
 
@@ -76,9 +74,7 @@ def _build_origin_cert(
 ) -> OperatorError:
     missing = list(ctx.missing_certs or ())
     if missing:
-        return OperatorError(
-            format_missing_origin_certs(missing, include_doctor_footer=False)
-        )
+        return OperatorError(format_missing_origin_certs(missing, include_doctor_footer=False))
     return OperatorError(missing_origin_certs_fallback(detail=detail))
 
 
@@ -86,8 +82,8 @@ def _match_registry_pull(
     exc: subprocess.CalledProcessError, ctx: SubprocessCtx, detail: str
 ) -> bool:
     cmd = _cmd_text(exc)
-    return "docker" in cmd and "pull" in cmd and looks_like_registry_unauthorized(
-        _blob(exc, detail)
+    return (
+        "docker" in cmd and "pull" in cmd and looks_like_registry_unauthorized(_blob(exc, detail))
     )
 
 
@@ -97,15 +93,11 @@ def _build_registry_pull(
     parts = _cmd_parts(exc)
     image = parts[-1] if parts else "image"
     return OperatorError(
-        registry_unauthorized_message(
-            image, detail=detail, app=ctx.app, repo=ctx.repo
-        )
+        registry_unauthorized_message(image, detail=detail, app=ctx.app, repo=ctx.repo)
     )
 
 
-def _match_daemon(
-    exc: subprocess.CalledProcessError, ctx: SubprocessCtx, detail: str
-) -> bool:
+def _match_daemon(exc: subprocess.CalledProcessError, ctx: SubprocessCtx, detail: str) -> bool:
     return looks_like_docker_daemon_down(exc)
 
 
@@ -115,9 +107,7 @@ def _build_daemon(
     return OperatorError(docker_daemon_message(detail=detail))
 
 
-def _match_port(
-    exc: subprocess.CalledProcessError, ctx: SubprocessCtx, detail: str
-) -> bool:
+def _match_port(exc: subprocess.CalledProcessError, ctx: SubprocessCtx, detail: str) -> bool:
     return looks_like_port_in_use(exc)
 
 
@@ -127,9 +117,7 @@ def _build_port(
     return OperatorError(port_in_use_message(detail=detail))
 
 
-def _match_compose(
-    exc: subprocess.CalledProcessError, ctx: SubprocessCtx, detail: str
-) -> bool:
+def _match_compose(exc: subprocess.CalledProcessError, ctx: SubprocessCtx, detail: str) -> bool:
     parts = _cmd_parts(exc)
     return "docker" in parts and "compose" in parts
 
@@ -141,9 +129,7 @@ def _build_compose(
     return OperatorError(compose_failure_message(action, detail=detail))
 
 
-def _match_git(
-    exc: subprocess.CalledProcessError, ctx: SubprocessCtx, detail: str
-) -> bool:
+def _match_git(exc: subprocess.CalledProcessError, ctx: SubprocessCtx, detail: str) -> bool:
     parts = _cmd_parts(exc)
     return bool(parts) and parts[0] == "git"
 
@@ -157,19 +143,13 @@ def _build_git(
         "<repo>",
     )
     if looks_like_git_auth_failure(exc):
-        return OperatorError(
-            git_auth_failure_message(repo, app=ctx.app, detail=detail)
-        )
+        return OperatorError(git_auth_failure_message(repo, app=ctx.app, detail=detail))
     if looks_like_git_network_failure(exc):
         return OperatorError(git_network_failure_message(repo, detail=detail))
-    return OperatorError(
-        git_generic_failure_message(repo, app=ctx.app, detail=detail)
-    )
+    return OperatorError(git_generic_failure_message(repo, app=ctx.app, detail=detail))
 
 
-def _match_docker_pull(
-    exc: subprocess.CalledProcessError, ctx: SubprocessCtx, detail: str
-) -> bool:
+def _match_docker_pull(exc: subprocess.CalledProcessError, ctx: SubprocessCtx, detail: str) -> bool:
     cmd = _cmd_text(exc)
     return "docker" in cmd and "pull" in cmd
 
@@ -179,9 +159,7 @@ def _build_docker_pull(
 ) -> OperatorError:
     parts = _cmd_parts(exc)
     image = parts[-1] if parts else "image"
-    return OperatorError(
-        docker_pull_failure_message(image, detail=detail, app=ctx.app)
-    )
+    return OperatorError(docker_pull_failure_message(image, detail=detail, app=ctx.app))
 
 
 SUBPROCESS_RULES: tuple[Rule, ...] = (

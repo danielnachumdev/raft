@@ -33,9 +33,7 @@ class TestSelfUpdate(ServicesTestCase):
         next_body = " ".join(c.args[0] for c in say.call_args_list if c.args)
         assert "raft render" in next_body and "raft doctor" in next_body
 
-    def test_run_reports_already_up_to_date_when_identity_unchanged(
-        self, monkeypatch
-    ) -> None:
+    def test_run_reports_already_up_to_date_when_identity_unchanged(self, monkeypatch) -> None:
         monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
         monkeypatch.setattr(update_mod, "install_identity", lambda: "same-id")
         shell = MagicMock()

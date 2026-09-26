@@ -61,10 +61,7 @@ class TestDockerImagesTmp(DockerTestCase):
             env_file="/tmp/app.env",
         )
         run_call = next(
-            c
-            for c in self.shell.docker.call_args_list
-            if c.args and c.args[0] == "run"
+            c for c in self.shell.docker.call_args_list if c.args and c.args[0] == "run"
         )
         assert "--env-file" in run_call.args
         assert "/tmp/app.env" in run_call.args
-

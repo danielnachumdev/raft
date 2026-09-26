@@ -14,23 +14,17 @@ MARKERS_DIR = "/etc/nginx/scaling/markers"
 class ScalingGate:
     """Emit Host-specific gate servers that idle-stop via markers + wake API."""
 
-    def contribute_http(
-        self, app: App, spec: AppSpec, *, edge: EdgeConfig
-    ) -> EdgeFragments:
+    def contribute_http(self, app: App, spec: AppSpec, *, edge: EdgeConfig) -> EdgeFragments:
         if spec.scaling is None or not app.public_host:
             return EdgeFragments()
         if edge.http is None:
             return EdgeFragments()
-        return EdgeFragments(
-            gate_http=[self._server_block(app, spec, listen=edge.http, ssl=False)]
-        )
+        return EdgeFragments(gate_http=[self._server_block(app, spec, listen=edge.http, ssl=False)])
 
     def contribute_tls(self, app: App, spec: AppSpec) -> str:
         return self._server_block(app, spec, listen=443, ssl=True)
 
-    def _server_block(
-        self, app: App, spec: AppSpec, *, listen: int, ssl: bool
-    ) -> str:
+    def _server_block(self, app: App, spec: AppSpec, *, listen: int, ssl: bool) -> str:
         names = " ".join(spec.server_names(app.public_host))
         listen_line = self._listen_line(listen, ssl=ssl)
         certs = self._tls_certs(app) if ssl else ""

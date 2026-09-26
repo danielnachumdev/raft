@@ -95,9 +95,7 @@ class TestGitAuthManager(ServicesTestCase):
         with pytest.raises(RuntimeError, match="ssh-keygen failed"):
             self.mgr.keys._generate_key("svc", comment="test")
 
-    def test_setup_with_repo_before_apply(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_setup_with_repo_before_apply(self, capsys: pytest.CaptureFixture[str]) -> None:
         mgr = self._empty_auth_mgr()
         with pytest.raises(RuntimeError, match="Pass --repo"):
             mgr.setup("site")

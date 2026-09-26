@@ -45,9 +45,7 @@ class WakeHttpServer:
         self._httpd = None
 
 
-def start_wake_http(
-    scaler: "Scaler", host: str = "0.0.0.0", port: int = 8090
-) -> WakeHttpServer:
+def start_wake_http(scaler: "Scaler", host: str = "0.0.0.0", port: int = 8090) -> WakeHttpServer:
     server = WakeHttpServer(scaler, host=host, port=port)
     server.start()
     return server

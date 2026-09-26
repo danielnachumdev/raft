@@ -24,7 +24,11 @@ def _tool_env_root() -> Optional[Path]:
         if resolved.parent.name == "bin":
             return resolved.parent.parent
     tool_dir = os.environ.get("UV_TOOL_DIR")
-    root = Path(tool_dir) / "raft" if tool_dir else Path.home() / ".local" / "share" / "uv" / "tools" / "raft"
+    root = (
+        Path(tool_dir) / "raft"
+        if tool_dir
+        else Path.home() / ".local" / "share" / "uv" / "tools" / "raft"
+    )
     return root if root.is_dir() else None
 
 

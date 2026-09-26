@@ -103,9 +103,7 @@ class TestCommandErrors:
     def _assert_compose_stream_paths(self, shell) -> None:
         shell.compose.reset_mock()
         shell.compose.return_value = MagicMock(returncode=0, stdout="", stderr="")
-        assert run_compose_checked(
-            shell, ("up", "-d"), action="up", stream=True
-        ).returncode == 0
+        assert run_compose_checked(shell, ("up", "-d"), action="up", stream=True).returncode == 0
         shell.compose.assert_called_with("up", "-d", capture=False, check=False)
         shell.compose.return_value = MagicMock(returncode=1, stdout="", stderr="")
         with pytest.raises(OperatorError) as caught:
@@ -132,9 +130,7 @@ class TestCommandErrors:
 
     def _assert_pull_raises(self) -> None:
         with pytest.raises(OperatorError) as caught:
-            raise_for_docker_pull_failure(
-                "img", detail="unauthorized: authentication required"
-            )
+            raise_for_docker_pull_failure("img", detail="unauthorized: authentication required")
         assert_operator(
             caught.value,
             contains=("docker login",),
@@ -171,9 +167,7 @@ class TestCommandErrors:
         )
         with pytest.raises(OperatorError) as caught:
             run_docker_checked(shell, ("run", "x"), action="run tmp", hint="retry")
-        assert_operator(
-            caught.value, contains=("hint: retry", "(docker: something broke)")
-        )
+        assert_operator(caught.value, contains=("hint: retry", "(docker: something broke)"))
         shell.docker.return_value = MagicMock(returncode=1, stdout="", stderr="   \n")
         with pytest.raises(OperatorError) as caught:
             run_docker_checked(shell, ("ps",), action="ps")

@@ -12,8 +12,8 @@ from raft.models.stack import load_stack
 from raft.services.apply import AppApply
 from raft.services.auth import GitAuthManager
 
-from ..base import ServicesTestCase
 from ...base import write_applied_app
+from ..base import ServicesTestCase
 from .base import ApplyTestCase
 
 
@@ -21,13 +21,14 @@ class TestApplyGit(ApplyTestCase):
     def test_apply_git_shallow_and_fallback(self) -> None:
         stack = load_stack(self.tmp_path)
         shell = MagicMock()
-        doc = self.manifest(
-            "hub", source="docker", public_host="hub.test", image="ghcr.io/org/hub"
-        )
+        doc = self.manifest("hub", source="docker", public_host="hub.test", image="ghcr.io/org/hub")
         shell.git.side_effect = self.clone_side_effect(doc, strip_build=True)
-        assert self.applier(stack, shell).apply_git(
-            "git@github.com:org/hub.git", ref="main", deploy=False
-        ) == "hub"
+        assert (
+            self.applier(stack, shell).apply_git(
+                "git@github.com:org/hub.git", ref="main", deploy=False
+            )
+            == "hub"
+        )
         assert shell.git.call_count >= 1
         self._assert_shallow_fallback(stack)
 
@@ -46,16 +47,17 @@ class TestApplyGit(ApplyTestCase):
 
         shell2 = MagicMock()
         shell2.git.side_effect = fail_shallow_then_ok
-        assert self.applier(stack, shell2).apply_git(
-            "git@github.com:org/x.git", ref="dev", deploy=False
-        ) == "gitapp"
+        assert (
+            self.applier(stack, shell2).apply_git(
+                "git@github.com:org/x.git", ref="dev", deploy=False
+            )
+            == "gitapp"
+        )
 
     def test_apply_git_missing_manifest_and_bad_docs(self) -> None:
         stack = load_stack(self.tmp_path)
         self._raise_on_clone(stack, lambda t: None, match="app.yaml")
-        self._raise_on_clone(
-            stack, lambda t: self._write_raw(t, "- x\n"), match="mapping"
-        )
+        self._raise_on_clone(stack, lambda t: self._write_raw(t, "- x\n"), match="mapping")
         self._raise_on_clone(
             stack,
             lambda t: self._write_raw(
@@ -151,7 +153,8 @@ class TestApplyGit(ApplyTestCase):
             self.write_clone_manifest(
                 Path(args[-1]),
                 self.manifest(
-                    "site", source="git",
+                    "site",
+                    source="git",
                     repo="git@github.com:example/site.git",
                     public_host="site.example.com",
                 ),

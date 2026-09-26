@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 
 from raft.config.settings_types import EdgeConfig
-
 from tests.shared.artifacts import GeneratedArtifacts
 from tests.shared.files import FileText
 from tests.shared.raft_home import RaftHomeFixtures
@@ -26,9 +25,7 @@ class TestRenderHttpOnly:
         assert svc["image"] == "hashicorp/http-echo:1.0.0"
         assert 5678 in [int(x) for x in svc["expose"]]
         assert "ports" not in svc
-        FileText.contains(
-            gen.path("nginx", "router", "hosts.conf"), "http-only", "site.test"
-        )
+        FileText.contains(gen.path("nginx", "router", "hosts.conf"), "http-only", "site.test")
         upstream = gen.path("nginx", "upstreams", "http-only-http.conf")
         assert upstream.is_file()
         FileText.contains(upstream, "server http-only:")
@@ -80,7 +77,7 @@ class TestRenderExposeNoneVolume:
         assert str(svc["environment"]["DEMO_FLAG"]) == "1"
         assert any("/tmp/raft-e2e-vol:/data" in str(v) for v in svc["volumes"])
         raw = gen.compose_apps_text()
-        assert "DEMO_FLAG: \"1\"" in raw or "DEMO_FLAG: '1'" in raw or "DEMO_FLAG: 1" in raw
+        assert 'DEMO_FLAG: "1"' in raw or "DEMO_FLAG: '1'" in raw or "DEMO_FLAG: 1" in raw
         hosts = FileText.read(gen.path("nginx", "router", "hosts.conf"))
         assert "expose-none-vol" not in hosts
         FileText.contains(gen.path("compose.edge.yaml"), "raft-gate:")

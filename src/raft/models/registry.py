@@ -56,8 +56,7 @@ class AppRegistry:
         app, _ = AppDocument.load(path)
         if path.stem != app.name:
             raise ValueError(
-                f"{path}: filename stem {path.stem!r} must match "
-                f"metadata.name {app.name!r}"
+                f"{path}: filename stem {path.stem!r} must match " f"metadata.name {app.name!r}"
             )
         return app
 
@@ -65,9 +64,7 @@ class AppRegistry:
     def _assert_unique_hosts(apps: list[App]) -> None:
         hosts = [a.public_host.lower() for a in apps if a.public_host]
         if len(hosts) != len(set(hosts)):
-            raise ValueError(
-                "registry: publicHost values must be unique across applied apps"
-            )
+            raise ValueError("registry: publicHost values must be unique across applied apps")
 
     @staticmethod
     def _assert_host_available(app: App, directory: Path) -> None:
@@ -77,10 +74,7 @@ class AppRegistry:
             if other.stem == app.name:
                 continue
             other_app, _ = AppDocument.load(other)
-            if (
-                other_app.public_host
-                and other_app.public_host.lower() == app.public_host.lower()
-            ):
+            if other_app.public_host and other_app.public_host.lower() == app.public_host.lower():
                 raise ValueError(
                     f"publicHost {app.public_host!r} already used by applied app "
                     f"{other_app.name!r}"

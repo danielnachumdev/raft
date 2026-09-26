@@ -5,8 +5,8 @@ from __future__ import annotations
 from ...models.app import App
 from ...models.manifest import AppSpec
 from ...models.stack import Stack
-from .edge import EdgeFragments
 from ..deploy.readiness import ReadinessStrategy
+from .edge import EdgeFragments
 
 
 def compose_str(value: str) -> str:
@@ -72,9 +72,7 @@ class ComposeAppsYaml:
                     public = port.public_port
                     assert public is not None
                     proto = "" if port.protocol == "tcp" else f"/{port.protocol}"
-                    host_by_app[app.name].append(
-                        f'"{public}:{port.container_port}{proto}"'
-                    )
+                    host_by_app[app.name].append(f'"{public}:{port.container_port}{proto}"')
         return host_by_app, expose_by_app
 
     def _append_service(
@@ -105,9 +103,7 @@ class ComposeAppsYaml:
         try:
             rel = ctx.relative_to(self.stack.root.resolve())
         except ValueError as exc:
-            raise ValueError(
-                f"{app.name}: build context {ctx} is outside raft data home"
-            ) from exc
+            raise ValueError(f"{app.name}: build context {ctx} is outside raft data home") from exc
         build_path = rel.as_posix()
         if c.dockerfile:
             lines.append("    build:")
@@ -154,9 +150,7 @@ class ComposeAppsYaml:
             lines.append(f"      - {vol.host_path}:{vol.container_path}{suffix}")
 
     @staticmethod
-    def _append_depends(
-        lines: list[str], c: AppSpec, compose_by_name: dict[str, str]
-    ) -> None:
+    def _append_depends(lines: list[str], c: AppSpec, compose_by_name: dict[str, str]) -> None:
         deps = [compose_by_name[d] for d in c.depends_on if d in compose_by_name]
         if not deps:
             return

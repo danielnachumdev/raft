@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import os
 import shutil
-from importlib.metadata import PackageNotFoundError, requires as distribution_requires
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import requires as distribution_requires
 from pathlib import Path
 from typing import Optional
 
@@ -157,9 +158,7 @@ def _sync_controller_package(home: Path, package_root: Path) -> None:
         shutil.copytree(
             raft_src,
             dest,
-            ignore=shutil.ignore_patterns(
-                "__pycache__", "*.pyc", "*.pyo", ".pytest_cache"
-            ),
+            ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo", ".pytest_cache"),
         )
     _sync_controller_pyproject(home, package_root)
 

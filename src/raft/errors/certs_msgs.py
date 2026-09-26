@@ -7,9 +7,7 @@ from typing import Any, Sequence
 
 def looks_like_missing_origin_cert(text: str) -> bool:
     lower = text.lower()
-    if "cannot load certificate" in lower and (
-        "origin.pem" in lower or "/certs/" in lower
-    ):
+    if "cannot load certificate" in lower and ("origin.pem" in lower or "/certs/" in lower):
         return True
     if "bio_new_file" in lower and "origin." in lower:
         return True

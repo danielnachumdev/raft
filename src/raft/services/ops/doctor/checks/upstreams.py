@@ -24,11 +24,7 @@ class UpstreamChecks:
             return []
         http_ports = app_spec.http_ports()
         if not http_ports:
-            return [
-                CheckResult(
-                    app.compose_id, "upstream", "ok", "n/a (no expose=http ports)"
-                )
-            ]
+            return [CheckResult(app.compose_id, "upstream", "ok", "n/a (no expose=http ports)")]
         return [self._port_result(ctx, app, port) for port in http_ports]
 
     @staticmethod
