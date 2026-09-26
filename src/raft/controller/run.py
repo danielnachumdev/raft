@@ -6,11 +6,11 @@ import logging
 import time
 
 from raft.adapters.shell import Shell
-from raft.config.logging import setup_logging
 from raft.config.paths import raft_home
 from raft.config.settings import load_config
 from raft.errors import OperatorError
 
+from .logging import setup_controller_logging
 from .smoke import run_prereq_smoke
 
 __all__ = ["main"]
@@ -30,7 +30,7 @@ def main() -> None:
             f"raft data home missing: {home}\n"
             f"Fix: run `raft render` (or any raft command) on the host first"
         )
-    setup_logging(home, load_config(home))
+    setup_controller_logging(load_config(home))
     logger.info("raft-controller starting data_home=%s", home)
     run_prereq_smoke(home, Shell(home))
     logger.info("prereq smoke ok; idle (heal/scale not implemented)")

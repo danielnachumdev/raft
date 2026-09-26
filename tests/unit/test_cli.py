@@ -251,11 +251,20 @@ class TestCli(RaftTestCase):
         assert "docker pull failed" in capsys.readouterr().err
 
     def test_run_maps_oserror_and_yaml(self, capsys) -> None:
-        self.orch.start.side_effect = OSError("permission denied")
+        self.orch.start.side_effect = OSError("read-only filesystem")
         with pytest.raises(SystemExit) as exc:
             self._run_cli(["up"])
         assert exc.value.code == 1
-        assert "filesystem error" in capsys.readouterr().err
+        err = capsys.readouterr().err
+        assert "filesystem error" in err
+        assert "chown" not in err
+
+        self.orch.start.side_effect = OSError(13, "Permission denied")
+        with pytest.raises(SystemExit):
+            self._run_cli(["up"])
+        err = capsys.readouterr().err
+        assert "filesystem error" in err
+        assert "chown" in err
 
         self.orch.start.side_effect = yaml.YAMLError("bad indent")
         with pytest.raises(SystemExit) as exc:

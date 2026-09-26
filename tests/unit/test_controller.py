@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import runpy
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -9,7 +10,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from raft.config.paths import ensure_raft_home
+from raft.config.settings import default_config
 from raft.controller import main, run_prereq_smoke
+from raft.controller.logging import setup_controller_logging
 from raft.controller.run import main as main_impl
 from raft.controller.smoke import run_prereq_smoke as smoke_impl
 from raft.errors import OperatorError
@@ -19,6 +22,12 @@ class TestControllerPrereq:
     def test_public_exports(self) -> None:
         assert main is main_impl
         assert run_prereq_smoke is smoke_impl
+
+    def test_setup_controller_logging_stdout_only(self) -> None:
+        setup_controller_logging(default_config())
+        root = logging.getLogger("raft")
+        assert len(root.handlers) == 1
+        assert isinstance(root.handlers[0], logging.StreamHandler)
 
     def test_run_prereq_smoke_ok(self, tmp_path: Path) -> None:
         home = ensure_raft_home(tmp_path / "home")

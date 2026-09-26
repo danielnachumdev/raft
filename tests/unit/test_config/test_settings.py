@@ -99,6 +99,7 @@ class TestRaftHome(RaftTestCase):
         assert "context: ./controller" in compose
         assert "RAFT_DATA_HOME: /raft" in compose
         assert "/var/run/docker.sock:/var/run/docker.sock" in compose
+        assert ".:/raft:ro" in compose
         assert "working_dir: /raft" in compose
         assert "memory: 128M" in compose
         assert (home / "generated" / "compose.apps.yaml").is_file()

@@ -83,9 +83,16 @@ def invalid_yaml(path: Union[Path, str], exc: BaseException) -> OperatorError:
 
 
 def filesystem_error(exc: BaseException) -> OperatorError:
+    detail = str(exc)
+    extra = ""
+    if "permission denied" in detail.lower() or getattr(exc, "errno", None) == 13:
+        extra = (
+            " If raft-controller left root-owned files, fix with:\n"
+            '     sudo chown -R "$(whoami):$(whoami)" "${RAFT_DATA_HOME:-$HOME/.raft}"'
+        )
     return OperatorError(
         f"filesystem error: {exc}\n"
-        f"Fix: check permissions on ~/.raft (or $RAFT_DATA_HOME) and retry"
+        f"Fix: check permissions on ~/.raft (or $RAFT_DATA_HOME) and retry.{extra}"
     )
 
 

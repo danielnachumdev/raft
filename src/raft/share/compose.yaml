@@ -62,6 +62,8 @@ services:
       RAFT_DATA_HOME: /raft
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - .:/raft
+      # Read-only: controller runs as root; writing here creates root-owned files
+      # that break host ``raft`` template sync. Logs go to stdout instead.
+      - .:/raft:ro
     restart: unless-stopped
     <<: *resources-controller
