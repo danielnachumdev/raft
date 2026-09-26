@@ -61,13 +61,15 @@ class EdgeConfig:
 
 @dataclass(frozen=True)
 class HealingConfig:
-    """Controller self-heal (Compose restart of unhealthy/exited apps)."""
+    """Controller self-heal (Compose restart, then escalate to redeploy)."""
 
     enabled: bool = False
     interval_seconds: float = 15.0
     fail_threshold: int = 3
     cooldown_seconds: float = 60.0
-    max_restarts: int = 5
+    max_restarts: int = 1
+    # After this many Compose restarts (or max_restarts), call ensure_app_deployed.
+    escalate_after_restarts: int = 1
 
 
 @dataclass(frozen=True)

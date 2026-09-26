@@ -17,6 +17,7 @@ healing:
   failThreshold: 2
   cooldownSeconds: 30
   maxRestarts: 4
+  escalateAfterRestarts: 3
 edge:
   http: 80
 """
@@ -28,6 +29,7 @@ HEALING_ERROR_CASES = [
     ("healing:\n  cooldownSeconds: []\n", "cooldownSeconds"),
     ("healing:\n  cooldownSeconds: 0\n", "cooldownSeconds"),
     ("healing:\n  maxRestarts: x\n", "maxRestarts"),
+    ("healing:\n  escalateAfterRestarts: 0\n", "escalateAfterRestarts"),
 ]
 
 
@@ -39,6 +41,8 @@ class TestConfig(RaftTestCase):
         assert cfg.logging.level == "INFO"
         assert cfg.healing.enabled is False
         assert cfg.healing.fail_threshold == 3
+        assert cfg.healing.max_restarts == 1
+        assert cfg.healing.escalate_after_restarts == 1
 
     def test_load_healing_section(self) -> None:
         (self.tmp_path / "settings.yaml").write_text(HEALING_OK_YAML, encoding="utf-8")
@@ -48,6 +52,7 @@ class TestConfig(RaftTestCase):
         assert cfg.healing.fail_threshold == 2
         assert cfg.healing.cooldown_seconds == 30
         assert cfg.healing.max_restarts == 4
+        assert cfg.healing.escalate_after_restarts == 3
 
     def test_load_healing_invalid(self) -> None:
         for body, match in HEALING_ERROR_CASES:

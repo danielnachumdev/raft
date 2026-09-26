@@ -22,15 +22,20 @@ logging:
   level: INFO
 
 # ---------------------------------------------------------------------------
-# healing — raft-controller self-heal (Compose restart of unhealthy apps).
-# Disabled by default; enable on the operator host after reviewing Phase 1.
+# healing — raft-controller self-heal (Compose restart, then raft redeploy).
+# Disabled by default; enable on the operator host after reviewing the policy.
+# Apps only (never gate). Default path when enabled: observe → threshold →
+# one Compose restart/start → one ensure_app_deployed (cutover/redeploy) →
+# give up until the controller restarts.
 # ---------------------------------------------------------------------------
 # healing:
 #   enabled: true
-#   intervalSeconds: 15      # poll period
-#   failThreshold: 3         # consecutive bad observations before restart
-#   cooldownSeconds: 60      # min time between restarts of the same app
-#   maxRestarts: 5           # then give up until controller process restarts
+#   intervalSeconds: 15           # poll period
+#   failThreshold: 3              # consecutive bad observations before act
+#   cooldownSeconds: 60           # min time between heal acts on the same app
+#   maxRestarts: 1                # Compose restart/start attempts (default: 1)
+#   escalateAfterRestarts: 1      # after this many Compose restarts (or
+#                                 # maxRestarts), raft cutover/redeploy (default: 1)
 
 # ---------------------------------------------------------------------------
 # edge — public listeners published by the gate container.

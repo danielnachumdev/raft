@@ -105,7 +105,10 @@ class SettingsLoader:
             interval_seconds=self._pos_float(raw, "intervalSeconds", 15.0),
             fail_threshold=self._pos_int(raw, "failThreshold", 3),
             cooldown_seconds=self._pos_float(raw, "cooldownSeconds", 60.0),
-            max_restarts=self._pos_int(raw, "maxRestarts", 5),
+            max_restarts=self._pos_int(raw, "maxRestarts", 1),
+            escalate_after_restarts=self._pos_int(
+                raw, "escalateAfterRestarts", 1
+            ),
         )
 
     @staticmethod
