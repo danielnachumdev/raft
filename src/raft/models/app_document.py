@@ -20,6 +20,7 @@ from .manifest import (
 )
 from .ports import PortSpec, parse_ports
 from .readiness_parser import parse_readiness
+from .scaling_spec import ScalingSpecParser
 
 
 class AppDocument:
@@ -182,6 +183,7 @@ class AppDocument:
             "extra_hosts": fields._extra_hosts(spec, path),
             "build_context": context, "dockerfile": dockerfile,
             "metadata_name": name, "group": group,
+            "scaling": ScalingSpecParser.parse(spec, ports, path),
         }
 
     @staticmethod

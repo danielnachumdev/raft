@@ -22,6 +22,7 @@ from .ports import PortSpec, parse_ports
 from .readiness_parser import parse_readiness
 from .readiness_spec import ReadinessSpec
 from .registry import AppRegistry
+from .scaling_spec import ScalingSpec, ScalingSpecParser
 from .stack import Stack, load_stack
 
 __all__ = [
@@ -40,6 +41,8 @@ __all__ = [
     "VolumeSpec",
     "PortSpec",
     "ReadinessSpec",
+    "ScalingSpec",
+    "ScalingSpecParser",
     "Stack",
     "compose_service_id",
     "display_service_label",

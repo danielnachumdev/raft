@@ -99,3 +99,13 @@ spec:
   #       reservations:
   #         cpus: "0.10"
   #         memory: 32M
+
+  # Optional scale-to-zero (off by default — omit the whole block).
+  # When present, every field is required (no partial defaults). Eligible only
+  # with at least one expose: http + publicHost. Idle stop + gate holding page
+  # + wake ship together; holding-page reloads do not count as activity.
+  #
+  # scaling:
+  #   idleSeconds: 300
+  #   wakeTimeoutSeconds: 60
+  #   minUpSeconds: 60

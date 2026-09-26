@@ -11,6 +11,7 @@ from typing import Optional
 
 from .ports import PortSpec
 from .readiness_spec import ReadinessSpec
+from .scaling_spec import ScalingSpec
 
 CONTRACT_API_VERSION = "raft/v1"
 CONTRACT_KIND = "App"
@@ -46,6 +47,7 @@ class AppSpec:
     env_file: Optional[str] = None
     env: tuple[tuple[str, str], ...] = ()
     volumes: tuple[VolumeSpec, ...] = ()
+    scaling: Optional[ScalingSpec] = None
 
     def server_names(self, public_host: str) -> tuple[str, ...]:
         names: list[str] = [public_host]

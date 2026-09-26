@@ -63,17 +63,48 @@ class TestControllerPrereq:
         with pytest.raises(RuntimeError, match="docker compose plugin"):
             run_prereq_smoke(home, sh)
 
-    def test_main_smokes_then_heals(
+    def test_main_smokes_then_loops(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         home = tmp_path / "home"
         home.mkdir()
         monkeypatch.setenv("RAFT_DATA_HOME", str(home))
         with patch("raft.controller.run.run_prereq_smoke") as smoke:
-            with patch("raft.controller.run.run_heal_forever", side_effect=StopIteration):
-                with pytest.raises(StopIteration):
-                    main()
+            with patch("raft.controller.run.start_wake_http"):
+                with patch(
+                    "raft.controller.run._run_forever", side_effect=StopIteration
+                ):
+                    with pytest.raises(StopIteration):
+                        main()
         smoke.assert_called_once()
+
+    def test_run_forever_ticks(self, tmp_path: Path) -> None:
+        from raft.config.settings_types import HealingConfig
+        from raft.controller.run import _run_forever
+
+        home = ensure_raft_home(tmp_path / "home")
+        scaler = MagicMock()
+        sleep = MagicMock(side_effect=StopIteration)
+        with pytest.raises(StopIteration):
+            _run_forever(
+                home, HealingConfig(enabled=True, interval_seconds=0.01),
+                MagicMock(), scaler, sleep_fn=sleep,
+            )
+        scaler.tick.assert_called()
+
+    def test_safe_tick_swallows(self) -> None:
+        from raft.controller.run import _safe_tick
+
+        def boom() -> None:
+            raise RuntimeError("x")
+
+        _safe_tick(boom, "scale")
+
+    def test_log_startup_disabled(self) -> None:
+        from raft.config.settings_types import HealingConfig
+        from raft.controller.run import _log_startup
+
+        _log_startup(HealingConfig(enabled=False))
 
     def test_main_requires_data_home(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

@@ -172,6 +172,18 @@ class TestHealer:
         healer.tick(now=1.0)
         assert "web" not in healer.fail_counts
 
+    def test_skips_scaled_to_zero(self, tmp_path: Path) -> None:
+        home = ensure_raft_home(tmp_path / "home")
+        write_applied_app(home, "web")
+        from raft.controller.scaling_store import ScalingStore
+
+        ScalingStore(home).mark_scaled_to_zero("web")
+        docker = MagicMock()
+        healer = Healer(home, HealingConfig(enabled=True, fail_threshold=1), docker)
+        healer.tick(now=1.0)
+        docker.service_runtime.assert_not_called()
+        docker.start_service.assert_not_called()
+
     def test_ignores_non_heal_status(self, tmp_path: Path) -> None:
         home = ensure_raft_home(tmp_path / "home")
         write_applied_app(home, "web")

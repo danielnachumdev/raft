@@ -1,0 +1,220 @@
+"""Real-Docker harness: gate holding page + wake for scaled apps."""
+
+from __future__ import annotations
+
+import time
+from pathlib import Path
+from typing import Optional
+
+import yaml
+
+from raft.adapters.docker import DockerStack
+from raft.adapters.shell import Shell
+from raft.controller.scale import Scaler
+from raft.controller.scaling_store import ScalingStore
+from raft.controller.wake_http import start_wake_http
+from raft.models.stack import load_stack
+from raft.services.render import StackRenderer
+
+from tests.e2e.shared.compose import new_project_name
+from tests.shared.raft_home import RaftHomeFixtures
+
+APP = "http-only"
+PUBLIC_HOST = "site.test"
+SCALING = {
+    "idleSeconds": 3600,
+    "wakeTimeoutSeconds": 60,
+    "minUpSeconds": 1,
+}
+
+
+class ScaleE2EStack:
+    """Gate + router + app compose; wake API on the host (host-gateway)."""
+
+    def __init__(
+        self,
+        home: Path,
+        project: str,
+        docker: DockerStack,
+        scaler: Scaler,
+        wake_port: int,
+        gate_port: int,
+    ) -> None:
+        self.home = home
+        self.project = project
+        self.docker = docker
+        self.scaler = scaler
+        self.wake_port = wake_port
+        self.gate_port = gate_port
+        self.store = ScalingStore(home)
+        self._wake = None
+
+    @classmethod
+    def create(cls, home: Path) -> "ScaleE2EStack":
+        project = new_project_name()
+        cls._prepare_home(home)
+        model = load_stack(home)
+        docker = DockerStack(model, Shell(home))
+        scaler = Scaler(home, docker)
+        wake = start_wake_http(scaler, host="0.0.0.0", port=0)
+        assert wake._httpd is not None
+        wake_port = int(wake._httpd.server_address[1])
+        cls._rewrite_wake_port(home, wake_port)
+        # load_stack re-copies product compose; install edge compose after.
+        cls._install_edge_compose(home, project)
+        docker.sh.compose("up", "-d", "--pull", "missing", check=True, capture=True)
+        gate_port = cls._wait_gate_port(docker, timeout=60.0)
+        stack = cls(home, project, docker, scaler, wake_port, gate_port)
+        stack._wake = wake
+        stack.wait_app_running()
+        stack.wait_live()
+        return stack
+
+    @classmethod
+    def _prepare_home(cls, home: Path) -> None:
+        RaftHomeFixtures.apply_and_render(
+            home, RaftHomeFixtures.fixture_app_yamls("http_only")
+        )
+        cls._inject_scaling(home)
+        StackRenderer(load_stack(home)).render()
+
+    def close(self) -> None:
+        if self._wake is not None:
+            self._wake.stop()
+        self.docker.stop_stack()
+
+    def __enter__(self) -> "ScaleE2EStack":
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        self.close()
+
+    def wait_app_running(self, *, timeout: float = 45.0) -> None:
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            status, _ = self.docker.service_runtime(APP)
+            if status == "running":
+                return
+            time.sleep(0.25)
+        raise TimeoutError(f"{APP} not running")
+
+    def wait_live(self, *, timeout: float = 45.0) -> None:
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            status, body = self.curl_host()
+            if status == 200 and "Starting" not in body and "Unavailable" not in body:
+                return
+            time.sleep(0.25)
+        raise TimeoutError("gate Host path not live")
+
+    def wait_app_stopped(self, *, timeout: float = 45.0) -> None:
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            status, _ = self.docker.service_runtime(APP)
+            if status in ("exited", "dead", "missing"):
+                return
+            time.sleep(0.25)
+        raise TimeoutError(f"{APP} still running")
+
+    def curl_host(self) -> tuple[int, str]:
+        return http_get_host(
+            f"http://127.0.0.1:{self.gate_port}/", host=PUBLIC_HOST
+        )
+
+    def scale_to_zero(self) -> None:
+        self.docker.stop_service(APP)
+        self.store.mark_scaled_to_zero(APP)
+        self.wait_app_stopped()
+
+    @staticmethod
+    def _inject_scaling(home: Path) -> None:
+        path = home / "state" / "apps" / f"{APP}.yaml"
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        data["spec"]["scaling"] = dict(SCALING)
+        path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    @staticmethod
+    def _rewrite_wake_port(home: Path, port: int) -> None:
+        path = home / "generated" / "nginx" / "gate-http" / "listeners.conf"
+        text = path.read_text(encoding="utf-8")
+        path.write_text(
+            text.replace("raft-controller:8090", f"raft-controller:{port}"),
+            encoding="utf-8",
+        )
+
+    @staticmethod
+    def _install_edge_compose(home: Path, project: str) -> None:
+        apps = yaml.safe_load(
+            (home / "generated" / "compose.apps.yaml").read_text(encoding="utf-8")
+        )
+        services = dict(apps.get("services") or {})
+        services.pop("router", None)
+        services.update(_edge_services())
+        doc = {"name": project, "services": services}
+        (home / "compose.yaml").write_text(
+            yaml.safe_dump(doc, sort_keys=False), encoding="utf-8"
+        )
+
+    @staticmethod
+    def _wait_gate_port(docker: DockerStack, *, timeout: float) -> int:
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            result = docker.sh.compose(
+                "port", "raft-gate", "80", capture=True, check=False
+            )
+            out = (result.stdout or "").strip()
+            if result.returncode == 0 and out:
+                return int(out.rsplit(":", 1)[-1])
+            time.sleep(0.25)
+        raise TimeoutError("raft-gate port not published")
+
+
+def _edge_services() -> dict:
+    return {"raft-gate": _gate_service(), "raft-router": _router_service()}
+
+
+def _gate_service() -> dict:
+    return {
+        "image": "nginx:alpine",
+        "ports": ["127.0.0.1::80"],
+        "extra_hosts": ["raft-controller:host-gateway"],
+        "volumes": _gate_volumes(),
+    }
+
+
+def _gate_volumes() -> list:
+    return [
+        "./nginx/gate/nginx.conf:/etc/nginx/nginx.conf:ro",
+        "./nginx/gate/proxy_router.inc:/etc/nginx/gate/proxy_router.inc:ro",
+        "./generated/nginx/gate-http:/etc/nginx/http-generated:ro",
+        "./generated/nginx/gate-stream:/etc/nginx/stream-generated:ro",
+        "./generated/nginx/gate-tls:/etc/nginx/gate-tls:ro",
+        "./nginx/errors:/usr/share/nginx/errors:ro",
+        "./certs:/etc/nginx/certs:ro",
+        "./state/scaling/markers:/etc/nginx/scaling/markers:ro",
+    ]
+
+
+def _router_service() -> dict:
+    return {
+        "image": "nginx:alpine",
+        "expose": ["80"],
+        "volumes": [
+            "./nginx/router/default.conf:/etc/nginx/conf.d/default.conf:ro",
+            "./generated/nginx/router:/etc/nginx/router-generated:ro",
+            "./generated/nginx/upstreams:/etc/nginx/upstreams:ro",
+            "./nginx/errors:/usr/share/nginx/errors:ro",
+        ],
+    }
+
+
+def http_get_host(url: str, *, host: str, timeout: float = 5.0) -> tuple[int, str]:
+    import urllib.error
+    import urllib.request
+
+    req = urllib.request.Request(url, headers={"Host": host})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return int(resp.status), resp.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as exc:
+        return int(exc.code), exc.read().decode("utf-8", errors="replace")

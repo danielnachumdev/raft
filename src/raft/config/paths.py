@@ -93,6 +93,8 @@ def _ensure_data_dirs(root: Path) -> None:
         LOGS_DIRNAME,
         str(STATE_DIR),
         str(LOCKS_DIR),
+        "state/scaling",
+        "state/scaling/markers",
         f"{GENERATED_DIRNAME}/nginx/gate-tls",
         f"{GENERATED_DIRNAME}/nginx/gate-http",
         f"{GENERATED_DIRNAME}/nginx/gate-stream",

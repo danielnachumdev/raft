@@ -16,6 +16,8 @@ from raft.models.stack import Stack
 from raft.services.deploy.locking import app_and_stack_locks
 from raft.services.deploy.orchestrator import Orchestrator
 
+from .scaling_store import ScalingStore
+
 __all__ = ["Healer", "needs_heal", "run_heal_forever"]
 
 logger = logging.getLogger(__name__)
@@ -53,6 +55,10 @@ class Healer:
             self._consider(app.name, app.compose_id, when)
 
     def _consider(self, name: str, compose_id: str, when: float) -> None:
+        if ScalingStore(self.home).is_scaled_to_zero(name):
+            logger.debug("heal skip scaled-to-zero app=%s", name)
+            self.fail_counts.pop(name, None)
+            return
         status, health = self.docker.service_runtime(compose_id)
         if self._clear_if_healthy(name, compose_id, status, health):
             return

@@ -12,7 +12,7 @@ Copy-paste samples for operator settings and App manifests. Hostnames use
 | [`host-published-ports/`](host-published-ports/) | HTTP + `expose: host` mail-shaped ports |
 | [`grouped-volume-app/`](grouped-volume-app/) | `spec.group` + `volumes` + `expose: none` (manifest-only sample) |
 
-`raft-controller` always runs with the stack; self-heal stays **off** until you uncomment/enable `healing:` in settings (Phase 1: one Compose restart, then one cutover/redeploy; apps only).
+`raft-controller` always runs with the stack; self-heal stays **off** until you uncomment/enable `healing:` in settings (Phase 1: one Compose restart, then one cutover/redeploy; apps only). Per-app scale-to-zero is also **off** until you add `spec.scaling` (all fields required) on an HTTP+`publicHost` App — see comments in [`http-only-site/.raft/app.yaml`](http-only-site/.raft/app.yaml).
 
 Each service folder has `.raft/app.yaml`; most also have a short `README.md` and a `Dockerfile`
 when the sample builds on the VPS.

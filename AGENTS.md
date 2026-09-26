@@ -67,6 +67,7 @@ Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**), then `OperatorError` w
 | `~/.raft/apps/` | Sync checkouts |
 | `~/.raft/deploy/` | Image/ref pins from sync/cutover |
 | `~/.raft/state/locks/` | `flock` files serializing apply/redeploy/render (`app-<name>.lock`, `stack.lock`) |
+| `~/.raft/state/scaling/` | Per-app scale-to-zero JSON + gate marker files (when `spec.scaling` is set) |
 | `~/.raft/certs/` | Origin PEMs (only for `tls: origin`) |
 | `~/.raft/logs/` | Structured log file (default) |
 
@@ -146,6 +147,13 @@ spec:
     reservations:               # floor / alias: requests
       cpu: "0.10"               # → deploy.resources.reservations.cpus
       memory: 32M               # → deploy.resources.reservations.memory
+  # Optional scale-to-zero (omit = no scaling). When present, ALL fields required:
+  # scaling:
+  #   idleSeconds: 300          # stop after this much idle (HTTP activity via gate)
+  #   wakeTimeoutSeconds: 60    # holding page → timeout page if wake exceeds this
+  #   minUpSeconds: 60          # do not idle-stop until this long after wake/start
+  # Requires at least one expose: http + publicHost. Gate serves a holding page
+  # (meta-refresh) while waking; holding hits do not reset the idle timer.
 ```
 
 `apply --git` clones briefly, reads `.raft/app.yaml`, copies into `~/.raft/state/apps/`. `sync` refreshes sources then `render` regenerates `~/.raft/generated/`.
@@ -204,7 +212,7 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | `src/raft/services/render/` | `StackRenderer`, `compose_apps`, `gate_nginx`, `edge` handlers |
 | `src/raft/services/deploy/` | orchestrator, cutover, wait, locking, readiness |
 | `src/raft/services/ops/` | doctor, stats, uninstall, update, certs |
-| `src/raft/controller/` | Always-on Compose `raft-controller` (smoke + Phase 1 heal when `healing.enabled`) |
+| `src/raft/controller/` | Always-on Compose `raft-controller` (smoke + heal when `healing.enabled` + per-app scale-to-zero when `spec.scaling`) |
 | `src/raft/errors/` | Operator errors + CTAs |
 | `src/raft/share/` | Product Compose + nginx templates (synced into data home) |
 | `tests/` | `unit/` (100% cov), `integration/` (render artifacts), `meta/` (size/body guards), `e2e/` (Docker Compose) |

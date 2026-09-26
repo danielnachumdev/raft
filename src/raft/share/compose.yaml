@@ -38,6 +38,7 @@ services:
       - ./generated/nginx/gate-tls:/etc/nginx/gate-tls:ro
       - ./nginx/errors:/usr/share/nginx/errors:ro
       - ./certs:/etc/nginx/certs:ro
+      - ./state/scaling/markers:/etc/nginx/scaling/markers:ro
     restart: unless-stopped
     <<: *resources-edge
 
@@ -61,12 +62,15 @@ services:
     user: "${RAFT_HOST_UID:-0}:${RAFT_HOST_GID:-0}"
     environment:
       RAFT_DATA_HOME: /raft
+    expose:
+      - "8090"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       # Data home read-only (avoid root-owned template files). Locks need write
-      # for flock during heal; host Shell injects RAFT_HOST_UID/GID so this
-      # process matches the operator user.
+      # for flock during heal/scale; scaling state is writable for markers/JSON.
+      # Host Shell injects RAFT_HOST_UID/GID so this process matches the operator.
       - .:/raft:ro
       - ./state/locks:/raft/state/locks
+      - ./state/scaling:/raft/state/scaling
     restart: unless-stopped
     <<: *resources-controller

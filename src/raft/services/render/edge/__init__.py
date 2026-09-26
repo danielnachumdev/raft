@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Protocol
+from dataclasses import dataclass
+from typing import Dict, Protocol
 
 from raft.errors import OperatorError
 
@@ -11,28 +11,19 @@ from ....config.settings_types import EdgeConfig
 from ....models.app import App
 from ....models.manifest import AppSpec
 from ....models.ports import PortSpec
+from .fragments import EdgeFragments
 
-
-@dataclass
-class EdgeFragments:
-    router_includes: List[str] = field(default_factory=list)
-    router_servers: List[str] = field(default_factory=list)
-    gate_http: List[str] = field(default_factory=list)
-    gate_stream: List[str] = field(default_factory=list)
-    gate_tls: Dict[str, str] = field(default_factory=dict)
-    upstreams: Dict[str, str] = field(default_factory=dict)
-    host_publish: List[str] = field(default_factory=list)
-    expose_ports: List[int] = field(default_factory=list)
-
-    def merge(self, other: "EdgeFragments") -> None:
-        self.router_includes.extend(other.router_includes)
-        self.router_servers.extend(other.router_servers)
-        self.gate_http.extend(other.gate_http)
-        self.gate_stream.extend(other.gate_stream)
-        self.gate_tls.update(other.gate_tls)
-        self.upstreams.update(other.upstreams)
-        self.host_publish.extend(other.host_publish)
-        self.expose_ports.extend(other.expose_ports)
+__all__ = [
+    "EDGE_HANDLERS",
+    "EdgeFragments",
+    "EdgeHandler",
+    "HostEdge",
+    "HttpEdge",
+    "NoneEdge",
+    "StreamEdge",
+    "TlsEdge",
+    "handler_for",
+]
 
 
 class EdgeHandler(Protocol):  # pragma: no cover

@@ -142,6 +142,10 @@ class TestDockerLifecycle(DockerTestCase):
         self.docker.start_service("app")
 
     def _test_service_runtime_and_heal_actions_p2(self) -> None:
+        self.docker.stop_service("app")
+        self.shell.compose.assert_any_call(
+            "stop", "app", capture=False, check=False
+        )
         self.shell.compose.assert_any_call(
             "up", "-d", "--no-deps", "--no-build", "app", capture=False, check=False
         )
@@ -162,4 +166,6 @@ class TestDockerLifecycle(DockerTestCase):
                 self.docker.restart_service("app")
             with pytest.raises(RuntimeError, match="--- app ---"):
                 self.docker.start_service("app")
+            with pytest.raises(RuntimeError, match="--- app ---"):
+                self.docker.stop_service("app")
 

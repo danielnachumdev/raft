@@ -156,6 +156,19 @@ class DockerStack(DockerInspect, DockerImages, DockerEdge):
         except OperatorError as exc:
             raise self.enrich_compose_failure(exc, services=(service,)) from exc
 
+    def stop_service(self, service: str) -> None:
+        """Stop a service without removing it (Compose ``stop``)."""
+        logger.info("compose stop %s", service)
+        try:
+            run_compose_checked(
+                self.sh,
+                ("stop", service),
+                action=f"stop service {service}",
+                stream=True,
+            )
+        except OperatorError as exc:
+            raise self.enrich_compose_failure(exc, services=(service,)) from exc
+
     def start_service(self, service: str) -> None:
         """Start / ensure a service is up without rebuild (Compose ``up -d --no-deps``)."""
         logger.info("compose up -d --no-deps %s", service)
