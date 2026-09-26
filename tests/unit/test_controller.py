@@ -37,7 +37,8 @@ class TestControllerPrereq:
         sh.docker.return_value = version
         sh.compose.return_value = compose
 
-        run_prereq_smoke(home, sh)
+        with patch("raft.controller.smoke.load_registry", return_value=()):
+            run_prereq_smoke(home, sh)
 
         sh.docker.assert_called_once_with(
             "version", "--format", "{{.Server.Version}}", capture=True
