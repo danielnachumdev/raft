@@ -84,6 +84,12 @@ class TestEdgeHandlers(RaftTestCase):
 
 class TestReadinessStrategy(RaftTestCase):
     def test_http_and_tcp_and_none(self) -> None:
+        self._assert_http_ready()
+        self._assert_tcp_ready()
+        self._assert_tcp_custom_timing()
+        self._assert_none_ready()
+
+    def _assert_http_ready(self) -> None:
         http = AppSpec(
             ports=(PortSpec(name="http", container_port=80, expose="http"),),
             readiness=ReadinessSpec(type="http", port="http", path="/ready"),
@@ -92,47 +98,33 @@ class TestReadinessStrategy(RaftTestCase):
         assert s.healthcheck_test()[1] == "wget"
         assert "/ready" in s.healthcheck_test()[-1]
 
-        tcp = AppSpec(
-            ports=(
-                PortSpec(
-                    name="smtp",
-                    container_port=25,
-                    expose="stream",
-                    public_port=25,
-                ),
-            ),
-            readiness=ReadinessSpec(type="tcp", port="smtp"),
+    def _smtp_spec(self, **ready_kw) -> AppSpec:
+        return AppSpec(
+            ports=(PortSpec(
+                name="smtp", container_port=25, expose="stream", public_port=25
+            ),),
+            readiness=ReadinessSpec(type="tcp", port="smtp", **ready_kw),
         )
-        t = ReadinessStrategy.from_spec(tcp)
+
+    def _assert_tcp_ready(self) -> None:
+        t = ReadinessStrategy.from_spec(self._smtp_spec())
         assert t.healthcheck_test()[0] == "CMD-SHELL"
         assert "nc -z" in t.healthcheck_test()[1]
         lines = t.healthcheck_compose_lines()
         assert "      start_period: 45s" in lines
         assert "      retries: 15" in lines
 
-        custom = AppSpec(
-            ports=(
-                PortSpec(
-                    name="smtp",
-                    container_port=25,
-                    expose="stream",
-                    public_port=25,
-                ),
-            ),
-            readiness=ReadinessSpec(
-                type="tcp",
-                port="smtp",
-                start_period_seconds=60,
-                timeout_seconds=180,
-                retries=10,
-                interval_seconds=3,
-            ),
-        )
-        custom_lines = ReadinessStrategy.from_spec(custom).healthcheck_compose_lines()
-        assert "      start_period: 60s" in custom_lines
-        assert "      interval: 3s" in custom_lines
-        assert "      retries: 10" in custom_lines
+    def _assert_tcp_custom_timing(self) -> None:
+        lines = ReadinessStrategy.from_spec(
+            self._smtp_spec(
+                start_period_seconds=60, timeout_seconds=180, retries=10, interval_seconds=3
+            )
+        ).healthcheck_compose_lines()
+        assert "      start_period: 60s" in lines
+        assert "      interval: 3s" in lines
+        assert "      retries: 10" in lines
 
+    def _assert_none_ready(self) -> None:
         none = AppSpec(
             ports=(PortSpec(name="http", container_port=80, expose="http"),),
             readiness=ReadinessSpec(type="none"),

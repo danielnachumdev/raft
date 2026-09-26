@@ -2,6 +2,15 @@
 
 from __future__ import annotations
 
+SETTINGS_BAD_CASES = [
+    ("edge:\n  http: eighty\n", "integer port"),
+    ("- just a list\n", "YAML mapping"),
+    ("logging:\n  level: NOPE\n", "logging.level"),
+    ("edge:\n  streams:\n    - {name: s, port: nope}\n", "streams\\['s'\\].port"),
+    ("{{{{invalid", "invalid YAML"),
+]
+
+
 import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -54,6 +63,10 @@ class TestCommandErrors:
         assert "already in use" in port_in_use_message(detail="")
 
     def test_compose_messages_and_raise(self) -> None:
+        self._test_compose_messages_and_raise_p1()
+        self._test_compose_messages_and_raise_p2()
+
+    def _test_compose_messages_and_raise_p1(self) -> None:
         msg = compose_failure_message("up", detail="oops\n", hint="check logs")
         assert "hint: check logs" in msg
         assert "(docker: oops)" in msg
@@ -66,6 +79,8 @@ class TestCommandErrors:
                 ),
                 action="up",
             )
+
+    def _test_compose_messages_and_raise_p2(self) -> None:
         with pytest.raises(RuntimeError, match="already in use"):
             raise_for_compose_failure(
                 subprocess.CalledProcessError(
@@ -121,22 +136,23 @@ class TestCommandErrors:
         shell = MagicMock()
         shell.docker.return_value = MagicMock(returncode=0, stdout="x", stderr="")
         assert run_docker_checked(shell, ("ps",), action="ps").stdout == "x"
+        self._assert_docker_daemon_error(shell)
+        self._assert_docker_hint_and_empty(shell)
 
+    def _assert_docker_daemon_error(self, shell) -> None:
         shell.docker.return_value = MagicMock(
-            returncode=1,
-            stdout="",
-            stderr="Cannot connect to the Docker daemon",
+            returncode=1, stdout="", stderr="Cannot connect to the Docker daemon"
         )
         with pytest.raises(RuntimeError, match="Docker daemon"):
             run_docker_checked(shell, ("ps",), action="ps")
 
+    def _assert_docker_hint_and_empty(self, shell) -> None:
         shell.docker.return_value = MagicMock(
             returncode=1, stdout="", stderr="something broke\nmore"
         )
         with pytest.raises(RuntimeError, match="hint: retry") as exc:
             run_docker_checked(shell, ("run", "x"), action="run tmp", hint="retry")
         assert "(docker: something broke)" in str(exc.value)
-
         shell.docker.return_value = MagicMock(returncode=1, stdout="", stderr="   \n")
         with pytest.raises(RuntimeError, match="docker failed"):
             run_docker_checked(shell, ("ps",), action="ps")
@@ -187,30 +203,14 @@ class TestValidationCTAs(RaftTestCase):
 
     def test_settings_bad_ports_and_shapes(self) -> None:
         path = self.tmp_path / "settings.yaml"
-        path.write_text("edge:\n  http: eighty\n", encoding="utf-8")
-        with pytest.raises(RuntimeError, match="integer port"):
-            load_config(self.tmp_path)
-
-        path.write_text("- just a list\n", encoding="utf-8")
-        with pytest.raises(RuntimeError, match="YAML mapping"):
-            load_config(self.tmp_path)
-
-        path.write_text("logging:\n  level: NOPE\n", encoding="utf-8")
-        with pytest.raises(RuntimeError, match="logging.level"):
-            load_config(self.tmp_path)
-
+        for body, match in SETTINGS_BAD_CASES:
+            path.write_text(body, encoding="utf-8")
+            with pytest.raises(RuntimeError, match=match):
+                load_config(self.tmp_path)
         bad_dir = self.tmp_path / "settings-as-dir"
         bad_dir.mkdir()
         with pytest.raises(RuntimeError, match="not a file"):
             load_config(self.tmp_path, path=bad_dir)
-
-        path.write_text("edge:\n  streams:\n    - {name: s, port: nope}\n", encoding="utf-8")
-        with pytest.raises(RuntimeError, match="streams\\['s'\\].port"):
-            load_config(self.tmp_path)
-
-        path.write_text("{{{{invalid", encoding="utf-8")
-        with pytest.raises(RuntimeError, match="invalid YAML"):
-            load_config(self.tmp_path)
 
     def test_ports_require_int_and_bool(self) -> None:
         with pytest.raises(RuntimeError, match="containerPort must be an integer"):

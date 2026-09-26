@@ -1,0 +1,262 @@
+"""Raft home and template sync coverage."""
+
+from __future__ import annotations
+
+import logging
+from importlib.metadata import PackageNotFoundError
+from pathlib import Path
+
+import pytest
+
+import raft.config.paths as paths
+from raft.config import (
+    LoggingConfig,
+    default_config,
+    ensure_raft_home,
+    find_package_root,
+    load_config,
+    raft_home,
+    reset_logging_for_tests,
+    setup_logging,
+    sync_product_templates,
+)
+
+from ...base import RaftTestCase
+
+
+class TestRaftHome(RaftTestCase):
+    def test_raft_home_env_and_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("RAFT_DATA_HOME", str(self.tmp_path / "custom"))
+        assert raft_home() == (self.tmp_path / "custom").resolve()
+        monkeypatch.delenv("RAFT_DATA_HOME", raising=False)
+        assert raft_home() == (Path.home() / ".raft").resolve()
+
+    def test_ensure_syncs_templates(self) -> None:
+        home = self.tmp_path / "home"
+        ensure_raft_home(home)
+        self._assert_controller_templates(home)
+        self._assert_compose_and_generated(home)
+        ensure_raft_home(home)
+        assert (home / "nginx" / "gate" / "nginx.conf").is_file()
+        assert (home / "controller" / "raft" / "controller" / "__init__.py").is_file()
+
+    def _assert_controller_templates(self, home) -> None:
+        assert (home / "compose.yaml").is_file()
+        assert (home / "nginx" / "gate" / "nginx.conf").is_file()
+        assert (home / "controller" / "Dockerfile").is_file()
+        dockerfile = (home / "controller" / "Dockerfile").read_text(encoding="utf-8")
+        assert "uv pip compile pyproject.toml" in dockerfile
+        assert "uv pip install --system" in dockerfile
+        assert (home / "controller" / "pyproject.toml").is_file()
+        pyproject = (home / "controller" / "pyproject.toml").read_text(encoding="utf-8")
+        assert 'name = "raft"' in pyproject
+        assert "fire" in pyproject and "PyYAML" in pyproject
+        assert not (home / "controller" / "requirements.txt").exists()
+        assert (home / "controller" / "raft" / "__init__.py").is_file()
+        assert (home / "controller" / "raft" / "controller" / "__init__.py").is_file()
+
+    def _assert_compose_and_generated(self, home) -> None:
+        compose = (home / "compose.yaml").read_text(encoding="utf-8")
+        assert "raft-controller:" in compose and "context: ./controller" in compose
+        assert "RAFT_DATA_HOME: /raft" in compose
+        assert "/var/run/docker.sock:/var/run/docker.sock" in compose
+        assert ".:/raft:ro" in compose and "./state/locks:/raft/state/locks" in compose
+        assert "RAFT_HOST_UID" in compose and "working_dir: /raft" in compose
+        assert "memory: 128M" in compose
+        assert (home / "generated" / "compose.apps.yaml").is_file()
+        assert (home / "generated" / "compose.edge.yaml").is_file()
+        assert (home / "state" / "apps").is_dir()
+
+    def test_sync_replaces_existing_controller_package(self) -> None:
+        from raft.config import paths as paths_mod
+
+        home = self.tmp_path / "home"
+        ensure_raft_home(home)
+        marker = home / "controller" / "raft" / "stale-marker"
+        marker.write_text("old\n", encoding="utf-8")
+        paths_mod._sync_controller_package(home, find_package_root())
+        assert not marker.is_file()
+        assert (home / "controller" / "raft" / "__init__.py").is_file()
+
+    def test_gate_nginx_conf_uses_builtin_stream(self) -> None:
+        """nginx:alpine builds stream in; load_module ngx_stream_module.so crashes gate."""
+        home = self.tmp_path / "home"
+        ensure_raft_home(home)
+        conf = (home / "nginx" / "gate" / "nginx.conf").read_text(encoding="utf-8")
+        assert "load_module" not in conf
+        assert "stream {" in conf
+        assert "include /etc/nginx/stream-generated/*.conf;" in conf
+
+    def test_load_edge_section(self) -> None:
+        (self.tmp_path / "settings.yaml").write_text(
+            """
+logging:
+  level: INFO
+edge:
+  http: 8080
+  https: null
+  streams:
+    - name: smtp
+      port: 25
+      protocol: tcp
+""",
+            encoding="utf-8",
+        )
+        cfg = load_config(self.tmp_path)
+        assert cfg.edge.http == 8080
+        assert cfg.edge.https is None
+        assert len(cfg.edge.streams) == 1
+        assert cfg.edge.streams[0].name == "smtp"
+        assert cfg.edge.published_ports() == [(8080, "tcp"), (25, "tcp")]
+
+    def test_edge_rejects_duplicate_stream_port(self) -> None:
+        (self.tmp_path / "settings.yaml").write_text(
+            """
+edge:
+  streams:
+    - name: a
+      port: 25
+    - name: b
+      port: 25
+""",
+            encoding="utf-8",
+        )
+        with pytest.raises(RuntimeError, match="duplicate port"):
+            load_config(self.tmp_path)
+
+    def test_find_package_root_bundled(self) -> None:
+        root = find_package_root()
+        assert (root / "compose.yaml").is_file()
+        assert (root / "nginx").is_dir()
+
+    def test_sync_missing_file_template(self) -> None:
+        empty = self.tmp_path / "empty-pkg"
+        empty.mkdir()
+        with pytest.raises(FileNotFoundError, match="missing package template"):
+            sync_product_templates(self.tmp_path / "dest", empty)
+
+    def test_sync_missing_dir_template(self) -> None:
+        pkg = self.tmp_path / "partial-pkg"
+        pkg.mkdir()
+        (pkg / "compose.yaml").write_text("name: raft\n", encoding="utf-8")
+        dest = self.tmp_path / "dest"
+        dest.mkdir()
+        with pytest.raises(FileNotFoundError, match="missing package template dir"):
+            sync_product_templates(dest, pkg)
+
+    def test_sync_skips_controller_package_without_parent_init(self) -> None:
+        pkg = self.tmp_path / "share-only"
+        (pkg / "nginx").mkdir(parents=True)
+        (pkg / "controller").mkdir()
+        (pkg / "compose.yaml").write_text("name: raft\n", encoding="utf-8")
+        (pkg / "controller" / "Dockerfile").write_text("FROM scratch\n", encoding="utf-8")
+        dest = self.tmp_path / "dest"
+        dest.mkdir()
+        sync_product_templates(dest, pkg)
+        assert (dest / "controller" / "Dockerfile").is_file()
+        assert not (dest / "controller" / "raft").exists()
+        # No checkout pyproject above fake share — synthesize from installed raft.
+        pyproject = dest / "controller" / "pyproject.toml"
+        assert pyproject.is_file()
+        text = pyproject.read_text(encoding="utf-8")
+        assert "raft-controller-deps" in text
+        assert "fire" in text and "PyYAML" in text
+
+    def test_write_controller_pyproject_requires_dist(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        dest = self.tmp_path / "pyproject.toml"
+
+        def boom(_name: str):
+            raise PackageNotFoundError("raft")
+
+        monkeypatch.setattr(paths, "distribution_requires", boom)
+        with pytest.raises(FileNotFoundError, match="pyproject.toml"):
+            paths._write_controller_pyproject_from_installed(dest)
+
+    def test_write_controller_pyproject_skips_extras(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        dest = self.tmp_path / "pyproject.toml"
+        monkeypatch.setattr(
+            paths,
+            "distribution_requires",
+            lambda _name: [
+                "fire>=0.7.1",
+                'pytest>=7.0; extra == "dev"',
+                'PyYAML>=6.0; python_version >= "3.8"',
+            ],
+        )
+        paths._write_controller_pyproject_from_installed(dest)
+        text = dest.read_text(encoding="utf-8")
+        assert "fire>=0.7.1" in text
+        assert "PyYAML>=6.0" in text
+        assert "pytest" not in text
+
+    def test_write_controller_pyproject_empty_requires(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        dest = self.tmp_path / "pyproject.toml"
+        monkeypatch.setattr(paths, "distribution_requires", lambda _name: [])
+        with pytest.raises(FileNotFoundError, match="no requires"):
+            paths._write_controller_pyproject_from_installed(dest)
+
+    def test_write_controller_pyproject_only_extras(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        dest = self.tmp_path / "pyproject.toml"
+        monkeypatch.setattr(
+            paths,
+            "distribution_requires",
+            lambda _name: ['pytest>=7.0; extra == "dev"'],
+        )
+        with pytest.raises(FileNotFoundError, match="no main dependencies"):
+            paths._write_controller_pyproject_from_installed(dest)
+
+    def test_find_raft_pyproject_skips_unrelated_toml(self) -> None:
+        other = self.tmp_path / "other"
+        other.mkdir()
+        (other / "pyproject.toml").write_text(
+            'name = "something-else"\n', encoding="utf-8"
+        )
+        nested = other / "share"
+        nested.mkdir()
+        assert paths._find_raft_pyproject(nested) is None
+
+    def test_sync_controller_pyproject_keeps_existing_when_no_source(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        home = self.tmp_path / "home"
+        dest = home / "controller" / "pyproject.toml"
+        dest.parent.mkdir(parents=True)
+        dest.write_text('name = "kept"\n', encoding="utf-8")
+        monkeypatch.setattr(paths, "_find_raft_pyproject", lambda _p: None)
+
+        def boom(_dest: Path) -> None:
+            raise FileNotFoundError("no dist")
+
+        monkeypatch.setattr(paths, "_write_controller_pyproject_from_installed", boom)
+        paths._sync_controller_pyproject(home, self.tmp_path / "share")
+        assert dest.read_text(encoding="utf-8") == 'name = "kept"\n'
+
+    def test_sync_controller_pyproject_raises_when_nothing_to_keep(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        home = self.tmp_path / "home"
+        monkeypatch.setattr(paths, "_find_raft_pyproject", lambda _p: None)
+
+        def boom(_dest: Path) -> None:
+            raise FileNotFoundError("no dist")
+
+        monkeypatch.setattr(paths, "_write_controller_pyproject_from_installed", boom)
+        with pytest.raises(FileNotFoundError, match="no dist"):
+            paths._sync_controller_pyproject(home, self.tmp_path / "share")
+
+    def test_find_package_root_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(paths, "_bundled_share", lambda: self.tmp_path / "nope")
+        orphan = self.tmp_path / "orphan"
+        orphan.mkdir()
+        with pytest.raises(RuntimeError, match="package templates"):
+            find_package_root(orphan)
+
+

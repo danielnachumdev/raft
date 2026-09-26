@@ -1,0 +1,1 @@
+"""DockerStack adapter unit tests."""

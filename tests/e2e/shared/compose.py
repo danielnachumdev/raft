@@ -37,7 +37,14 @@ def new_project_name() -> str:
 def apps_only_compose(generated: Path, dest: Path) -> Path:
     """Write compose with only App services (drop router stub; drop healthchecks)."""
     raw = yaml.safe_load((generated / "compose.apps.yaml").read_text(encoding="utf-8"))
-    services = dict(raw.get("services") or {})
+    services = _strip_router_and_health(dict(raw.get("services") or {}))
+    dest.write_text(
+        yaml.safe_dump({"services": services}, sort_keys=False), encoding="utf-8"
+    )
+    return dest
+
+
+def _strip_router_and_health(services: dict) -> dict:
     services.pop("router", None)
     services.pop(ROUTER_COMPOSE_ID, None)
     for name, svc in list(services.items()):
@@ -45,23 +52,22 @@ def apps_only_compose(generated: Path, dest: Path) -> Path:
             continue
         svc = dict(svc)
         svc.pop("healthcheck", None)
-        # Ephemeral localhost publish for every exposed container port (host probes).
-        expose = svc.get("expose") or []
-        existing_ports = list(svc.get("ports") or [])
-        for port in expose:
-            mapping = f"127.0.0.1::{port}"
-            if mapping not in existing_ports and not any(
-                str(p).endswith(f":{port}") for p in existing_ports
-            ):
-                existing_ports.append(mapping)
-        if existing_ports:
-            svc["ports"] = existing_ports
-        services[name] = svc
-    dest.write_text(
-        yaml.safe_dump({"services": services}, sort_keys=False),
-        encoding="utf-8",
-    )
-    return dest
+        services[name] = _publish_exposed_ports(svc)
+    return services
+
+
+def _publish_exposed_ports(svc: dict) -> dict:
+    expose = svc.get("expose") or []
+    existing_ports = list(svc.get("ports") or [])
+    for port in expose:
+        mapping = f"127.0.0.1::{port}"
+        if mapping not in existing_ports and not any(
+            str(p).endswith(f":{port}") for p in existing_ports
+        ):
+            existing_ports.append(mapping)
+    if existing_ports:
+        svc["ports"] = existing_ports
+    return svc
 
 
 class ComposeProject:
@@ -101,31 +107,22 @@ class ComposeProject:
     def down(self) -> None:
         subprocess.run(
             self._cmd("down", "-v", "--remove-orphans"),
-            check=False,
-            cwd=self.workdir,
-            capture_output=True,
-            text=True,
-            timeout=120,
+            check=False, cwd=self.workdir, capture_output=True, text=True, timeout=120,
         )
-        # Belt-and-suspenders: remove any leftover containers with this project label.
+        self._force_remove_labeled()
+
+    def _force_remove_labeled(self) -> None:
         labeled = subprocess.run(
             [
-                "docker",
-                "ps",
-                "-aq",
-                "--filter",
+                "docker", "ps", "-aq", "--filter",
                 f"label=com.docker.compose.project={self.project}",
             ],
-            capture_output=True,
-            text=True,
-            check=False,
+            capture_output=True, text=True, check=False,
         )
         ids = [x for x in labeled.stdout.split() if x]
         if ids:
             subprocess.run(
-                ["docker", "rm", "-f", *ids],
-                check=False,
-                capture_output=True,
+                ["docker", "rm", "-f", *ids], check=False, capture_output=True
             )
 
     def ps_json(self) -> list[dict[str, Any]]:

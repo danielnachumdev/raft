@@ -94,23 +94,21 @@ def ensure_orchestrator_root(root: Path) -> None:
     (root / "logs").mkdir(parents=True, exist_ok=True)
 
 
-def write_applied_app(
-    root: Path,
+def _applied_app_spec(
     name: str,
     *,
-    public_host: Optional[str] = None,
-    source: str = "local",
-    path: Optional[str] = None,
-    repo: Optional[str] = None,
-    ref: str = "main",
-    image: Optional[str] = None,
-    www: bool = True,
-    build_context: Optional[str] = ".",
-    port: int = 80,
-    tls: str = "off",
-    extra: Optional[dict[str, Any]] = None,
-) -> Path:
-    ensure_orchestrator_root(root)
+    public_host: Optional[str],
+    source: str,
+    path: Optional[str],
+    repo: Optional[str],
+    ref: str,
+    image: Optional[str],
+    www: bool,
+    build_context: Optional[str],
+    port: int,
+    tls: str,
+    extra: Optional[dict[str, Any]],
+) -> dict[str, Any]:
     spec: dict[str, Any] = {
         "publicHost": f"{name}.test" if public_host is None else public_host,
         "source": source,
@@ -129,12 +127,32 @@ def write_applied_app(
         spec["build"] = {"context": build_context}
     if extra:
         spec.update(extra)
-    doc = {
-        "apiVersion": "raft/v1",
-        "kind": "App",
-        "metadata": {"name": name},
-        "spec": spec,
-    }
+    return spec
+
+
+def write_applied_app(
+    root: Path,
+    name: str,
+    *,
+    public_host: Optional[str] = None,
+    source: str = "local",
+    path: Optional[str] = None,
+    repo: Optional[str] = None,
+    ref: str = "main",
+    image: Optional[str] = None,
+    www: bool = True,
+    build_context: Optional[str] = ".",
+    port: int = 80,
+    tls: str = "off",
+    extra: Optional[dict[str, Any]] = None,
+) -> Path:
+    ensure_orchestrator_root(root)
+    spec = _applied_app_spec(
+        name, public_host=public_host, source=source, path=path, repo=repo,
+        ref=ref, image=image, www=www, build_context=build_context,
+        port=port, tls=tls, extra=extra,
+    )
+    doc = {"apiVersion": "raft/v1", "kind": "App", "metadata": {"name": name}, "spec": spec}
     dest = root / "state" / "apps" / f"{name}.yaml"
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(yaml.safe_dump(doc, sort_keys=False), encoding="utf-8")

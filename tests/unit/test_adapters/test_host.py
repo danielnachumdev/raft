@@ -38,6 +38,13 @@ class TestParseDockerSize:
 
 class TestCollectHostResources:
     def test_reads_proc_fixture(self, tmp_path: Path) -> None:
+        proc = self._write_proc(tmp_path)
+        disk_root = tmp_path / "disk"
+        disk_root.mkdir()
+        host = collect_host_resources(disk_path=disk_root, proc=proc)
+        self._assert_proc_host(host, disk_root)
+
+    def _write_proc(self, tmp_path: Path) -> Path:
         proc = tmp_path / "proc"
         proc.mkdir()
         (proc / "meminfo").write_text(
@@ -48,9 +55,9 @@ class TestCollectHostResources:
         )
         (proc / "loadavg").write_text("0.10 0.20 0.30 1/100 1\n", encoding="utf-8")
         (proc / "uptime").write_text("3661.5 100.0\n", encoding="utf-8")
-        disk_root = tmp_path / "disk"
-        disk_root.mkdir()
-        host = collect_host_resources(disk_path=disk_root, proc=proc)
+        return proc
+
+    def _assert_proc_host(self, host, disk_root) -> None:
         assert host.cpus is not None and host.cpus >= 1
         assert host.loadavg == (0.10, 0.20, 0.30)
         assert host.uptime_seconds == 3661.5
@@ -58,8 +65,7 @@ class TestCollectHostResources:
         assert host.memory.total_bytes == 2048000 * 1024
         assert host.memory.available_bytes == 1024000 * 1024
         assert host.memory.used_bytes == host.memory.total_bytes - host.memory.available_bytes
-        assert host.disk is not None
-        assert host.disk.path == str(disk_root)
+        assert host.disk is not None and host.disk.path == str(disk_root)
         assert host.disk.total_bytes > 0
 
     def test_missing_proc_degrades(self, tmp_path: Path) -> None:

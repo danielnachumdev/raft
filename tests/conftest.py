@@ -13,3 +13,6 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         "markers", "e2e: Docker Compose runtime checks (skipped without Docker)"
     )
+    config.addinivalue_line(
+        "markers", "meta: codebase-as-artifact style guards (file/body size)"
+    )

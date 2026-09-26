@@ -100,15 +100,7 @@ class TestGitAuthManager(ServicesTestCase):
     def test_setup_with_repo_before_apply(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        empty = Stack(root=self.tmp_path, apps=())
-        mgr = GitAuthManager(empty)
-        mgr.sh = self.shell
-        # ssh via RAFT_SSH_DIR fixture; override for empty dir:
-        mgr.ssh_dir = self.tmp_path / "ssh-empty"
-        mgr.keys_dir = mgr.ssh_dir / "raft"
-        mgr.config_path = mgr.ssh_dir / "config"
-        self.shell.run.side_effect = self.fake_ssh_keygen()
-        self.shell.git.return_value = MagicMock(returncode=0, stdout="abc\tHEAD\n", stderr="")
+        mgr = self._empty_auth_mgr()
         with pytest.raises(RuntimeError, match="Pass --repo"):
             mgr.setup("playloftstudio")
         mgr.setup(
@@ -117,17 +109,24 @@ class TestGitAuthManager(ServicesTestCase):
         )
         assert mgr.is_configured("playloftstudio")
         out = capsys.readouterr().out
-        assert "apply --git" in out
-        assert "auth test playloftstudio --repo" in out
-        mgr.test(
-            "playloftstudio",
-            repo="git@github.com:Playloft-Studio/playloftstudio.com.git",
-            quiet=True,
-        )
-        mgr.test(
-            "playloftstudio",
-            repo="git@github.com:Playloft-Studio/playloftstudio.com.git",
-        )
+        assert "apply --git" in out and "auth test playloftstudio --repo" in out
+        self._test_repo(mgr)
+
+    def _empty_auth_mgr(self) -> GitAuthManager:
+        empty = Stack(root=self.tmp_path, apps=())
+        mgr = GitAuthManager(empty)
+        mgr.sh = self.shell
+        mgr.ssh_dir = self.tmp_path / "ssh-empty"
+        mgr.keys_dir = mgr.ssh_dir / "raft"
+        mgr.config_path = mgr.ssh_dir / "config"
+        self.shell.run.side_effect = self.fake_ssh_keygen()
+        self.shell.git.return_value = MagicMock(returncode=0, stdout="abc\tHEAD\n", stderr="")
+        return mgr
+
+    def _test_repo(self, mgr: GitAuthManager) -> None:
+        repo = "git@github.com:Playloft-Studio/playloftstudio.com.git"
+        mgr.test("playloftstudio", repo=repo, quiet=True)
+        mgr.test("playloftstudio", repo=repo)
 
     def test_clone_urls_for_repo_includes_aliases(self) -> None:
         self.write_keypair(self.mgr, "svc")
@@ -173,6 +172,11 @@ class TestGitAuthManager(ServicesTestCase):
             self.mgr.show("localapp")
 
     def test_list_show_test_remove(self) -> None:
+        self._test_list_show_test_remove_p1()
+        self._test_list_show_test_remove_p2()
+        self._test_list_show_test_remove_p3()
+
+    def _test_list_show_test_remove_p1(self) -> None:
         assert self.mgr.list_services() == []
         with pytest.raises(RuntimeError, match="no deploy key"):
             self.mgr.show_pubkey("svc")
@@ -191,6 +195,8 @@ class TestGitAuthManager(ServicesTestCase):
         self.write_keypair(self.mgr, "svc")
         assert self.mgr.list_services() == ["svc"]
         self.mgr.pub_path("orphan").write_text("ssh-ed25519 ORPHAN\n", encoding="utf-8")
+
+    def _test_list_show_test_remove_p2(self) -> None:
         assert self.mgr.list_services() == ["svc"]
         assert "AAAA" in self.mgr.show_pubkey("svc")
 
@@ -209,6 +215,7 @@ class TestGitAuthManager(ServicesTestCase):
         with pytest.raises(RuntimeError, match="git command failed"):
             self.mgr.test("svc")
 
+    def _test_list_show_test_remove_p3(self) -> None:
         self.mgr.remove("svc", remove_files=False)
         assert self.mgr.key_path("svc").is_file()
         self.mgr.remove("svc", remove_files=True)

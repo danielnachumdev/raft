@@ -244,7 +244,8 @@ Exceptions: tiny pure helpers (e.g. path constants) and `@dataclass` field types
 
 - `uv sync --extra dev` (or `--group dev`) then:
  - `uv run pytest tests/unit` — **100%** branch coverage (`-n auto` + cov via pyproject)
- - `uv run pytest` — unit + integration (default)
+ - `uv run pytest` — unit + integration + **meta** (default; meta may fail until size splits land)
+ - `uv run pytest tests/meta --no-cov` — codebase-as-artifact guards only (`@pytest.mark.meta`; file < 300 lines, bodies ≤ 20)
  - `uv run pytest tests/e2e -m e2e --no-cov -n0` — Docker required; serial; all CI Py versions
 - Only commit when asked. Prefer `git mv` for renames.
 - Do not reintroduce committed consumer app names, upstreams, or PEMs.

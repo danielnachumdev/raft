@@ -19,13 +19,18 @@ class TestUninstall(ServicesTestCase):
         mgr.sh = MagicMock()
         return mgr
 
+    def _env_ssh_home(self, monkeypatch, suffix: str):
+        ssh = Path(str(self.tmp_path) + f"-ssh{suffix}")
+        monkeypatch.setenv("RAFT_SSH_DIR", str(ssh))
+        monkeypatch.setenv("RAFT_HOME", str(self.tmp_path / f"no-co{suffix}"))
+        return ssh
+
     def test_refuses_without_yes(self, capsys) -> None:
         mgr = self._mgr()
         with pytest.raises(OperatorError, match="uninstall --yes"):
             mgr.run(yes=False)
         out = capsys.readouterr().out
-        assert "permanently removes" in out
-        assert str(self.stack.root) in out
+        assert "permanently removes" in out and str(self.stack.root) in out
         assert "leaves `uv` installed" in out
         mgr.sh.compose.assert_not_called()
 
@@ -33,15 +38,19 @@ class TestUninstall(ServicesTestCase):
         mgr = self._mgr()
         with pytest.raises(OperatorError, match="--uv"):
             mgr.run(yes=False, uv=True)
-        out = capsys.readouterr().out
-        assert "requested via --uv" in out
+        assert "requested via --uv" in capsys.readouterr().out
 
     def test_full_cleanup(self, capsys, monkeypatch) -> None:
         home = self.stack.root
         (home / "compose.yaml").write_text("name: raft\n", encoding="utf-8")
         (home / "state" / "apps").mkdir(parents=True, exist_ok=True)
         (home / "state" / "apps" / "web.yaml").write_text("x\n", encoding="utf-8")
+        ssh, config, checkout = self._seed_full_cleanup(monkeypatch)
+        mgr = self._wire_full_cleanup_mgr()
+        mgr.run(yes=True)
+        self._assert_full_cleanup(mgr, home, ssh, config, checkout, capsys)
 
+    def _seed_full_cleanup(self, monkeypatch):
         ssh = Path(str(self.tmp_path) + "-ssh")
         keys = ssh / "raft"
         keys.mkdir(parents=True)
@@ -50,58 +59,61 @@ class TestUninstall(ServicesTestCase):
         config.write_text(
             "Host keep\n  HostName z\n"
             "# BEGIN raft:web\nHost github.com-raft-web\n  HostName github.com\n"
-            "# END raft:web\n"
-            "Host other\n  HostName y\n",
+            "# END raft:web\nHost other\n  HostName y\n",
             encoding="utf-8",
         )
         monkeypatch.setenv("RAFT_SSH_DIR", str(ssh))
-
         checkout = Path(str(self.tmp_path) + "-checkout")
         checkout.mkdir()
         (checkout / "pyproject.toml").write_text('name = "raft"\n', encoding="utf-8")
         monkeypatch.setenv("RAFT_HOME", str(checkout))
+        return ssh, config, checkout
 
+    def _wire_full_cleanup_mgr(self) -> Uninstall:
         mgr = self._mgr()
         mgr.sh.compose.return_value = MagicMock(returncode=0)
         mgr.sh.docker.side_effect = [
-            MagicMock(
-                returncode=0,
-                stdout="raft-web:latest\nnginx:alpine\nraft-other:dev\n",
-            ),
+            MagicMock(returncode=0, stdout="raft-web:latest\nnginx:alpine\nraft-other:dev\n"),
             MagicMock(returncode=0),
             MagicMock(returncode=0),
         ]
         mgr.sh.run.return_value = MagicMock(returncode=0)
+        return mgr
 
-        mgr.run(yes=True)
-
+    def _assert_full_cleanup(self, mgr, home, ssh, config, checkout, capsys) -> None:
         mgr.sh.compose.assert_called_once_with(
             "down", "--remove-orphans", "--volumes", check=False, capture=False
         )
-        rmi_calls = [
-            c
-            for c in mgr.sh.docker.call_args_list
-            if c.args and c.args[0] == "rmi"
-        ]
-        assert any("raft-web:latest" in c.args for c in rmi_calls)
-        assert not any("nginx:alpine" in str(c) for c in rmi_calls)
+        rmi = [c for c in mgr.sh.docker.call_args_list if c.args and c.args[0] == "rmi"]
+        assert any("raft-web:latest" in c.args for c in rmi)
+        assert not any("nginx:alpine" in str(c) for c in rmi)
         mgr.sh.run.assert_called_once_with(
             ["uv", "tool", "uninstall", "raft"], check=False, capture=True
         )
-
-        assert not home.exists()
-        assert not keys.exists()
-        assert not checkout.exists()
+        assert not home.exists() and not (ssh / "raft").exists() and not checkout.exists()
         cfg = config.read_text(encoding="utf-8")
-        assert "BEGIN raft:web" not in cfg
-        assert "Host keep" in cfg
-        assert "Host other" in cfg
+        assert "BEGIN raft:web" not in cfg and "Host keep" in cfg and "Host other" in cfg
         out = capsys.readouterr().out
-        assert "OK: raft uninstalled" in out
-        assert "Removing uv" not in out
+        assert "OK: raft uninstalled" in out and "Removing uv" not in out
 
     def test_removes_uv_when_requested(self, capsys, monkeypatch) -> None:
-        fake_home = Path(str(self.tmp_path) + "-uvhome")
+        uv_bin, uvx_bin, share, tool_dir = self._seed_uv_home(monkeypatch, "-uvhome")
+        monkeypatch.setattr("raft.services.uninstall.shutil.which", lambda _n: str(uv_bin))
+        self._env_ssh_home(monkeypatch, "-uv")
+        mgr = self._mgr()
+        mgr.sh.docker.return_value = MagicMock(returncode=0, stdout="")
+        mgr.sh.run.return_value = MagicMock(returncode=0)
+        compose = self.stack.root / "compose.yaml"
+        if compose.is_file():
+            compose.unlink()
+        mgr.run(yes=True, uv=True)
+        assert not uv_bin.exists() and not uvx_bin.exists()
+        assert not share.exists() and not tool_dir.exists()
+        out = capsys.readouterr().out
+        assert "Removing uv" in out and "OK: raft uninstalled" in out
+
+    def _seed_uv_home(self, monkeypatch, suffix: str):
+        fake_home = Path(str(self.tmp_path) + suffix)
         bin_dir = fake_home / ".local" / "bin"
         bin_dir.mkdir(parents=True)
         uv_bin = bin_dir / "uv"
@@ -111,55 +123,18 @@ class TestUninstall(ServicesTestCase):
         share = fake_home / ".local" / "share" / "uv"
         share.mkdir(parents=True)
         (share / "tools").mkdir()
-        tool_dir = Path(str(self.tmp_path) + "-uvtool")
+        tool_dir = Path(str(self.tmp_path) + suffix + "-tool")
         tool_dir.mkdir()
         monkeypatch.setenv("UV_TOOL_DIR", str(tool_dir))
         monkeypatch.setattr(Path, "home", classmethod(lambda cls: fake_home))
-        monkeypatch.setattr(
-            "raft.services.uninstall.shutil.which",
-            lambda _name: str(uv_bin),
-        )
-        monkeypatch.setenv("RAFT_SSH_DIR", str(Path(str(self.tmp_path) + "-ssh-uv")))
-        monkeypatch.setenv("RAFT_HOME", str(self.tmp_path / "no-co"))
+        return uv_bin, uvx_bin, share, tool_dir
 
-        mgr = self._mgr()
-        mgr.sh.docker.return_value = MagicMock(returncode=0, stdout="")
-        mgr.sh.run.return_value = MagicMock(returncode=0)
-        compose = self.stack.root / "compose.yaml"
-        if compose.is_file():
-            compose.unlink()
-        mgr.run(yes=True, uv=True)
-
-        assert not uv_bin.exists()
-        assert not uvx_bin.exists()
-        assert not share.exists()
-        assert not tool_dir.exists()
-        out = capsys.readouterr().out
-        assert "Removing uv" in out
-        assert "OK: raft uninstalled" in out
-
-    def test_remove_uv_handles_resolve_error_and_no_which(
-        self, monkeypatch, capsys
-    ) -> None:
-        fake_home = Path(str(self.tmp_path) + "-uvhome2")
-        bin_dir = fake_home / ".local" / "bin"
-        bin_dir.mkdir(parents=True)
-        uv_bin = bin_dir / "uv"
-        uv_bin.write_text("x\n", encoding="utf-8")
-        monkeypatch.setattr(Path, "home", classmethod(lambda cls: fake_home))
+    def test_remove_uv_handles_resolve_error_and_no_which(self, monkeypatch, capsys) -> None:
+        uv_bin, *_ = self._seed_uv_home(monkeypatch, "-uvhome2")
         monkeypatch.setattr("raft.services.uninstall.shutil.which", lambda _n: None)
         monkeypatch.delenv("UV_TOOL_DIR", raising=False)
-        monkeypatch.setenv("RAFT_SSH_DIR", str(Path(str(self.tmp_path) + "-ssh-uv2")))
-        monkeypatch.setenv("RAFT_HOME", str(self.tmp_path / "no-co2"))
-
-        real_resolve = Path.resolve
-
-        def boom(self, *args, **kwargs):
-            if self == uv_bin or self.name == "uv":
-                raise OSError("resolve failed")
-            return real_resolve(self, *args, **kwargs)
-
-        monkeypatch.setattr(Path, "resolve", boom)
+        self._env_ssh_home(monkeypatch, "-uv2")
+        self._patch_uv_resolve_boom(monkeypatch, uv_bin)
         mgr = self._mgr()
         mgr.sh.docker.return_value = MagicMock(returncode=0, stdout="")
         mgr.sh.run.return_value = MagicMock(returncode=0)
@@ -170,6 +145,16 @@ class TestUninstall(ServicesTestCase):
         assert not uv_bin.exists()
         assert "OK: raft uninstalled" in capsys.readouterr().out
 
+    def _patch_uv_resolve_boom(self, monkeypatch, uv_bin) -> None:
+        real_resolve = Path.resolve
+
+        def boom(self, *args, **kwargs):
+            if self == uv_bin or self.name == "uv":
+                raise OSError("resolve failed")
+            return real_resolve(self, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "resolve", boom)
+
     def test_skips_missing_compose_and_tolerates_failures(self, capsys, monkeypatch) -> None:
         monkeypatch.setenv("RAFT_SSH_DIR", str(self.tmp_path / "nossh"))
         monkeypatch.setenv("RAFT_HOME", str(self.tmp_path / "not-a-checkout"))
@@ -178,13 +163,11 @@ class TestUninstall(ServicesTestCase):
         mgr.sh.compose.side_effect = RuntimeError("no docker")
         mgr.sh.docker.side_effect = RuntimeError("no docker")
         mgr.sh.run.side_effect = RuntimeError("no uv")
-        # home still exists from fixture; ensure compose.yaml absent for skip path
         compose = self.stack.root / "compose.yaml"
         if compose.is_file():
             compose.unlink()
         mgr.run(yes=True)
         out = capsys.readouterr().out
-        assert "skipping stack tear-down" in out or "OK: raft uninstalled" in out
         assert "OK: raft uninstalled" in out
         assert not self.stack.root.exists()
 
@@ -205,15 +188,12 @@ class TestUninstall(ServicesTestCase):
         (checkout / "pyproject.toml").write_text('name = "raft"\n', encoding="utf-8")
         monkeypatch.setenv("RAFT_HOME", str(checkout))
         monkeypatch.setenv("RAFT_SSH_DIR", str(Path(str(self.tmp_path) + "-preview-ssh")))
-        mgr = self._mgr()
         with pytest.raises(OperatorError, match="uninstall --yes"):
-            mgr.run(yes=False)
-        out = capsys.readouterr().out
-        assert str(checkout) in out
+            self._mgr().run(yes=False)
+        assert str(checkout) in capsys.readouterr().out
 
     def test_compose_down_warns_and_image_list_nonzero(self, capsys, monkeypatch) -> None:
-        monkeypatch.setenv("RAFT_SSH_DIR", str(Path(str(self.tmp_path) + "-ssh2")))
-        monkeypatch.setenv("RAFT_HOME", str(self.tmp_path / "nope"))
+        self._env_ssh_home(monkeypatch, "2")
         (self.stack.root / "compose.yaml").write_text("name: raft\n", encoding="utf-8")
         mgr = self._mgr()
         mgr.sh.compose.side_effect = RuntimeError("compose boom")
@@ -221,8 +201,7 @@ class TestUninstall(ServicesTestCase):
         mgr.sh.run.return_value = MagicMock(returncode=0)
         mgr.run(yes=True)
         out = capsys.readouterr().out
-        assert "compose down skipped" in out
-        assert "OK: raft uninstalled" in out
+        assert "compose down skipped" in out and "OK: raft uninstalled" in out
 
     def test_remove_tree_missing_and_config_without_blocks(self, monkeypatch, capsys) -> None:
         ssh = Path(str(self.tmp_path) + "-ssh3")
@@ -232,19 +211,14 @@ class TestUninstall(ServicesTestCase):
         monkeypatch.setenv("RAFT_SSH_DIR", str(ssh))
         monkeypatch.setenv("RAFT_HOME", str(self.tmp_path / "missing-co"))
         mgr = self._mgr()
-        mgr.sh.docker.return_value = MagicMock(
-            returncode=0, stdout="raft-x:<none>\n"
-        )
+        mgr.sh.docker.return_value = MagicMock(returncode=0, stdout="raft-x:<none>\n")
         mgr.sh.run.return_value = MagicMock(returncode=0)
         compose = self.stack.root / "compose.yaml"
         if compose.is_file():
             compose.unlink()
-        # Remove home first via helper coverage for missing path message
         Uninstall._remove_tree(self.tmp_path / "ghost", label="ghost")
         mgr.run(yes=True)
         out = capsys.readouterr().out
-        assert "no ghost at" in out
-        assert "OK: raft uninstalled" in out
+        assert "no ghost at" in out and "OK: raft uninstalled" in out
         assert "BEGIN raft" not in config.read_text(encoding="utf-8")
-        # no scrub message when config unchanged
         assert "Scrubbing" not in out

@@ -13,11 +13,7 @@ from raft.models.ports import PortSpec
 from ..base import RaftTestCase, make_app, write_inventory
 
 
-class TestLoadRegistry(RaftTestCase):
-    def test_local_and_git(self) -> None:
-        write_inventory(
-            self.tmp_path,
-            """
+LOCAL_GIT_INVENTORY = """
 services:
   app:
     public_host: app.test
@@ -29,12 +25,15 @@ services:
     repo: "git@example.com:org/other.git"
     ref: develop
     path: apps/other
-""",
-        )
+"""
+
+
+class TestLoadRegistry(RaftTestCase):
+    def test_local_and_git(self) -> None:
+        write_inventory(self.tmp_path, LOCAL_GIT_INVENTORY)
         apps = AppRegistry(self.tmp_path).load()
         assert len(apps) == 2
-        assert apps[0].name == "app"
-        assert apps[0].source == "local"
+        assert apps[0].name == "app" and apps[0].source == "local"
         assert apps[1].source == "git"
         assert apps[1].repo == "git@example.com:org/other.git"
 

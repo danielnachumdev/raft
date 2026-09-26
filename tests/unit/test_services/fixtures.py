@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Mapping
+from typing import Mapping
 
 # ---------------------------------------------------------------------------
 # Named cases
@@ -200,18 +200,19 @@ CI_TO_CONTAINER_FLAG_OVERRIDES: list[str] = [
 ]
 
 
-def clone_writes_manifest(text: str) -> Callable[..., None]:
-    """Return a git side_effect that writes ``.raft/app.yaml`` on clone."""
+class GitCloneManifest:
+    """Build git clone side_effects that plant ``.raft/app.yaml``."""
 
-    def clone(*args, **kwargs):
+    def __init__(self, text: str) -> None:
+        self._text = text
+
+    def __call__(self, *args, **kwargs) -> None:
         if "clone" not in args:
             return
         target = Path(args[-1])
         (target / ".raft").mkdir(parents=True, exist_ok=True)
-        (target / ".raft" / "app.yaml").write_text(text, encoding="utf-8")
-
-    return clone
+        (target / ".raft" / "app.yaml").write_text(self._text, encoding="utf-8")
 
 
-clone_writes_placeholder_manifest = clone_writes_manifest(PLACEHOLDER_GIT_MANIFEST)
-clone_writes_missing_var_manifest = clone_writes_manifest(MISSING_VAR_GIT_MANIFEST)
+clone_writes_placeholder_manifest = GitCloneManifest(PLACEHOLDER_GIT_MANIFEST)
+clone_writes_missing_var_manifest = GitCloneManifest(MISSING_VAR_GIT_MANIFEST)

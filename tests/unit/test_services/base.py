@@ -29,25 +29,9 @@ class ServicesTestCase(RaftTestCase):
         return orch
 
     def cutover_session(self) -> CutoverSession:
-        # Short readiness budget so timeout-path tests (sleep mocked) finish quickly.
-        write_applied_app(
-            self.tmp_path,
-            "app",
-            extra={
-                "readiness": {
-                    "type": "http",
-                    "port": "http",
-                    "timeoutSeconds": 1,
-                    "startPeriodSeconds": 0.25,
-                    "intervalSeconds": 0.25,
-                    "retries": 1,
-                },
-            },
-        )
+        write_applied_app(self.tmp_path, "app", extra=self._short_readiness())
         stack = make_local_stack(
-            self.tmp_path,
-            drain_seconds=0.0,
-            ready_timeout_seconds=1.0,
+            self.tmp_path, drain_seconds=0.0, ready_timeout_seconds=1.0
         )
         return CutoverSession(
             stack=stack,
@@ -56,6 +40,20 @@ class ServicesTestCase(RaftTestCase):
             nginx=MagicMock(),
             http=MagicMock(),
         )
+
+    @staticmethod
+    def _short_readiness() -> dict:
+        # Short budget so timeout-path tests (sleep mocked) finish quickly.
+        return {
+            "readiness": {
+                "type": "http",
+                "port": "http",
+                "timeoutSeconds": 1,
+                "startPeriodSeconds": 0.25,
+                "intervalSeconds": 0.25,
+                "retries": 1,
+            },
+        }
 
     def auth_manager(self, **git_stack_kwargs) -> GitAuthManager:
         stack = make_git_stack(self.tmp_path, **git_stack_kwargs)

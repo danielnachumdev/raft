@@ -9,19 +9,15 @@ import pytest
 from raft.config.settings_types import EdgeConfig
 
 from tests.integration.shared.artifacts import load_compose_apps, read_text
-from tests.shared.raft_home import (
-    apply_and_render,
-    edge_with_smtp_stream,
-    fixture_app_yamls,
-)
+from tests.shared.raft_home import RaftHomeFixtures
 
 pytestmark = pytest.mark.integration
 
 
 class TestRenderHttpOnly:
     def test_int_http_only(self, isolated_raft_env: Path) -> None:
-        generated = apply_and_render(
-            isolated_raft_env, fixture_app_yamls("http_only")
+        generated = RaftHomeFixtures.apply_and_render(
+            isolated_raft_env, RaftHomeFixtures.fixture_app_yamls("http_only")
         )
         apps = load_compose_apps(generated)
         svc = apps["services"]["http-only"]
@@ -41,10 +37,10 @@ class TestRenderHttpOnly:
 
 class TestRenderHttpPlusStream:
     def test_int_http_plus_stream(self, isolated_raft_env: Path) -> None:
-        generated = apply_and_render(
+        generated = RaftHomeFixtures.apply_and_render(
             isolated_raft_env,
-            fixture_app_yamls("http_plus_stream"),
-            edge=edge_with_smtp_stream(),
+            RaftHomeFixtures.fixture_app_yamls("http_plus_stream"),
+            edge=RaftHomeFixtures.edge_with_smtp_stream(),
         )
         apps = load_compose_apps(generated)
         svc = apps["services"]["http-plus-stream"]
@@ -58,8 +54,8 @@ class TestRenderHttpPlusStream:
 
 class TestRenderHostPublish:
     def test_int_host_publish(self, isolated_raft_env: Path) -> None:
-        generated = apply_and_render(
-            isolated_raft_env, fixture_app_yamls("host_publish")
+        generated = RaftHomeFixtures.apply_and_render(
+            isolated_raft_env, RaftHomeFixtures.fixture_app_yamls("host_publish")
         )
         apps = load_compose_apps(generated)
         svc = apps["services"]["host-publish"]
@@ -69,8 +65,8 @@ class TestRenderHostPublish:
 
 class TestRenderExposeNoneVolume:
     def test_int_expose_none_volume(self, isolated_raft_env: Path) -> None:
-        generated = apply_and_render(
-            isolated_raft_env, fixture_app_yamls("expose_none_volume")
+        generated = RaftHomeFixtures.apply_and_render(
+            isolated_raft_env, RaftHomeFixtures.fixture_app_yamls("expose_none_volume")
         )
         apps = load_compose_apps(generated)
         svc = apps["services"]["demo-expose-none-vol"]
@@ -92,10 +88,10 @@ class TestRenderExposeNoneVolume:
 
 class TestRenderMultiAppGroup:
     def test_int_multi_app_group(self, isolated_raft_env: Path) -> None:
-        yamls = fixture_app_yamls("multi_app_group")
+        yamls = RaftHomeFixtures.fixture_app_yamls("multi_app_group")
         # Apply redis before front (dependsOn).
         ordered = sorted(yamls, key=lambda p: 0 if "redis" in str(p) else 1)
-        generated = apply_and_render(isolated_raft_env, ordered)
+        generated = RaftHomeFixtures.apply_and_render(isolated_raft_env, ordered)
         apps = load_compose_apps(generated)
         front = apps["services"]["demo-stack-front"]
         assert "demo-stack-redis" in front["depends_on"]
@@ -107,8 +103,8 @@ class TestRenderMultiAppGroup:
 
 class TestRenderTlsOrigin:
     def test_int_tls_origin(self, isolated_raft_env: Path) -> None:
-        generated = apply_and_render(
-            isolated_raft_env, fixture_app_yamls("tls_origin")
+        generated = RaftHomeFixtures.apply_and_render(
+            isolated_raft_env, RaftHomeFixtures.fixture_app_yamls("tls_origin")
         )
         tls = read_text(generated / "nginx" / "gate-tls" / "tls-origin.conf")
         assert "listen 443 ssl" in tls
@@ -117,9 +113,9 @@ class TestRenderTlsOrigin:
 
 class TestRenderEdgeSettings:
     def test_int_edge_settings(self, isolated_raft_env: Path) -> None:
-        generated = apply_and_render(
+        generated = RaftHomeFixtures.apply_and_render(
             isolated_raft_env,
-            fixture_app_yamls("http_only"),
+            RaftHomeFixtures.fixture_app_yamls("http_only"),
             edge=EdgeConfig(http=8080, https=8443, streams=()),
         )
         edge_raw = (generated / "compose.edge.yaml").read_text(encoding="utf-8")
