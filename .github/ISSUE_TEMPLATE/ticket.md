@@ -2,14 +2,14 @@
 name: Ticket
 about: Scannable planning ticket for raft work (outcome-focused, not a design dump)
 title: ""
-labels: ["enhancement"]
+labels: ""
 assignees: ""
 ---
 
 ## **Background (Context)**
 
 <!-- Planning ticket for humans and agents—not a full spec. Aim for ~2 minutes to read.
-     After create, add area/* labels (controller, gate, cli, scaling, ui, observability, …). -->
+     Add stock labels (bug / enhancement / documentation / …) only when they fit. -->
 
 One short paragraph for follow-ups (link `#issue`); one to two max for standalone work. State the current gap vs desired outcome. Skip architecture recaps already in `AGENTS.md` / `README.md`.
 
