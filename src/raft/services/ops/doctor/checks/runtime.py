@@ -1,4 +1,4 @@
-"""Compose runtime: which core services are up."""
+"""Compose runtime: which core services are up (and healthy)."""
 
 from __future__ import annotations
 
@@ -31,17 +31,20 @@ class RuntimeChecks:
         return [
             *self._edge_running(ctx, running),
             *self._scaled_apps(ctx),
+            *self._health_for_running(ctx, running),
             self._stack_summary(ctx, running),
         ]
 
-    @staticmethod
-    def _edge_running(ctx: DoctorContext, running: set[str]) -> list[CheckResult]:
+    @classmethod
+    def _edge_running(cls, ctx: DoctorContext, running: set[str]) -> list[CheckResult]:
         results: list[CheckResult] = []
         for name in (ctx.stack.gate, ctx.stack.router):
-            if name in running:
-                results.append(CheckResult(name, "running", "ok", "up"))
+            if name not in running:
+                results.append(
+                    CheckResult(name, "running", "warn", "not running", fix="raft up")
+                )
             else:
-                results.append(CheckResult(name, "running", "warn", "not running", fix="raft up"))
+                results.append(cls._health_result(ctx, name))
         return results
 
     @staticmethod
@@ -57,6 +60,50 @@ class RuntimeChecks:
             for app in ctx.stack.apps
             if store.is_scaled_to_zero(app.name)
         ]
+
+    @classmethod
+    def _health_for_running(
+        cls, ctx: DoctorContext, running: set[str]
+    ) -> list[CheckResult]:
+        """Fail/warn when a running app or controller is unhealthy/restarting."""
+        edge = {ctx.stack.gate, ctx.stack.router}
+        skip = edge | cls._scaled_compose_ids(ctx)
+        results: list[CheckResult] = []
+        for service in sorted(running):
+            if service in skip:
+                continue
+            result = cls._health_result(ctx, service)
+            if result.status != "ok":
+                results.append(result)
+        return results
+
+    @classmethod
+    def _health_result(cls, ctx: DoctorContext, service: str) -> CheckResult:
+        status, health = ctx.docker.service_runtime(service)
+        bad = cls._bad_health(status, health)
+        if bad is None:
+            return CheckResult(service, "running", "ok", "up")
+        level, detail = bad
+        return CheckResult(
+            service, "running", level, detail, fix=cls._health_fix(service)
+        )
+
+    @staticmethod
+    def _bad_health(status: str, health: str):
+        if status == "restarting":
+            return ("fail", "restarting")
+        if health == "unhealthy":
+            return ("fail", "unhealthy")
+        if health == "starting":
+            return ("warn", "health starting")
+        return None
+
+    @staticmethod
+    def _health_fix(service: str) -> str:
+        return (
+            f"docker compose -f ~/.raft/compose.yaml logs --tail=40 {service}   "
+            f"# then raft redeploy <app> (or raft redeploy router)"
+        )
 
     @classmethod
     def _stack_summary(cls, ctx: DoctorContext, running: set[str]) -> CheckResult:

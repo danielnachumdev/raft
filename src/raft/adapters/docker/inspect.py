@@ -135,11 +135,13 @@ class DockerInspect:
         return row if isinstance(row, dict) else None
 
     def container_inspect_runtime(self, container_id: str) -> Optional[dict[str, Any]]:
-        """Status, start time, and HostConfig resource limits for one container."""
+        """Status, health, start time, and HostConfig limits for one container."""
         result = self.sh.docker(
             "inspect",
             "-f",
-            "{{.State.Status}}|{{.State.StartedAt}}|"
+            "{{.State.Status}}|"
+            "{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}|"
+            "{{.State.StartedAt}}|"
             "{{.HostConfig.NanoCpus}}|{{.HostConfig.Memory}}",
             container_id,
             capture=True,
@@ -148,15 +150,17 @@ class DockerInspect:
         if result.returncode != 0:
             return None
         parts = (result.stdout or "").strip().split("|")
-        if len(parts) < 4:
+        if len(parts) < 5:
             return None
         return self._runtime_from_parts(parts)
 
     @staticmethod
     def _runtime_from_parts(parts: list[str]) -> dict[str, Any]:
-        status, started_at, nano_raw, mem_raw = parts[0], parts[1], parts[2], parts[3]
+        status, health, started_at = parts[0], parts[1], parts[2]
+        nano_raw, mem_raw = parts[3], parts[4]
         return {
             "status": status or "unknown",
+            "health": health or "none",
             "started_at": started_at or "",
             "nano_cpus": int(nano_raw) if nano_raw.isdigit() else None,
             "memory_bytes": int(mem_raw) if mem_raw.isdigit() else None,

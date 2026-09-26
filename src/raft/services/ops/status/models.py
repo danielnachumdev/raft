@@ -8,6 +8,9 @@ from typing import Any, Optional
 # Human STATUS column when a Compose service has no container.
 STATUS_NOT_RUNNING = "not running"
 STATUS_SCALED_TO_ZERO = "scaled-to-zero"
+# Present container: Docker health is unhealthy / healthcheck still starting.
+STATUS_UNHEALTHY = "unhealthy"
+STATUS_STARTING = "starting"
 
 # Matches ``x-resources-edge`` in ``share/compose.yaml``.
 EDGE_CPUS_LIMIT = "0.25"

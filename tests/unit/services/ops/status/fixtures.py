@@ -143,17 +143,8 @@ class StatusFixtures:
         }.get(s)
         docker.containers_stats.return_value = cls.gate_router_stats_rows()
         started = cls.started_iso()
+        base = {"started_at": started, "nano_cpus": 250000000}
         docker.container_inspect_runtime.side_effect = [
-            {
-                "status": "running",
-                "started_at": started,
-                "nano_cpus": 250000000,
-                "memory_bytes": 33554432,
-            },
-            {
-                "status": "running",
-                "started_at": started,
-                "nano_cpus": 250000000,
-                "memory_bytes": 0,
-            },
+            {**base, "status": "running", "health": "none", "memory_bytes": 33554432},
+            {**base, "status": "running", "health": "none", "memory_bytes": 0},
         ]

@@ -16,6 +16,7 @@ class CoverageDoctor:
         doctor.sh = shell if shell is not None else MagicMock()
         doctor.auth = auth if auth is not None else MagicMock()
         doctor.docker = docker if docker is not None else MagicMock()
+        CoverageDoctor._default_runtime(doctor.docker)
         original_run = doctor.run
 
         def run_with_host_ok():
@@ -27,3 +28,9 @@ class CoverageDoctor:
 
         doctor.run = run_with_host_ok  # type: ignore[method-assign]
         return doctor
+
+    @staticmethod
+    def _default_runtime(docker) -> None:
+        """Compose mocks often omit service_runtime; doctor now probes health."""
+        if not isinstance(docker.service_runtime.return_value, tuple):
+            docker.service_runtime.return_value = ("running", "none")

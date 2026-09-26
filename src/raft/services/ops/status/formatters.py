@@ -4,9 +4,20 @@ from __future__ import annotations
 
 from typing import Optional
 
+from .models import STATUS_STARTING, STATUS_UNHEALTHY
+
 
 class StatusFormatters:
     """Format bytes / percent / uptime / loadavg for the status CLI."""
+
+    @staticmethod
+    def container_status(status: str, health: str = "none") -> str:
+        """Map Docker State.Status + Health into the STATUS column label."""
+        if status == "running" and health == "unhealthy":
+            return STATUS_UNHEALTHY
+        if status == "running" and health == "starting":
+            return STATUS_STARTING
+        return status or "unknown"
 
     @staticmethod
     def bytes(n: Optional[int]) -> str:

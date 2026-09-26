@@ -11,6 +11,7 @@ from ....models.scaling_store import ScalingStore
 from ....errors import OperatorError
 from ....models import EDGE_GROUP, Stack
 from .allocated import StatusAllocated
+from .formatters import StatusFormatters
 from .models import (
     STATUS_NOT_RUNNING,
     STATUS_SCALED_TO_ZERO,
@@ -159,7 +160,10 @@ class Status:
             app_name,
             group,
             allocated,
-            status=str(runtime.get("status") or "unknown"),
+            status=StatusFormatters.container_status(
+                str(runtime.get("status") or "unknown"),
+                str(runtime.get("health") or "none"),
+            ),
             uptime_seconds=self._parse_started_at(str(runtime.get("started_at") or "")),
             stats_row=stats_by_id.get(cid),
             inspect_memory=inspect_mem if isinstance(inspect_mem, int) else None,

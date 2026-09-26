@@ -47,11 +47,12 @@ class TestDockerStatsHealth(DockerTestCase):
 
     def test_container_inspect_runtime(self) -> None:
         self.shell.docker.return_value = self.ok(
-            "running|2024-01-01T00:00:00Z|250000000|67108864\n"
+            "running|healthy|2024-01-01T00:00:00Z|250000000|67108864\n"
         )
         info = self.docker.container_inspect_runtime("cid")
         assert info == {
             "status": "running",
+            "health": "healthy",
             "started_at": "2024-01-01T00:00:00Z",
             "nano_cpus": 250000000,
             "memory_bytes": 67108864,
@@ -63,9 +64,10 @@ class TestDockerStatsHealth(DockerTestCase):
         assert self.docker.container_inspect_runtime("cid") is None
         self.shell.docker.return_value = self.ok("only-one-field\n")
         assert self.docker.container_inspect_runtime("cid") is None
-        self.shell.docker.return_value = self.ok("exited|0001-01-01T00:00:00Z|x|y\n")
+        self.shell.docker.return_value = self.ok("exited|none|0001-01-01T00:00:00Z|x|y\n")
         info = self.docker.container_inspect_runtime("cid")
         assert info is not None
+        assert info["health"] == "none"
         assert info["nano_cpus"] is None and info["memory_bytes"] is None
 
     def test_compose_and_container_logs(self) -> None:
