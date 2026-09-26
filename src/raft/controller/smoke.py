@@ -6,7 +6,8 @@ import logging
 from pathlib import Path
 
 from raft.adapters.shell import Shell
-from raft.models.stack import load_stack
+from raft.models.manifest import load_registry
+from raft.models.stack import Stack
 
 __all__ = ["run_prereq_smoke"]
 
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def run_prereq_smoke(home: Path, sh: Shell) -> None:
-    """Verify Docker API + Compose project + registry are reachable."""
+    """Verify Docker API + Compose plugin + registry are readable."""
     version = sh.docker(
         "version",
         "--format",
@@ -32,7 +33,8 @@ def run_prereq_smoke(home: Path, sh: Shell) -> None:
         )
     logger.info("docker compose reachable")
 
-    stack = load_stack(home)
+    # Do not call load_stack/ensure_raft_home: data home is mounted :ro.
+    stack = Stack(root=home, apps=load_registry(home))
     logger.info(
         "data home ok root=%s apps=%s core=%s",
         home,
