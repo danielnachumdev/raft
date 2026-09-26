@@ -36,9 +36,9 @@ jobs:
       - name: Install package + test deps
         run: uv sync --extra dev
       - name: Unit tests (100% coverage)
-        run: uv run pytest tests/unit --cov=raft --cov-report=term-missing --cov-fail-under=100 -q
+        run: uv run pytest tests/unit -q
       - name: Integration tests
-        run: uv run pytest tests/integration -q
+        run: uv run pytest tests/integration -q --no-cov
 
   e2e:
     name: E2E (Py ${{ matrix.python-version }})
@@ -61,4 +61,4 @@ jobs:
       - name: Install package + test deps
         run: uv sync --extra dev
       - name: E2E Compose tests
-        run: uv run pytest tests/e2e -m e2e -q --tb=short
+        run: uv run pytest tests/e2e -m e2e -q --tb=short --no-cov -n0

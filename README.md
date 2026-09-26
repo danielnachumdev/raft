@@ -82,9 +82,9 @@ See **[`examples/`](examples/)** for copy-paste samples: operator [`settings.yam
 ```bash
 git clone https://github.com/danielnachumdev/raft.git && cd raft
 uv sync --extra dev
-uv run pytest                              # unit + integration
-uv run pytest tests/unit --cov=raft --cov-fail-under=100
-uv run pytest tests/e2e -m e2e             # needs Docker; all CI Py versions
+uv run pytest                              # unit + integration (-n auto, 100% cov)
+uv run pytest tests/unit                   # unit only (same defaults)
+uv run pytest tests/e2e -m e2e --no-cov -n0  # needs Docker; serial; all CI Py versions
 uv run raft -- --help  # or re-run ./install.sh / uv tool install --force -e .
 ```
 

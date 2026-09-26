@@ -16,6 +16,7 @@ dependencies = [
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
+    "pytest-xdist>=3.6.0",
     "black>=24.8.0",
     "isort>=5.13.2",
 ]
@@ -34,11 +35,16 @@ raft = [
 ]
 
 [tool.pytest.ini_options]
-# Default: unit + integration. E2E is opt-in (needs Docker): pytest tests/e2e -m e2e
+# Default: unit + integration. E2E is opt-in (needs Docker): pytest tests/e2e -m e2e --no-cov -n0
 testpaths = ["tests/unit", "tests/integration"]
 pythonpath = [".", "src"]
 addopts = [
     "--import-mode=importlib",
+    "-n",
+    "auto",
+    "--cov=raft",
+    "--cov-report=term-missing",
+    "--cov-fail-under=100",
 ]
 markers = [
     "unit: fast mocked unit tests",
@@ -50,10 +56,12 @@ markers = [
 branch = true
 source = ["src/raft"]
 relative_files = true
+# pytest-cov + xdist manage parallel data files; do not set parallel=true here.
 
 [tool.coverage.report]
 show_missing = true
 skip_empty = true
+fail_under = 100
 
 [tool.black]
 line-length = 100
@@ -63,8 +71,6 @@ target-version = ["py38"]
 profile = "black"
 line_length = 100
 
+# Same tools as optional-dependencies.dev (uv sync --group dev ≡ --extra dev).
 [dependency-groups]
-dev = [
-    "black>=24.8.0",
-    "isort>=5.13.2",
-]
+dev = ["raft[dev]"]
