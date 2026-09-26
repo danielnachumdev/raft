@@ -176,17 +176,7 @@ class TestAppSpec(ManifestTestCase):
 
     def test_parse_rejects_bad_www_and_build_types(self) -> None:
         path = self.tmp_path / "app.yaml"
-        base = {
-            "apiVersion": "raft/v1",
-            "kind": "App",
-            "metadata": {"name": "a"},
-            "spec": {
-                "source": "local",
-                "publicHost": "a.test",
-                "path": "apps/a",
-                "ports": [{"name": "http", "containerPort": 80}],
-            },
-        }
+        base = self._minimal_local_doc()
         with pytest.raises(RuntimeError, match="spec.www must be a boolean"):
             AppDocument.parse({**base, "spec": {**base["spec"], "www": "yes"}}, path=path)
         with pytest.raises(RuntimeError, match="build.context must be a string"):
@@ -198,6 +188,20 @@ class TestAppSpec(ManifestTestCase):
                 {**base, "spec": {**base["spec"], "build": {"dockerfile": ["Dockerfile"]}}},
                 path=path,
             )
+
+    @staticmethod
+    def _minimal_local_doc() -> dict:
+        return {
+            "apiVersion": "raft/v1",
+            "kind": "App",
+            "metadata": {"name": "a"},
+            "spec": {
+                "source": "local",
+                "publicHost": "a.test",
+                "path": "apps/a",
+                "ports": [{"name": "http", "containerPort": 80}],
+            },
+        }
 
     def test_load_app_file_oserror(self, monkeypatch: pytest.MonkeyPatch) -> None:
         path = self.tmp_path / "app.yaml"

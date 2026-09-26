@@ -6,8 +6,8 @@ from io import StringIO
 
 from raft.adapters.host import HostResources
 from raft.services.ops.status.models import AllocatedResources
-from raft.services.ops.status.report import write_report
-from raft.services.ops.status.service import _host_status
+from raft.services.ops.status.report import StatusReportWriter
+from raft.services.ops.status.service import Status
 
 from ....base import RaftTestCase
 from .fixtures import StatusFixtures
@@ -15,11 +15,16 @@ from .fixtures import StatusFixtures
 
 class TestStatusReportDegraded(RaftTestCase):
     def test_report_degraded_host(self) -> None:
-        empty = _host_status(
+        empty = Status._host_status(
             HostResources(cpus=None, loadavg=None, memory=None, disk=None, uptime_seconds=None)
         )
         assert empty.memory is None and empty.disk_path is None
-        snap = StatusFixtures.snapshot(
+        text = self._render(self._degraded_snapshot(empty))
+        assert "load: -" in text and " / -" in text
+        assert "1.0KiB / 2.0KiB" in text
+
+    def _degraded_snapshot(self, host):
+        return StatusFixtures.snapshot(
             StatusFixtures.container(
                 "app",
                 app="app",
@@ -33,13 +38,10 @@ class TestStatusReportDegraded(RaftTestCase):
                 allocated=AllocatedResources("0.5", "", "0.1", "32M"),
             ),
             StatusFixtures.container("app2", app="app2"),
-            host=empty,
+            host=host,
         )
-        text = self._render(snap)
-        assert "load: -" in text and " / -" in text
-        assert "1.0KiB / 2.0KiB" in text
 
     def _render(self, snap) -> str:
         out = StringIO()
-        assert write_report(snap, out=out, color=False) == 0
+        assert StatusReportWriter().write(snap, out=out, color=False) == 0
         return out.getvalue()

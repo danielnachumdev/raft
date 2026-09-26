@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Optional
+
 from raft.errors import OperatorError, missing_image_doctor_fix
 
 from .....models.registry import AppRegistry
@@ -137,6 +139,16 @@ class AppChecks:
             )
 
     def _git_sync_results(self, ctx: DoctorContext, app, dest) -> list[CheckResult]:
+        missing = self._git_checkout_missing(app, dest)
+        if missing is not None:
+            return missing
+        return [
+            CheckResult(app.compose_id, "sync", "ok", f"git checkout at {app.path}"),
+            *self._contract(ctx, app),
+        ]
+
+    @staticmethod
+    def _git_checkout_missing(app, dest) -> Optional[list[CheckResult]]:
         if not dest.exists():
             return [
                 CheckResult(
@@ -157,33 +169,30 @@ class AppChecks:
                     fix=f"move it aside, then `raft sync {app.name}`",
                 )
             ]
-        return [
-            CheckResult(app.compose_id, "sync", "ok", f"git checkout at {app.path}"),
-            *self._contract(ctx, app),
-        ]
+        return None
 
     def _contract(self, ctx: DoctorContext, app) -> list[CheckResult]:
         path = AppRegistry(ctx.stack.root).path_for(app.name)
         if not path.is_file():
             return [
-                CheckResult(
-                    app.compose_id,
-                    "contract",
-                    "fail",
+                self._contract_fail(
+                    app,
                     f"missing applied manifest {path.relative_to(ctx.stack.root)}",
-                    fix="raft apply --file path/to/app.yaml   # or --git <repo>",
+                    "raft apply --file path/to/app.yaml   # or --git <repo>",
                 )
             ]
         try:
             ctx.stack.contract_for(app)
         except (ValueError, FileNotFoundError, OperatorError) as exc:
             return [
-                CheckResult(
-                    app.compose_id,
-                    "contract",
-                    "fail",
+                self._contract_fail(
+                    app,
                     str(exc).splitlines()[0],
-                    fix="fix the applied manifest or re-apply",
+                    "fix the applied manifest or re-apply",
                 )
             ]
         return [CheckResult(app.compose_id, "contract", "ok", path.as_posix())]
+
+    @staticmethod
+    def _contract_fail(app, detail: str, fix: str) -> CheckResult:
+        return CheckResult(app.compose_id, "contract", "fail", detail, fix=fix)

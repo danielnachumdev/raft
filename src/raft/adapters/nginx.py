@@ -15,6 +15,23 @@ from .docker import DockerStack
 logger = logging.getLogger(__name__)
 
 
+class NginxUpstreamText:
+    """Canonical ``upstream { … }`` snippet body (render + live cutover)."""
+
+    @staticmethod
+    def block(
+        name: str,
+        hostname: str,
+        container_port: int,
+        *,
+        managed_header: bool = True,
+    ) -> str:
+        body = f"upstream {name} {{\n" f"    server {hostname}:{container_port};\n" "}\n"
+        if not managed_header:
+            return body
+        return "# Managed by raft — do not hand-edit while deploying.\n" + body
+
+
 class NginxUpstreams:
     def __init__(self, stack: Stack, docker: DockerStack) -> None:
         self.stack = stack
@@ -53,10 +70,7 @@ class NginxUpstreams:
         upstream = self.stack.upstream_name(app, p)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
-            "# Managed by raft — do not hand-edit while deploying.\n"
-            f"upstream {upstream} {{\n"
-            f"    server {target_hostname}:{p.container_port};\n"
-            "}\n",
+            NginxUpstreamText.block(upstream, target_hostname, p.container_port),
             encoding="utf-8",
         )
         logger.info(

@@ -11,7 +11,6 @@ from typing import Callable, Dict, Optional
 from raft.adapters.docker import DockerStack
 from raft.config.settings_types import HealingConfig
 from raft.errors import OperatorError
-from raft.models.registry import AppRegistry
 from raft.models.stack import Stack
 from raft.services.deploy.locking import app_and_stack_locks
 from raft.services.deploy.orchestrator import Orchestrator
@@ -50,7 +49,7 @@ class Healer:
             logger.debug("healing disabled; skip tick")
             return
         when = time.monotonic() if now is None else now
-        stack = Stack(root=self.home, apps=AppRegistry(self.home).load())
+        stack = Stack.load_apps(self.home)
         for app in stack.apps:
             self._consider(app.name, app.compose_id, when)
 
@@ -177,8 +176,7 @@ class Healer:
         if self.deploy is not None:
             self.deploy(name)
             return
-        stack = Stack(root=self.home, apps=AppRegistry(self.home).load())
-        Orchestrator(stack).ensure_app_deployed(name)
+        Orchestrator(Stack.load_apps(self.home)).ensure_app_deployed(name)
 
 
 def run_heal_forever(

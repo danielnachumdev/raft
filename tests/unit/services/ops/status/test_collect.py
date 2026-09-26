@@ -8,11 +8,13 @@ import pytest
 
 from raft.errors import OperatorError
 from raft.services.ops.status import Status
+from raft.services.ops.status.allocated import StatusAllocated
 from raft.services.ops.status.models import EDGE_CPUS_LIMIT
-from raft.services.ops.status.service import _app_allocated
 
 from ....base import RaftTestCase, make_app, make_stack, write_applied_app
 from .fixtures import StatusFixtures
+
+_HOST_PATCH = "raft.services.ops.status.service.HostProbe.collect"
 
 
 class TestStatusCollect(RaftTestCase):
@@ -23,10 +25,7 @@ class TestStatusCollect(RaftTestCase):
         return status
 
     def _patch_host(self):
-        return patch(
-            "raft.services.ops.status.service.collect_host_resources",
-            return_value=StatusFixtures.host(),
-        )
+        return patch(_HOST_PATCH, return_value=StatusFixtures.host())
 
     def test_collect_running_and_stopped(self) -> None:
         write_applied_app(self.tmp_path, "app")
@@ -72,11 +71,11 @@ class TestStatusCollect(RaftTestCase):
 
     def test_app_allocated_fallback(self) -> None:
         stack = make_stack(self.tmp_path, (make_app("missing"),))
-        allocated = _app_allocated(stack, stack.apps[0])
+        allocated = StatusAllocated.app(stack, stack.apps[0])
         assert allocated.memory_limit == "128M"
         bad = MagicMock()
         bad.spec_for.side_effect = OperatorError("boom")
-        assert _app_allocated(bad, make_app("x")).cpus_limit == "0.50"
+        assert StatusAllocated.app(bad, make_app("x")).cpus_limit == "0.50"
 
     def test_collect_refresh_apps_reloads_registry(self) -> None:
         write_applied_app(self.tmp_path, "app")

@@ -8,10 +8,12 @@ from unittest.mock import patch
 
 from raft.services.ops.status import Status
 from raft.services.ops.status.models import AllocatedResources
-from raft.services.ops.status.report import write_report
+from raft.services.ops.status.report import StatusReportWriter
 
 from ....base import RaftTestCase, make_app, make_stack, write_applied_app
 from .fixtures import StatusFixtures
+
+_HOST_PATCH = "raft.services.ops.status.service.HostProbe.collect"
 
 
 class TestStatusReportHuman(RaftTestCase):
@@ -19,10 +21,7 @@ class TestStatusReportHuman(RaftTestCase):
         write_applied_app(self.tmp_path, "app")
         status = Status(make_stack(self.tmp_path, (make_app("app"),)))
         StatusFixtures.mock_docker_idle(status)
-        with patch(
-            "raft.services.ops.status.service.collect_host_resources",
-            return_value=StatusFixtures.host(),
-        ):
+        with patch(_HOST_PATCH, return_value=StatusFixtures.host()):
             return status, status.collect()
 
     def test_report_human_and_json(self) -> None:
@@ -34,7 +33,7 @@ class TestStatusReportHuman(RaftTestCase):
 
     def _assert_human(self, snap) -> None:
         out = StringIO()
-        assert write_report(snap, out=out, color=False) == 0
+        assert StatusReportWriter().write(snap, out=out, color=False) == 0
         text = out.getvalue()
         assert "Host" in text and "Containers" in text
         assert "NAME" in text and "GROUP" in text
@@ -46,7 +45,7 @@ class TestStatusReportHuman(RaftTestCase):
 
     def _assert_json(self, snap) -> None:
         jout = StringIO()
-        assert write_report(snap, as_json=True, out=jout) == 0
+        assert StatusReportWriter().write(snap, as_json=True, out=jout) == 0
         payload = json.loads(jout.getvalue())
         assert payload["host"]["cpus"] == 4
         assert payload["containers"][0]["service"] == "raft-gate"
@@ -64,7 +63,7 @@ class TestStatusReportHuman(RaftTestCase):
 
     def _render(self, snap) -> str:
         out = StringIO()
-        assert write_report(snap, out=out, color=False) == 0
+        assert StatusReportWriter().write(snap, out=out, color=False) == 0
         return out.getvalue()
 
     def _assert_group_headers(self, text: str) -> None:
@@ -88,25 +87,28 @@ class TestStatusReportHuman(RaftTestCase):
         assert MemoryUsage(1, 2, 3.0).to_dict()["used_percent"] == 3.0
 
     def test_inspect_memory_fills_limit_and_bad_pids(self) -> None:
-        from raft.services.ops.status.service import _container_from_row, _pids
-
-        assert _pids(None) is None and _pids("nope") is None and _pids("7") == 7
-        row = _container_from_row(
-            service="app",
-            role="app",
-            app="app",
-            group=None,
-            allocated=AllocatedResources("0.5", "128M", "0.1", "32M"),
+        assert Status._pids(None) is None and Status._pids("nope") is None
+        assert Status._pids("7") == 7
+        row = Status._container_row(
+            "app",
+            "app",
+            "app",
+            None,
+            AllocatedResources("0.5", "128M", "0.1", "32M"),
             status="running",
             uptime_seconds=10.0,
-            stats_row={
-                "CPUPerc": "1%",
-                "MemUsage": "1MiB / --",
-                "MemPerc": "1%",
-                "NetIO": "0B / 0B",
-                "BlockIO": "0B / 0B",
-                "PIDs": "bad",
-            },
+            stats_row=self._stats_with_bad_pids(),
             inspect_memory=67108864,
         )
         assert row.memory.limit_bytes == 67108864 and row.pids is None
+
+    @staticmethod
+    def _stats_with_bad_pids() -> dict:
+        return {
+            "CPUPerc": "1%",
+            "MemUsage": "1MiB / --",
+            "MemPerc": "1%",
+            "NetIO": "0B / 0B",
+            "BlockIO": "0B / 0B",
+            "PIDs": "bad",
+        }

@@ -62,21 +62,7 @@ class SshDeployKeys:
 
     def _generate_key(self, service: str, *, comment: str) -> None:
         try:
-            self.sh.run(
-                [
-                    "ssh-keygen",
-                    "-t",
-                    "ed25519",
-                    "-f",
-                    str(self.key_path(service)),
-                    "-N",
-                    "",
-                    "-C",
-                    comment,
-                    "-q",
-                ],
-                capture=True,
-            )
+            self.sh.run(self._ssh_keygen_argv(service, comment), capture=True)
         except Exception as exc:
             raise OperatorError(
                 f"ssh-keygen failed while creating a deploy key for {service!r}.\n"
@@ -85,6 +71,20 @@ class SshDeployKeys:
             ) from exc
         os.chmod(self.key_path(service), 0o600)
         os.chmod(self.pub_path(service), 0o644)
+
+    def _ssh_keygen_argv(self, service: str, comment: str) -> list[str]:
+        return [
+            "ssh-keygen",
+            "-t",
+            "ed25519",
+            "-f",
+            str(self.key_path(service)),
+            "-N",
+            "",
+            "-C",
+            comment,
+            "-q",
+        ]
 
     def upsert_ssh_config(self, service: str, *, alias: str, hostname: str) -> None:
         self.ensure_layout()

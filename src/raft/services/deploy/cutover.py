@@ -100,30 +100,40 @@ class CutoverSession:
         self._wait_tmp_reachable()
 
     def _wait_tmp_reachable(self) -> None:
+        self._wait_http_reachable(
+            self.app.tmp_alias,
+            fix=(
+                f"inspect tmp container / upstreams; then: "
+                f"raft redeploy {self.app.name} or raft doctor"
+            ),
+            diagnostics=self._tmp_diagnostics,
+        )
+
+    def _wait_http_reachable(
+        self,
+        hostname: str,
+        *,
+        fix: str,
+        diagnostics,
+    ) -> None:
         strategy = self._strategy()
         if strategy.kind != "http":
             return
         fetch_port = strategy.port.container_port if strategy.port is not None else 80
         wait_until(
-            f"{self.app.tmp_alias} reachable from router",
-            lambda: self.docker.router_can_fetch(
-                self.app.tmp_alias, port=fetch_port, path=strategy.path
-            ),
+            f"{hostname} reachable from router",
+            lambda: self.docker.router_can_fetch(hostname, port=fetch_port, path=strategy.path),
             timeout=strategy.timeout_seconds,
-            fix=(
-                f"inspect tmp container / upstreams; then: "
-                f"raft redeploy {self.app.name} or raft doctor "
-                f"[{strategy.timing_summary()}]"
-            ),
-            diagnostics=self._tmp_diagnostics,
+            fix=f"{fix} [{strategy.timing_summary()}]",
+            diagnostics=diagnostics,
         )
 
     def shift_traffic_to_tmp(self) -> None:
-        self.log(f"point nginx at {self.app.tmp_alias} (old code) + reload + drain")
-        self.nginx.point_at(self.app, self.app.tmp_alias)
-        self.docker.nginx_test_and_reload()
-        self._wait_ready(f"readiness for {self.app.name} via tmp")
-        time.sleep(self.stack.drain_seconds)
+        self._shift_traffic(
+            self.app.tmp_alias,
+            "old code",
+            ready_label=f"readiness for {self.app.name} via tmp",
+        )
 
     def rebuild_stable_service(self) -> None:
         if self.app.source == "docker":
@@ -136,20 +146,12 @@ class CutoverSession:
         self._wait_stable_reachable()
 
     def _wait_stable_reachable(self) -> None:
-        strategy = self._strategy()
-        if strategy.kind != "http":
-            return
-        fetch_port = strategy.port.container_port if strategy.port is not None else 80
-        wait_until(
-            f"{self.app.compose_id} reachable from router",
-            lambda: self.docker.router_can_fetch(
-                self.app.compose_id, port=fetch_port, path=strategy.path
-            ),
-            timeout=strategy.timeout_seconds,
+        self._wait_http_reachable(
+            self.app.compose_id,
             fix=(
                 f"check build/pull logs; traffic may still be on "
                 f"{self.app.tmp_alias} — raft doctor / raft redeploy "
-                f"{self.app.name} [{strategy.timing_summary()}]"
+                f"{self.app.name}"
             ),
             diagnostics=self._app_diagnostics,
         )
@@ -167,10 +169,17 @@ class CutoverSession:
         return self.app.ref
 
     def shift_traffic_to_stable(self) -> None:
-        self.log(f"point nginx at {self.app.compose_id} (new code) + reload + drain")
-        self.nginx.point_at(self.app, self.app.compose_id)
+        self._shift_traffic(
+            self.app.compose_id,
+            "new code",
+            ready_label=f"readiness for {self.app.name} via stable",
+        )
+
+    def _shift_traffic(self, target: str, code_label: str, *, ready_label: str) -> None:
+        self.log(f"point nginx at {target} ({code_label}) + reload + drain")
+        self.nginx.point_at(self.app, target)
         self.docker.nginx_test_and_reload()
-        self._wait_ready(f"readiness for {self.app.name} via stable")
+        self._wait_ready(ready_label)
         time.sleep(self.stack.drain_seconds)
 
     def remove_tmp(self) -> None:

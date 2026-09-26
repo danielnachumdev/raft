@@ -101,30 +101,20 @@ class ReadinessParser:
         return self._resolve_timing(path, **self._raw_timing_fields(raw, path))
 
     def _raw_timing_fields(self, raw: dict[str, Any], path: Path) -> dict[str, Any]:
-        f, i = self._optional_positive_float, self._optional_positive_int
-        return dict(
-            start=f(
-                raw.get("startPeriodSeconds", raw.get("start_period_seconds")),
-                path=path,
-                field="startPeriodSeconds",
+        return {
+            "start": self._opt_float(raw, "startPeriodSeconds", "start_period_seconds", path),
+            "interval": self._opt_float(raw, "intervalSeconds", "interval_seconds", path),
+            "probe_timeout": self._opt_float(
+                raw, "probeTimeoutSeconds", "probe_timeout_seconds", path
             ),
-            interval=f(
-                raw.get("intervalSeconds", raw.get("interval_seconds")),
-                path=path,
-                field="intervalSeconds",
-            ),
-            probe_timeout=f(
-                raw.get("probeTimeoutSeconds", raw.get("probe_timeout_seconds")),
-                path=path,
-                field="probeTimeoutSeconds",
-            ),
-            retries=i(raw.get("retries"), path=path, field="retries"),
-            timeout=f(
-                raw.get("timeoutSeconds", raw.get("timeout_seconds")),
-                path=path,
-                field="timeoutSeconds",
-            ),
-        )
+            "retries": self._optional_positive_int(raw.get("retries"), path=path, field="retries"),
+            "timeout": self._opt_float(raw, "timeoutSeconds", "timeout_seconds", path),
+        }
+
+    def _opt_float(
+        self, raw: dict[str, Any], camel: str, snake: str, path: Path
+    ) -> Optional[float]:
+        return self._optional_positive_float(raw.get(camel, raw.get(snake)), path=path, field=camel)
 
     def _resolve_timing(
         self,

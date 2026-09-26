@@ -114,17 +114,7 @@ class TestPortsAndReadinessCoverage(RaftTestCase):
     def test_readiness_timing_custom_and_auto_bump(self) -> None:
         ports = self._http_ports()
         custom = parse_readiness(
-            {
-                "readiness": {
-                    "type": "tcp",
-                    "port": "http",
-                    "timeoutSeconds": 180,
-                    "startPeriodSeconds": 60,
-                    "intervalSeconds": 3,
-                    "probeTimeoutSeconds": 2,
-                    "retries": 10,
-                }
-            },
+            {"readiness": self._custom_timing_raw()},
             ports,
             PATH,
         )
@@ -136,6 +126,18 @@ class TestPortsAndReadinessCoverage(RaftTestCase):
             PATH,
         )
         assert long_start.timeout_seconds >= 90 + 15 * 2 + 15
+
+    @staticmethod
+    def _custom_timing_raw() -> dict:
+        return {
+            "type": "tcp",
+            "port": "http",
+            "timeoutSeconds": 180,
+            "startPeriodSeconds": 60,
+            "intervalSeconds": 3,
+            "probeTimeoutSeconds": 2,
+            "retries": 10,
+        }
 
     def test_readiness_timing_validation_errors(self) -> None:
         ports = self._http_ports()

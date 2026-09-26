@@ -101,8 +101,17 @@ class Stack:
     def contract_for(self, app: App):
         return self.spec_for(app)
 
+    @classmethod
+    def load_apps(cls, root: Path) -> "Stack":
+        """Load applied apps without mutating the data home.
+
+        Controllers use this when ``~/.raft`` is mounted read-only (no
+        ``ensure_raft_home``). Operator CLI paths should prefer ``load_stack``.
+        """
+        return cls(root=root, apps=AppRegistry(root).load())
+
 
 def load_stack(root: Optional[Path] = None) -> Stack:
     data_home = root if root is not None else raft_home()
     ensure_raft_home(data_home)
-    return Stack(root=data_home, apps=AppRegistry(data_home).load())
+    return Stack.load_apps(data_home)

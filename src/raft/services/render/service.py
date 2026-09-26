@@ -224,22 +224,29 @@ class StackRenderer:
         self._prune_conf_dir(self.gate_stream_dir(), keep={"streams.conf"}, label=None)
 
     def _write_gate_tls(self, fragments: EdgeFragments) -> None:
-        keep = set(fragments.gate_tls)
-        for name, content in fragments.gate_tls.items():
-            (self.gate_tls_dir() / name).write_text(content, encoding="utf-8")
-        for path in self.gate_tls_dir().glob("*.conf"):
-            if path.name not in keep:
-                path.unlink()
-                logger.info("removed stale generated TLS snippet %s", path.name)
+        self._write_named_confs(
+            self.gate_tls_dir(),
+            fragments.gate_tls,
+            stale_label="generated TLS snippet",
+        )
 
     def _write_upstreams(self, fragments: EdgeFragments) -> None:
-        keep = set(fragments.upstreams)
-        for name, content in fragments.upstreams.items():
-            (self.stack.upstreams_dir / name).write_text(content, encoding="utf-8")
-        for path in self.stack.upstreams_dir.glob("*.conf"):
+        self._write_named_confs(
+            self.stack.upstreams_dir,
+            fragments.upstreams,
+            stale_label="upstream",
+        )
+
+    def _write_named_confs(
+        self, directory: Path, mapping: dict[str, str], *, stale_label: str
+    ) -> None:
+        keep = set(mapping)
+        for name, content in mapping.items():
+            (directory / name).write_text(content, encoding="utf-8")
+        for path in directory.glob("*.conf"):
             if path.name not in keep:
                 path.unlink()
-                logger.info("removed stale upstream %s", path.name)
+                logger.info("removed stale %s %s", stale_label, path.name)
 
     @staticmethod
     def _prune_conf_dir(directory: Path, *, keep: set[str], label: Optional[str]) -> None:

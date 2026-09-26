@@ -39,8 +39,7 @@ class Scaler:
 
     def tick(self, *, now: Optional[float] = None) -> None:
         when = time.time() if now is None else now
-        stack = Stack(root=self.home, apps=AppRegistry(self.home).load())
-        for app in stack.apps:
+        for app in Stack.load_apps(self.home).apps:
             spec = self._load_spec(app.name)
             if spec is None or spec.scaling is None:
                 continue
@@ -162,8 +161,7 @@ class Scaler:
         return spec
 
     def _compose_id(self, name: str) -> Optional[str]:
-        stack = Stack(root=self.home, apps=AppRegistry(self.home).load())
-        for app in stack.apps:
+        for app in Stack.load_apps(self.home).apps:
             if app.name == name:
                 return app.compose_id
         return None

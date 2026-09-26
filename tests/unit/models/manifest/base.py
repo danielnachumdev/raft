@@ -75,10 +75,7 @@ class ManifestTestCase(RaftTestCase):
             f"      containerPort: {port}",
             "      expose: http",
         ]
-        if context is not None:
-            lines.extend(["  build:", f"    context: {context}"])
-            if dockerfile:
-                lines.append(f"    dockerfile: {dockerfile}")
+        lines.extend(self._build_block(context, dockerfile))
         lines.extend(
             [
                 "  readiness:",
@@ -88,15 +85,26 @@ class ManifestTestCase(RaftTestCase):
             ]
         )
         if resources:
-            lines.extend(
-                [
-                    "  resources:",
-                    "    limits:",
-                    '      cpu: "250m"',
-                    "      memory: 64Mi",
-                    "    requests:",
-                    '      cpu: "50m"',
-                    "      memory: 16Mi",
-                ]
-            )
+            lines.extend(self._resources_block())
         return lines
+
+    @staticmethod
+    def _build_block(context, dockerfile) -> List[str]:
+        if context is None:
+            return []
+        lines = ["  build:", f"    context: {context}"]
+        if dockerfile:
+            lines.append(f"    dockerfile: {dockerfile}")
+        return lines
+
+    @staticmethod
+    def _resources_block() -> List[str]:
+        return [
+            "  resources:",
+            "    limits:",
+            '      cpu: "250m"',
+            "      memory: 64Mi",
+            "    requests:",
+            '      cpu: "50m"',
+            "      memory: 16Mi",
+        ]

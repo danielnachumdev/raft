@@ -219,16 +219,7 @@ class TestCliErrorRewrite(CliTestCase):
         # Match via argv text so stderr can be empty (covers detail-absent branch).
         err = subprocess.CalledProcessError(
             1,
-            [
-                "docker",
-                "compose",
-                "exec",
-                "-T",
-                "gate",
-                "nginx",
-                "-t",
-                'cannot load certificate "/etc/nginx/certs/web/origin.pem"',
-            ],
+            self._nginx_cert_argv(),
             stderr="",
         )
         self.orch.stop.side_effect = err
@@ -239,3 +230,16 @@ class TestCliErrorRewrite(CliTestCase):
         assert exc.value.code == 1
         err_out = capsys.readouterr().err
         assert "origin.pem" in err_out or "Origin" in err_out
+
+    @staticmethod
+    def _nginx_cert_argv() -> list:
+        return [
+            "docker",
+            "compose",
+            "exec",
+            "-T",
+            "gate",
+            "nginx",
+            "-t",
+            'cannot load certificate "/etc/nginx/certs/web/origin.pem"',
+        ]

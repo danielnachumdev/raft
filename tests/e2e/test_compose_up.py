@@ -92,20 +92,7 @@ class TestE2EMultiApp:
         last = ""
         while time.time() < deadline:
             proc = subprocess.run(
-                [
-                    "docker",
-                    "compose",
-                    "-p",
-                    cp.project,
-                    "-f",
-                    str(cp.compose_file),
-                    "exec",
-                    "-T",
-                    "demo-stack-front",
-                    "getent",
-                    "hosts",
-                    "demo-stack-redis",
-                ],
+                self._getent_argv(cp),
                 check=False,
                 cwd=cp.workdir,
                 capture_output=True,
@@ -117,3 +104,20 @@ class TestE2EMultiApp:
                 return last
             time.sleep(0.5)
         return last
+
+    @staticmethod
+    def _getent_argv(cp: ComposeProject) -> list[str]:
+        return [
+            "docker",
+            "compose",
+            "-p",
+            cp.project,
+            "-f",
+            str(cp.compose_file),
+            "exec",
+            "-T",
+            "demo-stack-front",
+            "getent",
+            "hosts",
+            "demo-stack-redis",
+        ]

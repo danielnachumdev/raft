@@ -4,36 +4,31 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from raft.adapters.host import (
-    collect_host_resources,
-    parse_docker_pair,
-    parse_docker_size,
-    parse_percent,
-)
+from raft.adapters.host import DockerStatsText, HostProbe
 
 
 class TestParseDockerSize:
     def test_units(self) -> None:
-        assert parse_docker_size("0") == 0
-        assert parse_docker_size("1024B") == 1024
-        assert parse_docker_size("1.5KiB") == int(1.5 * 1024)
-        assert parse_docker_size("2MiB") == 2 * 1024**2
-        assert parse_docker_size("1GiB") == 1024**3
-        assert parse_docker_size("1MB") == 1000**2
-        assert parse_docker_size("--") is None
-        assert parse_docker_size("") is None
-        assert parse_docker_size("not-a-size") is None
-        assert parse_docker_size("1.2xB") is None
+        assert DockerStatsText.parse_size("0") == 0
+        assert DockerStatsText.parse_size("1024B") == 1024
+        assert DockerStatsText.parse_size("1.5KiB") == int(1.5 * 1024)
+        assert DockerStatsText.parse_size("2MiB") == 2 * 1024**2
+        assert DockerStatsText.parse_size("1GiB") == 1024**3
+        assert DockerStatsText.parse_size("1MB") == 1000**2
+        assert DockerStatsText.parse_size("--") is None
+        assert DockerStatsText.parse_size("") is None
+        assert DockerStatsText.parse_size("not-a-size") is None
+        assert DockerStatsText.parse_size("1.2xB") is None
 
     def test_pair_and_percent(self) -> None:
-        assert parse_docker_pair("1.5MiB / 64MiB") == (
+        assert DockerStatsText.parse_pair("1.5MiB / 64MiB") == (
             int(1.5 * 1024**2),
             64 * 1024**2,
         )
-        assert parse_docker_pair("1KiB") == (1024, None)
-        assert parse_percent("12.5%") == 12.5
-        assert parse_percent("--") is None
-        assert parse_percent("nope") is None
+        assert DockerStatsText.parse_pair("1KiB") == (1024, None)
+        assert DockerStatsText.parse_percent("12.5%") == 12.5
+        assert DockerStatsText.parse_percent("--") is None
+        assert DockerStatsText.parse_percent("nope") is None
 
 
 class TestCollectHostResources:
@@ -41,7 +36,7 @@ class TestCollectHostResources:
         proc = self._write_proc(tmp_path)
         disk_root = tmp_path / "disk"
         disk_root.mkdir()
-        host = collect_host_resources(disk_path=disk_root, proc=proc)
+        host = HostProbe(disk_path=disk_root, proc=proc).collect()
         self._assert_proc_host(host, disk_root)
 
     def _write_proc(self, tmp_path: Path) -> Path:
@@ -70,7 +65,7 @@ class TestCollectHostResources:
 
     def test_missing_proc_degrades(self, tmp_path: Path) -> None:
         proc = tmp_path / "missing-proc"
-        host = collect_host_resources(disk_path=tmp_path, proc=proc)
+        host = HostProbe(disk_path=tmp_path, proc=proc).collect()
         assert host.loadavg is None
         assert host.memory is None
         assert host.uptime_seconds is None
@@ -82,7 +77,7 @@ class TestCollectHostResources:
         (proc / "meminfo").write_text("Garbage line\nMemTotal: nope\n", encoding="utf-8")
         (proc / "loadavg").write_text("x y\n", encoding="utf-8")
         (proc / "uptime").write_text("nope\n", encoding="utf-8")
-        host = collect_host_resources(disk_path=tmp_path, proc=proc)
+        host = HostProbe(disk_path=tmp_path, proc=proc).collect()
         assert host.memory is None
         assert host.loadavg is None
         assert host.uptime_seconds is None
@@ -93,7 +88,7 @@ class TestCollectHostResources:
         (proc / "loadavg").write_text("a b c\n", encoding="utf-8")
         (proc / "uptime").write_text("\n", encoding="utf-8")
         (proc / "meminfo").write_text("MemTotal: 1000 kB\n", encoding="utf-8")
-        host = collect_host_resources(disk_path=tmp_path, proc=proc)
+        host = HostProbe(disk_path=tmp_path, proc=proc).collect()
         assert host.loadavg is None
         assert host.uptime_seconds is None
         assert host.memory is None  # MemAvailable missing
@@ -107,7 +102,7 @@ class TestCollectHostResources:
             raise OSError("nope")
 
         monkeypatch.setattr("raft.adapters.host.shutil.disk_usage", boom)
-        host = collect_host_resources(disk_path=tmp_path, proc=proc)
+        host = HostProbe(disk_path=tmp_path, proc=proc).collect()
         assert host.disk is None
 
         class Zero:
@@ -115,10 +110,10 @@ class TestCollectHostResources:
             free = 0
 
         monkeypatch.setattr("raft.adapters.host.shutil.disk_usage", lambda _p: Zero())
-        assert collect_host_resources(disk_path=tmp_path, proc=proc).disk is None
+        assert HostProbe(disk_path=tmp_path, proc=proc).collect().disk is None
 
     def test_more_size_units(self) -> None:
-        assert parse_docker_size("1TiB") == 1024**4
-        assert parse_docker_size("1TB") == 1000**4
-        assert parse_docker_size("1.5") == 1
-        assert parse_docker_size("1KiBx") is None
+        assert DockerStatsText.parse_size("1TiB") == 1024**4
+        assert DockerStatsText.parse_size("1TB") == 1000**4
+        assert DockerStatsText.parse_size("1.5") == 1
+        assert DockerStatsText.parse_size("1KiBx") is None

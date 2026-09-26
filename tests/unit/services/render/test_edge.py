@@ -11,11 +11,11 @@ from raft.models.ports import PortSpec
 from raft.models.readiness_spec import ReadinessSpec
 from raft.services.deploy.readiness import ReadinessStrategy
 from raft.services.render.edge import (
+    EdgeHandlers,
     HostEdge,
     HttpEdge,
     StreamEdge,
     TlsEdge,
-    handler_for,
 )
 
 from ...base import RaftTestCase, make_app
@@ -77,9 +77,9 @@ class TestEdgeHandlers(RaftTestCase):
         assert '"587:587"' in host_frag.host_publish
 
     def test_handler_for(self) -> None:
-        assert handler_for("http") is not None
+        assert EdgeHandlers.for_expose("http") is not None
         with pytest.raises(KeyError):
-            handler_for("bogus")
+            EdgeHandlers.for_expose("bogus")
 
 
 class TestReadinessStrategy(RaftTestCase):

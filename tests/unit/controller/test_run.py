@@ -38,8 +38,8 @@ class TestControllerPrereq(ControllerTestCase):
         sh.docker.return_value = version
         sh.compose.return_value = compose
 
-        with patch("raft.controller.smoke.AppRegistry") as registry_cls:
-            registry_cls.return_value.load.return_value = ()
+        with patch("raft.controller.smoke.Stack.load_apps") as load_apps:
+            load_apps.return_value = MagicMock(apps=(), core_services=("raft-gate",))
             run_prereq_smoke(home, sh)
 
         sh.docker.assert_called_once_with(
