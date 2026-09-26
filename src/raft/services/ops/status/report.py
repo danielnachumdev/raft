@@ -11,9 +11,17 @@ from typing import Callable, Optional, TextIO
 from ....models import display_service_label
 from ....ui import BOLD, CYAN, DIM, paint, want_color
 from .formatters import StatusFormatters
-from .models import ContainerStatus, HostStatus, StatusSnapshot
+from .models import (
+    STATUS_SCALED_TO_ZERO,
+    ContainerStatus,
+    HostStatus,
+    StatusSnapshot,
+)
 
 _DEFAULT_LIVE_INTERVAL = 1.0
+_SCALED_HINT = (
+    "  scaled-to-zero means idle scale-to-zero (intentional; traffic wakes the app)."
+)
 
 
 class StatusReportWriter:
@@ -152,17 +160,28 @@ class StatusReportWriter:
         title = paint("Containers", BOLD, stream=stream, color=color)
         print(title, file=stream)
         self._print_table(stream, self._container_table_rows(containers), color=color)
-        hint = paint(
+        print(file=stream)
+        self._write_container_hints(stream, containers, color=color, live_footer=live_footer)
+
+    def _write_container_hints(
+        self,
+        stream: TextIO,
+        containers: tuple[ContainerStatus, ...],
+        *,
+        color: bool,
+        live_footer: bool,
+    ) -> None:
+        limits = paint(
             "  Limits are Compose deploy limits; usage is a live docker stats sample.",
             CYAN,
             stream=stream,
             color=color,
         )
-        print(file=stream)
-        print(hint, file=stream)
+        print(limits, file=stream)
+        if any(c.status == STATUS_SCALED_TO_ZERO for c in containers):
+            print(paint(_SCALED_HINT, CYAN, stream=stream, color=color), file=stream)
         if live_footer:
-            footer = paint("  Ctrl+C to exit", DIM, stream=stream, color=color)
-            print(footer, file=stream)
+            print(paint("  Ctrl+C to exit", DIM, stream=stream, color=color), file=stream)
 
     @staticmethod
     def _mem_cell(c: ContainerStatus) -> str:
@@ -176,7 +195,13 @@ class StatusReportWriter:
     def _container_table_rows(
         self, containers: tuple[ContainerStatus, ...]
     ) -> list[tuple[str, ...]]:
-        headers = (
+        rows: list[tuple[str, ...]] = [self._container_headers()]
+        rows.extend(self._container_row_cells(c) for c in containers)
+        return rows
+
+    @staticmethod
+    def _container_headers() -> tuple[str, ...]:
+        return (
             "NAME",
             "GROUP",
             "STATUS",
@@ -186,21 +211,18 @@ class StatusReportWriter:
             "ALLOC CPU",
             "UPTIME",
         )
-        rows: list[tuple[str, ...]] = [headers]
-        for c in containers:
-            rows.append(
-                (
-                    display_service_label(c.service, c.group),
-                    c.group or "-",
-                    c.status,
-                    StatusFormatters.percent(c.cpu_percent),
-                    self._mem_cell(c),
-                    StatusFormatters.percent(c.memory.used_percent),
-                    c.allocated.cpus_limit,
-                    StatusFormatters.uptime(c.uptime_seconds),
-                )
-            )
-        return rows
+
+    def _container_row_cells(self, c: ContainerStatus) -> tuple[str, ...]:
+        return (
+            display_service_label(c.service, c.group),
+            c.group or "-",
+            c.status,
+            StatusFormatters.percent(c.cpu_percent),
+            self._mem_cell(c),
+            StatusFormatters.percent(c.memory.used_percent),
+            c.allocated.cpus_limit,
+            StatusFormatters.uptime(c.uptime_seconds),
+        )
 
     @staticmethod
     def _print_table(stream: TextIO, rows: list[tuple[str, ...]], *, color: bool) -> None:

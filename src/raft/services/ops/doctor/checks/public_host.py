@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from raft.models.scaling_store import ScalingStore
+
 from .....adapters.http import HttpProbe
 from ..context import DoctorContext
 from ..models import CheckResult
@@ -20,8 +22,18 @@ class PublicHostChecks:
 
     def _probe(self, ctx: DoctorContext, http: HttpProbe, app) -> CheckResult:
         host = app.public_host
+        if ScalingStore(ctx.stack.root).is_scaled_to_zero(app.name):
+            return CheckResult(
+                app.compose_id,
+                "host",
+                "ok",
+                f"Host {host} (scaled to zero)",
+            )
         if http.public_host_ok(app):
             return CheckResult(app.compose_id, "host", "ok", f"Host {host}")
+        return self._host_fail(ctx, app, host)
+
+    def _host_fail(self, ctx: DoctorContext, app, host: str) -> CheckResult:
         detail = f"Host {host} not OK on {ctx.stack.public_base_url}"
         first = self._first_diag_line(ctx, app)
         if first:

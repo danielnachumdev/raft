@@ -7,10 +7,13 @@ from typing import Any, Optional
 
 from ....adapters import DockerStack, Shell
 from ....adapters.host import DockerStatsText, HostProbe, HostResources
+from ....models.scaling_store import ScalingStore
 from ....errors import OperatorError
 from ....models import EDGE_GROUP, Stack
 from .allocated import StatusAllocated
 from .models import (
+    STATUS_NOT_RUNNING,
+    STATUS_SCALED_TO_ZERO,
     AllocatedResources,
     ContainerStatus,
     HostStatus,
@@ -108,17 +111,46 @@ class Status:
     ) -> ContainerStatus:
         cid = id_by_service.get(service)
         if not cid:
-            return self._container_row(
-                service,
-                role,
-                app_name,
-                group,
-                allocated,
-                status="not running",
-                uptime_seconds=None,
-                stats_row=None,
-                inspect_memory=None,
-            )
+            return self._absent_container(service, role, app_name, group, allocated)
+        return self._present_container(
+            service, role, app_name, group, allocated, cid, stats_by_id
+        )
+
+    def _absent_container(
+        self,
+        service: str,
+        role: str,
+        app_name: Optional[str],
+        group: Optional[str],
+        allocated: AllocatedResources,
+    ) -> ContainerStatus:
+        return self._container_row(
+            service,
+            role,
+            app_name,
+            group,
+            allocated,
+            status=self._absent_status(app_name),
+            uptime_seconds=None,
+            stats_row=None,
+            inspect_memory=None,
+        )
+
+    def _absent_status(self, app_name: Optional[str]) -> str:
+        if app_name and ScalingStore(self.stack.root).is_scaled_to_zero(app_name):
+            return STATUS_SCALED_TO_ZERO
+        return STATUS_NOT_RUNNING
+
+    def _present_container(
+        self,
+        service: str,
+        role: str,
+        app_name: Optional[str],
+        group: Optional[str],
+        allocated: AllocatedResources,
+        cid: str,
+        stats_by_id: dict[str, dict[str, Any]],
+    ) -> ContainerStatus:
         runtime = self.docker.container_inspect_runtime(cid) or {}
         inspect_mem = runtime.get("memory_bytes")
         return self._container_row(

@@ -5,6 +5,10 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any, Optional
 
+# Human STATUS column when a Compose service has no container.
+STATUS_NOT_RUNNING = "not running"
+STATUS_SCALED_TO_ZERO = "scaled-to-zero"
+
 # Matches ``x-resources-edge`` in ``share/compose.yaml``.
 EDGE_CPUS_LIMIT = "0.25"
 EDGE_MEMORY_LIMIT = "32M"

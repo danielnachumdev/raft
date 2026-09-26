@@ -10,7 +10,7 @@ import yaml
 from raft.adapters.docker import DockerStack
 from raft.adapters.shell import Shell
 from raft.controller.scale import Scaler
-from raft.controller.scaling_store import ScalingStore
+from raft.models.scaling_store import ScalingStore
 from raft.controller.wake_http import start_wake_http
 from raft.models.stack import load_stack
 from raft.services.render import StackRenderer

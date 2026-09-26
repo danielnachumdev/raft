@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from raft.controller.scale import Scaler
-from raft.controller.scaling_store import AppScalingState, ScalingStore
+from raft.models.scaling_store import AppScalingState, ScalingStore
 from raft.errors import OperatorError
 from raft.models.scaling_spec import ScalingSpec
 

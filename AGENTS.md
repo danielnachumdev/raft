@@ -221,7 +221,7 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 |------|-------|
 | `src/raft/cli/` | Fire root + auth + gate; `deps.py` patched in tests |
 | `src/raft/config/` | `~/.raft` paths, `settings.yaml` (logging + edge + healing), logging setup |
-| `src/raft/models/` | Types + parse/registry: `App`, `AppSpec`, `AppDocument` / fields, `AppRegistry`, `PortSpec`, `Stack`, `ScalingSpec` |
+| `src/raft/models/` | Types + parse/registry: `App`, `AppSpec`, `AppDocument` / fields, `AppRegistry`, `PortSpec`, `Stack`, `ScalingSpec`, `ScalingStore` (runtime scale-to-zero JSON/markers) |
 | `src/raft/adapters/` | `shell`; `docker/` (`DockerStack` + edge/images/inspect); nginx upstreams; HTTP probe; host |
 | `src/raft/services/apply/` | `AppApply`, `manifest_env` (`${VAR}` at apply) |
 | `src/raft/services/auth/` | `GitAuthManager` + ssh/urls helpers |

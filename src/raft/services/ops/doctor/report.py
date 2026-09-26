@@ -223,7 +223,10 @@ class GroupReportWriter:
 
     @staticmethod
     def _ok_ports_note(items: list[CheckResult]) -> str:
-        """Ports to show after OK — from a healthy ``ports`` check detail."""
+        """Detail after OK — prefer scaling note, else healthy ``ports`` detail."""
+        for r in items:
+            if r.check == "scaling" and r.status == "ok" and r.detail.strip():
+                return r.detail.strip()
         for r in items:
             if r.check == "ports" and r.status == "ok" and r.detail.strip():
                 return r.detail.strip()

@@ -17,7 +17,7 @@ from raft.models.scaling_spec import ScalingSpec
 from raft.models.stack import Stack
 from raft.services.deploy.locking import app_and_stack_locks
 
-from .scaling_store import ScalingStore
+from raft.models.scaling_store import ScalingStore
 
 __all__ = ["Scaler", "WAKE_HTTP_PORT"]
 

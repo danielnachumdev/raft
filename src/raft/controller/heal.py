@@ -15,7 +15,7 @@ from raft.models.stack import Stack
 from raft.services.deploy.locking import app_and_stack_locks
 from raft.services.deploy.orchestrator import Orchestrator
 
-from .scaling_store import ScalingStore
+from raft.models.scaling_store import ScalingStore
 
 __all__ = ["Healer", "needs_heal", "run_heal_forever"]
 

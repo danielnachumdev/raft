@@ -9,7 +9,7 @@ import pytest
 
 from raft.config.settings_types import HealingConfig
 from raft.controller.heal import Healer, needs_heal, run_heal_forever
-from raft.controller.scaling_store import ScalingStore
+from raft.models.scaling_store import ScalingStore
 from raft.errors import OperatorError
 
 from .base import ControllerTestCase
