@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 from pathlib import Path
 from typing import List
 
@@ -16,6 +15,7 @@ from raft.models.stack import load_stack
 
 from tests.e2e.shared.compose import apps_only_compose, new_project_name
 from tests.shared.raft_home import RaftHomeFixtures
+from tests.shared.wait import Wait
 
 # Fast CI knobs (Healer.tick(now=…) bypasses wall-clock interval sleep).
 HEAL_INTERVAL_SECONDS = 1.0
@@ -85,29 +85,24 @@ class HealE2EStack:
 
     def wait_not_running(self, *, timeout: float = 45.0) -> None:
         """Compose ``ps -q`` hides stopped containers → raft sees ``missing``."""
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            status, _health = self.docker.service_runtime(self.APP)
-            if status in ("exited", "dead", "missing"):
-                return
-            time.sleep(0.25)
-        status, health = self.docker.service_runtime(self.APP)
-        raise TimeoutError(
-            f"{self.APP} still running ({status!r}/{health!r}) "
-            f"(project={self.project})"
+        Wait.until(
+            lambda: self.docker.service_runtime(self.APP)[0]
+            in ("exited", "dead", "missing"),
+            timeout=timeout,
+            message=(
+                f"{self.APP} still running "
+                f"(project={self.project})"
+            ),
         )
 
     def wait_runtime(self, status: str, *, timeout: float = 45.0) -> None:
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            got, _health = self.docker.service_runtime(self.APP)
-            if got == status:
-                return
-            time.sleep(0.25)
-        got, health = self.docker.service_runtime(self.APP)
-        raise TimeoutError(
-            f"{self.APP} wanted status={status!r}, got {got!r}/{health!r} "
-            f"(project={self.project})"
+        Wait.until(
+            lambda: self.docker.service_runtime(self.APP)[0] == status,
+            timeout=timeout,
+            message=(
+                f"{self.APP} wanted status={status!r} "
+                f"(project={self.project})"
+            ),
         )
 
     @staticmethod

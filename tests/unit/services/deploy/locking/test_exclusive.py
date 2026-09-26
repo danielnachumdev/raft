@@ -21,6 +21,7 @@ from raft.services.deploy.locking import (
 )
 
 from ....base import RaftTestCase
+from ....cta_asserts import assert_logged, assert_operator
 
 
 class TestExclusiveLock(RaftTestCase):
@@ -41,11 +42,16 @@ class TestExclusiveLock(RaftTestCase):
         thread = threading.Thread(target=self._hold, args=(path, held, release))
         thread.start()
         assert held.wait(timeout=2)
-        with caplog.at_level("INFO"), pytest.raises(OperatorError, match="holds the stack lock"):
+
+        with caplog.at_level("INFO"), pytest.raises(OperatorError) as caught:
             with exclusive_lock(path, kind="stack", timeout=0.15):
                 pass
-        assert "waiting for stack lock" in caplog.text
-        assert "acquired stack lock" not in caplog.text
+        assert_operator(
+            caught.value,
+            contains=("stack", "RAFT_LOCK_TIMEOUT_SECONDS"),
+        )
+        assert_logged(caplog, level="INFO", contains=("waiting for", "stack"))
+        assert not any("acquired" in r.getMessage() for r in caplog.records)
         release.set()
         thread.join(timeout=2)
 
@@ -68,9 +74,10 @@ class TestExclusiveLock(RaftTestCase):
             release.set()
             t_a.join(timeout=2)
             t_b.join(timeout=2)
+
         assert order == ["A-start", "A-end", "B"]
-        assert "waiting for stack lock" in caplog.text
-        assert "acquired stack lock" in caplog.text
+        assert_logged(caplog, level="INFO", contains=("waiting for", "stack"))
+        assert_logged(caplog, level="INFO", contains=("acquired", "stack"))
 
     def _slow(self, path, order, held, release) -> None:
         with exclusive_lock(path, kind="stack", timeout=5):
@@ -120,9 +127,11 @@ class TestExclusiveLock(RaftTestCase):
             real_close(fd)
 
         monkeypatch.setattr(os, "close", flaky_close)
-        with pytest.raises(OperatorError, match="holds the stack lock"):
+        with pytest.raises(OperatorError) as caught:
             with exclusive_lock(path, kind="stack", timeout=0.15):
                 pass
+
+        assert_operator(caught.value, contains=("stack", "RAFT_LOCK_TIMEOUT_SECONDS"))
 
     def _flaky_close_success(self, path, monkeypatch) -> None:
         real_close = os.close

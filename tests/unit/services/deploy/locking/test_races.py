@@ -19,6 +19,7 @@ from raft.services.deploy.orchestrator import Orchestrator
 from raft.services.render import StackRenderer
 
 from ....base import RaftTestCase, make_local_stack, write_applied_app
+from ....cta_asserts import assert_operator
 
 
 class TestUpstreamRaceWithoutLock(RaftTestCase):
@@ -166,7 +167,8 @@ class TestOrchestratorUsesLocks(RaftTestCase):
         errors: list[BaseException] = []
         self._start_holder_and_renderer(held, release, errors)
         assert errors
-        assert "holds the stack lock" in str(errors[0])
+
+        assert_operator(errors[0], contains=("stack", "RAFT_LOCK_TIMEOUT_SECONDS"))
 
     def _start_holder_and_renderer(self, held, release, errors) -> None:
         def holder() -> None:

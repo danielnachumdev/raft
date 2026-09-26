@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 from pathlib import Path
 from typing import Optional
 
@@ -17,7 +16,9 @@ from raft.models.stack import load_stack
 from raft.services.render import StackRenderer
 
 from tests.e2e.shared.compose import new_project_name
+from tests.shared.http import HttpClient
 from tests.shared.raft_home import RaftHomeFixtures
+from tests.shared.wait import Wait
 
 APP = "http-only"
 PUBLIC_HOST = "site.test"
@@ -48,6 +49,7 @@ class ScaleE2EStack:
         self.gate_port = gate_port
         self.store = ScalingStore(home)
         self._wake = None
+        self.http = HttpClient(f"http://127.0.0.1:{gate_port}")
 
     @classmethod
     def create(cls, home: Path) -> "ScaleE2EStack":
@@ -90,36 +92,33 @@ class ScaleE2EStack:
         self.close()
 
     def wait_app_running(self, *, timeout: float = 45.0) -> None:
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            status, _ = self.docker.service_runtime(APP)
-            if status == "running":
-                return
-            time.sleep(0.25)
-        raise TimeoutError(f"{APP} not running")
+        Wait.until(
+            lambda: self.docker.service_runtime(APP)[0] == "running",
+            timeout=timeout,
+            message=f"{APP} not running",
+        )
 
     def wait_live(self, *, timeout: float = 45.0) -> None:
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            status, body = self.curl_host()
-            if status == 200 and "Starting" not in body and "Unavailable" not in body:
-                return
-            time.sleep(0.25)
-        raise TimeoutError("gate Host path not live")
+        Wait.until(
+            self._is_live_body,
+            timeout=timeout,
+            message="gate Host path not live",
+        )
+
+    def _is_live_body(self) -> bool:
+        status, body = self.curl_host()
+        return status == 200 and "Starting" not in body and "Unavailable" not in body
 
     def wait_app_stopped(self, *, timeout: float = 45.0) -> None:
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            status, _ = self.docker.service_runtime(APP)
-            if status in ("exited", "dead", "missing"):
-                return
-            time.sleep(0.25)
-        raise TimeoutError(f"{APP} still running")
+        Wait.until(
+            lambda: self.docker.service_runtime(APP)[0]
+            in ("exited", "dead", "missing"),
+            timeout=timeout,
+            message=f"{APP} still running",
+        )
 
     def curl_host(self) -> tuple[int, str]:
-        return http_get_host(
-            f"http://127.0.0.1:{self.gate_port}/", host=PUBLIC_HOST
-        )
+        return self.http.get("/", host=PUBLIC_HOST)
 
     def scale_to_zero(self) -> None:
         self.docker.stop_service(APP)
@@ -157,16 +156,22 @@ class ScaleE2EStack:
 
     @staticmethod
     def _wait_gate_port(docker: DockerStack, *, timeout: float) -> int:
-        deadline = time.time() + timeout
-        while time.time() < deadline:
+        port: Optional[int] = None
+
+        def ready() -> bool:
+            nonlocal port
             result = docker.sh.compose(
                 "port", "raft-gate", "80", capture=True, check=False
             )
             out = (result.stdout or "").strip()
             if result.returncode == 0 and out:
-                return int(out.rsplit(":", 1)[-1])
-            time.sleep(0.25)
-        raise TimeoutError("raft-gate port not published")
+                port = int(out.rsplit(":", 1)[-1])
+                return True
+            return False
+
+        Wait.until(ready, timeout=timeout, message="raft-gate port not published")
+        assert port is not None
+        return port
 
 
 def _edge_services() -> dict:
@@ -206,15 +211,3 @@ def _router_service() -> dict:
             "./nginx/errors:/usr/share/nginx/errors:ro",
         ],
     }
-
-
-def http_get_host(url: str, *, host: str, timeout: float = 5.0) -> tuple[int, str]:
-    import urllib.error
-    import urllib.request
-
-    req = urllib.request.Request(url, headers={"Host": host})
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return int(resp.status), resp.read().decode("utf-8", errors="replace")
-    except urllib.error.HTTPError as exc:
-        return int(exc.code), exc.read().decode("utf-8", errors="replace")

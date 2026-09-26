@@ -1,18 +1,18 @@
-"""Stats helper/pure-function coverage."""
+"""Status helper/pure-function coverage."""
 
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from raft.services.ops.stats.report import (
+from raft.services.ops.status.report import (
     _fmt_bytes,
     _fmt_percent,
     _fmt_uptime,
 )
-from raft.services.ops.stats.service import _parse_started_at
+from raft.services.ops.status.service import _parse_started_at
 
 
-class TestStatsHelpers:
+class TestStatusHelpers:
     def test_parse_started_at(self) -> None:
         started = datetime.now(timezone.utc) - timedelta(hours=2, minutes=5)
         secs = _parse_started_at(started.isoformat().replace("+00:00", "Z"))

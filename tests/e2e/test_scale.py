@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import time
-
 import pytest
 
 from tests.e2e.shared.scale_stack import ScaleE2EStack
+from tests.shared.wait import Wait
 
 pytestmark = pytest.mark.e2e
 
@@ -23,18 +22,15 @@ class TestE2EScaleWake:
             assert status == 200
             assert "Starting" in body
 
-            self._wait_awake(stack)
+            Wait.until(
+                lambda: self._is_live(stack),
+                timeout=45.0,
+                interval=0.5,
+                message="app did not wake from holding-page requests",
+            )
             status, body = stack.curl_host()
             assert status == 200
             assert "Starting" not in body
-
-    def _wait_awake(self, stack: ScaleE2EStack, *, timeout: float = 45.0) -> None:
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            if self._is_live(stack):
-                return
-            time.sleep(0.5)
-        raise TimeoutError("app did not wake from holding-page requests")
 
     @staticmethod
     def _is_live(stack: ScaleE2EStack) -> bool:

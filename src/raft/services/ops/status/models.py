@@ -54,7 +54,7 @@ class IoPair:
 
 
 @dataclass(frozen=True)
-class ContainerStats:
+class ContainerStatus:
     """One Compose service's runtime usage + declared allocation."""
 
     service: str
@@ -94,7 +94,7 @@ class ContainerStats:
 
 
 @dataclass(frozen=True)
-class HostStats:
+class HostStatus:
     cpus: Optional[int]
     loadavg: Optional[tuple[float, float, float]]
     memory: Optional[MemoryUsage]
@@ -129,9 +129,9 @@ class HostStats:
 
 
 @dataclass(frozen=True)
-class StatsSnapshot:
-    host: HostStats
-    containers: tuple[ContainerStats, ...]
+class StatusSnapshot:
+    host: HostStatus
+    containers: tuple[ContainerStatus, ...]
 
     def to_dict(self) -> dict[str, Any]:
         return {

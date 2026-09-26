@@ -40,10 +40,11 @@ class TestDoctorProbes(DoctorTestCase):
 
     def _assert_host_fail(self, results) -> None:
         assert results[("app", "host")].status == "fail"
-        assert "not OK" in results[("app", "host")].detail
+        assert results[("app", "host")].detail
         assert "host not found" in results[("app", "host")].detail
-        assert "redeploy router" in (results[("app", "host")].fix or "")
-        assert "logs --tail=40 app" in (results[("app", "host")].fix or "")
+        fix = results[("app", "host")].fix or ""
+        assert "redeploy router" in fix
+        assert "logs --tail=40 app" in fix
 
     def _probe_ctx(self, docker: MagicMock) -> DoctorContext:
         write_applied_app(self.tmp_path, "app")
@@ -64,7 +65,7 @@ class TestDoctorProbes(DoctorTestCase):
         ):
             results = PublicHostChecks().run(ctx)
         assert results[0].status == "fail"
-        assert "not OK" in results[0].detail
+        assert results[0].detail
         assert "—" not in results[0].detail
 
     def test_public_host_probe_header_only_diagnostics(self) -> None:

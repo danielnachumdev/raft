@@ -1,4 +1,4 @@
-"""Stats, logs, health, and compose enrich."""
+"""Docker stats, logs, health, and compose enrich."""
 
 from unittest.mock import patch
 
@@ -149,7 +149,8 @@ class TestDockerStatsHealth(DockerTestCase):
             has_fix=True,
         )
         enriched = self.docker.enrich_compose_failure(base, services=("app",))
-        assert "host not found" in str(enriched) and enriched.has_fix is True
+        assert "host not found" in str(enriched)
+        assert enriched.has_fix is True
 
     def _enrich_patch(self, body: str):
         return patch.object(

@@ -1,4 +1,4 @@
-"""Collect point-in-time host + raft container resource stats."""
+"""Collect point-in-time host + raft container resource usage."""
 
 from __future__ import annotations
 
@@ -25,11 +25,11 @@ from .models import (
     EDGE_MEMORY_LIMIT,
     EDGE_MEMORY_RESERVATION,
     AllocatedResources,
-    ContainerStats,
-    HostStats,
+    ContainerStatus,
+    HostStatus,
     IoPair,
     MemoryUsage,
-    StatsSnapshot,
+    StatusSnapshot,
 )
 from .report import write_live_report, write_report
 
@@ -96,10 +96,10 @@ def _pids(raw: Any) -> Optional[int]:
         return None
 
 
-def _host_stats(resources: HostResources) -> HostStats:
+def _host_status(resources: HostResources) -> HostStatus:
     mem, total, available = _host_memory(resources)
     disk = resources.disk
-    return HostStats(
+    return HostStatus(
         cpus=resources.cpus,
         loadavg=resources.loadavg,
         memory=mem,
@@ -138,11 +138,11 @@ def _container_from_row(
     uptime_seconds: Optional[float],
     stats_row: Optional[dict[str, Any]],
     inspect_memory: Optional[int],
-) -> ContainerStats:
+) -> ContainerStatus:
     cpu, mem_pct, used, limit, net, block, pids = _row_metrics(stats_row)
     if limit is None and inspect_memory and inspect_memory > 0:
         limit = inspect_memory
-    return ContainerStats(
+    return ContainerStatus(
         service=service,
         role=role,
         app=app,
@@ -187,7 +187,7 @@ def _row_metrics(
     )
 
 
-class Stats:
+class Status:
     """Point-in-time resource snapshot for operators (`raft status`)."""
 
     def __init__(self, stack: Stack) -> None:
@@ -200,10 +200,10 @@ class Stats:
         self.stack = load_stack(self.stack.root)
         self.docker = DockerStack(self.stack, self.sh)
 
-    def collect(self, *, refresh_apps: bool = False) -> StatsSnapshot:
+    def collect(self, *, refresh_apps: bool = False) -> StatusSnapshot:
         if refresh_apps:
             self._reload_stack()
-        host = _host_stats(collect_host_resources(disk_path=self.stack.root))
+        host = _host_status(collect_host_resources(disk_path=self.stack.root))
         targets = self._targets()
         id_by_service = self._container_ids(targets)
         stats_by_id = self.docker.containers_stats(list(id_by_service.values()))
@@ -213,7 +213,7 @@ class Stats:
             )
             for service, role, app_name, group, allocated in targets
         ]
-        return StatsSnapshot(host=host, containers=tuple(containers))
+        return StatusSnapshot(host=host, containers=tuple(containers))
 
     def _targets(
         self,
@@ -255,7 +255,7 @@ class Stats:
         allocated: AllocatedResources,
         id_by_service: dict[str, str],
         stats_by_id: dict[str, dict[str, Any]],
-    ) -> ContainerStats:
+    ) -> ContainerStatus:
         cid = id_by_service.get(service)
         if not cid:
             return self._missing_container(service, role, app_name, group, allocated)
@@ -273,7 +273,7 @@ class Stats:
     @staticmethod
     def _missing_container(
         service, role, app_name, group, allocated
-    ) -> ContainerStats:
+    ) -> ContainerStatus:
         return _container_from_row(
             service=service, role=role, app=app_name, group=group,
             allocated=allocated, status="not running",

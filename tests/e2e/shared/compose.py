@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
-import time
 import uuid
 from pathlib import Path
 from typing import Any, Optional
@@ -13,6 +12,7 @@ from typing import Any, Optional
 import yaml
 
 from raft.models.app import ROUTER_COMPOSE_ID
+from tests.shared.wait import Wait
 
 
 def docker_available() -> bool:
@@ -171,32 +171,9 @@ class ComposeProject:
             return None
 
     def wait_running(self, service: str, *, timeout: float = 60.0) -> None:
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            if self.service_running(service):
-                return
-            time.sleep(0.5)
-        raise TimeoutError(f"service {service!r} not running in project {self.project}")
-
-
-def http_get(url: str, *, timeout: float = 5.0) -> tuple[int, str]:
-    """Minimal GET without requests (stdlib only, all Python versions)."""
-    import urllib.error
-    import urllib.request
-
-    try:
-        with urllib.request.urlopen(url, timeout=timeout) as resp:
-            body = resp.read().decode("utf-8", errors="replace")
-            return int(resp.status), body
-    except urllib.error.HTTPError as exc:
-        return int(exc.code), exc.read().decode("utf-8", errors="replace")
-
-
-def tcp_connect(host: str, port: int, *, timeout: float = 3.0) -> bool:
-    import socket
-
-    try:
-        with socket.create_connection((host, port), timeout=timeout):
-            return True
-    except OSError:
-        return False
+        Wait.until(
+            lambda: self.service_running(service),
+            timeout=timeout,
+            interval=0.5,
+            message=f"service {service!r} not running in project {self.project}",
+        )

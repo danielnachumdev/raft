@@ -10,11 +10,11 @@ from .models import (
     EDGE_MEMORY_LIMIT,
     EDGE_MEMORY_RESERVATION,
     AllocatedResources,
-    ContainerStats,
-    HostStats,
-    StatsSnapshot,
+    ContainerStatus,
+    HostStatus,
+    StatusSnapshot,
 )
-from .service import Stats
+from .service import Status
 
 __all__ = [
     "CONTROLLER_CPUS_LIMIT",
@@ -26,8 +26,8 @@ __all__ = [
     "EDGE_MEMORY_LIMIT",
     "EDGE_MEMORY_RESERVATION",
     "AllocatedResources",
-    "ContainerStats",
-    "HostStats",
-    "Stats",
-    "StatsSnapshot",
+    "ContainerStatus",
+    "HostStatus",
+    "Status",
+    "StatusSnapshot",
 ]

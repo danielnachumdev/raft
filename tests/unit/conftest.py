@@ -4,33 +4,31 @@ from pathlib import Path
 
 import pytest
 
-from raft.config import default_config, reset_logging_for_tests
+from raft.config import default_config
+
+from tests.shared.env import IsolatedRaftEnv
 
 
 @pytest.fixture(autouse=True)
-def isolated_raft_ssh_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    ssh = tmp_path / ".ssh-raft-test"
-    ssh.mkdir()
-    monkeypatch.setenv("RAFT_SSH_DIR", str(ssh))
-    return ssh
+def isolated_raft_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    env = IsolatedRaftEnv.install(tmp_path, monkeypatch)
+    yield env
+    env.reset_logging()
 
 
 @pytest.fixture(autouse=True)
-def isolated_raft_data_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    home = tmp_path / "raft-data-home"
-    home.mkdir()
-    monkeypatch.setenv("RAFT_DATA_HOME", str(home))
-    return home
+def isolated_raft_ssh_dir(isolated_raft_env: IsolatedRaftEnv) -> Path:
+    return isolated_raft_env.ssh_dir
 
 
 @pytest.fixture(autouse=True)
-def isolated_logging(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    log_dir = tmp_path / "test-logs"
-    log_dir.mkdir(exist_ok=True)
-    monkeypatch.setenv("RAFT_LOG_DIR", str(log_dir))
-    reset_logging_for_tests()
-    yield log_dir
-    reset_logging_for_tests()
+def isolated_raft_data_home(isolated_raft_env: IsolatedRaftEnv) -> Path:
+    return isolated_raft_env.home
+
+
+@pytest.fixture(autouse=True)
+def isolated_logging(isolated_raft_env: IsolatedRaftEnv) -> Path:
+    return isolated_raft_env.log_dir
 
 
 @pytest.fixture(autouse=True)

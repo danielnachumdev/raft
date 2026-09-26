@@ -227,7 +227,7 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | `src/raft/services/sync/` | `SourceSync` |
 | `src/raft/services/render/` | `StackRenderer`, `compose_apps`, `gate_nginx`, `edge` handlers, `scaling_gate` (holding/wake snippets) |
 | `src/raft/services/deploy/` | orchestrator, cutover, wait, locking, readiness |
-| `src/raft/services/ops/` | doctor, stats, uninstall, update, certs |
+| `src/raft/services/ops/` | doctor, status, uninstall, update, certs |
 | `src/raft/controller/` | Always-on Compose `raft-controller` (smoke; heal when `healing.enabled`; idle-stop + wake when `spec.scaling`; healer skips `scaledToZero`) |
 | `src/raft/errors/` | Operator errors + CTAs |
 | `src/raft/share/` | Product Compose + nginx templates (synced into data home) |

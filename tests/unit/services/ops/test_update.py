@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Optional
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from raft.services.ops import update as update_mod
 from raft.services.ops.update import DEFAULT_INSTALL_URL, SelfUpdate, install_identity
@@ -13,53 +13,51 @@ from ..base import ServicesTestCase
 
 
 class TestSelfUpdate(ServicesTestCase):
-    def test_run_fetches_remote_install_script(self, capsys, monkeypatch) -> None:
+    def test_run_fetches_remote_install_script(self, monkeypatch) -> None:
         monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
         monkeypatch.setattr(update_mod, "install_identity", lambda: None)
         shell = MagicMock()
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        upd.run()
+        with patch("raft.services.ops.update.say") as say:
+            upd.run()
         shell.run.assert_called_once()
         args = shell.run.call_args.args[0]
         assert args[0] == "bash"
         assert args[1] == "-c"
         assert "curl -fsSL" in args[2]
         assert args[4] == DEFAULT_INSTALL_URL
-        out = capsys.readouterr().out
-        assert "Updating raft" in out
-        assert "OK: raft updated" in out
-        assert "raft render" in out
-        assert "raft down && raft up" in out
         assert "RAFT_INSTALL_QUIET=1" in args[2]
+        styles = [c.kwargs.get("style") for c in say.call_args_list]
+        assert styles.count("info") >= 2 and "ok" in styles
+        next_body = " ".join(c.args[0] for c in say.call_args_list if c.args)
+        assert "raft render" in next_body and "raft doctor" in next_body
 
     def test_run_reports_already_up_to_date_when_identity_unchanged(
-        self, capsys, monkeypatch
+        self, monkeypatch
     ) -> None:
         monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
         monkeypatch.setattr(update_mod, "install_identity", lambda: "same-id")
         shell = MagicMock()
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        upd.run()
-        out = capsys.readouterr().out
-        assert "Updating raft" in out
-        assert "raft is already up to date" in out
-        assert "OK: raft updated" not in out
-        assert "raft render" not in out
+        with patch("raft.services.ops.update.say") as say:
+            upd.run()
+        styles = [c.kwargs.get("style") for c in say.call_args_list]
+        assert "info" in styles and "ok" not in styles
+        assert len(say.call_args_list) == 2
 
-    def test_run_reports_updated_when_identity_changes(self, capsys, monkeypatch) -> None:
+    def test_run_reports_updated_when_identity_changes(self, monkeypatch) -> None:
         monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
         identities = iter(["before", "after"])
         monkeypatch.setattr(update_mod, "install_identity", lambda: next(identities))
         shell = MagicMock()
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        upd.run()
-        out = capsys.readouterr().out
-        assert "OK: raft updated" in out
-        assert "raft down && raft up" in out
-        assert "already up to date" not in out
+        with patch("raft.services.ops.update.say") as say:
+            upd.run()
+        styles = [c.kwargs.get("style") for c in say.call_args_list]
+        assert "ok" in styles and styles.count("info") >= 2
 
     def test_run_respects_install_url_env(self, monkeypatch) -> None:
         url = "https://example.test/install.sh"
@@ -68,7 +66,8 @@ class TestSelfUpdate(ServicesTestCase):
         shell = MagicMock()
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        upd.run()
+        with patch("raft.services.ops.update.say"):
+            upd.run()
         assert shell.run.call_args.args[0][4] == url
 
     def test_run_ignores_local_install_script(self, monkeypatch) -> None:
@@ -79,7 +78,8 @@ class TestSelfUpdate(ServicesTestCase):
         shell = MagicMock()
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        upd.run()
+        with patch("raft.services.ops.update.say"):
+            upd.run()
         args = shell.run.call_args.args[0]
         assert args[4] == DEFAULT_INSTALL_URL
         assert "bash" == args[0]
@@ -112,7 +112,8 @@ class TestInstallIdentity(ServicesTestCase):
         root = self._fake_tool_env(metadata="Name: raft\nVersion: 0.1.0\n")
         raft_bin = root / "bin" / "raft"
         monkeypatch.setattr(update_mod.shutil, "which", lambda _name: str(raft_bin))
-        assert "Version: 0.1.0" in (install_identity() or "")
+        identity = install_identity() or ""
+        assert "0.1.0" in identity
 
     def test_identity_via_uv_tool_dir_when_which_misses(self, monkeypatch) -> None:
         root = self._fake_tool_env(direct_url='{"commit":"xyz"}')

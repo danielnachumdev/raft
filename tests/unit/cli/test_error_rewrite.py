@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import subprocess
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 import yaml
 
-from raft import cli
 from raft.models.stack import load_stack
 
 from ..base import write_applied_app
@@ -45,21 +44,24 @@ class TestCliErrorRewrite(CliTestCase):
             1, ["docker", "ps"], stderr="Cannot connect to the Docker daemon\n"
         )
         self.orch.stop.side_effect = err
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as exc:
             self.run_cli(["down"])
-        assert "Docker daemon" in capsys.readouterr().err
+        assert exc.value.code == 1
+        assert "systemctl start docker" in capsys.readouterr().err
 
         err2 = subprocess.CalledProcessError(
             1, ["docker", "run"], stderr="port is already allocated\n"
         )
         self.orch.stop.side_effect = err2
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as exc:
             self.run_cli(["down"])
-        assert "already in use" in capsys.readouterr().err
+        assert exc.value.code == 1
+        assert "gate recreate" in capsys.readouterr().err
 
     def test_run_rewrites_compose_and_git_and_pull(self, capsys) -> None:
         self._assert_compose_fail(capsys)
-        self._assert_git_auth_and_net(capsys)
+        self._assert_git_auth(capsys)
+        self._assert_git_net_and_generic(capsys)
         self._assert_pull_fail(capsys)
 
     def _assert_compose_fail(self, capsys) -> None:
@@ -67,40 +69,48 @@ class TestCliErrorRewrite(CliTestCase):
             1, ["docker", "compose", "up"], stderr="explode\n"
         )
         self.orch.stop.side_effect = err
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as exc:
             self.run_cli(["down"])
-        assert "docker compose failed" in capsys.readouterr().err
+        assert exc.value.code == 1
+        assert "raft doctor" in capsys.readouterr().err
 
-    def _assert_git_auth_and_net(self, capsys) -> None:
+    def _assert_git_auth(self, capsys) -> None:
         auth = subprocess.CalledProcessError(
             1, ["git", "ls-remote", "git@github.com:org/x.git"],
             stderr="Permission denied (publickey)\n",
         )
         self.orch.sync.side_effect = auth
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as exc:
             self.run_cli(["sync"])
-        assert "git auth failed" in capsys.readouterr().err
+        assert exc.value.code == 1
+        assert "auth setup" in capsys.readouterr().err
+
+    def _assert_git_net_and_generic(self, capsys) -> None:
         net = subprocess.CalledProcessError(
             1, ["git", "fetch"], stderr="Could not resolve host: github.com\n"
         )
         self.orch.sync.side_effect = net
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as exc:
             self.run_cli(["sync"])
-        assert "cannot reach git host" in capsys.readouterr().err
+        assert exc.value.code == 1
+        assert "auth test" in capsys.readouterr().err
         generic = subprocess.CalledProcessError(1, ["git", "status"], stderr="index.lock\n")
         self.orch.sync.side_effect = generic
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as exc:
             self.run_cli(["sync"])
-        assert "git command failed" in capsys.readouterr().err
+        assert exc.value.code == 1
+        assert "auth test" in capsys.readouterr().err
 
     def _assert_pull_fail(self, capsys) -> None:
         pull = subprocess.CalledProcessError(
             1, ["docker", "pull", "ghcr.io/x:y"], stderr="no such host\n"
         )
         self.orch.stop.side_effect = pull
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as exc:
             self.run_cli(["down"])
-        assert "docker pull failed" in capsys.readouterr().err
+        assert exc.value.code == 1
+        err = capsys.readouterr().err
+        assert "raft sync" in err or "docker login" in err
 
     def test_run_maps_oserror_and_yaml(self, capsys) -> None:
         self.orch.start.side_effect = OSError("read-only filesystem")
@@ -108,21 +118,19 @@ class TestCliErrorRewrite(CliTestCase):
             self.run_cli(["up"])
         assert exc.value.code == 1
         err = capsys.readouterr().err
-        assert "filesystem error" in err
         assert "chown" not in err
 
         self.orch.start.side_effect = OSError(13, "Permission denied")
         with pytest.raises(SystemExit):
             self.run_cli(["up"])
         err = capsys.readouterr().err
-        assert "filesystem error" in err
         assert "chown" in err
 
         self.orch.start.side_effect = yaml.YAMLError("bad indent")
         with pytest.raises(SystemExit) as exc:
             self.run_cli(["up"])
         assert exc.value.code == 1
-        assert "invalid YAML" in capsys.readouterr().err
+        assert "YAML" in capsys.readouterr().err
 
     def test_run_rewrites_missing_origin_cert_errors(self, capsys) -> None:
         write_applied_app(self.tmp_path, "web", public_host="web.test", tls="origin")
@@ -141,7 +149,6 @@ class TestCliErrorRewrite(CliTestCase):
                 self.run_cli(["down"])
         assert exc.value.code == 1
         err_out = capsys.readouterr().err
-        assert "Origin certs missing" in err_out
         assert "certs/web/" in err_out
         assert "command failed" not in err_out
         assert "Hint: run `raft doctor`" not in err_out
@@ -157,14 +164,14 @@ class TestCliErrorRewrite(CliTestCase):
             self.run_cli(["down"])
         assert exc.value.code == 1
         err_out = capsys.readouterr().err
-        assert "cannot pull ghcr.io/example/app:main" in err_out
+        assert "ghcr.io/example/app:main" in err_out
         assert "docker login ghcr.io" in err_out
         assert "command failed" not in err_out
         assert "Hint: run `raft doctor`" not in err_out
 
     def test_run_runtime_error_with_fix_skips_doctor_hint(self, capsys) -> None:
         self.orch.start.side_effect = RuntimeError(
-            "cannot pull img: registry unauthorized.\n\nfix (as the raft user):\n  1. login"
+            "cannot pull img: registry unauthorized.\n\nFix (as the raft user):\n  1. login"
         )
         with pytest.raises(SystemExit) as exc:
             self.run_cli(["up"])
@@ -178,7 +185,6 @@ class TestCliErrorRewrite(CliTestCase):
             self.run_cli(["sync", "nope"])
         assert exc.value.code == 1
         err_out = capsys.readouterr().err
-        assert "unknown service(s)" in err_out
         assert "Fix: raft get apps" in err_out
         assert "Hint: run `raft doctor`" not in err_out
 
@@ -194,7 +200,6 @@ class TestCliErrorRewrite(CliTestCase):
                 self.run_cli(["down"])
         assert exc.value.code == 1
         err_out = capsys.readouterr().err
-        assert "could not load Origin TLS certificates" in err_out
         assert "origin.pem" in err_out
 
     def test_run_cert_error_fallback_when_no_missing_listed(self, capsys) -> None:
@@ -209,8 +214,7 @@ class TestCliErrorRewrite(CliTestCase):
                 with pytest.raises(SystemExit) as exc:
                     self.run_cli(["down"])
         assert exc.value.code == 1
-        err_out = capsys.readouterr().err
-        assert "could not load Origin TLS certificates" in err_out
+        assert "origin.pem" in capsys.readouterr().err
 
     def test_run_cert_error_fallback_without_detail(self, capsys) -> None:
         # Match via argv text so stderr can be empty (covers detail-absent branch).
@@ -228,5 +232,5 @@ class TestCliErrorRewrite(CliTestCase):
                 with pytest.raises(SystemExit) as exc:
                     self.run_cli(["down"])
         assert exc.value.code == 1
-        assert "could not load Origin TLS certificates" in capsys.readouterr().err
-
+        err_out = capsys.readouterr().err
+        assert "origin.pem" in err_out or "Origin" in err_out

@@ -10,6 +10,7 @@ from raft.services.deploy.cutover import CutoverSession
 
 from ....base import make_app, make_local_stack, make_stack, write_applied_app
 from .base import CutoverTestCase
+from ....cta_asserts import assert_logged, assert_operator
 
 
 class TestCutoverWait(CutoverTestCase):
@@ -67,6 +68,7 @@ class TestCutoverWait(CutoverTestCase):
         from raft.errors import OperatorError
         from raft.services.deploy.wait import wait_until
 
+
         sleep_p, mono_p = self._clock_patches(0.02)
         with caplog.at_level("ERROR"), sleep_p, mono_p:
             with pytest.raises(OperatorError) as exc:
@@ -75,24 +77,27 @@ class TestCutoverWait(CutoverTestCase):
                     progress_every=0, fix="raise readiness.timeoutSeconds",
                     diagnostics=lambda: "--- svc (running/starting) ---",
                 )
-        message = str(exc.value)
-        assert "timed out waiting for: demo ready" in message
-        assert "budget" in message and "running/starting" in message
-        assert "raise readiness.timeoutSeconds" in message
-        assert "timed out waiting for: demo ready" in caplog.text
+        assert_operator(
+            exc.value,
+            contains=("demo ready", "running/starting"),
+            fix_label="Fix: raise readiness.timeoutSeconds",
+        )
+        assert_logged(caplog, level="ERROR", contains=("demo ready",))
 
     def test_wait_until_logs_progress(self, caplog) -> None:
         from raft.errors import OperatorError
         from raft.services.deploy.wait import wait_until
 
+
         sleep_p, mono_p = self._clock_patches(0.1)
         with caplog.at_level("INFO"), sleep_p, mono_p:
-            with pytest.raises(OperatorError, match="timed out waiting"):
+            with pytest.raises(OperatorError) as caught:
                 wait_until(
                     "slow ready", lambda: False, timeout=0.25,
                     interval=0.05, progress_every=0.1,
                 )
-        assert "still waiting for: slow ready" in caplog.text
+        assert_operator(caught.value, has_fix=False, contains=("slow ready",))
+        assert_logged(caplog, level="INFO", contains=("slow ready",))
 
     def test_abort_cleanup_restores_stable_and_removes_tmp(self) -> None:
         s = self.session
@@ -104,14 +109,15 @@ class TestCutoverWait(CutoverTestCase):
         assert s.tmp_active is False
 
     def test_abort_cleanup_swallows_restore_and_remove_errors(self, caplog) -> None:
+
         s = self.session
         s.tmp_active = True
         s.nginx.point_at.side_effect = RuntimeError("nginx down")
         s.docker.remove_container.side_effect = RuntimeError("rm failed")
         with caplog.at_level("WARNING"):
             s.abort_cleanup()
-        assert "could not point nginx" in caplog.text
-        assert "could not remove" in caplog.text
+        assert_logged(caplog, level="WARNING", contains=(s.app.compose_id,))
+        assert_logged(caplog, level="WARNING", contains=(s.app.tmp_container,))
         assert s.tmp_active is True
 
     def test_abort_cleanup_noop_when_tmp_inactive(self) -> None:
@@ -128,6 +134,7 @@ class TestCutoverWait(CutoverTestCase):
         wait.assert_not_called()
 
     def test_log_prints(self, caplog) -> None:
+
         with caplog.at_level("INFO"):
             self.session.log("hello")
-        assert "hello" in caplog.text
+        assert_logged(caplog, level="INFO", contains=("hello",))

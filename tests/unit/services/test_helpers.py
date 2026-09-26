@@ -4,9 +4,11 @@ from unittest.mock import patch
 
 import pytest
 
+from raft.errors import OperatorError
 from raft.services.deploy.cutover import DEPLOY_CUTOVER
 from raft.services.deploy.wait import wait_until
 
+from ..cta_asserts import assert_operator
 from .base import ServicesTestCase
 
 
@@ -22,11 +24,12 @@ class TestWaitUntil:
         assert calls["n"] == 2
 
     def test_times_out(self) -> None:
-        with pytest.raises(RuntimeError, match="timed out waiting"):
+        with pytest.raises(OperatorError) as caught:
             wait_until("never", lambda: False, timeout=0.05, interval=0.01)
+        assert_operator(caught.value, has_fix=False, contains=("never",))
 
     def test_times_out_includes_diagnostics(self) -> None:
-        with pytest.raises(RuntimeError, match="host not found") as caught:
+        with pytest.raises(OperatorError) as caught:
             wait_until(
                 "app_tmp reachable from router",
                 lambda: False,
@@ -38,15 +41,17 @@ class TestWaitUntil:
                     'nginx: [emerg] host not found in upstream "old:8000"'
                 ),
             )
-        text = str(caught.value)
-        assert "timed out waiting for: app_tmp" in text
-        assert "Fix: raft doctor" in text
+        assert_operator(
+            caught.value,
+            contains=("app_tmp", "host not found"),
+            fix_label="Fix: raft doctor",
+        )
 
     def test_diagnostics_failure_does_not_mask_timeout(self) -> None:
         def boom() -> str:
             raise RuntimeError("diag failed")
 
-        with pytest.raises(RuntimeError, match="timed out waiting"):
+        with pytest.raises(OperatorError) as caught:
             wait_until(
                 "never",
                 lambda: False,
@@ -54,6 +59,7 @@ class TestWaitUntil:
                 interval=0.01,
                 diagnostics=boom,
             )
+        assert_operator(caught.value, has_fix=False, contains=("never",))
 
 
 class TestDeployCutover:
@@ -75,20 +81,24 @@ class TestOrchestratorPolicy(ServicesTestCase):
         self.orch = self.orchestrator(mock_deps=False)
 
     def test_redeploy_refuses_gate(self) -> None:
-        with pytest.raises(RuntimeError, match="raft gate recreate"):
+        with pytest.raises(OperatorError, match="gate recreate"):
             self.orch.redeploy("gate")
 
     def test_recreate_gate_requires_running(self) -> None:
         with patch.object(self.orch.docker, "running_services", return_value=["router"]):
-            with pytest.raises(RuntimeError, match="gate is not running"):
+            with pytest.raises(OperatorError, match="gate"):
                 self.orch.recreate_gate()
 
     def test_start_refuses_if_running(self) -> None:
-        with patch.object(self.orch.docker, "running_services", return_value=["raft-gate", "raft-router", "raft-controller"]):
-            with pytest.raises(RuntimeError, match="already running"):
+        with patch.object(
+            self.orch.docker,
+            "running_services",
+            return_value=["raft-gate", "raft-router", "raft-controller"],
+        ):
+            with pytest.raises(OperatorError, match="already running"):
                 self.orch.start()
 
     def test_redeploy_router_requires_gate(self) -> None:
         with patch.object(self.orch.docker, "running_services", return_value=["router"]):
-            with pytest.raises(RuntimeError, match="gate is not running"):
+            with pytest.raises(OperatorError, match="gate"):
                 self.orch.redeploy_router()

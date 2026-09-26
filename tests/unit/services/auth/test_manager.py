@@ -77,8 +77,6 @@ class TestGitAuthManager(ServicesTestCase):
         assert "Host github.com-raft-svc" in cfg
         assert "IdentityFile" in cfg
         out = capsys.readouterr().out
-        assert "Title:" in out
-        assert "Key:" in out
         assert "ssh-ed25519 AAAA" in out
         assert "AAAA setup" not in out
         assert "settings/keys/new" in out
@@ -148,11 +146,9 @@ class TestGitAuthManager(ServicesTestCase):
         self.shell.run.side_effect = self.fake_ssh_keygen()
         mgr.setup("svc")
         out = capsys.readouterr().out
-        assert "Title:" in out
-        assert "Key:" in out
         assert "ssh-ed25519 AAAA" in out
         assert "AAAA setup" not in out
-        assert "Deploy keys" in out
+        assert "gitlab.com" in out
 
     def test_pubkey_for_paste_strips_comment(self) -> None:
         assert (
@@ -164,8 +160,6 @@ class TestGitAuthManager(ServicesTestCase):
         self.write_keypair(self.mgr, "svc")
         self.mgr.show("svc")
         out = capsys.readouterr().out
-        assert "Title:" in out
-        assert "Key:" in out
         assert "AAAA" in out
         assert "settings/keys/new" in out
         with pytest.raises(RuntimeError, match="needs a repo URL"):

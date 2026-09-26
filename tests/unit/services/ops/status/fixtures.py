@@ -1,4 +1,4 @@
-"""Shared host/snapshot fixtures for stats tests."""
+"""Shared host/snapshot fixtures for status tests."""
 
 from __future__ import annotations
 
@@ -7,17 +7,17 @@ from typing import Optional
 from unittest.mock import MagicMock
 
 from raft.adapters.host import HostDisk, HostMemory, HostResources
-from raft.services.ops.stats.models import (
+from raft.services.ops.status.models import (
     AllocatedResources,
-    ContainerStats,
-    HostStats,
+    ContainerStatus,
+    HostStatus,
     IoPair,
     MemoryUsage,
-    StatsSnapshot,
+    StatusSnapshot,
 )
 
 
-class StatsFixtures:
+class StatusFixtures:
     @staticmethod
     def host() -> HostResources:
         return HostResources(
@@ -40,8 +40,8 @@ class StatsFixtures:
         )
 
     @staticmethod
-    def empty_host_stats() -> HostStats:
-        return HostStats(
+    def empty_host_status() -> HostStatus:
+        return HostStatus(
             cpus=1,
             loadavg=None,
             memory=None,
@@ -80,8 +80,8 @@ class StatsFixtures:
         mem_pct: Optional[float] = 50.0,
         allocated: Optional[AllocatedResources] = None,
         pids: Optional[int] = 1,
-    ) -> ContainerStats:
-        return ContainerStats(
+    ) -> ContainerStatus:
+        return ContainerStatus(
             service=service,
             role=role,
             app=app,
@@ -97,15 +97,15 @@ class StatsFixtures:
         )
 
     @classmethod
-    def snapshot(cls, *containers: ContainerStats, host: Optional[HostStats] = None) -> StatsSnapshot:
-        return StatsSnapshot(host=host or cls.empty_host_stats(), containers=containers)
+    def snapshot(cls, *containers: ContainerStatus, host: Optional[HostStatus] = None) -> StatusSnapshot:
+        return StatusSnapshot(host=host or cls.empty_host_status(), containers=containers)
 
     @staticmethod
-    def mock_docker_idle(stats) -> MagicMock:
+    def mock_docker_idle(status) -> MagicMock:
         docker = MagicMock()
         docker.try_service_container_id.return_value = None
         docker.containers_stats.return_value = {}
-        stats.docker = docker
+        status.docker = docker
         return docker
 
     @staticmethod

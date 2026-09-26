@@ -10,6 +10,7 @@ import yaml
 from raft.errors import OperatorError
 from raft.services.apply.manifest_env import ManifestTextExpander
 
+from ....cta_asserts import assert_operator
 from .fixtures import (
     DEFAULT_PLACEHOLDER_CASES,
     EXPECTED_EXPANDED_SNIPPET,
@@ -38,9 +39,8 @@ class TestRequiredPlaceholder:
         with pytest.raises(OperatorError, match=r"undefined variable FOO in \$\{FOO\}") as caught:
             ManifestTextExpander(env).expand(text)
 
-        error = str(caught.value)
-        assert "export FOO=" in error
-        assert "--env-file" in error
+
+        assert_operator(caught.value, contains=("--env-file", "FOO"))
 
     def test_errors_when_variable_empty(self) -> None:
         text = "x: ${FOO}"
@@ -57,9 +57,8 @@ class TestRequiredPlaceholder:
         with pytest.raises(OperatorError, match="manifest at /tmp/app.yaml") as caught:
             ManifestTextExpander(env, path=path).expand(text)
 
-        error = str(caught.value)
-        assert "export FOO=" in error
-        assert "--env-file" in error
+
+        assert_operator(caught.value, contains=("--env-file", "FOO"))
 
 
 class TestDefaultPlaceholder:
@@ -133,8 +132,8 @@ class TestInvalidPlaceholder:
         with pytest.raises(OperatorError, match=case.match) as caught:
             ManifestTextExpander(case.env).expand(case.text)
 
-        error = str(caught.value)
-        assert "$${ for a literal" in error or "$${" in error
+
+        assert_operator(caught.value, contains=("$${",))
 
 
 class TestMultiplePlaceholders:

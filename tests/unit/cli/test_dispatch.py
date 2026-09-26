@@ -27,35 +27,35 @@ class TestCliDispatch(CliTestCase):
         doctor.report.assert_called_once()
 
     def test_status_dispatches(self) -> None:
-        stats = MagicMock()
-        stats.report.return_value = 0
+        status = MagicMock()
+        status.report.return_value = 0
         with patch("raft.cli.deps.load_stack", return_value=self.stack):
-            with patch("raft.cli.deps.Stats", return_value=stats) as ctor:
+            with patch("raft.cli.deps.Status", return_value=status) as ctor:
                 assert cli.main(["status"]) == 0
                 assert cli.main(["status", "--json"]) == 0
                 assert cli.main(["status", "--live"]) == 0
         ctor.assert_called_with(self.stack)
-        assert stats.report.call_args_list[0].kwargs == {
+        assert status.report.call_args_list[0].kwargs == {
             "as_json": False,
             "live": False,
         }
-        assert stats.report.call_args_list[1].kwargs == {
+        assert status.report.call_args_list[1].kwargs == {
             "as_json": True,
             "live": False,
         }
-        assert stats.report.call_args_list[2].kwargs == {
+        assert status.report.call_args_list[2].kwargs == {
             "as_json": False,
             "live": True,
         }
 
     def test_status_unknown_flag_fails_before_report(self, capsys) -> None:
-        stats = MagicMock()
+        status = MagicMock()
         with patch("raft.cli.deps.load_stack", return_value=self.stack):
-            with patch("raft.cli.deps.Stats", return_value=stats):
+            with patch("raft.cli.deps.Status", return_value=status):
                 with pytest.raises(SystemExit) as exc:
                     cli.main(["status", "--leiv"])
         assert exc.value.code == 2
-        stats.report.assert_not_called()
+        status.report.assert_not_called()
         assert "Could not consume arg: --leiv" in capsys.readouterr().err
 
     def test_up_unknown_flag_fails_before_start(self, capsys) -> None:

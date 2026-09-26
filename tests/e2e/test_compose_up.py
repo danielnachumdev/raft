@@ -8,7 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from tests.e2e.shared.compose import ComposeProject, http_get, tcp_connect
+from tests.e2e.shared.compose import ComposeProject
+from tests.shared.http import HttpClient, tcp_connect
 
 pytestmark = pytest.mark.e2e
 
@@ -22,7 +23,7 @@ class TestE2ESingleHttp:
         cp.wait_running("http-only")
         port = cp.published_port("http-only", 5678)
         assert port is not None
-        status, _body = http_get(f"http://127.0.0.1:{port}/")
+        status, _body = HttpClient(f"http://127.0.0.1:{port}").get("/")
         assert status == 200
 
 

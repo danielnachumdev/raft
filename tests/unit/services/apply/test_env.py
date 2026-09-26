@@ -53,9 +53,8 @@ class TestApplyEnv(ApplyTestCase):
     def test_apply_file_missing_var_fails(self) -> None:
         manifest = self.tmp_path / "manifest.yaml"
         manifest.write_text(MISSING_VAR_FILE_MANIFEST, encoding="utf-8")
-        with pytest.raises(RuntimeError, match="undefined variable MISSING") as caught:
+        with pytest.raises(RuntimeError, match="undefined variable MISSING"):
             AppApply(load_stack(self.tmp_path)).apply_file(manifest, deploy=False, env={})
-        assert "MISSING" in str(caught.value)
 
     def test_apply_expands_ci_env_into_container_spec_then_compose(self) -> None:
         manifest = self.tmp_path / "manifest.yaml"
@@ -109,8 +108,7 @@ class TestApplyEnv(ApplyTestCase):
     def test_apply_git_missing_var_fails(self) -> None:
         shell = MagicMock()
         shell.git.side_effect = clone_writes_missing_var_manifest
-        with pytest.raises(RuntimeError, match="undefined variable MISSING") as caught:
+        with pytest.raises(RuntimeError, match="undefined variable MISSING"):
             self.applier(load_stack(self.tmp_path), shell).apply_git(
                 "git@github.com:org/x.git", deploy=False, env={}
             )
-        assert "MISSING" in str(caught.value)

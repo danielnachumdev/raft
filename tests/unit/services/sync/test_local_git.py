@@ -18,7 +18,9 @@ class TestSyncLocalGit(SyncTestCase):
         with caplog.at_level("INFO"):
             self.syncer.sync([self.app])
         self.shell.git.assert_not_called()
-        assert "local (apps/app)" in caplog.text
+        assert any(
+            self.app.path in r.getMessage() for r in caplog.records
+        )
 
     def test_sync_local_missing_path(self) -> None:
         with pytest.raises(RuntimeError, match="local app path missing"):

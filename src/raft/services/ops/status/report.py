@@ -10,7 +10,7 @@ from typing import Callable, Optional, TextIO
 
 from ....models import display_service_label
 from ....ui import BOLD, CYAN, DIM, paint, want_color
-from .models import ContainerStats, HostStats, StatsSnapshot
+from .models import ContainerStatus, HostStatus, StatusSnapshot
 
 _DEFAULT_LIVE_INTERVAL = 1.0
 
@@ -84,7 +84,7 @@ def _fmt_load(loadavg: Optional[tuple[float, float, float]]) -> str:
     return " ".join(f"{x:.2f}" for x in loadavg)
 
 
-def _write_host(stream: TextIO, host: HostStats, *, color: bool) -> None:
+def _write_host(stream: TextIO, host: HostStatus, *, color: bool) -> None:
     title = paint("Host", BOLD, stream=stream, color=color)
     print(title, file=stream)
     cpus = str(host.cpus) if host.cpus is not None else "-"
@@ -95,7 +95,7 @@ def _write_host(stream: TextIO, host: HostStats, *, color: bool) -> None:
     print(file=stream)
 
 
-def _host_memory_line(host: HostStats) -> str:
+def _host_memory_line(host: HostStatus) -> str:
     mem_used = host.memory.used_bytes if host.memory else None
     return (
         f"Memory: {_fmt_bytes(mem_used)} / {_fmt_bytes(host.memory_total_bytes)}"
@@ -104,7 +104,7 @@ def _host_memory_line(host: HostStats) -> str:
     )
 
 
-def _host_disk_line(host: HostStats) -> str:
+def _host_disk_line(host: HostStatus) -> str:
     disk_path = host.disk_path or "-"
     return (
         f"Disk ({disk_path}): {_fmt_bytes(host.disk_used_bytes)} / "
@@ -113,7 +113,7 @@ def _host_disk_line(host: HostStats) -> str:
     )
 
 
-def _mem_cell(c: ContainerStats) -> str:
+def _mem_cell(c: ContainerStatus) -> str:
     used = _fmt_bytes(c.memory.used_bytes)
     if c.memory.limit_bytes is not None:
         limit = _fmt_bytes(c.memory.limit_bytes)
@@ -124,7 +124,7 @@ def _mem_cell(c: ContainerStats) -> str:
 
 def _write_containers(
     stream: TextIO,
-    containers: tuple[ContainerStats, ...],
+    containers: tuple[ContainerStatus, ...],
     *,
     color: bool,
     live_footer: bool = False,
@@ -147,7 +147,7 @@ def _write_containers(
 
 
 def _container_table_rows(
-    containers: tuple[ContainerStats, ...],
+    containers: tuple[ContainerStatus, ...],
 ) -> list[tuple[str, ...]]:
     headers = (
         "NAME", "GROUP", "STATUS", "CPU", "MEM USED / LIMIT",
@@ -183,7 +183,7 @@ def _print_table(
 
 
 def write_report(
-    snapshot: StatsSnapshot,
+    snapshot: StatusSnapshot,
     *,
     as_json: bool = False,
     out: Optional[TextIO] = None,
@@ -207,7 +207,7 @@ def write_report(
 
 
 def write_live_report(
-    collect: Callable[[], StatsSnapshot],
+    collect: Callable[[], StatusSnapshot],
     *,
     interval: float = _DEFAULT_LIVE_INTERVAL,
     out: Optional[TextIO] = None,
@@ -237,7 +237,7 @@ def write_live_report(
 
 
 def _live_loop(
-    collect: Callable[[], StatsSnapshot],
+    collect: Callable[[], StatusSnapshot],
     *,
     stream: TextIO,
     interval: float,

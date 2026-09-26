@@ -1,33 +1,33 @@
-"""Stats degraded-host report coverage."""
+"""Status degraded-host report coverage."""
 
 from __future__ import annotations
 
 from io import StringIO
 
 from raft.adapters.host import HostResources
-from raft.services.ops.stats.models import AllocatedResources
-from raft.services.ops.stats.report import write_report
-from raft.services.ops.stats.service import _host_stats
+from raft.services.ops.status.models import AllocatedResources
+from raft.services.ops.status.report import write_report
+from raft.services.ops.status.service import _host_status
 
 from ....base import RaftTestCase
-from .fixtures import StatsFixtures
+from .fixtures import StatusFixtures
 
 
-class TestStatsReportDegraded(RaftTestCase):
+class TestStatusReportDegraded(RaftTestCase):
     def test_report_degraded_host(self) -> None:
-        empty = _host_stats(
+        empty = _host_status(
             HostResources(
                 cpus=None, loadavg=None, memory=None, disk=None, uptime_seconds=None
             )
         )
         assert empty.memory is None and empty.disk_path is None
-        snap = StatsFixtures.snapshot(
-            StatsFixtures.container(
+        snap = StatusFixtures.snapshot(
+            StatusFixtures.container(
                 "app", app="app", status="not running", uptime=None, cpu=None,
                 mem_used=None, mem_limit=None, mem_pct=None, pids=None,
                 allocated=AllocatedResources("0.5", "", "0.1", "32M"),
             ),
-            StatsFixtures.container("app2", app="app2"),
+            StatusFixtures.container("app2", app="app2"),
             host=empty,
         )
         text = self._render(snap)

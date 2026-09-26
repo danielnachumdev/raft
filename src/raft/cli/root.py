@@ -153,7 +153,7 @@ class RaftCLI:
         Pass ``--live`` to clear and refresh the human table until Ctrl+C
         (not combinable with ``--json``).
         """
-        deps.Stats(self._stack).report(as_json=json, live=live)
+        deps.Status(self._stack).report(as_json=json, live=live)
 
     def update(self) -> None:
         """Re-install raft from GitHub (re-run install.sh / uv tool install)."""

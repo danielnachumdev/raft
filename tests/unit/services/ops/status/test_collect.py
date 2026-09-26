@@ -1,4 +1,4 @@
-"""Stats collect coverage."""
+"""Status collect coverage."""
 
 from __future__ import annotations
 
@@ -7,33 +7,33 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from raft.errors import OperatorError
-from raft.services.ops.stats import Stats
-from raft.services.ops.stats.models import EDGE_CPUS_LIMIT
-from raft.services.ops.stats.service import _app_allocated
+from raft.services.ops.status import Status
+from raft.services.ops.status.models import EDGE_CPUS_LIMIT
+from raft.services.ops.status.service import _app_allocated
 
 from ....base import RaftTestCase, make_app, make_stack, write_applied_app
-from .fixtures import StatsFixtures
+from .fixtures import StatusFixtures
 
 
-class TestStatsCollect(RaftTestCase):
-    def _idle_stats(self, *apps):
+class TestStatusCollect(RaftTestCase):
+    def _idle_status(self, *apps):
         stack = make_stack(self.tmp_path, apps or (make_app("app"),))
-        stats = Stats(stack)
-        StatsFixtures.mock_docker_idle(stats)
-        return stats
+        status = Status(stack)
+        StatusFixtures.mock_docker_idle(status)
+        return status
 
     def _patch_host(self):
         return patch(
-            "raft.services.ops.stats.service.collect_host_resources",
-            return_value=StatsFixtures.host(),
+            "raft.services.ops.status.service.collect_host_resources",
+            return_value=StatusFixtures.host(),
         )
 
     def test_collect_running_and_stopped(self) -> None:
         write_applied_app(self.tmp_path, "app")
-        stats = self._idle_stats(make_app("app"))
-        StatsFixtures.wire_gate_router_running(stats.docker)
+        status = self._idle_status(make_app("app"))
+        StatusFixtures.wire_gate_router_running(status.docker)
         with self._patch_host():
-            snap = stats.collect()
+            snap = status.collect()
         self._assert_running_gate_router(snap)
         self._assert_stopped_controller_app(snap)
 
@@ -62,9 +62,9 @@ class TestStatsCollect(RaftTestCase):
 
     def test_collect_app_group(self) -> None:
         write_applied_app(self.tmp_path, "web")
-        stats = self._idle_stats(make_app("web", group="demo"))
+        status = self._idle_status(make_app("web", group="demo"))
         with self._patch_host():
-            snap = stats.collect()
+            snap = status.collect()
         gate, router, controller, app = snap.containers
         assert gate.group == router.group == controller.group == "raft"
         assert app.service == "demo-web" and app.app == "web"
@@ -80,10 +80,10 @@ class TestStatsCollect(RaftTestCase):
 
     def test_collect_refresh_apps_reloads_registry(self) -> None:
         write_applied_app(self.tmp_path, "app")
-        stats = self._idle_stats(make_app("app"))
+        status = self._idle_status(make_app("app"))
         write_applied_app(self.tmp_path, "newbie")
         with self._patch_host():
-            snap = stats.collect(refresh_apps=True)
+            snap = status.collect(refresh_apps=True)
         names = [c.service for c in snap.containers]
         assert "app" in names and "newbie" in names
-        assert len(stats.stack.apps) == 2
+        assert len(status.stack.apps) == 2

@@ -6,8 +6,11 @@ from unittest.mock import patch
 
 import pytest
 
+from raft.errors import OperatorError
+
 from .base import CutoverTestCase
 from ....base import write_applied_app
+from ....cta_asserts import assert_operator
 
 
 class TestCutoverFlow(CutoverTestCase):
@@ -107,9 +110,13 @@ class TestCutoverFlow(CutoverTestCase):
             "--- raft-app_tmp (container) ---\nError: OAUTH_CLIENT_ID is required"
         )
         with patch("raft.services.deploy.cutover.time.sleep"):
-            with pytest.raises(RuntimeError, match="OAUTH_CLIENT_ID") as caught:
+            with pytest.raises(OperatorError) as caught:
                 s.start_tmp_from_previous()
-        assert "timed out waiting for: app_tmp reachable" in str(caught.value)
+
+        assert_operator(
+            caught.value,
+            contains=("app_tmp", "OAUTH_CLIENT_ID"),
+        )
         kwargs = s.docker.diagnostics_for.call_args.kwargs
         assert s.app.tmp_container in kwargs.get("containers", ())
 

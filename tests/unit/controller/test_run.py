@@ -9,7 +9,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from raft.config.paths import ensure_raft_home
 from raft.config.settings_types import default_config
 from raft.controller import main, run_prereq_smoke
 from raft.controller.logging import setup_controller_logging
@@ -17,8 +16,10 @@ from raft.controller.run import main as main_impl
 from raft.controller.smoke import run_prereq_smoke as smoke_impl
 from raft.errors import OperatorError
 
+from .base import ControllerTestCase
 
-class TestControllerPrereq:
+
+class TestControllerPrereq(ControllerTestCase):
     def test_public_exports(self) -> None:
         assert main is main_impl
         assert run_prereq_smoke is smoke_impl
@@ -30,7 +31,7 @@ class TestControllerPrereq:
         assert isinstance(root.handlers[0], logging.StreamHandler)
 
     def test_run_prereq_smoke_ok(self, tmp_path: Path) -> None:
-        home = ensure_raft_home(tmp_path / "home")
+        home = self.raft_home(tmp_path)
         sh = MagicMock()
         version = MagicMock(returncode=0, stdout="27.3.1\n", stderr="")
         compose = MagicMock(returncode=0, stdout="Docker Compose version v2.29.7\n")
@@ -47,7 +48,7 @@ class TestControllerPrereq:
         sh.compose.assert_called_once_with("version", capture=True, check=False)
 
     def test_run_prereq_smoke_unknown_docker_version(self, tmp_path: Path) -> None:
-        home = ensure_raft_home(tmp_path / "home")
+        home = self.raft_home(tmp_path)
         sh = MagicMock()
         sh.docker.return_value = MagicMock(returncode=0, stdout="  \n")
         sh.compose.return_value = MagicMock(returncode=0, stdout="ok")
@@ -55,7 +56,7 @@ class TestControllerPrereq:
         run_prereq_smoke(home, sh)
 
     def test_run_prereq_smoke_compose_missing(self, tmp_path: Path) -> None:
-        home = ensure_raft_home(tmp_path / "home")
+        home = self.raft_home(tmp_path)
         sh = MagicMock()
         sh.docker.return_value = MagicMock(returncode=0, stdout="27.0.0\n")
         sh.compose.return_value = MagicMock(returncode=1, stdout="", stderr="missing")
@@ -82,7 +83,7 @@ class TestControllerPrereq:
         from raft.config.settings_types import HealingConfig
         from raft.controller.run import _run_forever
 
-        home = ensure_raft_home(tmp_path / "home")
+        home = self.raft_home(tmp_path)
         scaler = MagicMock()
         sleep = MagicMock(side_effect=StopIteration)
         with pytest.raises(StopIteration):
