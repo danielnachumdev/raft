@@ -11,6 +11,12 @@ EDGE_MEMORY_LIMIT = "32M"
 EDGE_CPUS_RESERVATION = "0.05"
 EDGE_MEMORY_RESERVATION = "16M"
 
+# Matches ``x-resources-controller`` in ``share/compose.yaml``.
+CONTROLLER_CPUS_LIMIT = "0.25"
+CONTROLLER_MEMORY_LIMIT = "128M"
+CONTROLLER_CPUS_RESERVATION = "0.05"
+CONTROLLER_MEMORY_RESERVATION = "32M"
+
 
 @dataclass(frozen=True)
 class AllocatedResources:

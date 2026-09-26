@@ -88,6 +88,10 @@ class TestRaftHome(RaftTestCase):
         compose = (home / "compose.yaml").read_text(encoding="utf-8")
         assert "raft-controller:" in compose
         assert "context: ./controller" in compose
+        assert "RAFT_DATA_HOME: /raft" in compose
+        assert "/var/run/docker.sock:/var/run/docker.sock" in compose
+        assert "working_dir: /raft" in compose
+        assert "memory: 128M" in compose
         assert (home / "generated" / "compose.apps.yaml").is_file()
         assert (home / "generated" / "compose.edge.yaml").is_file()
         assert (home / "state" / "apps").is_dir()

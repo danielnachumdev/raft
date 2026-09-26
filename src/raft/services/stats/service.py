@@ -16,6 +16,10 @@ from ...models import EDGE_GROUP, Stack
 from ...models.app import App
 from ...models.stack import load_stack
 from .models import (
+    CONTROLLER_CPUS_LIMIT,
+    CONTROLLER_CPUS_RESERVATION,
+    CONTROLLER_MEMORY_LIMIT,
+    CONTROLLER_MEMORY_RESERVATION,
     EDGE_CPUS_LIMIT,
     EDGE_CPUS_RESERVATION,
     EDGE_MEMORY_LIMIT,
@@ -36,6 +40,15 @@ def _edge_allocated() -> AllocatedResources:
         memory_limit=EDGE_MEMORY_LIMIT,
         cpus_reservation=EDGE_CPUS_RESERVATION,
         memory_reservation=EDGE_MEMORY_RESERVATION,
+    )
+
+
+def _controller_allocated() -> AllocatedResources:
+    return AllocatedResources(
+        cpus_limit=CONTROLLER_CPUS_LIMIT,
+        memory_limit=CONTROLLER_MEMORY_LIMIT,
+        cpus_reservation=CONTROLLER_CPUS_RESERVATION,
+        memory_reservation=CONTROLLER_MEMORY_RESERVATION,
     )
 
 
@@ -174,7 +187,7 @@ class Stats:
         targets: list[tuple[str, str, Optional[str], Optional[str], AllocatedResources]] = [
             (self.stack.gate, "gate", None, EDGE_GROUP, _edge_allocated()),
             (self.stack.router, "router", None, EDGE_GROUP, _edge_allocated()),
-            (self.stack.controller, "controller", None, EDGE_GROUP, _edge_allocated()),
+            (self.stack.controller, "controller", None, EDGE_GROUP, _controller_allocated()),
         ]
         for app in self.stack.apps:
             targets.append(

@@ -142,6 +142,7 @@ class TestStatsService(RaftTestCase):
         assert controller.role == "controller"
         assert controller.group == "raft"
         assert controller.status == "not running"
+        assert controller.allocated.memory_limit == "128M"
         assert app.service == "app"
         assert app.status == "not running"
         assert app.app == "app"

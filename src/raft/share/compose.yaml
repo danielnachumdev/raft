@@ -10,6 +10,17 @@ x-resources-edge: &resources-edge
         cpus: "0.05"
         memory: 16M
 
+# Controller runs Python + docker CLI against the socket; needs more RAM than nginx.
+x-resources-controller: &resources-controller
+  deploy:
+    resources:
+      limits:
+        cpus: "0.25"
+        memory: 128M
+      reservations:
+        cpus: "0.05"
+        memory: 32M
+
 include:
   - path: generated/compose.apps.yaml
     project_directory: .
@@ -42,8 +53,15 @@ services:
     restart: unless-stopped
     <<: *resources-edge
 
+  # Control plane: same raft package as the host CLI (built from ./controller).
   raft-controller:
     build:
       context: ./controller
+    working_dir: /raft
+    environment:
+      RAFT_DATA_HOME: /raft
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/raft
     restart: unless-stopped
-    <<: *resources-edge
+    <<: *resources-controller
