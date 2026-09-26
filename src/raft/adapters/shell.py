@@ -44,10 +44,23 @@ class Shell:
     @staticmethod
     def _run_env() -> dict:
         env = os.environ.copy()
-        # So compose can run raft-controller as the host operator (not root).
+        Shell._inject_compose_host_ids(env)
+        return env
+
+    @staticmethod
+    def _inject_compose_host_ids(env: dict) -> None:
+        # Compose runs raft-controller as the host operator (not root) and adds
+        # the docker socket group so /var/run/docker.sock stays usable.
         env.setdefault("RAFT_HOST_UID", str(os.getuid()))
         env.setdefault("RAFT_HOST_GID", str(os.getgid()))
-        return env
+        env.setdefault("RAFT_DOCKER_GID", Shell._docker_socket_gid())
+
+    @staticmethod
+    def _docker_socket_gid() -> str:
+        try:
+            return str(os.stat("/var/run/docker.sock").st_gid)
+        except OSError:
+            return "0"
 
     @staticmethod
     def _raise_failed(

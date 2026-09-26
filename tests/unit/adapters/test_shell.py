@@ -23,8 +23,19 @@ class TestShell(RaftTestCase):
             assert self.shell.run(["true"]) is done
         run.assert_called_once()
         assert run.call_args.kwargs["cwd"] == self.tmp_path
-        assert "RAFT_HOST_UID" in run.call_args.kwargs["env"]
-        assert "RAFT_HOST_GID" in run.call_args.kwargs["env"]
+        env = run.call_args.kwargs["env"]
+        assert "RAFT_HOST_UID" in env and "RAFT_HOST_GID" in env
+        assert "RAFT_DOCKER_GID" in env
+
+    def test_docker_socket_gid_from_stat(self) -> None:
+        st = MagicMock(st_gid=988)
+        with patch("raft.adapters.shell.os.stat", return_value=st) as stat:
+            assert Shell._docker_socket_gid() == "988"
+        stat.assert_called_once_with("/var/run/docker.sock")
+
+    def test_docker_socket_gid_missing_socket(self) -> None:
+        with patch("raft.adapters.shell.os.stat", side_effect=FileNotFoundError):
+            assert Shell._docker_socket_gid() == "0"
 
     def test_run_check_raises_with_captured_detail(self) -> None:
         with patch(

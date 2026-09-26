@@ -60,6 +60,10 @@ services:
       context: ./controller
     working_dir: /raft
     user: "${RAFT_HOST_UID:-0}:${RAFT_HOST_GID:-0}"
+    # Socket is root:docker; host operator has docker via supplementary group.
+    # Shell injects RAFT_DOCKER_GID from /var/run/docker.sock st_gid.
+    group_add:
+      - "${RAFT_DOCKER_GID:-0}"
     environment:
       RAFT_DATA_HOME: /raft
     expose:

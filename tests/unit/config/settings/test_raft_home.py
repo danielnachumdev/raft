@@ -63,6 +63,7 @@ class TestRaftHome(RaftTestCase):
         assert ".:/raft:ro" in compose and "./state/locks:/raft/state/locks" in compose
         assert "./state/metrics:/raft/state/metrics" in compose
         assert "RAFT_HOST_UID" in compose and "working_dir: /raft" in compose
+        assert "RAFT_DOCKER_GID" in compose and "group_add:" in compose
         assert "memory: 128M" in compose
         assert (home / "generated" / "compose.apps.yaml").is_file()
         assert (home / "generated" / "compose.edge.yaml").is_file()
