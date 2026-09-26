@@ -1,4 +1,4 @@
-# Build context is ~/.raft/controller (Dockerfile + copied ``raft`` package).
+# Build context is ~/.raft/controller (Dockerfile + pyproject.toml + copied ``raft`` package).
 # Shared with the host CLI — same Python package, different process.
 FROM python:3.12-slim
 
@@ -28,8 +28,13 @@ RUN set -eux; \
     apt-get autoremove -y; \
     rm -rf /var/lib/apt/lists/* /tmp/docker
 
-# Same runtime deps as pyproject.toml (package is on PYTHONPATH, not pip-installed).
-RUN pip install --no-cache-dir "PyYAML>=6.0" "fire>=0.7.1"
+# Compile prod deps from pyproject.toml at build time (no committed requirements.txt).
+# uv is build-only — not left in the image. No venv — system site-packages.
+COPY --from=ghcr.io/astral-sh/uv:0.8.22 /uv /bin/uv
+COPY pyproject.toml ./
+RUN uv pip compile pyproject.toml -o /tmp/requirements.txt \
+    && uv pip install --system --no-cache -r /tmp/requirements.txt \
+    && rm -f /bin/uv /tmp/requirements.txt pyproject.toml
 
 WORKDIR /opt
 COPY raft/ /opt/raft/

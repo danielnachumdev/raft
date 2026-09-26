@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import shutil
+from importlib.metadata import PackageNotFoundError, requires as distribution_requires
 from pathlib import Path
 from typing import Optional
 
@@ -24,6 +25,7 @@ _TEMPLATE_DIRS = ("nginx", "controller")
 # Synced into ~/.raft/controller/raft so Compose can build raft-controller.
 _CONTROLLER_BUILD_DIR = "controller"
 _CONTROLLER_PACKAGE_DIR = "raft"
+_CONTROLLER_PYPROJECT = "pyproject.toml"
 
 
 def raft_home() -> Path:
@@ -136,16 +138,86 @@ def _sync_controller_package(home: Path, package_root: Path) -> None:
     """Copy the installable ``raft`` package into the controller build context.
 
     ``package_root`` is ``…/raft/share``; the Python package lives one level up.
-    Fake test package roots without a parent package are skipped.
+    Fake test package roots without a parent package are skipped for the package
+    tree, but ``pyproject.toml`` is still synced for the image build.
     """
     raft_src = package_root.parent
-    if not (raft_src / "__init__.py").is_file():
+    if (raft_src / "__init__.py").is_file():
+        dest = home / _CONTROLLER_BUILD_DIR / _CONTROLLER_PACKAGE_DIR
+        if dest.exists():
+            shutil.rmtree(dest)
+        shutil.copytree(
+            raft_src,
+            dest,
+            ignore=shutil.ignore_patterns(
+                "__pycache__", "*.pyc", "*.pyo", ".pytest_cache"
+            ),
+        )
+    _sync_controller_pyproject(home, package_root)
+
+
+def _find_raft_pyproject(package_root: Path) -> Optional[Path]:
+    """Walk parents for the raft project ``pyproject.toml`` (checkout / editable)."""
+    for directory in (package_root, *package_root.parents):
+        candidate = directory / _CONTROLLER_PYPROJECT
+        if not candidate.is_file():
+            continue
+        text = candidate.read_text(encoding="utf-8")
+        if 'name = "raft"' in text or "name = 'raft'" in text:
+            return candidate
+    return None
+
+
+def _sync_controller_pyproject(home: Path, package_root: Path) -> None:
+    """Place ``pyproject.toml`` in the controller build context for ``uv pip compile``.
+
+    Prefer the repo file when present; otherwise synthesize deps from the installed
+    ``raft`` distribution (``uv tool install`` / wheel) so Docker still builds.
+    """
+    dest_dir = home / _CONTROLLER_BUILD_DIR
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / _CONTROLLER_PYPROJECT
+    src = _find_raft_pyproject(package_root)
+    if src is not None:
+        shutil.copy2(src, dest)
         return
-    dest = home / _CONTROLLER_BUILD_DIR / _CONTROLLER_PACKAGE_DIR
-    if dest.exists():
-        shutil.rmtree(dest)
-    shutil.copytree(
-        raft_src,
-        dest,
-        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo", ".pytest_cache"),
-    )
+    _write_controller_pyproject_from_installed(dest)
+
+
+def _write_controller_pyproject_from_installed(dest: Path) -> None:
+    try:
+        reqs = distribution_requires("raft")
+    except PackageNotFoundError as exc:
+        raise FileNotFoundError(
+            "controller build needs pyproject.toml (checkout) or an installed raft "
+            "distribution to read dependencies"
+        ) from exc
+    if not reqs:
+        raise FileNotFoundError(
+            "installed raft distribution has no requires; cannot build controller deps"
+        )
+    deps: list[str] = []
+    for raw in reqs:
+        if ";" in raw:
+            name_part, marker = raw.split(";", 1)
+            if "extra" in marker:
+                continue
+            deps.append(name_part.strip())
+        else:
+            deps.append(raw.strip())
+    if not deps:
+        raise FileNotFoundError(
+            "installed raft distribution has no main dependencies for controller"
+        )
+    lines = [
+        "[project]",
+        'name = "raft-controller-deps"',
+        'version = "0"',
+        'requires-python = ">=3.8"',
+        "dependencies = [",
+    ]
+    for dep in deps:
+        escaped = dep.replace("\\", "\\\\").replace('"', '\\"')
+        lines.append(f'  "{escaped}",')
+    lines.append("]")
+    dest.write_text("\n".join(lines) + "\n", encoding="utf-8")

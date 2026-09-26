@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from importlib.metadata import PackageNotFoundError
 from pathlib import Path
 
 import pytest
@@ -84,8 +85,13 @@ class TestRaftHome(RaftTestCase):
         assert (home / "nginx" / "gate" / "nginx.conf").is_file()
         assert (home / "controller" / "Dockerfile").is_file()
         dockerfile = (home / "controller" / "Dockerfile").read_text(encoding="utf-8")
-        assert "PyYAML" in dockerfile
-        assert "fire" in dockerfile
+        assert "uv pip compile pyproject.toml" in dockerfile
+        assert "uv pip install --system" in dockerfile
+        assert (home / "controller" / "pyproject.toml").is_file()
+        pyproject = (home / "controller" / "pyproject.toml").read_text(encoding="utf-8")
+        assert 'name = "raft"' in pyproject
+        assert "fire" in pyproject and "PyYAML" in pyproject
+        assert not (home / "controller" / "requirements.txt").exists()
         assert (home / "controller" / "raft" / "__init__.py").is_file()
         assert (home / "controller" / "raft" / "controller" / "__init__.py").is_file()
         compose = (home / "compose.yaml").read_text(encoding="utf-8")
@@ -190,6 +196,73 @@ edge:
         sync_product_templates(dest, pkg)
         assert (dest / "controller" / "Dockerfile").is_file()
         assert not (dest / "controller" / "raft").exists()
+        # No checkout pyproject above fake share — synthesize from installed raft.
+        pyproject = dest / "controller" / "pyproject.toml"
+        assert pyproject.is_file()
+        text = pyproject.read_text(encoding="utf-8")
+        assert "raft-controller-deps" in text
+        assert "fire" in text and "PyYAML" in text
+
+    def test_write_controller_pyproject_requires_dist(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        dest = self.tmp_path / "pyproject.toml"
+
+        def boom(_name: str):
+            raise PackageNotFoundError("raft")
+
+        monkeypatch.setattr(paths, "distribution_requires", boom)
+        with pytest.raises(FileNotFoundError, match="pyproject.toml"):
+            paths._write_controller_pyproject_from_installed(dest)
+
+    def test_write_controller_pyproject_skips_extras(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        dest = self.tmp_path / "pyproject.toml"
+        monkeypatch.setattr(
+            paths,
+            "distribution_requires",
+            lambda _name: [
+                "fire>=0.7.1",
+                'pytest>=7.0; extra == "dev"',
+                'PyYAML>=6.0; python_version >= "3.8"',
+            ],
+        )
+        paths._write_controller_pyproject_from_installed(dest)
+        text = dest.read_text(encoding="utf-8")
+        assert "fire>=0.7.1" in text
+        assert "PyYAML>=6.0" in text
+        assert "pytest" not in text
+
+    def test_write_controller_pyproject_empty_requires(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        dest = self.tmp_path / "pyproject.toml"
+        monkeypatch.setattr(paths, "distribution_requires", lambda _name: [])
+        with pytest.raises(FileNotFoundError, match="no requires"):
+            paths._write_controller_pyproject_from_installed(dest)
+
+    def test_write_controller_pyproject_only_extras(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        dest = self.tmp_path / "pyproject.toml"
+        monkeypatch.setattr(
+            paths,
+            "distribution_requires",
+            lambda _name: ['pytest>=7.0; extra == "dev"'],
+        )
+        with pytest.raises(FileNotFoundError, match="no main dependencies"):
+            paths._write_controller_pyproject_from_installed(dest)
+
+    def test_find_raft_pyproject_skips_unrelated_toml(self) -> None:
+        other = self.tmp_path / "other"
+        other.mkdir()
+        (other / "pyproject.toml").write_text(
+            'name = "something-else"\n', encoding="utf-8"
+        )
+        nested = other / "share"
+        nested.mkdir()
+        assert paths._find_raft_pyproject(nested) is None
 
     def test_find_package_root_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(paths, "_bundled_share", lambda: self.tmp_path / "nope")
