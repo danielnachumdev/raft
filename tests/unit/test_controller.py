@@ -12,6 +12,7 @@ from raft.config.paths import ensure_raft_home
 from raft.controller import main, run_prereq_smoke
 from raft.controller.run import main as main_impl
 from raft.controller.smoke import run_prereq_smoke as smoke_impl
+from raft.errors import OperatorError
 
 
 class TestControllerPrereq:
@@ -54,15 +55,25 @@ class TestControllerPrereq:
     def test_main_smokes_then_idles(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setenv("RAFT_DATA_HOME", str(tmp_path / "home"))
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("RAFT_DATA_HOME", str(home))
         with patch("raft.controller.run.run_prereq_smoke") as smoke:
             with patch("raft.controller.run.time.sleep", side_effect=StopIteration):
                 with pytest.raises(StopIteration):
                     main()
         smoke.assert_called_once()
         home_arg, sh_arg = smoke.call_args.args
-        assert home_arg == (tmp_path / "home").resolve()
+        assert home_arg == home.resolve()
         assert sh_arg.cwd == home_arg
+
+    def test_main_requires_data_home(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        missing = tmp_path / "nope"
+        monkeypatch.setenv("RAFT_DATA_HOME", str(missing))
+        with pytest.raises(OperatorError, match="data home missing"):
+            main()
 
     def test_module_entrypoint(self) -> None:
         with patch("raft.controller.run.main", side_effect=SystemExit(0)):

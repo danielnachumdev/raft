@@ -264,6 +264,35 @@ edge:
         nested.mkdir()
         assert paths._find_raft_pyproject(nested) is None
 
+    def test_sync_controller_pyproject_keeps_existing_when_no_source(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        home = self.tmp_path / "home"
+        dest = home / "controller" / "pyproject.toml"
+        dest.parent.mkdir(parents=True)
+        dest.write_text('name = "kept"\n', encoding="utf-8")
+        monkeypatch.setattr(paths, "_find_raft_pyproject", lambda _p: None)
+
+        def boom(_dest: Path) -> None:
+            raise FileNotFoundError("no dist")
+
+        monkeypatch.setattr(paths, "_write_controller_pyproject_from_installed", boom)
+        paths._sync_controller_pyproject(home, self.tmp_path / "share")
+        assert dest.read_text(encoding="utf-8") == 'name = "kept"\n'
+
+    def test_sync_controller_pyproject_raises_when_nothing_to_keep(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        home = self.tmp_path / "home"
+        monkeypatch.setattr(paths, "_find_raft_pyproject", lambda _p: None)
+
+        def boom(_dest: Path) -> None:
+            raise FileNotFoundError("no dist")
+
+        monkeypatch.setattr(paths, "_write_controller_pyproject_from_installed", boom)
+        with pytest.raises(FileNotFoundError, match="no dist"):
+            paths._sync_controller_pyproject(home, self.tmp_path / "share")
+
     def test_find_package_root_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(paths, "_bundled_share", lambda: self.tmp_path / "nope")
         orphan = self.tmp_path / "orphan"

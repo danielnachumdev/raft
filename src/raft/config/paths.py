@@ -173,6 +173,8 @@ def _sync_controller_pyproject(home: Path, package_root: Path) -> None:
 
     Prefer the repo file when present; otherwise synthesize deps from the installed
     ``raft`` distribution (``uv tool install`` / wheel) so Docker still builds.
+    If neither source is available but a previous sync left ``pyproject.toml`` on
+    disk (e.g. controller container with PYTHONPATH-only package), keep it.
     """
     dest_dir = home / _CONTROLLER_BUILD_DIR
     dest_dir.mkdir(parents=True, exist_ok=True)
@@ -181,7 +183,12 @@ def _sync_controller_pyproject(home: Path, package_root: Path) -> None:
     if src is not None:
         shutil.copy2(src, dest)
         return
-    _write_controller_pyproject_from_installed(dest)
+    try:
+        _write_controller_pyproject_from_installed(dest)
+    except FileNotFoundError:
+        if dest.is_file():
+            return
+        raise
 
 
 def _write_controller_pyproject_from_installed(dest: Path) -> None:
