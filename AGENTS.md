@@ -116,7 +116,7 @@ spec:
   publicHost: app.example.com   # required when any port uses expose=http
   tls: off                      # off | origin
   group: demo               # optional; at most one group
-  dependsOn: [other-app]        # optional; Compose depends_on + scale wake order
+  dependsOn: [other-app]        # optional; Compose depends_on + wake/heal order
   envFile: /home/raft/.raft/demo.env
   env: { KEY: value }           # overrides envFile on clash
   volumes:
@@ -173,7 +173,7 @@ Omit `spec.scaling` → no scaling. When present, **every** field is required (n
 | `wakeTimeoutSeconds` | Holding page → timeout page if wake exceeds this |
 | `minUpSeconds` | Do not idle-stop until this long after wake/start |
 
-Eligible only with ≥1 `expose: http` port and `publicHost`. Not for stream/host/none-only apps. Controller idle-stops and wakes; gate serves a holding page (meta-refresh) and calls an internal wake API; holding-page reloads do not reset the idle timer. On wake, the controller starts the app’s transitive `spec.dependsOn` chain first (same edges Compose already renders), waits until each service is Compose `running` within `wakeTimeoutSeconds`, then marks the scaled app awake. Idle-stop still only stops apps that declare `spec.scaling` (deps without scaling stay up). State under `~/.raft/state/scaling/`. Independent of `healing:` in settings — healer skips apps marked `scaledToZero`.
+Eligible only with ≥1 `expose: http` port and `publicHost`. Not for stream/host/none-only apps. Controller idle-stops and wakes; gate serves a holding page (meta-refresh) and calls an internal wake API; holding-page reloads do not reset the idle timer. On wake, the controller starts the app’s transitive `spec.dependsOn` chain first (same edges Compose already renders), waits until each service is Compose `running` within `wakeTimeoutSeconds`, then marks the scaled app awake. Idle-stop still only stops apps that declare `spec.scaling` (deps without scaling stay up). State under `~/.raft/state/scaling/`. Independent of `healing:` in settings — healer skips apps marked `scaledToZero`. Before restart/escalate, healer starts transitive `spec.dependsOn` (same graph as Compose); defers if a dep is intentionally scaled to zero.
 
 ### `spec.resources` → Compose
 
