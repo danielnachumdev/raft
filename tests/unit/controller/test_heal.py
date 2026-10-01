@@ -167,6 +167,44 @@ class TestHealer(ControllerTestCase):
         with patch.object(Healer, "tick", side_effect=RuntimeError("tick boom")):
             self._run_forever_once(tmp_path, cfg)
 
+    def test_nudge_on_needs_heal_once(self, tmp_path: Path) -> None:
+        nudge = MagicMock()
+        cfg = HealingConfig(enabled=True, fail_threshold=5, cooldown_seconds=0)
+        healer, _, _ = self.unhealthy_healer(tmp_path, cfg)
+        healer.on_needs_heal = nudge
+        healer.tick(now=1.0)
+        nudge.assert_called_once_with()
+
+    def test_nudge_not_called_when_healthy(self, tmp_path: Path) -> None:
+        nudge = MagicMock()
+        home = self.applied_home(tmp_path)
+        docker = MagicMock()
+        docker.service_runtime.return_value = ("running", "healthy")
+        Healer(home, HealingConfig(enabled=True), docker, on_needs_heal=nudge).tick(now=1.0)
+        nudge.assert_not_called()
+
+    def test_nudge_not_called_when_disabled(self, tmp_path: Path) -> None:
+        nudge = MagicMock()
+        Healer(
+            self.raft_home(tmp_path),
+            HealingConfig(enabled=False),
+            MagicMock(),
+            on_needs_heal=nudge,
+        ).tick()
+        nudge.assert_not_called()
+
+    def test_nudge_not_called_scaled_to_zero(self, tmp_path: Path) -> None:
+        nudge = MagicMock()
+        home = self.applied_home(tmp_path)
+        ScalingStore(home).mark_scaled_to_zero(self.APP)
+        Healer(
+            home,
+            HealingConfig(enabled=True, fail_threshold=1),
+            MagicMock(),
+            on_needs_heal=nudge,
+        ).tick(now=1.0)
+        nudge.assert_not_called()
+
     def _run_forever_once(self, tmp_path: Path, cfg: HealingConfig) -> None:
         home = self.raft_home(tmp_path)
         docker = MagicMock()

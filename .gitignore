@@ -20,3 +20,4 @@ htmlcov/
 
 # Local-only notes / plans (not committed)
 /local/
+.cursor/

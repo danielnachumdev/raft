@@ -9,6 +9,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+from raft.config.settings_types import (
+    DEFAULT_METRICS_BATCH_SIZE,
+    DEFAULT_METRICS_FLUSH_SECONDS,
+)
 from raft.models.stack import Stack
 from raft.services.ops.status import Status
 
@@ -16,8 +20,6 @@ logger = logging.getLogger(__name__)
 
 METRICS_DIR = Path("state") / "metrics"
 METRICS_FILENAME = "resources.jsonl"
-DEFAULT_BATCH_SIZE = 10
-DEFAULT_FLUSH_SECONDS = 60.0
 
 CollectFn = Callable[[], Dict[str, Any]]
 ClockFn = Callable[[], float]
@@ -30,8 +32,8 @@ class MetricsRecorder:
         self,
         home: Path,
         *,
-        batch_size: int = DEFAULT_BATCH_SIZE,
-        flush_seconds: float = DEFAULT_FLUSH_SECONDS,
+        batch_size: int = DEFAULT_METRICS_BATCH_SIZE,
+        flush_seconds: float = DEFAULT_METRICS_FLUSH_SECONDS,
         collect_fn: Optional[CollectFn] = None,
         clock: ClockFn = time.monotonic,
     ) -> None:

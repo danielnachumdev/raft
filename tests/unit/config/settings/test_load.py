@@ -14,10 +14,16 @@ logging:
 healing:
   enabled: true
   intervalSeconds: 10
+  timeoutSeconds: 90
   failThreshold: 2
   cooldownSeconds: 30
   maxRestarts: 4
   escalateAfterRestarts: 3
+metrics:
+  intervalSeconds: 45
+  timeoutSeconds: 20
+  batchSize: 5
+  flushSeconds: 30
 edge:
   http: 80
 """
@@ -30,6 +36,11 @@ HEALING_ERROR_CASES = [
     ("healing:\n  cooldownSeconds: 0\n", "cooldownSeconds"),
     ("healing:\n  maxRestarts: x\n", "maxRestarts"),
     ("healing:\n  escalateAfterRestarts: 0\n", "escalateAfterRestarts"),
+    ("healing:\n  timeoutSeconds: 0\n", "timeoutSeconds"),
+    ("metrics: []\n", "metrics must be a mapping"),
+    ("metrics:\n  intervalSeconds: abc\n", "intervalSeconds"),
+    ("metrics:\n  batchSize: 0\n", "batchSize"),
+    ("metrics:\n  flushSeconds: -1\n", "flushSeconds"),
 ]
 
 
@@ -43,16 +54,26 @@ class TestConfig(RaftTestCase):
         assert cfg.healing.fail_threshold == 3
         assert cfg.healing.max_restarts == 1
         assert cfg.healing.escalate_after_restarts == 1
+        assert cfg.healing.timeout_seconds == 120.0
+        assert cfg.metrics.interval_seconds == 60.0
+        assert cfg.metrics.timeout_seconds == 30.0
+        assert cfg.metrics.batch_size == 10
+        assert cfg.metrics.flush_seconds == 60.0
 
     def test_load_healing_section(self) -> None:
         (self.tmp_path / "settings.yaml").write_text(HEALING_OK_YAML, encoding="utf-8")
         cfg = load_config(self.tmp_path)
         assert cfg.healing.enabled is True
         assert cfg.healing.interval_seconds == 10
+        assert cfg.healing.timeout_seconds == 90
         assert cfg.healing.fail_threshold == 2
         assert cfg.healing.cooldown_seconds == 30
         assert cfg.healing.max_restarts == 4
         assert cfg.healing.escalate_after_restarts == 3
+        assert cfg.metrics.interval_seconds == 45
+        assert cfg.metrics.timeout_seconds == 20
+        assert cfg.metrics.batch_size == 5
+        assert cfg.metrics.flush_seconds == 30
 
     def test_load_healing_invalid(self) -> None:
         for body, match in HEALING_ERROR_CASES:

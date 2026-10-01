@@ -1,4 +1,4 @@
-"""Controller process (prereq smoke + idle)."""
+"""Controller process wiring (orchestrator + scale side_ticks)."""
 
 from __future__ import annotations
 
@@ -9,8 +9,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from raft.config.settings_types import default_config
+from raft.config.settings_types import HealingConfig, MetricsConfig, RaftConfig, default_config
 from raft.controller import main, run_prereq_smoke
+from raft.controller.job import JobId, QueuePolicy
 from raft.controller.logging import setup_controller_logging
 from raft.controller.run import main as main_impl
 from raft.controller.smoke import run_prereq_smoke as smoke_impl
@@ -37,11 +38,9 @@ class TestControllerPrereq(ControllerTestCase):
         compose = MagicMock(returncode=0, stdout="Docker Compose version v2.29.7\n")
         sh.docker.return_value = version
         sh.compose.return_value = compose
-
         with patch("raft.controller.smoke.Stack.load_apps") as load_apps:
             load_apps.return_value = MagicMock(apps=(), core_services=("raft-gate",))
             run_prereq_smoke(home, sh)
-
         sh.docker.assert_called_once_with(
             "version", "--format", "{{.Server.Version}}", capture=True
         )
@@ -52,7 +51,6 @@ class TestControllerPrereq(ControllerTestCase):
         sh = MagicMock()
         sh.docker.return_value = MagicMock(returncode=0, stdout="  \n")
         sh.compose.return_value = MagicMock(returncode=0, stdout="ok")
-
         run_prereq_smoke(home, sh)
 
     def test_run_prereq_smoke_compose_missing(self, tmp_path: Path) -> None:
@@ -60,7 +58,6 @@ class TestControllerPrereq(ControllerTestCase):
         sh = MagicMock()
         sh.docker.return_value = MagicMock(returncode=0, stdout="27.0.0\n")
         sh.compose.return_value = MagicMock(returncode=1, stdout="", stderr="missing")
-
         with pytest.raises(RuntimeError, match="docker compose plugin"):
             run_prereq_smoke(home, sh)
 
@@ -75,26 +72,73 @@ class TestControllerPrereq(ControllerTestCase):
                         main()
         smoke.assert_called_once()
 
-    def test_run_forever_ticks(self, tmp_path: Path) -> None:
-        from raft.config.settings_types import HealingConfig
+    def test_run_forever_registers_jobs(self, tmp_path: Path) -> None:
         from raft.controller.run import _run_forever
 
         home = self.raft_home(tmp_path)
         scaler = MagicMock()
-        sleep = MagicMock(side_effect=StopIteration)
-        with patch("raft.controller.run.MetricsRecorder") as metrics_cls:
-            metrics = MagicMock()
-            metrics_cls.return_value = metrics
+        orch = MagicMock()
+        orch.run_forever.side_effect = StopIteration
+        cfg = RaftConfig(
+            healing=HealingConfig(enabled=True, interval_seconds=15.0, timeout_seconds=120.0),
+            metrics=MetricsConfig(interval_seconds=60.0, timeout_seconds=30.0),
+        )
+        with pytest.raises(StopIteration):
+            _run_forever(home, cfg, MagicMock(), scaler, orchestrator=orch)
+        assert orch.register.call_count == 2
+        specs = [c.args[0] for c in orch.register.call_args_list]
+        by_id = {s.job_id: s for s in specs}
+        assert by_id[JobId.HEAL].timeout_seconds == 120.0
+        assert by_id[JobId.HEAL].queue_policy == QueuePolicy.SKIP_IF_RUNNING
+        assert by_id[JobId.METRICS].timeout_seconds == 30.0
+        assert by_id[JobId.HEAL].schedule.interval_seconds == 15.0
+        assert by_id[JobId.METRICS].schedule.interval_seconds == 60.0
+
+    def test_run_forever_builds_default_orchestrator(self, tmp_path: Path) -> None:
+        from raft.controller.run import _run_forever
+
+        home = self.raft_home(tmp_path)
+        scaler = MagicMock()
+        cfg = default_config()
+        with patch("raft.controller.run.JobOrchestrator") as orch_cls:
+            orch = MagicMock()
+            orch_cls.return_value = orch
+            orch.run_forever.side_effect = StopIteration
             with pytest.raises(StopIteration):
-                _run_forever(
-                    home,
-                    HealingConfig(enabled=True, interval_seconds=0.01),
-                    MagicMock(),
-                    scaler,
-                    sleep_fn=sleep,
-                )
-        scaler.tick.assert_called()
-        metrics.tick.assert_called()
+                _run_forever(home, cfg, MagicMock(), scaler)
+        assert orch_cls.call_count == 1
+        assert "side_ticks" in orch_cls.call_args.kwargs
+        assert orch.register.call_count == 2
+
+    def test_run_forever_passes_sleep_and_clock(self, tmp_path: Path) -> None:
+        from raft.controller.run import _run_forever
+
+        home = self.raft_home(tmp_path)
+        orch = MagicMock()
+        orch.run_forever.side_effect = StopIteration
+        sleep = MagicMock()
+        clock = MagicMock()
+        with pytest.raises(StopIteration):
+            _run_forever(
+                home,
+                default_config(),
+                MagicMock(),
+                MagicMock(),
+                sleep_fn=sleep,
+                clock=clock,
+                orchestrator=orch,
+            )
+        orch.run_forever.assert_called_once_with(sleep_fn=sleep, clock=clock)
+
+    def test_nudge_enqueues_metrics(self, tmp_path: Path) -> None:
+        from raft.controller.run import _build_jobs
+
+        home = self.raft_home(tmp_path)
+        orch = MagicMock()
+        healer, _metrics = _build_jobs(home, default_config(), MagicMock(), orch)
+        healer.on_needs_heal()
+        orch.enqueue.assert_called_once()
+        assert orch.enqueue.call_args.args[0].job_id == JobId.METRICS
 
     def test_safe_tick_swallows(self) -> None:
         from raft.controller.run import _safe_tick
@@ -102,13 +146,17 @@ class TestControllerPrereq(ControllerTestCase):
         def boom() -> None:
             raise RuntimeError("x")
 
-        _safe_tick(boom, "scale")
+        _safe_tick(boom, "scale")()
 
     def test_log_startup_disabled(self) -> None:
-        from raft.config.settings_types import HealingConfig
         from raft.controller.run import _log_startup
 
-        _log_startup(HealingConfig(enabled=False))
+        _log_startup(HealingConfig(enabled=False), MetricsConfig())
+
+    def test_log_startup_enabled(self) -> None:
+        from raft.controller.run import _log_startup
+
+        _log_startup(HealingConfig(enabled=True), MetricsConfig())
 
     def test_main_requires_data_home(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         missing = tmp_path / "nope"

@@ -32,12 +32,25 @@ logging:
 # ---------------------------------------------------------------------------
 # healing:
 #   enabled: true
-#   intervalSeconds: 15           # poll period
+#   intervalSeconds: 15           # heal job poll period (also wakes scale side-tick)
+#   timeoutSeconds: 120           # soft join timeout for heal job (worker may
+#                                 # continue; overlapping heals are skipped)
 #   failThreshold: 3              # consecutive bad observations before act
 #   cooldownSeconds: 60           # min time between heal acts on the same app
 #   maxRestarts: 1                # Compose restart/start attempts (default: 1)
 #   escalateAfterRestarts: 1      # after this many Compose restarts (or
 #                                 # maxRestarts), raft cutover/redeploy (default: 1)
+
+# ---------------------------------------------------------------------------
+# metrics — raft-controller resource sampling (JSONL under state/metrics/).
+# Independent cadence from healing. Defaults: 1 sample/min, soft timeout 30s,
+# flush every 10 samples or 60s. Schema unchanged.
+# ---------------------------------------------------------------------------
+# metrics:
+#   intervalSeconds: 60           # periodic metrics job
+#   timeoutSeconds: 30            # soft join timeout (worker may continue)
+#   batchSize: 10                 # buffer before append
+#   flushSeconds: 60              # time-based flush even if batch not full
 
 # ---------------------------------------------------------------------------
 # edge — public listeners published by the gate container.

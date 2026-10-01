@@ -12,6 +12,14 @@ from .paths import LOGS_DIRNAME, SETTINGS_FILENAME
 CONFIG_FILENAME = SETTINGS_FILENAME
 STREAM_PROTOCOLS = frozenset({"tcp", "udp"})
 
+# Healing / metrics controller defaults (single source of truth).
+DEFAULT_HEAL_INTERVAL_SECONDS = 15.0
+DEFAULT_HEAL_TIMEOUT_SECONDS = 120.0
+DEFAULT_METRICS_INTERVAL_SECONDS = 60.0
+DEFAULT_METRICS_TIMEOUT_SECONDS = 30.0
+DEFAULT_METRICS_BATCH_SIZE = 10
+DEFAULT_METRICS_FLUSH_SECONDS = 60.0
+
 
 @dataclass(frozen=True)
 class LoggingConfig:
@@ -64,7 +72,8 @@ class HealingConfig:
     """Controller self-heal (Compose restart, then escalate to redeploy)."""
 
     enabled: bool = False
-    interval_seconds: float = 15.0
+    interval_seconds: float = DEFAULT_HEAL_INTERVAL_SECONDS
+    timeout_seconds: float = DEFAULT_HEAL_TIMEOUT_SECONDS
     fail_threshold: int = 3
     cooldown_seconds: float = 60.0
     max_restarts: int = 1
@@ -73,10 +82,21 @@ class HealingConfig:
 
 
 @dataclass(frozen=True)
+class MetricsConfig:
+    """Controller resource sampling (JSONL under ``state/metrics/``)."""
+
+    interval_seconds: float = DEFAULT_METRICS_INTERVAL_SECONDS
+    timeout_seconds: float = DEFAULT_METRICS_TIMEOUT_SECONDS
+    batch_size: int = DEFAULT_METRICS_BATCH_SIZE
+    flush_seconds: float = DEFAULT_METRICS_FLUSH_SECONDS
+
+
+@dataclass(frozen=True)
 class RaftConfig:
     logging: LoggingConfig = LoggingConfig()
     edge: EdgeConfig = field(default_factory=EdgeConfig)
     healing: HealingConfig = field(default_factory=HealingConfig)
+    metrics: MetricsConfig = field(default_factory=MetricsConfig)
 
 
 def default_config() -> RaftConfig:

@@ -12,8 +12,15 @@ from raft.errors import OperatorError
 from .paths import LOGS_DIRNAME, settings_path
 from .settings_edge import EdgeSettingsParser
 from .settings_types import (
+    DEFAULT_HEAL_INTERVAL_SECONDS,
+    DEFAULT_HEAL_TIMEOUT_SECONDS,
+    DEFAULT_METRICS_BATCH_SIZE,
+    DEFAULT_METRICS_FLUSH_SECONDS,
+    DEFAULT_METRICS_INTERVAL_SECONDS,
+    DEFAULT_METRICS_TIMEOUT_SECONDS,
     HealingConfig,
     LoggingConfig,
+    MetricsConfig,
     RaftConfig,
     default_config,
 )
@@ -34,6 +41,7 @@ class SettingsLoader:
             logging=self._parse_logging(data.get("logging") or {}),
             edge=self._edge.parse(data.get("edge")),
             healing=self._parse_healing(data.get("healing")),
+            metrics=self._parse_metrics(data.get("metrics")),
         )
 
     def _read_mapping(self, config_path: Path) -> dict[str, Any]:
@@ -102,46 +110,72 @@ class SettingsLoader:
             )
         return HealingConfig(
             enabled=bool(raw.get("enabled", False)),
-            interval_seconds=self._pos_float(raw, "intervalSeconds", 15.0),
-            fail_threshold=self._pos_int(raw, "failThreshold", 3),
-            cooldown_seconds=self._pos_float(raw, "cooldownSeconds", 60.0),
-            max_restarts=self._pos_int(raw, "maxRestarts", 1),
-            escalate_after_restarts=self._pos_int(raw, "escalateAfterRestarts", 1),
+            interval_seconds=self._pos_float(
+                raw, "intervalSeconds", DEFAULT_HEAL_INTERVAL_SECONDS, "healing"
+            ),
+            timeout_seconds=self._pos_float(
+                raw, "timeoutSeconds", DEFAULT_HEAL_TIMEOUT_SECONDS, "healing"
+            ),
+            fail_threshold=self._pos_int(raw, "failThreshold", 3, "healing"),
+            cooldown_seconds=self._pos_float(raw, "cooldownSeconds", 60.0, "healing"),
+            max_restarts=self._pos_int(raw, "maxRestarts", 1, "healing"),
+            escalate_after_restarts=self._pos_int(raw, "escalateAfterRestarts", 1, "healing"),
+        )
+
+    def _parse_metrics(self, raw: Any) -> MetricsConfig:
+        if raw is None:
+            return MetricsConfig()
+        if not isinstance(raw, dict):
+            raise OperatorError(
+                "settings.yaml metrics must be a mapping.\n"
+                "Fix: set metrics: {intervalSeconds: 60, ...} in ~/.raft/settings.yaml"
+            )
+        return MetricsConfig(
+            interval_seconds=self._pos_float(
+                raw, "intervalSeconds", DEFAULT_METRICS_INTERVAL_SECONDS, "metrics"
+            ),
+            timeout_seconds=self._pos_float(
+                raw, "timeoutSeconds", DEFAULT_METRICS_TIMEOUT_SECONDS, "metrics"
+            ),
+            batch_size=self._pos_int(raw, "batchSize", DEFAULT_METRICS_BATCH_SIZE, "metrics"),
+            flush_seconds=self._pos_float(
+                raw, "flushSeconds", DEFAULT_METRICS_FLUSH_SECONDS, "metrics"
+            ),
         )
 
     @staticmethod
-    def _pos_float(raw: dict, key: str, default: float) -> float:
+    def _pos_float(raw: dict, key: str, default: float, section: str) -> float:
         if key not in raw or raw[key] is None:
             return default
         try:
             value = float(raw[key])
         except (TypeError, ValueError) as exc:
             raise OperatorError(
-                f"settings.yaml healing.{key} must be a number, got {raw[key]!r}.\n"
-                f"Fix: set healing.{key} in ~/.raft/settings.yaml"
+                f"settings.yaml {section}.{key} must be a number, got {raw[key]!r}.\n"
+                f"Fix: set {section}.{key} in ~/.raft/settings.yaml"
             ) from exc
         if value <= 0:
             raise OperatorError(
-                f"settings.yaml healing.{key} must be > 0, got {value}.\n"
-                f"Fix: set healing.{key} to a positive number in ~/.raft/settings.yaml"
+                f"settings.yaml {section}.{key} must be > 0, got {value}.\n"
+                f"Fix: set {section}.{key} to a positive number in ~/.raft/settings.yaml"
             )
         return value
 
     @staticmethod
-    def _pos_int(raw: dict, key: str, default: int) -> int:
+    def _pos_int(raw: dict, key: str, default: int, section: str) -> int:
         if key not in raw or raw[key] is None:
             return default
         try:
             value = int(raw[key])
         except (TypeError, ValueError) as exc:
             raise OperatorError(
-                f"settings.yaml healing.{key} must be an integer, got {raw[key]!r}.\n"
-                f"Fix: set healing.{key} in ~/.raft/settings.yaml"
+                f"settings.yaml {section}.{key} must be an integer, got {raw[key]!r}.\n"
+                f"Fix: set {section}.{key} in ~/.raft/settings.yaml"
             ) from exc
         if value < 1:
             raise OperatorError(
-                f"settings.yaml healing.{key} must be >= 1, got {value}.\n"
-                f"Fix: set healing.{key} to a positive integer in ~/.raft/settings.yaml"
+                f"settings.yaml {section}.{key} must be >= 1, got {value}.\n"
+                f"Fix: set {section}.{key} to a positive integer in ~/.raft/settings.yaml"
             )
         return value
 
