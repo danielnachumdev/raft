@@ -1,0 +1,141 @@
+"""Real-Docker harness: scaled frontend wake also starts dependsOn backend."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Optional
+
+from raft.adapters.docker import DockerStack
+from raft.adapters.shell import Shell
+from raft.controller.scale import Scaler
+from raft.controller.wake_http import start_wake_http
+from raft.models.scaling_store import ScalingStore
+from raft.models.stack import load_stack
+from raft.services.render import StackRenderer
+from tests.e2e.shared.compose import new_project_name
+from tests.e2e.shared.runtime import ServiceRuntimeWait
+from tests.e2e.shared.scale_stack import SCALING, ScaleE2EStack
+from tests.shared.http import HttpResponse
+from tests.shared.raft_home import RaftHomeFixtures
+from tests.shared.wait import Wait
+from tests.shared.yaml_doc import YamlDoc
+
+FRONTEND = "stack-front"
+BACKEND = "stack-redis"
+FRONTEND_COMPOSE = "demo-stack-front"
+BACKEND_COMPOSE = "demo-stack-redis"
+PUBLIC_HOST = "front.test"
+
+
+class ScaleDependsWakeStack:
+    """Gate + grouped FE/BE; story helpers for dependsOn wake."""
+
+    def __init__(self, inner: ScaleE2EStack) -> None:
+        self._inner = inner
+        self.docker = inner.docker
+        self.store = ScalingStore(inner.home)
+
+    @classmethod
+    def create(cls, home: Path) -> "ScaleDependsWakeStack":
+        project = new_project_name()
+        cls._prepare_home(home)
+        inner = cls._boot(home, project)
+        return cls(inner)
+
+    @classmethod
+    def _boot(cls, home: Path, project: str) -> ScaleE2EStack:
+        model = load_stack(home)
+        docker = DockerStack(model, Shell(home))
+        scaler = Scaler(home, docker)
+        wake = start_wake_http(scaler, host="0.0.0.0", port=0)
+        assert wake._httpd is not None
+        wake_port = int(wake._httpd.server_address[1])
+        ScaleE2EStack._rewrite_wake_port(home, wake_port)
+        ScaleE2EStack._install_edge_compose(home, project)
+        docker.sh.compose("up", "-d", "--pull", "missing", check=True, capture=True)
+        gate_port = ScaleE2EStack._wait_gate_port(docker, timeout=60.0)
+        inner = ScaleE2EStack(home, project, docker, scaler, wake_port, gate_port)
+        inner._wake = wake
+        return inner
+
+    def close(self) -> None:
+        self._inner.close()
+
+    def __enter__(self) -> "ScaleDependsWakeStack":
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        self.close()
+
+    def given_frontend_and_backend_are_running(self) -> None:
+        ServiceRuntimeWait(self.docker, BACKEND_COMPOSE).until_running()
+        ServiceRuntimeWait(self.docker, FRONTEND_COMPOSE).until_running()
+        Wait.until(
+            self._site_is_live,
+            timeout=45.0,
+            interval=0.5,
+            message="site not live after cold start",
+        )
+
+    def when_the_backend_is_stopped(self) -> None:
+        self.docker.stop_service(BACKEND_COMPOSE)
+        ServiceRuntimeWait(self.docker, BACKEND_COMPOSE).until_stopped()
+
+    def and_the_frontend_is_scaled_to_zero(self) -> None:
+        self.docker.stop_service(FRONTEND_COMPOSE)
+        self.store.mark_scaled_to_zero(FRONTEND)
+        ServiceRuntimeWait(self.docker, FRONTEND_COMPOSE).until_stopped()
+
+    def visitor_sees_the_holding_page(self) -> bool:
+        return "Starting" in self._curl().body
+
+    def when_a_visitor_keeps_requesting_the_site(self) -> None:
+        self._inner.scaler.request_wake(FRONTEND)
+        Wait.until(
+            self._fully_awake,
+            timeout=90.0,
+            interval=0.5,
+            message="wake did not bring frontend+backend live",
+        )
+
+    def then_the_backend_is_running(self) -> None:
+        status, _ = self.docker.service_runtime(BACKEND_COMPOSE)
+        assert status == "running", f"backend status={status!r}"
+
+    def then_the_frontend_is_running(self) -> None:
+        status, _ = self.docker.service_runtime(FRONTEND_COMPOSE)
+        assert status == "running", f"frontend status={status!r}"
+        assert not self.store.is_scaled_to_zero(FRONTEND)
+
+    def then_the_site_serves_the_app(self) -> None:
+        assert self._site_is_live()
+
+    def _fully_awake(self) -> bool:
+        backend, _ = self.docker.service_runtime(BACKEND_COMPOSE)
+        front, _ = self.docker.service_runtime(FRONTEND_COMPOSE)
+        if backend != "running" or front != "running":
+            return False
+        if self.store.is_scaled_to_zero(FRONTEND):
+            return False
+        return self._site_is_live()
+
+    def _site_is_live(self) -> bool:
+        try:
+            resp = self._curl(expect_status=None)
+        except OSError:
+            return False
+        bad = ("Starting", "Unavailable")
+        return resp.status == 200 and not any(s in resp.body for s in bad)
+
+    def _curl(self, *, expect_status: Optional[int] = 200) -> HttpResponse:
+        return self._inner.http.get("/", host=PUBLIC_HOST, expect_status=expect_status)
+
+    @classmethod
+    def _prepare_home(cls, home: Path) -> None:
+        yamls = RaftHomeFixtures.fixture_app_yamls("multi_app_group")
+        ordered = sorted(yamls, key=lambda p: 0 if "redis" in str(p) else 1)
+        RaftHomeFixtures.apply_and_render(home, ordered)
+        YamlDoc(home / "state" / "apps" / f"{FRONTEND}.yaml").merge_spec(
+            {"scaling": dict(SCALING)}
+        )
+        StackRenderer(load_stack(home)).render()
