@@ -15,6 +15,7 @@ from raft.services.deploy.locking import (
     app_and_stack_locks,
     app_deploy_lock,
     app_lock_path,
+    apps_and_stack_locks,
     exclusive_lock,
     stack_lock,
     stack_lock_path,
@@ -90,6 +91,12 @@ class TestExclusiveLock(RaftTestCase):
         with app_deploy_lock(self.root, "web", timeout=1):
             with stack_lock(self.root, timeout=1):
                 pass
+
+    def test_apps_and_stack_locks_sorted(self) -> None:
+        with apps_and_stack_locks(self.root, ("web", "api", ""), timeout=1):
+            assert app_lock_path(self.root, "api").is_file()
+            assert app_lock_path(self.root, "web").is_file()
+            assert stack_lock_path(self.root).is_file()
 
     def test_app_lock_sanitizes_name(self) -> None:
         assert app_lock_path(self.root, "a/b\\c").name == "app-a_b_c.lock"

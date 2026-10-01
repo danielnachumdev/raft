@@ -15,6 +15,7 @@ from ..base import write_applied_app
 
 LOCKS_HEAL = "raft.controller.heal.app_and_stack_locks"
 LOCKS_SCALE = "raft.controller.scale.app_and_stack_locks"
+LOCKS_SCALE_APPS = "raft.controller.scale.apps_and_stack_locks"
 
 
 class ControllerTestCase:
@@ -52,7 +53,13 @@ class ControllerTestCase:
         return self.patched_locks(LOCKS_HEAL)
 
     def with_scale_locks(self):
-        return self.patched_locks(LOCKS_SCALE)
+        return self._patched_scale_locks()
+
+    @contextmanager
+    def _patched_scale_locks(self) -> Iterator[MagicMock]:
+        with self.patched_locks(LOCKS_SCALE) as idle:
+            with self.patched_locks(LOCKS_SCALE_APPS) as wake:
+                yield wake or idle
 
     def unhealthy_healer(
         self,
