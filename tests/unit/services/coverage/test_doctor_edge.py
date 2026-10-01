@@ -88,13 +88,18 @@ class TestDoctorEdgeCoverage(RaftTestCase):
             "mail",
             public_host="mail.example.com",
             tls="origin",
-            extra={
-                "ports": [
-                    {"name": "smtp", "containerPort": 25, "expose": "stream", "publicPort": 25}
-                ],
-                "readiness": {"type": "tcp", "port": "smtp"},
-            },
+            extra=self._mail_origin_extra(),
         )
+        self._write_mail_origin_files()
+
+    @staticmethod
+    def _mail_origin_extra() -> dict:
+        return {
+            "ports": [{"name": "smtp", "containerPort": 25, "expose": "stream", "publicPort": 25}],
+            "readiness": {"type": "tcp", "port": "smtp"},
+        }
+
+    def _write_mail_origin_files(self) -> None:
         d = self.tmp_path / "certs" / "mail"
         d.mkdir(parents=True)
         (d / "origin.pem").write_text("p", encoding="utf-8")

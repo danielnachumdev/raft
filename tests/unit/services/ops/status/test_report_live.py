@@ -37,26 +37,23 @@ class TestStatusReportLive(RaftTestCase):
         sleeps: list[float] = []
         out = StringIO()
         calls = {"n": 0}
+        collect = self._frame_collector(calls, out, snapshot)
+        code = StatusReportWriter().write_live(
+            collect, interval=0.01, out=out, color=False, sleep=sleeps.append, max_frames=2
+        )
+        assert code == 0
+        assert calls["n"] == 2 and sleeps == [0.01]
+        self._assert_live_text(out.getvalue())
 
+    @staticmethod
+    def _frame_collector(calls, out, snapshot):
         def collect():
             calls["n"] += 1
             if calls["n"] == 1:
                 assert out.getvalue() == ""
             return snapshot
 
-        assert (
-            StatusReportWriter().write_live(
-                collect,
-                interval=0.01,
-                out=out,
-                color=False,
-                sleep=sleeps.append,
-                max_frames=2,
-            )
-            == 0
-        )
-        assert calls["n"] == 2 and sleeps == [0.01]
-        self._assert_live_text(out.getvalue())
+        return collect
 
     @staticmethod
     def _assert_live_text(text: str) -> None:

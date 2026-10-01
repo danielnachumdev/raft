@@ -65,12 +65,19 @@ class TestCutoverFlow(CutoverTestCase):
                 "readiness": {"type": "http", "port": "http", "path": "/ping"},
             },
         )
+        s = self._tmp_session_ready()
+        with patch("raft.services.deploy.cutover.time.sleep"):
+            s.start_tmp_from_previous()
+        self._assert_tmp_env_and_path(s)
+
+    def _tmp_session_ready(self):
         s = self.session
         s.previous_image = "img:old"
         s.network = "net1"
         s.docker.router_can_fetch.return_value = True
-        with patch("raft.services.deploy.cutover.time.sleep"):
-            s.start_tmp_from_previous()
+        return s
+
+    def _assert_tmp_env_and_path(self, s) -> None:
         s.docker.run_tmp.assert_called_once_with(
             name=s.app.tmp_container,
             alias=s.app.tmp_alias,

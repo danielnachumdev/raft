@@ -20,7 +20,14 @@ class TestCliApplyGetDelete(CliTestCase):
         applier.apply_file.return_value = "web"
         env_path = self.tmp_path / "vars.env"
         env_path.write_text("FROM_FILE=yes\nA=from-file\n", encoding="utf-8")
-        argv = [
+        argv = self._merged_env_argv(env_path)
+        with self.patched_deps(stack=stack, AppApply=applier):
+            exit_code = cli.main(argv)
+        self._assert_merged_env(applier, exit_code)
+
+    @staticmethod
+    def _merged_env_argv(env_path) -> list:
+        return [
             "apply",
             "--file",
             "app.yaml",
@@ -32,9 +39,6 @@ class TestCliApplyGetDelete(CliTestCase):
             "--env",
             "B=2",
         ]
-        with self.patched_deps(stack=stack, AppApply=applier):
-            exit_code = cli.main(argv)
-        self._assert_merged_env(applier, exit_code)
 
     def _assert_merged_env(self, applier, exit_code) -> None:
         call_kwargs = applier.apply_file.call_args.kwargs

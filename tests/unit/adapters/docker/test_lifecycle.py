@@ -64,13 +64,12 @@ class TestDockerLifecycle(DockerTestCase):
         self.shell.docker.return_value = self.ok()
         app = make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
         self.docker.recreate_pulled_service(app, pull_ref="ghcr.io/org/hub:abc")
+        self._assert_tag_then_up()
+
+    def _assert_tag_then_up(self) -> None:
         self.shell.docker.assert_any_call("pull", "ghcr.io/org/hub:abc", capture=True, check=False)
         self.shell.docker.assert_any_call(
-            "tag",
-            "ghcr.io/org/hub:abc",
-            "ghcr.io/org/hub:main",
-            capture=True,
-            check=False,
+            "tag", "ghcr.io/org/hub:abc", "ghcr.io/org/hub:main", capture=True, check=False
         )
         self.shell.compose.assert_any_call(
             "up",

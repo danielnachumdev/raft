@@ -63,6 +63,11 @@ class Healer:
             return
         if not needs_heal(status, health):
             return
+        self._record_fail_and_act(name, compose_id, status, health, when)
+
+    def _record_fail_and_act(
+        self, name: str, compose_id: str, status: str, health: str, when: float
+    ) -> None:
         fails = self.fail_counts.get(name, 0) + 1
         self.fail_counts[name] = fails
         logger.info(

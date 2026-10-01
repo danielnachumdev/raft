@@ -22,24 +22,31 @@ class TestCutoverWait(CutoverTestCase):
             source="docker",
             image="redis",
             build_context=None,
-            extra={
-                "ports": [{"name": "http", "containerPort": 8000, "expose": "none"}],
-                "readiness": {"type": "tcp", "port": "http"},
-            },
+            extra=self._expose_none_extra(),
         )
         app = make_app("app", source="docker", image="redis", public_host="")
         docker = MagicMock()
         docker.service_is_ready.return_value = True
-        session = CutoverSession(
+        session = self._cutover_session(app, docker)
+        with patch("raft.services.deploy.cutover.time.sleep"):
+            session._wait_ready("compose ready")
+        docker.service_is_ready.assert_called_with(app.compose_id)
+
+    @staticmethod
+    def _expose_none_extra() -> dict:
+        return {
+            "ports": [{"name": "http", "containerPort": 8000, "expose": "none"}],
+            "readiness": {"type": "tcp", "port": "http"},
+        }
+
+    def _cutover_session(self, app, docker) -> CutoverSession:
+        return CutoverSession(
             stack=make_stack(self.tmp_path, (app,), drain_seconds=0.0),
             app=app,
             docker=docker,
             nginx=MagicMock(),
             http=MagicMock(),
         )
-        with patch("raft.services.deploy.cutover.time.sleep"):
-            session._wait_ready("compose ready")
-        docker.service_is_ready.assert_called_with(app.compose_id)
 
     def test_wait_ready_uses_app_readiness_timeout(self) -> None:
         write_applied_app(
@@ -82,21 +89,25 @@ class TestCutoverWait(CutoverTestCase):
         sleep_p, mono_p = self._clock_patches(0.02)
         with caplog.at_level("ERROR"), sleep_p, mono_p:
             with pytest.raises(OperatorError) as exc:
-                wait_until(
-                    "demo ready",
-                    lambda: False,
-                    timeout=0.01,
-                    interval=0.01,
-                    progress_every=0,
-                    fix="raise readiness.timeoutSeconds",
-                    diagnostics=lambda: "--- svc (running/starting) ---",
-                )
+                self._wait_until_budget(wait_until)
         assert_operator(
             exc.value,
             contains=("demo ready", "running/starting"),
             fix_label="Fix: raise readiness.timeoutSeconds",
         )
         assert_logged(caplog, level="ERROR", contains=("demo ready",))
+
+    @staticmethod
+    def _wait_until_budget(wait_until) -> None:
+        wait_until(
+            "demo ready",
+            lambda: False,
+            timeout=0.01,
+            interval=0.01,
+            progress_every=0,
+            fix="raise readiness.timeoutSeconds",
+            diagnostics=lambda: "--- svc (running/starting) ---",
+        )
 
     def test_wait_until_logs_progress(self, caplog) -> None:
         from raft.errors import OperatorError

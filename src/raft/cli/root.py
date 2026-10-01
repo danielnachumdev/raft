@@ -77,25 +77,12 @@ class RaftCLI:
     ) -> None:
         applier = deps.AppApply(self._stack)
         apply_env = self._build_apply_env(env_file=env_file, env=env)
+        opts = dict(ref=ref, deploy=deploy, force_sync=force_sync, env=apply_env)
         if file is not None:
-            self._apply_from_file(
-                applier,
-                Path(file),
-                ref=ref,
-                deploy=deploy,
-                force_sync=force_sync,
-                env=apply_env,
-            )
+            self._apply_from_file(applier, Path(file), **opts)
             return
         if git:
-            self._apply_from_git(
-                applier,
-                git,
-                ref=ref,
-                deploy=deploy,
-                force_sync=force_sync,
-                env=apply_env,
-            )
+            self._apply_from_git(applier, git, **opts)
             return
         raise apply_requires_source()
 

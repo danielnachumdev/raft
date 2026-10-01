@@ -92,22 +92,17 @@ class AppChecks:
 
     @staticmethod
     def _docker_auth_result(ctx: DoctorContext, app) -> CheckResult:
+        cid = app.compose_id
         if not app.repo:
             return CheckResult(
-                app.compose_id,
-                "auth",
-                "ok",
-                "n/a (no git repo on App; registry auth is docker login)",
+                cid, "auth", "ok", "n/a (no git repo on App; registry auth is docker login)"
             )
         if ctx.auth.is_configured(app.name):
             return CheckResult(
-                app.compose_id,
-                "auth",
-                "ok",
-                "deploy key present (optional checkout + GHCR pull separate)",
+                cid, "auth", "ok", "deploy key present (optional checkout + GHCR pull separate)"
             )
         return CheckResult(
-            app.compose_id,
+            cid,
             "auth",
             "warn",
             "no deploy key (optional git checkout for docker source)",
@@ -150,25 +145,12 @@ class AppChecks:
     @staticmethod
     def _git_checkout_missing(app, dest) -> Optional[list[CheckResult]]:
         if not dest.exists():
-            return [
-                CheckResult(
-                    app.compose_id,
-                    "sync",
-                    "fail",
-                    f"checkout missing: {dest}",
-                    fix=f"raft sync {app.name}",
-                )
-            ]
+            detail, fix = f"checkout missing: {dest}", f"raft sync {app.name}"
+            return [CheckResult(app.compose_id, "sync", "fail", detail, fix=fix)]
         if not (dest / ".git").is_dir():
-            return [
-                CheckResult(
-                    app.compose_id,
-                    "sync",
-                    "fail",
-                    f"{app.path} exists but is not a git checkout",
-                    fix=f"move it aside, then `raft sync {app.name}`",
-                )
-            ]
+            detail = f"{app.path} exists but is not a git checkout"
+            fix = f"move it aside, then `raft sync {app.name}`"
+            return [CheckResult(app.compose_id, "sync", "fail", detail, fix=fix)]
         return None
 
     def _contract(self, ctx: DoctorContext, app) -> list[CheckResult]:

@@ -83,13 +83,7 @@ class TestDoctorLocalGit(DoctorTestCase):
         dest = self.tmp_path / "apps" / "svc"
         dest.mkdir(parents=True)
         (dest / "README").write_text("x", encoding="utf-8")
-        write_applied_app(
-            self.tmp_path,
-            "svc",
-            source="git",
-            repo="git@github.com:org/svc.git",
-            public_host="svc.test",
-        )
+        self._seed_git_svc_app()
         auth = MagicMock()
         auth.is_configured.return_value = True
         auth.test.side_effect = RuntimeError("auth test failed")
@@ -99,6 +93,19 @@ class TestDoctorLocalGit(DoctorTestCase):
             auth=auth,
             docker=self.mock_docker(),
         )
+        self._assert_git_auth_sync_fail(results)
+
+    def _seed_git_svc_app(self) -> None:
+        write_applied_app(
+            self.tmp_path,
+            "svc",
+            source="git",
+            repo="git@github.com:org/svc.git",
+            public_host="svc.test",
+        )
+
+    @staticmethod
+    def _assert_git_auth_sync_fail(results) -> None:
         assert results[("svc", "auth")].status == "fail"
         assert results[("svc", "sync")].status == "fail"
         assert results[("svc", "sync")].detail
@@ -130,13 +137,7 @@ class TestDoctorLocalGit(DoctorTestCase):
         dest.mkdir(parents=True)
         (dest / ".git").mkdir()
         self.write_certs("svc")
-        write_applied_app(
-            self.tmp_path,
-            "svc",
-            source="git",
-            repo="git@github.com:org/svc.git",
-            public_host="svc.test",
-        )
+        self._seed_git_svc_app()
         auth = MagicMock()
         auth.is_configured.return_value = True
         auth.test.return_value = None

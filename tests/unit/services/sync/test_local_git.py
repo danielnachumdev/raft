@@ -109,14 +109,7 @@ class TestSyncLocalGit(SyncTestCase):
             self.syncer.sync([self.app])
 
     def test_sync_replaces_contract_stub_then_docker_pull(self) -> None:
-        app = make_app(
-            "hub",
-            source="docker",
-            image="ghcr.io/org/hub",
-            ref="main",
-            repo="git@example.com:org/hub.git",
-            path="apps/hub",
-        )
+        app = self._docker_hub_app()
         self.stack = make_stack(self.tmp_path, (app,))
         self.app = app
         self.syncer = SourceSync(self.stack, self.shell)
@@ -131,6 +124,17 @@ class TestSyncLocalGit(SyncTestCase):
         assert (self.tmp_path / "deploy" / "hub.ref").is_file()
         pulls = [c.args for c in self.shell.docker.call_args_list if c.args[:1] == ("pull",)]
         assert pulls
+
+    @staticmethod
+    def _docker_hub_app():
+        return make_app(
+            "hub",
+            source="docker",
+            image="ghcr.io/org/hub",
+            ref="main",
+            repo="git@example.com:org/hub.git",
+            path="apps/hub",
+        )
 
     def test_sync_git_falls_back_to_origin_ref(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self.git_syncer(repo="git@example.com:org/svc.git")

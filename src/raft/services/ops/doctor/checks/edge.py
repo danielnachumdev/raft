@@ -99,7 +99,10 @@ class EdgeChecks:
         edge = load_config(ctx.stack.root).edge
         declared = sorted({p for p, _ in edge.published_ports()})
         actual = ctx.docker.gate_published_ports()
-        gate = ctx.stack.gate
+        return self._gate_port_results(ctx.stack.gate, declared, actual)
+
+    @staticmethod
+    def _gate_port_results(gate: str, declared: list, actual: list) -> list[CheckResult]:
         if not actual:
             return [
                 CheckResult(
@@ -112,12 +115,6 @@ class EdgeChecks:
             ]
         if declared == actual:
             return [CheckResult(gate, "ports", "ok", ", ".join(str(p) for p in actual))]
-        return [
-            CheckResult(
-                gate,
-                "ports",
-                "fail",
-                f"declared {declared} but gate publishes {actual}",
-                fix="raft gate recreate   # Docker binds ports at create time",
-            )
-        ]
+        detail = f"declared {declared} but gate publishes {actual}"
+        fix = "raft gate recreate   # Docker binds ports at create time"
+        return [CheckResult(gate, "ports", "fail", detail, fix=fix)]
