@@ -102,7 +102,11 @@ class ScaleE2EStack:
         )
 
     def _is_live_body(self) -> bool:
-        resp = self.curl_host(expect_status=None)
+        try:
+            resp = self.curl_host(expect_status=None)
+        except OSError:
+            # Gate/nginx may reset during reload while the stack is still coming up.
+            return False
         return resp.status == 200 and "Starting" not in resp.body and "Unavailable" not in resp.body
 
     def wait_app_stopped(self, *, timeout: float = 45.0) -> None:
