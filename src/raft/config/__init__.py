@@ -23,6 +23,7 @@ from .settings_types import (
     EdgeStream,
     HealingConfig,
     LoggingConfig,
+    MetricsConfig,
     RaftConfig,
     default_config,
 )
@@ -39,6 +40,7 @@ __all__ = [
     "HealingConfig",
     "LOGS_DIRNAME",
     "LoggingConfig",
+    "MetricsConfig",
     "RaftConfig",
     "SETTINGS_FILENAME",
     "STATE_DIR",

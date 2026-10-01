@@ -1,22 +1,25 @@
-"""``raft-controller`` process entry (prereq smoke, then heal + scale loop)."""
+"""``raft-controller`` process entry (prereq smoke, then job orchestrator)."""
 
 from __future__ import annotations
 
 import logging
-import time
-from typing import Callable
+from typing import Callable, Optional
 
 from raft.adapters.docker import DockerStack
 from raft.adapters.shell import Shell
 from raft.config.paths import raft_home
 from raft.config.settings import load_config
+from raft.config.settings_types import HealingConfig, MetricsConfig, RaftConfig
 from raft.errors import OperatorError
 from raft.models.stack import Stack
 
 from .heal import Healer
+from .job import JobId, JobRequest, JobSpec, QueuePolicy
 from .logging import setup_controller_logging
 from .metrics import MetricsRecorder
+from .orchestrator import ClockFn, JobOrchestrator, SleepFn
 from .scale import WAKE_HTTP_PORT, Scaler
+from .schedule import IntervalSchedule
 from .smoke import run_prereq_smoke
 from .wake_http import start_wake_http
 
@@ -24,7 +27,7 @@ __all__ = ["main"]
 
 logger = logging.getLogger(__name__)
 
-SleepFn = Callable[[float], None]
+SafeTick = Callable[[], None]
 
 
 def main() -> None:
@@ -46,42 +49,96 @@ def main() -> None:
     docker = DockerStack(stack, sh)
     scaler = Scaler(home, docker)
     start_wake_http(scaler, port=WAKE_HTTP_PORT)
-    _run_forever(home, config.healing, docker, scaler)
+    _run_forever(home, config, docker, scaler)
 
 
 def _run_forever(
     home,
-    healing,
+    config: RaftConfig,
     docker: DockerStack,
     scaler: Scaler,
     *,
-    sleep_fn: SleepFn = time.sleep,
+    sleep_fn: Optional[SleepFn] = None,
+    clock: Optional[ClockFn] = None,
+    orchestrator: Optional[JobOrchestrator] = None,
 ) -> None:
-    healer = Healer(home=home, config=healing, docker=docker)
-    metrics = MetricsRecorder(home)
-    _log_startup(healing)
-    while True:
-        _safe_tick(healer.tick, "heal")
-        _safe_tick(scaler.tick, "scale")
-        _safe_tick(metrics.tick, "metrics")
-        sleep_fn(healing.interval_seconds)
+    orch = orchestrator or JobOrchestrator(
+        side_ticks=[_safe_tick(scaler.tick, "scale")],
+    )
+    healer, metrics = _build_jobs(home, config, docker, orch)
+    _register_jobs(orch, config.healing, config.metrics, healer, metrics)
+    _log_startup(config.healing, config.metrics)
+    kwargs = {}
+    if sleep_fn is not None:
+        kwargs["sleep_fn"] = sleep_fn
+    if clock is not None:
+        kwargs["clock"] = clock
+    orch.run_forever(**kwargs)
 
 
-def _safe_tick(fn: Callable[[], None], label: str) -> None:
-    try:
-        fn()
-    except Exception:  # noqa: BLE001 — keep the controller alive
-        logger.exception("%s tick failed", label)
+def _build_jobs(home, config: RaftConfig, docker: DockerStack, orch: JobOrchestrator):
+    def nudge() -> None:
+        orch.enqueue(JobRequest(job_id=JobId.METRICS))
+
+    healer = Healer(home=home, config=config.healing, docker=docker, on_needs_heal=nudge)
+    metrics = MetricsRecorder(
+        home,
+        batch_size=config.metrics.batch_size,
+        flush_seconds=config.metrics.flush_seconds,
+    )
+    return healer, metrics
 
 
-def _log_startup(healing) -> None:
+def _register_jobs(
+    orch: JobOrchestrator,
+    healing: HealingConfig,
+    metrics_cfg: MetricsConfig,
+    healer: Healer,
+    metrics: MetricsRecorder,
+) -> None:
+    orch.register(
+        JobSpec(
+            job_id=JobId.HEAL,
+            schedule=IntervalSchedule(healing.interval_seconds),
+            timeout_seconds=healing.timeout_seconds,
+            queue_policy=QueuePolicy.SKIP_IF_RUNNING,
+            run=healer.tick,
+        )
+    )
+    orch.register(
+        JobSpec(
+            job_id=JobId.METRICS,
+            schedule=IntervalSchedule(metrics_cfg.interval_seconds),
+            timeout_seconds=metrics_cfg.timeout_seconds,
+            queue_policy=QueuePolicy.SKIP_IF_RUNNING,
+            run=metrics.tick,
+        )
+    )
+
+
+def _safe_tick(fn: Callable[[], None], label: str) -> SafeTick:
+    def wrapped() -> None:
+        try:
+            fn()
+        except Exception:  # noqa: BLE001 — keep the controller alive
+            logger.exception("%s tick failed", label)
+
+    return wrapped
+
+
+def _log_startup(healing: HealingConfig, metrics_cfg: MetricsConfig) -> None:
     if healing.enabled:
         logger.info(
-            "healing enabled interval=%ss failThreshold=%s",
+            "healing enabled interval=%ss timeout=%ss failThreshold=%s",
             healing.interval_seconds,
+            healing.timeout_seconds,
             healing.fail_threshold,
         )
     else:
         logger.info("healing disabled; scale + idle wake loop active")
     logger.info("scale-to-zero enabled for apps with spec.scaling")
-    logger.info("metrics recording enabled path=state/metrics/resources.jsonl")
+    logger.info(
+        "metrics enabled interval=%ss timeout=%ss path=state/metrics/resources.jsonl",
+        metrics_cfg.interval_seconds,
+        metrics_cfg.timeout_seconds,
+    )

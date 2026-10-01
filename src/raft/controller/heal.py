@@ -11,17 +11,17 @@ from typing import Callable, Dict, Optional
 from raft.adapters.docker import DockerStack
 from raft.config.settings_types import HealingConfig
 from raft.errors import OperatorError
+from raft.models.scaling_store import ScalingStore
 from raft.models.stack import Stack
 from raft.services.deploy.locking import app_and_stack_locks
 from raft.services.deploy.orchestrator import Orchestrator
-
-from raft.models.scaling_store import ScalingStore
 
 __all__ = ["Healer", "needs_heal", "run_heal_forever"]
 
 logger = logging.getLogger(__name__)
 
 DeployFn = Callable[[str], None]
+NeedsHealFn = Callable[[], None]
 
 
 def needs_heal(status: str, health: str) -> bool:
@@ -39,6 +39,7 @@ class Healer:
     config: HealingConfig
     docker: DockerStack
     deploy: Optional[DeployFn] = None
+    on_needs_heal: Optional[NeedsHealFn] = None
     fail_counts: Dict[str, int] = field(default_factory=dict)
     restart_counts: Dict[str, int] = field(default_factory=dict)
     escalate_counts: Dict[str, int] = field(default_factory=dict)
@@ -50,20 +51,30 @@ class Healer:
             return
         when = time.monotonic() if now is None else now
         stack = Stack.load_apps(self.home)
+        observed = False
         for app in stack.apps:
-            self._consider(app.name, app.compose_id, when)
+            if self._consider(app.name, app.compose_id, when):
+                observed = True
+        if observed:
+            self._nudge_metrics()
 
-    def _consider(self, name: str, compose_id: str, when: float) -> None:
+    def _nudge_metrics(self) -> None:
+        if self.on_needs_heal is None:
+            return
+        self.on_needs_heal()
+
+    def _consider(self, name: str, compose_id: str, when: float) -> bool:
         if ScalingStore(self.home).is_scaled_to_zero(name):
             logger.debug("heal skip scaled-to-zero app=%s", name)
             self.fail_counts.pop(name, None)
-            return
+            return False
         status, health = self.docker.service_runtime(compose_id)
         if self._clear_if_healthy(name, compose_id, status, health):
-            return
+            return False
         if not needs_heal(status, health):
-            return
+            return False
         self._record_fail_and_act(name, compose_id, status, health, when)
+        return True
 
     def _record_fail_and_act(
         self, name: str, compose_id: str, status: str, health: str, when: float
@@ -192,7 +203,7 @@ def run_heal_forever(
     sleep_fn: Callable[[float], None] = time.sleep,
     deploy: Optional[DeployFn] = None,
 ) -> None:
-    """Poll forever (``sleep_fn`` injectable for tests)."""
+    """Poll forever (``sleep_fn`` injectable for tests). Product path uses JobOrchestrator."""
     healer = Healer(home=home, config=config, docker=docker, deploy=deploy)
     _log_heal_startup(config)
     while True:
