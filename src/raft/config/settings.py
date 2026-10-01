@@ -17,6 +17,8 @@ from .settings_types import (
     DEFAULT_METRICS_BATCH_SIZE,
     DEFAULT_METRICS_FLUSH_SECONDS,
     DEFAULT_METRICS_INTERVAL_SECONDS,
+    DEFAULT_METRICS_RETENTION_MAX_AGE_DAYS,
+    DEFAULT_METRICS_RETENTION_MAX_BYTES,
     DEFAULT_METRICS_TIMEOUT_SECONDS,
     HealingConfig,
     LoggingConfig,
@@ -131,17 +133,39 @@ class SettingsLoader:
                 "Fix: set metrics: {intervalSeconds: 60, ...} in ~/.raft/settings.yaml"
             )
         return MetricsConfig(
-            interval_seconds=self._pos_float(
+            **self._metrics_schedule(raw),
+            **self._metrics_retention(raw),
+        )
+
+    def _metrics_schedule(self, raw: dict) -> dict:
+        return {
+            "interval_seconds": self._pos_float(
                 raw, "intervalSeconds", DEFAULT_METRICS_INTERVAL_SECONDS, "metrics"
             ),
-            timeout_seconds=self._pos_float(
+            "timeout_seconds": self._pos_float(
                 raw, "timeoutSeconds", DEFAULT_METRICS_TIMEOUT_SECONDS, "metrics"
             ),
-            batch_size=self._pos_int(raw, "batchSize", DEFAULT_METRICS_BATCH_SIZE, "metrics"),
-            flush_seconds=self._pos_float(
+            "batch_size": self._pos_int(raw, "batchSize", DEFAULT_METRICS_BATCH_SIZE, "metrics"),
+            "flush_seconds": self._pos_float(
                 raw, "flushSeconds", DEFAULT_METRICS_FLUSH_SECONDS, "metrics"
             ),
-        )
+        }
+
+    def _metrics_retention(self, raw: dict) -> dict:
+        return {
+            "retention_max_age_days": self._pos_int(
+                raw,
+                "retentionMaxAgeDays",
+                DEFAULT_METRICS_RETENTION_MAX_AGE_DAYS,
+                "metrics",
+            ),
+            "retention_max_bytes": self._pos_int(
+                raw,
+                "retentionMaxBytes",
+                DEFAULT_METRICS_RETENTION_MAX_BYTES,
+                "metrics",
+            ),
+        }
 
     @staticmethod
     def _pos_float(raw: dict, key: str, default: float, section: str) -> float:

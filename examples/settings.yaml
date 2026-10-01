@@ -44,13 +44,16 @@ logging:
 # ---------------------------------------------------------------------------
 # metrics — raft-controller resource sampling (JSONL under state/metrics/).
 # Independent cadence from healing. Defaults: 1 sample/min, soft timeout 30s,
-# flush every 10 samples or 60s. Schema unchanged.
+# flush every 10 samples or 60s. Retention prunes oldest samples first when
+# age or size limits are hit (defaults: 30 days, 100 MiB).
 # ---------------------------------------------------------------------------
 # metrics:
 #   intervalSeconds: 60           # periodic metrics job
 #   timeoutSeconds: 30            # soft join timeout (worker may continue)
 #   batchSize: 10                 # buffer before append
 #   flushSeconds: 60              # time-based flush even if batch not full
+#   retentionMaxAgeDays: 30       # drop samples older than this
+#   retentionMaxBytes: 104857600  # 100 MiB; drop oldest until under limit
 
 # ---------------------------------------------------------------------------
 # edge — public listeners published by the gate container.

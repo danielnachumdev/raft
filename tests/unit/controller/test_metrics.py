@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from unittest.mock import MagicMock, patch
 
 from raft.controller.metrics import MetricsRecorder
+from raft.controller.metrics_retention import MetricsRetention
 from raft.services.ops.status.models import StatusSnapshot
 
 from ..services.ops.status.fixtures import StatusFixtures
@@ -83,15 +85,22 @@ class TestMetricsRecorder(ControllerTestCase):
 
     def test_preserves_existing_timestamp(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
+        fixed = "2026-06-01T00:00:00+00:00"
         rec = self._recorder(
             home,
-            samples=[{"ts": "fixed", "host": {}, "containers": []}],
+            samples=[{"ts": fixed, "host": {}, "containers": []}],
             batch_size=1,
             clock_values=[0.0, 0.0],
         )
+        # Avoid age-pruning the fixture timestamp during flush.
+        rec._retention = MetricsRetention(
+            max_age_days=3650,
+            max_bytes=10_000_000,
+            wall_clock=lambda: datetime.fromisoformat(fixed),
+        )
         rec.tick()
         row = json.loads(rec.path.read_text(encoding="utf-8").strip())
-        assert row["ts"] == "fixed"
+        assert row["ts"] == fixed
 
     def test_collect_status_default_path(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
@@ -139,3 +148,16 @@ class TestMetricsRecorder(ControllerTestCase):
         rec.tick()
         lines = rec.path.read_text(encoding="utf-8").strip().splitlines()
         assert [json.loads(line)["host"]["cpus"] for line in lines] == [1, 2]
+
+    def test_flush_invokes_retention_prune(self, tmp_path: Path) -> None:
+        home = self.raft_home(tmp_path)
+        retention = MagicMock()
+        rec = MetricsRecorder(
+            home,
+            batch_size=1,
+            collect_fn=lambda: {"host": {}, "containers": []},
+            clock=lambda: 0.0,
+            retention=retention,
+        )
+        rec.tick()
+        retention.prune.assert_called_once_with(rec.path)

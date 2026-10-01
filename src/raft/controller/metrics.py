@@ -12,9 +12,13 @@ from typing import Any, Callable, Dict, List, Optional
 from raft.config.settings_types import (
     DEFAULT_METRICS_BATCH_SIZE,
     DEFAULT_METRICS_FLUSH_SECONDS,
+    DEFAULT_METRICS_RETENTION_MAX_AGE_DAYS,
+    DEFAULT_METRICS_RETENTION_MAX_BYTES,
 )
 from raft.models.stack import Stack
 from raft.services.ops.status import Status
+
+from .metrics_retention import MetricsRetention
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +38,11 @@ class MetricsRecorder:
         *,
         batch_size: int = DEFAULT_METRICS_BATCH_SIZE,
         flush_seconds: float = DEFAULT_METRICS_FLUSH_SECONDS,
+        retention_max_age_days: int = DEFAULT_METRICS_RETENTION_MAX_AGE_DAYS,
+        retention_max_bytes: int = DEFAULT_METRICS_RETENTION_MAX_BYTES,
         collect_fn: Optional[CollectFn] = None,
         clock: ClockFn = time.monotonic,
+        retention: Optional[MetricsRetention] = None,
     ) -> None:
         self.home = home
         self.batch_size = batch_size
@@ -44,6 +51,10 @@ class MetricsRecorder:
         self._clock = clock
         self._buffer: List[Dict[str, Any]] = []
         self._last_flush_at = clock()
+        self._retention = retention or MetricsRetention(
+            max_age_days=retention_max_age_days,
+            max_bytes=retention_max_bytes,
+        )
 
     @property
     def path(self) -> Path:
@@ -61,6 +72,7 @@ class MetricsRecorder:
         self._buffer = []
         self._last_flush_at = self._clock()
         self._write_batch(rows)
+        self._retention.prune(self.path)
 
     def _should_flush(self) -> bool:
         if len(self._buffer) >= self.batch_size:
