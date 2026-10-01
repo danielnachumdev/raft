@@ -24,6 +24,8 @@ metrics:
   timeoutSeconds: 20
   batchSize: 5
   flushSeconds: 30
+  retentionMaxAgeDays: 14
+  retentionMaxBytes: 1048576
 edge:
   http: 80
 """
@@ -41,6 +43,8 @@ HEALING_ERROR_CASES = [
     ("metrics:\n  intervalSeconds: abc\n", "intervalSeconds"),
     ("metrics:\n  batchSize: 0\n", "batchSize"),
     ("metrics:\n  flushSeconds: -1\n", "flushSeconds"),
+    ("metrics:\n  retentionMaxAgeDays: 0\n", "retentionMaxAgeDays"),
+    ("metrics:\n  retentionMaxBytes: abc\n", "retentionMaxBytes"),
 ]
 
 
@@ -59,6 +63,8 @@ class TestConfig(RaftTestCase):
         assert cfg.metrics.timeout_seconds == 30.0
         assert cfg.metrics.batch_size == 10
         assert cfg.metrics.flush_seconds == 60.0
+        assert cfg.metrics.retention_max_age_days == 30
+        assert cfg.metrics.retention_max_bytes == 100 * 1024 * 1024
 
     def test_load_healing_section(self) -> None:
         (self.tmp_path / "settings.yaml").write_text(HEALING_OK_YAML, encoding="utf-8")
@@ -74,6 +80,8 @@ class TestConfig(RaftTestCase):
         assert cfg.metrics.timeout_seconds == 20
         assert cfg.metrics.batch_size == 5
         assert cfg.metrics.flush_seconds == 30
+        assert cfg.metrics.retention_max_age_days == 14
+        assert cfg.metrics.retention_max_bytes == 1048576
 
     def test_load_healing_invalid(self) -> None:
         for body, match in HEALING_ERROR_CASES:

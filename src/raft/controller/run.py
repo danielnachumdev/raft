@@ -85,6 +85,8 @@ def _build_jobs(home, config: RaftConfig, docker: DockerStack, orch: JobOrchestr
         home,
         batch_size=config.metrics.batch_size,
         flush_seconds=config.metrics.flush_seconds,
+        retention_max_age_days=config.metrics.retention_max_age_days,
+        retention_max_bytes=config.metrics.retention_max_bytes,
     )
     return healer, metrics
 
