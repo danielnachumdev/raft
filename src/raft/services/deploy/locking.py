@@ -23,9 +23,9 @@ import logging
 import os
 import threading
 import time
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
-from typing import Dict, Iterator, Optional
+from typing import Dict, Iterator, Optional, Sequence
 
 from raft.errors import deploy_lock_busy, invalid_lock_timeout
 
@@ -217,6 +217,21 @@ def app_and_stack_locks(
     timeout: Optional[float] = None,
 ) -> Iterator[None]:
     """Acquire app lock then stack lock (fixed order avoids cross-app deadlock)."""
-    with app_deploy_lock(root, name, timeout=timeout):
-        with stack_lock(root, timeout=timeout):
-            yield
+    with apps_and_stack_locks(root, (name,), timeout=timeout):
+        yield
+
+
+@contextmanager
+def apps_and_stack_locks(
+    root: Path,
+    names: Sequence[str],
+    *,
+    timeout: Optional[float] = None,
+) -> Iterator[None]:
+    """Acquire app locks in sorted name order, then stack (avoids deadlock)."""
+    ordered = sorted({n for n in names if n})
+    with ExitStack() as stack:
+        for name in ordered:
+            stack.enter_context(app_deploy_lock(root, name, timeout=timeout))
+        stack.enter_context(stack_lock(root, timeout=timeout))
+        yield

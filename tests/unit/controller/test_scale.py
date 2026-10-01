@@ -11,6 +11,7 @@ from raft.models.scaling_store import AppScalingState, ScalingStore
 from raft.errors import OperatorError
 from raft.models.scaling_spec import ScalingSpec
 
+from ..base import write_applied_app
 from .base import ControllerTestCase
 
 
@@ -80,11 +81,118 @@ class TestScaler(ControllerTestCase):
 
     def test_wake_starts_and_clears_zero(self, tmp_path: Path) -> None:
         scaler, docker = self._scaler(tmp_path)
+        docker.service_runtime.side_effect = [
+            ("exited", "none"),
+            ("running", "healthy"),
+        ]
         scaler.store.mark_scaled_to_zero(self.APP)
         with self.with_scale_locks():
             assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5), now=10.0) is True
         docker.start_service.assert_called_once_with(self.APP)
         assert not scaler.store.is_scaled_to_zero(self.APP)
+
+    def test_wake_starts_depends_on_then_app(self, tmp_path: Path) -> None:
+        home, docker, scaler = self._dep_scaler(tmp_path)
+        docker.service_runtime.side_effect = [
+            ("exited", "none"),
+            ("running", "healthy"),
+            ("exited", "none"),
+            ("running", "healthy"),
+        ]
+        scaler.store.mark_scaled_to_zero(self.APP)
+        with self.with_scale_locks():
+            assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5), now=1.0) is True
+        assert [c.args[0] for c in docker.start_service.call_args_list] == [
+            "api",
+            self.APP,
+        ]
+        assert not scaler.store.is_scaled_to_zero(self.APP)
+
+    def test_wake_skips_already_running_dep(self, tmp_path: Path) -> None:
+        home, docker, scaler = self._dep_scaler(tmp_path)
+        docker.service_runtime.side_effect = [
+            ("running", "healthy"),
+            ("exited", "none"),
+            ("running", "healthy"),
+        ]
+        scaler.store.mark_scaled_to_zero(self.APP)
+        with self.with_scale_locks():
+            assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5), now=1.0) is True
+        docker.start_service.assert_called_once_with(self.APP)
+
+    def test_wake_dep_start_failure_keeps_scaled(self, tmp_path: Path) -> None:
+        _home, docker, scaler = self._dep_scaler(tmp_path)
+        docker.service_runtime.return_value = ("exited", "none")
+        docker.start_service.side_effect = OperatorError("boom", has_fix=False)
+        scaler.store.mark_scaled_to_zero(self.APP)
+        with self.with_scale_locks():
+            assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5), now=1.0) is False
+        assert scaler.store.is_scaled_to_zero(self.APP)
+
+    def _dep_scaler(self, tmp_path: Path):
+        home = self.raft_home(tmp_path)
+        write_applied_app(home, "api")
+        write_applied_app(
+            home,
+            self.APP,
+            extra={**self.scaling_extra(), "dependsOn": ["api"]},
+        )
+        docker = MagicMock()
+        return home, docker, Scaler(home, docker)
+
+    def test_wake_depends_on_error(self, tmp_path: Path) -> None:
+        home = self.raft_home(tmp_path)
+        write_applied_app(
+            home,
+            self.APP,
+            extra={**self.scaling_extra(), "dependsOn": ["missing"]},
+        )
+        scaler = Scaler(home, MagicMock())
+        scaler.store.mark_scaled_to_zero(self.APP)
+        with self.with_scale_locks():
+            assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5), now=1.0) is False
+
+    def test_wake_wait_times_out(self, tmp_path: Path) -> None:
+        scaler, docker = self._scaler(tmp_path)
+        clock = {"t": 100.0}
+        scaler._clock = lambda: clock["t"]
+        scaler._sleep = lambda s: clock.__setitem__("t", clock["t"] + s)
+        docker.service_runtime.return_value = ("exited", "none")
+        scaler.store.mark_scaled_to_zero(self.APP)
+        with self.with_scale_locks():
+            assert scaler.wake_now(self.APP, ScalingSpec(10, 5, 5), now=1.0) is False
+        assert scaler.store.is_scaled_to_zero(self.APP)
+
+    def test_wake_deadline_before_start(self, tmp_path: Path) -> None:
+        scaler, docker = self._scaler(tmp_path)
+        ticks = {"n": 0}
+
+        def clock() -> float:
+            ticks["n"] += 1
+            return 100.0 if ticks["n"] == 1 else 999.0
+
+        scaler._clock = clock
+        docker.service_runtime.return_value = ("exited", "none")
+        scaler.store.mark_scaled_to_zero(self.APP)
+        with self.with_scale_locks():
+            assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5), now=1.0) is False
+        docker.start_service.assert_not_called()
+
+    def test_wake_missing_compose_in_chain(self, tmp_path: Path) -> None:
+        _home, docker, scaler = self._dep_scaler(tmp_path)
+        docker.service_runtime.return_value = ("exited", "none")
+        scaler.store.mark_scaled_to_zero(self.APP)
+
+        def compose_id(name: str):
+            return None if name == "api" else self.APP
+
+        with self.with_scale_locks(), patch.object(scaler, "_compose_id", side_effect=compose_id):
+            assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5), now=1.0) is False
+
+    def test_depends_edges_skips_bad_spec(self, tmp_path: Path) -> None:
+        scaler, _docker = self._scaler(tmp_path)
+        with patch.object(scaler, "_load_spec", return_value=None):
+            assert scaler._depends_edges() == {self.APP: ()}
 
     def test_record_activity_and_skip_no_scaling(self, tmp_path: Path) -> None:
         scaler, docker = self._scaler(tmp_path, with_scaling=False)
@@ -119,6 +227,7 @@ class TestScaler(ControllerTestCase):
 
     def test_wake_and_idle_operator_errors(self, tmp_path: Path) -> None:
         scaler, docker = self._scaler(tmp_path)
+        docker.service_runtime.return_value = ("exited", "none")
         docker.start_service.side_effect = OperatorError("boom", has_fix=False)
         scaler.store.mark_scaled_to_zero(self.APP)
         with self.with_scale_locks():
