@@ -89,3 +89,14 @@ class TestShell(RaftTestCase):
         assert run.call_args_list[0].args[0][:2] == ["docker", "compose"]
         assert run.call_args_list[1].args[0][:1] == ["docker"]
         assert run.call_args_list[2].args[0][:1] == ["git"]
+
+    def test_popen_pipes_stdout(self) -> None:
+        proc = MagicMock()
+        with patch("raft.adapters.shell.subprocess.Popen", return_value=proc) as popen:
+            assert self.shell.popen(["echo", "hi"]) is proc
+        popen.assert_called_once()
+        kwargs = popen.call_args.kwargs
+        assert kwargs["stdout"] is subprocess.PIPE
+        assert kwargs["stderr"] is subprocess.STDOUT
+        assert kwargs["text"] is True
+        assert kwargs["cwd"] == self.tmp_path

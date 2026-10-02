@@ -1,4 +1,4 @@
-"""Unit tests for ``Logs.show`` wiring (snapshot + mocked follow)."""
+"""Unit tests for ``Logs.show`` / ``snapshot`` / ``follow`` wiring."""
 
 from __future__ import annotations
 
@@ -28,12 +28,40 @@ class TestLogsShow(RaftTestCase):
         compose.assert_called_once_with("app", tail=20)
         assert out.getvalue() == "line1\nline2\n"
 
-    def test_follow_streams_via_adapter(self) -> None:
+    def test_follow_prints_shared_iterator(self) -> None:
+        logs = self._logs()
+        out = StringIO()
+        with patch.object(logs.docker, "try_service_container_id", return_value="cid"):
+            with patch.object(
+                logs.docker,
+                "iter_follow_compose_logs",
+                return_value=iter(["a", "b"]),
+            ) as follow:
+                logs.show("gate", follow=True, tail=50, out=out)
+        follow.assert_called_once_with("raft-gate", tail=50)
+        assert out.getvalue() == "a\nb\n"
+
+    def test_follow_yields_shared_iterator(self) -> None:
         logs = self._logs()
         with patch.object(logs.docker, "try_service_container_id", return_value="cid"):
-            with patch.object(logs.docker, "follow_compose_logs") as follow:
-                logs.show("gate", follow=True, tail=50)
-        follow.assert_called_once_with("raft-gate", tail=50)
+            with patch.object(
+                logs.docker,
+                "iter_follow_compose_logs",
+                return_value=iter(["x"]),
+            ) as follow:
+                assert list(logs.follow("app", tail=10)) == ["x"]
+        follow.assert_called_once_with("app", tail=10)
+
+    def test_follow_swallows_keyboard_interrupt(self) -> None:
+        logs = self._logs()
+
+        def boom(*_a, **_k):
+            yield "one"
+            raise KeyboardInterrupt
+
+        with patch.object(logs.docker, "try_service_container_id", return_value="cid"):
+            with patch.object(logs.docker, "iter_follow_compose_logs", side_effect=boom):
+                logs.show("app", follow=True, out=StringIO())
 
     def test_missing_container_raises(self) -> None:
         logs = self._logs()

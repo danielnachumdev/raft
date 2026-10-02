@@ -1,4 +1,4 @@
-"""Unit tests for serve ``GET /api/service/{name}/logs``."""
+"""Unit tests for serve service logs snapshot + SSE follow."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from raft.errors import OperatorError
 from raft.services.ops.status.models import StatusSnapshot
 from raft.services.serve.app import ServeAppFactory
+from raft.services.serve.log_stream import LogSseStream
 
 from ...base import RaftTestCase, make_app, make_stack
 from ...services.ops.status.fixtures import StatusFixtures
@@ -72,3 +73,26 @@ class TestServeServiceLogs(RaftTestCase):
         response = self._client(logs).get("/api/service/site/logs")
         assert response.status_code == 400
         assert "not running" in response.json()["detail"]
+
+    def test_api_service_logs_follow_streams_sse(self) -> None:
+        logs = MagicMock()
+        logs.follow.return_value = iter(["hello", "world"])
+        with self._client(logs).stream(
+            "GET", "/api/service/site/logs/follow", params={"tail": 20}
+        ) as response:
+            assert response.status_code == 200
+            assert "text/event-stream" in response.headers["content-type"]
+            body = "".join(response.iter_text())
+        assert body == "data: hello\n\ndata: world\n\n"
+        logs.follow.assert_called_once_with("site", tail=20)
+
+    def test_api_service_logs_follow_operator_error(self) -> None:
+        logs = MagicMock()
+        logs.follow.side_effect = OperatorError(
+            "unknown logs target 'missing' (known: gate)",
+        )
+        response = self._client(logs).get("/api/service/missing/logs/follow")
+        assert response.status_code == 404
+
+    def test_log_sse_stream_strips_cr(self) -> None:
+        assert list(LogSseStream.events(iter(["a\rb"]))) == ["data: ab\n\n"]

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from raft.errors import OperatorError
 
@@ -14,16 +14,23 @@ from ..ops.logs import DEFAULT_LOG_TAIL, Logs
 from ..ops.status import Status
 from ..read import MetricsRead, StatusRead
 from .actions import ServeActions
+from .log_stream import LogSseStream
 from .paths import ServePaths
 
 # GET /api/status — shared read contract (see raft.services.read).
 # GET /api/metrics — historical series from resources.jsonl (poll + since).
 # GET /api/service/{name} — one Compose service from the status snapshot.
 # GET /api/service/{name}/logs — container stdout/stderr tail (Logs.snapshot).
+# GET /api/service/{name}/logs/follow — SSE follow (Logs.follow; CLI ``-f``).
 # POST /api/service/{name}/start|stop|redeploy — mutative lifecycle actions.
 # GET / and non-API paths — compiled React SPA (deep-link fallback).
 
 _MAX_LOG_TAIL = 5000
+_SSE_HEADERS = {
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no",
+}
 
 
 class ServePage:
@@ -67,6 +74,21 @@ class ServePage:
         except OperatorError as exc:
             raise self._http_for_operator(exc) from exc
         return {"service": name, "tail": lines, "text": text}
+
+    def api_service_logs_follow(
+        self, name: str, tail: int = DEFAULT_LOG_TAIL
+    ) -> StreamingResponse:
+        """SSE stream of follow lines (same ``Logs.follow`` as CLI ``-f``)."""
+        lines = self._clamp_tail(tail)
+        try:
+            stream = self._logs.follow(name, tail=lines)
+        except OperatorError as exc:
+            raise self._http_for_operator(exc) from exc
+        return StreamingResponse(
+            LogSseStream.events(stream),
+            media_type="text/event-stream",
+            headers=_SSE_HEADERS,
+        )
 
     def api_service_start(self, name: str) -> Dict[str, Any]:
         return self._run_action(self._actions.start, name)

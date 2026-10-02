@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from typing import Any, Optional
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -13,6 +13,17 @@ from tests.shared.nginx import NginxEmerg
 
 from ...base import make_app
 from .base import DockerTestCase
+
+
+class _RaisingIter:
+    def __init__(self, exc: BaseException) -> None:
+        self._exc = exc
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        raise self._exc
 
 
 class TestDockerStatsHealth(DockerTestCase):
@@ -119,26 +130,38 @@ class TestDockerStatsHealth(DockerTestCase):
         assert self.docker.container_logs("") == ""
 
     def test_follow_compose_logs_streams(self) -> None:
+        proc = MagicMock()
+        proc.stdout = iter(["line-a\n", "line-b\n"])
+        proc.poll.return_value = 0
+        self.shell.popen.return_value = proc
         self.docker.follow_compose_logs("app", tail=20)
-        self.shell.compose.assert_called_with(
-            "logs",
-            "-f",
-            "--no-color",
-            "--tail",
-            "20",
-            "app",
-            capture=False,
-            check=False,
-        )
+        self.shell.popen.assert_called_once()
+        args = self.shell.popen.call_args.args[0]
+        assert args[:6] == ["docker", "compose", "logs", "-f", "--no-color", "--tail"]
+        assert args[6:] == ["20", "app"]
 
     def test_follow_compose_logs_noop_without_services(self) -> None:
-        self.shell.compose.reset_mock()
+        self.shell.popen.reset_mock()
         self.docker.follow_compose_logs()
-        self.shell.compose.assert_not_called()
+        self.shell.popen.assert_not_called()
 
     def test_follow_compose_logs_swallows_keyboard_interrupt(self) -> None:
-        self.shell.compose.side_effect = KeyboardInterrupt
+        proc = MagicMock()
+        proc.stdout = _RaisingIter(KeyboardInterrupt)
+        proc.poll.return_value = 0
+        self.shell.popen.return_value = proc
         self.docker.follow_compose_logs("app")
+
+    def test_iter_follow_compose_logs_yields_lines(self) -> None:
+        proc = MagicMock()
+        proc.stdout = iter(["one\n", "two\n"])
+        proc.poll.return_value = 0
+        self.shell.popen.return_value = proc
+        assert list(self.docker.iter_follow_compose_logs("app", tail=5)) == [
+            "one",
+            "two",
+        ]
+
 
     def test_service_health_summary_and_diagnostics(self) -> None:
         self._assert_health_unhealthy_with_log()

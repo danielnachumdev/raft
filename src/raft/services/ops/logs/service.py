@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Optional, TextIO
+from typing import Iterator, Optional, TextIO
 
 from ....adapters import DockerStack, Shell
 from ....errors import service_not_running
@@ -30,32 +30,51 @@ class Logs:
         out: Optional[TextIO] = None,
     ) -> None:
         """Print recent logs, or stream with ``follow`` until interrupted."""
-        compose_ids = self._targets.resolve(*services)
-        self._require_containers(compose_ids)
         if follow:
-            self.docker.follow_compose_logs(*compose_ids, tail=tail)
+            self._print_follow(*services, tail=tail, out=out)
             return
-        self._print_snapshot(compose_ids, tail=tail, out=out)
+        self._print_snapshot(*services, tail=tail, out=out)
 
     def snapshot(self, *services: str, tail: int = DEFAULT_LOG_TAIL) -> str:
         """Return recent Compose log text (same resolve/require rules as ``show``)."""
+        compose_ids = self._prepare(*services)
+        return self.docker.compose_logs(*compose_ids, tail=tail) or ""
+
+    def follow(self, *services: str, tail: int = DEFAULT_LOG_TAIL) -> Iterator[str]:
+        """Yield Compose follow lines (CLI ``-f`` and serve SSE share this)."""
+        compose_ids = self._prepare(*services)
+        return self.docker.iter_follow_compose_logs(*compose_ids, tail=tail)
+
+    def _prepare(self, *services: str) -> tuple[str, ...]:
         compose_ids = self._targets.resolve(*services)
         self._require_containers(compose_ids)
-        return self.docker.compose_logs(*compose_ids, tail=tail) or ""
+        return compose_ids
 
     def _require_containers(self, compose_ids: tuple[str, ...]) -> None:
         for service in compose_ids:
             if self.docker.try_service_container_id(service) is None:
                 raise service_not_running(service)
 
-    def _print_snapshot(
+    def _print_follow(
         self,
-        compose_ids: tuple[str, ...],
-        *,
+        *services: str,
         tail: int,
         out: Optional[TextIO],
     ) -> None:
-        text = self.docker.compose_logs(*compose_ids, tail=tail)
+        stream = out if out is not None else sys.stdout
+        try:
+            for line in self.follow(*services, tail=tail):
+                print(line, file=stream, flush=True)
+        except KeyboardInterrupt:
+            return
+
+    def _print_snapshot(
+        self,
+        *services: str,
+        tail: int,
+        out: Optional[TextIO],
+    ) -> None:
+        text = self.snapshot(*services, tail=tail)
         stream = out if out is not None else sys.stdout
         if text:
             print(text, file=stream)
