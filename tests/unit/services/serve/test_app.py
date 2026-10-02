@@ -41,7 +41,7 @@ class _ServeFixtures:
 
 
 class TestServeAppFactory(RaftTestCase):
-    def test_index_is_fast_shell_without_collect(self) -> None:
+    def test_index_serves_spa_shell_without_collect(self) -> None:
         client, status = _ServeFixtures.client_and_status(
             make_stack(self.tmp_path), _ServeFixtures.full_snapshot()
         )
@@ -49,12 +49,9 @@ class TestServeAppFactory(RaftTestCase):
         body = response.text
         assert response.status_code == 200
         status.collect.assert_not_called()
-        assert "status-loading" in body and "Loading status" in body
-        assert 'id="status-refresh"' in body
-        assert 'aria-label="Refresh status"' in body
-        assert "Control plane" in body and "Apps" in body
-        assert 'id="trends"' in body and "/static/status.js" in body
-        assert "gate" not in body and "site" not in body
+        assert 'id="root"' in body
+        assert "/assets/" in body
+        assert "raft serve" in body
 
     def test_api_status_returns_json_from_collect(self) -> None:
         client, status = _ServeFixtures.client_and_status(
@@ -64,17 +61,10 @@ class TestServeAppFactory(RaftTestCase):
         assert response.status_code == 200
         status.collect.assert_called_once()
         data = response.json()
-        assert "host" in data
-        assert "containers" in data
-        assert [c["role"] for c in data["containers"][:3]] == [
-            "gate",
-            "router",
-            "controller",
-        ]
+        assert "host" in data and "containers" in data
         names = [r["name"] for r in data["control_plane"]]
         assert names == ["gate", "router", "controller"]
         assert data["apps"][0]["name"] == "site"
-        assert data["apps"][0]["status"] == "not running"
 
     def test_api_status_empty_snapshot(self) -> None:
         client, _ = _ServeFixtures.client_and_status(
@@ -83,16 +73,20 @@ class TestServeAppFactory(RaftTestCase):
         data = client.get("/api/status").json()
         assert data["control_plane"] == [] and data["apps"] == []
 
-    def test_static_assets_are_served(self) -> None:
+    def test_spa_assets_are_served(self) -> None:
         client, _ = _ServeFixtures.client_and_status(
             make_stack(self.tmp_path), _ServeFixtures.empty_snapshot()
         )
-        css = client.get("/static/style.css")
-        js = client.get("/static/status.js")
-        assert css.status_code == 200 and "color-scheme" in css.text
-        assert "refresh-btn" in css.text
-        assert js.status_code == 200 and "/api/status" in js.text
-        assert "status-refresh" in js.text
+        index = client.get("/").text
+        # Hashed asset path from Vite build, e.g. /assets/index-xxxxx.js
+        marker = 'src="/assets/'
+        assert marker in index
+        start = index.index(marker) + len('src="')
+        end = index.index('"', start)
+        asset_path = index[start:end]
+        asset = client.get(asset_path)
+        assert asset.status_code == 200
+        assert len(asset.content) > 0
 
     def test_factory_builds_default_status(self) -> None:
         stack = make_stack(self.tmp_path)

@@ -1,4 +1,4 @@
-"""Locate packaged serve templates and static assets."""
+"""Locate packaged serve SPA assets (Vite build output)."""
 
 from __future__ import annotations
 
@@ -13,9 +13,13 @@ class ServePaths:
         return Path(__file__).resolve().parents[2] / "share" / "serve"
 
     @classmethod
-    def templates_dir(cls) -> Path:
-        return cls.share_dir() / "templates"
+    def spa_dir(cls) -> Path:
+        return cls.share_dir() / "spa"
 
     @classmethod
-    def static_dir(cls) -> Path:
-        return cls.share_dir() / "static"
+    def spa_index(cls) -> Path:
+        return cls.spa_dir() / "index.html"
+
+    @classmethod
+    def spa_assets_dir(cls) -> Path:
+        return cls.spa_dir() / "assets"

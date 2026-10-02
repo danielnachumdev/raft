@@ -19,7 +19,7 @@ raw (bytes, percents, seconds) — format in the UI or CLI human path.
 
 Serve ``GET /api/status`` returns that snapshot **plus** presentation lists
 ``control_plane`` / ``apps`` (display labels + human cpu/memory/uptime strings)
-for the current Jinja JS. Future SPA (#35) should prefer ``containers``.
+for the dashboard SPA tables. Prefer ``containers`` for new FE work (#35/#9).
 
 Doctor JSON is deferred for a full dashboard health view; see
 ``DoctorRead.intended_payload_shape`` and ``DoctorRead.from_results``.

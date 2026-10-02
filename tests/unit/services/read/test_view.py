@@ -28,11 +28,10 @@ class TestServeInstructions:
 
 
 class TestServePaths:
-    def test_templates_and_static_exist(self) -> None:
-        assert (ServePaths.templates_dir() / "index.html").is_file()
-        assert (ServePaths.templates_dir() / "trends.html").is_file()
-        assert (ServePaths.static_dir() / "style.css").is_file()
-        assert (ServePaths.static_dir() / "status.js").is_file()
+    def test_spa_build_exists(self) -> None:
+        assert ServePaths.spa_index().is_file()
+        assert ServePaths.spa_assets_dir().is_dir()
+        assert any(ServePaths.spa_assets_dir().iterdir())
 
 
 class TestServeSnapshotView:

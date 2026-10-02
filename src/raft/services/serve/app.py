@@ -6,7 +6,6 @@ from typing import Optional
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 
 from ...models import Stack
 from ..ops.status import Status
@@ -15,7 +14,7 @@ from .paths import ServePaths
 
 
 class ServeAppFactory:
-    """Build a localhost-only shell + JSON status API over the stack."""
+    """Build a localhost-only SPA + JSON status API over the stack."""
 
     def __init__(self, stack: Stack, status: Optional[Status] = None) -> None:
         self.stack = stack
@@ -23,13 +22,12 @@ class ServeAppFactory:
 
     def create(self) -> FastAPI:
         app = FastAPI(title="raft serve", docs_url=None, redoc_url=None)
-        templates = Jinja2Templates(directory=str(ServePaths.templates_dir()))
-        page = ServePage(self.stack, templates, status=self._status)
-        app.get("/")(page.index)
+        page = ServePage(self.stack, status=self._status)
         app.get("/api/status")(page.api_status)
+        app.get("/")(page.index)
         app.mount(
-            "/static",
-            StaticFiles(directory=str(ServePaths.static_dir())),
-            name="static",
+            "/assets",
+            StaticFiles(directory=str(ServePaths.spa_assets_dir())),
+            name="assets",
         )
         return app
