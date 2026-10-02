@@ -8,6 +8,10 @@
 
 # ---------------------------------------------------------------------------
 # logging — file logging only; the terminal stays plain text.
+# Retention prunes oldest lines first when age or size limits are hit
+# (defaults: 30 days, 100 MiB). Enforced at CLI start (setup_logging).
+# Age uses the leading asctime field (%Y-%m-%d %H:%M:%S); unparseable
+# lines are treated as ancient. Size is the hard bound for raft.log.
 # ---------------------------------------------------------------------------
 logging:
   # Directory for log files. Relative paths are under the data home
@@ -20,6 +24,9 @@ logging:
 
   # Minimum level written to the file: DEBUG | INFO | WARNING | ERROR
   level: INFO
+
+  # retentionMaxAgeDays: 30       # drop lines older than this
+  # retentionMaxBytes: 104857600  # 100 MiB; drop oldest until under limit
 
 # ---------------------------------------------------------------------------
 # healing — raft-controller self-heal (Compose restart, then raft redeploy).

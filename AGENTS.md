@@ -72,7 +72,7 @@ Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**), then `OperatorError` w
 | `~/.raft/state/scaling/` | Per-app scale-to-zero JSON + gate marker files (when `spec.scaling` is set) |
 | `~/.raft/state/metrics/` | Controller resource samples (`resources.jsonl`); batched append; pruned by `metrics.retentionMaxAgeDays` / `retentionMaxBytes` (oldest first) |
 | `~/.raft/certs/` | Origin PEMs (only for `tls: origin`) |
-| `~/.raft/logs/` | Structured log file (default) |
+| `~/.raft/logs/` | Structured log file (default); pruned by `logging.retentionMaxAgeDays` / `retentionMaxBytes` (oldest first; at CLI `setup_logging`) |
 
 Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 
@@ -94,7 +94,7 @@ Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 
 Useful checks: `curl -H 'Host: <publicHost>' http://127.0.0.1/`. Optional local hosts: `sudo python3 scripts/hosts.py hold` (reads applied `publicHost` values; errors if none applied). See [`scripts/README.md`](scripts/README.md).
 
-Logging: `~/.raft/settings.yaml` `logging:`; default `~/.raft/logs/raft.log`; override dir with `RAFT_LOG_DIR`. Terminal stays plain; file is structured and includes a per-invocation `tid` (UUID) via `TraceContext` so one `raft …` run correlates in the log file (`-` when no scope).
+Logging: `~/.raft/settings.yaml` `logging:`; default `~/.raft/logs/raft.log`; override dir with `RAFT_LOG_DIR`. Terminal stays plain; file is structured and includes a per-invocation `tid` (UUID) via `TraceContext` so one `raft …` run correlates in the log file (`-` when no scope). Retention defaults match metrics magnitude (30 days / 100 MiB): age drops lines whose leading asctime is older than `retentionMaxAgeDays`; size trims oldest lines until under `retentionMaxBytes`. Prune runs when the host CLI configures logging (not the controller — it logs to stdout only).
 
 ---
 

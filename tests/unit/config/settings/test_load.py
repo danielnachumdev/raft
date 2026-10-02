@@ -11,6 +11,8 @@ from ...base import RaftTestCase
 HEALING_OK_YAML = """
 logging:
   level: INFO
+  retentionMaxAgeDays: 7
+  retentionMaxBytes: 65536
 healing:
   enabled: true
   intervalSeconds: 10
@@ -45,6 +47,8 @@ HEALING_ERROR_CASES = [
     ("metrics:\n  flushSeconds: -1\n", "flushSeconds"),
     ("metrics:\n  retentionMaxAgeDays: 0\n", "retentionMaxAgeDays"),
     ("metrics:\n  retentionMaxBytes: abc\n", "retentionMaxBytes"),
+    ("logging:\n  retentionMaxAgeDays: 0\n", "retentionMaxAgeDays"),
+    ("logging:\n  retentionMaxBytes: abc\n", "retentionMaxBytes"),
 ]
 
 
@@ -54,6 +58,8 @@ class TestConfig(RaftTestCase):
         assert cfg.logging.dir == "logs"
         assert cfg.logging.file == "raft.log"
         assert cfg.logging.level == "INFO"
+        assert cfg.logging.retention_max_age_days == 30
+        assert cfg.logging.retention_max_bytes == 100 * 1024 * 1024
         assert cfg.healing.enabled is False
         assert cfg.healing.fail_threshold == 3
         assert cfg.healing.max_restarts == 1
@@ -76,6 +82,8 @@ class TestConfig(RaftTestCase):
         assert cfg.healing.cooldown_seconds == 30
         assert cfg.healing.max_restarts == 4
         assert cfg.healing.escalate_after_restarts == 3
+        assert cfg.logging.retention_max_age_days == 7
+        assert cfg.logging.retention_max_bytes == 65536
         assert cfg.metrics.interval_seconds == 45
         assert cfg.metrics.timeout_seconds == 20
         assert cfg.metrics.batch_size == 5

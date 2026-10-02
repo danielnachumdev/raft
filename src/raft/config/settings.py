@@ -14,6 +14,8 @@ from .settings_edge import EdgeSettingsParser
 from .settings_types import (
     DEFAULT_HEAL_INTERVAL_SECONDS,
     DEFAULT_HEAL_TIMEOUT_SECONDS,
+    DEFAULT_LOGGING_RETENTION_MAX_AGE_DAYS,
+    DEFAULT_LOGGING_RETENTION_MAX_BYTES,
     DEFAULT_METRICS_BATCH_SIZE,
     DEFAULT_METRICS_FLUSH_SECONDS,
     DEFAULT_METRICS_INTERVAL_SECONDS,
@@ -100,7 +102,24 @@ class SettingsLoader:
             dir=str(raw.get("dir", LOGS_DIRNAME)).strip() or LOGS_DIRNAME,
             file=str(raw.get("file", "raft.log")).strip() or "raft.log",
             level=level,
+            **self._logging_retention(raw),
         )
+
+    def _logging_retention(self, raw: dict) -> dict:
+        return {
+            "retention_max_age_days": self._pos_int(
+                raw,
+                "retentionMaxAgeDays",
+                DEFAULT_LOGGING_RETENTION_MAX_AGE_DAYS,
+                "logging",
+            ),
+            "retention_max_bytes": self._pos_int(
+                raw,
+                "retentionMaxBytes",
+                DEFAULT_LOGGING_RETENTION_MAX_BYTES,
+                "logging",
+            ),
+        }
 
     def _parse_healing(self, raw: Any) -> HealingConfig:
         if raw is None:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from .log_retention import LogRetention
 from .settings import RaftConfig
 from .trace_context import TraceContext
 
@@ -28,6 +29,10 @@ def setup_logging(data_home: Path, config: RaftConfig) -> Path:
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = log_cfg.resolve_file(data_home)
     level = getattr(logging, log_cfg.level.upper(), logging.INFO)
+    LogRetention(
+        max_age_days=log_cfg.retention_max_age_days,
+        max_bytes=log_cfg.retention_max_bytes,
+    ).prune(log_file)
     root = _configure_raft_logger(log_file, level)
     _CONFIGURED = True
     root.debug("logging configured file=%s level=%s", log_file, log_cfg.level)
