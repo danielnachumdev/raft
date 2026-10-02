@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from raft import cli
+from raft.config.trace_context import TraceContext
 
 from .base import CliTestCase
 
@@ -25,6 +26,21 @@ class TestCliBootstrap(CliTestCase):
                     cli.run(["doctor"])
         assert exc.value.code == 1
         assert "Hint:" not in capsys.readouterr().err
+
+    def test_run_opens_root_trace_context(self) -> None:
+        seen = []
+
+        def capture_main(argv=None):
+            seen.append(TraceContext.current())
+            return 0
+
+        with patch("raft.cli.entry.main", side_effect=capture_main):
+            with pytest.raises(SystemExit) as exc:
+                cli.run(["status"])
+        assert exc.value.code == 0
+        assert len(seen) == 1
+        assert seen[0] is not None
+        assert TraceContext.current() is None
 
     def test_suggest_doctor_skips_when_already_running_doctor(self, capsys) -> None:
         cli._suggest_doctor(["doctor"])

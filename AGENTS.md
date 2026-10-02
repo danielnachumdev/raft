@@ -94,7 +94,7 @@ Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 
 Useful checks: `curl -H 'Host: <publicHost>' http://127.0.0.1/`. Optional local hosts: `sudo python3 scripts/hosts.py hold` (reads applied `publicHost` values; errors if none applied). See [`scripts/README.md`](scripts/README.md).
 
-Logging: `~/.raft/settings.yaml` `logging:`; default `~/.raft/logs/raft.log`; override dir with `RAFT_LOG_DIR`. Terminal stays plain; file is structured.
+Logging: `~/.raft/settings.yaml` `logging:`; default `~/.raft/logs/raft.log`; override dir with `RAFT_LOG_DIR`. Terminal stays plain; file is structured and includes a per-invocation `tid` (UUID) via `TraceContext` so one `raft …` run correlates in the log file (`-` when no scope).
 
 ---
 

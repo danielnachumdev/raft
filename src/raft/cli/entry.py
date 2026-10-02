@@ -19,6 +19,7 @@ from raft.errors import (
     invalid_yaml,
 )
 
+from ..config.trace_context import TraceContext
 from ..models.stack import load_stack
 from ..services.ops.certs import missing_origin_certs
 from ..ui import say_err
@@ -84,6 +85,11 @@ def main(argv: Optional[list[str]] = None) -> int:
 
 def run(argv: Optional[list[str]] = None) -> None:
     _ensure_logging_bootstrap()
+    with TraceContext():
+        _run_inside_trace(argv)
+
+
+def _run_inside_trace(argv: Optional[list[str]]) -> None:
     try:
         raise SystemExit(main(argv))
     except subprocess.CalledProcessError as exc:

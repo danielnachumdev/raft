@@ -20,6 +20,7 @@ from raft.config import (
     setup_logging,
     sync_product_templates,
 )
+from raft.config.trace_context import TraceContext
 
 from ...base import RaftTestCase
 
@@ -43,3 +44,21 @@ class TestSetupLogging(RaftTestCase):
         assert root.propagate is False
         logging.getLogger("raft.test").info("hello-file")
         assert "hello-file" in log_file.read_text(encoding="utf-8")
+
+    def test_file_format_includes_tid_when_scoped(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("RAFT_LOG_DIR", raising=False)
+        reset_logging_for_tests()
+        log_file = setup_logging(self.tmp_path, default_config())
+        with TraceContext() as tid:
+            logging.getLogger("raft.test").info("scoped-line")
+        text = log_file.read_text(encoding="utf-8")
+        assert tid in text
+        assert "scoped-line" in text
+
+    def test_file_format_uses_dash_without_scope(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("RAFT_LOG_DIR", raising=False)
+        reset_logging_for_tests()
+        log_file = setup_logging(self.tmp_path, default_config())
+        logging.getLogger("raft.test").info("no-scope-line")
+        text = log_file.read_text(encoding="utf-8")
+        assert " INFO - [raft.test] no-scope-line" in text
