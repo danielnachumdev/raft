@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 
 from ....adapters import Shell
 from ....adapters.docker.runtime import ContainerRuntimeGateway, ContainerRuntimeRow
@@ -25,7 +25,7 @@ from .models import (
 )
 from .report import StatusReportWriter
 
-_Target = tuple[str, str, Optional[str], Optional[str], AllocatedResources]
+_Target = Tuple[str, str, Optional[str], Optional[str], AllocatedResources]
 
 
 class Status:
