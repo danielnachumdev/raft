@@ -63,26 +63,7 @@ class TestMetricsEdges(RaftTestCase):
 
     def test_available_and_series_include_group(self) -> None:
         builder = MetricsSeriesBuilder()
-        samples: list[Dict[str, Any]] = [
-            {
-                "ts": "t1",
-                "host": {"cpus": 2, "loadavg": [1.0], "memory": {}},
-                "containers": [
-                    {
-                        "service": "demo-web",
-                        "group": "demo",
-                        "role": "app",
-                        "cpu_percent": 1.0,
-                        "memory": {},
-                    },
-                    {
-                        "service": "solo",
-                        "cpu_percent": 2.0,
-                        "memory": {},
-                    },
-                ],
-            }
-        ]
+        samples = [self._grouped_sample()]
         available = {a["id"]: a for a in builder.available(samples)}
         assert available["host"]["group"] is None
         assert available["demo-web"]["group"] == "demo"
@@ -90,6 +71,23 @@ class TestMetricsEdges(RaftTestCase):
         series = builder.build(samples, wanted=None)
         assert series["demo-web"]["group"] == "demo"
         assert series["solo"]["group"] is None
+
+    @staticmethod
+    def _grouped_sample() -> Dict[str, Any]:
+        return {
+            "ts": "t1",
+            "host": {"cpus": 2, "loadavg": [1.0], "memory": {}},
+            "containers": [
+                {
+                    "service": "demo-web",
+                    "group": "demo",
+                    "role": "app",
+                    "cpu_percent": 1.0,
+                    "memory": {},
+                },
+                {"service": "solo", "cpu_percent": 2.0, "memory": {}},
+            ],
+        }
 
     def test_container_point_coerces_string_metrics(self) -> None:
         point = MetricsSeriesBuilder._container_point(
