@@ -6,6 +6,7 @@ import {
   type StatusRow,
 } from "./api";
 import { peekStatus, refreshStatus } from "./dashboardCache";
+import { LiveIndicator } from "./LiveIndicator";
 import { StatusTable } from "./StatusTable";
 import { TrendsPanel } from "./TrendsPanel";
 
@@ -17,6 +18,7 @@ export function Dashboard() {
   const [updating, setUpdating] = useState(false);
   const [fetchedAt, setFetchedAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [statusLive, setStatusLive] = useState(() => tabIsVisible());
   const dataRef = useRef<StatusPayload | null>(null);
   const inFlightRef = useRef(false);
 
@@ -54,7 +56,7 @@ export function Dashboard() {
   }, [load]);
 
   useEffect(() => {
-    return bindStatusPolling(() => void load({ quiet: true }));
+    return bindStatusPolling(() => void load({ quiet: true }), setStatusLive);
   }, [load]);
 
   useEffect(() => {
@@ -122,6 +124,7 @@ export function Dashboard() {
             rows={data.control_plane}
             empty="No control-plane services."
             storageKey="raft-serve-status-control-plane"
+            isLive={statusLive}
             onActionDone={() => void load({ quiet: true })}
           />
           <Section
@@ -129,6 +132,7 @@ export function Dashboard() {
             rows={data.apps}
             empty="No applied apps."
             storageKey="raft-serve-status-apps"
+            isLive={statusLive}
             onActionDone={() => void load({ quiet: true })}
           />
         </>
@@ -144,13 +148,17 @@ function Section(props: {
   rows: StatusRow[];
   empty: string;
   storageKey: string;
+  isLive: boolean;
   onActionDone: () => void;
 }) {
   return (
     <section className="panel">
       <div className="panel-head">
         <h2>{props.title}</h2>
-        <p className="muted panel-kind">Live · auto-refresh</p>
+        <LiveIndicator
+          isLive={props.isLive}
+          label={props.isLive ? "Live · auto-refresh" : "Paused · tab hidden"}
+        />
       </div>
       <StatusTable
         rows={props.rows}
@@ -163,7 +171,10 @@ function Section(props: {
 }
 
 /** Interval poll while visible; refetch once when the tab becomes visible again. */
-function bindStatusPolling(onTick: () => void): () => void {
+function bindStatusPolling(
+  onTick: () => void,
+  onLiveChange: (live: boolean) => void,
+): () => void {
   let timer: number | undefined;
 
   const clear = () => {
@@ -175,17 +186,22 @@ function bindStatusPolling(onTick: () => void): () => void {
 
   const arm = () => {
     clear();
-    if (document.visibilityState === "hidden") return;
+    if (!tabIsVisible()) {
+      onLiveChange(false);
+      return;
+    }
     timer = window.setInterval(onTick, STATUS_POLL_MS);
+    onLiveChange(true);
   };
 
   const onVisibility = () => {
-    if (document.visibilityState === "visible") {
+    if (tabIsVisible()) {
       onTick();
       arm();
       return;
     }
     clear();
+    onLiveChange(false);
   };
 
   arm();
@@ -194,6 +210,10 @@ function bindStatusPolling(onTick: () => void): () => void {
     clear();
     document.removeEventListener("visibilitychange", onVisibility);
   };
+}
+
+function tabIsVisible(): boolean {
+  return document.visibilityState === "visible";
 }
 
 function statusMetaLabel(opts: {
