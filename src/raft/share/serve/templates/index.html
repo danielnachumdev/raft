@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>raft</h1>
+<p class="lede">Local status snapshot (POC). Refresh the page to update. Stop with Ctrl+C in the terminal.</p>
+
+<section>
+  <h2>Control plane</h2>
+  {% if control_plane %}
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Group</th>
+        <th>Status</th>
+        <th>CPU</th>
+        <th>Memory</th>
+        <th>Uptime</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in control_plane %}
+      <tr>
+        <td>{{ row.name }}</td>
+        <td>{{ row.group }}</td>
+        <td>{{ row.status }}</td>
+        <td>{{ row.cpu }}</td>
+        <td>{{ row.memory }}</td>
+        <td>{{ row.uptime }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No control-plane services in snapshot.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Apps</h2>
+  {% if apps %}
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Group</th>
+        <th>Status</th>
+        <th>CPU</th>
+        <th>Memory</th>
+        <th>Uptime</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in apps %}
+      <tr>
+        <td>{{ row.name }}</td>
+        <td>{{ row.group }}</td>
+        <td>{{ row.status }}</td>
+        <td>{{ row.cpu }}</td>
+        <td>{{ row.memory }}</td>
+        <td>{{ row.uptime }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No applied apps (or none in snapshot).</p>
+  {% endif %}
+</section>
+
+{# Extension hook for #9 resource trend panels — keep this include. #}
+{% include "trends.html" %}
+{% endblock %}
