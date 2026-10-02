@@ -1,38 +1,43 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   documentTitleForHost,
-  fetchStatus,
   type StatusPayload,
   type StatusRow,
 } from "./api";
+import { peekStatus, refreshStatus } from "./dashboardCache";
 import { StatusTable } from "./StatusTable";
 import { TrendsPanel } from "./TrendsPanel";
 
-/** Main dashboard: status tables + trends. */
+/** Main dashboard: status tables + trends (cached paint, then background refresh). */
 export function Dashboard() {
-  const [data, setData] = useState<StatusPayload | null>(null);
+  const [data, setData] = useState<StatusPayload | null>(() => peekStatus());
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(true);
+  const [busy, setBusy] = useState(() => peekStatus() === null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts?: { quiet?: boolean }) => {
+    const quiet = opts?.quiet === true;
     setBusy(true);
     setError(null);
     try {
-      setData(await fetchStatus());
+      setData(await refreshStatus());
     } catch {
-      setError("Failed to load status. Refresh or check raft serve.");
+      if (!quiet || peekStatus() === null) {
+        setError("Failed to load status. Refresh or check raft serve.");
+      }
     } finally {
       setBusy(false);
     }
   }, []);
 
   useEffect(() => {
-    void load();
+    void load({ quiet: peekStatus() !== null });
   }, [load]);
 
   useEffect(() => {
     document.title = documentTitleForHost(data?.host?.hostname);
   }, [data]);
+
+  const updating = busy && data !== null;
 
   return (
     <div className="page">
@@ -40,6 +45,11 @@ export function Dashboard() {
         <div>
           <p className="brand">raft</p>
           <h1>Stack status</h1>
+          {updating ? (
+            <p className="muted header-updating" aria-live="polite">
+              Updating…
+            </p>
+          ) : null}
         </div>
         <button
           type="button"

@@ -7,6 +7,11 @@ import {
   type MetricsSeries,
   type ServiceDetailPayload,
 } from "./api";
+import {
+  invalidateMetrics,
+  invalidateStatus,
+  refreshStatus,
+} from "./dashboardCache";
 import { ServiceDetail } from "./ServiceDetail";
 
 /** Deep-linked service page: `/service/:service`. */
@@ -45,6 +50,16 @@ export function ServicePage() {
     void load();
   }, [load]);
 
+  const onActionDone = useCallback(async () => {
+    await load();
+    try {
+      await refreshStatus();
+    } catch {
+      invalidateStatus();
+    }
+    invalidateMetrics();
+  }, [load]);
+
   useEffect(() => {
     const label = data?.presentation.name ?? service;
     document.title = label
@@ -78,7 +93,11 @@ export function ServicePage() {
       ) : null}
 
       {data ? (
-        <ServiceDetail data={data} metrics={metrics} onActionDone={() => void load()} />
+        <ServiceDetail
+          data={data}
+          metrics={metrics}
+          onActionDone={() => void onActionDone()}
+        />
       ) : null}
     </div>
   );

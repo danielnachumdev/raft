@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import {
   fetchMetrics,
@@ -7,6 +7,7 @@ import {
   type MetricsPayload,
   type MetricsSeries,
 } from "./api";
+import { peekMetrics, putMetrics } from "./dashboardCache";
 import { TrendsChart, type MetricKind } from "./TrendsChart";
 
 const WINDOWS: { seconds: number; label: string }[] = [
@@ -17,37 +18,63 @@ const WINDOWS: { seconds: number; label: string }[] = [
   { seconds: 604800, label: "7d" },
 ];
 
+const DEFAULT_WINDOW = 3600;
+
 export type ScopeKind = "all" | "host" | "containers";
 
 /** Historical resource trends from /api/metrics (HTTP poll + since cursor). */
 export function TrendsPanel() {
-  const [windowSec, setWindowSec] = useState(3600);
+  const [windowSec, setWindowSec] = useState(DEFAULT_WINDOW);
   const [metric, setMetric] = useState<MetricKind>("cpu");
   const [aggregate, setAggregate] = useState(false);
   const [scope, setScope] = useState<ScopeKind>("all");
   const [selected, setSelected] = useState<string[] | null>(null);
-  const [series, setSeries] = useState<MetricsSeries[]>([]);
-  const [available, setAvailable] = useState<MetricsAvailable[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [busy, setBusy] = useState(true);
+  const [series, setSeries] = useState<MetricsSeries[]>(() => {
+    return peekMetrics(DEFAULT_WINDOW)?.series ?? [];
+  });
+  const [available, setAvailable] = useState<MetricsAvailable[]>(() => {
+    return peekMetrics(DEFAULT_WINDOW)?.available ?? [];
+  });
+  const [cursor, setCursor] = useState<string | null>(() => {
+    return peekMetrics(DEFAULT_WINDOW)?.cursor ?? null;
+  });
+  const [busy, setBusy] = useState(() => peekMetrics(DEFAULT_WINDOW) === null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadFull = useCallback(async () => {
+  useEffect(() => {
+    let cancelled = false;
+    const cached = peekMetrics(windowSec);
+    if (cached) {
+      setSeries(cached.series);
+      setAvailable(cached.available);
+      setCursor(cached.cursor);
+      setSelected(null);
+    } else {
+      setSeries([]);
+      setAvailable([]);
+      setCursor(null);
+      setSelected(null);
+    }
     setBusy(true);
     setError(null);
-    try {
-      const payload = await fetchMetrics({ window: windowSec });
-      applyFull(payload, setSeries, setAvailable, setCursor, setSelected);
-    } catch {
-      setError("Failed to load metrics history.");
-    } finally {
-      setBusy(false);
-    }
+    void (async () => {
+      try {
+        const payload = await fetchMetrics({ window: windowSec });
+        if (cancelled) return;
+        putMetrics(windowSec, payload);
+        applyFull(payload, setSeries, setAvailable, setCursor, setSelected);
+      } catch {
+        if (!cancelled && !cached) {
+          setError("Failed to load metrics history.");
+        }
+      } finally {
+        if (!cancelled) setBusy(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [windowSec]);
-
-  useEffect(() => {
-    void loadFull();
-  }, [loadFull]);
 
   useEffect(() => {
     if (busy) return;
@@ -72,12 +99,18 @@ export function TrendsPanel() {
     return scoped.filter((s) => selected.includes(s.id));
   }, [series, selected, scope]);
 
+  const showColdLoad = busy && series.length === 0;
+
   return (
     <section className="panel trends" id="trends">
       <div className="panel-head">
         <h2>Trends</h2>
         <p className="muted panel-kind" aria-live="polite">
-          {busy ? "Loading…" : "Historical · recorded metrics"}
+          {showColdLoad
+            ? "Loading…"
+            : busy
+              ? "Updating…"
+              : "Historical · recorded metrics"}
         </p>
       </div>
 
@@ -103,7 +136,7 @@ export function TrendsPanel() {
           onClearAll={() => setSelected([])}
         />
         <div className="trends-main">
-          {busy ? (
+          {showColdLoad ? (
             <div
               className="trends-loading"
               role="status"
