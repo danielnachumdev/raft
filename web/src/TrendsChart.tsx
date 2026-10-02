@@ -94,6 +94,7 @@ export function TrendsChart(props: {
               `${Number(value).toFixed(1)}%`,
               labels[name] ?? name,
             ]}
+            itemSorter={tooltipItemSortKey}
           />
           <Legend formatter={(value) => labels[value] ?? value} />
           {props.aggregate ? (
@@ -132,13 +133,27 @@ export function TrendsChart(props: {
   );
 }
 
+/** Lodash sortBy key: abs(value) desc, then label asc. */
+export function tooltipItemSortKey(item: {
+  value?: number | string | Array<number | string>;
+  name?: number | string;
+}): string {
+  const raw = Array.isArray(item.value) ? item.value[0] : item.value;
+  const n = Math.abs(Number(raw));
+  const mag = Number.isFinite(n) ? n : -1;
+  const rank = String(1_000_000_000 - Math.round(mag * 1000)).padStart(12, "0");
+  return `${rank}\0${String(item.name ?? "")}`;
+}
+
 function toPlotSeries(series: MetricsSeries[]): PlotSeries[] {
-  return series.map((s, i) => ({
-    chartKey: `v${i}`,
-    id: s.id,
-    label: s.label,
-    axis: s.kind === "host" || s.id === "host" ? HOST_AXIS : SERVICE_AXIS,
-  }));
+  return [...series]
+    .sort((a, b) => a.label.localeCompare(b.label) || a.id.localeCompare(b.id))
+    .map((s, i) => ({
+      chartKey: `v${i}`,
+      id: s.id,
+      label: s.label,
+      axis: s.kind === "host" || s.id === "host" ? HOST_AXIS : SERVICE_AXIS,
+    }));
 }
 
 function needsSplitAxes(series: MetricsSeries[]): boolean {
