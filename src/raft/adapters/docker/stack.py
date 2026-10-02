@@ -17,9 +17,12 @@ from ...models.app import App
 from ...models.stack import Stack
 from ..shell import Shell
 from .compose_diagnostics import DIAG_LOG_TAIL, DIAG_MAX_LINES, ComposeDiagnostics
+from .compose_status import ComposeStatusTable
 from .edge import DockerEdge
 from .images import DockerImages
 from .inspect import DockerInspect
+
+_PS_FORMAT = "{{.Service}} {{.State}} {{.Health}}"
 
 logger = logging.getLogger(__name__)
 
@@ -53,25 +56,28 @@ class DockerStack(DockerInspect, DockerImages, DockerEdge):
         for app in self.stack.apps:
             self.remove_container(app.tmp_container)
 
+    def compose_service_status(self) -> ComposeStatusTable:
+        """One ``docker compose ps`` batch: Service / State / Health per service."""
+        result = self.sh.compose(
+            "ps",
+            "--format",
+            _PS_FORMAT,
+            capture=True,
+            check=False,
+        )
+        stdout = result.stdout or ""
+        if result.returncode != 0 and not stdout.strip():
+            logger.debug("compose ps batch failed rc=%s", result.returncode)
+            return ComposeStatusTable({})
+        return ComposeStatusTable.from_ps_stdout(stdout)
+
     def running_services(self) -> list[str]:
         """Return compose services that are currently running.
 
-        Unknown services (not yet in the rendered compose file) must not raise —
-        ``docker compose ps <name>`` exits non-zero when the service is absent.
+        Uses one batch ``compose ps`` (not per-service ``ps -q``). Services absent
+        from the project simply do not appear — same as a non-running result.
         """
-        running: list[str] = []
-        for service in self.stack.core_services:
-            result = self.sh.compose(
-                "ps",
-                "-q",
-                "--status",
-                "running",
-                service,
-                capture=True,
-                check=False,
-            )
-            if result.returncode == 0 and (result.stdout or "").strip():
-                running.append(service)
+        running = self.compose_service_status().running_names(self.stack.core_services)
         logger.debug("running services: %s", running)
         return running
 

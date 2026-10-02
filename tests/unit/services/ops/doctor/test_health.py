@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+from raft.adapters.docker.compose_status import ComposeStatusTable
 from raft.models.scaling_store import ScalingStore
 from raft.models.stack import load_stack
 from raft.services.ops.doctor.checks.runtime import RuntimeChecks
@@ -25,8 +26,13 @@ class TestDoctorHealth(DoctorTestCase):
         )
 
     def test_edge_fails_when_unhealthy(self) -> None:
-        docker = self.mock_docker(running=RunningServices.edge())
-        docker.service_runtime.return_value = ("running", "unhealthy")
+        docker = self.mock_docker(
+            running=RunningServices.edge(),
+            runtime={
+                "raft-gate": ("running", "unhealthy"),
+                "raft-router": ("running", "unhealthy"),
+            },
+        )
         ctx = self._ctx(docker)
         with patch("shutil.which", return_value="/usr/bin/docker"):
             results = {(r.service, r.check): r for r in RuntimeChecks().run(ctx)}
@@ -35,12 +41,14 @@ class TestDoctorHealth(DoctorTestCase):
         assert results[("raft-router", "running")].status == "fail"
 
     def test_app_fails_when_unhealthy(self) -> None:
-        docker = self.mock_docker(running=RunningServices.with_apps("app"))
-        docker.service_runtime.side_effect = lambda s: {
-            "raft-gate": ("running", "healthy"),
-            "raft-router": ("running", "none"),
-            "app": ("running", "unhealthy"),
-        }.get(s, ("running", "none"))
+        docker = self.mock_docker(
+            running=RunningServices.with_apps("app"),
+            runtime={
+                "raft-gate": ("running", "healthy"),
+                "raft-router": ("running", "none"),
+                "app": ("running", "unhealthy"),
+            },
+        )
         ctx = self._ctx(docker)
         with patch("shutil.which", return_value="/usr/bin/docker"):
             results = {(r.service, r.check): r for r in RuntimeChecks().run(ctx)}
@@ -49,9 +57,9 @@ class TestDoctorHealth(DoctorTestCase):
         assert results[("app", "running")].detail == "unhealthy"
 
     def test_app_warns_when_health_starting(self) -> None:
-        docker = self.mock_docker(running=RunningServices.with_apps("app"))
-        docker.service_runtime.side_effect = lambda s: (
-            ("running", "starting") if s == "app" else ("running", "none")
+        docker = self.mock_docker(
+            running=RunningServices.with_apps("app"),
+            runtime={"app": ("running", "starting")},
         )
         ctx = self._ctx(docker)
         with patch("shutil.which", return_value="/usr/bin/docker"):
@@ -60,9 +68,13 @@ class TestDoctorHealth(DoctorTestCase):
         assert "starting" in results[("app", "running")].detail
 
     def test_restarting_fails(self) -> None:
-        docker = self.mock_docker(running=RunningServices.with_apps("app"))
-        docker.service_runtime.side_effect = lambda s: (
-            ("restarting", "none") if s == "app" else ("running", "none")
+        docker = self.mock_docker(running=RunningServices.edge())
+        docker.compose_service_status.return_value = ComposeStatusTable.from_runtime_map(
+            {
+                "raft-gate": ("running", "none"),
+                "raft-router": ("running", "none"),
+                "app": ("restarting", "none"),
+            }
         )
         ctx = self._ctx(docker)
         with patch("shutil.which", return_value="/usr/bin/docker"):
@@ -72,7 +84,6 @@ class TestDoctorHealth(DoctorTestCase):
 
     def test_scaled_to_zero_skips_health(self) -> None:
         docker = self.mock_docker(running=RunningServices.edge())
-        docker.service_runtime.return_value = ("running", "none")
         ScalingStore(self.tmp_path).mark_scaled_to_zero("app")
         ctx = self._ctx(docker)
         with patch("shutil.which", return_value="/usr/bin/docker"):

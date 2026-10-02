@@ -18,20 +18,22 @@ class TestDockerLifecycle(DockerTestCase):
 
     def _test_start_stop_and_running_p1(self) -> None:
         def compose(*args, **kwargs):
-            if args[:1] == ("ps",) and "raft-gate" in args:
-                return self.ok("cid1\n")
-            if args[:1] == ("ps",) and "app" in args:
-                # Newly applied service not in compose yet.
-                return self.ok("", returncode=1)
+            if args[:1] == ("ps",) and "--format" in args:
+                return self.ok("raft-gate running\nraft-router exited\n")
             if args[:1] == ("ps",):
                 return self.ok("")
             return self.ok()
 
         self.shell.compose.side_effect = compose
         assert self.docker.running_services() == ["raft-gate"]
-        self.shell.compose.assert_any_call(
-            "ps", "-q", "--status", "running", "raft-gate", capture=True, check=False
+        self.shell.compose.assert_called_with(
+            "ps",
+            "--format",
+            "{{.Service}} {{.State}} {{.Health}}",
+            capture=True,
+            check=False,
         )
+        assert self.shell.compose.call_count == 1
         self.docker.start_stack()
         self.docker.stop_stack()
 

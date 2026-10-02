@@ -17,7 +17,7 @@ class RuntimeChecks:
         if not shutil.which("docker"):
             return [CheckResult(INFRA, "stack", "warn", "skipped (docker unavailable)")]
         try:
-            running = set(ctx.docker.running_services())
+            running = set(ctx.running_services())
         except Exception as exc:  # noqa: BLE001
             return [
                 CheckResult(
@@ -69,7 +69,7 @@ class RuntimeChecks:
         edge = {ctx.stack.gate, ctx.stack.router}
         skip = edge | cls._scaled_compose_ids(ctx)
         results: list[CheckResult] = []
-        for service in sorted(running):
+        for service in sorted(running | cls._restarting_services(ctx, skip)):
             if service in skip:
                 continue
             result = cls._health_result(ctx, service)
@@ -77,9 +77,21 @@ class RuntimeChecks:
                 results.append(result)
         return results
 
+    @staticmethod
+    def _restarting_services(ctx: DoctorContext, skip: set[str]) -> set[str]:
+        """Compose services in ``restarting`` state (not covered by ``running``)."""
+        found: set[str] = set()
+        for name in ctx.stack.core_services:
+            if name in skip:
+                continue
+            status, _health = ctx.service_runtime(name)
+            if status == "restarting":
+                found.add(name)
+        return found
+
     @classmethod
     def _health_result(cls, ctx: DoctorContext, service: str) -> CheckResult:
-        status, health = ctx.docker.service_runtime(service)
+        status, health = ctx.service_runtime(service)
         bad = cls._bad_health(status, health)
         if bad is None:
             return CheckResult(service, "running", "ok", "up")

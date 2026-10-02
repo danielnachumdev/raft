@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+from raft.adapters.docker.compose_status import ComposeStatusTable
 from raft.services.ops.doctor import Doctor
 
 
@@ -31,6 +32,13 @@ class CoverageDoctor:
 
     @staticmethod
     def _default_runtime(docker) -> None:
-        """Compose mocks often omit service_runtime; doctor now probes health."""
+        """Sync batch status from running_services for coverage mocks."""
+        if docker.compose_service_status.side_effect is not None:
+            return
+        running = docker.running_services.return_value
+        names = list(running) if isinstance(running, list) else []
+        docker.compose_service_status.return_value = ComposeStatusTable.from_runtime_map(
+            {name: ("running", "none") for name in names}
+        )
         if not isinstance(docker.service_runtime.return_value, tuple):
             docker.service_runtime.return_value = ("running", "none")

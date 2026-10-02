@@ -38,7 +38,7 @@ class EdgeChecks:
 
     def _gate_is_up(self, ctx: DoctorContext) -> bool:
         try:
-            running = set(ctx.docker.running_services()) if shutil.which("docker") else set()
+            running = set(ctx.running_services()) if shutil.which("docker") else set()
         except Exception:  # noqa: BLE001
             running = set()
         return ctx.stack.gate in running
@@ -88,7 +88,7 @@ class EdgeChecks:
         if not shutil.which("docker"):
             return []
         try:
-            running = set(ctx.docker.running_services())
+            running = set(ctx.running_services())
         except Exception:  # noqa: BLE001
             return []
         if ctx.stack.gate not in running:
