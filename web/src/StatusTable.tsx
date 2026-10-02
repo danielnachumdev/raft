@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { StatusRow } from "./api";
 import { servicePath } from "./api";
 import { ColumnHeaderMenu } from "./ColumnHeaderMenu";
+import { ExternalUrlLinks } from "./ExternalUrlLinks";
 import { ServiceQuickActions } from "./ServiceQuickActions";
 import { StatusPanelControls } from "./StatusPanelControls";
 import { COLUMN_LABELS, type SortKey } from "./statusColumnFilter";
@@ -133,6 +134,14 @@ function StatusRowLink(props: {
 }
 
 function cellContent(key: SortKey, row: StatusRow) {
+  if (key === "name") {
+    return (
+      <span className="status-name-cell">
+        <span>{row.name}</span>
+        <ExternalUrlLinks urls={row.external_urls ?? []} compact />
+      </span>
+    );
+  }
   const value = row[key];
   if (key === "status") {
     return <StatusBadge value={value} />;

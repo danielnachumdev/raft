@@ -1,4 +1,5 @@
 import type { MetricsSeries, ServiceDetailPayload } from "./api";
+import { ExternalUrlLinks } from "./ExternalUrlLinks";
 import { ServiceActions } from "./ServiceActions";
 import { ServiceLogs } from "./ServiceLogs";
 
@@ -23,6 +24,10 @@ export function ServiceDetail(props: {
           <Detail label="Group" value={c.group ?? "-"} />
           <Detail label="App" value={c.app ?? "-"} />
           <Detail label="Status" value={c.status} />
+          <dt>External URLs</dt>
+          <dd>
+            <ExternalUrlLinks urls={p.external_urls ?? []} />
+          </dd>
           <Detail label="Started" value={p.started} />
           <Detail label="Uptime" value={p.uptime} />
           <Detail label="CPU (live)" value={p.cpu} />
