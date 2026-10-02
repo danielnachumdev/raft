@@ -15,7 +15,7 @@ export function ServiceActions(props: Props) {
     props.onDone,
     props.disabled,
   );
-  const { busy, error, message, locked, run } = runner;
+  const { busy, locked, run } = runner;
 
   return (
     <section className="panel">
@@ -49,12 +49,6 @@ export function ServiceActions(props: Props) {
           onClick={() => void run("redeploy")}
         />
       </div>
-      {message ? <p className="ok-msg" role="status">{message}</p> : null}
-      {error ? (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      ) : null}
       <ServiceActionConfirm runner={runner} />
     </section>
   );
