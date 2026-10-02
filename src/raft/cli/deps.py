@@ -10,6 +10,7 @@ from ..services.ops.logs import Logs
 from ..services.ops.status import Status
 from ..services.ops.uninstall import Uninstall
 from ..services.ops.update import SelfUpdate
+from ..services.serve import Serve
 
 __all__ = [
     "AppApply",
@@ -18,6 +19,7 @@ __all__ = [
     "Logs",
     "Orchestrator",
     "SelfUpdate",
+    "Serve",
     "Status",
     "Uninstall",
     "load_config",

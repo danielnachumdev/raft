@@ -10,6 +10,10 @@ requires-python = ">=3.8"
 dependencies = [
     "fire>=0.7.1",
     "PyYAML>=6.0",
+    # FastAPI 0.125+ dropped Python 3.8; pin ≤0.124.4 for raft's 3.8–3.13 range.
+    "fastapi>=0.115.0,<=0.124.4",
+    "uvicorn>=0.30.0,<0.35",
+    "jinja2>=3.1.0",
 ]
 
 [project.optional-dependencies]
@@ -19,6 +23,7 @@ dev = [
     "pytest-xdist>=3.6.0",
     "black>=24.8.0",
     "isort>=5.13.2",
+    "httpx>=0.27.0",
 ]
 
 [project.scripts]
@@ -32,6 +37,7 @@ raft = [
     "share/compose.yaml",
     "share/nginx/**/*",
     "share/controller/**/*",
+    "share/serve/**/*",
 ]
 
 [tool.pytest.ini_options]

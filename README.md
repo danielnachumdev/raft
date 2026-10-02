@@ -38,10 +38,26 @@ raft get apps
 | `raft apply --file …` / `--git …` | Register + deploy (default path) |
 | `raft doctor` | Health check + fix hints |
 | `raft status` | CPU/memory snapshot (`--live` to watch) |
+| `raft serve` | Localhost SSR UI (default `:8787`); SSH tunnel from your laptop |
 | `raft logs [name…]` | Container stdout/stderr (`--tail N`; `-f` / `--follow`) |
 | `raft redeploy <app>` | Cutover when the app is already running |
 | `raft gate recreate` | After changing published edge ports in settings |
 | `raft up` / `raft down` | Bring the whole stack up or tear it down |
+
+### Viewing `raft serve` from your laptop
+
+The UI binds **`127.0.0.1` only** (not the public gate). On a terminal-only VM, port-forward then open the URL locally:
+
+```bash
+raft serve                 # default http://127.0.0.1:8787/
+raft serve --port=8787     # optional
+
+# on your laptop (pick one):
+ssh -L 8787:127.0.0.1:8787 USER@VM_HOST
+gcloud compute ssh VM_NAME --zone=ZONE -- -L 8787:127.0.0.1:8787
+```
+
+Then open `http://127.0.0.1:8787/` in your laptop browser. Stop with Ctrl+C.
 
 ## Examples
 
