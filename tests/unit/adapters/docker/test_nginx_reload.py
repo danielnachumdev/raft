@@ -14,6 +14,7 @@ from .base import DockerTestCase
 class TestDockerNginxReload(DockerTestCase):
     def test_router_can_fetch_and_nginx_reload(self) -> None:
         self._test_router_can_fetch_and_nginx_reload_p1()
+        self._test_router_serves_host()
         self._test_router_can_fetch_and_nginx_reload_p2()
 
     def _test_router_can_fetch_and_nginx_reload_p1(self) -> None:
@@ -35,6 +36,24 @@ class TestDockerNginxReload(DockerTestCase):
         )
         self.shell.compose.return_value = self.ok()
         self.docker.nginx_test_and_reload()
+
+    def _test_router_serves_host(self) -> None:
+        self.shell.compose.return_value = self.ok()
+        assert self.docker.router_serves_host("app.test", path="/") is True
+        self.shell.compose.assert_any_call(
+            "exec",
+            "-T",
+            "raft-router",
+            "wget",
+            "-qO-",
+            "--header",
+            "Host: app.test",
+            "http://127.0.0.1/",
+            check=False,
+            capture=True,
+        )
+        self.shell.compose.return_value = self.ok(returncode=1)
+        assert self.docker.router_serves_host("app.test") is False
 
     def _test_router_can_fetch_and_nginx_reload_p2(self) -> None:
         self.shell.compose.assert_any_call(

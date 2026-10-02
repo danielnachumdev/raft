@@ -156,11 +156,13 @@ class Scaler:
     ) -> bool:
         if not self._start_chain(chain, deadline):
             return False
-        # Fetch is direct Docker DNS (not nginx upstream). Wait until the app
-        # answers, then reload so nginx re-resolves the new container IP.
+        # Direct Docker DNS fetch proves listen; Host via router proves nginx
+        # re-resolved the upstream IP (static resolve at reload). Holding stays
+        # until Host works so visitors never see a cleared marker + 502.
         if not self._wait_app_reachable(name, deadline):
             return False
-        self.docker.reload_router_nginx()
+        if not self._wait_nginx_host(name, deadline):
+            return False
         self.store.mark_awake(name, min_up_seconds=scaling.min_up_seconds, now=when)
         return True
 
@@ -175,6 +177,16 @@ class Scaler:
             self._sleep(_WAKE_POLL_SECONDS)
         return False
 
+    def _wait_nginx_host(self, name: str, deadline: float) -> bool:
+        """Reload router nginx until Host routing hits the woken upstream."""
+        target = self._host_fetch_target(name)
+        while self._clock() < deadline:
+            self.docker.reload_router_nginx()
+            if target is None or self.docker.router_serves_host(target[0], path=target[1]):
+                return True
+            self._sleep(_WAKE_POLL_SECONDS)
+        return False
+
     def _http_fetch_targets(self, name: str) -> Tuple[Tuple[str, int, str], ...]:
         compose_id = self._compose_id(name)
         spec = self._load_spec(name)
@@ -182,6 +194,20 @@ class Scaler:
             return ()
         path = "/" if spec.readiness is None else spec.readiness.path
         return tuple((compose_id, p.container_port, path) for p in spec.http_ports())
+
+    def _host_fetch_target(self, name: str) -> Optional[Tuple[str, str]]:
+        public_host = self._public_host(name)
+        spec = self._load_spec(name)
+        if not public_host or spec is None:
+            return None
+        path = "/" if spec.readiness is None else spec.readiness.path
+        return (public_host, path)
+
+    def _public_host(self, name: str) -> Optional[str]:
+        for app in Stack.load_apps(self.home).apps:
+            if app.name == name and app.public_host:
+                return app.public_host
+        return None
 
     def _router_reaches(self, targets: Tuple[Tuple[str, int, str], ...]) -> bool:
         for host, port, path in targets:

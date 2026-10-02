@@ -91,11 +91,33 @@ class ScaleDependsWakeStack:
 
     def when_a_visitor_keeps_requesting_the_site(self) -> None:
         self._inner.scaler.request_wake(FRONTEND)
-        Wait.until(
-            self._fully_awake,
-            timeout=90.0,
-            interval=0.5,
-            message="wake did not bring frontend+backend live",
+        try:
+            Wait.until(
+                self._fully_awake,
+                timeout=90.0,
+                interval=0.5,
+                message="wake did not bring frontend+backend live",
+            )
+        except TimeoutError:
+            raise TimeoutError(self._wake_debug()) from None
+
+    def _wake_debug(self) -> str:
+        backend, bh = self.docker.service_runtime(BACKEND_COMPOSE)
+        front, fh = self.docker.service_runtime(FRONTEND_COMPOSE)
+        scaled = self.store.is_scaled_to_zero(FRONTEND)
+        state = self.store.load(FRONTEND)
+        fetch = self.docker.router_can_fetch(FRONTEND_COMPOSE, port=5678, path="/")
+        host = self.docker.router_serves_host(PUBLIC_HOST, path="/")
+        try:
+            resp = self._curl(expect_status=None)
+            site = f"status={resp.status} body={resp.body[:120]!r}"
+        except OSError as exc:
+            site = f"curl_err={exc}"
+        return (
+            "wake did not bring frontend+backend live "
+            f"(backend={backend}/{bh} frontend={front}/{fh} scaled={scaled} "
+            f"wake_req={state.wake_requested_at} timed_out={state.wake_timed_out} "
+            f"fetch={fetch} host={host} {site})"
         )
 
     def then_the_backend_is_running(self) -> None:
