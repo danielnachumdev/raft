@@ -86,7 +86,45 @@ class TestServeAppFactory(RaftTestCase):
         assert "host" in data and "containers" in data
         names = [r["name"] for r in data["control_plane"]]
         assert names == ["gate", "router", "controller"]
+        assert data["control_plane"][0]["service"] == "raft-gate"
         assert data["apps"][0]["name"] == "site"
+        assert data["apps"][0]["service"] == "site"
+
+    def test_api_service_returns_detail(self) -> None:
+        client, status = _ServeFixtures.client_and_status(
+            make_stack(self.tmp_path), _ServeFixtures.full_snapshot()
+        )
+        response = client.get("/api/service/raft-gate")
+        assert response.status_code == 200
+        status.collect.assert_called_once()
+        data = response.json()
+        assert data["container"]["service"] == "raft-gate"
+        assert data["presentation"]["name"] == "gate"
+        assert data["presentation"]["role"] == "gate"
+
+    def test_api_service_unknown_is_404(self) -> None:
+        client, _ = _ServeFixtures.client_and_status(
+            make_stack(self.tmp_path), _ServeFixtures.full_snapshot()
+        )
+        response = client.get("/api/service/missing")
+        assert response.status_code == 404
+
+    def test_spa_deep_link_serves_index(self) -> None:
+        client, status = _ServeFixtures.client_and_status(
+            make_stack(self.tmp_path), _ServeFixtures.empty_snapshot()
+        )
+        response = client.get("/service/raft-gate")
+        assert response.status_code == 200
+        status.collect.assert_not_called()
+        assert 'id="root"' in response.text
+
+    def test_unknown_api_path_is_not_spa(self) -> None:
+        client, _ = _ServeFixtures.client_and_status(
+            make_stack(self.tmp_path), _ServeFixtures.empty_snapshot()
+        )
+        response = client.get("/api/nope")
+        assert response.status_code == 404
+        assert "text/html" not in response.headers.get("content-type", "")
 
     def test_api_status_empty_snapshot(self) -> None:
         client, _ = _ServeFixtures.client_and_status(

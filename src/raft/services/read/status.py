@@ -39,3 +39,8 @@ class StatusRead:
         body["control_plane"] = view["control_plane"]
         body["apps"] = view["apps"]
         return body
+
+    def service_detail(self, name: str, *, refresh_apps: bool = False) -> Optional[Dict[str, Any]]:
+        """One service's container + presentation row, or None if unknown."""
+        snapshot = self.collect(refresh_apps=refresh_apps)
+        return ServeSnapshotView(snapshot).service_detail(name)

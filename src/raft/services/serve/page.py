@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from fastapi import HTTPException
 from fastapi.responses import FileResponse
 
 from ...models import Stack
@@ -13,7 +14,8 @@ from .paths import ServePaths
 
 # GET /api/status — shared read contract (see raft.services.read).
 # GET /api/metrics — historical series from resources.jsonl (poll + since).
-# GET / — compiled React SPA from share/serve/spa (no second process).
+# GET /api/service/{name} — one Compose service from the status snapshot.
+# GET / and non-API paths — compiled React SPA (deep-link fallback).
 
 
 class ServePage:
@@ -24,13 +26,22 @@ class ServePage:
         self._read = StatusRead(stack, status=status)
         self._metrics = MetricsRead(stack.root)
 
-    def index(self) -> FileResponse:
-        """Fast shell — packaged index.html; does not call Status.collect()."""
+    def index(self, full_path: str = "") -> FileResponse:
+        """SPA shell for ``/`` and client routes (not ``/api/*``)."""
+        if self._is_api_path(full_path):
+            raise HTTPException(status_code=404, detail="Not Found")
         return FileResponse(ServePaths.spa_index(), media_type="text/html")
 
     def api_status(self) -> Dict[str, Any]:
         """Expensive snapshot for the SPA (and future consumers)."""
         return self._read.api_payload()
+
+    def api_service(self, name: str) -> Dict[str, Any]:
+        """Full status for one Compose service id."""
+        detail = self._read.service_detail(name)
+        if detail is None:
+            raise HTTPException(status_code=404, detail=f"service '{name}' not found")
+        return detail
 
     def api_metrics(
         self,
@@ -44,6 +55,10 @@ class ServePage:
             since=since,
             services=self._split_services(services),
         )
+
+    @staticmethod
+    def _is_api_path(full_path: str) -> bool:
+        return full_path == "api" or full_path.startswith("api/")
 
     @staticmethod
     def _split_services(raw: Optional[str]) -> Optional[List[str]]:
