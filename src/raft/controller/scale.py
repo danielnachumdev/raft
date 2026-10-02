@@ -156,6 +156,8 @@ class Scaler:
     ) -> bool:
         if not self._start_chain(chain, deadline):
             return False
+        # Static upstream hostnames resolve at nginx load; restart → new IP.
+        self.docker.reload_router_nginx()
         self.store.mark_awake(name, min_up_seconds=scaling.min_up_seconds, now=when)
         return True
 
