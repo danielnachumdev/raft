@@ -45,9 +45,13 @@ export function App() {
           className={busy ? "refresh is-loading" : "refresh"}
           onClick={() => void load()}
           disabled={busy}
+          aria-busy={busy}
           aria-label="Refresh status"
           id="status-refresh"
         >
+          {busy ? (
+            <span className="spinner refresh-spinner" aria-hidden="true" />
+          ) : null}
           Refresh
         </button>
       </header>

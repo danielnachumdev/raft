@@ -60,6 +60,9 @@ code {
 }
 
 .refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
   border: 1px solid var(--line);
   background: var(--panel);
   color: var(--ink);
@@ -71,11 +74,18 @@ code {
 
 .refresh:disabled {
   opacity: 0.6;
-  cursor: wait;
+  cursor: default;
 }
 
 .refresh.is-loading {
   border-color: var(--accent);
+}
+
+.refresh-spinner {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-width: 2px;
+  flex-shrink: 0;
 }
 
 .panel {
