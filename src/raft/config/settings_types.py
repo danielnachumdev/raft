@@ -21,6 +21,8 @@ DEFAULT_METRICS_BATCH_SIZE = 10
 DEFAULT_METRICS_FLUSH_SECONDS = 60.0
 DEFAULT_METRICS_RETENTION_MAX_AGE_DAYS = 30
 DEFAULT_METRICS_RETENTION_MAX_BYTES = 100 * 1024 * 1024  # 100 MiB
+DEFAULT_LOGGING_RETENTION_MAX_AGE_DAYS = 30
+DEFAULT_LOGGING_RETENTION_MAX_BYTES = 100 * 1024 * 1024  # 100 MiB
 
 
 @dataclass(frozen=True)
@@ -28,6 +30,8 @@ class LoggingConfig:
     dir: str = LOGS_DIRNAME
     file: str = "raft.log"
     level: str = "INFO"
+    retention_max_age_days: int = DEFAULT_LOGGING_RETENTION_MAX_AGE_DAYS
+    retention_max_bytes: int = DEFAULT_LOGGING_RETENTION_MAX_BYTES
 
     def resolve_dir(self, data_home: Path) -> Path:
         override = os.environ.get("RAFT_LOG_DIR")
