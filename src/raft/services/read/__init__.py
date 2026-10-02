@@ -21,12 +21,24 @@ Serve ``GET /api/status`` returns that snapshot **plus** presentation lists
 ``control_plane`` / ``apps`` (display labels + human cpu/memory/uptime strings)
 for the dashboard SPA tables. Prefer ``containers`` for new FE work (#35/#9).
 
+Serve ``GET /api/metrics`` returns historical series from
+``state/metrics/resources.jsonl`` via ``MetricsRead`` (window + optional
+``since`` cursor for SPA polling). Live updates use HTTP polling — simpler
+and durable for one FastAPI process than WebSockets.
+
 Doctor JSON is deferred for a full dashboard health view; see
 ``DoctorRead.intended_payload_shape`` and ``DoctorRead.from_results``.
 """
 
 from .doctor import DoctorRead
+from .metrics import MetricsRead
 from .status import StatusRead
 from .view import ServeRow, ServeSnapshotView
 
-__all__ = ["DoctorRead", "ServeRow", "ServeSnapshotView", "StatusRead"]
+__all__ = [
+    "DoctorRead",
+    "MetricsRead",
+    "ServeRow",
+    "ServeSnapshotView",
+    "StatusRead",
+]
