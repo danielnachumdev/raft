@@ -87,6 +87,20 @@ class Shell:
             stderr=(completed.stderr or "") + detail,
         )
 
+    def popen(self, args: list[str], *, cwd: Optional[Path] = None) -> subprocess.Popen:
+        """Start a process with stdout piped (stderr merged) for line streaming."""
+        workdir = cwd or self.cwd
+        logger.debug("popen cwd=%s cmd=%s", workdir, args)
+        return subprocess.Popen(
+            args,
+            cwd=workdir,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            env=self._run_env(),
+            bufsize=1,
+        )
+
     def compose(
         self, *args: str, check: bool = True, capture: bool = False
     ) -> subprocess.CompletedProcess[str]:

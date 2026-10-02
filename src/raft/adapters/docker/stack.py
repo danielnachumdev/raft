@@ -248,6 +248,10 @@ class DockerStack(DockerInspect, DockerImages, DockerEdge):
         """Stream Compose logs to the terminal until Ctrl+C (or compose exits)."""
         return self._diagnostics.follow_compose_logs(*services, tail=tail)
 
+    def iter_follow_compose_logs(self, *services: str, tail: int = DIAG_LOG_TAIL):
+        """Yield Compose follow lines (shared by CLI ``-f`` and serve SSE)."""
+        return self._diagnostics.iter_follow_compose_logs(*services, tail=tail)
+
     def container_logs(self, name: str, *, tail: int = DIAG_LOG_TAIL) -> str:
         """Tail logs for a named container (e.g. cutover ``_tmp``)."""
         return self._diagnostics.container_logs(name, tail=tail)

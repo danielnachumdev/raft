@@ -52,6 +52,7 @@ class ServeAppFactory:
         app.get("/api/status")(page.api_status)
         app.get("/api/metrics")(page.api_metrics)
         app.get("/api/service/{name}")(page.api_service)
+        app.get("/api/service/{name}/logs/follow")(page.api_service_logs_follow)
         app.get("/api/service/{name}/logs")(page.api_service_logs)
         app.post("/api/service/{name}/start")(page.api_service_start)
         app.post("/api/service/{name}/stop")(page.api_service_stop)
