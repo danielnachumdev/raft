@@ -41,11 +41,6 @@ export function StatusTable(props: {
     return <p className="muted">{props.empty}</p>;
   }
 
-  const tableClass =
-    view.prefs.density === "compact"
-      ? "status-table status-table-compact"
-      : "status-table";
-
   return (
     <div className="status-panel-body">
       <StatusPanelControls
@@ -56,13 +51,12 @@ export function StatusTable(props: {
         total={props.rows.length}
         onQuery={view.setQuery}
         onStatus={view.setStatus}
-        onDensity={view.setDensity}
         onClear={view.clearFilters}
       />
       {!view.visible.length ? (
         <p className="muted">No rows match the current filters.</p>
       ) : (
-        <table className={tableClass}>
+        <table className="status-table">
           <thead>
             <tr>
               {COLUMNS.map((col) => (
