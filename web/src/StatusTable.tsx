@@ -107,7 +107,7 @@ function SortHeader(props: {
     : props.dir === "asc"
       ? "ascending"
       : "descending";
-  const indicator = !active ? "" : props.dir === "asc" ? " ↑" : " ↓";
+  const indicator = !active ? "↕" : props.dir === "asc" ? "↑" : "↓";
   return (
     <th aria-sort={ariaSort}>
       <button
@@ -117,7 +117,7 @@ function SortHeader(props: {
       >
         {props.label}
         <span className="sort-indicator" aria-hidden="true">
-          {indicator || " ↕"}
+          {indicator}
         </span>
       </button>
     </th>
