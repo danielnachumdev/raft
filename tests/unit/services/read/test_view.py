@@ -58,6 +58,7 @@ class TestServeSnapshotView:
     def test_to_payload_includes_host_and_rows(self) -> None:
         payload = ServeSnapshotView(self._snapshot()).to_payload()
         assert "cpus" in payload["host"]
+        assert "hostname" in payload["host"]
         assert [r["name"] for r in payload["control_plane"]] == [
             "gate",
             "router",

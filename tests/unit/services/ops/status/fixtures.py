@@ -42,6 +42,7 @@ class StatusFixtures:
     @staticmethod
     def empty_host_status() -> HostStatus:
         return HostStatus(
+            hostname="test-host",
             cpus=1,
             loadavg=None,
             memory=None,

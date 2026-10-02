@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchStatus, type StatusPayload, type StatusRow } from "./api";
+import {
+  documentTitleForHost,
+  fetchStatus,
+  type StatusPayload,
+  type StatusRow,
+} from "./api";
 import { StatusTable } from "./StatusTable";
 import { TrendsPanel } from "./TrendsPanel";
 
@@ -23,6 +28,10 @@ export function App() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    document.title = documentTitleForHost(data?.host?.hostname);
+  }, [data]);
 
   return (
     <div className="page">

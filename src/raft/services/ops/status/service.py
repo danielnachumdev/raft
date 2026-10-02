@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from ....adapters import DockerStack, Shell
-from ....adapters.host import DockerStatsText, HostProbe, HostResources
+from ....adapters.host import DockerStatsText, HostGateway, HostResources
 from ....models.scaling_store import ScalingStore
 from ....errors import OperatorError
 from ....models import EDGE_GROUP, Stack
@@ -45,7 +45,7 @@ class Status:
     def collect(self, *, refresh_apps: bool = False) -> StatusSnapshot:
         if refresh_apps:
             self._reload_stack()
-        host = self._host_status(HostProbe(disk_path=self.stack.root).collect())
+        host = self._host_status(HostGateway(disk_path=self.stack.root))
         targets = self._targets()
         id_by_service = self._container_ids(targets)
         stats_by_id = self.docker.containers_stats(list(id_by_service.values()))
@@ -255,10 +255,12 @@ class Status:
         return max(0.0, (now - started).total_seconds())
 
     @staticmethod
-    def _host_status(resources: HostResources) -> HostStatus:
+    def _host_status(gateway: HostGateway) -> HostStatus:
+        resources = gateway.resources()
         mem, total, available = Status._host_memory(resources)
         disk = resources.disk
         return HostStatus(
+            hostname=gateway.hostname(),
             cpus=resources.cpus,
             loadavg=resources.loadavg,
             memory=mem,

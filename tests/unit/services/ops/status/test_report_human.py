@@ -13,7 +13,7 @@ from raft.services.ops.status.report import StatusReportWriter
 from ....base import RaftTestCase, make_app, make_stack, write_applied_app
 from .fixtures import StatusFixtures
 
-_HOST_PATCH = "raft.services.ops.status.service.HostProbe.collect"
+_HOST_PATCH = "raft.services.ops.status.service.HostGateway.resources"
 
 
 class TestStatusReportHuman(RaftTestCase):
@@ -42,12 +42,14 @@ class TestStatusReportHuman(RaftTestCase):
         gate_line = next(line for line in text.splitlines() if line.strip().startswith("gate "))
         assert "raft" in gate_line.split()
         assert "CPUs: 4" in text
+        assert "Name:" in text
 
     def _assert_json(self, snap) -> None:
         jout = StringIO()
         assert StatusReportWriter().write(snap, as_json=True, out=jout) == 0
         payload = json.loads(jout.getvalue())
         assert payload["host"]["cpus"] == 4
+        assert "hostname" in payload["host"]
         assert payload["containers"][0]["service"] == "raft-gate"
         assert payload["containers"][0]["group"] == "raft"
         assert "allocated" in payload["containers"][0]
