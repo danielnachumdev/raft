@@ -248,6 +248,53 @@ th {
   color: var(--danger);
 }
 
+.status-row {
+  cursor: pointer;
+}
+
+.status-row:hover td {
+  background: #f0ebe1;
+}
+
+.status-row:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.back-link {
+  color: var(--accent);
+  text-decoration: none;
+  font: inherit;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 0.4rem;
+  padding: 0.45rem 0.9rem;
+}
+
+.back-link:hover {
+  border-color: var(--accent);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: minmax(8rem, 12rem) 1fr;
+  gap: 0.45rem 1rem;
+  margin: 0;
+}
+
+.detail-grid dt {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.detail-grid dd {
+  margin: 0;
+}
+
+
 .trends-head {
   display: flex;
   align-items: baseline;

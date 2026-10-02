@@ -66,6 +66,7 @@ class TestServeSnapshotView:
         ]
         assert payload["apps"][0]["name"] == "web"
         assert set(payload["apps"][0]) == {
+            "service",
             "name",
             "role",
             "group",
@@ -74,3 +75,15 @@ class TestServeSnapshotView:
             "memory",
             "uptime",
         }
+        assert payload["apps"][0]["service"] == "demo-web"
+
+    def test_service_detail_returns_container_and_presentation(self) -> None:
+        detail = ServeSnapshotView(self._snapshot()).service_detail("demo-web")
+        assert detail is not None
+        assert detail["container"]["service"] == "demo-web"
+        assert detail["presentation"]["name"] == "web"
+        assert detail["presentation"]["service"] == "demo-web"
+        assert "hostname" in detail["host"]
+
+    def test_service_detail_unknown_returns_none(self) -> None:
+        assert ServeSnapshotView(self._snapshot()).service_detail("missing") is None

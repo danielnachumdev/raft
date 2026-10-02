@@ -1,4 +1,6 @@
+import { useNavigate } from "react-router-dom";
 import type { StatusRow } from "./api";
+import { servicePath } from "./api";
 import {
   parseMemoryRatioPercent,
   parsePercent,
@@ -10,6 +12,7 @@ import {
 
 const COLUMNS: { key: keyof StatusRow; label: string }[] = [
   { key: "name", label: "Name" },
+  { key: "role", label: "Role" },
   { key: "group", label: "Group" },
   { key: "status", label: "Status" },
   { key: "cpu", label: "CPU" },
@@ -18,6 +21,7 @@ const COLUMNS: { key: keyof StatusRow; label: string }[] = [
 ];
 
 export function StatusTable(props: { rows: StatusRow[]; empty: string }) {
+  const navigate = useNavigate();
   if (!props.rows.length) {
     return <p className="muted">{props.empty}</p>;
   }
@@ -32,14 +36,37 @@ export function StatusTable(props: { rows: StatusRow[]; empty: string }) {
       </thead>
       <tbody>
         {props.rows.map((row) => (
-          <tr key={`${row.role}-${row.name}-${row.group}`}>
-            {COLUMNS.map((col) => (
-              <td key={col.key}>{cellContent(col.key, row)}</td>
-            ))}
-          </tr>
+          <StatusRowLink
+            key={`${row.role}-${row.service}`}
+            row={row}
+            onOpen={() => navigate(servicePath(row.service))}
+          />
         ))}
       </tbody>
     </table>
+  );
+}
+
+function StatusRowLink(props: { row: StatusRow; onOpen: () => void }) {
+  const { row, onOpen } = props;
+  return (
+    <tr
+      className="status-row"
+      tabIndex={0}
+      role="link"
+      aria-label={`Open ${row.name}`}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+    >
+      {COLUMNS.map((col) => (
+        <td key={col.key}>{cellContent(col.key, row)}</td>
+      ))}
+    </tr>
   );
 }
 

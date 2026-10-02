@@ -45,6 +45,23 @@ class TestStatusRead(RaftTestCase):
         assert payload["apps"][0]["name"] == "site"
         status.collect.assert_called_once()
 
+    def test_service_detail_known_and_unknown(self) -> None:
+        snap = StatusSnapshot(
+            host=StatusFixtures.empty_host_status(),
+            containers=(
+                StatusFixtures.container("raft-gate", role="gate", group=EDGE_GROUP),
+            ),
+        )
+        status = MagicMock()
+        status.collect.return_value = snap
+        reader = StatusRead(make_stack(self.tmp_path), status=status)
+        detail = reader.service_detail("raft-gate")
+        assert detail is not None
+        assert detail["container"]["service"] == "raft-gate"
+        assert detail["presentation"]["name"] == "gate"
+        assert reader.service_detail("missing") is None
+        assert status.collect.call_count == 2
+
 
 class TestDoctorRead(RaftTestCase):
     def test_from_results_and_shape(self) -> None:

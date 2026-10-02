@@ -23,12 +23,22 @@ class ServeAppFactory:
     def create(self) -> FastAPI:
         app = FastAPI(title="raft serve", docs_url=None, redoc_url=None)
         page = ServePage(self.stack, status=self._status)
-        app.get("/api/status")(page.api_status)
-        app.get("/api/metrics")(page.api_metrics)
-        app.get("/")(page.index)
+        self._register_api(app, page)
         app.mount(
             "/assets",
             StaticFiles(directory=str(ServePaths.spa_assets_dir())),
             name="assets",
         )
+        self._register_spa(app, page)
         return app
+
+    @staticmethod
+    def _register_api(app: FastAPI, page: ServePage) -> None:
+        app.get("/api/status")(page.api_status)
+        app.get("/api/metrics")(page.api_metrics)
+        app.get("/api/service/{name}")(page.api_service)
+
+    @staticmethod
+    def _register_spa(app: FastAPI, page: ServePage) -> None:
+        app.get("/")(page.index)
+        app.get("/{full_path:path}")(page.index)
