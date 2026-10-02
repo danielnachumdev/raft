@@ -8,6 +8,7 @@ export type StatusRow = {
   memory: string;
   started: string;
   uptime: string;
+  external_urls: string[];
 };
 
 export type StatusPayload = {

@@ -42,7 +42,9 @@ class TestStatusRead(RaftTestCase):
         assert payload["host"] == snap.to_dict()["host"]
         assert payload["containers"] == snap.to_dict()["containers"]
         assert payload["control_plane"][0]["name"] == "gate"
+        assert payload["control_plane"][0]["external_urls"] == []
         assert payload["apps"][0]["name"] == "site"
+        assert payload["apps"][0]["external_urls"] == []
         status.collect.assert_called_once()
 
     def test_service_detail_known_and_unknown(self) -> None:
@@ -59,8 +61,27 @@ class TestStatusRead(RaftTestCase):
         assert detail is not None
         assert detail["container"]["service"] == "raft-gate"
         assert detail["presentation"]["name"] == "gate"
+        assert detail["presentation"]["external_urls"] == []
         assert reader.service_detail("missing") is None
         assert status.collect.call_count == 2
+
+    def test_api_payload_includes_app_external_urls(self) -> None:
+        from ...base import make_app, write_applied_app
+
+        write_applied_app(
+            self.tmp_path, "site", public_host="site.test", www=False, tls="origin"
+        )
+        snap = StatusSnapshot(
+            host=StatusFixtures.empty_host_status(),
+            containers=(
+                StatusFixtures.container("site", role="app", app="site"),
+            ),
+        )
+        status = MagicMock()
+        status.collect.return_value = snap
+        stack = make_stack(self.tmp_path, (make_app("site", public_host="site.test"),))
+        payload = StatusRead(stack, status=status).api_payload()
+        assert payload["apps"][0]["external_urls"] == ["https://site.test/"]
 
 
 class TestDoctorRead(RaftTestCase):

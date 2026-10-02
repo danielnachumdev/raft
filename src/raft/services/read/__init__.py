@@ -19,11 +19,13 @@ raw (bytes, percents, seconds) — format in the UI or CLI human path.
 
 Serve ``GET /api/status`` returns that snapshot **plus** presentation lists
 ``control_plane`` / ``apps`` (display labels + human cpu/memory/started/uptime
-strings, and Compose ``service`` id for deep links) for the dashboard SPA tables.
+strings, Compose ``service`` id for deep links, and ``external_urls`` from
+``publicHost`` + edge scheme/port) for the dashboard SPA tables.
 Prefer ``containers`` for new FE work (#35/#9).
 
 Serve ``GET /api/service/{name}`` returns ``host`` + one ``container`` object
-plus a ``presentation`` row for that Compose service id (404 if unknown).
+plus a ``presentation`` row (including ``external_urls``) for that Compose
+service id (404 if unknown).
 
 Serve ``GET /api/metrics`` returns historical series from
 ``state/metrics/resources.jsonl`` via ``MetricsRead`` (window + optional
@@ -35,12 +37,14 @@ Doctor JSON is deferred for a full dashboard health view; see
 """
 
 from .doctor import DoctorRead
+from .external_urls import ExternalUrlBuilder
 from .metrics import MetricsRead
 from .status import StatusRead
 from .view import ServeRow, ServeSnapshotView
 
 __all__ = [
     "DoctorRead",
+    "ExternalUrlBuilder",
     "MetricsRead",
     "ServeRow",
     "ServeSnapshotView",

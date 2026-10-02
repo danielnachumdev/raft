@@ -473,6 +473,41 @@ th {
   margin: 0;
 }
 
+.external-urls {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.external-urls a {
+  color: var(--accent);
+  word-break: break-all;
+}
+
+.external-urls a:hover {
+  text-decoration: underline;
+}
+
+.external-urls-compact {
+  gap: 0.1rem;
+  margin-top: 0.15rem;
+}
+
+.external-urls-compact a {
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+}
+
+.status-name-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+}
+
 .logs-controls {
   display: flex;
   align-items: center;

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, Optional, Tuple
 
 from ...models import display_service_label
 from ..ops.status.formatters import StatusFormatters
 from ..ops.status.models import ContainerStatus, StatusSnapshot
+from .external_urls import ExternalUrlBuilder
 
 _CONTROL_ROLES = frozenset({"gate", "router", "controller"})
 
@@ -23,13 +24,19 @@ class ServeRow:
     memory: str
     started: str
     uptime: str
+    external_urls: Tuple[str, ...] = field(default_factory=tuple)
 
 
 class ServeSnapshotView:
     """Split control-plane vs apps; format columns for serve tables / API."""
 
-    def __init__(self, snapshot: StatusSnapshot) -> None:
+    def __init__(
+        self,
+        snapshot: StatusSnapshot,
+        urls: Optional[ExternalUrlBuilder] = None,
+    ) -> None:
         self.snapshot = snapshot
+        self._urls = urls
 
     def control_plane(self) -> Tuple[ServeRow, ...]:
         return tuple(self._row(c) for c in self.snapshot.containers if c.role in _CONTROL_ROLES)
@@ -41,8 +48,8 @@ class ServeSnapshotView:
         """Presentation lists for serve tables (StatusRead merges onto snapshot)."""
         return {
             "host": self.snapshot.host.to_dict(),
-            "control_plane": [asdict(r) for r in self.control_plane()],
-            "apps": [asdict(r) for r in self.apps()],
+            "control_plane": [self._row_dict(r) for r in self.control_plane()],
+            "apps": [self._row_dict(r) for r in self.apps()],
         }
 
     def service_detail(self, name: str) -> Optional[Dict[str, Any]]:
@@ -53,8 +60,14 @@ class ServeSnapshotView:
         return {
             "host": self.snapshot.host.to_dict(),
             "container": container.to_dict(),
-            "presentation": asdict(self._row(container)),
+            "presentation": self._row_dict(self._row(container)),
         }
+
+    @staticmethod
+    def _row_dict(row: ServeRow) -> Dict[str, Any]:
+        data = asdict(row)
+        data["external_urls"] = list(row.external_urls)
+        return data
 
     def _find_container(self, name: str) -> Optional[ContainerStatus]:
         for container in self.snapshot.containers:
@@ -76,4 +89,10 @@ class ServeSnapshotView:
             memory=f"{used} / {limit}",
             started=StatusFormatters.started(container.uptime_seconds),
             uptime=StatusFormatters.uptime(container.uptime_seconds),
+            external_urls=self._external_urls(container),
         )
+
+    def _external_urls(self, container: ContainerStatus) -> Tuple[str, ...]:
+        if self._urls is None:
+            return ()
+        return self._urls.urls_for(service=container.service, role=container.role)
