@@ -9,8 +9,13 @@ import {
   YAxis,
 } from "recharts";
 import type { MetricsSeries } from "./api";
-
-export type MetricKind = "cpu" | "memory";
+import {
+  formatRuntimeValue,
+  runtimePointValue,
+  yAxisUnit,
+  type RuntimeMetricId,
+  type RuntimeUnit,
+} from "./runtimeMetrics";
 
 const COLORS = [
   "#0f6b5c",
@@ -37,7 +42,8 @@ type PlotSeries = {
 
 export function TrendsChart(props: {
   series: MetricsSeries[];
-  metric: MetricKind;
+  metric: RuntimeMetricId;
+  unit: RuntimeUnit;
   aggregate: boolean;
 }) {
   const plots = props.aggregate ? [] : toPlotSeries(props.series);
@@ -48,6 +54,7 @@ export function TrendsChart(props: {
     ? { aggregate: "Average" }
     : Object.fromEntries(plots.map((p) => [p.chartKey, p.label]));
   const splitAxes = !props.aggregate && needsSplitAxes(props.series);
+  const axisUnit = yAxisUnit(props.unit);
 
   if (!rows.length) {
     return null;
@@ -66,18 +73,20 @@ export function TrendsChart(props: {
           <YAxis
             yAxisId={SERVICE_AXIS}
             tick={{ fill: "var(--muted)", fontSize: 11 }}
-            unit="%"
-            width={48}
+            unit={axisUnit || undefined}
+            width={56}
             domain={[0, "auto"]}
+            tickFormatter={(v: number) => formatAxisTick(v, props.unit)}
           />
           {splitAxes ? (
             <YAxis
               yAxisId={HOST_AXIS}
               orientation="right"
               tick={{ fill: "var(--muted)", fontSize: 11 }}
-              unit="%"
-              width={48}
+              unit={axisUnit || undefined}
+              width={56}
               domain={[0, "auto"]}
+              tickFormatter={(v: number) => formatAxisTick(v, props.unit)}
             />
           ) : null}
           <Tooltip
@@ -91,7 +100,7 @@ export function TrendsChart(props: {
               return row?.t ? formatTime(row.t) : "";
             }}
             formatter={(value: number | string, name: string) => [
-              `${Number(value).toFixed(1)}%`,
+              formatRuntimeValue(Number(value), props.unit),
               labels[name] ?? name,
             ]}
             itemSorter={tooltipItemSortKey}
@@ -165,22 +174,15 @@ function needsSplitAxes(series: MetricsSeries[]): boolean {
 /** Coerce JSON numbers so stringy samples still plot. */
 export function pointValue(
   point: MetricsSeries["points"][0],
-  metric: MetricKind,
+  metric: RuntimeMetricId,
 ): number | null {
-  const raw: unknown =
-    metric === "cpu" ? point.cpu_percent : point.memory_used_percent;
-  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
-  if (typeof raw === "string" && raw.trim()) {
-    const n = Number(raw);
-    return Number.isFinite(n) ? n : null;
-  }
-  return null;
+  return runtimePointValue(point, metric);
 }
 
 export function buildPerServiceRows(
   series: MetricsSeries[],
   plots: PlotSeries[],
-  metric: MetricKind,
+  metric: RuntimeMetricId,
 ): ChartRow[] {
   const byId = new Map(plots.map((p) => [p.id, p.chartKey]));
   const byTime = new Map<string, ChartRow>();
@@ -196,7 +198,10 @@ export function buildPerServiceRows(
   return [...byTime.values()].sort((a, b) => a.t.localeCompare(b.t));
 }
 
-function buildAggregateRows(series: MetricsSeries[], metric: MetricKind): ChartRow[] {
+function buildAggregateRows(
+  series: MetricsSeries[],
+  metric: RuntimeMetricId,
+): ChartRow[] {
   const byTime = new Map<string, number[]>();
   for (const s of series) {
     for (const p of s.points) {
@@ -214,6 +219,12 @@ function buildAggregateRows(series: MetricsSeries[], metric: MetricKind): ChartR
       label: shortTime(t),
       aggregate: vals.reduce((a, b) => a + b, 0) / vals.length,
     }));
+}
+
+function formatAxisTick(value: number, unit: RuntimeUnit): string {
+  if (unit === "bytes") return formatRuntimeValue(value, "bytes");
+  if (unit === "seconds") return formatRuntimeValue(value, "seconds");
+  return String(value);
 }
 
 function shortTime(iso: string): string {

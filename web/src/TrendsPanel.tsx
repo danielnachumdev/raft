@@ -8,37 +8,38 @@ import {
   type MetricsSeries,
 } from "./api";
 import { peekMetrics, putMetrics } from "./dashboardCache";
-import { TrendsChart, type MetricKind } from "./TrendsChart";
-
-const WINDOWS: { seconds: number; label: string }[] = [
-  { seconds: 900, label: "15m" },
-  { seconds: 3600, label: "1h" },
-  { seconds: 21600, label: "6h" },
-  { seconds: 86400, label: "24h" },
-  { seconds: 604800, label: "7d" },
-];
-
-const DEFAULT_WINDOW = 3600;
+import { TrendsChart } from "./TrendsChart";
+import {
+  DEFAULT_RUNTIME_WINDOW,
+  RUNTIME_METRICS,
+  RUNTIME_WINDOWS,
+  type RuntimeMetricDef,
+  type RuntimeMetricId,
+} from "./runtimeMetrics";
 
 export type ScopeKind = "all" | "host" | "containers";
 
 /** Historical resource trends from /api/metrics (HTTP poll + since cursor). */
 export function TrendsPanel() {
-  const [windowSec, setWindowSec] = useState(DEFAULT_WINDOW);
-  const [metric, setMetric] = useState<MetricKind>("cpu");
+  const [windowSec, setWindowSec] = useState(DEFAULT_RUNTIME_WINDOW);
+  const [metricId, setMetricId] = useState<RuntimeMetricId>("cpu_percent");
   const [aggregate, setAggregate] = useState(false);
   const [scope, setScope] = useState<ScopeKind>("all");
   const [selected, setSelected] = useState<string[] | null>(null);
   const [series, setSeries] = useState<MetricsSeries[]>(() => {
-    return peekMetrics(DEFAULT_WINDOW)?.series ?? [];
+    return peekMetrics(DEFAULT_RUNTIME_WINDOW)?.series ?? [];
   });
   const [available, setAvailable] = useState<MetricsAvailable[]>(() => {
-    return peekMetrics(DEFAULT_WINDOW)?.available ?? [];
+    return peekMetrics(DEFAULT_RUNTIME_WINDOW)?.available ?? [];
   });
   const [cursor, setCursor] = useState<string | null>(() => {
-    return peekMetrics(DEFAULT_WINDOW)?.cursor ?? null;
+    return peekMetrics(DEFAULT_RUNTIME_WINDOW)?.cursor ?? null;
   });
-  const [busy, setBusy] = useState(() => peekMetrics(DEFAULT_WINDOW) === null);
+  const [busy, setBusy] = useState(
+    () => peekMetrics(DEFAULT_RUNTIME_WINDOW) === null,
+  );
+  const metric =
+    RUNTIME_METRICS.find((m) => m.id === metricId) ?? RUNTIME_METRICS[0];
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -125,7 +126,7 @@ export function TrendsPanel() {
           showingAll={showingAll}
           busy={busy}
           onWindow={setWindowSec}
-          onMetric={setMetric}
+          onMetric={setMetricId}
           onAggregate={setAggregate}
           onScope={(next) => {
             setScope(next);
@@ -165,7 +166,7 @@ function TrendsBody(props: {
   error: string | null;
   series: MetricsSeries[];
   visible: MetricsSeries[];
-  metric: MetricKind;
+  metric: RuntimeMetricDef;
   aggregate: boolean;
 }) {
   if (props.error) {
@@ -189,7 +190,8 @@ function TrendsBody(props: {
   return (
     <TrendsChart
       series={props.visible}
-      metric={props.metric}
+      metric={props.metric.id}
+      unit={props.metric.unit}
       aggregate={props.aggregate}
     />
   );
@@ -197,7 +199,7 @@ function TrendsBody(props: {
 
 function TrendsFilters(props: {
   windowSec: number;
-  metric: MetricKind;
+  metric: RuntimeMetricDef;
   aggregate: boolean;
   scope: ScopeKind;
   available: MetricsAvailable[];
@@ -205,7 +207,7 @@ function TrendsFilters(props: {
   showingAll: boolean;
   busy: boolean;
   onWindow: (n: number) => void;
-  onMetric: (m: MetricKind) => void;
+  onMetric: (m: RuntimeMetricId) => void;
   onAggregate: (v: boolean) => void;
   onScope: (s: ScopeKind) => void;
   onToggle: (id: string) => void;
@@ -222,7 +224,7 @@ function TrendsFilters(props: {
           aria-label="Time range"
           disabled={props.busy}
         >
-          {WINDOWS.map((w) => (
+          {RUNTIME_WINDOWS.map((w) => (
             <option key={w.seconds} value={w.seconds}>
               {w.label}
             </option>
@@ -232,13 +234,18 @@ function TrendsFilters(props: {
       <label className="trends-field">
         <span>Metric</span>
         <select
-          value={props.metric}
-          onChange={(e) => props.onMetric(e.target.value as MetricKind)}
+          value={props.metric.id}
+          onChange={(e) =>
+            props.onMetric(e.target.value as RuntimeMetricId)
+          }
           aria-label="Metric type"
           disabled={props.busy}
         >
-          <option value="cpu">CPU %</option>
-          <option value="memory">Memory %</option>
+          {RUNTIME_METRICS.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.label}
+            </option>
+          ))}
         </select>
       </label>
       <label className="trends-field">
