@@ -19,7 +19,7 @@ const DEFAULT_PREFS: StatusPanelPrefs = {
   status: "",
   sortKey: null,
   sortDir: "asc",
-  density: "comfortable",
+  density: "compact",
 };
 
 const SORTABLE: ReadonlySet<string> = new Set([
