@@ -208,29 +208,23 @@ class Scaler:
         return True
 
     def _ensure_running(self, compose_id: str, deadline: float) -> bool:
-        status, health = self.docker.service_runtime(compose_id)
-        if self._is_ready(status, health):
+        # Compose health is not a wake gate: start_period reports "starting", and
+        # some images fail healthchecks while still serving (router_can_fetch is).
+        status, _health = self.docker.service_runtime(compose_id)
+        if status == "running":
             return True
         if self._clock() >= deadline:
             return False
-        if status != "running":
-            self.docker.start_service(compose_id)
-        return self._wait_ready(compose_id, deadline)
+        self.docker.start_service(compose_id)
+        return self._wait_running(compose_id, deadline)
 
-    def _wait_ready(self, compose_id: str, deadline: float) -> bool:
+    def _wait_running(self, compose_id: str, deadline: float) -> bool:
         while self._clock() < deadline:
-            status, health = self.docker.service_runtime(compose_id)
-            if self._is_ready(status, health):
+            status, _health = self.docker.service_runtime(compose_id)
+            if status == "running":
                 return True
             self._sleep(_WAKE_POLL_SECONDS)
         return False
-
-    @staticmethod
-    def _is_ready(status: str, health: str) -> bool:
-        """Running and healthy (or no healthcheck) before router reload."""
-        if status != "running":
-            return False
-        return health in ("none", "healthy", "")
 
     def _start_wake_thread(self, name: str, scaling: ScalingSpec) -> None:
         with self._wake_lock:

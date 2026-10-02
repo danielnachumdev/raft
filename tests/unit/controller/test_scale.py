@@ -40,10 +40,8 @@ class TestScaler(ControllerTestCase):
 
     def test_wake_starts_and_clears_zero(self, tmp_path: Path) -> None:
         scaler, docker = self._scaler(tmp_path)
-        docker.service_runtime.side_effect = [
-            ("running", "starting"),
-            ("running", "healthy"),
-        ]
+        # Docker health may be starting/unhealthy; wake still clears once fetchable.
+        docker.service_runtime.return_value = ("running", "unhealthy")
         docker.router_can_fetch.side_effect = [False, True]
         scaler.store.mark_scaled_to_zero(self.APP)
         with self.with_scale_locks():
