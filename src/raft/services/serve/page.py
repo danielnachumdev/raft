@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse
 from raft.errors import OperatorError
 
 from ...models import Stack
+from ..ops.logs import DEFAULT_LOG_TAIL, Logs
 from ..ops.status import Status
 from ..read import MetricsRead, StatusRead
 from .actions import ServeActions
@@ -18,8 +19,11 @@ from .paths import ServePaths
 # GET /api/status — shared read contract (see raft.services.read).
 # GET /api/metrics — historical series from resources.jsonl (poll + since).
 # GET /api/service/{name} — one Compose service from the status snapshot.
+# GET /api/service/{name}/logs — container stdout/stderr tail (Logs.snapshot).
 # POST /api/service/{name}/start|stop|redeploy — mutative lifecycle actions.
 # GET / and non-API paths — compiled React SPA (deep-link fallback).
+
+_MAX_LOG_TAIL = 5000
 
 
 class ServePage:
@@ -30,11 +34,13 @@ class ServePage:
         stack: Stack,
         status: Optional[Status] = None,
         actions: Optional[ServeActions] = None,
+        logs: Optional[Logs] = None,
     ) -> None:
         self.stack = stack
         self._read = StatusRead(stack, status=status)
         self._metrics = MetricsRead(stack.root)
         self._actions = actions or ServeActions(stack)
+        self._logs = logs or Logs(stack)
 
     def index(self, full_path: str = "") -> FileResponse:
         """SPA shell for ``/`` and client routes (not ``/api/*``)."""
@@ -52,6 +58,15 @@ class ServePage:
         if detail is None:
             raise HTTPException(status_code=404, detail=f"service '{name}' not found")
         return detail
+
+    def api_service_logs(self, name: str, tail: int = DEFAULT_LOG_TAIL) -> Dict[str, Any]:
+        """Recent container logs for one service (CLI ``raft logs`` snapshot)."""
+        lines = self._clamp_tail(tail)
+        try:
+            text = self._logs.snapshot(name, tail=lines)
+        except OperatorError as exc:
+            raise self._http_for_operator(exc) from exc
+        return {"service": name, "tail": lines, "text": text}
 
     def api_service_start(self, name: str) -> Dict[str, Any]:
         return self._run_action(self._actions.start, name)
@@ -80,6 +95,14 @@ class ServePage:
             return fn(name)
         except OperatorError as exc:
             raise self._http_for_operator(exc) from exc
+
+    @staticmethod
+    def _clamp_tail(tail: int) -> int:
+        if tail < 1:
+            return 1
+        if tail > _MAX_LOG_TAIL:
+            return _MAX_LOG_TAIL
+        return tail
 
     @staticmethod
     def _http_for_operator(exc: OperatorError) -> HTTPException:

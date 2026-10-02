@@ -37,6 +37,12 @@ class Logs:
             return
         self._print_snapshot(compose_ids, tail=tail, out=out)
 
+    def snapshot(self, *services: str, tail: int = DEFAULT_LOG_TAIL) -> str:
+        """Return recent Compose log text (same resolve/require rules as ``show``)."""
+        compose_ids = self._targets.resolve(*services)
+        self._require_containers(compose_ids)
+        return self.docker.compose_logs(*compose_ids, tail=tail) or ""
+
     def _require_containers(self, compose_ids: tuple[str, ...]) -> None:
         for service in compose_ids:
             if self.docker.try_service_container_id(service) is None:

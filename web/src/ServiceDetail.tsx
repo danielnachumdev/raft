@@ -1,5 +1,6 @@
 import type { MetricsSeries, ServiceDetailPayload } from "./api";
 import { ServiceActions } from "./ServiceActions";
+import { ServiceLogs } from "./ServiceLogs";
 
 /** Render full status contract fields for one Compose service. */
 export function ServiceDetail(props: {
@@ -11,6 +12,7 @@ export function ServiceDetail(props: {
   return (
     <>
       <ServiceActions service={c.service} onDone={props.onActionDone} />
+      <ServiceLogs service={c.service} />
 
       <section className="panel">
         <h2>Overview</h2>
