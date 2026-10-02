@@ -189,13 +189,13 @@ code {
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.92rem;
+  font-size: 0.86rem;
 }
 
 th,
 td {
   text-align: left;
-  padding: 0.4rem 0.5rem;
+  padding: 0.22rem 0.4rem;
   border-bottom: 1px solid var(--line);
 }
 
@@ -1027,11 +1027,5 @@ th {
   opacity: 1;
   font-size: 1.35em;
   color: var(--accent);
-}
-
-.status-table-compact th,
-.status-table-compact td {
-  padding: 0.22rem 0.4rem;
-  font-size: 0.86rem;
 }
 

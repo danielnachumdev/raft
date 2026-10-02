@@ -1,4 +1,4 @@
-import type { Density, StatusPanelPrefs } from "./statusPanelView";
+import type { StatusPanelPrefs } from "./statusPanelView";
 
 export function StatusPanelControls(props: {
   prefs: StatusPanelPrefs;
@@ -8,7 +8,6 @@ export function StatusPanelControls(props: {
   total: number;
   onQuery: (value: string) => void;
   onStatus: (value: string) => void;
-  onDensity: (value: Density) => void;
   onClear: () => void;
 }) {
   const { prefs } = props;
@@ -38,17 +37,6 @@ export function StatusPanelControls(props: {
               {status}
             </option>
           ))}
-        </select>
-      </label>
-      <label className="status-field">
-        Density
-        <select
-          value={prefs.density}
-          onChange={(e) => props.onDensity(e.target.value as Density)}
-          aria-label="Table density"
-        >
-          <option value="comfortable">Comfortable</option>
-          <option value="compact">Compact</option>
         </select>
       </label>
       <div className="status-controls-meta">

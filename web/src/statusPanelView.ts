@@ -4,14 +4,12 @@ import { parseMemoryRatioPercent, parsePercent } from "./statusTone";
 
 export type SortKey = keyof StatusRow;
 export type SortDir = "asc" | "desc";
-export type Density = "comfortable" | "compact";
 
 export type StatusPanelPrefs = {
   query: string;
   status: string;
   sortKey: SortKey | null;
   sortDir: SortDir;
-  density: Density;
 };
 
 const DEFAULT_PREFS: StatusPanelPrefs = {
@@ -19,7 +17,6 @@ const DEFAULT_PREFS: StatusPanelPrefs = {
   status: "",
   sortKey: null,
   sortDir: "asc",
-  density: "comfortable",
 };
 
 const SORTABLE: ReadonlySet<string> = new Set([
@@ -52,11 +49,6 @@ export function useStatusPanelView(storageKey: string, rows: StatusRow[]) {
 
   const setStatus = useCallback(
     (status: string) => setAndPersist({ ...prefs, status }),
-    [prefs, setAndPersist],
-  );
-
-  const setDensity = useCallback(
-    (density: Density) => setAndPersist({ ...prefs, density }),
     [prefs, setAndPersist],
   );
 
@@ -103,7 +95,6 @@ export function useStatusPanelView(storageKey: string, rows: StatusRow[]) {
     filtersActive,
     setQuery,
     setStatus,
-    setDensity,
     toggleSort,
     clearFilters,
   };
@@ -218,10 +209,7 @@ function savePrefs(key: string, prefs: StatusPanelPrefs): void {
 }
 
 function normalizePrefs(raw: Partial<StatusPanelPrefs>): StatusPanelPrefs {
-  const density =
-    raw.density === "compact" || raw.density === "comfortable"
-      ? raw.density
-      : DEFAULT_PREFS.density;
+  // Ignore legacy density keys from older sessionStorage payloads.
   const sortKey =
     raw.sortKey && SORTABLE.has(raw.sortKey) ? raw.sortKey : null;
   const sortDir = raw.sortDir === "desc" ? "desc" : "asc";
@@ -230,6 +218,5 @@ function normalizePrefs(raw: Partial<StatusPanelPrefs>): StatusPanelPrefs {
     status: typeof raw.status === "string" ? raw.status : "",
     sortKey,
     sortDir,
-    density,
   };
 }
