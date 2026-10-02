@@ -1,4 +1,5 @@
 import type { ServiceAction } from "./api";
+import { ServiceActionConfirm } from "./ServiceActionConfirm";
 import { useServiceActionRunner } from "./useServiceActionRunner";
 
 type Props = {
@@ -9,11 +10,12 @@ type Props = {
 
 /** Start / Stop / Redeploy controls for one Compose service. */
 export function ServiceActions(props: Props) {
-  const { busy, error, message, locked, run } = useServiceActionRunner(
+  const runner = useServiceActionRunner(
     props.service,
     props.onDone,
     props.disabled,
   );
+  const { busy, error, message, locked, run } = runner;
 
   return (
     <section className="panel">
@@ -53,6 +55,7 @@ export function ServiceActions(props: Props) {
           {error}
         </p>
       ) : null}
+      <ServiceActionConfirm runner={runner} />
     </section>
   );
 }

@@ -1,6 +1,7 @@
 import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { serviceLogsPath, type ServiceAction } from "./api";
+import { ServiceActionConfirm } from "./ServiceActionConfirm";
 import { useServiceActionRunner } from "./useServiceActionRunner";
 
 type Props = {
@@ -11,10 +12,8 @@ type Props = {
 
 /** Icon quick actions for a status-table row (logs + start/stop/redeploy). */
 export function ServiceQuickActions(props: Props) {
-  const { busy, error, locked, run } = useServiceActionRunner(
-    props.service,
-    props.onDone,
-  );
+  const runner = useServiceActionRunner(props.service, props.onDone);
+  const { busy, error, locked, run } = runner;
 
   return (
     <div className="quick-actions" onClick={stopRowNav} onKeyDown={stopRowNav}>
@@ -63,6 +62,7 @@ export function ServiceQuickActions(props: Props) {
           {error}
         </p>
       ) : null}
+      <ServiceActionConfirm runner={runner} />
     </div>
   );
 }
