@@ -44,9 +44,15 @@ export function App() {
       </header>
 
       {busy && data === null ? (
-        <p className="loading" role="status" aria-busy="true" id="status-loading">
-          Loading status…
-        </p>
+        <div
+          className="loading"
+          role="status"
+          aria-busy="true"
+          id="status-loading"
+        >
+          <span className="spinner" aria-hidden="true" />
+          <p>Loading status…</p>
+        </div>
       ) : null}
 
       {error ? (
