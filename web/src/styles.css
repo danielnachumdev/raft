@@ -130,6 +130,62 @@ code {
   font-size: 0.82rem;
 }
 
+.live-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.live-indicator__blob {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--muted);
+}
+
+.live-indicator--live .live-indicator__blob {
+  background: var(--ok);
+  animation: live-pulse 1.6s ease-in-out infinite;
+}
+
+.live-indicator--connecting .live-indicator__blob {
+  background: var(--warn);
+  animation: live-pulse 1.2s ease-in-out infinite;
+}
+
+.live-indicator--offline .live-indicator__blob {
+  background: var(--danger);
+  opacity: 0.85;
+}
+
+.live-indicator--live .live-indicator__label {
+  color: var(--ok);
+}
+
+.live-indicator--connecting .live-indicator__label {
+  color: var(--warn);
+}
+
+.live-indicator--offline .live-indicator__label {
+  color: var(--danger);
+}
+
+@keyframes live-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.55;
+  }
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
