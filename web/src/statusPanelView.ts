@@ -1,15 +1,25 @@
 import { useCallback, useMemo, useState } from "react";
 import type { StatusRow } from "./api";
+import {
+  activeColumnFilterEntries,
+  type ColumnFilter,
+  type ColumnFilters,
+  matchColumnFilter,
+  normalizeColumnFilters,
+  type SortKey,
+} from "./statusColumnFilter";
 import { parseMemoryRatioPercent, parsePercent } from "./statusTone";
 
-export type SortKey = keyof StatusRow;
+export type { SortKey } from "./statusColumnFilter";
 export type SortDir = "asc" | "desc";
+export type { ColumnFilter, ColumnFilters, FilterOp } from "./statusColumnFilter";
 
 export type StatusPanelPrefs = {
   query: string;
   status: string;
   sortKey: SortKey | null;
   sortDir: SortDir;
+  columnFilters: ColumnFilters;
 };
 
 const DEFAULT_PREFS: StatusPanelPrefs = {
@@ -17,6 +27,7 @@ const DEFAULT_PREFS: StatusPanelPrefs = {
   status: "",
   sortKey: null,
   sortDir: "asc",
+  columnFilters: {},
 };
 
 const SORTABLE: ReadonlySet<string> = new Set([
@@ -52,16 +63,23 @@ export function useStatusPanelView(storageKey: string, rows: StatusRow[]) {
     [prefs, setAndPersist],
   );
 
-  const toggleSort = useCallback(
-    (key: SortKey) => {
-      if (prefs.sortKey === key) {
-        setAndPersist({
-          ...prefs,
-          sortDir: prefs.sortDir === "asc" ? "desc" : "asc",
-        });
-        return;
+
+  const setSort = useCallback(
+    (key: SortKey, dir: SortDir) => {
+      setAndPersist({ ...prefs, sortKey: key, sortDir: dir });
+    },
+    [prefs, setAndPersist],
+  );
+
+  const setColumnFilter = useCallback(
+    (key: SortKey, filter: ColumnFilter | null) => {
+      const next = { ...prefs.columnFilters };
+      if (!filter || !filter.value.trim()) {
+        delete next[key];
+      } else {
+        next[key] = { op: filter.op, value: filter.value };
       }
-      setAndPersist({ ...prefs, sortKey: key, sortDir: "asc" });
+      setAndPersist({ ...prefs, columnFilters: next });
     },
     [prefs, setAndPersist],
   );
@@ -73,29 +91,33 @@ export function useStatusPanelView(storageKey: string, rows: StatusRow[]) {
       status: "",
       sortKey: null,
       sortDir: "asc",
+      columnFilters: {},
     });
   }, [prefs, setAndPersist]);
 
   const statusOptions = useMemo(() => uniqueStatuses(rows), [rows]);
-
-  const visible = useMemo(
-    () => applyView(rows, prefs),
-    [rows, prefs],
+  const visible = useMemo(() => applyView(rows, prefs), [rows, prefs]);
+  const columnFilterEntries = useMemo(
+    () => activeColumnFilterEntries(prefs.columnFilters),
+    [prefs.columnFilters],
   );
 
   const filtersActive =
     prefs.query.trim() !== "" ||
     prefs.status !== "" ||
-    prefs.sortKey !== null;
+    prefs.sortKey !== null ||
+    columnFilterEntries.length > 0;
 
   return {
     prefs,
     visible,
     statusOptions,
     filtersActive,
+    columnFilterEntries,
     setQuery,
     setStatus,
-    toggleSort,
+    setSort,
+    setColumnFilter,
     clearFilters,
   };
 }
@@ -116,20 +138,23 @@ function matchesFilters(row: StatusRow, prefs: StatusPanelPrefs): boolean {
     return false;
   }
   const q = prefs.query.trim().toLowerCase();
-  if (!q) {
-    return true;
+  if (q) {
+    const hay = [row.name, row.service, row.group, row.role]
+      .join(" ")
+      .toLowerCase();
+    if (!hay.includes(q)) {
+      return false;
+    }
   }
-  const hay = [row.name, row.service, row.group, row.role]
-    .join(" ")
-    .toLowerCase();
-  return hay.includes(q);
+  for (const [key, filter] of Object.entries(prefs.columnFilters)) {
+    if (!filter || !matchColumnFilter(row, key as SortKey, filter)) {
+      return false;
+    }
+  }
+  return true;
 }
 
-function sortRows(
-  rows: StatusRow[],
-  key: SortKey,
-  dir: SortDir,
-): StatusRow[] {
+function sortRows(rows: StatusRow[], key: SortKey, dir: SortDir): StatusRow[] {
   const mul = dir === "asc" ? 1 : -1;
   return [...rows].sort((a, b) => mul * compareCells(a, b, key));
 }
@@ -209,7 +234,6 @@ function savePrefs(key: string, prefs: StatusPanelPrefs): void {
 }
 
 function normalizePrefs(raw: Partial<StatusPanelPrefs>): StatusPanelPrefs {
-  // Ignore legacy density keys from older sessionStorage payloads.
   const sortKey =
     raw.sortKey && SORTABLE.has(raw.sortKey) ? raw.sortKey : null;
   const sortDir = raw.sortDir === "desc" ? "desc" : "asc";
@@ -218,5 +242,6 @@ function normalizePrefs(raw: Partial<StatusPanelPrefs>): StatusPanelPrefs {
     status: typeof raw.status === "string" ? raw.status : "",
     sortKey,
     sortDir,
+    columnFilters: normalizeColumnFilters(raw.columnFilters),
   };
 }
