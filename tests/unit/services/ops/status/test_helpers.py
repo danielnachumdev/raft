@@ -32,3 +32,7 @@ class TestStatusHelpers:
         assert StatusFormatters.uptime(45) == "45s"
         assert StatusFormatters.uptime(3661) == "1h 1m"
         assert StatusFormatters.uptime(90061) == "1d 1h 1m"
+        assert StatusFormatters.started(None) == "-"
+        fixed = datetime(2026, 10, 2, 14, 0, tzinfo=timezone.utc)
+        assert StatusFormatters.started(3600, now=fixed) == "2026-10-02 13:00 UTC"
+        assert StatusFormatters.started(45, now=fixed) == "2026-10-02 13:59 UTC"

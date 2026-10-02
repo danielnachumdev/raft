@@ -18,8 +18,8 @@ Canonical status JSON matches ``raft status --json`` / ``StatusSnapshot.to_dict(
 raw (bytes, percents, seconds) — format in the UI or CLI human path.
 
 Serve ``GET /api/status`` returns that snapshot **plus** presentation lists
-``control_plane`` / ``apps`` (display labels + human cpu/memory/uptime strings,
-and Compose ``service`` id for deep links) for the dashboard SPA tables.
+``control_plane`` / ``apps`` (display labels + human cpu/memory/started/uptime
+strings, and Compose ``service`` id for deep links) for the dashboard SPA tables.
 Prefer ``containers`` for new FE work (#35/#9).
 
 Serve ``GET /api/service/{name}`` returns ``host`` + one ``container`` object

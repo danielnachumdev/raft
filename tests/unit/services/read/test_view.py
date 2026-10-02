@@ -65,7 +65,11 @@ class TestServeSnapshotView:
             "controller",
         ]
         assert payload["apps"][0]["name"] == "web"
-        assert set(payload["apps"][0]) == {
+        assert payload["apps"][0]["service"] == "demo-web"
+        self._assert_row_keys(payload["apps"][0])
+
+    def _assert_row_keys(self, row: dict) -> None:
+        assert set(row) == {
             "service",
             "name",
             "role",
@@ -73,9 +77,10 @@ class TestServeSnapshotView:
             "status",
             "cpu",
             "memory",
+            "started",
             "uptime",
         }
-        assert payload["apps"][0]["service"] == "demo-web"
+        assert "UTC" in row["started"]
 
     def test_service_detail_returns_container_and_presentation(self) -> None:
         detail = ServeSnapshotView(self._snapshot()).service_detail("demo-web")
@@ -87,3 +92,15 @@ class TestServeSnapshotView:
 
     def test_service_detail_unknown_returns_none(self) -> None:
         assert ServeSnapshotView(self._snapshot()).service_detail("missing") is None
+
+    def test_started_dash_when_uptime_missing(self) -> None:
+        snap = StatusSnapshot(
+            host=StatusFixtures.empty_host_status(),
+            containers=(
+                StatusFixtures.container(
+                    "demo-web", role="app", app="web", group="demo", uptime=None
+                ),
+            ),
+        )
+        row = ServeSnapshotView(snap).apps()[0]
+        assert row.uptime == "-" and row.started == "-"

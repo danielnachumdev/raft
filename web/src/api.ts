@@ -6,6 +6,7 @@ export type StatusRow = {
   status: string;
   cpu: string;
   memory: string;
+  started: string;
   uptime: string;
 };
 

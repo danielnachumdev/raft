@@ -23,6 +23,7 @@ export function ServiceDetail(props: {
           <Detail label="Group" value={c.group ?? "-"} />
           <Detail label="App" value={c.app ?? "-"} />
           <Detail label="Status" value={c.status} />
+          <Detail label="Started" value={p.started} />
           <Detail label="Uptime" value={p.uptime} />
           <Detail label="CPU (live)" value={p.cpu} />
           <Detail label="Memory (live)" value={p.memory} />
