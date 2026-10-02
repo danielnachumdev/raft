@@ -106,6 +106,7 @@ class TestScaler(ControllerTestCase):
             "api",
             self.APP,
         ]
+        docker.reload_router_nginx.assert_called_once()
         assert not scaler.store.is_scaled_to_zero(self.APP)
 
     def test_wake_skips_already_running_dep(self, tmp_path: Path) -> None:
@@ -124,6 +125,16 @@ class TestScaler(ControllerTestCase):
         _home, docker, scaler = self._dep_scaler(tmp_path)
         docker.service_runtime.return_value = ("exited", "none")
         docker.start_service.side_effect = OperatorError("boom", has_fix=False)
+        scaler.store.mark_scaled_to_zero(self.APP)
+        with self.with_scale_locks():
+            assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5), now=1.0) is False
+        docker.reload_router_nginx.assert_not_called()
+        assert scaler.store.is_scaled_to_zero(self.APP)
+
+    def test_wake_reload_failure_keeps_scaled(self, tmp_path: Path) -> None:
+        scaler, docker = self._scaler(tmp_path)
+        docker.service_runtime.side_effect = [("exited", "none"), ("running", "healthy")]
+        docker.reload_router_nginx.side_effect = OperatorError("reload", has_fix=False)
         scaler.store.mark_scaled_to_zero(self.APP)
         with self.with_scale_locks():
             assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5), now=1.0) is False
