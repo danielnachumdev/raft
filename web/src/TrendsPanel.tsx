@@ -17,11 +17,14 @@ const WINDOWS: { seconds: number; label: string }[] = [
   { seconds: 604800, label: "7d" },
 ];
 
+export type ScopeKind = "all" | "host" | "containers";
+
 /** Historical resource trends from /api/metrics (HTTP poll + since cursor). */
 export function TrendsPanel() {
   const [windowSec, setWindowSec] = useState(3600);
   const [metric, setMetric] = useState<MetricKind>("cpu");
   const [aggregate, setAggregate] = useState(false);
+  const [scope, setScope] = useState<ScopeKind>("all");
   const [selected, setSelected] = useState<string[] | null>(null);
   const [series, setSeries] = useState<MetricsSeries[]>([]);
   const [available, setAvailable] = useState<MetricsAvailable[]>([]);
@@ -49,19 +52,25 @@ export function TrendsPanel() {
   useEffect(() => {
     if (busy) return;
     const id = window.setInterval(() => {
-      void pollIncremental(windowSec, cursor, setSeries, setCursor);
+      void pollIncremental(windowSec, cursor, setSeries, setAvailable, setCursor);
     }, METRICS_POLL_MS);
     return () => window.clearInterval(id);
   }, [windowSec, cursor, busy]);
 
-  const activeIds = selected ?? available.map((a) => a.id);
+  const catalog = useMemo(
+    () => available.filter((a) => matchesScope(a.kind, a.id, scope)),
+    [available, scope],
+  );
+  const activeIds = selected ?? catalog.map((a) => a.id);
   const showingAll =
     selected === null ||
-    (available.length > 0 && activeIds.length === available.length);
-  const visible = useMemo(
-    () => series.filter((s) => activeIds.includes(s.id)),
-    [series, activeIds],
-  );
+    (catalog.length > 0 && activeIds.length === catalog.length);
+  const visible = useMemo(() => {
+    const scoped = series.filter((s) => matchesScope(s.kind, s.id, scope));
+    // selected === null → all in scope (do not require available ∩ series).
+    if (selected === null) return scoped;
+    return scoped.filter((s) => selected.includes(s.id));
+  }, [series, selected, scope]);
 
   return (
     <section className="panel trends" id="trends">
@@ -77,14 +86,19 @@ export function TrendsPanel() {
           windowSec={windowSec}
           metric={metric}
           aggregate={aggregate}
-          available={available}
+          scope={scope}
+          available={catalog}
           activeIds={activeIds}
           showingAll={showingAll}
           busy={busy}
           onWindow={setWindowSec}
           onMetric={setMetric}
           onAggregate={setAggregate}
-          onToggle={(id) => setSelected(toggleId(activeIds, id, available))}
+          onScope={(next) => {
+            setScope(next);
+            setSelected(null);
+          }}
+          onToggle={(id) => setSelected(toggleId(activeIds, id, catalog))}
           onShowAll={() => setSelected(null)}
         />
         <div className="trends-main">
@@ -151,6 +165,7 @@ function TrendsFilters(props: {
   windowSec: number;
   metric: MetricKind;
   aggregate: boolean;
+  scope: ScopeKind;
   available: MetricsAvailable[];
   activeIds: string[];
   showingAll: boolean;
@@ -158,6 +173,7 @@ function TrendsFilters(props: {
   onWindow: (n: number) => void;
   onMetric: (m: MetricKind) => void;
   onAggregate: (v: boolean) => void;
+  onScope: (s: ScopeKind) => void;
   onToggle: (id: string) => void;
   onShowAll: () => void;
 }) {
@@ -200,6 +216,19 @@ function TrendsFilters(props: {
         >
           <option value="per">Per service</option>
           <option value="aggregate">Aggregate avg</option>
+        </select>
+      </label>
+      <label className="trends-field">
+        <span>Scope</span>
+        <select
+          value={props.scope}
+          onChange={(e) => props.onScope(e.target.value as ScopeKind)}
+          aria-label="Host or containers"
+          disabled={props.busy}
+        >
+          <option value="all">Host + services</option>
+          <option value="containers">Services only</option>
+          <option value="host">Host only</option>
         </select>
       </label>
       <ServicesFilter
@@ -294,6 +323,7 @@ async function pollIncremental(
   windowSec: number,
   cursor: string | null,
   setSeries: Dispatch<SetStateAction<MetricsSeries[]>>,
+  setAvailable: (a: MetricsAvailable[]) => void,
   setCursor: (c: string | null) => void,
 ) {
   try {
@@ -301,6 +331,7 @@ async function pollIncremental(
       window: windowSec,
       since: cursor ?? undefined,
     });
+    if (payload.available.length) setAvailable(payload.available);
     if (!payload.series.length) return;
     setSeries((prev) => mergeSeries(prev, payload.series));
     if (payload.cursor) setCursor(payload.cursor);
@@ -335,4 +366,11 @@ function toggleId(
   }
   const next = [...active, id];
   return available.map((a) => a.id).filter((x) => next.includes(x));
+}
+
+function matchesScope(kind: string, id: string, scope: ScopeKind): boolean {
+  const isHost = kind === "host" || id === "host";
+  if (scope === "all") return true;
+  if (scope === "host") return isHost;
+  return !isHost;
 }

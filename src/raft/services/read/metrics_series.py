@@ -131,8 +131,8 @@ class MetricsSeriesBuilder:
         return {
             "t": ts,
             "cpu_percent": MetricsSeriesBuilder._host_cpu_percent(host),
-            "memory_used_percent": mem.get("used_percent"),
-            "memory_used_bytes": mem.get("used_bytes"),
+            "memory_used_percent": MetricsSeriesBuilder._as_float(mem.get("used_percent")),
+            "memory_used_bytes": MetricsSeriesBuilder._as_float(mem.get("used_bytes")),
         }
 
     @staticmethod
@@ -155,10 +155,20 @@ class MetricsSeriesBuilder:
         mem = row.get("memory") if isinstance(row.get("memory"), dict) else {}
         return {
             "t": ts,
-            "cpu_percent": row.get("cpu_percent"),
-            "memory_used_percent": mem.get("used_percent"),
-            "memory_used_bytes": mem.get("used_bytes"),
+            "cpu_percent": MetricsSeriesBuilder._as_float(row.get("cpu_percent")),
+            "memory_used_percent": MetricsSeriesBuilder._as_float(mem.get("used_percent")),
+            "memory_used_bytes": MetricsSeriesBuilder._as_float(mem.get("used_bytes")),
         }
+
+    @staticmethod
+    def _as_float(value: Any) -> Optional[float]:
+        if value is None or isinstance(value, bool):
+            return None
+        try:
+            out = float(value)
+        except (TypeError, ValueError):
+            return None
+        return out if out == out else None  # NaN check
 
     @staticmethod
     def downsample(series: Dict[str, Any], *, max_points: int) -> Dict[str, Any]:
