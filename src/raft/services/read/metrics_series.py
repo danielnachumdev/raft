@@ -103,6 +103,7 @@ class MetricsSeriesBuilder:
                     "label": meta["label"],
                     "kind": meta["kind"],
                     "role": meta["role"],
+                    "group": meta.get("group"),
                 }
 
     @staticmethod
@@ -111,7 +112,13 @@ class MetricsSeriesBuilder:
 
     @staticmethod
     def _host_meta_public() -> Dict[str, Any]:
-        return {"id": HOST_SERIES_ID, "label": "Host", "kind": "host", "role": "host"}
+        return {
+            "id": HOST_SERIES_ID,
+            "label": "Host",
+            "kind": "host",
+            "role": "host",
+            "group": None,
+        }
 
     @staticmethod
     def _container_meta(row: Dict[str, Any], service: str) -> Dict[str, Any]:
@@ -122,6 +129,7 @@ class MetricsSeriesBuilder:
             "label": display_service_label(service, group),
             "kind": "container",
             "role": role,
+            "group": group,
             "points": [],
         }
 

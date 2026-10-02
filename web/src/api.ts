@@ -84,6 +84,7 @@ export type MetricsSeries = {
   label: string;
   kind: string;
   role: string;
+  group?: string | null;
   points: MetricsPoint[];
 };
 
@@ -92,6 +93,7 @@ export type MetricsAvailable = {
   label: string;
   kind: string;
   role: string;
+  group?: string | null;
 };
 
 export type MetricsPayload = {
