@@ -1,13 +1,12 @@
+import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { StatusRow } from "./api";
 import { servicePath } from "./api";
+import { ColumnHeaderMenu } from "./ColumnHeaderMenu";
 import { ServiceQuickActions } from "./ServiceQuickActions";
 import { StatusPanelControls } from "./StatusPanelControls";
-import {
-  type SortDir,
-  type SortKey,
-  useStatusPanelView,
-} from "./statusPanelView";
+import { COLUMN_LABELS, type SortKey } from "./statusColumnFilter";
+import { useStatusPanelView } from "./statusPanelView";
 import {
   parseMemoryRatioPercent,
   parsePercent,
@@ -18,14 +17,14 @@ import {
 } from "./statusTone";
 
 const COLUMNS: { key: SortKey; label: string }[] = [
-  { key: "name", label: "Name" },
-  { key: "role", label: "Role" },
-  { key: "group", label: "Group" },
-  { key: "status", label: "Status" },
-  { key: "cpu", label: "CPU" },
-  { key: "memory", label: "Memory" },
-  { key: "started", label: "Started" },
-  { key: "uptime", label: "Uptime" },
+  { key: "name", label: COLUMN_LABELS.name },
+  { key: "role", label: COLUMN_LABELS.role },
+  { key: "group", label: COLUMN_LABELS.group },
+  { key: "status", label: COLUMN_LABELS.status },
+  { key: "cpu", label: COLUMN_LABELS.cpu },
+  { key: "memory", label: COLUMN_LABELS.memory },
+  { key: "started", label: COLUMN_LABELS.started },
+  { key: "uptime", label: COLUMN_LABELS.uptime },
 ];
 
 export function StatusTable(props: {
@@ -36,6 +35,8 @@ export function StatusTable(props: {
 }) {
   const navigate = useNavigate();
   const view = useStatusPanelView(props.storageKey, props.rows);
+  const [openKey, setOpenKey] = useState<SortKey | null>(null);
+  const closeMenu = useCallback(() => setOpenKey(null), []);
 
   if (!props.rows.length) {
     return <p className="muted">{props.empty}</p>;
@@ -47,11 +48,13 @@ export function StatusTable(props: {
         prefs={view.prefs}
         statusOptions={view.statusOptions}
         filtersActive={view.filtersActive}
+        columnFilterEntries={view.columnFilterEntries}
         shown={view.visible.length}
         total={props.rows.length}
         onQuery={view.setQuery}
         onStatus={view.setStatus}
         onClear={view.clearFilters}
+        onClearColumnFilter={(key) => view.setColumnFilter(key, null)}
       />
       {!view.visible.length ? (
         <p className="muted">No rows match the current filters.</p>
@@ -60,13 +63,20 @@ export function StatusTable(props: {
           <thead>
             <tr>
               {COLUMNS.map((col) => (
-                <SortHeader
+                <ColumnHeaderMenu
                   key={col.key}
                   label={col.label}
                   columnKey={col.key}
-                  activeKey={view.prefs.sortKey}
-                  dir={view.prefs.sortDir}
-                  onSort={view.toggleSort}
+                  sortKey={view.prefs.sortKey}
+                  sortDir={view.prefs.sortDir}
+                  filter={view.prefs.columnFilters[col.key]}
+                  open={openKey === col.key}
+                  onToggle={() =>
+                    setOpenKey((cur) => (cur === col.key ? null : col.key))
+                  }
+                  onClose={closeMenu}
+                  onSort={view.setSort}
+                  onFilter={view.setColumnFilter}
                 />
               ))}
               <th className="actions-col">Actions</th>
@@ -85,36 +95,6 @@ export function StatusTable(props: {
         </table>
       )}
     </div>
-  );
-}
-
-function SortHeader(props: {
-  label: string;
-  columnKey: SortKey;
-  activeKey: SortKey | null;
-  dir: SortDir;
-  onSort: (key: SortKey) => void;
-}) {
-  const active = props.activeKey === props.columnKey;
-  const ariaSort = !active
-    ? "none"
-    : props.dir === "asc"
-      ? "ascending"
-      : "descending";
-  const indicator = !active ? "↕" : props.dir === "asc" ? "↑" : "↓";
-  return (
-    <th aria-sort={ariaSort}>
-      <button
-        type="button"
-        className={active ? "sort-btn is-active" : "sort-btn"}
-        onClick={() => props.onSort(props.columnKey)}
-      >
-        {props.label}
-        <span className="sort-indicator" aria-hidden="true">
-          {indicator}
-        </span>
-      </button>
-    </th>
   );
 }
 
