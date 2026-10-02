@@ -35,7 +35,7 @@ class TestOperatorLogsAndServe:
         client = stack.serve_client()
         shell = client.get("/")
         assert shell.status_code == 200
-        assert "status-loading" in shell.text and "Apps" in shell.text
+        assert 'id="root"' in shell.text and "/assets/" in shell.text
         api = client.get("/api/status")
         assert api.status_code == 200
         names = [row["name"] for row in api.json()["apps"]]

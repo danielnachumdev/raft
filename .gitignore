@@ -8,6 +8,10 @@ __pycache__/
 .coverage
 htmlcov/
 
+# Dashboard SPA
+web/node_modules/
+web/dist/
+
 # Operator data if accidentally created in a checkout
 /certs/
 /deploy/
