@@ -18,6 +18,8 @@ User-facing samples live under **[`examples/`](examples/)**: operator settings (
 
 **Shipped:** Per-app scale-to-zero via `spec.scaling` (all fields required; omit = off). HTTP + `publicHost` only. Gate holding page + wake; controller idle-stop; healer skips intentional `scaledToZero`. Healing stays separate (`healing:` in settings).
 
+**Shipped:** `raft serve` localhost ops UI — packaged React SPA (`share/serve/spa/`) + FastAPI JSON/actions/logs APIs; shared `StatusRead` / `MetricsRead` with CLI; trends from controller `resources.jsonl`. Source in `web/`; not an edge listener.
+
 ---
 
 ## Architecture (hard rules)
@@ -87,9 +89,9 @@ Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 5. `--no-deploy` only when you intentionally register desired state without bringing the app live (e.g. apply several manifests, then one `raft up`; or register before Origin PEMs exist). After that, deploy with `raft apply …` again (deploy on) or `raft up` / `raft redeploy` as appropriate.
 6. Manual cold start when apps are already applied: `raft up` (refuses if stack already up; `down` first).
 7. `raft doctor` before trusting the site (certs only for `tls: origin`; gate drift → `raft gate recreate`). Doctor is group-first: built-in **`raft`** (edge services; healthy docker/compose/generated/stack/port probes stay hidden), then App `spec.group` (at most one); ungrouped apps appear without a heading. Member labels drop the `{group}-` prefix under a group heading (Compose ids stay `raft-gate` / `raft-router` / `GROUP-NAME` for Docker; doctor shows `gate` / `router` under `raft`). Healthy OK lines append ports in use (gate: published host ports; apps/router: contract / listen ports). File log records per-suite start/done with `elapsed_ms` plus a compose-call summary (`total` / `ps`) for diagnosing slow doctor runs.
-8. `raft status` (optional `--json`, or `--live` to refresh the human table until Ctrl+C) for a point-in-time host + container CPU/memory/uptime snapshot — declared Compose limits vs live `docker stats` usage. Human NAME column drops `{group}-` (edge: `gate` / `router` with GROUP `raft`); JSON keeps Compose service ids. The always-on **controller** also samples the same plane on a metrics job interval (default 60s; settings `metrics:`) and **batch-appends** JSONL under `~/.raft/state/metrics/resources.jsonl` (flush every 10 samples or 60s; retention defaults 30 days / 100 MiB, oldest first).
-9. `raft serve` (optional `--port`, default **8787**) — localhost-only UI (`127.0.0.1`) for applied apps + gate/router/controller. Serves a **compiled React SPA** (static assets under `share/serve/spa/`) plus `GET /api/status` (`StatusRead`) and `GET /api/metrics` (`MetricsRead` over the JSONL history; SPA polls with a `since` cursor — no WebSocket). Trends charts load by default. Prints SSH/`gcloud` port-forward instructions on start; Ctrl+C stops. Not an edge listener. SPA source lives in `web/`; rebuild with `npm ci && npm run build` before releasing FE changes.
-10. `raft logs [name…]` for container stdout/stderr (not `~/.raft/logs/raft.log`). Snapshot by default (`--tail N`, default 100); `-f` / `--follow` streams until Ctrl+C. Names: applied app, `gate` / `router` / `controller`, or Compose ids (`raft-gate`, `GROUP-NAME`); omit names for all core services. Unknown / missing containers → OperatorError with Fix CTA.
+8. `raft status` (optional `--json`, or `--live` to refresh the human table until Ctrl+C) for a point-in-time host + container CPU/memory/uptime/started snapshot — declared Compose limits vs live usage via `ContainerRuntimeGateway`. Human NAME column drops `{group}-` (edge: `gate` / `router` with GROUP `raft`); JSON keeps Compose service ids. The always-on **controller** also samples the same plane on a metrics job interval (default 60s; settings `metrics:`) and **batch-appends** JSONL under `~/.raft/state/metrics/resources.jsonl` (flush every 10 samples or 60s; retention defaults 30 days / 100 MiB, oldest first). `raft serve` Trends + service Runtime charts read that history via `/api/metrics`.
+9. `raft serve` (optional `--port`, default **8787**) — localhost-only ops UI (`127.0.0.1`) for applied apps + gate/router/controller. One FastAPI process: packaged SPA + status/metrics/service/actions/logs APIs. Prints SSH/`gcloud` port-forward instructions on start; Ctrl+C stops. **Not** an edge listener. See **Serve / ops UI** below.
+10. `raft logs [name…]` for container stdout/stderr (not `~/.raft/logs/raft.log`). Snapshot by default (`--tail N`, default 100); `-f` / `--follow` streams until Ctrl+C. Names: applied app, `gate` / `router` / `controller`, or Compose ids (`raft-gate`, `GROUP-NAME`); omit names for all core services. Unknown / missing containers → OperatorError with Fix CTA. Serve detail reuses the same `Logs` path (snapshot + SSE follow).
 11. Updates: prefer `raft apply … --ref …` again (handles first-boot and cutover). Use `raft redeploy <app>` only when the app Compose service is **already running** and you want cutover without re-writing the registry (optional `--ref` / `--force-sync`). `raft redeploy router` for the inner nginx. New edge listeners: `raft gate recreate`.
 12. Tear down: `raft down`.
 
@@ -194,6 +196,66 @@ Private remotes stay as `git@github.com:…` in the manifest; auth rewrites clon
 
 ---
 
+## Serve / ops UI
+
+Localhost dashboard for operators (`raft serve`). **Hard rules:** bind `127.0.0.1` only; one process (FastAPI + static SPA); no WebSocket — status/metrics use HTTP poll; FE changes must rebuild into `src/raft/share/serve/spa/` before commit/release; mutative actions take the same `flock` locks as CLI deploy; gate start/stop/redeploy still refused where CLI refuses.
+
+### Backend map
+
+| Piece | Path / type | Role |
+|-------|-------------|------|
+| CLI entry | `raft serve` → `services/serve/service.py` | uvicorn on `--port` (default **8787**); prints tunnel CTAs |
+| App factory | `ServeAppFactory` | mounts `/assets`, SPA catch-all, registers `/api/*` |
+| Page / routes | `ServePage` | status, metrics, service detail, logs, start/stop/redeploy |
+| Actions | `ServeActions` | Compose start/stop; redeploy via `Orchestrator`; scaling mark/clear on stop/start |
+| Logs bridge | `LogSseStream` + `ops/logs.Logs` | snapshot JSON + SSE follow (same follow path as CLI `-f`) |
+| Read contracts | `services/read/` | `StatusRead`, `MetricsRead`, `ServeSnapshotView`, `ExternalUrlBuilder` |
+| Runtime gather | `ContainerRuntimeGateway` (`adapters/docker/runtime.py`) | batched Engine `ps`/`inspect`/`stats` for status + controller metrics (not `compose ps`) |
+| Packaged SPA | `src/raft/share/serve/spa/` | Vite build output shipped with the Python package |
+
+### HTTP API
+
+| Method | Path | Backing |
+|--------|------|---------|
+| `GET` | `/api/status` | `StatusRead` snapshot + `control_plane` / `apps` presentation (labels, started, external_urls) |
+| `GET` | `/api/metrics` | `MetricsRead` over `state/metrics/resources.jsonl` (`window`, optional `since`, optional `services`) |
+| `GET` | `/api/service/{name}` | one container + presentation row (404 if unknown) |
+| `GET` | `/api/service/{name}/logs` | log snapshot (`tail`) |
+| `GET` | `/api/service/{name}/logs/follow` | SSE live follow |
+| `POST` | `/api/service/{name}/start\|stop\|redeploy` | `ServeActions` |
+
+Doctor JSON for the SPA is deferred (`DoctorRead.intended_payload_shape`).
+
+### SPA source (`web/`)
+
+| Area | Files (indicative) | Notes |
+|------|--------------------|-------|
+| Shell / routes | `App.tsx`, `main.tsx`, `Dashboard.tsx`, `ServicePage.tsx` | client routes; FastAPI serves `index.html` for non-`/api` paths |
+| Status tables | `StatusTable.tsx`, `ColumnHeaderMenu.tsx`, `statusColumnFilter.ts`, `statusTone.ts`, `statusPanelView.ts` | compact-only; per-column sort/filter menus; health/utilization tones; Started column |
+| Live refresh | `LiveIndicator.tsx`, `dashboardCache.ts` | auto-refresh while tab visible; cache for instant back-navigation |
+| Quick actions | `ServiceQuickActions.tsx` | row icons → start/stop/redeploy/logs |
+| Service detail | `ServiceDetail.tsx`, `ServiceActions.tsx`, `ServiceRuntimeTrends.tsx`, `ExternalUrlLinks.tsx` | public URLs; Runtime charts from metrics history; lifecycle buttons |
+| Logs | `ServiceLogs.tsx`, `LogLines.tsx`, `logParse.ts` | follow / expand / severity filter |
+| Trends | `TrendsPanel.tsx`, `TrendsChart.tsx`, `runtimeMetrics.ts` | historical series; sidebar filters; poll `/api/metrics` |
+| UX chrome | `Modal.tsx`, `ConfirmPopup.tsx`, `toast.ts`, `ToastHost.tsx` | **no** native `alert`/`confirm`; toasts for action feedback |
+| API client | `api.ts` | typed fetches against the FastAPI routes above |
+
+Develop: `cd web && npm ci && npm run dev` (Vite `:5173`, proxies `/api` → `raft serve :8787`). Release FE: `npm run build` → updates `share/serve/spa/`. See [`web/README.md`](web/README.md).
+
+### Metrics pipeline (CLI + serve + controller)
+
+```text
+ContainerRuntimeGateway / Status.collect
+  → raft status (point-in-time)
+  → raft serve /api/status (live tables)
+  → controller metrics job → batch-append resources.jsonl
+       → MetricsRead → /api/metrics → Trends + service Runtime charts
+```
+
+Retention: settings `metrics.retentionMaxAgeDays` / `retentionMaxBytes` (oldest first). Host CPU in charts: load average ÷ CPU count; containers: sampled `cpu_percent` / memory percent.
+
+---
+
 ## CLI surface (Fire)
 
 Top-level **commands** (not nested groups, except `auth` and `gate`):
@@ -208,8 +270,8 @@ Top-level **commands** (not nested groups, except `auth` and `gate`):
 | `redeploy` | Cutover for an **already-running** app, or recreate `router` (`gate` refused). Fails if the app service is not up — use apply-with-deploy (or `raft up`) for first boot |
 | `gate recreate` | Recreate gate for new published edge ports |
 | `doctor` | Health + fix hints |
-| `status` | Host + container resource usage (point-in-time; `--json` or `--live`) |
-| `serve` | Localhost UI (`127.0.0.1`, default port **8787**; optional `--port`); shell + `/api/status`; SSH tunnel from laptop; Ctrl+C stops |
+| `status` | Host + container resource usage (point-in-time; `--json` or `--live`; Started column beside Uptime) |
+| `serve` | Localhost ops UI (`127.0.0.1`, default **8787**; optional `--port`); SPA + status/metrics/service/actions/logs APIs; SSH tunnel; Ctrl+C stops |
 | `logs` | Container stdout/stderr (`--tail N` snapshot; `-f` / `--follow` until Ctrl+C). Names: app, `gate`/`router`/`controller`, or Compose ids; omit = all |
 | `update` | Re-install CLI from GitHub (`install.sh`) |
 | `uninstall` | Full removal (`--yes`; optional `--uv` to remove uv too) |
@@ -226,21 +288,21 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | `src/raft/cli/` | Fire root + auth + gate; `deps.py` patched in tests |
 | `src/raft/config/` | `~/.raft` paths, `settings.yaml` (logging + edge + healing + metrics), logging setup |
 | `src/raft/models/` | Types + parse/registry: `App`, `AppSpec`, `AppDocument` / fields, `AppRegistry`, `AppDependsGraph`, `PortSpec`, `Stack`, `ScalingSpec`, `ScalingStore` (runtime scale-to-zero JSON/markers) |
-| `src/raft/adapters/` | `shell`; `docker/` (`DockerStack` + edge/images/inspect); nginx upstreams; HTTP probe; host |
+| `src/raft/adapters/` | `shell`; `docker/` (`DockerStack`, `ContainerRuntimeGateway`, edge/images/inspect); nginx upstreams; HTTP probe; host |
 | `src/raft/services/apply/` | `AppApply`, `manifest_env` (`${VAR}` at apply) |
 | `src/raft/services/auth/` | `GitAuthManager` + ssh/urls helpers |
 | `src/raft/services/sync/` | `SourceSync` |
 | `src/raft/services/render/` | `StackRenderer`, `compose_apps`, `gate_nginx`, `edge` handlers, `scaling_gate` (holding/wake snippets) |
 | `src/raft/services/deploy/` | orchestrator, cutover, wait, locking, readiness |
-| `src/raft/services/ops/` | doctor, status, logs, uninstall, update, certs |
-| `src/raft/services/read/` | Shared read contracts for CLI + serve/FE (`StatusRead`, `DoctorRead`, `MetricsRead`) |
+| `src/raft/services/ops/` | doctor, status (Started + allocated limits), logs, uninstall, update, certs |
+| `src/raft/services/read/` | Shared read contracts for CLI + serve (`StatusRead`, `MetricsRead`, `DoctorRead`, `ServeSnapshotView`, `ExternalUrlBuilder`) |
 | `src/raft/ui/` | Operator terminal output (`say`) + shared TTY `TerminalProgress` spinner (doctor, update) |
-| `src/raft/services/serve/` | `raft serve` localhost SPA + `/api/status` + `/api/metrics` (FastAPI + uvicorn; static Vite build) |
-| `src/raft/controller/` | Always-on Compose `raft-controller` (smoke; job orchestrator for heal + metrics; idle-stop + wake via side_ticks when `spec.scaling`; healer skips `scaledToZero`) |
+| `src/raft/services/serve/` | `raft serve`: FastAPI factory, `ServePage`, `ServeActions`, SSE log bridge, SPA paths/instructions |
+| `src/raft/controller/` | Always-on Compose `raft-controller` (job orchestrator for heal + metrics; idle-stop + wake via side_ticks when `spec.scaling`; healer skips `scaledToZero`; metrics batch → `resources.jsonl`) |
 | `src/raft/errors/` | Operator errors + CTAs |
 | `src/raft/share/` | Product Compose + nginx templates (synced into data home); `share/serve/spa/` = packaged dashboard assets |
-| `web/` | Dashboard SPA source (React + Vite + TypeScript); build output → `share/serve/spa/` |
-| `tests/` | `unit/` (100% cov), `integration/` (render artifacts), `meta/` (size/body guards), `e2e/` (Docker Compose) |
+| `web/` | Dashboard SPA source (React + Vite + TypeScript); build output → `share/serve/spa/`; see **Serve / ops UI** |
+| `tests/` | `unit/` (100% cov; include `services/serve/`, `services/read/`), `integration/`, `meta/`, `e2e/` |
 
 Compose mounts `generated/nginx/upstreams` into the router. Upstream files are keyed by app + port name (`<app>-<port>.conf`).
 
