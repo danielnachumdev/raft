@@ -157,8 +157,33 @@ class Scaler:
         if not self._start_chain(chain, deadline):
             return False
         # Static upstream hostnames resolve at nginx load; restart → new IP.
-        self.docker.reload_router_nginx()
+        if not self._wait_router_upstream(name, deadline):
+            return False
         self.store.mark_awake(name, min_up_seconds=scaling.min_up_seconds, now=when)
+        return True
+
+    def _wait_router_upstream(self, name: str, deadline: float) -> bool:
+        """Reload until router can fetch the app (holding stays up until then)."""
+        targets = self._http_fetch_targets(name)
+        while self._clock() < deadline:
+            self.docker.reload_router_nginx()
+            if not targets or self._router_reaches(targets):
+                return True
+            self._sleep(_WAKE_POLL_SECONDS)
+        return False
+
+    def _http_fetch_targets(self, name: str) -> Tuple[Tuple[str, int, str], ...]:
+        compose_id = self._compose_id(name)
+        spec = self._load_spec(name)
+        if compose_id is None or spec is None:
+            return ()
+        path = "/" if spec.readiness is None else spec.readiness.path
+        return tuple((compose_id, p.container_port, path) for p in spec.http_ports())
+
+    def _router_reaches(self, targets: Tuple[Tuple[str, int, str], ...]) -> bool:
+        for host, port, path in targets:
+            if not self.docker.router_can_fetch(host, port=port, path=path):
+                return False
         return True
 
     def _wake_chain(self, name: str) -> Optional[Tuple[str, ...]]:
@@ -183,21 +208,29 @@ class Scaler:
         return True
 
     def _ensure_running(self, compose_id: str, deadline: float) -> bool:
-        status, _health = self.docker.service_runtime(compose_id)
-        if status == "running":
+        status, health = self.docker.service_runtime(compose_id)
+        if self._is_ready(status, health):
             return True
         if self._clock() >= deadline:
             return False
-        self.docker.start_service(compose_id)
-        return self._wait_running(compose_id, deadline)
+        if status != "running":
+            self.docker.start_service(compose_id)
+        return self._wait_ready(compose_id, deadline)
 
-    def _wait_running(self, compose_id: str, deadline: float) -> bool:
+    def _wait_ready(self, compose_id: str, deadline: float) -> bool:
         while self._clock() < deadline:
-            status, _health = self.docker.service_runtime(compose_id)
-            if status == "running":
+            status, health = self.docker.service_runtime(compose_id)
+            if self._is_ready(status, health):
                 return True
             self._sleep(_WAKE_POLL_SECONDS)
         return False
+
+    @staticmethod
+    def _is_ready(status: str, health: str) -> bool:
+        """Running and healthy (or no healthcheck) before router reload."""
+        if status != "running":
+            return False
+        return health in ("none", "healthy", "")
 
     def _start_wake_thread(self, name: str, scaling: ScalingSpec) -> None:
         with self._wake_lock:
