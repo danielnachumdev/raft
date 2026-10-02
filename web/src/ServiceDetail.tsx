@@ -1,13 +1,17 @@
 import type { MetricsSeries, ServiceDetailPayload } from "./api";
+import { ServiceActions } from "./ServiceActions";
 
 /** Render full status contract fields for one Compose service. */
 export function ServiceDetail(props: {
   data: ServiceDetailPayload;
   metrics: MetricsSeries | null;
+  onActionDone: () => void;
 }) {
   const { container: c, presentation: p, host } = props.data;
   return (
     <>
+      <ServiceActions service={c.service} onDone={props.onActionDone} />
+
       <section className="panel">
         <h2>Overview</h2>
         <dl className="detail-grid">

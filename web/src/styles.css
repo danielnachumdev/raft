@@ -248,6 +248,58 @@ th {
   color: var(--danger);
 }
 
+.ok-msg {
+  margin: 0.75rem 0 0;
+  color: var(--ok);
+}
+
+.actions-hint {
+  margin: 0 0 0.85rem;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  border-radius: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  cursor: pointer;
+  font: inherit;
+}
+
+.action-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.action-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.action-btn.is-loading {
+  border-color: var(--accent);
+}
+
+.action-btn-danger {
+  color: var(--danger);
+  border-color: #e0bfb5;
+}
+
+.action-btn-danger:hover:not(:disabled) {
+  border-color: var(--danger);
+}
+
 .status-row {
   cursor: pointer;
 }

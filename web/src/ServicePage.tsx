@@ -77,7 +77,9 @@ export function ServicePage() {
         </p>
       ) : null}
 
-      {data ? <ServiceDetail data={data} metrics={metrics} /> : null}
+      {data ? (
+        <ServiceDetail data={data} metrics={metrics} onActionDone={() => void load()} />
+      ) : null}
     </div>
   );
 }
