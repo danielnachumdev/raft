@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional
 from unittest.mock import MagicMock, patch
 
+from raft.errors import OperatorError
 from raft.services.ops import update as update_mod
 from raft.services.ops.update import DEFAULT_INSTALL_URL, SelfUpdate, install_identity
 
@@ -29,7 +30,7 @@ class TestSelfUpdate(ServicesTestCase):
         assert args[4] == DEFAULT_INSTALL_URL
         assert "RAFT_INSTALL_QUIET=1" in args[2]
         styles = [c.kwargs.get("style") for c in say.call_args_list]
-        assert styles.count("info") >= 2 and "ok" in styles
+        assert "ok" in styles and styles.count("info") >= 1
         next_body = " ".join(c.args[0] for c in say.call_args_list if c.args)
         assert "raft render" in next_body and "raft doctor" in next_body
 
@@ -42,8 +43,8 @@ class TestSelfUpdate(ServicesTestCase):
         with patch("raft.services.ops.update.say") as say:
             upd.run()
         styles = [c.kwargs.get("style") for c in say.call_args_list]
-        assert "info" in styles and "ok" not in styles
-        assert len(say.call_args_list) == 2
+        assert styles == ["info"]
+        assert "already up to date" in say.call_args_list[0].args[0]
 
     def test_run_reports_updated_when_identity_changes(self, monkeypatch) -> None:
         monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
@@ -55,7 +56,7 @@ class TestSelfUpdate(ServicesTestCase):
         with patch("raft.services.ops.update.say") as say:
             upd.run()
         styles = [c.kwargs.get("style") for c in say.call_args_list]
-        assert "ok" in styles and styles.count("info") >= 2
+        assert "ok" in styles and styles.count("info") >= 1
 
     def test_run_respects_install_url_env(self, monkeypatch) -> None:
         url = "https://example.test/install.sh"
@@ -81,6 +82,46 @@ class TestSelfUpdate(ServicesTestCase):
         args = shell.run.call_args.args[0]
         assert args[4] == DEFAULT_INSTALL_URL
         assert "bash" == args[0]
+
+    def test_run_spins_while_reinstalling(self, monkeypatch) -> None:
+        monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
+        monkeypatch.setattr(update_mod, "install_identity", lambda: None)
+        shell = MagicMock()
+        upd = SelfUpdate(self.stack)
+        upd.sh = shell
+        progress = MagicMock()
+        progress.__enter__ = MagicMock(return_value=progress)
+        progress.__exit__ = MagicMock(return_value=None)
+        with patch("raft.services.ops.update.TerminalProgress", return_value=progress) as ctor:
+            with patch("raft.services.ops.update.say"):
+                upd.run(progress_stream=object())
+        ctor.assert_called_once()
+        kwargs = ctor.call_args.kwargs
+        assert kwargs["prefix"] == "raft update"
+        assert kwargs["label"] == "updating"
+        shell.run.assert_called_once()
+        progress.__enter__.assert_called_once()
+        progress.__exit__.assert_called_once()
+
+    def test_run_clears_spinner_before_error(self, monkeypatch) -> None:
+        monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
+        monkeypatch.setattr(update_mod, "install_identity", lambda: None)
+        shell = MagicMock()
+        shell.run.side_effect = RuntimeError("curl failed")
+        upd = SelfUpdate(self.stack)
+        upd.sh = shell
+        progress = MagicMock()
+        progress.__enter__ = MagicMock(return_value=progress)
+        progress.__exit__ = MagicMock(return_value=None)
+        with patch("raft.services.ops.update.TerminalProgress", return_value=progress):
+            with patch("raft.services.ops.update.say"):
+                try:
+                    upd.run()
+                    raise AssertionError("expected OperatorError")
+                except OperatorError:
+                    pass
+        progress.__exit__.assert_called_once()
+        assert shell.run.called
 
 
 class TestInstallIdentity(ServicesTestCase):

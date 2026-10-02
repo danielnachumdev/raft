@@ -1,13 +1,11 @@
-"""Doctor progress spinner and suite progress hooks."""
+"""Doctor suite progress hooks (spinner lives in raft.ui.progress)."""
 
 from __future__ import annotations
 
 import io
-import time
 from unittest.mock import MagicMock
 
 from raft.services.ops.doctor import INFRA, CheckResult
-from raft.services.ops.doctor.progress import DoctorProgress
 
 from .base import DoctorTestCase
 
@@ -48,71 +46,6 @@ class TestDoctorProgress(DoctorTestCase):
         text = out.getvalue()
         assert "raft" in text or "all checks" in text or "check(s)" in text
         assert progress.getvalue() == ""
-
-    def test_spinner_noop_when_not_tty(self) -> None:
-        stream = _NoTty()
-        with DoctorProgress(stream) as progress:
-            progress.update("host")
-        assert stream.getvalue() == ""
-
-    def test_spinner_noop_when_stream_lacks_isatty(self) -> None:
-        class _Bare:
-            def __init__(self) -> None:
-                self.buf: list[str] = []
-
-            def write(self, text: str) -> None:
-                self.buf.append(text)
-
-            def flush(self) -> None:
-                return None
-
-        stream = _Bare()
-        with DoctorProgress(stream) as progress:
-            progress.update("host")
-        assert stream.buf == []
-
-    def test_spinner_writes_and_clears_on_tty(self) -> None:
-        stream = _Tty()
-        with DoctorProgress(stream) as progress:
-            progress.update("")
-            time.sleep(0.2)
-        text = stream.getvalue()
-        assert "raft doctor:" in text
-        assert "\033[K" in text
-
-    def test_paint_clears_eol_when_label_shortens(self) -> None:
-        stream = _Tty()
-        progress = DoctorProgress(stream)
-        progress.update("runtime")
-        progress._paint()
-        progress.update("edge")
-        progress._paint()
-        visible = self._visible_line(stream.getvalue())
-        assert "raft doctor: edge…" in visible
-        assert "me…" not in visible
-        assert visible.endswith("…")
-
-    @staticmethod
-    def _visible_line(raw: str) -> str:
-        buf: list[str] = []
-        col = 0
-        i = 0
-        while i < len(raw):
-            if raw.startswith("\r", i):
-                col = 0
-                i += 1
-                continue
-            if raw.startswith("\033[K", i):
-                del buf[col:]
-                i += 3
-                continue
-            if col < len(buf):
-                buf[col] = raw[i]
-            else:
-                buf.append(raw[i])
-            col += 1
-            i += 1
-        return "".join(buf)
 
     def test_precomputed_results_skip_spinner(self) -> None:
         doctor = self.doctor()

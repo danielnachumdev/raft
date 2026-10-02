@@ -233,6 +233,7 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | `src/raft/services/render/` | `StackRenderer`, `compose_apps`, `gate_nginx`, `edge` handlers, `scaling_gate` (holding/wake snippets) |
 | `src/raft/services/deploy/` | orchestrator, cutover, wait, locking, readiness |
 | `src/raft/services/ops/` | doctor, status, logs, uninstall, update, certs |
+| `src/raft/ui/` | Operator terminal output (`say`) + shared TTY `TerminalProgress` spinner (doctor, update) |
 | `src/raft/services/serve/` | `raft serve` localhost SSR (FastAPI + Jinja2 + uvicorn; POC) |
 | `src/raft/controller/` | Always-on Compose `raft-controller` (smoke; job orchestrator for heal + metrics; idle-stop + wake via side_ticks when `spec.scaling`; healer skips `scaledToZero`) |
 | `src/raft/errors/` | Operator errors + CTAs |

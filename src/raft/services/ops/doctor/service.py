@@ -6,13 +6,13 @@ from typing import Optional, TextIO
 
 from ....adapters import DockerStack, Shell
 from ....models import Stack
+from ....ui.progress import TerminalProgress
 from ...auth import GitAuthManager
 from .checks import CHECK_SUITES
 from .checks.base import CheckSuite
 from .context import DoctorContext
 from .models import CheckResult
 from .observability import ComposeCallCounter, SuiteTiming
-from .progress import DoctorProgress
 from .report import GroupReportWriter
 
 
@@ -27,7 +27,7 @@ class Doctor:
         self._suites = CHECK_SUITES
         self._reporter = GroupReportWriter()
 
-    def run(self, *, progress: Optional[DoctorProgress] = None) -> list[CheckResult]:
+    def run(self, *, progress: Optional[TerminalProgress] = None) -> list[CheckResult]:
         counter = ComposeCallCounter()
         counter.install(self.sh, getattr(self.docker, "sh", None))
         try:
@@ -47,12 +47,12 @@ class Doctor:
         return self._reporter.write(self.stack, resolved, out=out, color=color)
 
     def _run_with_progress(self, stream: Optional[TextIO]) -> list[CheckResult]:
-        with DoctorProgress(stream) as progress:
+        with TerminalProgress(stream, prefix="raft doctor", label="checking") as progress:
             return self.run(progress=progress)
 
     def _run_suites(
         self,
-        progress: Optional[DoctorProgress],
+        progress: Optional[TerminalProgress],
         counter: ComposeCallCounter,
     ) -> list[CheckResult]:
         ctx = self._context(progress)
@@ -71,7 +71,7 @@ class Doctor:
         finally:
             timing.done()
 
-    def _context(self, progress: Optional[DoctorProgress]) -> DoctorContext:
+    def _context(self, progress: Optional[TerminalProgress]) -> DoctorContext:
         on_progress = progress.update if progress is not None else None
         return DoctorContext(
             stack=self.stack,
