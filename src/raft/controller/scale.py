@@ -156,18 +156,21 @@ class Scaler:
     ) -> bool:
         if not self._start_chain(chain, deadline):
             return False
-        # Static upstream hostnames resolve at nginx load; restart → new IP.
-        if not self._wait_router_upstream(name, deadline):
+        # Fetch is direct Docker DNS (not nginx upstream). Wait until the app
+        # answers, then reload so nginx re-resolves the new container IP.
+        if not self._wait_app_reachable(name, deadline):
             return False
+        self.docker.reload_router_nginx()
         self.store.mark_awake(name, min_up_seconds=scaling.min_up_seconds, now=when)
         return True
 
-    def _wait_router_upstream(self, name: str, deadline: float) -> bool:
-        """Reload until router can fetch the app (holding stays up until then)."""
+    def _wait_app_reachable(self, name: str, deadline: float) -> bool:
+        """Poll until the router network can reach the app container."""
         targets = self._http_fetch_targets(name)
+        if not targets:
+            return True
         while self._clock() < deadline:
-            self.docker.reload_router_nginx()
-            if not targets or self._router_reaches(targets):
+            if self._router_reaches(targets):
                 return True
             self._sleep(_WAKE_POLL_SECONDS)
         return False

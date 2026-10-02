@@ -47,7 +47,7 @@ class TestScaler(ControllerTestCase):
         with self.with_scale_locks():
             assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5), now=10.0) is True
         docker.start_service.assert_not_called()
-        assert docker.reload_router_nginx.call_count == 2
+        docker.reload_router_nginx.assert_called_once_with()
         assert not scaler.store.is_scaled_to_zero(self.APP)
 
     def test_wake_starts_depends_on_then_app(self, tmp_path: Path) -> None:
@@ -130,10 +130,12 @@ class TestScaler(ControllerTestCase):
             assert scaler.wake_now(self.APP, ScalingSpec(10, 5, 5), now=1.0) is False
         docker.service_runtime.return_value = ("running", "healthy")
         docker.router_can_fetch.return_value = False
+        docker.reload_router_nginx.reset_mock()
         clock["t"] = 100.0
         scaler.store.mark_scaled_to_zero(self.APP)
         with self.with_scale_locks():
             assert scaler.wake_now(self.APP, ScalingSpec(10, 5, 5), now=1.0) is False
+        docker.reload_router_nginx.assert_not_called()
         assert scaler.store.is_scaled_to_zero(self.APP)
         assert scaler._http_fetch_targets("ghost") == ()
 
@@ -232,12 +234,17 @@ class TestScaler(ControllerTestCase):
         assert scaler.store.load(self.APP).last_activity_at == 2.0
 
     def test_wake_now_already_up(self, tmp_path: Path) -> None:
-        scaler, _ = self._scaler(tmp_path)
+        scaler, docker = self._scaler(tmp_path)
         assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5)) is True
         scaler.store.mark_scaled_to_zero("ghost")
         assert scaler.wake_now("ghost", ScalingSpec(10, 30, 5)) is False
         scaler.request_wake("ghost")
         scaler.request_wake(self.APP)
+        scaler.store.mark_scaled_to_zero(self.APP)
+        docker.service_runtime.return_value = ("running", "none")
+        with self.with_scale_locks(), patch.object(scaler, "_http_fetch_targets", return_value=()):
+            assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5), now=1.0) is True
+        docker.reload_router_nginx.assert_called_once_with()
 
     def test_scaled_idle_branches(self, tmp_path: Path) -> None:
         scaler, docker = self._scaler(tmp_path)
