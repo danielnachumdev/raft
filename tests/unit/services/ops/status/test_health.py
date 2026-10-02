@@ -11,7 +11,7 @@ from raft.services.ops.status.models import STATUS_STARTING, STATUS_UNHEALTHY
 from ....base import RaftTestCase, make_app, make_stack, write_applied_app
 from .fixtures import StatusFixtures
 
-_HOST_PATCH = "raft.services.ops.status.service.HostProbe.collect"
+_HOST_PATCH = "raft.services.ops.status.service.HostGateway.resources"
 
 
 class TestStatusHealth(RaftTestCase):

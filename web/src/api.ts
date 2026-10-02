@@ -9,11 +9,20 @@ export type StatusRow = {
 };
 
 export type StatusPayload = {
-  host: Record<string, unknown>;
+  host: { hostname?: string; [key: string]: unknown };
   containers: unknown[];
   control_plane: StatusRow[];
   apps: StatusRow[];
 };
+
+const FALLBACK_TITLE = "raft serve";
+
+export function documentTitleForHost(hostname: unknown): string {
+  if (typeof hostname === "string" && hostname.trim()) {
+    return `raft - ${hostname.trim()}`;
+  }
+  return FALLBACK_TITLE;
+}
 
 export async function fetchStatus(): Promise<StatusPayload> {
   const res = await fetch("/api/status");

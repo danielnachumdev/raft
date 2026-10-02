@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import logging
-import socket
 import subprocess
 from typing import Optional
 
 from raft.errors import OperatorError, raise_for_git_failure
 
+from ...adapters.host import HostGateway
 from ...adapters.shell import Shell
 from ...models.app import App
 from ...models.stack import Stack
@@ -150,7 +150,7 @@ class GitAuthManager:
         return self.keys.list_services()
 
     def key_title(self, service: str) -> str:
-        return f"raft:{service}@{socket.gethostname()}"
+        return f"raft:{service}@{HostGateway().hostname()}"
 
     def show_pubkey(self, service: str) -> str:
         path = self.pub_path(service)

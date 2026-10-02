@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from io import StringIO
+from unittest.mock import MagicMock
 
 from raft.adapters.host import HostResources
 from raft.services.ops.status.models import AllocatedResources
@@ -15,11 +16,16 @@ from .fixtures import StatusFixtures
 
 class TestStatusReportDegraded(RaftTestCase):
     def test_report_degraded_host(self) -> None:
-        empty = Status._host_status(
-            HostResources(cpus=None, loadavg=None, memory=None, disk=None, uptime_seconds=None)
+        gateway = MagicMock()
+        gateway.hostname.return_value = "degraded-host"
+        gateway.resources.return_value = HostResources(
+            cpus=None, loadavg=None, memory=None, disk=None, uptime_seconds=None
         )
+        empty = Status._host_status(gateway)
+        assert empty.hostname == "degraded-host"
         assert empty.memory is None and empty.disk_path is None
         text = self._render(self._degraded_snapshot(empty))
+        assert "Name: degraded-host" in text
         assert "load: -" in text and " / -" in text
         assert "1.0KiB / 2.0KiB" in text
 

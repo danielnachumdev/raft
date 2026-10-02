@@ -1,10 +1,10 @@
-"""Host resource adapter + docker size parsers."""
+"""Host resource adapter + docker size parsers + HostGateway."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from raft.adapters.host import DockerStatsText, HostProbe
+from raft.adapters.host import DockerStatsText, HostGateway, HostProbe
 
 
 class TestParseDockerSize:
@@ -101,7 +101,7 @@ class TestCollectHostResources:
         def boom(_path):
             raise OSError("nope")
 
-        monkeypatch.setattr("raft.adapters.host.shutil.disk_usage", boom)
+        monkeypatch.setattr("raft.adapters.host.probe.shutil.disk_usage", boom)
         host = HostProbe(disk_path=tmp_path, proc=proc).collect()
         assert host.disk is None
 
@@ -109,7 +109,9 @@ class TestCollectHostResources:
             total = 0
             free = 0
 
-        monkeypatch.setattr("raft.adapters.host.shutil.disk_usage", lambda _p: Zero())
+        monkeypatch.setattr(
+            "raft.adapters.host.probe.shutil.disk_usage", lambda _p: Zero()
+        )
         assert HostProbe(disk_path=tmp_path, proc=proc).collect().disk is None
 
     def test_more_size_units(self) -> None:
@@ -117,3 +119,21 @@ class TestCollectHostResources:
         assert DockerStatsText.parse_size("1TB") == 1000**4
         assert DockerStatsText.parse_size("1.5") == 1
         assert DockerStatsText.parse_size("1KiBx") is None
+
+
+class TestHostGateway:
+    def test_hostname_and_resources(self, tmp_path: Path) -> None:
+        proc = tmp_path / "proc"
+        proc.mkdir()
+        (proc / "meminfo").write_text(
+            "MemTotal: 2048000 kB\nMemAvailable: 1024000 kB\n", encoding="utf-8"
+        )
+        (proc / "loadavg").write_text("0.10 0.20 0.30 1/100 1\n", encoding="utf-8")
+        (proc / "uptime").write_text("10.0 1.0\n", encoding="utf-8")
+        gateway = HostGateway(
+            disk_path=tmp_path, proc=proc, gethostname=lambda: "raft-vm"
+        )
+        assert gateway.hostname() == "raft-vm"
+        resources = gateway.resources()
+        assert resources.loadavg == (0.10, 0.20, 0.30)
+        assert resources.uptime_seconds == 10.0

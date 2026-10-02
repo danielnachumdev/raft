@@ -102,6 +102,7 @@ class ContainerStatus:
 
 @dataclass(frozen=True)
 class HostStatus:
+    hostname: str
     cpus: Optional[int]
     loadavg: Optional[tuple[float, float, float]]
     memory: Optional[MemoryUsage]
@@ -116,6 +117,7 @@ class HostStatus:
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "hostname": self.hostname,
             "cpus": self.cpus,
             "loadavg": list(self.loadavg) if self.loadavg is not None else None,
             "memory": {
