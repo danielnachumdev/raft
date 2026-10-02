@@ -369,10 +369,9 @@ th {
 
 .quick-actions {
   display: inline-flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.25rem;
-  max-width: 11rem;
 }
 
 .quick-action {
