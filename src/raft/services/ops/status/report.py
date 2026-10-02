@@ -210,6 +210,7 @@ class StatusReportWriter:
             "MEM USED / LIMIT",
             "MEM%",
             "ALLOC CPU",
+            "STARTED",
             "UPTIME",
         )
 
@@ -222,6 +223,7 @@ class StatusReportWriter:
             self._mem_cell(c),
             StatusFormatters.percent(c.memory.used_percent),
             c.allocated.cpus_limit,
+            StatusFormatters.started(c.uptime_seconds),
             StatusFormatters.uptime(c.uptime_seconds),
         )
 

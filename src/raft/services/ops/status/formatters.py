@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from .models import STATUS_STARTING, STATUS_UNHEALTHY
 
 
 class StatusFormatters:
-    """Format bytes / percent / uptime / loadavg for the status CLI."""
+    """Format bytes / percent / uptime / started / loadavg for status tables."""
 
     @staticmethod
     def container_status(status: str, health: str = "none") -> str:
@@ -58,6 +59,17 @@ class StatusFormatters:
         if not parts:
             parts.append(f"{secs}s")
         return " ".join(parts)
+
+    @staticmethod
+    def started(seconds: Optional[float], *, now: Optional[datetime] = None) -> str:
+        """Wall-clock start from ``now - uptime_seconds`` (UTC, minute precision)."""
+        if seconds is None:
+            return "-"
+        moment = now or datetime.now(timezone.utc)
+        started_at = moment - timedelta(seconds=max(0, int(seconds)))
+        if started_at.tzinfo is None:
+            started_at = started_at.replace(tzinfo=timezone.utc)
+        return started_at.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     @staticmethod
     def load(loadavg: Optional[tuple[float, float, float]]) -> str:

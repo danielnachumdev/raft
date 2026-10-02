@@ -18,6 +18,7 @@ const COLUMNS: { key: keyof StatusRow; label: string }[] = [
   { key: "status", label: "Status" },
   { key: "cpu", label: "CPU" },
   { key: "memory", label: "Memory" },
+  { key: "started", label: "Started" },
   { key: "uptime", label: "Uptime" },
 ];
 

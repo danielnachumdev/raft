@@ -21,6 +21,7 @@ class ServeRow:
     status: str
     cpu: str
     memory: str
+    started: str
     uptime: str
 
 
@@ -73,5 +74,6 @@ class ServeSnapshotView:
             status=container.status,
             cpu=StatusFormatters.percent(container.cpu_percent),
             memory=f"{used} / {limit}",
+            started=StatusFormatters.started(container.uptime_seconds),
             uptime=StatusFormatters.uptime(container.uptime_seconds),
         )
