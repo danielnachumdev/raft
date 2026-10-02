@@ -24,7 +24,7 @@ class ServeRow:
 
 
 class ServeSnapshotView:
-    """Split control-plane vs apps; format columns for SSR and /api/status."""
+    """Split control-plane vs apps; format columns for serve tables / API."""
 
     def __init__(self, snapshot: StatusSnapshot) -> None:
         self.snapshot = snapshot
@@ -36,7 +36,7 @@ class ServeSnapshotView:
         return tuple(self._row(c) for c in self.snapshot.containers if c.role == "app")
 
     def to_payload(self) -> Dict[str, Any]:
-        """Structured JSON for GET /api/status (see ServePage module comment)."""
+        """Presentation lists for serve tables (StatusRead merges onto snapshot)."""
         return {
             "host": self.snapshot.host.to_dict(),
             "control_plane": [asdict(r) for r in self.control_plane()],

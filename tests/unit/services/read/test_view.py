@@ -8,7 +8,7 @@ from raft.models import EDGE_GROUP
 from raft.services.ops.status.models import StatusSnapshot
 from raft.services.serve.instructions import ServeInstructions
 from raft.services.serve.paths import ServePaths
-from raft.services.serve.view import ServeSnapshotView
+from raft.services.read import ServeSnapshotView
 
 from ...services.ops.status.fixtures import StatusFixtures
 
