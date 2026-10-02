@@ -1,12 +1,12 @@
-import type { MetricsSeries, ServiceDetailPayload } from "./api";
+import type { ServiceDetailPayload } from "./api";
 import { ExternalUrlLinks } from "./ExternalUrlLinks";
 import { ServiceActions } from "./ServiceActions";
 import { ServiceLogs } from "./ServiceLogs";
+import { ServiceRuntimeTrends } from "./ServiceRuntimeTrends";
 
 /** Render full status contract fields for one Compose service. */
 export function ServiceDetail(props: {
   data: ServiceDetailPayload;
-  metrics: MetricsSeries | null;
   onActionDone: () => void;
 }) {
   const { container: c, presentation: p, host } = props.data;
@@ -67,42 +67,15 @@ export function ServiceDetail(props: {
         </dl>
       </section>
 
+      <ServiceRuntimeTrends service={c.service} />
+
       <section className="panel">
         <h2>Host context</h2>
         <dl className="detail-grid">
           <Detail label="Hostname" value={String(host.hostname ?? "-")} />
         </dl>
       </section>
-
-      <MetricsSummary series={props.metrics} />
     </>
-  );
-}
-
-function MetricsSummary(props: { series: MetricsSeries | null }) {
-  const series = props.series;
-  if (!series || series.points.length === 0) {
-    return (
-      <section className="panel">
-        <h2>Recent metrics</h2>
-        <p className="muted">No recent metrics samples for this service.</p>
-      </section>
-    );
-  }
-  const last = series.points[series.points.length - 1];
-  return (
-    <section className="panel">
-      <h2>Recent metrics (1h)</h2>
-      <dl className="detail-grid">
-        <Detail label="Samples" value={String(series.points.length)} />
-        <Detail label="Last sample" value={last.t} />
-        <Detail label="Last CPU %" value={fmtNum(last.cpu_percent)} />
-        <Detail
-          label="Last memory %"
-          value={fmtNum(last.memory_used_percent)}
-        />
-      </dl>
-    </section>
   );
 }
 

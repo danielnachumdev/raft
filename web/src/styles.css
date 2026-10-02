@@ -910,6 +910,17 @@ th {
   min-height: 280px;
 }
 
+.service-runtime-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem 1.25rem;
+  margin: 0 0 1rem;
+}
+
+.service-runtime-controls .trends-field {
+  min-width: 8rem;
+}
+
 .trends-loading {
   display: flex;
   flex-direction: column;
