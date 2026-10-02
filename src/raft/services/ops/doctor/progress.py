@@ -49,7 +49,7 @@ class DoctorProgress:
         with self._lock:
             label = self._label
             frame = next(self._frames)
-        self._write(f"\r{frame} raft doctor: {label}…")
+        self._write(f"\r{frame} raft doctor: {label}…\033[K")
 
     def _write(self, text: str) -> None:
         self._stream.write(text)
