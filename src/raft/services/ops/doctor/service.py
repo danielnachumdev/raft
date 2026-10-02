@@ -8,8 +8,10 @@ from ....adapters import DockerStack, Shell
 from ....models import Stack
 from ...auth import GitAuthManager
 from .checks import CHECK_SUITES
+from .checks.base import CheckSuite
 from .context import DoctorContext
 from .models import CheckResult
+from .observability import ComposeCallCounter, SuiteTiming
 from .progress import DoctorProgress
 from .report import GroupReportWriter
 
@@ -26,12 +28,12 @@ class Doctor:
         self._reporter = GroupReportWriter()
 
     def run(self, *, progress: Optional[DoctorProgress] = None) -> list[CheckResult]:
-        ctx = self._context(progress)
-        results: list[CheckResult] = []
-        for suite in self._suites:
-            ctx.progress(suite.name)
-            results.extend(suite.run(ctx))
-        return results
+        counter = ComposeCallCounter()
+        counter.install(self.sh, getattr(self.docker, "sh", None))
+        try:
+            return self._run_suites(progress, counter)
+        finally:
+            counter.uninstall()
 
     def report(
         self,
@@ -47,6 +49,27 @@ class Doctor:
     def _run_with_progress(self, stream: Optional[TextIO]) -> list[CheckResult]:
         with DoctorProgress(stream) as progress:
             return self.run(progress=progress)
+
+    def _run_suites(
+        self,
+        progress: Optional[DoctorProgress],
+        counter: ComposeCallCounter,
+    ) -> list[CheckResult]:
+        ctx = self._context(progress)
+        results: list[CheckResult] = []
+        for suite in self._suites:
+            results.extend(self._run_suite(suite, ctx))
+        counter.log_summary()
+        return results
+
+    def _run_suite(self, suite: CheckSuite, ctx: DoctorContext) -> list[CheckResult]:
+        timing = SuiteTiming(suite.name)
+        timing.start()
+        ctx.progress(suite.name)
+        try:
+            return suite.run(ctx)
+        finally:
+            timing.done()
 
     def _context(self, progress: Optional[DoctorProgress]) -> DoctorContext:
         on_progress = progress.update if progress is not None else None
