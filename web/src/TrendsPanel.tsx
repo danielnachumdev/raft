@@ -47,12 +47,12 @@ export function TrendsPanel() {
   }, [loadFull]);
 
   useEffect(() => {
-    if (busy && series.length === 0) return;
+    if (busy) return;
     const id = window.setInterval(() => {
       void pollIncremental(windowSec, cursor, setSeries, setCursor);
     }, METRICS_POLL_MS);
     return () => window.clearInterval(id);
-  }, [windowSec, cursor, busy, series.length]);
+  }, [windowSec, cursor, busy]);
 
   const activeIds = selected ?? available.map((a) => a.id);
   const visible = useMemo(
@@ -65,7 +65,7 @@ export function TrendsPanel() {
       <div className="trends-head">
         <h2>Trends</h2>
         <p className="muted trends-live" aria-live="polite">
-          {busy && series.length === 0 ? "Loading…" : "Live · polls every 5s"}
+          {busy ? "Loading…" : "Live · polls every 5s"}
         </p>
       </div>
 
@@ -75,33 +75,67 @@ export function TrendsPanel() {
         aggregate={aggregate}
         available={available}
         activeIds={activeIds}
+        busy={busy}
         onWindow={setWindowSec}
         onMetric={setMetric}
         onAggregate={setAggregate}
         onToggle={(id) => setSelected(toggleId(activeIds, id, available))}
       />
 
-      {error ? (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      ) : null}
-
-      {!busy && !error && series.length === 0 ? (
-        <p className="muted">
-          No metrics samples yet. The controller writes{" "}
-          <code>state/metrics/resources.jsonl</code> on its metrics interval.
-        </p>
-      ) : null}
-
-      {visible.length > 0 ? (
-        <TrendsChart series={visible} metric={metric} aggregate={aggregate} />
-      ) : null}
-
-      {visible.length === 0 && series.length > 0 ? (
-        <p className="muted">Select at least one service to plot.</p>
-      ) : null}
+      {busy ? (
+        <div
+          className="trends-loading"
+          role="status"
+          aria-busy="true"
+          id="trends-loading"
+        >
+          <span className="spinner" aria-hidden="true" />
+          <p>Loading metrics…</p>
+        </div>
+      ) : (
+        <TrendsBody
+          error={error}
+          series={series}
+          visible={visible}
+          metric={metric}
+          aggregate={aggregate}
+        />
+      )}
     </section>
+  );
+}
+
+function TrendsBody(props: {
+  error: string | null;
+  series: MetricsSeries[];
+  visible: MetricsSeries[];
+  metric: MetricKind;
+  aggregate: boolean;
+}) {
+  if (props.error) {
+    return (
+      <p className="error" role="alert">
+        {props.error}
+      </p>
+    );
+  }
+  if (props.series.length === 0) {
+    return (
+      <p className="muted">
+        No metrics samples yet. The controller writes{" "}
+        <code>state/metrics/resources.jsonl</code> on its metrics interval.
+      </p>
+    );
+  }
+  if (props.visible.length === 0) {
+    return <p className="muted">Select at least one service to plot.</p>;
+  }
+  return (
+    <TrendsChart
+      series={props.visible}
+      metric={props.metric}
+      aggregate={props.aggregate}
+    />
   );
 }
 
@@ -111,6 +145,7 @@ function TrendsControls(props: {
   aggregate: boolean;
   available: MetricsAvailable[];
   activeIds: string[];
+  busy: boolean;
   onWindow: (n: number) => void;
   onMetric: (m: MetricKind) => void;
   onAggregate: (v: boolean) => void;
@@ -124,6 +159,7 @@ function TrendsControls(props: {
           value={props.windowSec}
           onChange={(e) => props.onWindow(Number(e.target.value))}
           aria-label="Time range"
+          disabled={props.busy}
         >
           {WINDOWS.map((w) => (
             <option key={w.seconds} value={w.seconds}>
@@ -138,6 +174,7 @@ function TrendsControls(props: {
           value={props.metric}
           onChange={(e) => props.onMetric(e.target.value as MetricKind)}
           aria-label="Metric type"
+          disabled={props.busy}
         >
           <option value="cpu">CPU %</option>
           <option value="memory">Memory %</option>
@@ -149,6 +186,7 @@ function TrendsControls(props: {
           value={props.aggregate ? "aggregate" : "per"}
           onChange={(e) => props.onAggregate(e.target.value === "aggregate")}
           aria-label="Series view"
+          disabled={props.busy}
         >
           <option value="per">Per service</option>
           <option value="aggregate">Aggregate avg</option>
@@ -161,6 +199,7 @@ function TrendsControls(props: {
               type="checkbox"
               checked={props.activeIds.includes(a.id)}
               onChange={() => props.onToggle(a.id)}
+              disabled={props.busy}
             />
             {a.label}
           </label>
