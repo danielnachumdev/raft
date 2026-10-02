@@ -5,13 +5,14 @@ from __future__ import annotations
 import os
 import shutil
 from pathlib import Path
-from typing import Optional
+from typing import Optional, TextIO
 
 from raft.errors import OperatorError
 
 from ...adapters.shell import Shell
 from ...models import Stack
 from ...ui import say
+from ...ui.progress import TerminalProgress
 
 DEFAULT_INSTALL_URL = "https://raw.githubusercontent.com/danielnachumdev/raft/main/install.sh"
 
@@ -59,11 +60,10 @@ class SelfUpdate:
         self.stack = stack
         self.sh = Shell(stack.root)
 
-    def run(self) -> None:
+    def run(self, *, progress_stream: Optional[TextIO] = None) -> None:
         url = os.environ.get("RAFT_INSTALL_URL", DEFAULT_INSTALL_URL)
         before = install_identity()
-        say("Updating raft…", style="info")
-        self._run_installer(url)
+        self._reinstall(url, progress_stream)
         after = install_identity()
         if before is not None and before == after:
             say("raft is already up to date", style="info")
@@ -77,6 +77,10 @@ class SelfUpdate:
             "Finish with `raft doctor`.",
             style="info",
         )
+
+    def _reinstall(self, url: str, stream: Optional[TextIO]) -> None:
+        with TerminalProgress(stream, prefix="raft update", label="updating"):
+            self._run_installer(url)
 
     def _run_installer(self, url: str) -> None:
         try:
