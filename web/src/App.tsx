@@ -93,7 +93,10 @@ export function App() {
 function Section(props: { title: string; rows: StatusRow[]; empty: string }) {
   return (
     <section className="panel">
-      <h2>{props.title}</h2>
+      <div className="panel-head">
+        <h2>{props.title}</h2>
+        <p className="muted panel-kind">Live · current snapshot</p>
+      </div>
       <StatusTable rows={props.rows} empty={props.empty} />
     </section>
   );

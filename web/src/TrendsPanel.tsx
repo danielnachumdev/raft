@@ -17,7 +17,7 @@ const WINDOWS: { seconds: number; label: string }[] = [
   { seconds: 604800, label: "7d" },
 ];
 
-/** Live resource trends from /api/metrics (HTTP poll + since cursor). */
+/** Historical resource trends from /api/metrics (HTTP poll + since cursor). */
 export function TrendsPanel() {
   const [windowSec, setWindowSec] = useState(3600);
   const [metric, setMetric] = useState<MetricKind>("cpu");
@@ -65,10 +65,10 @@ export function TrendsPanel() {
 
   return (
     <section className="panel trends" id="trends">
-      <div className="trends-head">
+      <div className="panel-head">
         <h2>Trends</h2>
-        <p className="muted trends-live" aria-live="polite">
-          {busy ? "Loading…" : "Live · polls every 5s"}
+        <p className="muted panel-kind" aria-live="polite">
+          {busy ? "Loading…" : "Historical · recorded metrics"}
         </p>
       </div>
 
