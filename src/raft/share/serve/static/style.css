@@ -47,3 +47,36 @@ td {
 th {
   font-weight: 600;
 }
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1.25rem 0 0.5rem;
+  color: var(--muted);
+}
+.loading[hidden] {
+  display: none;
+}
+.spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--line);
+  border-top-color: var(--fg);
+  border-radius: 50%;
+  animation: raft-spin 0.7s linear infinite;
+}
+@keyframes raft-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.error {
+  color: #8b1a1a;
+  margin: 0.75rem 0;
+}
+.error[hidden] {
+  display: none;
+}
+.placeholder {
+  margin: 0.35rem 0;
+}

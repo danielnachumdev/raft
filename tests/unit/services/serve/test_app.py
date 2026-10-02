@@ -34,33 +34,55 @@ class _ServeFixtures:
         return StatusSnapshot(host=StatusFixtures.empty_host_status(), containers=())
 
     @staticmethod
-    def client(stack, snapshot: StatusSnapshot) -> TestClient:
+    def client_and_status(stack, snapshot: StatusSnapshot):
         status = MagicMock()
         status.collect.return_value = snapshot
-        return TestClient(ServeAppFactory(stack, status=status).create())
+        return TestClient(ServeAppFactory(stack, status=status).create()), status
 
 
 class TestServeAppFactory(RaftTestCase):
-    def test_index_renders_control_plane_and_apps(self) -> None:
-        client = _ServeFixtures.client(make_stack(self.tmp_path), _ServeFixtures.full_snapshot())
+    def test_index_is_fast_shell_without_collect(self) -> None:
+        client, status = _ServeFixtures.client_and_status(
+            make_stack(self.tmp_path), _ServeFixtures.full_snapshot()
+        )
         response = client.get("/")
         body = response.text
         assert response.status_code == 200
-        assert "Control plane" in body and "gate" in body and "router" in body
-        assert "controller" in body and "site" in body
-        assert 'id="trends"' in body and "issue #9" in body
+        status.collect.assert_not_called()
+        assert "status-loading" in body and "Loading status" in body
+        assert "Control plane" in body and "Apps" in body
+        assert 'id="trends"' in body and "/static/status.js" in body
+        assert "gate" not in body and "site" not in body
 
-    def test_static_css_is_served(self) -> None:
-        client = _ServeFixtures.client(make_stack(self.tmp_path), _ServeFixtures.empty_snapshot())
-        response = client.get("/static/style.css")
+    def test_api_status_returns_json_from_collect(self) -> None:
+        client, status = _ServeFixtures.client_and_status(
+            make_stack(self.tmp_path), _ServeFixtures.full_snapshot()
+        )
+        response = client.get("/api/status")
         assert response.status_code == 200
-        assert "color-scheme" in response.text
+        status.collect.assert_called_once()
+        data = response.json()
+        assert "host" in data
+        names = [r["name"] for r in data["control_plane"]]
+        assert names == ["gate", "router", "controller"]
+        assert data["apps"][0]["name"] == "site"
+        assert data["apps"][0]["status"] == "not running"
 
-    def test_index_empty_snapshot_placeholders(self) -> None:
-        client = _ServeFixtures.client(make_stack(self.tmp_path), _ServeFixtures.empty_snapshot())
-        body = client.get("/").text
-        assert "No control-plane services" in body
-        assert "No applied apps" in body
+    def test_api_status_empty_snapshot(self) -> None:
+        client, _ = _ServeFixtures.client_and_status(
+            make_stack(self.tmp_path), _ServeFixtures.empty_snapshot()
+        )
+        data = client.get("/api/status").json()
+        assert data["control_plane"] == [] and data["apps"] == []
+
+    def test_static_assets_are_served(self) -> None:
+        client, _ = _ServeFixtures.client_and_status(
+            make_stack(self.tmp_path), _ServeFixtures.empty_snapshot()
+        )
+        css = client.get("/static/style.css")
+        js = client.get("/static/status.js")
+        assert css.status_code == 200 and "color-scheme" in css.text
+        assert js.status_code == 200 and "/api/status" in js.text
 
     def test_factory_builds_default_status(self) -> None:
         stack = make_stack(self.tmp_path)

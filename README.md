@@ -38,7 +38,7 @@ raft get apps
 | `raft apply --file …` / `--git …` | Register + deploy (default path) |
 | `raft doctor` | Health check + fix hints |
 | `raft status` | CPU/memory snapshot (`--live` to watch) |
-| `raft serve` | Localhost SSR UI (default `:8787`); SSH tunnel from your laptop |
+| `raft serve` | Localhost UI (default `:8787`; shell + `/api/status`); SSH tunnel from your laptop |
 | `raft logs [name…]` | Container stdout/stderr (`--tail N`; `-f` / `--follow`) |
 | `raft redeploy <app>` | Cutover when the app is already running |
 | `raft gate recreate` | After changing published edge ports in settings |
