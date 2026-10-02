@@ -55,6 +55,9 @@ export function TrendsPanel() {
   }, [windowSec, cursor, busy]);
 
   const activeIds = selected ?? available.map((a) => a.id);
+  const showingAll =
+    selected === null ||
+    (available.length > 0 && activeIds.length === available.length);
   const visible = useMemo(
     () => series.filter((s) => activeIds.includes(s.id)),
     [series, activeIds],
@@ -69,38 +72,43 @@ export function TrendsPanel() {
         </p>
       </div>
 
-      <TrendsControls
-        windowSec={windowSec}
-        metric={metric}
-        aggregate={aggregate}
-        available={available}
-        activeIds={activeIds}
-        busy={busy}
-        onWindow={setWindowSec}
-        onMetric={setMetric}
-        onAggregate={setAggregate}
-        onToggle={(id) => setSelected(toggleId(activeIds, id, available))}
-      />
-
-      {busy ? (
-        <div
-          className="trends-loading"
-          role="status"
-          aria-busy="true"
-          id="trends-loading"
-        >
-          <span className="spinner" aria-hidden="true" />
-          <p>Loading metrics…</p>
-        </div>
-      ) : (
-        <TrendsBody
-          error={error}
-          series={series}
-          visible={visible}
+      <div className="trends-layout">
+        <TrendsFilters
+          windowSec={windowSec}
           metric={metric}
           aggregate={aggregate}
+          available={available}
+          activeIds={activeIds}
+          showingAll={showingAll}
+          busy={busy}
+          onWindow={setWindowSec}
+          onMetric={setMetric}
+          onAggregate={setAggregate}
+          onToggle={(id) => setSelected(toggleId(activeIds, id, available))}
+          onShowAll={() => setSelected(null)}
         />
-      )}
+        <div className="trends-main">
+          {busy ? (
+            <div
+              className="trends-loading"
+              role="status"
+              aria-busy="true"
+              id="trends-loading"
+            >
+              <span className="spinner" aria-hidden="true" />
+              <p>Loading metrics…</p>
+            </div>
+          ) : (
+            <TrendsBody
+              error={error}
+              series={series}
+              visible={visible}
+              metric={metric}
+              aggregate={aggregate}
+            />
+          )}
+        </div>
+      </div>
     </section>
   );
 }
@@ -139,20 +147,22 @@ function TrendsBody(props: {
   );
 }
 
-function TrendsControls(props: {
+function TrendsFilters(props: {
   windowSec: number;
   metric: MetricKind;
   aggregate: boolean;
   available: MetricsAvailable[];
   activeIds: string[];
+  showingAll: boolean;
   busy: boolean;
   onWindow: (n: number) => void;
   onMetric: (m: MetricKind) => void;
   onAggregate: (v: boolean) => void;
   onToggle: (id: string) => void;
+  onShowAll: () => void;
 }) {
   return (
-    <div className="trends-controls">
+    <aside className="trends-sidebar" aria-label="Trend filters">
       <label className="trends-field">
         <span>Range</span>
         <select
@@ -192,18 +202,76 @@ function TrendsControls(props: {
           <option value="aggregate">Aggregate avg</option>
         </select>
       </label>
-      <div className="trends-services" role="group" aria-label="Services">
-        {props.available.map((a) => (
-          <label key={a.id} className="trends-chip">
-            <input
-              type="checkbox"
-              checked={props.activeIds.includes(a.id)}
-              onChange={() => props.onToggle(a.id)}
-              disabled={props.busy}
-            />
-            {a.label}
-          </label>
-        ))}
+      <ServicesFilter
+        available={props.available}
+        activeIds={props.activeIds}
+        showingAll={props.showingAll}
+        busy={props.busy}
+        onToggle={props.onToggle}
+        onShowAll={props.onShowAll}
+      />
+    </aside>
+  );
+}
+
+function ServicesFilter(props: {
+  available: MetricsAvailable[];
+  activeIds: string[];
+  showingAll: boolean;
+  busy: boolean;
+  onToggle: (id: string) => void;
+  onShowAll: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return props.available;
+    return props.available.filter(
+      (a) =>
+        a.label.toLowerCase().includes(q) || a.id.toLowerCase().includes(q),
+    );
+  }, [props.available, query]);
+
+  return (
+    <div className="trends-services-block">
+      <div className="trends-services-head">
+        <span className="trends-services-title">Services</span>
+        <button
+          type="button"
+          className="trends-show-all"
+          onClick={props.onShowAll}
+          disabled={
+            props.busy || props.showingAll || props.available.length === 0
+          }
+        >
+          Show all
+        </button>
+      </div>
+      <input
+        type="search"
+        className="trends-services-search"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search services"
+        aria-label="Search services"
+        disabled={props.busy}
+      />
+      <div className="trends-services-list" role="group" aria-label="Services">
+        {filtered.length === 0 ? (
+          <p className="muted trends-services-empty">No matching services</p>
+        ) : (
+          filtered.map((a) => (
+            <label key={a.id} className="trends-chip">
+              <input
+                type="checkbox"
+                checked={props.activeIds.includes(a.id)}
+                onChange={() => props.onToggle(a.id)}
+                disabled={props.busy}
+              />
+              <span className="trends-chip-label">{a.label}</span>
+            </label>
+          ))
+        )}
       </div>
     </div>
   );
