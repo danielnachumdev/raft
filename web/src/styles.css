@@ -7,6 +7,14 @@
   --line: #d9d0c0;
   --accent: #0f6b5c;
   --danger: #8b2e1f;
+  --ok: #1a6b45;
+  --warn: #8a6412;
+  --idle: #3d5a6c;
+  --ok-bg: #e4f1ea;
+  --warn-bg: #f5edd8;
+  --bad-bg: #f3e4df;
+  --idle-bg: #e6eef2;
+  --muted-bg: #efeae2;
   --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --font-body: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-mono: "IBM Plex Mono", "Consolas", monospace;
@@ -119,6 +127,66 @@ th {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--muted);
+}
+
+.status-badge {
+  display: inline-block;
+  font-size: 0.84rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 0.12rem 0.45rem;
+  border-radius: 0.3rem;
+  border: 1px solid transparent;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.status-badge.tone-ok {
+  color: var(--ok);
+  background: var(--ok-bg);
+  border-color: #b7d5c6;
+}
+
+.status-badge.tone-warn {
+  color: var(--warn);
+  background: var(--warn-bg);
+  border-color: #e0d0a4;
+}
+
+.status-badge.tone-bad {
+  color: var(--danger);
+  background: var(--bad-bg);
+  border-color: #e0bfb5;
+}
+
+.status-badge.tone-idle {
+  color: var(--idle);
+  background: var(--idle-bg);
+  border-color: #c5d4dd;
+}
+
+.status-badge.tone-muted {
+  color: var(--muted);
+  background: var(--muted-bg);
+  border-color: var(--line);
+}
+
+.util-value {
+  font-variant-numeric: tabular-nums;
+}
+
+.util-value.util-ok {
+  color: var(--ok);
+}
+
+.util-value.util-warn {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.util-value.util-hot {
+  color: var(--danger);
+  font-weight: 600;
 }
 
 .muted {
