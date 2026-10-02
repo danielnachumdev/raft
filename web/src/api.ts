@@ -98,6 +98,9 @@ export type MetricsPayload = {
 /** Poll /api/metrics every N ms with ``since`` cursor (no WebSocket). */
 export const METRICS_POLL_MS = 5000;
 
+/** Poll /api/status while the dashboard is mounted (pause when tab hidden). */
+export const STATUS_POLL_MS = 30_000;
+
 export async function fetchStatus(): Promise<StatusPayload> {
   const res = await fetch("/api/status");
   if (!res.ok) {
