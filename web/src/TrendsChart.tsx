@@ -45,13 +45,15 @@ export function TrendsChart(props: {
   metric: RuntimeMetricId;
   unit: RuntimeUnit;
   aggregate: boolean;
+  aggregateLabel?: string;
 }) {
+  const avgLabel = props.aggregateLabel ?? "Average";
   const plots = props.aggregate ? [] : toPlotSeries(props.series);
   const rows = props.aggregate
     ? buildAggregateRows(props.series, props.metric)
     : buildPerServiceRows(props.series, plots, props.metric);
   const labels = props.aggregate
-    ? { aggregate: "Average" }
+    ? { aggregate: avgLabel }
     : Object.fromEntries(plots.map((p) => [p.chartKey, p.label]));
   const splitAxes = !props.aggregate && needsSplitAxes(props.series);
   const axisUnit = yAxisUnit(props.unit);
@@ -110,7 +112,7 @@ export function TrendsChart(props: {
             <Line
               type="monotone"
               dataKey="aggregate"
-              name="Average"
+              name={avgLabel}
               yAxisId={SERVICE_AXIS}
               stroke={COLORS[0]}
               strokeWidth={2}
