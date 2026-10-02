@@ -163,7 +163,7 @@ class TestDoctorLocalGit(DoctorTestCase):
         self.seed_compose()
         self.ensure_checkouts("app")
         docker = MagicMock()
-        docker.running_services.side_effect = RuntimeError("compose broke")
+        docker.compose_service_status.side_effect = RuntimeError("compose broke")
         results = self.run_keyed(
             shell=self.mock_shell(), docker=docker, auth=MagicMock(), connect=True
         )
