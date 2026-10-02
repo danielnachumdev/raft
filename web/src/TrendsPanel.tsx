@@ -26,14 +26,11 @@ import {
   type SeriesViewMode,
 } from "./trendsView";
 
-export type ScopeKind = "all" | "host" | "containers";
-
 /** Historical resource trends from /api/metrics (HTTP poll + since cursor). */
 export function TrendsPanel() {
   const [windowSec, setWindowSec] = useState(DEFAULT_RUNTIME_WINDOW);
   const [metricId, setMetricId] = useState<RuntimeMetricId>("cpu_percent");
   const [viewMode, setViewMode] = useState<SeriesViewMode>("per_service");
-  const [scope, setScope] = useState<ScopeKind>("all");
   const [selected, setSelected] = useState<string[] | null>(null);
   const [series, setSeries] = useState<MetricsSeries[]>(() => {
     return peekMetrics(DEFAULT_RUNTIME_WINDOW)?.series ?? [];
@@ -51,7 +48,6 @@ export function TrendsPanel() {
     RUNTIME_METRICS.find((m) => m.id === metricId) ?? RUNTIME_METRICS[0];
   const [error, setError] = useState<string | null>(null);
   const groupMode = usesGroupPicker(viewMode);
-  const effectiveScope: ScopeKind = groupMode ? "containers" : scope;
 
   useEffect(() => {
     let cancelled = false;
@@ -96,14 +92,10 @@ export function TrendsPanel() {
     return () => window.clearInterval(id);
   }, [windowSec, cursor, busy]);
 
-  const catalog = useMemo(
-    () => available.filter((a) => matchesScope(a.kind, a.id, effectiveScope)),
-    [available, effectiveScope],
-  );
   const groups = useMemo(() => groupOptions(available), [available]);
   const pickerIds = groupMode
     ? groups.map((g) => g.id)
-    : catalog.map((a) => a.id);
+    : available.map((a) => a.id);
   const activeIds = selected ?? pickerIds;
   const showingAll =
     selected === null ||
@@ -113,13 +105,12 @@ export function TrendsPanel() {
     () =>
       resolveVisible({
         series,
-        scope: effectiveScope,
         viewMode,
         selected,
         activeIds,
         metricId: metric.id,
       }),
-    [series, effectiveScope, viewMode, selected, activeIds, metric.id],
+    [series, viewMode, selected, activeIds, metric.id],
   );
 
   const showColdLoad = busy && series.length === 0;
@@ -142,9 +133,8 @@ export function TrendsPanel() {
           windowSec={windowSec}
           metric={metric}
           viewMode={viewMode}
-          scope={scope}
           groupMode={groupMode}
-          catalog={catalog}
+          catalog={available}
           groups={groups}
           activeIds={activeIds}
           showingAll={showingAll}
@@ -153,10 +143,6 @@ export function TrendsPanel() {
           onMetric={setMetricId}
           onViewMode={(next) => {
             setViewMode(next);
-            setSelected(null);
-          }}
-          onScope={(next) => {
-            setScope(next);
             setSelected(null);
           }}
           onToggle={(id) => setSelected(toggleId(activeIds, id, pickerIds))}
@@ -192,23 +178,19 @@ export function TrendsPanel() {
 
 function resolveVisible(args: {
   series: MetricsSeries[];
-  scope: ScopeKind;
   viewMode: SeriesViewMode;
   selected: string[] | null;
   activeIds: string[];
   metricId: RuntimeMetricId;
 }): MetricsSeries[] {
-  const scoped = args.series.filter((s) =>
-    matchesScope(s.kind, s.id, args.scope),
-  );
   if (args.viewMode === "per_group") {
-    return buildPerGroupSeries(scoped, args.activeIds, args.metricId);
+    return buildPerGroupSeries(args.series, args.activeIds, args.metricId);
   }
   if (args.viewMode === "avg_group") {
-    return seriesInGroups(scoped, args.activeIds);
+    return seriesInGroups(args.series, args.activeIds);
   }
-  if (args.selected === null) return scoped;
-  return scoped.filter((s) => args.selected!.includes(s.id));
+  if (args.selected === null) return args.series;
+  return args.series.filter((s) => args.selected!.includes(s.id));
 }
 
 function TrendsBody(props: {
@@ -260,7 +242,6 @@ function TrendsFilters(props: {
   windowSec: number;
   metric: RuntimeMetricDef;
   viewMode: SeriesViewMode;
-  scope: ScopeKind;
   groupMode: boolean;
   catalog: MetricsAvailable[];
   groups: GroupOption[];
@@ -270,7 +251,6 @@ function TrendsFilters(props: {
   onWindow: (n: number) => void;
   onMetric: (m: RuntimeMetricId) => void;
   onViewMode: (m: SeriesViewMode) => void;
-  onScope: (s: ScopeKind) => void;
   onToggle: (id: string) => void;
   onShowAll: () => void;
   onClearAll: () => void;
@@ -325,21 +305,6 @@ function TrendsFilters(props: {
           <option value="avg_group">Avg group</option>
         </select>
       </label>
-      {props.groupMode ? null : (
-        <label className="trends-field">
-          <span>Scope</span>
-          <select
-            value={props.scope}
-            onChange={(e) => props.onScope(e.target.value as ScopeKind)}
-            aria-label="Host or containers"
-            disabled={props.busy}
-          >
-            <option value="all">Host + services</option>
-            <option value="containers">Services only</option>
-            <option value="host">Host only</option>
-          </select>
-        </label>
-      )}
       {props.groupMode ? (
         <IdFilter
           title="Groups"
@@ -512,11 +477,4 @@ function toggleId(active: string[], id: string, order: string[]): string[] {
   }
   const next = [...active, id];
   return order.filter((x) => next.includes(x));
-}
-
-function matchesScope(kind: string, id: string, scope: ScopeKind): boolean {
-  const isHost = kind === "host" || id === "host";
-  if (scope === "all") return true;
-  if (scope === "host") return isHost;
-  return !isHost;
 }
