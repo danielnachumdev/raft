@@ -28,8 +28,16 @@ export function ServiceLogs(props: { service: string }) {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (window.location.hash !== "#logs") return;
+    document.getElementById("logs")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, []);
+
   return (
-    <section className="panel">
+    <section className="panel" id="logs">
       <div className="panel-head">
         <h2>Logs</h2>
         <div className="logs-controls">
