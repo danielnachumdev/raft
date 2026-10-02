@@ -14,7 +14,7 @@ from raft.services.ops.status.models import StatusSnapshot
 from raft.services.serve.app import ServeAppFactory
 from raft.services.serve.service import DEFAULT_SERVE_PORT, Serve
 
-from ...base import RaftTestCase, make_stack
+from ...base import RaftTestCase, make_app, make_stack
 from ...services.ops.status.fixtures import StatusFixtures
 
 
@@ -41,6 +41,14 @@ class _ServeFixtures:
         status = MagicMock()
         status.collect.return_value = snapshot
         return TestClient(ServeAppFactory(stack, status=status).create()), status
+
+    @staticmethod
+    def client_with_actions(stack, actions):
+        status = MagicMock()
+        status.collect.return_value = _ServeFixtures.empty_snapshot()
+        return TestClient(
+            ServeAppFactory(stack, status=status, actions=actions).create()
+        )
 
     @staticmethod
     def write_metrics_sample(stack, *, ts: str) -> None:
@@ -107,6 +115,63 @@ class TestServeAppFactory(RaftTestCase):
             make_stack(self.tmp_path), _ServeFixtures.full_snapshot()
         )
         response = client.get("/api/service/missing")
+        assert response.status_code == 404
+
+    def test_api_service_start_ok(self) -> None:
+        stack = make_stack(self.tmp_path, (make_app("site"),))
+        actions = MagicMock()
+        actions.start.return_value = {"ok": True, "action": "start", "service": "site"}
+        client = _ServeFixtures.client_with_actions(stack, actions)
+        response = client.post("/api/service/site/start")
+        assert response.status_code == 200
+        assert response.json()["action"] == "start"
+        actions.start.assert_called_once_with("site")
+
+    def test_api_service_stop_ok(self) -> None:
+        stack = make_stack(self.tmp_path, (make_app("site"),))
+        actions = MagicMock()
+        actions.stop.return_value = {"ok": True, "action": "stop", "service": "site"}
+        client = _ServeFixtures.client_with_actions(stack, actions)
+        response = client.post("/api/service/site/stop")
+        assert response.status_code == 200
+        actions.stop.assert_called_once_with("site")
+
+    def test_api_service_redeploy_ok(self) -> None:
+        stack = make_stack(self.tmp_path, (make_app("site"),))
+        actions = MagicMock()
+        actions.redeploy.return_value = {
+            "ok": True,
+            "action": "redeploy",
+            "service": "site",
+        }
+        client = _ServeFixtures.client_with_actions(stack, actions)
+        response = client.post("/api/service/site/redeploy")
+        assert response.status_code == 200
+        actions.redeploy.assert_called_once_with("site")
+
+    def test_api_service_action_operator_error_is_400(self) -> None:
+        from raft.errors import OperatorError
+
+        stack = make_stack(self.tmp_path, (make_app("site"),))
+        actions = MagicMock()
+        actions.redeploy.side_effect = OperatorError(
+            "refusing to redeploy `gate`", has_fix=False
+        )
+        client = _ServeFixtures.client_with_actions(stack, actions)
+        response = client.post("/api/service/raft-gate/redeploy")
+        assert response.status_code == 400
+        assert "gate" in response.json()["detail"]
+
+    def test_api_service_action_unknown_is_404(self) -> None:
+        from raft.errors import OperatorError
+
+        stack = make_stack(self.tmp_path)
+        actions = MagicMock()
+        actions.start.side_effect = OperatorError(
+            "unknown logs target 'missing' (known: gate)",
+        )
+        client = _ServeFixtures.client_with_actions(stack, actions)
+        response = client.post("/api/service/missing/start")
         assert response.status_code == 404
 
     def test_spa_deep_link_serves_index(self) -> None:

@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from ...models import Stack
 from ..ops.status import Status
+from .actions import ServeActions
 from .page import ServePage
 from .paths import ServePaths
 
@@ -16,13 +17,19 @@ from .paths import ServePaths
 class ServeAppFactory:
     """Build a localhost-only SPA + JSON status API over the stack."""
 
-    def __init__(self, stack: Stack, status: Optional[Status] = None) -> None:
+    def __init__(
+        self,
+        stack: Stack,
+        status: Optional[Status] = None,
+        actions: Optional[ServeActions] = None,
+    ) -> None:
         self.stack = stack
         self._status = status
+        self._actions = actions
 
     def create(self) -> FastAPI:
         app = FastAPI(title="raft serve", docs_url=None, redoc_url=None)
-        page = ServePage(self.stack, status=self._status)
+        page = ServePage(self.stack, status=self._status, actions=self._actions)
         self._register_api(app, page)
         app.mount(
             "/assets",
@@ -37,6 +44,9 @@ class ServeAppFactory:
         app.get("/api/status")(page.api_status)
         app.get("/api/metrics")(page.api_metrics)
         app.get("/api/service/{name}")(page.api_service)
+        app.post("/api/service/{name}/start")(page.api_service_start)
+        app.post("/api/service/{name}/stop")(page.api_service_stop)
+        app.post("/api/service/{name}/redeploy")(page.api_service_redeploy)
 
     @staticmethod
     def _register_spa(app: FastAPI, page: ServePage) -> None:

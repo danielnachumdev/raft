@@ -112,6 +112,44 @@ export async function fetchService(name: string): Promise<ServiceDetailPayload> 
   return (await res.json()) as ServiceDetailPayload;
 }
 
+export type ServiceAction = "start" | "stop" | "redeploy";
+
+export type ServiceActionResult = {
+  ok: boolean;
+  action: ServiceAction;
+  service: string;
+};
+
+export async function postServiceAction(
+  name: string,
+  action: ServiceAction,
+): Promise<ServiceActionResult> {
+  const res = await fetch(
+    `/api/service/${encodeURIComponent(name)}/${action}`,
+    { method: "POST" },
+  );
+  const body = await readJsonBody(res);
+  if (!res.ok) {
+    throw new Error(detailFromBody(body) || `${action} failed (${res.status})`);
+  }
+  return body as ServiceActionResult;
+}
+
+async function readJsonBody(res: Response): Promise<unknown> {
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+function detailFromBody(body: unknown): string | null {
+  if (!body || typeof body !== "object") return null;
+  const detail = (body as { detail?: unknown }).detail;
+  if (typeof detail === "string" && detail.trim()) return detail.trim();
+  return null;
+}
+
 export async function fetchMetrics(opts: {
   window: number;
   since?: string | null;
