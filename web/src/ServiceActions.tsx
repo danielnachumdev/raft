@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { postServiceAction, type ServiceAction } from "./api";
+import type { ServiceAction } from "./api";
+import { useServiceActionRunner } from "./useServiceActionRunner";
 
 type Props = {
   service: string;
@@ -9,26 +9,11 @@ type Props = {
 
 /** Start / Stop / Redeploy controls for one Compose service. */
 export function ServiceActions(props: Props) {
-  const [busy, setBusy] = useState<ServiceAction | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const locked = props.disabled || busy !== null;
-
-  const run = async (action: ServiceAction) => {
-    if (!confirmAction(action, props.service)) return;
-    setBusy(action);
-    setError(null);
-    setMessage(null);
-    try {
-      await postServiceAction(props.service, action);
-      setMessage(`${labelFor(action)} succeeded.`);
-      props.onDone();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : `${labelFor(action)} failed.`);
-    } finally {
-      setBusy(null);
-    }
-  };
+  const { busy, error, message, locked, run } = useServiceActionRunner(
+    props.service,
+    props.onDone,
+    props.disabled,
+  );
 
   return (
     <section className="panel">
@@ -102,22 +87,4 @@ function ActionButton(props: {
       {props.label}
     </button>
   );
-}
-
-function confirmAction(action: ServiceAction, service: string): boolean {
-  if (action === "start") return true;
-  if (action === "stop") {
-    return window.confirm(
-      `Stop ${service}? Traffic to this service will fail until it is started again.`,
-    );
-  }
-  return window.confirm(
-    `Redeploy ${service}? This re-renders and updates the service (brief disruption).`,
-  );
-}
-
-function labelFor(action: ServiceAction): string {
-  if (action === "start") return "Start";
-  if (action === "stop") return "Stop";
-  return "Redeploy";
 }

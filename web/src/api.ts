@@ -59,6 +59,10 @@ export function servicePath(service: string): string {
   return `/service/${encodeURIComponent(service)}`;
 }
 
+export function serviceLogsPath(service: string): string {
+  return `${servicePath(service)}#logs`;
+}
+
 export type MetricsPoint = {
   t: string;
   cpu_percent: number | null;

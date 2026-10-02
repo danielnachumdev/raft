@@ -81,8 +81,14 @@ export function Dashboard() {
             title="Control plane"
             rows={data.control_plane}
             empty="No control-plane services."
+            onActionDone={() => void load()}
           />
-          <Section title="Apps" rows={data.apps} empty="No applied apps." />
+          <Section
+            title="Apps"
+            rows={data.apps}
+            empty="No applied apps."
+            onActionDone={() => void load()}
+          />
         </>
       ) : null}
 
@@ -91,14 +97,23 @@ export function Dashboard() {
   );
 }
 
-function Section(props: { title: string; rows: StatusRow[]; empty: string }) {
+function Section(props: {
+  title: string;
+  rows: StatusRow[];
+  empty: string;
+  onActionDone: () => void;
+}) {
   return (
     <section className="panel">
       <div className="panel-head">
         <h2>{props.title}</h2>
         <p className="muted panel-kind">Live · current snapshot</p>
       </div>
-      <StatusTable rows={props.rows} empty={props.empty} />
+      <StatusTable
+        rows={props.rows}
+        empty={props.empty}
+        onActionDone={props.onActionDone}
+      />
     </section>
   );
 }

@@ -300,6 +300,72 @@ th {
   border-color: var(--danger);
 }
 
+.actions-col {
+  width: 1%;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.quick-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 11rem;
+}
+
+.quick-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.quick-action:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.quick-action:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.quick-action.is-loading {
+  border-color: var(--accent);
+}
+
+.quick-action-danger {
+  color: var(--danger);
+  border-color: #e0bfb5;
+}
+
+.quick-action-danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.quick-actions-error {
+  flex: 1 1 100%;
+  margin: 0.15rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.25;
+  color: var(--danger);
+  max-width: 10.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .status-row {
   cursor: pointer;
 }

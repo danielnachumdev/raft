@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import type { StatusRow } from "./api";
 import { servicePath } from "./api";
+import { ServiceQuickActions } from "./ServiceQuickActions";
 import {
   parseMemoryRatioPercent,
   parsePercent,
@@ -20,7 +21,11 @@ const COLUMNS: { key: keyof StatusRow; label: string }[] = [
   { key: "uptime", label: "Uptime" },
 ];
 
-export function StatusTable(props: { rows: StatusRow[]; empty: string }) {
+export function StatusTable(props: {
+  rows: StatusRow[];
+  empty: string;
+  onActionDone: () => void;
+}) {
   const navigate = useNavigate();
   if (!props.rows.length) {
     return <p className="muted">{props.empty}</p>;
@@ -32,6 +37,7 @@ export function StatusTable(props: { rows: StatusRow[]; empty: string }) {
           {COLUMNS.map((col) => (
             <th key={col.key}>{col.label}</th>
           ))}
+          <th className="actions-col">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -40,6 +46,7 @@ export function StatusTable(props: { rows: StatusRow[]; empty: string }) {
             key={`${row.role}-${row.service}`}
             row={row}
             onOpen={() => navigate(servicePath(row.service))}
+            onActionDone={props.onActionDone}
           />
         ))}
       </tbody>
@@ -47,8 +54,12 @@ export function StatusTable(props: { rows: StatusRow[]; empty: string }) {
   );
 }
 
-function StatusRowLink(props: { row: StatusRow; onOpen: () => void }) {
-  const { row, onOpen } = props;
+function StatusRowLink(props: {
+  row: StatusRow;
+  onOpen: () => void;
+  onActionDone: () => void;
+}) {
+  const { row, onOpen, onActionDone } = props;
   return (
     <tr
       className="status-row"
@@ -66,6 +77,13 @@ function StatusRowLink(props: { row: StatusRow; onOpen: () => void }) {
       {COLUMNS.map((col) => (
         <td key={col.key}>{cellContent(col.key, row)}</td>
       ))}
+      <td className="actions-col">
+        <ServiceQuickActions
+          service={row.service}
+          name={row.name}
+          onDone={onActionDone}
+        />
+      </td>
     </tr>
   );
 }
