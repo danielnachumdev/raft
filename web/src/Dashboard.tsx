@@ -121,12 +121,14 @@ export function Dashboard() {
             title="Control plane"
             rows={data.control_plane}
             empty="No control-plane services."
+            storageKey="raft-serve-status-control-plane"
             onActionDone={() => void load({ quiet: true })}
           />
           <Section
             title="Apps"
             rows={data.apps}
             empty="No applied apps."
+            storageKey="raft-serve-status-apps"
             onActionDone={() => void load({ quiet: true })}
           />
         </>
@@ -141,6 +143,7 @@ function Section(props: {
   title: string;
   rows: StatusRow[];
   empty: string;
+  storageKey: string;
   onActionDone: () => void;
 }) {
   return (
@@ -152,6 +155,7 @@ function Section(props: {
       <StatusTable
         rows={props.rows}
         empty={props.empty}
+        storageKey={props.storageKey}
         onActionDone={props.onActionDone}
       />
     </section>
