@@ -70,6 +70,13 @@ export type MetricsPoint = {
   cpu_percent: number | null;
   memory_used_percent: number | null;
   memory_used_bytes: number | null;
+  memory_limit_bytes?: number | null;
+  uptime_seconds?: number | null;
+  pids?: number | null;
+  network_rx_bytes?: number | null;
+  network_tx_bytes?: number | null;
+  block_read_bytes?: number | null;
+  block_write_bytes?: number | null;
 };
 
 export type MetricsSeries = {

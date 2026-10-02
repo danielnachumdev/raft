@@ -2,9 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   documentTitleForHost,
-  fetchMetrics,
   fetchService,
-  type MetricsSeries,
   type ServiceDetailPayload,
 } from "./api";
 import {
@@ -19,9 +17,9 @@ export function ServicePage() {
   const { service: raw } = useParams<{ service: string }>();
   const service = raw ? decodeURIComponent(raw) : "";
   const [data, setData] = useState<ServiceDetailPayload | null>(null);
-  const [metrics, setMetrics] = useState<MetricsSeries | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
+  const [trendsKey, setTrendsKey] = useState(0);
 
   const load = useCallback(async () => {
     if (!service) {
@@ -32,12 +30,9 @@ export function ServicePage() {
     setBusy(true);
     setError(null);
     try {
-      const detail = await fetchService(service);
-      setData(detail);
-      setMetrics(await loadServiceMetrics(service));
+      setData(await fetchService(service));
     } catch (err) {
       setData(null);
-      setMetrics(null);
       setError(err instanceof Error && err.message === "not found"
         ? `Service '${service}' was not found in the current status snapshot.`
         : "Failed to load service detail.");
@@ -58,6 +53,7 @@ export function ServicePage() {
       invalidateStatus();
     }
     invalidateMetrics();
+    setTrendsKey((k) => k + 1);
   }, [load]);
 
   useEffect(() => {
@@ -94,20 +90,11 @@ export function ServicePage() {
 
       {data ? (
         <ServiceDetail
+          key={trendsKey}
           data={data}
-          metrics={metrics}
           onActionDone={() => void onActionDone()}
         />
       ) : null}
     </div>
   );
-}
-
-async function loadServiceMetrics(service: string): Promise<MetricsSeries | null> {
-  try {
-    const payload = await fetchMetrics({ window: 3600, services: [service] });
-    return payload.series.find((s) => s.id === service) ?? null;
-  } catch {
-    return null;
-  }
 }

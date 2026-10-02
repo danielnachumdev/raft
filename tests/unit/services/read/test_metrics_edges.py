@@ -63,16 +63,46 @@ class TestMetricsEdges(RaftTestCase):
 
     def test_container_point_coerces_string_metrics(self) -> None:
         point = MetricsSeriesBuilder._container_point(
-            {
-                "service": "raft-gate",
-                "cpu_percent": "1.5",
-                "memory": {"used_percent": "20.0", "used_bytes": "512"},
-            },
+            self._full_runtime_row(), ts="t"
+        )
+        expected = {
+            "cpu_percent": 1.5,
+            "memory_used_percent": 20.0,
+            "memory_used_bytes": 512.0,
+            "memory_limit_bytes": 1024.0,
+            "uptime_seconds": 90.0,
+            "pids": 3.0,
+            "network_rx_bytes": 10.0,
+            "network_tx_bytes": 20.0,
+            "block_read_bytes": 30.0,
+            "block_write_bytes": 40.0,
+        }
+        assert {k: point[k] for k in expected} == expected
+
+    def test_container_point_missing_nested_io_is_null(self) -> None:
+        point = MetricsSeriesBuilder._container_point(
+            {"service": "app", "cpu_percent": 1.0, "memory": "bad"},
             ts="t",
         )
-        assert point["cpu_percent"] == 1.5
-        assert point["memory_used_percent"] == 20.0
-        assert point["memory_used_bytes"] == 512.0
+        assert point["memory_used_percent"] is None
+        assert point["network_rx_bytes"] is None
+        assert point["block_write_bytes"] is None
+
+    @staticmethod
+    def _full_runtime_row() -> Dict[str, Any]:
+        return {
+            "service": "raft-gate",
+            "cpu_percent": "1.5",
+            "uptime_seconds": "90",
+            "pids": "3",
+            "memory": {
+                "used_percent": "20.0",
+                "used_bytes": "512",
+                "limit_bytes": "1024",
+            },
+            "network": {"rx_bytes": "10", "tx_bytes": "20"},
+            "block_io": {"read_bytes": "30", "write_bytes": "40"},
+        }
 
     def test_as_float_rejects_bool_nan_and_junk(self) -> None:
         assert MetricsSeriesBuilder._as_float(True) is None

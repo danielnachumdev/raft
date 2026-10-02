@@ -152,13 +152,44 @@ class MetricsSeriesBuilder:
 
     @staticmethod
     def _container_point(row: Dict[str, Any], *, ts: str) -> Dict[str, Any]:
-        mem = row.get("memory") if isinstance(row.get("memory"), dict) else {}
+        """Map one Status container row onto chartable Runtime series fields."""
+        mem = MetricsSeriesBuilder._as_dict(row.get("memory"))
+        net = MetricsSeriesBuilder._as_dict(row.get("network"))
+        block = MetricsSeriesBuilder._as_dict(row.get("block_io"))
+        point: Dict[str, Any] = {"t": ts}
+        point.update(MetricsSeriesBuilder._container_core(row, mem))
+        point.update(MetricsSeriesBuilder._container_io(net, block))
+        return point
+
+    @staticmethod
+    def _container_core(
+        row: Dict[str, Any], mem: Dict[str, Any]
+    ) -> Dict[str, Optional[float]]:
         return {
-            "t": ts,
             "cpu_percent": MetricsSeriesBuilder._as_float(row.get("cpu_percent")),
             "memory_used_percent": MetricsSeriesBuilder._as_float(mem.get("used_percent")),
             "memory_used_bytes": MetricsSeriesBuilder._as_float(mem.get("used_bytes")),
+            "memory_limit_bytes": MetricsSeriesBuilder._as_float(mem.get("limit_bytes")),
+            "uptime_seconds": MetricsSeriesBuilder._as_float(row.get("uptime_seconds")),
+            "pids": MetricsSeriesBuilder._as_float(row.get("pids")),
         }
+
+    @staticmethod
+    def _container_io(
+        net: Dict[str, Any], block: Dict[str, Any]
+    ) -> Dict[str, Optional[float]]:
+        return {
+            "network_rx_bytes": MetricsSeriesBuilder._as_float(net.get("rx_bytes")),
+            "network_tx_bytes": MetricsSeriesBuilder._as_float(net.get("tx_bytes")),
+            "block_read_bytes": MetricsSeriesBuilder._as_float(block.get("read_bytes")),
+            "block_write_bytes": MetricsSeriesBuilder._as_float(
+                block.get("write_bytes")
+            ),
+        }
+
+    @staticmethod
+    def _as_dict(value: Any) -> Dict[str, Any]:
+        return value if isinstance(value, dict) else {}
 
     @staticmethod
     def _as_float(value: Any) -> Optional[float]:

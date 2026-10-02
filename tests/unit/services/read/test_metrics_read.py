@@ -47,11 +47,15 @@ class _MetricsFixtures:
             "role": "gate",
             "group": "raft",
             "cpu_percent": cpu,
+            "uptime_seconds": 120.0,
+            "pids": 4,
             "memory": {
                 "used_percent": mem_pct,
                 "used_bytes": 500,
                 "limit_bytes": 1000,
             },
+            "network": {"rx_bytes": 11, "tx_bytes": 22},
+            "block_io": {"read_bytes": 33, "write_bytes": 44},
         }
 
     @classmethod
@@ -146,8 +150,22 @@ class TestMetricsRead(RaftTestCase):
         gate = next(s for s in payload["series"] if s["id"] == "raft-gate")
         assert gate["label"] == "gate"
         assert [p["cpu_percent"] for p in gate["points"]] == [5.0, 15.0]
+        self._assert_runtime_fields(gate["points"][-1])
         host = next(s for s in payload["series"] if s["id"] == "host")
         assert host["points"][0]["cpu_percent"] == 25.0  # 0.5 load / 2 cpus
+
+    @staticmethod
+    def _assert_runtime_fields(point: Dict[str, Any]) -> None:
+        expected = {
+            "memory_limit_bytes": 1000.0,
+            "uptime_seconds": 120.0,
+            "pids": 4.0,
+            "network_rx_bytes": 11.0,
+            "network_tx_bytes": 22.0,
+            "block_read_bytes": 33.0,
+            "block_write_bytes": 44.0,
+        }
+        assert {k: point[k] for k in expected} == expected
 
     def test_history_includes_every_container_when_unfiltered(self) -> None:
         home = self.tmp_path / "raft"
