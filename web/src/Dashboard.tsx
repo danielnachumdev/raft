@@ -157,7 +157,7 @@ function Section(props: {
         <h2>{props.title}</h2>
         <LiveIndicator
           isLive={props.isLive}
-          label={props.isLive ? "Live · auto-refresh" : "Paused · tab hidden"}
+          label={props.isLive ? undefined : "Paused · tab hidden"}
         />
       </div>
       <StatusTable
