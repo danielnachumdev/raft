@@ -30,7 +30,7 @@ class TestStatusCollect(RaftTestCase):
     def test_collect_running_and_stopped(self) -> None:
         write_applied_app(self.tmp_path, "app")
         status = self._idle_status(make_app("app"))
-        StatusFixtures.wire_gate_router_running(status.docker)
+        StatusFixtures.wire_gate_router_running(status._containers)
         with self._patch_host():
             snap = status.collect()
         self._assert_running_gate_router(snap)

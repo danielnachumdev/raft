@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from unittest.mock import MagicMock
 
+from raft.adapters.docker.runtime import ContainerRuntimeRow
 from raft.adapters.host import HostDisk, HostMemory, HostResources
 from raft.services.ops.status.models import (
     AllocatedResources,
@@ -104,19 +105,42 @@ class StatusFixtures:
         return StatusSnapshot(host=host or cls.empty_host_status(), containers=containers)
 
     @staticmethod
+    def mock_containers_idle(status) -> MagicMock:
+        gateway = MagicMock()
+        gateway.collect.return_value = {}
+        status._containers = gateway
+        return gateway
+
+    @staticmethod
     def mock_docker_idle(status) -> MagicMock:
-        docker = MagicMock()
-        docker.try_service_container_id.return_value = None
-        docker.containers_stats.return_value = {}
-        status.docker = docker
-        return docker
+        """Alias for older tests — mocks the container runtime gateway."""
+        return StatusFixtures.mock_containers_idle(status)
 
     @staticmethod
     def started_iso(days: int = 1) -> str:
         return (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     @staticmethod
-    def gate_router_stats_rows() -> dict:
+    def runtime_row(
+        cid: str,
+        *,
+        status: str = "running",
+        health: str = "none",
+        started: Optional[str] = None,
+        memory_bytes: Optional[int] = 33554432,
+        stats: Optional[dict] = None,
+    ) -> ContainerRuntimeRow:
+        return ContainerRuntimeRow(
+            container_id=cid,
+            status=status,
+            health=health,
+            started_at=started or StatusFixtures.started_iso(),
+            memory_bytes=memory_bytes,
+            stats=stats,
+        )
+
+    @classmethod
+    def gate_router_stats_rows(cls) -> dict:
         return {
             "gatecid": {
                 "CPUPerc": "0.5%",
@@ -137,15 +161,13 @@ class StatusFixtures:
         }
 
     @classmethod
-    def wire_gate_router_running(cls, docker: MagicMock) -> None:
-        docker.try_service_container_id.side_effect = lambda s: {
-            "raft-gate": "gatecid",
-            "raft-router": "routercid",
-        }.get(s)
-        docker.containers_stats.return_value = cls.gate_router_stats_rows()
-        started = cls.started_iso()
-        base = {"started_at": started, "nano_cpus": 250000000}
-        docker.container_inspect_runtime.side_effect = [
-            {**base, "status": "running", "health": "none", "memory_bytes": 33554432},
-            {**base, "status": "running", "health": "none", "memory_bytes": 0},
-        ]
+    def wire_gate_router_running(cls, gateway: MagicMock) -> None:
+        stats = cls.gate_router_stats_rows()
+        gateway.collect.return_value = {
+            "raft-gate": cls.runtime_row(
+                "gatecid", memory_bytes=33554432, stats=stats["gatecid"]
+            ),
+            "raft-router": cls.runtime_row(
+                "routercid", memory_bytes=0, stats=stats["routercid"]
+            ),
+        }

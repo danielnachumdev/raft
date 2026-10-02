@@ -30,7 +30,7 @@ ClockFn = Callable[[], float]
 
 
 class MetricsRecorder:
-    """Sample via ``Status.collect``; buffer and append JSONL in batches."""
+    """Sample via ``Status.collect`` (same gatherer as CLI/serve); batch JSONL."""
 
     def __init__(
         self,

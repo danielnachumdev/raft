@@ -14,7 +14,7 @@ RUN set -eux; \
       *) echo "unsupported TARGETARCH=${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
     DOCKER_VERSION=27.3.1; \
-    COMPOSE_VERSION=2.29.7; \
+    COMPOSE_VERSION=5.5.1; \
     curl -fsSL \
       "https://download.docker.com/linux/static/stable/${DOCKER_ARCH}/docker-${DOCKER_VERSION}.tgz" \
       | tar -xz -C /tmp; \

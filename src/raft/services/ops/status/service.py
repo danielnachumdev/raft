@@ -5,11 +5,12 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from ....adapters import DockerStack, Shell
+from ....adapters import Shell
+from ....adapters.docker.runtime import ContainerRuntimeGateway, ContainerRuntimeRow
 from ....adapters.host import DockerStatsText, HostGateway, HostResources
-from ....models.scaling_store import ScalingStore
 from ....errors import OperatorError
 from ....models import EDGE_GROUP, Stack
+from ....models.scaling_store import ScalingStore
 from .allocated import StatusAllocated
 from .formatters import StatusFormatters
 from .models import (
@@ -24,42 +25,43 @@ from .models import (
 )
 from .report import StatusReportWriter
 
+_Target = tuple[str, str, Optional[str], Optional[str], AllocatedResources]
+
 
 class Status:
     """Point-in-time resource snapshot for operators (`raft status`)."""
 
-    def __init__(self, stack: Stack) -> None:
+    def __init__(
+        self,
+        stack: Stack,
+        *,
+        host: Optional[HostGateway] = None,
+        containers: Optional[ContainerRuntimeGateway] = None,
+    ) -> None:
         self.stack = stack
         self.sh = Shell(stack.root)
-        self.docker = DockerStack(stack, self.sh)
+        self._host = host or HostGateway(disk_path=stack.root)
+        self._containers = containers or ContainerRuntimeGateway(self.sh)
 
     def _reload_stack(self) -> None:
-        """Re-read applied apps without ``ensure_raft_home`` / template sync.
-
-        Host CLI still ensures via ``load_stack`` before constructing ``Status``.
-        Controllers (RO data home) and live refresh only need registry re-read.
-        """
+        """Re-read applied apps without ``ensure_raft_home`` / template sync."""
         self.stack = Stack.load_apps(self.stack.root)
-        self.docker = DockerStack(self.stack, self.sh)
+        self.sh = Shell(self.stack.root)
+        self._host = HostGateway(disk_path=self.stack.root)
+        self._containers = ContainerRuntimeGateway(self.sh)
 
     def collect(self, *, refresh_apps: bool = False) -> StatusSnapshot:
         if refresh_apps:
             self._reload_stack()
-        host = self._host_status(HostGateway(disk_path=self.stack.root))
         targets = self._targets()
-        id_by_service = self._container_ids(targets)
-        stats_by_id = self.docker.containers_stats(list(id_by_service.values()))
-        containers = [
-            self._one_container(
-                service, role, app_name, group, allocated, id_by_service, stats_by_id
-            )
+        runtime = self._containers.collect([t[0] for t in targets])
+        containers = tuple(
+            self._one_container(service, role, app_name, group, allocated, runtime)
             for service, role, app_name, group, allocated in targets
-        ]
-        return StatusSnapshot(host=host, containers=tuple(containers))
+        )
+        return StatusSnapshot(host=self._host_status(self._host), containers=containers)
 
-    def _targets(
-        self,
-    ) -> list[tuple[str, str, Optional[str], Optional[str], AllocatedResources]]:
+    def _targets(self) -> list[_Target]:
         targets = self._edge_targets()
         for app in self.stack.apps:
             targets.append(
@@ -73,9 +75,7 @@ class Status:
             )
         return targets
 
-    def _edge_targets(
-        self,
-    ) -> list[tuple[str, str, Optional[str], Optional[str], AllocatedResources]]:
+    def _edge_targets(self) -> list[_Target]:
         edge = StatusAllocated.edge()
         return [
             (self.stack.gate, "gate", None, EDGE_GROUP, edge),
@@ -89,17 +89,6 @@ class Status:
             ),
         ]
 
-    def _container_ids(
-        self,
-        targets: list[tuple[str, str, Optional[str], Optional[str], AllocatedResources]],
-    ) -> dict[str, str]:
-        id_by_service: dict[str, str] = {}
-        for service, *_rest in targets:
-            cid = self.docker.try_service_container_id(service)
-            if cid:
-                id_by_service[service] = cid
-        return id_by_service
-
     def _one_container(
         self,
         service: str,
@@ -107,15 +96,12 @@ class Status:
         app_name: Optional[str],
         group: Optional[str],
         allocated: AllocatedResources,
-        id_by_service: dict[str, str],
-        stats_by_id: dict[str, dict[str, Any]],
+        runtime: dict[str, ContainerRuntimeRow],
     ) -> ContainerStatus:
-        cid = id_by_service.get(service)
-        if not cid:
+        row = runtime.get(service)
+        if row is None:
             return self._absent_container(service, role, app_name, group, allocated)
-        return self._present_container(
-            service, role, app_name, group, allocated, cid, stats_by_id
-        )
+        return self._present_container(service, role, app_name, group, allocated, row)
 
     def _absent_container(
         self,
@@ -149,24 +135,18 @@ class Status:
         app_name: Optional[str],
         group: Optional[str],
         allocated: AllocatedResources,
-        cid: str,
-        stats_by_id: dict[str, dict[str, Any]],
+        row: ContainerRuntimeRow,
     ) -> ContainerStatus:
-        runtime = self.docker.container_inspect_runtime(cid) or {}
-        inspect_mem = runtime.get("memory_bytes")
         return self._container_row(
             service,
             role,
             app_name,
             group,
             allocated,
-            status=StatusFormatters.container_status(
-                str(runtime.get("status") or "unknown"),
-                str(runtime.get("health") or "none"),
-            ),
-            uptime_seconds=self._parse_started_at(str(runtime.get("started_at") or "")),
-            stats_row=stats_by_id.get(cid),
-            inspect_memory=inspect_mem if isinstance(inspect_mem, int) else None,
+            status=StatusFormatters.container_status(row.status, row.health),
+            uptime_seconds=self._parse_started_at(row.started_at),
+            stats_row=row.stats,
+            inspect_memory=row.memory_bytes,
         )
 
     @classmethod
