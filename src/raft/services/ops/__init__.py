@@ -1,1 +1,1 @@
-"""Operator ops: doctor, status, certs, update, uninstall."""
+"""Operator ops: doctor, status, logs, certs, update, uninstall."""

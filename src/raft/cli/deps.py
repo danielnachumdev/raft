@@ -6,6 +6,7 @@ from ..services.apply import AppApply
 from ..services.auth import GitAuthManager
 from ..services.deploy.orchestrator import Orchestrator
 from ..services.ops.doctor import Doctor
+from ..services.ops.logs import Logs
 from ..services.ops.status import Status
 from ..services.ops.uninstall import Uninstall
 from ..services.ops.update import SelfUpdate
@@ -14,6 +15,7 @@ __all__ = [
     "AppApply",
     "Doctor",
     "GitAuthManager",
+    "Logs",
     "Orchestrator",
     "SelfUpdate",
     "Status",

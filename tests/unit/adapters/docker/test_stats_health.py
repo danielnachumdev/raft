@@ -118,6 +118,28 @@ class TestDockerStatsHealth(DockerTestCase):
         assert "CLIENT_ID" in self.docker.container_logs("raft-app_tmp")
         assert self.docker.container_logs("") == ""
 
+    def test_follow_compose_logs_streams(self) -> None:
+        self.docker.follow_compose_logs("app", tail=20)
+        self.shell.compose.assert_called_with(
+            "logs",
+            "-f",
+            "--no-color",
+            "--tail",
+            "20",
+            "app",
+            capture=False,
+            check=False,
+        )
+
+    def test_follow_compose_logs_noop_without_services(self) -> None:
+        self.shell.compose.reset_mock()
+        self.docker.follow_compose_logs()
+        self.shell.compose.assert_not_called()
+
+    def test_follow_compose_logs_swallows_keyboard_interrupt(self) -> None:
+        self.shell.compose.side_effect = KeyboardInterrupt
+        self.docker.follow_compose_logs("app")
+
     def test_service_health_summary_and_diagnostics(self) -> None:
         self._assert_health_unhealthy_with_log()
         self._assert_health_absent_and_unknown()

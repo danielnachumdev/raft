@@ -147,6 +147,21 @@ class RaftCLI:
         """
         deps.Status(self._stack).report(as_json=json, live=live)
 
+    def logs(
+        self,
+        *services: str,
+        tail: int = 100,
+        follow: bool = False,
+    ) -> None:
+        """Show container stdout/stderr for apps or edge services.
+
+        Snapshot (default): recent lines, like ``docker compose logs --tail``.
+        Pass ``-f`` / ``--follow`` to stream until Ctrl+C (like ``tail -f``).
+        Names: app registry name, ``gate`` / ``router`` / ``controller``, or
+        Compose ids (``raft-gate``, ``GROUP-NAME``). Omit names for all services.
+        """
+        deps.Logs(self._stack).show(*services, tail=tail, follow=follow)
+
     def update(self) -> None:
         """Re-install raft from GitHub (re-run install.sh / uv tool install)."""
         deps.SelfUpdate(self._stack).run()

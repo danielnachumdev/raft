@@ -46,6 +46,20 @@ class TestCliDispatch(CliTestCase):
             "live": True,
         }
 
+    def test_logs_dispatches_snapshot_and_follow(self) -> None:
+        logs = MagicMock()
+        with self.patched_deps(Logs=logs) as deps:
+            assert cli.main(["logs", "app", "--tail", "20"]) == 0
+            assert cli.main(["logs", "gate", "--follow"]) == 0
+            assert cli.main(["logs", "-f", "router"]) == 0
+        deps["Logs"].assert_called_with(self.stack)
+        assert logs.show.call_args_list[0].args == ("app",)
+        assert logs.show.call_args_list[0].kwargs == {"tail": 20, "follow": False}
+        assert logs.show.call_args_list[1].args == ("gate",)
+        assert logs.show.call_args_list[1].kwargs == {"tail": 100, "follow": True}
+        assert logs.show.call_args_list[2].args == ("router",)
+        assert logs.show.call_args_list[2].kwargs["follow"] is True
+
     def test_status_unknown_flag_fails_before_report(self, capsys) -> None:
         status = MagicMock()
         with self.patched_deps(Status=status):

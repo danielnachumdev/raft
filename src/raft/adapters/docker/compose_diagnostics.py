@@ -52,6 +52,25 @@ class ComposeDiagnostics:
         )
         return (result.stdout or result.stderr or "").strip()
 
+    def follow_compose_logs(self, *services: str, tail: int = DIAG_LOG_TAIL) -> None:
+        """Stream Compose logs to the terminal until Ctrl+C (or compose exits)."""
+        names = [s for s in services if s]
+        if not names:
+            return
+        try:
+            self.sh.compose(
+                "logs",
+                "-f",
+                "--no-color",
+                "--tail",
+                str(tail),
+                *names,
+                capture=False,
+                check=False,
+            )
+        except KeyboardInterrupt:
+            return
+
     def container_logs(self, name: str, *, tail: int = DIAG_LOG_TAIL) -> str:
         """Tail logs for a named container (e.g. cutover ``_tmp``)."""
         if not name:

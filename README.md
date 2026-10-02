@@ -38,6 +38,7 @@ raft get apps
 | `raft apply --file …` / `--git …` | Register + deploy (default path) |
 | `raft doctor` | Health check + fix hints |
 | `raft status` | CPU/memory snapshot (`--live` to watch) |
+| `raft logs [name…]` | Container stdout/stderr (`--tail N`; `-f` / `--follow`) |
 | `raft redeploy <app>` | Cutover when the app is already running |
 | `raft gate recreate` | After changing published edge ports in settings |
 | `raft up` / `raft down` | Bring the whole stack up or tear it down |
