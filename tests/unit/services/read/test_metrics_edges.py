@@ -61,6 +61,25 @@ class TestMetricsEdges(RaftTestCase):
         assert "app" in series
         assert {a["id"] for a in builder.available(samples)} >= {"host", "app"}
 
+    def test_container_point_coerces_string_metrics(self) -> None:
+        point = MetricsSeriesBuilder._container_point(
+            {
+                "service": "raft-gate",
+                "cpu_percent": "1.5",
+                "memory": {"used_percent": "20.0", "used_bytes": "512"},
+            },
+            ts="t",
+        )
+        assert point["cpu_percent"] == 1.5
+        assert point["memory_used_percent"] == 20.0
+        assert point["memory_used_bytes"] == 512.0
+
+    def test_as_float_rejects_bool_nan_and_junk(self) -> None:
+        assert MetricsSeriesBuilder._as_float(True) is None
+        assert MetricsSeriesBuilder._as_float("nope") is None
+        assert MetricsSeriesBuilder._as_float(float("nan")) is None
+        assert MetricsSeriesBuilder._as_float({}) is None
+
     def test_empty_jsonl_file(self) -> None:
         home = self.tmp_path / "raft"
         path = home / METRICS_DIR / METRICS_FILENAME
