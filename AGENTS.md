@@ -88,7 +88,7 @@ Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 6. Manual cold start when apps are already applied: `raft up` (refuses if stack already up; `down` first).
 7. `raft doctor` before trusting the site (certs only for `tls: origin`; gate drift → `raft gate recreate`). Doctor is group-first: built-in **`raft`** (edge services; healthy docker/compose/generated/stack/port probes stay hidden), then App `spec.group` (at most one); ungrouped apps appear without a heading. Member labels drop the `{group}-` prefix under a group heading (Compose ids stay `raft-gate` / `raft-router` / `GROUP-NAME` for Docker; doctor shows `gate` / `router` under `raft`). Healthy OK lines append ports in use (gate: published host ports; apps/router: contract / listen ports). File log records per-suite start/done with `elapsed_ms` plus a compose-call summary (`total` / `ps`) for diagnosing slow doctor runs.
 8. `raft status` (optional `--json`, or `--live` to refresh the human table until Ctrl+C) for a point-in-time host + container CPU/memory/uptime snapshot — declared Compose limits vs live `docker stats` usage. Human NAME column drops `{group}-` (edge: `gate` / `router` with GROUP `raft`); JSON keeps Compose service ids. The always-on **controller** also samples the same plane on a metrics job interval (default 60s; settings `metrics:`) and **batch-appends** JSONL under `~/.raft/state/metrics/resources.jsonl` (flush every 10 samples or 60s; retention defaults 30 days / 100 MiB, oldest first); trend display is a separate serve-UI ticket.
-9. `raft serve` (optional `--port`, default **8787**) — localhost-only SSR UI (`127.0.0.1`) for applied apps + gate/router/controller. Prints SSH/`gcloud` port-forward instructions on start so a terminal-only VM operator can open the page from their laptop; Ctrl+C stops. Not an edge listener. Templates under `share/serve/`; trends hook reserved for #9.
+9. `raft serve` (optional `--port`, default **8787**) — localhost-only UI (`127.0.0.1`) for applied apps + gate/router/controller. Fast shell HTML at `/` (spinner; no Docker wait); `GET /api/status` JSON runs `Status.collect()` (`host` + formatted `control_plane` / `apps` rows — contract comment on `ServePage`). Prints SSH/`gcloud` port-forward instructions on start; Ctrl+C stops. Not an edge listener. Templates/static under `share/serve/`; trends hook reserved for #9.
 10. `raft logs [name…]` for container stdout/stderr (not `~/.raft/logs/raft.log`). Snapshot by default (`--tail N`, default 100); `-f` / `--follow` streams until Ctrl+C. Names: applied app, `gate` / `router` / `controller`, or Compose ids (`raft-gate`, `GROUP-NAME`); omit names for all core services. Unknown / missing containers → OperatorError with Fix CTA.
 11. Updates: prefer `raft apply … --ref …` again (handles first-boot and cutover). Use `raft redeploy <app>` only when the app Compose service is **already running** and you want cutover without re-writing the registry (optional `--ref` / `--force-sync`). `raft redeploy router` for the inner nginx. New edge listeners: `raft gate recreate`.
 12. Tear down: `raft down`.
@@ -209,7 +209,7 @@ Top-level **commands** (not nested groups, except `auth` and `gate`):
 | `gate recreate` | Recreate gate for new published edge ports |
 | `doctor` | Health + fix hints |
 | `status` | Host + container resource usage (point-in-time; `--json` or `--live`) |
-| `serve` | Localhost SSR UI (`127.0.0.1`, default port **8787**; optional `--port`); SSH tunnel from laptop; Ctrl+C stops |
+| `serve` | Localhost UI (`127.0.0.1`, default port **8787**; optional `--port`); shell + `/api/status`; SSH tunnel from laptop; Ctrl+C stops |
 | `logs` | Container stdout/stderr (`--tail N` snapshot; `-f` / `--follow` until Ctrl+C). Names: app, `gate`/`router`/`controller`, or Compose ids; omit = all |
 | `update` | Re-install CLI from GitHub (`install.sh`) |
 | `uninstall` | Full removal (`--yes`; optional `--uv` to remove uv too) |
@@ -234,10 +234,10 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | `src/raft/services/deploy/` | orchestrator, cutover, wait, locking, readiness |
 | `src/raft/services/ops/` | doctor, status, logs, uninstall, update, certs |
 | `src/raft/ui/` | Operator terminal output (`say`) + shared TTY `TerminalProgress` spinner (doctor, update) |
-| `src/raft/services/serve/` | `raft serve` localhost SSR (FastAPI + Jinja2 + uvicorn; POC) |
+| `src/raft/services/serve/` | `raft serve` localhost shell + `/api/status` (FastAPI + Jinja2 + uvicorn) |
 | `src/raft/controller/` | Always-on Compose `raft-controller` (smoke; job orchestrator for heal + metrics; idle-stop + wake via side_ticks when `spec.scaling`; healer skips `scaledToZero`) |
 | `src/raft/errors/` | Operator errors + CTAs |
-| `src/raft/share/` | Product Compose + nginx templates (synced into data home); `share/serve/` for serve SSR templates/static |
+| `src/raft/share/` | Product Compose + nginx templates (synced into data home); `share/serve/` for serve Jinja templates + static JS/CSS |
 | `tests/` | `unit/` (100% cov), `integration/` (render artifacts), `meta/` (size/body guards), `e2e/` (Docker Compose) |
 
 Compose mounts `generated/nginx/upstreams` into the router. Upstream files are keyed by app + port name (`<app>-<port>.conf`).

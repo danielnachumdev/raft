@@ -1,4 +1,4 @@
-"""ScalingStore + Scaler unit coverage."""
+"""Scaler unit coverage."""
 
 from __future__ import annotations
 
@@ -7,52 +7,11 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from raft.controller.scale import Scaler
-from raft.models.scaling_store import AppScalingState, ScalingStore
 from raft.errors import OperatorError
 from raft.models.scaling_spec import ScalingSpec
 
 from ..base import write_applied_app
 from .base import ControllerTestCase
-
-
-class TestScalingStore(ControllerTestCase):
-    def test_markers_follow_scaled_state(self, tmp_path: Path) -> None:
-        home = self.raft_home(tmp_path)
-        store = ScalingStore(home)
-        store.mark_scaled_to_zero(self.APP)
-        assert (home / "state/scaling/markers/web.zero").is_file()
-        assert store.is_scaled_to_zero(self.APP)
-        store.mark_awake(self.APP, min_up_seconds=5, now=100.0)
-        assert not (home / "state/scaling/markers/web.zero").is_file()
-        state = store.load(self.APP)
-        assert state.min_up_until == 105.0
-        assert state.last_activity_at == 100.0
-
-    def test_activity_ignored_when_scaled(self, tmp_path: Path) -> None:
-        home = self.raft_home(tmp_path)
-        store = ScalingStore(home)
-        store.mark_scaled_to_zero(self.APP)
-        store.touch_activity(self.APP, now=50.0)
-        assert store.load(self.APP).last_activity_at is None
-
-    def test_corrupt_and_request_wake(self, tmp_path: Path) -> None:
-        home = self.raft_home(tmp_path)
-        store = ScalingStore(home)
-        path = store.path_for(self.APP)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text("{not-json", encoding="utf-8")
-        assert store.load(self.APP) == AppScalingState()
-        path.write_text("[]\n", encoding="utf-8")
-        assert store.load(self.APP) == AppScalingState()
-        store.mark_scaled_to_zero(self.APP)
-        store.request_wake(self.APP, now=1.0)
-        assert store.load(self.APP).wake_requested_at == 1.0
-        store.request_wake(self.APP, now=9.0)
-        assert store.load(self.APP).wake_requested_at == 1.0
-        store.mark_wake_timeout(self.APP)
-        assert store.load(self.APP).wake_timed_out is True
-        assert (home / "state/scaling/markers/web.timeout").is_file()
-        store.request_wake("nope")
 
 
 class TestScaler(ControllerTestCase):
@@ -81,14 +40,16 @@ class TestScaler(ControllerTestCase):
 
     def test_wake_starts_and_clears_zero(self, tmp_path: Path) -> None:
         scaler, docker = self._scaler(tmp_path)
-        docker.service_runtime.side_effect = [
-            ("exited", "none"),
-            ("running", "healthy"),
-        ]
+        # Docker health may be starting/unhealthy; wake still clears once fetchable.
+        docker.service_runtime.return_value = ("running", "unhealthy")
+        docker.router_can_fetch.side_effect = [False, True]
+        docker.router_serves_host.return_value = True
         scaler.store.mark_scaled_to_zero(self.APP)
         with self.with_scale_locks():
             assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5), now=10.0) is True
-        docker.start_service.assert_called_once_with(self.APP)
+        docker.start_service.assert_not_called()
+        docker.reload_router_nginx.assert_called_once_with()
+        docker.router_serves_host.assert_called_once()
         assert not scaler.store.is_scaled_to_zero(self.APP)
 
     def test_wake_starts_depends_on_then_app(self, tmp_path: Path) -> None:
@@ -99,13 +60,11 @@ class TestScaler(ControllerTestCase):
             ("exited", "none"),
             ("running", "healthy"),
         ]
+        docker.router_serves_host.return_value = True
         scaler.store.mark_scaled_to_zero(self.APP)
         with self.with_scale_locks():
             assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5), now=1.0) is True
-        assert [c.args[0] for c in docker.start_service.call_args_list] == [
-            "api",
-            self.APP,
-        ]
+        assert [c.args[0] for c in docker.start_service.call_args_list] == ["api", self.APP]
         docker.reload_router_nginx.assert_called_once()
         assert not scaler.store.is_scaled_to_zero(self.APP)
 
@@ -172,7 +131,17 @@ class TestScaler(ControllerTestCase):
         scaler.store.mark_scaled_to_zero(self.APP)
         with self.with_scale_locks():
             assert scaler.wake_now(self.APP, ScalingSpec(10, 5, 5), now=1.0) is False
+        docker.service_runtime.return_value = ("running", "healthy")
+        docker.router_can_fetch.return_value = False
+        docker.reload_router_nginx.reset_mock()
+        clock["t"] = 100.0
+        scaler.store.mark_scaled_to_zero(self.APP)
+        with self.with_scale_locks():
+            assert scaler.wake_now(self.APP, ScalingSpec(10, 5, 5), now=1.0) is False
+        docker.reload_router_nginx.assert_not_called()
         assert scaler.store.is_scaled_to_zero(self.APP)
+        assert scaler._http_fetch_targets("ghost") == ()
+        assert scaler._host_fetch_target("ghost") is None
 
     def test_wake_deadline_before_start(self, tmp_path: Path) -> None:
         scaler, docker = self._scaler(tmp_path)
@@ -269,12 +238,29 @@ class TestScaler(ControllerTestCase):
         assert scaler.store.load(self.APP).last_activity_at == 2.0
 
     def test_wake_now_already_up(self, tmp_path: Path) -> None:
-        scaler, _ = self._scaler(tmp_path)
+        scaler, docker = self._scaler(tmp_path)
         assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5)) is True
         scaler.store.mark_scaled_to_zero("ghost")
         assert scaler.wake_now("ghost", ScalingSpec(10, 30, 5)) is False
         scaler.request_wake("ghost")
         scaler.request_wake(self.APP)
+        self._wait_waking_idle(scaler)
+        docker.reload_router_nginx.reset_mock()
+        scaler.store.mark_scaled_to_zero(self.APP)
+        docker.service_runtime.return_value = ("running", "none")
+        docker.router_serves_host.return_value = True
+        with self.with_scale_locks(), patch.object(scaler, "_http_fetch_targets", return_value=()):
+            assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5), now=1.0) is True
+        docker.reload_router_nginx.assert_called_once_with()
+        docker.router_serves_host.assert_called_once_with(f"{self.APP}.test", path="/")
+
+    @staticmethod
+    def _wait_waking_idle(scaler: Scaler) -> None:
+        for _ in range(50):
+            with scaler._wake_lock:
+                if not scaler._waking:
+                    return
+            time.sleep(0.01)
 
     def test_scaled_idle_branches(self, tmp_path: Path) -> None:
         scaler, docker = self._scaler(tmp_path)

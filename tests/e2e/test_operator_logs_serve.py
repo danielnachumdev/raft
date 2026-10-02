@@ -12,12 +12,12 @@ pytestmark = pytest.mark.e2e
 
 
 class TestOperatorLogsAndServe:
-    """Real Docker apps-only stack → ``raft logs`` + ``raft serve`` HTML.
+    """Real Docker apps-only stack → ``raft logs`` + ``raft serve`` shell/API.
 
     Scenario:
       1) App is applied and running (http-echo).
       2) Operator hits the published port, then snapshots ``raft logs``.
-      3) Operator opens the localhost serve UI against live Status.
+      3) Operator opens the localhost serve shell and loads ``/api/status``.
     """
 
     def test_logs_snapshot_and_serve_dashboard(self, isolated_raft_env: Path) -> None:
@@ -32,8 +32,11 @@ class TestOperatorLogsAndServe:
         assert stack.APP in text or "Listening" in text or "echo" in text.lower()
 
     def _assert_serve_lists_running_app(self, stack: OpsE2EStack) -> None:
-        response = stack.serve_client().get("/")
-        body = response.text
-        assert response.status_code == 200
-        assert "http-only" in body
-        assert "Apps" in body or "apps" in body.lower()
+        client = stack.serve_client()
+        shell = client.get("/")
+        assert shell.status_code == 200
+        assert "status-loading" in shell.text and "Apps" in shell.text
+        api = client.get("/api/status")
+        assert api.status_code == 200
+        names = [row["name"] for row in api.json()["apps"]]
+        assert stack.APP in names or any(stack.APP in n for n in names)

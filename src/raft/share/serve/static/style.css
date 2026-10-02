@@ -47,3 +47,70 @@ td {
 th {
   font-weight: 600;
 }
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1.25rem 0 0.5rem;
+  color: var(--muted);
+}
+.loading[hidden] {
+  display: none;
+}
+.spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--line);
+  border-top-color: var(--fg);
+  border-radius: 50%;
+  animation: raft-spin 0.7s linear infinite;
+}
+@keyframes raft-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.error {
+  color: #8b1a1a;
+  margin: 0.75rem 0;
+}
+.error[hidden] {
+  display: none;
+}
+.placeholder {
+  margin: 0.35rem 0;
+}
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  margin-top: 0.2rem;
+  padding: 0.4rem 0.7rem;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--fg);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.refresh-btn:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+.refresh-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+.refresh-btn.is-loading .refresh-icon {
+  animation: raft-spin 0.7s linear infinite;
+}
+.refresh-icon {
+  display: block;
+}

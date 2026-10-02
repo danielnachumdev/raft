@@ -1,9 +1,9 @@
-"""Map a StatusSnapshot into template-friendly rows."""
+"""Map a StatusSnapshot into template/API-friendly rows."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Tuple
+from dataclasses import asdict, dataclass
+from typing import Any, Dict, Tuple
 
 from ...models import display_service_label
 from ..ops.status.formatters import StatusFormatters
@@ -24,7 +24,7 @@ class ServeRow:
 
 
 class ServeSnapshotView:
-    """Split control-plane vs apps and format columns for SSR."""
+    """Split control-plane vs apps; format columns for SSR and /api/status."""
 
     def __init__(self, snapshot: StatusSnapshot) -> None:
         self.snapshot = snapshot
@@ -34,6 +34,14 @@ class ServeSnapshotView:
 
     def apps(self) -> Tuple[ServeRow, ...]:
         return tuple(self._row(c) for c in self.snapshot.containers if c.role == "app")
+
+    def to_payload(self) -> Dict[str, Any]:
+        """Structured JSON for GET /api/status (see ServePage module comment)."""
+        return {
+            "host": self.snapshot.host.to_dict(),
+            "control_plane": [asdict(r) for r in self.control_plane()],
+            "apps": [asdict(r) for r in self.apps()],
+        }
 
     def _row(self, container: ContainerStatus) -> ServeRow:
         mem = container.memory

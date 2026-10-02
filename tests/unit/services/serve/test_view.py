@@ -32,6 +32,7 @@ class TestServePaths:
         assert (ServePaths.templates_dir() / "index.html").is_file()
         assert (ServePaths.templates_dir() / "trends.html").is_file()
         assert (ServePaths.static_dir() / "style.css").is_file()
+        assert (ServePaths.static_dir() / "status.js").is_file()
 
 
 class TestServeSnapshotView:
@@ -54,3 +55,22 @@ class TestServeSnapshotView:
         assert [r.group for r in plane] == [EDGE_GROUP] * 3
         assert len(apps) == 1 and apps[0].name == "web" and apps[0].group == "demo"
         assert "%" in apps[0].cpu or apps[0].cpu == "-"
+
+    def test_to_payload_includes_host_and_rows(self) -> None:
+        payload = ServeSnapshotView(self._snapshot()).to_payload()
+        assert "cpus" in payload["host"]
+        assert [r["name"] for r in payload["control_plane"]] == [
+            "gate",
+            "router",
+            "controller",
+        ]
+        assert payload["apps"][0]["name"] == "web"
+        assert set(payload["apps"][0]) == {
+            "name",
+            "role",
+            "group",
+            "status",
+            "cpu",
+            "memory",
+            "uptime",
+        }

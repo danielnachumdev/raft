@@ -15,7 +15,7 @@ from .paths import ServePaths
 
 
 class ServeAppFactory:
-    """Build a localhost-only SSR app over the current stack snapshot."""
+    """Build a localhost-only shell + JSON status API over the stack."""
 
     def __init__(self, stack: Stack, status: Optional[Status] = None) -> None:
         self.stack = stack
@@ -26,6 +26,7 @@ class ServeAppFactory:
         templates = Jinja2Templates(directory=str(ServePaths.templates_dir()))
         page = ServePage(self.stack, templates, status=self._status)
         app.get("/")(page.index)
+        app.get("/api/status")(page.api_status)
         app.mount(
             "/static",
             StaticFiles(directory=str(ServePaths.static_dir())),

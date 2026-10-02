@@ -44,6 +44,25 @@ class DockerEdge:
         logger.debug("router_can_fetch %s:%s%s -> %s", hostname, port, fetch_path, ok)
         return ok
 
+    def router_serves_host(self, public_host: str, *, path: str = "/") -> bool:
+        """True when router nginx Host routing reaches the upstream (post-resolve)."""
+        fetch_path = path if path.startswith("/") else f"/{path}"
+        result = self.sh.compose(
+            "exec",
+            "-T",
+            self.stack.router,
+            "wget",
+            "-qO-",
+            "--header",
+            f"Host: {public_host}",
+            f"http://127.0.0.1{fetch_path}",
+            check=False,
+            capture=True,
+        )
+        ok = result.returncode == 0
+        logger.debug("router_serves_host %s%s -> %s", public_host, fetch_path, ok)
+        return ok
+
     def reload_router_nginx(self) -> None:
         logger.info("nginx -t && reload on router")
         result = self.sh.compose(
