@@ -65,6 +65,12 @@ class TestServeAppFactory(RaftTestCase):
         status.collect.assert_called_once()
         data = response.json()
         assert "host" in data
+        assert "containers" in data
+        assert [c["role"] for c in data["containers"][:3]] == [
+            "gate",
+            "router",
+            "controller",
+        ]
         names = [r["name"] for r in data["control_plane"]]
         assert names == ["gate", "router", "controller"]
         assert data["apps"][0]["name"] == "site"
@@ -90,7 +96,7 @@ class TestServeAppFactory(RaftTestCase):
 
     def test_factory_builds_default_status(self) -> None:
         stack = make_stack(self.tmp_path)
-        with patch("raft.services.serve.page.Status") as status_cls:
+        with patch("raft.services.read.status.Status") as status_cls:
             status_cls.return_value = MagicMock()
             ServeAppFactory(stack).create()
         status_cls.assert_called_once_with(stack)
