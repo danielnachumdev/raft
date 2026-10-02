@@ -15,16 +15,12 @@ export type SortDir = "asc" | "desc";
 export type { ColumnFilter, ColumnFilters, FilterOp } from "./statusColumnFilter";
 
 export type StatusPanelPrefs = {
-  query: string;
-  status: string;
   sortKey: SortKey | null;
   sortDir: SortDir;
   columnFilters: ColumnFilters;
 };
 
 const DEFAULT_PREFS: StatusPanelPrefs = {
-  query: "",
-  status: "",
   sortKey: null,
   sortDir: "asc",
   columnFilters: {},
@@ -53,17 +49,6 @@ export function useStatusPanelView(storageKey: string, rows: StatusRow[]) {
     [storageKey],
   );
 
-  const setQuery = useCallback(
-    (query: string) => setAndPersist({ ...prefs, query }),
-    [prefs, setAndPersist],
-  );
-
-  const setStatus = useCallback(
-    (status: string) => setAndPersist({ ...prefs, status }),
-    [prefs, setAndPersist],
-  );
-
-
   const setSort = useCallback(
     (key: SortKey, dir: SortDir) => {
       setAndPersist({ ...prefs, sortKey: key, sortDir: dir });
@@ -87,15 +72,12 @@ export function useStatusPanelView(storageKey: string, rows: StatusRow[]) {
   const clearFilters = useCallback(() => {
     setAndPersist({
       ...prefs,
-      query: "",
-      status: "",
       sortKey: null,
       sortDir: "asc",
       columnFilters: {},
     });
   }, [prefs, setAndPersist]);
 
-  const statusOptions = useMemo(() => uniqueStatuses(rows), [rows]);
   const visible = useMemo(() => applyView(rows, prefs), [rows, prefs]);
   const columnFilterEntries = useMemo(
     () => activeColumnFilterEntries(prefs.columnFilters),
@@ -103,19 +85,13 @@ export function useStatusPanelView(storageKey: string, rows: StatusRow[]) {
   );
 
   const filtersActive =
-    prefs.query.trim() !== "" ||
-    prefs.status !== "" ||
-    prefs.sortKey !== null ||
-    columnFilterEntries.length > 0;
+    prefs.sortKey !== null || columnFilterEntries.length > 0;
 
   return {
     prefs,
     visible,
-    statusOptions,
     filtersActive,
     columnFilterEntries,
-    setQuery,
-    setStatus,
     setSort,
     setColumnFilter,
     clearFilters,
@@ -134,18 +110,6 @@ export function applyView(
 }
 
 function matchesFilters(row: StatusRow, prefs: StatusPanelPrefs): boolean {
-  if (prefs.status && row.status.trim().toLowerCase() !== prefs.status) {
-    return false;
-  }
-  const q = prefs.query.trim().toLowerCase();
-  if (q) {
-    const hay = [row.name, row.service, row.group, row.role]
-      .join(" ")
-      .toLowerCase();
-    if (!hay.includes(q)) {
-      return false;
-    }
-  }
   for (const [key, filter] of Object.entries(prefs.columnFilters)) {
     if (!filter || !matchColumnFilter(row, key as SortKey, filter)) {
       return false;
@@ -206,15 +170,6 @@ export function parseUptimeSeconds(text: string): number | null {
   return matched ? total : null;
 }
 
-function uniqueStatuses(rows: StatusRow[]): string[] {
-  const set = new Set<string>();
-  for (const row of rows) {
-    const s = row.status.trim().toLowerCase();
-    if (s) set.add(s);
-  }
-  return [...set].sort((a, b) => a.localeCompare(b));
-}
-
 function loadPrefs(key: string): StatusPanelPrefs {
   try {
     const raw = sessionStorage.getItem(key);
@@ -238,8 +193,6 @@ function normalizePrefs(raw: Partial<StatusPanelPrefs>): StatusPanelPrefs {
     raw.sortKey && SORTABLE.has(raw.sortKey) ? raw.sortKey : null;
   const sortDir = raw.sortDir === "desc" ? "desc" : "asc";
   return {
-    query: typeof raw.query === "string" ? raw.query : "",
-    status: typeof raw.status === "string" ? raw.status : "",
     sortKey,
     sortDir,
     columnFilters: normalizeColumnFilters(raw.columnFilters),
