@@ -38,7 +38,7 @@ raft get apps
 | `raft apply --file …` / `--git …` | Register + deploy (default path) |
 | `raft doctor` | Health check + fix hints |
 | `raft status` | CPU/memory snapshot (`--live` to watch) |
-| `raft serve` | Localhost React SPA (default `:8787`) + `/api/status`; SSH tunnel from your laptop |
+| `raft serve` | Localhost React SPA (default `:8787`) + `/api/status` + `/api/metrics`; SSH tunnel from your laptop |
 | `raft logs [name…]` | Container stdout/stderr (`--tail N`; `-f` / `--follow`) |
 | `raft redeploy <app>` | Cutover when the app is already running |
 | `raft gate recreate` | After changing published edge ports in settings |
@@ -58,6 +58,8 @@ gcloud compute ssh VM_NAME --zone=ZONE -- -L 8787:127.0.0.1:8787
 ```
 
 Then open `http://127.0.0.1:8787/` in your laptop browser. Stop with Ctrl+C.
+
+The dashboard shows live stack tables plus **resource trends** (CPU / memory) from the controller’s JSONL history (`~/.raft/state/metrics/resources.jsonl`). Charts load by default, support time range / service / metric filters, and refresh via short HTTP polls against `/api/metrics?since=…` (no WebSocket). Host CPU is derived from load average ÷ CPU count; container series use sampled `cpu_percent` / memory percent.
 
 The UI is a **prebuilt** React app shipped as static files inside the Python package (one `raft serve` process). Developers changing the dashboard edit `web/` and run `npm ci && npm run build` so `src/raft/share/serve/spa/` updates before commit/release.
 

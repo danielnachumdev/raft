@@ -2,7 +2,9 @@
 
 Source for the `raft serve` UI. **Runtime is static only**: `npm run build`
 writes into `src/raft/share/serve/spa/`, which FastAPI serves from the same
-process as `/api/status`. There is no separate Node server in production.
+process as `/api/status` and `/api/metrics`. There is no separate Node server
+in production. Trends charts poll `/api/metrics` (with a `since` cursor) rather
+than opening a WebSocket.
 
 ## Develop
 

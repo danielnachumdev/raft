@@ -24,6 +24,7 @@ class ServeAppFactory:
         app = FastAPI(title="raft serve", docs_url=None, redoc_url=None)
         page = ServePage(self.stack, status=self._status)
         app.get("/api/status")(page.api_status)
+        app.get("/api/metrics")(page.api_metrics)
         app.get("/")(page.index)
         app.mount(
             "/assets",

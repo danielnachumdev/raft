@@ -1,0 +1,105 @@
+"""Edge-case coverage for metrics JSONL / series builders."""
+
+from __future__ import annotations
+
+import json
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any, Dict
+
+from raft.controller.metrics import METRICS_DIR, METRICS_FILENAME
+from raft.services.read.metrics import MetricsRead
+from raft.services.read.metrics_jsonl import MetricsJsonlReader
+from raft.services.read.metrics_series import MetricsSeriesBuilder
+from raft.services.serve.page import ServePage
+
+from ...base import RaftTestCase
+
+
+class TestMetricsEdges(RaftTestCase):
+    def test_clamp_window_and_naive_ts(self) -> None:
+        assert MetricsRead._clamp_window(0) == 3600
+        assert MetricsRead._clamp_window(120) == 120
+        assert MetricsRead._clamp_window(999999) == 604800
+        naive = MetricsJsonlReader.parse_ts("2026-10-02T12:00:00")
+        assert naive is not None and naive.tzinfo is not None
+        assert MetricsJsonlReader.parse_ts("") is None
+        assert MetricsJsonlReader.parse_ts("nope") is None
+        assert MetricsJsonlReader._parse_line("[1]") is None
+
+    def test_reverse_read_without_trailing_newline(self) -> None:
+        home = self.tmp_path / "raft"
+        path = home / METRICS_DIR / METRICS_FILENAME
+        path.parent.mkdir(parents=True)
+        now = datetime(2026, 10, 2, 12, 0, tzinfo=timezone.utc)
+        row = {"ts": now.isoformat(), "host": {"cpus": 1}, "containers": []}
+        path.write_bytes(json.dumps(row).encode("utf-8"))  # no trailing \n
+        got = MetricsJsonlReader(path).samples_in_window(
+            from_ts=now - timedelta(hours=1)
+        )
+        assert len(got) == 1
+
+    def test_series_skips_malformed_rows(self) -> None:
+        builder = MetricsSeriesBuilder()
+        samples: list[Dict[str, Any]] = [
+            {"ts": 1},
+            {"ts": "t0", "host": "x", "containers": "nope"},
+            {
+                "ts": "t1",
+                "host": {"loadavg": ["bad"], "cpus": 2},
+                "containers": [
+                    None,
+                    {"service": 7},
+                    {"service": ""},
+                    {"service": "other"},
+                ],
+            },
+            {"ts": "t2", "host": {}, "containers": [{"service": "app"}]},
+        ]
+        series = builder.build(samples, wanted={"host", "app"})
+        assert series["host"]["points"][0]["cpu_percent"] is None
+        assert "app" in series
+        assert {a["id"] for a in builder.available(samples)} >= {"host", "app"}
+
+    def test_empty_jsonl_file(self) -> None:
+        home = self.tmp_path / "raft"
+        path = home / METRICS_DIR / METRICS_FILENAME
+        path.parent.mkdir(parents=True)
+        path.write_text("", encoding="utf-8")
+        assert MetricsJsonlReader(path).samples_in_window(
+            from_ts=datetime(2026, 1, 1, tzinfo=timezone.utc)
+        ) == []
+
+    def test_host_cpu_load_without_cpus(self) -> None:
+        point = MetricsSeriesBuilder._host_point(
+            {"loadavg": [1.5], "memory": {}}, ts="t"
+        )
+        assert point["cpu_percent"] == 1.5
+        assert MetricsSeriesBuilder._host_cpu_percent({"loadavg": []}) is None
+
+    def test_split_services_empty_tokens(self) -> None:
+        assert ServePage._split_services(None) is None
+        assert ServePage._split_services("  ") is None
+        assert ServePage._split_services(" , , ") is None
+        assert ServePage._split_services("a, b") == ["a", "b"]
+
+    def test_wanted_skips_host(self) -> None:
+        home = self.tmp_path / "raft"
+        now = datetime(2026, 10, 2, 12, 0, tzinfo=timezone.utc)
+        path = home / METRICS_DIR / METRICS_FILENAME
+        path.parent.mkdir(parents=True)
+        path.write_text(
+            json.dumps(
+                {
+                    "ts": now.isoformat(),
+                    "host": {"cpus": 2, "loadavg": [1.0], "memory": {}},
+                    "containers": [],
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        payload = MetricsRead(home).history(
+            window_seconds=3600, services=["missing"], now=now
+        )
+        assert payload["series"] == []

@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import json
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 
+from raft.controller.metrics import METRICS_DIR, METRICS_FILENAME
 from raft.models import EDGE_GROUP
 from raft.services.ops.status.models import StatusSnapshot
 from raft.services.serve.app import ServeAppFactory
@@ -38,6 +41,25 @@ class _ServeFixtures:
         status = MagicMock()
         status.collect.return_value = snapshot
         return TestClient(ServeAppFactory(stack, status=status).create()), status
+
+    @staticmethod
+    def write_metrics_sample(stack, *, ts: str) -> None:
+        path = stack.root / METRICS_DIR / METRICS_FILENAME
+        path.parent.mkdir(parents=True, exist_ok=True)
+        row = {
+            "ts": ts,
+            "host": {"cpus": 2, "loadavg": [1.0], "memory": {"used_percent": 10}},
+            "containers": [
+                {
+                    "service": "raft-gate",
+                    "role": "gate",
+                    "group": "raft",
+                    "cpu_percent": 4.0,
+                    "memory": {"used_percent": 20},
+                }
+            ],
+        }
+        path.write_text(json.dumps(row) + "\n", encoding="utf-8")
 
 
 class TestServeAppFactory(RaftTestCase):
@@ -72,6 +94,15 @@ class TestServeAppFactory(RaftTestCase):
         )
         data = client.get("/api/status").json()
         assert data["control_plane"] == [] and data["apps"] == []
+
+    def test_api_metrics_reads_jsonl(self) -> None:
+        stack = make_stack(self.tmp_path)
+        ts = datetime.now(timezone.utc).isoformat()
+        _ServeFixtures.write_metrics_sample(stack, ts=ts)
+        client, _ = _ServeFixtures.client_and_status(stack, _ServeFixtures.empty_snapshot())
+        data = client.get("/api/metrics", params={"window": 3600}).json()
+        assert data["cursor"] == ts
+        assert {s["id"] for s in data["series"]} == {"host", "raft-gate"}
 
     def test_spa_assets_are_served(self) -> None:
         client, _ = _ServeFixtures.client_and_status(
