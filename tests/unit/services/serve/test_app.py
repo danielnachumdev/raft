@@ -50,6 +50,8 @@ class TestServeAppFactory(RaftTestCase):
         assert response.status_code == 200
         status.collect.assert_not_called()
         assert "status-loading" in body and "Loading status" in body
+        assert 'id="status-refresh"' in body
+        assert 'aria-label="Refresh status"' in body
         assert "Control plane" in body and "Apps" in body
         assert 'id="trends"' in body and "/static/status.js" in body
         assert "gate" not in body and "site" not in body
@@ -82,7 +84,9 @@ class TestServeAppFactory(RaftTestCase):
         css = client.get("/static/style.css")
         js = client.get("/static/status.js")
         assert css.status_code == 200 and "color-scheme" in css.text
+        assert "refresh-btn" in css.text
         assert js.status_code == 200 and "/api/status" in js.text
+        assert "status-refresh" in js.text
 
     def test_factory_builds_default_status(self) -> None:
         stack = make_stack(self.tmp_path)

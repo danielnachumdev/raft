@@ -2,6 +2,7 @@
 (function () {
   var COLUMNS = ["name", "group", "status", "cpu", "memory", "uptime"];
   var HEADERS = ["Name", "Group", "Status", "CPU", "Memory", "Uptime"];
+  var inFlight = false;
 
   function el(id) {
     return document.getElementById(id);
@@ -9,9 +10,15 @@
 
   function setLoading(busy) {
     var node = el("status-loading");
-    if (!node) return;
-    node.hidden = !busy;
-    node.setAttribute("aria-busy", busy ? "true" : "false");
+    var btn = el("status-refresh");
+    if (node) {
+      node.hidden = !busy;
+      node.setAttribute("aria-busy", busy ? "true" : "false");
+    }
+    if (btn) {
+      btn.disabled = busy;
+      btn.classList.toggle("is-loading", busy);
+    }
   }
 
   function showError(message) {
@@ -19,6 +26,13 @@
     if (!node) return;
     node.hidden = false;
     node.textContent = message;
+  }
+
+  function clearError() {
+    var node = el("status-error");
+    if (!node) return;
+    node.hidden = true;
+    node.textContent = "";
   }
 
   function emptyMessage(text) {
@@ -70,6 +84,9 @@
   }
 
   function loadStatus() {
+    if (inFlight) return;
+    inFlight = true;
+    clearError();
     setLoading(true);
     fetch("/api/status")
       .then(function (res) {
@@ -78,17 +95,29 @@
       })
       .then(function (data) {
         applyPayload(data);
+        inFlight = false;
         setLoading(false);
       })
       .catch(function () {
+        inFlight = false;
         setLoading(false);
-        showError("Failed to load status. Refresh the page or check raft serve.");
+        showError("Failed to load status. Refresh or check raft serve.");
       });
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", loadStatus);
-  } else {
+  function bindRefresh() {
+    var btn = el("status-refresh");
+    if (btn) btn.addEventListener("click", loadStatus);
+  }
+
+  function start() {
+    bindRefresh();
     loadStatus();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start);
+  } else {
+    start();
   }
 })();
