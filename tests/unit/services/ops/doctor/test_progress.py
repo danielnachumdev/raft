@@ -55,6 +55,22 @@ class TestDoctorProgress(DoctorTestCase):
             progress.update("host")
         assert stream.getvalue() == ""
 
+    def test_spinner_noop_when_stream_lacks_isatty(self) -> None:
+        class _Bare:
+            def __init__(self) -> None:
+                self.buf: list[str] = []
+
+            def write(self, text: str) -> None:
+                self.buf.append(text)
+
+            def flush(self) -> None:
+                return None
+
+        stream = _Bare()
+        with DoctorProgress(stream) as progress:
+            progress.update("host")
+        assert stream.buf == []
+
     def test_spinner_writes_and_clears_on_tty(self) -> None:
         stream = _Tty()
         with DoctorProgress(stream) as progress:
