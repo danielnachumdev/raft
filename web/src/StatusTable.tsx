@@ -46,14 +46,10 @@ export function StatusTable(props: {
   return (
     <div className="status-panel-body">
       <StatusPanelControls
-        prefs={view.prefs}
-        statusOptions={view.statusOptions}
         filtersActive={view.filtersActive}
         columnFilterEntries={view.columnFilterEntries}
         shown={view.visible.length}
         total={props.rows.length}
-        onQuery={view.setQuery}
-        onStatus={view.setStatus}
         onClear={view.clearFilters}
         onClearColumnFilter={(key) => view.setColumnFilter(key, null)}
       />
