@@ -100,6 +100,7 @@ export function TrendsPanel() {
           }}
           onToggle={(id) => setSelected(toggleId(activeIds, id, catalog))}
           onShowAll={() => setSelected(null)}
+          onClearAll={() => setSelected([])}
         />
         <div className="trends-main">
           {busy ? (
@@ -176,6 +177,7 @@ function TrendsFilters(props: {
   onScope: (s: ScopeKind) => void;
   onToggle: (id: string) => void;
   onShowAll: () => void;
+  onClearAll: () => void;
 }) {
   return (
     <aside className="trends-sidebar" aria-label="Trend filters">
@@ -238,6 +240,7 @@ function TrendsFilters(props: {
         busy={props.busy}
         onToggle={props.onToggle}
         onShowAll={props.onShowAll}
+        onClearAll={props.onClearAll}
       />
     </aside>
   );
@@ -250,6 +253,7 @@ function ServicesFilter(props: {
   busy: boolean;
   onToggle: (id: string) => void;
   onShowAll: () => void;
+  onClearAll: () => void;
 }) {
   const [query, setQuery] = useState("");
   const filtered = useMemo(() => {
@@ -260,21 +264,34 @@ function ServicesFilter(props: {
         a.label.toLowerCase().includes(q) || a.id.toLowerCase().includes(q),
     );
   }, [props.available, query]);
+  const noneSelected = props.activeIds.length === 0;
 
   return (
     <div className="trends-services-block">
       <div className="trends-services-head">
         <span className="trends-services-title">Services</span>
-        <button
-          type="button"
-          className="trends-show-all"
-          onClick={props.onShowAll}
-          disabled={
-            props.busy || props.showingAll || props.available.length === 0
-          }
-        >
-          Show all
-        </button>
+        <div className="trends-services-actions">
+          <button
+            type="button"
+            className="trends-clear-all"
+            onClick={props.onClearAll}
+            disabled={
+              props.busy || noneSelected || props.available.length === 0
+            }
+          >
+            Clear all
+          </button>
+          <button
+            type="button"
+            className="trends-show-all"
+            onClick={props.onShowAll}
+            disabled={
+              props.busy || props.showingAll || props.available.length === 0
+            }
+          >
+            Show all
+          </button>
+        </div>
       </div>
       <input
         type="search"

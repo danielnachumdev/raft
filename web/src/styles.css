@@ -433,7 +433,14 @@ th {
   color: var(--muted);
 }
 
-.trends-show-all {
+.trends-services-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.trends-show-all,
+.trends-clear-all {
   border: none;
   background: transparent;
   color: var(--accent);
@@ -445,7 +452,8 @@ th {
   text-underline-offset: 0.15em;
 }
 
-.trends-show-all:disabled {
+.trends-show-all:disabled,
+.trends-clear-all:disabled {
   color: var(--muted);
   text-decoration: none;
   cursor: default;
