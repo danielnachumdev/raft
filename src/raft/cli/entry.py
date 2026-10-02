@@ -24,6 +24,7 @@ from ..services.ops.certs import missing_origin_certs
 from ..ui import say_err
 from .argv import ApplyEnvArgvBridge
 from .fire_run import run_fire
+from .logs_argv import LogsArgvNormalizer
 from .root import RaftCLI
 
 
@@ -73,6 +74,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     raw = list(argv) if argv is not None else sys.argv[1:]
     bridge = ApplyEnvArgvBridge()
     command, token = bridge.bind(raw)
+    command = LogsArgvNormalizer().normalize(command)
     try:
         run_fire(RaftCLI, command=command, name="raft")
     finally:

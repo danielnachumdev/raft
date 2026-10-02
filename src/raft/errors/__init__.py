@@ -64,6 +64,7 @@ from .domain import (
     require_mapping,
     service_not_running,
     unknown_app,
+    unknown_logs_target,
 )
 from .git_msgs import (
     git_auth_failure_message,
@@ -144,4 +145,5 @@ __all__ = [
     "subprocess_detail",
     "summarize_health_inspect",
     "unknown_app",
+    "unknown_logs_target",
 ]

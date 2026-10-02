@@ -16,6 +16,13 @@ def unknown_app(name: str, known: str) -> OperatorError:
     )
 
 
+def unknown_logs_target(name: str, known: str) -> OperatorError:
+    return OperatorError(
+        f"unknown logs target {name!r} (known: {known}).\n"
+        f"Fix: raft logs <app|gate|router|controller>   # see: raft get apps"
+    )
+
+
 def app_not_applied(name: str, known: str) -> OperatorError:
     return OperatorError(f"app {name!r} is not applied (known: {known}).\n" f"Fix: raft get apps")
 
@@ -152,4 +159,5 @@ __all__ = [
     "require_mapping",
     "service_not_running",
     "unknown_app",
+    "unknown_logs_target",
 ]
