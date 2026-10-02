@@ -48,3 +48,19 @@ class TestLogsShow(RaftTestCase):
             with patch.object(logs.docker, "compose_logs", return_value=""):
                 logs.show("app", out=out)
         assert out.getvalue() == ""
+
+    def test_snapshot_returns_compose_logs_text(self) -> None:
+        logs = self._logs()
+        with patch.object(logs.docker, "try_service_container_id", return_value="cid"):
+            with patch.object(
+                logs.docker, "compose_logs", return_value="line1\nline2"
+            ) as compose:
+                text = logs.snapshot("app", tail=20)
+        compose.assert_called_once_with("app", tail=20)
+        assert text == "line1\nline2"
+
+    def test_snapshot_empty_returns_empty_string(self) -> None:
+        logs = self._logs()
+        with patch.object(logs.docker, "try_service_container_id", return_value="cid"):
+            with patch.object(logs.docker, "compose_logs", return_value=""):
+                assert logs.snapshot("app") == ""

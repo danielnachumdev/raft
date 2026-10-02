@@ -112,6 +112,30 @@ export async function fetchService(name: string): Promise<ServiceDetailPayload> 
   return (await res.json()) as ServiceDetailPayload;
 }
 
+export type ServiceLogsPayload = {
+  service: string;
+  tail: number;
+  text: string;
+};
+
+export const DEFAULT_LOG_TAIL = 100;
+
+export async function fetchServiceLogs(
+  name: string,
+  tail: number = DEFAULT_LOG_TAIL,
+): Promise<ServiceLogsPayload> {
+  const params = new URLSearchParams();
+  params.set("tail", String(tail));
+  const res = await fetch(
+    `/api/service/${encodeURIComponent(name)}/logs?${params.toString()}`,
+  );
+  const body = await readJsonBody(res);
+  if (!res.ok) {
+    throw new Error(detailFromBody(body) || `logs failed (${res.status})`);
+  }
+  return body as ServiceLogsPayload;
+}
+
 export type ServiceAction = "start" | "stop" | "redeploy";
 
 export type ServiceActionResult = {
