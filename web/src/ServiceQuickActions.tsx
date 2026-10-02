@@ -13,7 +13,7 @@ type Props = {
 /** Icon quick actions for a status-table row (logs + start/stop/redeploy). */
 export function ServiceQuickActions(props: Props) {
   const runner = useServiceActionRunner(props.service, props.onDone);
-  const { busy, error, locked, run } = runner;
+  const { busy, locked, run } = runner;
 
   return (
     <div className="quick-actions" onClick={stopRowNav} onKeyDown={stopRowNav}>
@@ -57,11 +57,6 @@ export function ServiceQuickActions(props: Props) {
       >
         <IconRestart />
       </QuickActionButton>
-      {error ? (
-        <p className="quick-actions-error" role="alert" title={error}>
-          {error}
-        </p>
-      ) : null}
       <ServiceActionConfirm runner={runner} />
     </div>
   );

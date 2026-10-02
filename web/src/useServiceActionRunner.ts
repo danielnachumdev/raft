@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import type { ServiceAction } from "./api";
-import { postServiceAction } from "./api";
+import { postServiceAction, servicePath } from "./api";
+import { toast } from "./toast";
 
 export type ServiceConfirmRequest = {
   action: ServiceAction;
@@ -12,8 +13,6 @@ export type ServiceConfirmRequest = {
 
 export type ServiceActionRunner = {
   busy: ServiceAction | null;
-  error: string | null;
-  message: string | null;
   locked: boolean;
   confirm: ServiceConfirmRequest | null;
   run: (action: ServiceAction) => Promise<void>;
@@ -21,15 +20,13 @@ export type ServiceActionRunner = {
   cancelConfirm: () => void;
 };
 
-/** Shared start/stop/redeploy runner (custom confirm + POST + busy/error). */
+/** Shared start/stop/redeploy: custom confirm modal + POST + toast feedback. */
 export function useServiceActionRunner(
   service: string,
   onDone: () => void,
   disabled = false,
 ): ServiceActionRunner {
   const [busy, setBusy] = useState<ServiceAction | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<ServiceConfirmRequest | null>(null);
   const resolveConfirm = useRef<((ok: boolean) => void) | null>(null);
   const locked = disabled || busy !== null || confirm !== null;
@@ -37,14 +34,18 @@ export function useServiceActionRunner(
   const run = async (action: ServiceAction) => {
     if (!(await askConfirm(action, service))) return;
     setBusy(action);
-    setError(null);
-    setMessage(null);
     try {
       await postServiceAction(service, action);
-      setMessage(`${labelFor(action)} succeeded.`);
+      toast.good({
+        message: `${labelFor(action)} succeeded for ${service}.`,
+        href: servicePath(service),
+        linkLabel: "View service",
+      });
       onDone();
     } catch (err) {
-      setError(err instanceof Error ? err.message : `${labelFor(action)} failed.`);
+      const detail =
+        err instanceof Error ? err.message : `${labelFor(action)} failed.`;
+      toast.bad(`${labelFor(action)} failed: ${detail}`);
     } finally {
       setBusy(null);
     }
@@ -52,8 +53,6 @@ export function useServiceActionRunner(
 
   return {
     busy,
-    error,
-    message,
     locked,
     confirm,
     run,
