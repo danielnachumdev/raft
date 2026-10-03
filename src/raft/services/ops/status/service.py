@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any, Optional, Tuple
 
 from ....adapters import Shell
+from ....adapters.docker.crash_loop import CrashLoopDetector
 from ....adapters.docker.runtime import ContainerRuntimeGateway, ContainerRuntimeRow
 from ....adapters.host import DockerStatsText, HostGateway, HostResources
 from ....errors import OperatorError
@@ -137,14 +137,21 @@ class Status:
         allocated: AllocatedResources,
         row: ContainerRuntimeRow,
     ) -> ContainerStatus:
+        uptime = self._parse_started_at(row.started_at)
         return self._container_row(
             service,
             role,
             app_name,
             group,
             allocated,
-            status=StatusFormatters.container_status(row.status, row.health),
-            uptime_seconds=self._parse_started_at(row.started_at),
+            status=StatusFormatters.container_status(
+                row.status,
+                row.health,
+                restart_count=row.restart_count,
+                uptime_seconds=uptime,
+                oom_killed=row.oom_killed,
+            ),
+            uptime_seconds=uptime,
             stats_row=row.stats,
             inspect_memory=row.memory_bytes,
         )
@@ -220,19 +227,7 @@ class Status:
 
     @staticmethod
     def _parse_started_at(raw: str) -> Optional[float]:
-        text = (raw or "").strip()
-        if not text or text.startswith("0001-01-01"):
-            return None
-        if text.endswith("Z"):
-            text = text[:-1] + "+00:00"
-        try:
-            started = datetime.fromisoformat(text)
-        except ValueError:
-            return None
-        if started.tzinfo is None:
-            started = started.replace(tzinfo=timezone.utc)
-        now = datetime.now(timezone.utc)
-        return max(0.0, (now - started).total_seconds())
+        return CrashLoopDetector.uptime_seconds(raw)
 
     @staticmethod
     def _host_status(gateway: HostGateway) -> HostStatus:

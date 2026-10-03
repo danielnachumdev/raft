@@ -5,15 +5,30 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from .models import STATUS_STARTING, STATUS_UNHEALTHY
+from ....adapters.docker.crash_loop import CrashLoopDetector
+from .models import STATUS_CRASH_LOOPING, STATUS_STARTING, STATUS_UNHEALTHY
 
 
 class StatusFormatters:
     """Format bytes / percent / uptime / started / loadavg for status tables."""
 
     @staticmethod
-    def container_status(status: str, health: str = "none") -> str:
-        """Map Docker State.Status + Health into the STATUS column label."""
+    def container_status(
+        status: str,
+        health: str = "none",
+        *,
+        restart_count: int = 0,
+        uptime_seconds: Optional[float] = None,
+        oom_killed: bool = False,
+    ) -> str:
+        """Map Docker State + restart facts into the STATUS column label."""
+        if CrashLoopDetector.is_crash_looping(
+            status=status,
+            restart_count=restart_count,
+            uptime_seconds=uptime_seconds,
+            oom_killed=oom_killed,
+        ):
+            return STATUS_CRASH_LOOPING
         if status == "running" and health == "unhealthy":
             return STATUS_UNHEALTHY
         if status == "running" and health == "starting":

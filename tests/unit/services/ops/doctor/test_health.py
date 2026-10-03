@@ -1,10 +1,12 @@
-"""Doctor fails running-but-unhealthy / restarting containers."""
+"""Doctor fails running-but-unhealthy / restarting / crash-looping containers."""
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 from raft.adapters.docker.compose_status import ComposeStatusTable
+from raft.adapters.docker.runtime import ContainerRuntimeRow
 from raft.models.scaling_store import ScalingStore
 from raft.models.stack import load_stack
 from raft.services.ops.doctor.checks.runtime import RuntimeChecks
@@ -81,6 +83,55 @@ class TestDoctorHealth(DoctorTestCase):
             results = {(r.service, r.check): r for r in RuntimeChecks().run(ctx)}
         assert results[("app", "running")].status == "fail"
         assert results[("app", "running")].detail == "restarting"
+
+    def test_controller_crash_loop_fails(self) -> None:
+        docker = self.mock_docker(
+            running=RunningServices.with_apps("app"),
+            runtime={
+                "raft-gate": ("running", "none"),
+                "raft-router": ("running", "none"),
+                "raft-controller": ("running", "none"),
+                "app": ("running", "none"),
+            },
+        )
+        ctx = self._ctx(docker)
+        ctx._runtime_cache["rows"] = {"raft-controller": self._churn_row()}
+        with patch("shutil.which", return_value="/usr/bin/docker"):
+            results = {(r.service, r.check): r for r in RuntimeChecks().run(ctx)}
+        hit = results[("raft-controller", "running")]
+        assert hit.status == "fail"
+        assert "crash-looping" in hit.detail
+        assert "RestartCount" in hit.fix
+
+    def test_stable_controller_not_crash_loop(self) -> None:
+        docker = self.mock_docker(
+            running=RunningServices.edge(),
+            runtime={"raft-controller": ("running", "none")},
+        )
+        ctx = self._ctx(docker)
+        ctx._runtime_cache["rows"] = {
+            "raft-controller": self._churn_row(restarts=40, age_seconds=7200)
+        }
+        with patch("shutil.which", return_value="/usr/bin/docker"):
+            results = {(r.service, r.check): r for r in RuntimeChecks().run(ctx)}
+        assert ("raft-controller", "running") not in results
+
+    @staticmethod
+    def _churn_row(
+        *, restarts: int = 12, age_seconds: int = 45
+    ) -> ContainerRuntimeRow:
+        started = (
+            datetime.now(timezone.utc) - timedelta(seconds=age_seconds)
+        ).strftime("%Y-%m-%dT%H:%M:%SZ")
+        return ContainerRuntimeRow(
+            container_id="ctrl",
+            status="running",
+            health="none",
+            started_at=started,
+            memory_bytes=128 * 1024**2,
+            stats=None,
+            restart_count=restarts,
+        )
 
     def test_scaled_to_zero_skips_health(self) -> None:
         docker = self.mock_docker(running=RunningServices.edge())

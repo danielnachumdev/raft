@@ -11,6 +11,8 @@ STATUS_SCALED_TO_ZERO = "scaled-to-zero"
 # Present container: Docker health is unhealthy / healthcheck still starting.
 STATUS_UNHEALTHY = "unhealthy"
 STATUS_STARTING = "starting"
+# Restart churn from Engine RestartCount/StartedAt/OOM (see CrashLoopDetector).
+STATUS_CRASH_LOOPING = "crash-looping"
 
 # Matches ``x-resources-edge`` in ``share/compose.yaml``.
 EDGE_CPUS_LIMIT = "0.25"

@@ -12,6 +12,7 @@ from ....models import display_service_label
 from ....ui import BOLD, CYAN, DIM, paint, want_color
 from .formatters import StatusFormatters
 from .models import (
+    STATUS_CRASH_LOOPING,
     STATUS_SCALED_TO_ZERO,
     ContainerStatus,
     HostStatus,
@@ -21,6 +22,10 @@ from .models import (
 _DEFAULT_LIVE_INTERVAL = 1.0
 _SCALED_HINT = (
     "  scaled-to-zero means idle scale-to-zero (intentional; traffic wakes the app)."
+)
+_CRASH_HINT = (
+    "  crash-looping means Engine RestartCount≥3 with uptime under 10m "
+    "(or OOMKilled / restarting) — not healthy running."
 )
 
 
@@ -181,6 +186,8 @@ class StatusReportWriter:
         print(limits, file=stream)
         if any(c.status == STATUS_SCALED_TO_ZERO for c in containers):
             print(paint(_SCALED_HINT, CYAN, stream=stream, color=color), file=stream)
+        if any(c.status == STATUS_CRASH_LOOPING for c in containers):
+            print(paint(_CRASH_HINT, CYAN, stream=stream, color=color), file=stream)
         if live_footer:
             print(paint("  Ctrl+C to exit", DIM, stream=stream, color=color), file=stream)
 

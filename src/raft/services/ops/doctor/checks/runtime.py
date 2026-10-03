@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import shutil
+from typing import Optional, Tuple
 
+from raft.adapters.docker.crash_loop import CrashLoopDetector
 from raft.models.scaling_store import ScalingStore
 
 from ..context import DoctorContext
 from ..models import INFRA, CheckResult
+
+_Bad = Optional[Tuple[str, str]]
 
 
 class RuntimeChecks:
@@ -65,11 +69,12 @@ class RuntimeChecks:
     def _health_for_running(
         cls, ctx: DoctorContext, running: set[str]
     ) -> list[CheckResult]:
-        """Fail/warn when a running app or controller is unhealthy/restarting."""
+        """Fail/warn when a running app or controller is unhealthy/crash-looping."""
         edge = {ctx.stack.gate, ctx.stack.router}
         skip = edge | cls._scaled_compose_ids(ctx)
         results: list[CheckResult] = []
-        for service in sorted(running | cls._restarting_services(ctx, skip)):
+        watched = running | cls._restarting_services(ctx, skip)
+        for service in sorted(watched):
             if service in skip:
                 continue
             result = cls._health_result(ctx, service)
@@ -92,16 +97,42 @@ class RuntimeChecks:
     @classmethod
     def _health_result(cls, ctx: DoctorContext, service: str) -> CheckResult:
         status, health = ctx.service_runtime(service)
-        bad = cls._bad_health(status, health)
+        bad = cls._crash_loop_bad(ctx, service) or cls._bad_health(status, health)
         if bad is None:
             return CheckResult(service, "running", "ok", "up")
         level, detail = bad
-        return CheckResult(
-            service, "running", level, detail, fix=cls._health_fix(service)
+        fix = (
+            CrashLoopDetector.fix_cta(service)
+            if detail.startswith("crash-looping")
+            else cls._health_fix(service)
+        )
+        return CheckResult(service, "running", level, detail, fix=fix)
+
+    @classmethod
+    def _crash_loop_bad(cls, ctx: DoctorContext, service: str) -> _Bad:
+        row = ctx.runtime_rows().get(service)
+        if row is None:
+            return None
+        uptime = CrashLoopDetector.uptime_seconds(row.started_at)
+        if not CrashLoopDetector.is_crash_looping(
+            status=row.status,
+            restart_count=row.restart_count,
+            uptime_seconds=uptime,
+            oom_killed=row.oom_killed,
+        ):
+            return None
+        # Intentional stop must not look like crash-loop (scaled apps skipped upstream).
+        return (
+            "fail",
+            CrashLoopDetector.detail(
+                restart_count=row.restart_count,
+                uptime_seconds=uptime,
+                oom_killed=row.oom_killed,
+            ),
         )
 
     @staticmethod
-    def _bad_health(status: str, health: str):
+    def _bad_health(status: str, health: str) -> _Bad:
         if status == "restarting":
             return ("fail", "restarting")
         if health == "unhealthy":
@@ -126,7 +157,9 @@ class RuntimeChecks:
             live = [s for s in expected if s in running]
             return CheckResult(INFRA, "stack", "ok", f"running: {', '.join(live)}")
         if not running:
-            return CheckResult(INFRA, "stack", "warn", "no core services running", fix="raft up")
+            return CheckResult(
+                INFRA, "stack", "warn", "no core services running", fix="raft up"
+            )
         return CheckResult(
             INFRA,
             "stack",

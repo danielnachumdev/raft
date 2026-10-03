@@ -7,6 +7,7 @@ from typing import Callable, Dict, Optional
 
 from ....adapters import DockerStack, Shell
 from ....adapters.docker.compose_status import ComposeStatusTable
+from ....adapters.docker.runtime import ContainerRuntimeGateway, ContainerRuntimeRow
 from ....models import Stack
 from ....ui.progress import TerminalProgress
 from ...auth import GitAuthManager
@@ -20,6 +21,9 @@ class DoctorContext:
     docker: DockerStack
     on_progress: Optional[Callable[[str], None]] = None
     _compose_cache: Dict[str, ComposeStatusTable] = field(
+        default_factory=dict, repr=False, compare=False
+    )
+    _runtime_cache: Dict[str, Dict[str, ContainerRuntimeRow]] = field(
         default_factory=dict, repr=False, compare=False
     )
 
@@ -37,6 +41,15 @@ class DoctorContext:
         if cached is None:
             cached = self.docker.compose_service_status()
             self._compose_cache["table"] = cached
+        return cached
+
+    def runtime_rows(self) -> Dict[str, ContainerRuntimeRow]:
+        """Engine inspect/stats rows for core services (once per doctor run)."""
+        cached = self._runtime_cache.get("rows")
+        if cached is None:
+            gateway = ContainerRuntimeGateway(self.shell)
+            cached = gateway.collect(list(self.stack.core_services))
+            self._runtime_cache["rows"] = cached
         return cached
 
     def running_services(self) -> list[str]:

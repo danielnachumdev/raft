@@ -175,9 +175,18 @@ class DockerInspect:
             "status": str(state.get("Status") or "unknown"),
             "health": health or "none",
             "started_at": str(state.get("StartedAt") or ""),
+            "finished_at": str(state.get("FinishedAt") or ""),
+            "restart_count": DockerInspect._restart_count(data.get("RestartCount")),
+            "oom_killed": bool(state.get("OOMKilled")),
+            "exit_code": DockerInspect._optional_int(state.get("ExitCode")),
             "nano_cpus": DockerInspect._optional_int(host.get("NanoCpus")),
             "memory_bytes": DockerInspect._optional_int(host.get("Memory")),
         }
+
+    @staticmethod
+    def _restart_count(raw: Any) -> int:
+        value = DockerInspect._optional_int(raw)
+        return value if value is not None and value >= 0 else 0
 
     @staticmethod
     def _optional_int(raw: Any) -> Optional[int]:
