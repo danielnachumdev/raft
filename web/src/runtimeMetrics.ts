@@ -1,4 +1,4 @@
-import type { MetricsPoint } from "./api";
+import type { MetricsPoint } from "./api.ts";
 
 /** Graphable Runtime fields from the service detail page / metrics series. */
 export type RuntimeMetricId =

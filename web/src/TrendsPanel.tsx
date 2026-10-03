@@ -18,10 +18,9 @@ import {
   type RuntimeMetricId,
 } from "./runtimeMetrics";
 import {
-  buildPerGroupSeries,
   groupOptions,
   isSingleLineAvg,
-  seriesInGroups,
+  resolveVisibleSeries,
   usesGroupPicker,
   type GroupOption,
   type SeriesViewMode,
@@ -120,7 +119,7 @@ export function TrendsPanel() {
 
   const visible = useMemo(
     () =>
-      resolveVisible({
+      resolveVisibleSeries({
         series,
         viewMode,
         selected,
@@ -195,23 +194,6 @@ export function TrendsPanel() {
   );
 }
 
-function resolveVisible(args: {
-  series: MetricsSeries[];
-  viewMode: SeriesViewMode;
-  selected: string[] | null;
-  activeIds: string[];
-  metricId: RuntimeMetricId;
-}): MetricsSeries[] {
-  if (args.viewMode === "per_group") {
-    return buildPerGroupSeries(args.series, args.activeIds, args.metricId);
-  }
-  if (args.viewMode === "avg_group") {
-    return seriesInGroups(args.series, args.activeIds);
-  }
-  if (args.selected === null) return args.series;
-  return args.series.filter((s) => args.selected!.includes(s.id));
-}
-
 function TrendsBody(props: {
   error: string | null;
   series: MetricsSeries[];
@@ -253,9 +235,7 @@ function TrendsBody(props: {
       unit={props.metric.unit}
       windowSeconds={props.windowSec}
       aggregate={isSingleLineAvg(props.viewMode)}
-      aggregateLabel={
-        props.viewMode === "avg_group" ? "Group average" : "Average"
-      }
+      aggregateLabel="Average"
       events={props.events}
       allSeries={props.series}
     />

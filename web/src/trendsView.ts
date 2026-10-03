@@ -1,5 +1,8 @@
-import type { MetricsAvailable, MetricsPoint, MetricsSeries } from "./api";
-import { runtimePointValue, type RuntimeMetricId } from "./runtimeMetrics";
+import type { MetricsAvailable, MetricsPoint, MetricsSeries } from "./api.ts";
+import {
+  runtimePointValue,
+  type RuntimeMetricId,
+} from "./runtimeMetrics.ts";
 
 export type SeriesViewMode =
   | "per_service"
@@ -16,8 +19,24 @@ export function usesGroupPicker(mode: SeriesViewMode): boolean {
   return mode === "per_group" || mode === "avg_group";
 }
 
+/** Chart-level single average line — only ``avg_all`` (not per-group means). */
 export function isSingleLineAvg(mode: SeriesViewMode): boolean {
-  return mode === "avg_all" || mode === "avg_group";
+  return mode === "avg_all";
+}
+
+/** Resolve plotted series for the Trends view mode + sidebar selection. */
+export function resolveVisibleSeries(args: {
+  series: MetricsSeries[];
+  viewMode: SeriesViewMode;
+  selected: string[] | null;
+  activeIds: string[];
+  metricId: RuntimeMetricId;
+}): MetricsSeries[] {
+  if (args.viewMode === "per_group" || args.viewMode === "avg_group") {
+    return buildPerGroupSeries(args.series, args.activeIds, args.metricId);
+  }
+  if (args.selected === null) return args.series;
+  return args.series.filter((s) => args.selected!.includes(s.id));
 }
 
 export function groupKey(group: string | null | undefined): string {
