@@ -25,16 +25,16 @@ _UUID = re.compile(
 
 
 class TestDoctorLogObservability:
-    """Operator-facing doctor log story (retention + tid + suite timings).
+    """Operator-facing doctor log story (rotation + tid + suite timings).
 
     Scenario:
       1) raft.log is oversized under configured retentionMaxBytes.
-      2) Operator bootstraps logging (CLI setup_logging path) → prune.
+      2) Operator bootstraps logging (CLI setup_logging path) → seal aside.
       3) Operator runs ``raft doctor`` under one TraceContext.
       4) raft.log shows one tid on suite timings and compose-call summary.
     """
 
-    def test_prune_then_doctor_writes_tid_and_suite_timings(
+    def test_seal_then_doctor_writes_tid_and_suite_timings(
         self, isolated_raft_env: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         home = isolated_raft_env

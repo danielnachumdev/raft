@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from .log_retention import LogRetention
+from .log_rotation import LogRotatingFileHandler, LogRotationBootstrap
 from .settings import RaftConfig
 from .trace_context import TraceContext
 
@@ -29,23 +29,32 @@ def setup_logging(data_home: Path, config: RaftConfig) -> Path:
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = log_cfg.resolve_file(data_home)
     level = getattr(logging, log_cfg.level.upper(), logging.INFO)
-    LogRetention(
+    LogRotationBootstrap(
         max_age_days=log_cfg.retention_max_age_days,
         max_bytes=log_cfg.retention_max_bytes,
-    ).prune(log_file)
-    root = _configure_raft_logger(log_file, level)
+    ).prepare(log_file)
+    root = _configure_raft_logger(
+        log_file,
+        level,
+        max_bytes=log_cfg.retention_max_bytes,
+    )
     _CONFIGURED = True
     root.debug("logging configured file=%s level=%s", log_file, log_cfg.level)
     return log_file
 
 
-def _configure_raft_logger(log_file: Path, level: int) -> logging.Logger:
+def _configure_raft_logger(
+    log_file: Path,
+    level: int,
+    *,
+    max_bytes: int,
+) -> logging.Logger:
     root = logging.getLogger("raft")
     root.handlers.clear()
     root.setLevel(level)
     root.propagate = False
     formatter = logging.Formatter(fmt=_FILE_FORMAT, datefmt=_FILE_DATEFMT)
-    file_handler = logging.FileHandler(log_file, encoding="utf-8")
+    file_handler = LogRotatingFileHandler(log_file, max_bytes=max_bytes)
     file_handler.setLevel(level)
     file_handler.addFilter(TraceIdFilter())
     file_handler.setFormatter(formatter)
