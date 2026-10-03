@@ -27,6 +27,28 @@ class TestOrchUpScale(OrchestratorTestCase, ControllerTestCase):
         )
         assert ScalingStore(self.tmp_path).is_scaled_to_zero("app")
 
+    def test_start_parks_deferred_upstreams_before_router(self) -> None:
+        """Awake-then-down scaling apps must be parked before compose starts router."""
+        write_applied_app(self.tmp_path, "app", extra=self.scaling_extra())
+        orch = self._orch_cold_edge()
+        order: list[str] = []
+
+        def on_park(app, *, reload: bool = False) -> None:
+            order.append(f"park:{app.name}")
+
+        def on_start(*_args, **_kwargs) -> None:
+            assert ScalingStore(self.tmp_path).is_scaled_to_zero("app")
+            order.append("start")
+
+        orch.nginx.point_absent.side_effect = on_park
+        orch.docker.start_stack.side_effect = on_start
+        with patch.object(orch, "sync"):
+            orch.start()
+        assert order.index("park:app") < order.index("start")
+        orch.nginx.point_absent.assert_called_once_with(
+            orch.stack.app("app"), reload=False
+        )
+
     def test_start_without_scaling_uses_full_stack_up(self) -> None:
         orch = self.orch
         orch.docker.running_services.side_effect = [
