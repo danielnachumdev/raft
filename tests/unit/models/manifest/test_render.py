@@ -20,28 +20,31 @@ MAIL_PORTS_EXTRA = {
     "readiness": {"type": "tcp", "port": "smtp"},
 }
 
-REDIS_EXTRA = {
-    "ports": [{"name": "redis", "containerPort": 6379, "expose": "none"}],
-    "readiness": {"type": "tcp", "port": "redis"},
-    "group": "demo",
-    "envFile": "/home/raft/.raft/demo.env",
-    "env": {"FOO": "bar"},
-    "volumes": [
-        {
-            "hostPath": "/mnt/raft-data/demo/redis",
-            "containerPath": "/data",
-            "readOnly": False,
-        }
-    ],
-}
+def _redis_extra(env_file: str) -> dict:
+    return {
+        "ports": [{"name": "redis", "containerPort": 6379, "expose": "none"}],
+        "readiness": {"type": "tcp", "port": "redis"},
+        "group": "demo",
+        "envFile": env_file,
+        "env": {"FOO": "bar"},
+        "volumes": [
+            {
+                "hostPath": "/mnt/raft-data/demo/redis",
+                "containerPath": "/data",
+                "readOnly": False,
+            }
+        ],
+    }
 
-FRONT_EXTRA = {
-    "ports": [{"name": "smtp", "containerPort": 25, "expose": "host", "publicPort": 25}],
-    "readiness": {"type": "tcp", "port": "smtp"},
-    "group": "demo",
-    "dependsOn": ["stack-redis"],
-    "envFile": "/home/raft/.raft/demo.env",
-}
+
+def _front_extra(env_file: str) -> dict:
+    return {
+        "ports": [{"name": "smtp", "containerPort": 25, "expose": "host", "publicPort": 25}],
+        "readiness": {"type": "tcp", "port": "smtp"},
+        "group": "demo",
+        "dependsOn": ["stack-redis"],
+        "envFile": env_file,
+    }
 
 
 class TestStackRenderer(ManifestTestCase):
@@ -104,20 +107,43 @@ class TestStackRenderer(ManifestTestCase):
             self.render_applied()
 
     def test_render_volumes_env_depends_on(self) -> None:
-        self._seed_redis_and_front()
+        env_file = self.tmp_path / "demo.env"
+        env_file.write_text("X=1\n", encoding="utf-8")
+        self._seed_redis_and_front(str(env_file))
         gen = GeneratedArtifacts(self.render_applied())
+        text = gen.path("compose.apps.yaml").read_text(encoding="utf-8")
         FileText.contains(
             gen.path("compose.apps.yaml"),
             "env_file:",
-            "/home/raft/.raft/demo.env",
+            "demo.env",
             "FOO: bar",
             "/mnt/raft-data/demo/redis:/data",
             "demo-stack-redis:",
             "condition: service_started",
             '"25:25"',
         )
+        assert str(env_file) not in text
 
-    def _seed_redis_and_front(self) -> None:
+    def test_render_keeps_env_file_outside_data_home(self) -> None:
+        write_applied_app(
+            self.tmp_path,
+            "api",
+            source="docker",
+            image="redis",
+            public_host="",
+            build_context=None,
+            extra={
+                "ports": [{"name": "redis", "containerPort": 6379, "expose": "none"}],
+                "readiness": {"type": "tcp", "port": "redis"},
+                "envFile": "/tmp/outside-raft.env",
+            },
+        )
+        text = GeneratedArtifacts(self.render_applied()).path("compose.apps.yaml").read_text(
+            encoding="utf-8"
+        )
+        assert "/tmp/outside-raft.env" in text
+
+    def _seed_redis_and_front(self, env_file: str) -> None:
         write_applied_app(
             self.tmp_path,
             "stack-redis",
@@ -125,7 +151,7 @@ class TestStackRenderer(ManifestTestCase):
             image="redis",
             public_host="",
             build_context=None,
-            extra=REDIS_EXTRA,
+            extra=_redis_extra(env_file),
         )
         write_applied_app(
             self.tmp_path,
@@ -134,5 +160,5 @@ class TestStackRenderer(ManifestTestCase):
             image="ghcr.io/example/nginx",
             public_host="",
             build_context=None,
-            extra=FRONT_EXTRA,
+            extra=_front_extra(env_file),
         )
