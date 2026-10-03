@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, Optional, Tuple
+from typing import AbstractSet, Dict, Optional, Tuple
 
 from raft.errors import OperatorError
 from raft.models.app import App
@@ -28,8 +28,20 @@ class StackUpScalePlan:
         return bool(self._deferred)
 
     def deferred_compose_ids(self) -> Tuple[str, ...]:
-        by_name = {app.name: app.compose_id for app in self.stack.apps}
-        return tuple(by_name[name] for name in sorted(self._deferred) if name in by_name)
+        return self._compose_ids(self._deferred)
+
+    def deferred_pull_compose_ids(self) -> Tuple[str, ...]:
+        """Image-backed deferred apps (``source=docker``) — ``compose pull`` only."""
+        return self._compose_ids(self._deferred_by_source("docker"))
+
+    def deferred_build_compose_ids(self) -> Tuple[str, ...]:
+        """Git/local deferred apps — ``compose build`` only (avoids empty-build WARN)."""
+        names = {
+            app.name
+            for app in self.stack.apps
+            if app.name in self._deferred and app.source != "docker"
+        }
+        return self._compose_ids(names)
 
     def start_compose_ids(self) -> Tuple[str, ...]:
         return (
@@ -38,6 +50,17 @@ class StackUpScalePlan:
             self.stack.controller,
             *(app.compose_id for app in self.apps_to_start()),
         )
+
+    def _deferred_by_source(self, source: str) -> AbstractSet[str]:
+        return {
+            app.name
+            for app in self.stack.apps
+            if app.name in self._deferred and app.source == source
+        }
+
+    def _compose_ids(self, names: AbstractSet[str]) -> Tuple[str, ...]:
+        by_name = {app.name: app.compose_id for app in self.stack.apps}
+        return tuple(by_name[name] for name in sorted(names) if name in by_name)
 
     def apps_to_start(self) -> Tuple[App, ...]:
         return tuple(app for app in self.stack.apps if app.name not in self._deferred)
