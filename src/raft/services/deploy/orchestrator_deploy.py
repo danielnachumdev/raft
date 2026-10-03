@@ -143,12 +143,25 @@ class OrchestratorDeploy:
             self._wait_app_ready(app)
 
     def _compose_up_with_scale_plan(self, plan: StackUpScalePlan) -> None:
-        if plan.has_deferred():
-            self._prepare_deferred_images(plan)
-            self.docker.start_stack(plan.start_compose_ids())
-            plan.mark_scaled_to_zero()
+        if not plan.has_deferred():
+            self.docker.start_stack()
             return
-        self.docker.start_stack()
+        self._prepare_deferred_images(plan)
+        self._mark_and_park_deferred(plan)
+        self.docker.start_stack(plan.start_compose_ids())
+
+    def _mark_and_park_deferred(self, plan: StackUpScalePlan) -> None:
+        """Mark deferred apps at zero and park upstreams before router starts.
+
+        Sync/render may still point upstreams at Compose DNS names while those
+        services are intentionally not started (#92). Parking first avoids
+        nginx ``host not found in upstream`` crash-loops on cold ``raft up``.
+        """
+        plan.mark_scaled_to_zero()
+        start_names = {app.name for app in plan.apps_to_start()}
+        for app in self.stack.apps:
+            if app.name not in start_names:
+                self.nginx.point_absent(app, reload=False)
 
     def _prepare_deferred_images(self, plan: StackUpScalePlan) -> None:
         services = plan.deferred_compose_ids()
