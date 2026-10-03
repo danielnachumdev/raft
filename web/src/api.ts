@@ -9,6 +9,8 @@ export type StatusRow = {
   started: string;
   uptime: string;
   external_urls: string[];
+  /** Compose service ids from App ``spec.dependsOn`` (empty when none). */
+  depends_on?: string[];
 };
 
 export type StatusPayload = {

@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional, Tuple
 from ...models import display_service_label
 from ..ops.status.formatters import StatusFormatters
 from ..ops.status.models import ContainerStatus, StatusSnapshot
+from .depends import ServeDependsMap
 from .external_urls import ExternalUrlBuilder
 
 _CONTROL_ROLES = frozenset({"gate", "router", "controller"})
@@ -25,6 +26,7 @@ class ServeRow:
     started: str
     uptime: str
     external_urls: Tuple[str, ...] = field(default_factory=tuple)
+    depends_on: Tuple[str, ...] = field(default_factory=tuple)
 
 
 class ServeSnapshotView:
@@ -34,9 +36,11 @@ class ServeSnapshotView:
         self,
         snapshot: StatusSnapshot,
         urls: Optional[ExternalUrlBuilder] = None,
+        depends: Optional[ServeDependsMap] = None,
     ) -> None:
         self.snapshot = snapshot
         self._urls = urls
+        self._depends = depends
 
     def control_plane(self) -> Tuple[ServeRow, ...]:
         return tuple(self._row(c) for c in self.snapshot.containers if c.role in _CONTROL_ROLES)
@@ -67,6 +71,7 @@ class ServeSnapshotView:
     def _row_dict(row: ServeRow) -> Dict[str, Any]:
         data = asdict(row)
         data["external_urls"] = list(row.external_urls)
+        data["depends_on"] = list(row.depends_on)
         return data
 
     def _find_container(self, name: str) -> Optional[ContainerStatus]:
@@ -90,9 +95,15 @@ class ServeSnapshotView:
             started=StatusFormatters.started(container.uptime_seconds),
             uptime=StatusFormatters.uptime(container.uptime_seconds),
             external_urls=self._external_urls(container),
+            depends_on=self._depends_on(container),
         )
 
     def _external_urls(self, container: ContainerStatus) -> Tuple[str, ...]:
         if self._urls is None:
             return ()
         return self._urls.urls_for(service=container.service, role=container.role)
+
+    def _depends_on(self, container: ContainerStatus) -> Tuple[str, ...]:
+        if self._depends is None or container.role != "app":
+            return ()
+        return self._depends.for_service(container.service)

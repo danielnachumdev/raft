@@ -502,9 +502,28 @@ th {
 
 .status-name-cell {
   display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0.4rem;
+}
+
+.status-name-cell--tree {
+  padding-left: calc((var(--tree-depth, 1) - 1) * 0.85rem);
+}
+
+.status-tree-guide {
+  flex: 0 0 0.55rem;
+  align-self: stretch;
+  margin: 0.1rem 0 0.1rem 0.15rem;
+  border-left: 1.5px dashed #9a9185;
+}
+
+.status-name-body {
+  display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 0.1rem;
+  min-width: 0;
 }
 
 .logs-controls {
