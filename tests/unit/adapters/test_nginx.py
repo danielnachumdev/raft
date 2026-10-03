@@ -51,3 +51,13 @@ class TestNginxUpstreams(AdapterTestCase):
         UpstreamFile.assert_contains(self.stack.upstream_file(self.app, port), "server app:80")
         assert NginxUpstreamText.hostname_for("app", absent=True) == "127.0.0.1"
         assert NginxUpstreamText.hostname_for("app", absent=False) == "app"
+
+    def test_persist_upstream_oserror_has_fix(self, tmp_path) -> None:
+        from raft.adapters.nginx import NginxUpstreams
+        from raft.errors import OperatorError
+
+        path = tmp_path / "missing-parent" / "up.conf"
+        # Parent cannot be created when a file occupies the path.
+        path.parent.write_text("not-a-dir", encoding="utf-8")
+        with pytest.raises(OperatorError, match="cannot write upstream"):
+            NginxUpstreams._persist_upstream(path, "upstream x {\n}\n")
