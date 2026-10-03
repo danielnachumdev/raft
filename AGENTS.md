@@ -296,7 +296,7 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | `src/raft/services/deploy/` | orchestrator, cutover, wait, locking, readiness |
 | `src/raft/services/ops/` | doctor, status (Started + allocated limits), logs, uninstall, update, certs |
 | `src/raft/services/read/` | Shared read contracts for CLI + serve (`StatusRead`, `MetricsRead`, `DoctorRead`, `ServeSnapshotView`, `ExternalUrlBuilder`) |
-| `src/raft/ui/` | Operator terminal output (`say`) + shared TTY `TerminalProgress` spinner (doctor, update) |
+| `src/raft/ui/` | Operator terminal output (`say`) + shared TTY `TerminalProgress` spinner (doctor, update; `current()` / `set_text` for inner frames; entered at CLI entry before stack/logging init) |
 | `src/raft/services/serve/` | `raft serve`: FastAPI factory, `ServePage`, `ServeActions`, SSE log bridge, SPA paths/instructions |
 | `src/raft/controller/` | Always-on Compose `raft-controller` (job orchestrator for heal + metrics; idle-stop + wake via side_ticks when `spec.scaling`; healer skips `scaledToZero`; metrics batch → `resources.jsonl`) |
 | `src/raft/errors/` | Operator errors + CTAs |

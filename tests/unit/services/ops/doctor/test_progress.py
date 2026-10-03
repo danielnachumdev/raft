@@ -6,6 +6,7 @@ import io
 from unittest.mock import MagicMock
 
 from raft.services.ops.doctor import INFRA, CheckResult
+from raft.ui.progress import TerminalProgress
 
 from .base import DoctorTestCase
 
@@ -60,3 +61,34 @@ class TestDoctorProgress(DoctorTestCase):
         assert code == 0
         assert "all checks passed" in out.getvalue()
         assert progress.getvalue() == ""
+
+    def test_report_reuses_active_spinner(self) -> None:
+        self.seed_compose()
+        self.seed_generated_apps()
+        docker = self.mock_docker(running=["raft-gate", "raft-router"])
+        doctor = self.doctor(shell=self.mock_shell(), docker=docker)
+        out = io.StringIO()
+        labels: list[str] = []
+        with TerminalProgress(_NoTty(), prefix="raft doctor", label="checking") as progress:
+            progress.update = labels.append  # type: ignore[method-assign]
+            with self.doctor_env():
+                doctor.report(out=out, color=False)
+            assert TerminalProgress.current()._finished
+        assert labels
+        assert "host" in labels
+
+    def test_context_progress_uses_current_spinner(self) -> None:
+        from raft.services.ops.doctor.context import DoctorContext
+
+        labels: list[str] = []
+        with TerminalProgress(_NoTty(), prefix="raft doctor") as progress:
+            progress.set_text = labels.append  # type: ignore[method-assign]
+            ctx = DoctorContext(
+                stack=self.stack,
+                shell=self.mock_shell(),
+                auth=MagicMock(),
+                docker=self.mock_docker(),
+                on_progress=None,
+            )
+            ctx.progress("host")
+        assert labels == ["host"]
