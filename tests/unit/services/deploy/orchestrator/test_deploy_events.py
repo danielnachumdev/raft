@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from raft.models.graph_event_store import KIND_DEPLOYMENT, GraphEventStore
+from raft.models.graph_event_store import KIND_DEPLOYMENT, KIND_UP, GraphEventStore
 
 from .base import OrchestratorTestCase
 
@@ -31,6 +31,20 @@ class TestDeployGraphEvents(OrchestratorTestCase):
         events = self._events()
         assert len(events) == 1
         assert events[0].service == "app"
+
+    def test_cold_ensure_records_stack_up_and_deploy(self) -> None:
+        from tests.shared.compose_ids import RunningServices
+
+        self.orch.docker.running_services.side_effect = [
+            [],
+            [],
+            RunningServices.with_apps("app"),
+        ]
+        self.stub_http_ready(self.orch.http)
+        with patch.object(self.orch, "sync"):
+            self.orch.ensure_app_deployed("app")
+        kinds = [e.kind for e in self._events()]
+        assert kinds == [KIND_UP, KIND_DEPLOYMENT]
 
     def test_failed_cutover_does_not_record(self) -> None:
         step = MagicMock()

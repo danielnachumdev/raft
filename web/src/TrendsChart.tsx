@@ -14,7 +14,7 @@ import {
   toEpochMs,
   type TimedValue,
 } from "./chartTimeScale";
-import { GraphEventMarkers } from "./GraphEventMarkers";
+import { graphEventMarkers } from "./GraphEventMarkers";
 import {
   eventsForSeries,
   seriesForEventFilter,
@@ -27,7 +27,7 @@ import {
   type RuntimeMetricId,
   type RuntimeUnit,
 } from "./runtimeMetrics";
-import { TimeScaleXAxis } from "./TimeScaleXAxis";
+import { timeScaleXAxis } from "./TimeScaleXAxis";
 
 const COLORS = [
   "#0f6b5c",
@@ -94,7 +94,7 @@ export function TrendsChart(props: {
       <ResponsiveContainer width="100%" height={280}>
         <LineChart data={rows} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" />
-          <TimeScaleXAxis windowSeconds={props.windowSeconds} />
+          {timeScaleXAxis(props.windowSeconds)}
           <YAxis
             yAxisId={SERVICE_AXIS}
             tick={{ fill: "var(--muted)", fontSize: 11 }}
@@ -159,8 +159,8 @@ export function TrendsChart(props: {
               />
             ))
           )}
-          {/* After Lines so markers paint above series; yAxisId must match. */}
-          <GraphEventMarkers events={markers} yAxisId={SERVICE_AXIS} />
+          {/* Direct children — Recharts ignores wrapper components for ReferenceLine. */}
+          {graphEventMarkers(markers, SERVICE_AXIS)}
         </LineChart>
       </ResponsiveContainer>
     </div>

@@ -199,11 +199,17 @@ class Scaler:
         compose_id = self._compose_id(name)
         if compose_id is None:
             return
-        GraphEventStore(self.home).record_scaling(
-            service=compose_id,
-            app=name,
-            action=SCALING_ACTION_WAKE,
-        )
+        try:
+            GraphEventStore(self.home).record_scaling(
+                service=compose_id,
+                app=name,
+                action=SCALING_ACTION_WAKE,
+            )
+        except OSError:
+            # Wake must still succeed if events FS is RO (stale controller mounts).
+            logger.warning(
+                "graph event wake record failed app=%s", name, exc_info=True
+            )
 
     def _wait_app_reachable(self, name: str, deadline: float) -> bool:
         """Poll until the router network can reach the app container."""

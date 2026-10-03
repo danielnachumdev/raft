@@ -6,6 +6,7 @@ import {
   eventMarkerStroke,
   eventsForSeries,
   isRaftLevelEvent,
+  seriesForEventFilter,
   withEventRows,
 } from "../src/graphEvents.ts";
 
@@ -81,5 +82,48 @@ describe("withEventRows", () => {
     );
     assert.equal(rows.length, 2);
     assert.equal(rows[1].t, "2026-10-03T12:30:00.000Z");
+  });
+});
+
+describe("seriesForEventFilter", () => {
+  it("maps avg-group synthetic series back to member compose ids", () => {
+    const all = [
+      series("demo-api", "demo"),
+      series("demo-web", "demo"),
+      series("other-api", "other"),
+      {
+        id: "host",
+        label: "Host",
+        kind: "host" as const,
+        role: null,
+        group: null,
+        points: [],
+      },
+    ];
+    const visible = [
+      {
+        id: "group:demo",
+        label: "demo",
+        kind: "group" as const,
+        role: null,
+        group: "demo",
+        points: [],
+      },
+    ];
+    const filtered = seriesForEventFilter(all, visible);
+    assert.deepEqual(
+      filtered.map((s) => s.id).sort(),
+      ["demo-api", "demo-web"],
+    );
+    const events: GraphEvent[] = [
+      { kind: "deployment", ts: "1", service: "demo-api", label: "Deploy demo-api" },
+      { kind: "scaling", ts: "2", service: "demo-web", label: "Wake demo-web" },
+      { kind: "deployment", ts: "3", service: "other-api", label: "Deploy other" },
+      { kind: "update", ts: "4", label: "Raft update" },
+    ];
+    assert.deepEqual(
+      eventsForSeries(events, filtered).map((e) => e.ts),
+      ["1", "2", "4"],
+    );
   });
 });

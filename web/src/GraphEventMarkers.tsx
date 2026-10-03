@@ -1,42 +1,45 @@
+import type { ReactElement } from "react";
 import { ReferenceLine } from "recharts";
 import type { GraphEvent } from "./api";
 import { toEpochMs } from "./chartTimeScale";
 import { eventMarkerLabel, eventMarkerStroke } from "./graphEvents";
 
-/** Dashed vertical markers for GraphEvents (deploy / stop / scale / …). */
-export function GraphEventMarkers(props: {
-  events: GraphEvent[];
-  /** Must match a chart YAxis id when axes are named (Trends uses ``service``). */
-  yAxisId?: string | number;
-}) {
-  if (!props.events.length) return null;
-  return (
-    <>
-      {props.events.map((event) => {
-        const x = toEpochMs(event.ts);
-        if (x === null) return null;
-        const stroke = eventMarkerStroke(event.kind);
-        return (
-          <ReferenceLine
-            key={eventKey(event)}
-            x={x}
-            yAxisId={props.yAxisId}
-            stroke={stroke}
-            strokeDasharray="4 4"
-            strokeWidth={1.5}
-            ifOverflow="hidden"
-            label={{
-              value: eventMarkerLabel(event),
-              position: "insideTopLeft",
-              fill: stroke,
-              fontSize: 10,
-              fontWeight: 600,
-            }}
-          />
-        );
-      })}
-    </>
-  );
+/**
+ * Build dashed vertical GraphEvent markers for a Recharts chart.
+ *
+ * Must be inlined as ``{graphEventMarkers(...)}`` — Recharts only discovers
+ * ``ReferenceLine`` among *direct* chart children (wrapper components are skipped).
+ */
+export function graphEventMarkers(
+  events: GraphEvent[],
+  yAxisId?: string | number,
+): ReactElement[] {
+  return events.flatMap((event) => {
+    const x = toEpochMs(event.ts);
+    if (x === null) return [];
+    const stroke = eventMarkerStroke(event.kind);
+    const axisProps = yAxisId === undefined ? {} : { yAxisId };
+    return [
+      <ReferenceLine
+        key={eventKey(event)}
+        x={x}
+        {...axisProps}
+        stroke={stroke}
+        strokeDasharray="5 3"
+        strokeWidth={2}
+        ifOverflow="extendDomain"
+        isFront
+        label={{
+          value: eventMarkerLabel(event),
+          position: "insideTopLeft",
+          fill: stroke,
+          fontSize: 11,
+          fontWeight: 700,
+          offset: 4,
+        }}
+      />,
+    ];
+  });
 }
 
 function eventKey(event: GraphEvent): string {
