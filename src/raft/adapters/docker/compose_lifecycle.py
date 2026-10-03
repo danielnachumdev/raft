@@ -7,6 +7,7 @@ from typing import Optional, Sequence
 
 from raft.errors import OperatorError, run_compose_checked
 
+from ...models.app import COMPOSE_PROJECT
 from ...models.stack import Stack
 from ..shell import Shell
 from .project_cleanup import ComposeProjectCleanup
@@ -52,9 +53,15 @@ class DockerComposeLifecycle:
             logger.info("cleared leftover project containers after down: %s", leftover)
 
     def network_holders(self) -> list:
-        """Names still attached to the compose default network."""
-        network = self.router_network()
-        return ComposeProjectCleanup(self.sh).network_holders(network)
+        """Names still attached to the compose network (ok when stack is down)."""
+        return ComposeProjectCleanup(self.sh).network_holders(self._holders_network())
+
+    def _holders_network(self) -> str:
+        """Prefer the router's network; default when the router is not running."""
+        try:
+            return self.router_network()
+        except OperatorError:
+            return f"{COMPOSE_PROJECT}_default"
 
     def pull_services(self, services: Sequence[str]) -> None:
         if not services:

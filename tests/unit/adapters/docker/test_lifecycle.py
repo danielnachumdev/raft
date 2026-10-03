@@ -66,6 +66,19 @@ class TestDockerLifecycle(DockerTestCase):
             self.shell.docker.return_value = self.ok("raft-orphan other\n")
             assert self.docker.network_holders() == ["raft-orphan", "other"]
 
+    def test_network_holders_without_router_uses_default(self) -> None:
+        """After compose down, router is gone — holders must not raise."""
+        self.shell.compose.return_value = self.ok("")
+        self.shell.docker.return_value = self.ok("", returncode=1)
+        assert self.docker.network_holders() == []
+
+    def test_network_holders_without_router_inspects_default(self) -> None:
+        self.shell.compose.return_value = self.ok("")
+        self.shell.docker.return_value = self.ok("orphan\n")
+        assert self.docker.network_holders() == ["orphan"]
+        net = next(c for c in self.shell.docker.call_args_list if c.args[:2] == ("network", "inspect"))
+        assert net.args[2] == "raft_default"
+
     def test_recreate_rebuild(self) -> None:
         self.shell.compose.return_value = self.ok()
         self.docker.recreate_router()
