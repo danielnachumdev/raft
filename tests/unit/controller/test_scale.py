@@ -180,8 +180,21 @@ class TestScaler(ControllerTestCase):
         scaler, docker = self._scaler(tmp_path, with_scaling=False)
         scaler.tick(now=1.0)
         docker.service_runtime.assert_not_called()
+        scaler._clock = lambda: 42.0
         scaler.record_activity(self.APP)
-        assert scaler.store.load(self.APP).last_activity_at is not None
+        assert scaler.store.load(self.APP).last_activity_at == 42.0
+
+    def test_late_activity_blocks_fake_idle_tick(self, tmp_path: Path) -> None:
+        """Activity stamped after seed(now=0) must not idle-stop on tick(idle+1)."""
+        scaler, docker = self._scaler(tmp_path)
+        docker.service_runtime.return_value = ("running", "healthy")
+        scaler.store.touch_activity(self.APP, now=0.0)
+        scaler._clock = lambda: 10_000.0
+        scaler.record_activity(self.APP)
+        with self.with_scale_locks():
+            scaler.tick(now=20.0)
+        docker.stop_service.assert_not_called()
+        assert not scaler.store.is_scaled_to_zero(self.APP)
 
     def test_request_wake_threads(self, tmp_path: Path) -> None:
         scaler, _ = self._scaler(tmp_path)

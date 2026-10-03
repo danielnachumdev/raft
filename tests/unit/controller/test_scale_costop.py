@@ -20,8 +20,8 @@ class TestScalerCostop(ControllerTestCase):
         _home, docker, scaler = self._dep_scaler(tmp_path)
         self._run_idle_tick(scaler, docker)
         assert [c.args[0] for c in docker.stop_service.call_args_list] == [
-            "api",
             self.APP,
+            "api",
         ]
         assert scaler.store.is_scaled_to_zero("api")
         assert scaler.store.is_scaled_to_zero(self.APP)
@@ -30,8 +30,8 @@ class TestScalerCostop(ControllerTestCase):
         home, docker, scaler = self._mixed_dep_scaler(tmp_path)
         self._run_idle_tick(scaler, docker)
         assert [c.args[0] for c in docker.stop_service.call_args_list] == [
-            "api",
             self.APP,
+            "api",
         ]
         assert scaler.store.is_scaled_to_zero("api")
         assert not scaler.store.is_scaled_to_zero("sidecar")

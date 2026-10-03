@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional
+from typing import Iterator, Optional
+from unittest.mock import patch
 
 from raft.adapters.docker import DockerStack
 from raft.adapters.shell import Shell
@@ -89,10 +91,33 @@ class ScaleDependsWakeStack:
 
     def when_the_frontend_idle_stops(self) -> None:
         """Controller idle-stop: co-stops dependsOn (default scaleWithParent)."""
-        self.store.touch_activity(FRONTEND, now=0.0)
-        self._inner.scaler.tick(now=float(SCALING["idleSeconds"]) + 1.0)
-        ServiceRuntimeWait(self.docker, BACKEND_COMPOSE).until_stopped()
+        scaler = self._inner.scaler
+        with self._ignore_gate_activity(scaler):
+            self.store.touch_activity(FRONTEND, now=0.0)
+            scaler.tick(now=float(SCALING["idleSeconds"]) + 1.0)
+        if not self.store.is_scaled_to_zero(FRONTEND):
+            raise AssertionError(self._idle_stop_debug())
         ServiceRuntimeWait(self.docker, FRONTEND_COMPOSE).until_stopped()
+        ServiceRuntimeWait(self.docker, BACKEND_COMPOSE).until_stopped()
+
+    @staticmethod
+    @contextmanager
+    def _ignore_gate_activity(scaler: Scaler) -> Iterator[None]:
+        # Live curls make nginx ``mirror`` /activity asynchronously. A late
+        # wall-clock bump after seeding lastActivityAt=0 races tick(now=idle+1)
+        # and skips idle-stop (CI: redis never co-stops).
+        with patch.object(scaler, "record_activity"):
+            yield
+
+    def _idle_stop_debug(self) -> str:
+        state = self.store.load(FRONTEND)
+        front, fh = self.docker.service_runtime(FRONTEND_COMPOSE)
+        back, bh = self.docker.service_runtime(BACKEND_COMPOSE)
+        return (
+            "idle-stop did not mark frontend scaledToZero "
+            f"(last_activity={state.last_activity_at} min_up={state.min_up_until} "
+            f"frontend={front}/{fh} backend={back}/{bh})"
+        )
 
     def then_both_are_scaled_to_zero(self) -> None:
         assert self.store.is_scaled_to_zero(FRONTEND)
