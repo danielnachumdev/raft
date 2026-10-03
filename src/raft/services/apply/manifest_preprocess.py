@@ -1,9 +1,8 @@
 """Apply-time text pipeline for App manifests (before YAML parse).
 
-``ManifestPreprocessor`` is the extensible facade: expand placeholders, then
-resolve ``${{ … }}`` directives (more steps can land here later). Registry
-files store the concrete result — render/redeploy/doctor never re-run this
-pipeline. Comments are scanned too; escape demos as ``$${NAME}`` / ``$${{ … }}``.
+``ManifestPreprocessor`` resolves ``${{ … }}`` directives, then expands
+``${VAR}``. Full-line YAML ``#`` comments are ignored (copied through).
+Registry stores the concrete result — render/redeploy/doctor never re-run this.
 """
 
 from __future__ import annotations
@@ -17,6 +16,7 @@ import yaml
 
 from raft.errors import OperatorError
 
+from .manifest_comments import ManifestFullLineComment
 from .manifest_env import ManifestTextExpander
 from .manifest_expr import DirectiveExpression
 
@@ -85,18 +85,19 @@ class DirectiveResolver:
         return all(self._frames) if self._frames else True
 
     def _step(self, text: str, i: int) -> int:
-        if text.startswith("$${{", i):
-            return self._emit_escape(i)
+        comment_end = ManifestFullLineComment.end_after(text, i)
+        if comment_end is not None:
+            return self._copy_span(text, i, comment_end)
         if text.startswith("${{", i):
             return self._handle_directive(text, i)
         if self._emitting():
             self._out.append(text[i])
         return i + 1
 
-    def _emit_escape(self, i: int) -> int:
+    def _copy_span(self, text: str, start: int, end: int) -> int:
         if self._emitting():
-            self._out.append("${{")
-        return i + 4
+            self._out.append(text[start:end])
+        return end
 
     def _handle_directive(self, text: str, start: int) -> int:
         body, end = self._read_directive_body(text, start)

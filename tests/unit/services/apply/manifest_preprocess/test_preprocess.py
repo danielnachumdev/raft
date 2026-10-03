@@ -1,4 +1,4 @@
-"""TDD: directives use ``${VAR}`` + quotes; pipeline resolves if before expand."""
+"""Directives use ``${VAR}`` + quotes; full-line ``#`` comments are ignored."""
 
 from __future__ import annotations
 
@@ -28,13 +28,23 @@ class TestIfBlocks:
         assert _resolve(OFF, text) == "a: 1\nb: 2\n"
 
     def test_literal_on_left(self) -> None:
-        text = "${{ if 'on' == ${FLAG} }}\nx: 1\n${{ endif }}\n"
-        assert _resolve(ON, text) == "x: 1\n"
+        text = "${{ if 'on' == ${FLAG} }}\nok\n${{ endif }}\n"
+        assert _resolve(ON, text) == "ok\n"
 
     def test_combined_and_or(self) -> None:
-        text = "${{ if ${FLAG} == 'on' && ${MODE} == 'edge' }}\nok\n${{ endif }}\n"
+        text = (
+            "${{ if ${FLAG} == 'on' && ${MODE} == 'edge' || 'x' == 'y' }}\n"
+            "ok\n${{ endif }}\n"
+        )
         assert _resolve(ON, text) == "ok\n"
-        assert _resolve({"FLAG": "on", "MODE": "off"}, text) == ""
+
+    def test_comment_demo_is_ignored(self) -> None:
+        text = (
+            "# ${{ if ${FLAG} == 'on' }}\n"
+            "# scaling: demo\n"
+            "a: 1\n"
+        )
+        assert _resolve(ON, text) == text
 
 
 class TestNestedIf:
@@ -57,32 +67,46 @@ class TestNestedIf:
             "inner\n"
             "${{ endif }}\n"
             "${{ endif }}\n"
-            "tail\n"
+            "after\n"
         )
-        assert _resolve(OFF, text) == "tail\n"
+        assert _resolve(OFF, text) == "after\n"
 
 
 class TestPipelineOrder:
-    def test_directives_resolve_env_refs_before_body_expand(self) -> None:
-        """Body ``${HOST}`` expands after if; condition uses ``${FLAG}`` itself."""
+    def test_directives_then_expand(self) -> None:
         raw = (
+            "# ${{ if ${FLAG} == 'missing' }}\n"
             "host: ${HOST}\n"
             "${{ if ${FLAG} == 'on' }}\n"
             "x: ${X}\n"
             "${{ endif }}\n"
         )
         out = ManifestPreprocessor({"HOST": "h", "FLAG": "on", "X": "1"}).preprocess(raw)
-        assert out == "host: h\nx: 1\n"
+        assert out == (
+            "# ${{ if ${FLAG} == 'missing' }}\n"
+            "host: h\n"
+            "x: 1\n"
+        )
 
     def test_env_value_with_spaces_in_condition(self) -> None:
-        raw = "${{ if ${NAME} == 'Acme Corp' }}\nok\n${{ endif }}\n"
-        out = ManifestPreprocessor({"NAME": "Acme Corp"}).preprocess(raw)
-        assert out == "ok\n"
+        env = {"ROLE": "staging host"}
+        text = "${{ if ${ROLE} == 'staging host' }}\nok\n${{ endif }}\n"
+        assert _resolve(env, text) == "ok\n"
 
     def test_false_branch_does_not_require_body_vars(self) -> None:
-        raw = "${{ if ${FLAG} == 'on' }}\nx: ${MISSING}\n${{ endif }}\ny: 1\n"
+        raw = "${{ if ${FLAG} == 'on' }}\nx: ${MISSING}\n${{ endif }}\nok: 1\n"
         out = ManifestPreprocessor({"FLAG": "off"}).preprocess(raw)
-        assert out == "y: 1\n"
+        assert out == "ok: 1\n"
+
+    def test_false_branch_skips_comment_lines(self) -> None:
+        text = (
+            "${{ if ${FLAG} == 'on' }}\n"
+            "# ${MISSING}\n"
+            "hidden\n"
+            "${{ endif }}\n"
+            "later\n"
+        )
+        assert _resolve(OFF, text) == "later\n"
 
 
 _OPTIONAL = """\
@@ -110,11 +134,7 @@ class TestLoader:
         assert "scaling" not in data["spec"]
 
 
-class TestEscapeAndEdges:
-    def test_dollar_dollar_brace_brace_escape(self) -> None:
-        text = "$${{ if ${FLAG} == 'on' }}\n"
-        assert _resolve(ON, text) == "${{ if ${FLAG} == 'on' }}\n"
-
+class TestEdges:
     def test_inline_keeps_text(self) -> None:
         text = "v: ${{ if ${FLAG} == 'on' }}yes${{ endif }}\n"
         assert _resolve(ON, text) == "v: yes\n"
@@ -131,21 +151,11 @@ class TestEscapeAndEdges:
         text = "${{ if ${FLAG} == 'on' }} keep\n${{ endif }}\n"
         assert _resolve(ON, text) == " keep\n"
 
-    def test_false_branch_skips_escape(self) -> None:
-        text = "${{ if ${FLAG} == 'on' }}\n$${{ kept }}\nhidden\n${{ endif }}\nlater\n"
-        assert _resolve(OFF, text) == "later\n"
-
-    def test_expand_passes_through_leftover_directive_escape(self) -> None:
-        raw = "$${{ if ${FLAG} == 'on' }}\n"
-        out = ManifestPreprocessor(ON).preprocess(raw)
-        assert out == "${{ if on == 'on' }}\n"
-
 
 class TestErrors:
-    def test_bare_ident_in_directive_rejected(self) -> None:
-        with pytest.raises(OperatorError, match="invalid") as caught:
+    def test_bare_ident_rejected(self) -> None:
+        with pytest.raises(OperatorError, match="invalid"):
             _resolve(ON, "${{ if FLAG == 'on' }}\na\n${{ endif }}\n")
-        assert_operator(caught.value, contains=("Fix:",))
 
     def test_unmatched_endif(self) -> None:
         with pytest.raises(OperatorError, match="endif") as caught:

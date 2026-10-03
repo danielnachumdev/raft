@@ -6,11 +6,12 @@
 # When to use: a normal website/API behind the gate+router with no HTTPS
 # Origin certs on the VPS (Cloudflare Flexible, or TLS terminated elsewhere).
 #
-# Apply-time preprocess runs on the entire file text (including comments).
-# Live syntax (single $) is documented in optional-block.snippet.yaml and
-# AGENTS.md — do not put unescaped ${ or ${{ demos in comments here.
-# Pass process env and/or --env-file / --env (values only; later wins).
-# Registry stores concrete YAML (no placeholders or directives left).
+# Apply-time preprocess: ${{ if }} then ${VAR} expand, then YAML.
+# Full-line # comments are ignored by preprocess (single-$ demos OK):
+#   ${{ if ${INCLUDE_SCALING} == 'true' }}
+#   scaling: …
+#   ${{ endif }}
+# Pasteable block: optional-block.snippet.yaml. Pass --env (values only).
 
 apiVersion: raft/v1
 kind: App
@@ -115,5 +116,4 @@ spec:
   #   wakeTimeoutSeconds: 60
   #   minUpSeconds: 60
   #
-  # Optional keys via apply-time directives: see AGENTS.md and the live
-  # single-$ form in optional-block.snippet.yaml (do not paste $${…} escapes).
+  # Optional keys via ${{ if }}: see AGENTS.md / optional-block.snippet.yaml.

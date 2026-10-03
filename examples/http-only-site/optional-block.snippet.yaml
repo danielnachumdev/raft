@@ -1,5 +1,4 @@
-# Live snippet — paste the non-comment lines under `spec:` (match indent).
-# Not a full App. See AGENTS.md for the preprocess pipeline.
+# Paste under `spec:` in `.raft/app.yaml` (match indent). Not a full App.
 #
 #   raft apply --file .raft/app.yaml --ref $SHA \
 #     --env INCLUDE_SCALING=true \

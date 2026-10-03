@@ -16,6 +16,8 @@ from typing import Mapping, Optional, Sequence, Union
 
 from raft.errors import OperatorError
 
+from .manifest_comments import ManifestFullLineComment
+
 _NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _ASSIGN = re.compile(r"^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$")
 
@@ -160,7 +162,7 @@ class ApplyEnvSources:
 
 @dataclass(frozen=True)
 class ManifestTextExpander:
-    """``${…}`` / ``$${`` expander; leaves ``${{`` / ``$${{`` for compile."""
+    """Expand ``${…}`` in non-comment text; leave ``${{`` for directives."""
 
     env: Mapping[str, str]
     path: Union[Path, str, None] = None
@@ -173,11 +175,12 @@ class ManifestTextExpander:
         return "".join(out)
 
     def _expand_step(self, text: str, i: int, out: list[str]) -> int:
-        passed = self._pass_through_conditional(text, i, out)
-        if passed is not None:
-            return passed
-        if text.startswith("$${", i):
-            out.append("${")
+        comment_end = ManifestFullLineComment.end_after(text, i)
+        if comment_end is not None:
+            out.append(text[i:comment_end])
+            return comment_end
+        if text.startswith("${{", i):
+            out.append("${{")
             return i + 3
         if text.startswith("${", i):
             value, end = self._expand_placeholder(text, i)
@@ -185,18 +188,6 @@ class ManifestTextExpander:
             return end
         out.append(text[i])
         return i + 1
-
-    @staticmethod
-    def _pass_through_conditional(
-        text: str, i: int, out: list[str]
-    ) -> Optional[int]:
-        if text.startswith("$${{", i):
-            out.append("$${{")
-            return i + 4
-        if text.startswith("${{", i):
-            out.append("${{")
-            return i + 3
-        return None
 
     def _expand_placeholder(self, text: str, start: int) -> tuple[str, int]:
         """Parse and resolve one ``${…}`` starting at ``start``; return ``(value, end)``."""
@@ -265,5 +256,5 @@ class ManifestTextExpander:
         return OperatorError(
             f"{self._source_label()}: invalid placeholder near "
             f"{self._snippet(near)!r}\n"
-            f"Fix: use ${{NAME}}, ${{NAME:-default}}, or $${{ for a literal ${{"
+            f"Fix: use ${{NAME}} or ${{NAME:-default}}"
         )

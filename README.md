@@ -33,7 +33,7 @@ raft status
 raft serve   # then open via SSH tunnel — see below
 ```
 
-`apply` registers the App and deploys by default — first boot and later releases use the same command. Pass `--env` / `--env-file` for `${VAR}` placeholders and `${{ if }}` directives (quoted strings + `${VAR}` in conditions; see [`examples/http-only-site/optional-block.snippet.yaml`](examples/http-only-site/optional-block.snippet.yaml) and `AGENTS.md`).
+`apply` registers the App and deploys by default — first boot and later releases use the same command. Pass `--env` / `--env-file` for `${VAR}` and `${{ if }}` (see [`examples/http-only-site/optional-block.snippet.yaml`](examples/http-only-site/optional-block.snippet.yaml) and `AGENTS.md`). Full-line `#` comments are not preprocessed.
 
 ## Ops dashboard (`raft serve`)
 
