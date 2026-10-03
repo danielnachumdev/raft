@@ -20,11 +20,29 @@ class TestOrchUpScale(OrchestratorTestCase, ControllerTestCase):
         orch = self._orch_cold_edge()
         with patch.object(orch, "sync"):
             orch.start()
-        orch.docker.pull_services.assert_called_once_with(("app",))
+        # local/git deferred → build only (compose pull would be a no-op)
+        orch.docker.pull_services.assert_called_once_with(())
         orch.docker.build_services.assert_called_once_with(("app",))
         orch.docker.start_stack.assert_called_once_with(
             ("raft-gate", "raft-router", "raft-controller")
         )
+        assert ScalingStore(self.tmp_path).is_scaled_to_zero("app")
+
+    def test_start_docker_scaling_app_pulls_without_empty_build(self) -> None:
+        """Image-only deferred apps must not invoke ``compose build`` (Compose WARN)."""
+        write_applied_app(
+            self.tmp_path,
+            "app",
+            source="docker",
+            image="ghcr.io/example/app",
+            build_context=None,
+            extra=self.scaling_extra(),
+        )
+        orch = self._orch_cold_edge()
+        with patch.object(orch, "sync"):
+            orch.start()
+        orch.docker.pull_services.assert_called_once_with(("app",))
+        orch.docker.build_services.assert_called_once_with(())
         assert ScalingStore(self.tmp_path).is_scaled_to_zero("app")
 
     def test_start_parks_deferred_upstreams_before_router(self) -> None:
@@ -66,7 +84,8 @@ class TestOrchUpScale(OrchestratorTestCase, ControllerTestCase):
         orch = self._orch_cold_edge()
         with patch.object(orch, "sync"):
             orch.start()
-        assert set(orch.docker.pull_services.call_args.args[0]) == {"api", "app"}
+        orch.docker.pull_services.assert_called_once_with(())
+        assert set(orch.docker.build_services.call_args.args[0]) == {"api", "app"}
         started = orch.docker.start_stack.call_args.args[0]
         assert "api" not in started and "app" not in started
         store = ScalingStore(self.tmp_path)
@@ -85,7 +104,8 @@ class TestOrchUpScale(OrchestratorTestCase, ControllerTestCase):
         self._assert_sidecar_started_app_deferred(orch, wait)
 
     def _assert_sidecar_started_app_deferred(self, orch: Orchestrator, wait) -> None:
-        orch.docker.pull_services.assert_called_once_with(("app",))
+        orch.docker.pull_services.assert_called_once_with(())
+        orch.docker.build_services.assert_called_once_with(("app",))
         started = orch.docker.start_stack.call_args.args[0]
         assert "sidecar" in started and "app" not in started
         assert [c.args[0].name for c in wait.call_args_list] == ["sidecar"]
