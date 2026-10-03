@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Optional
 
 from raft.errors import OperatorError
@@ -85,11 +86,8 @@ class NginxUpstreams:
     def _write_upstream(self, app: App, target_hostname: str, p: PortSpec) -> None:
         path = self.stack.upstream_file(app, p)
         upstream = self.stack.upstream_name(app, p)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            NginxUpstreamText.block(upstream, target_hostname, p.container_port),
-            encoding="utf-8",
-        )
+        body = NginxUpstreamText.block(upstream, target_hostname, p.container_port)
+        self._persist_upstream(path, body)
         logger.info(
             "point %s/%s upstream at %s:%s",
             app.name,
@@ -97,6 +95,20 @@ class NginxUpstreams:
             target_hostname,
             p.container_port,
         )
+
+    @staticmethod
+    def _persist_upstream(path: Path, body: str) -> None:
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(body, encoding="utf-8")
+        except OSError as exc:
+            raise OperatorError(
+                f"cannot write upstream {path}: {exc}\n"
+                "Fix: recreate raft-controller so it mounts "
+                "generated/nginx/upstreams read-write "
+                "(docker compose up -d --force-recreate raft-controller), "
+                "then retry wake / raft redeploy router"
+            ) from exc
 
     def _assert_router_sees(self, app: App, target_hostname: str, p: PortSpec) -> None:
         if self.docker.router_sees_upstream_target(app, target_hostname, p):
