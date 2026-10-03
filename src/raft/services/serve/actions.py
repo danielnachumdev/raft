@@ -44,6 +44,7 @@ class ServeActions:
             self._docker_stack().start_service(compose_id)
             if app is not None:
                 self._clear_scaled_to_zero(app)
+            self._record_start_event(compose_id, app)
         return self._ok("start", compose_id)
 
     def stop(self, name: str) -> Dict[str, Any]:
@@ -110,6 +111,13 @@ class ServeActions:
     def _record_stop_event(self, compose_id: str, app: Optional[App]) -> None:
         """Append a GraphEvent so Trends charts mark intentional stops."""
         GraphEventStore(self.stack.root).record_stop(
+            service=compose_id,
+            app=None if app is None else app.name,
+        )
+
+    def _record_start_event(self, compose_id: str, app: Optional[App]) -> None:
+        """Append a GraphEvent so Trends charts mark intentional starts."""
+        GraphEventStore(self.stack.root).record_start(
             service=compose_id,
             app=None if app is None else app.name,
         )

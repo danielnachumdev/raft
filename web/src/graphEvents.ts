@@ -1,15 +1,53 @@
-import type { GraphEvent, MetricsSeries } from "./api";
-import { formatTickTime, toEpochMs } from "./chartTimeScale";
-import { groupKey } from "./trendsView";
+import type { GraphEvent, MetricsSeries } from "./api.ts";
+import { formatTickTime, toEpochMs } from "./chartTimeScale.ts";
 
-/** Keep events that apply to the plotted series (or global / no service). */
+/** Match ``trendsView`` ungrouped bucket without importing that module (node tests). */
+const UNGROUPED_ID = "__ungrouped__";
+
+/** Edge / controller Compose ids — always relevant on Trends. */
+const RAFT_LEVEL_SERVICES = new Set([
+  "raft-gate",
+  "raft-router",
+  "raft-controller",
+]);
+
+/** Stack-wide kinds (may omit service or attach to gate). */
+const RAFT_LEVEL_KINDS = new Set([
+  "up",
+  "down",
+  "update",
+  "gate_recreate",
+]);
+
+/** Hex strokes (SVG attrs do not always resolve CSS variables). */
+const KIND_STROKE: Record<string, string> = {
+  deployment: "#0f6b5c",
+  start: "#1a6b45",
+  stop: "#8b2e1f",
+  scaling: "#3d5a6c",
+  up: "#0e7490",
+  down: "#9a3412",
+  update: "#a16207",
+  gate_recreate: "#1e3a5f",
+};
+
+/** Keep events that apply to the plotted series (or raft-level / global). */
 export function eventsForSeries(
   events: GraphEvent[] | undefined,
   series: MetricsSeries[],
 ): GraphEvent[] {
   if (!events || events.length === 0) return [];
   const ids = serviceIdsForEvents(series);
-  return events.filter((e) => !e.service || ids.has(e.service));
+  return events.filter(
+    (e) => isRaftLevelEvent(e) || (e.service != null && ids.has(e.service)),
+  );
+}
+
+/** Stack-wide / edge / controller markers — always show on Trends. */
+export function isRaftLevelEvent(event: GraphEvent): boolean {
+  if (!event.service) return true;
+  if (RAFT_LEVEL_KINDS.has(event.kind)) return true;
+  return RAFT_LEVEL_SERVICES.has(event.service);
 }
 
 /**
@@ -37,13 +75,19 @@ export function seriesForEventFilter(
   const groupIds = new Set(
     visible
       .filter((s) => s.kind === "group" || s.id.startsWith("group:"))
-      .map((s) => (s.id.startsWith("group:") ? s.id.slice("group:".length) : groupKey(s.group))),
+      .map((s) =>
+        s.id.startsWith("group:") ? s.id.slice("group:".length) : seriesGroupKey(s.group),
+      ),
   );
   if (groupIds.size === 0) return visible;
   return all.filter((s) => {
     if (s.kind === "host" || s.id === "host") return false;
-    return groupIds.has(groupKey(s.group));
+    return groupIds.has(seriesGroupKey(s.group));
   });
+}
+
+function seriesGroupKey(group: string | null | undefined): string {
+  return group && group.trim() ? group.trim() : UNGROUPED_ID;
 }
 
 /** Merge event timestamps into chart rows so ReferenceLine x keys exist. */
@@ -70,7 +114,12 @@ export function eventMarkerLabel(event: GraphEvent): string {
   if (event.label && event.label.trim()) return event.label.trim();
   if (event.kind === "deployment") return "Deploy";
   if (event.kind === "stop") return "Stop";
+  if (event.kind === "start") return "Start";
   if (event.kind === "scaling") return scalingMarkerLabel(event);
+  if (event.kind === "up") return "Stack up";
+  if (event.kind === "down") return "Stack down";
+  if (event.kind === "update") return "Raft update";
+  if (event.kind === "gate_recreate") return "Gate recreate";
   return event.kind;
 }
 
@@ -83,10 +132,7 @@ function scalingMarkerLabel(event: GraphEvent): string {
 
 /** Stroke color for a GraphEvent ReferenceLine by kind. */
 export function eventMarkerStroke(kind: string): string {
-  if (kind === "deployment") return "var(--accent)";
-  if (kind === "stop") return "var(--danger)";
-  if (kind === "scaling") return "var(--idle)";
-  return "var(--muted)";
+  return KIND_STROKE[kind] ?? "#5c564c";
 }
 
 export function shortTime(iso: string): string {

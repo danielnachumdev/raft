@@ -267,7 +267,6 @@ function ServiceRuntimeChart(props: {
               props.metric.label,
             ]}
           />
-          <GraphEventMarkers events={props.events} />
           <Line
             type="monotone"
             dataKey="value"
@@ -278,6 +277,7 @@ function ServiceRuntimeChart(props: {
             isAnimationActive={false}
             connectNulls={false}
           />
+          <GraphEventMarkers events={props.events} />
         </LineChart>
       </ResponsiveContainer>
     </div>

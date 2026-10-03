@@ -9,7 +9,7 @@ import pytest
 from datetime import datetime, timezone
 
 from raft.errors import OperatorError
-from raft.models.graph_event_store import KIND_STOP, GraphEventStore
+from raft.models.graph_event_store import KIND_START, KIND_STOP, GraphEventStore
 from raft.models.scaling_store import ScalingStore
 from raft.services.serve.actions import ServeActions
 
@@ -49,6 +49,10 @@ class TestServeActions(RaftTestCase):
             result = actions.start("site")
         docker.start_service.assert_called_once_with("site")
         assert result == {"ok": True, "action": "start", "service": "site"}
+        events = GraphEventStore(self.tmp_path).events_in_window(from_ts=_EPOCH)
+        assert len(events) == 1
+        assert events[0].kind == KIND_START
+        assert events[0].service == "site"
 
     def test_stop_calls_docker(self) -> None:
         actions, docker, _orch = self._actions()

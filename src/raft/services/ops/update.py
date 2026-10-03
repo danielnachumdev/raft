@@ -11,6 +11,7 @@ from raft.errors import OperatorError
 
 from ...adapters.shell import Shell
 from ...models import Stack
+from ...models.graph_event_store import GraphEventStore
 from ...ui import say
 from ...ui.progress import TerminalProgress
 
@@ -80,6 +81,7 @@ class SelfUpdate:
         self._set_label("verifying")
         after = install_identity()
         TerminalProgress.finish_active()
+        GraphEventStore(self.stack.root).record_update()
         self._announce(before, after)
 
     @staticmethod
