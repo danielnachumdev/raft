@@ -8,6 +8,7 @@ from typing import Callable, Dict, Optional
 from ....adapters import DockerStack, Shell
 from ....adapters.docker.compose_status import ComposeStatusTable
 from ....models import Stack
+from ....ui.progress import TerminalProgress
 from ...auth import GitAuthManager
 
 
@@ -25,6 +26,10 @@ class DoctorContext:
     def progress(self, label: str) -> None:
         if self.on_progress is not None:
             self.on_progress(label)
+            return
+        active = TerminalProgress.active()
+        if active is not None:
+            active.set_text(label)
 
     def compose_status(self) -> ComposeStatusTable:
         """Doctor-scoped batch compose status (filled once per doctor run)."""

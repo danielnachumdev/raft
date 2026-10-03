@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional, TextIO
+from typing import Callable, Optional, TextIO
 
 from ....adapters import DockerStack, Shell
 from ....models import Stack
@@ -44,9 +44,13 @@ class Doctor:
         progress_stream: Optional[TextIO] = None,
     ) -> int:
         resolved = results if results is not None else self._run_with_progress(progress_stream)
+        TerminalProgress.finish_active()
         return self._reporter.write(self.stack, resolved, out=out, color=color)
 
     def _run_with_progress(self, stream: Optional[TextIO]) -> list[CheckResult]:
+        existing = TerminalProgress.active()
+        if existing is not None:
+            return self.run(progress=existing)
         with TerminalProgress(stream, prefix="raft doctor", label="checking") as progress:
             return self.run(progress=progress)
 
@@ -72,7 +76,7 @@ class Doctor:
             timing.done()
 
     def _context(self, progress: Optional[TerminalProgress]) -> DoctorContext:
-        on_progress = progress.update if progress is not None else None
+        on_progress = self._progress_hook(progress)
         return DoctorContext(
             stack=self.stack,
             shell=self.sh,
@@ -80,3 +84,12 @@ class Doctor:
             docker=self.docker,
             on_progress=on_progress,
         )
+
+    @staticmethod
+    def _progress_hook(
+        progress: Optional[TerminalProgress],
+    ) -> Optional[Callable[[str], None]]:
+        if progress is not None:
+            return progress.update
+        active = TerminalProgress.active()
+        return active.update if active is not None else None

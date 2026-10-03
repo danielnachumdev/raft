@@ -24,6 +24,7 @@ from ..models.stack import load_stack
 from ..services.ops.certs import missing_origin_certs
 from ..ui import say_err
 from .argv import ApplyEnvArgvBridge
+from .command_progress import CommandProgress
 from .fire_run import run_fire
 from .logs_argv import LogsArgvNormalizer
 from .root import RaftCLI
@@ -77,7 +78,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     command, token = bridge.bind(raw)
     command = LogsArgvNormalizer().normalize(command)
     try:
-        run_fire(RaftCLI, command=command, name="raft")
+        with CommandProgress(command):
+            run_fire(RaftCLI, command=command, name="raft")
     finally:
         bridge.reset(token)
     return 0

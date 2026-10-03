@@ -62,9 +62,34 @@ class SelfUpdate:
 
     def run(self, *, progress_stream: Optional[TextIO] = None) -> None:
         url = os.environ.get("RAFT_INSTALL_URL", DEFAULT_INSTALL_URL)
+        self._run_with_progress(url, progress_stream)
+
+    def _run_with_progress(self, url: str, stream: Optional[TextIO]) -> None:
+        existing = TerminalProgress.active()
+        if existing is not None:
+            self._run_body(url)
+            return
+        with TerminalProgress(stream, prefix="raft update", label="updating"):
+            self._run_body(url)
+
+    def _run_body(self, url: str) -> None:
+        self._set_label("checking install")
         before = install_identity()
-        self._reinstall(url, progress_stream)
+        self._set_label("updating")
+        self._run_installer(url)
+        self._set_label("verifying")
         after = install_identity()
+        TerminalProgress.finish_active()
+        self._announce(before, after)
+
+    @staticmethod
+    def _set_label(label: str) -> None:
+        active = TerminalProgress.active()
+        if active is not None:
+            active.set_text(label)
+
+    @staticmethod
+    def _announce(before: Optional[str], after: Optional[str]) -> None:
         if before is not None and before == after:
             say("raft is already up to date", style="info")
             return
@@ -78,10 +103,6 @@ class SelfUpdate:
             style="info",
         )
 
-    def _reinstall(self, url: str, stream: Optional[TextIO]) -> None:
-        with TerminalProgress(stream, prefix="raft update", label="updating"):
-            self._run_installer(url)
-
     def _run_installer(self, url: str) -> None:
         try:
             self.sh.run(
@@ -94,6 +115,7 @@ class SelfUpdate:
                 ],
             )
         except Exception as exc:
+            TerminalProgress.finish_active()
             raise OperatorError(
                 "raft update failed (could not download/run the installer).\n"
                 f"Fix: check outbound HTTPS, then retry `raft update`\n"

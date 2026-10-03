@@ -9,11 +9,18 @@ from unittest.mock import MagicMock, patch
 from raft.errors import OperatorError
 from raft.services.ops import update as update_mod
 from raft.services.ops.update import DEFAULT_INSTALL_URL, SelfUpdate, install_identity
+from raft.ui.progress import TerminalProgress
 
 from ..base import ServicesTestCase
 
 
 class TestSelfUpdate(ServicesTestCase):
+    def setup_method(self) -> None:
+        TerminalProgress._active = None
+
+    def teardown_method(self) -> None:
+        TerminalProgress._active = None
+
     def test_run_fetches_remote_install_script(self, monkeypatch) -> None:
         monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
         monkeypatch.setattr(update_mod, "install_identity", lambda: None)
@@ -85,23 +92,25 @@ class TestSelfUpdate(ServicesTestCase):
 
     def test_run_spins_while_reinstalling(self, monkeypatch) -> None:
         monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
-        monkeypatch.setattr(update_mod, "install_identity", lambda: None)
+        order: list[str] = []
+        monkeypatch.setattr(update_mod, "install_identity", self._active_step(order, "identity"))
         shell = MagicMock()
+        shell.run.side_effect = self._active_step(order, "install")
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        progress = MagicMock()
-        progress.__enter__ = MagicMock(return_value=progress)
-        progress.__exit__ = MagicMock(return_value=None)
-        with patch("raft.services.ops.update.TerminalProgress", return_value=progress) as ctor:
-            with patch("raft.services.ops.update.say"):
-                upd.run(progress_stream=object())
-        ctor.assert_called_once()
-        kwargs = ctor.call_args.kwargs
-        assert kwargs["prefix"] == "raft update"
-        assert kwargs["label"] == "updating"
-        shell.run.assert_called_once()
-        progress.__enter__.assert_called_once()
-        progress.__exit__.assert_called_once()
+        with patch("raft.services.ops.update.say"):
+            upd.run(progress_stream=object())
+        assert order == ["identity", "install", "identity"]
+        assert TerminalProgress.active() is None
+
+    @staticmethod
+    def _active_step(order: list[str], name: str):
+        def step(*_a, **_k):
+            order.append(name)
+            assert TerminalProgress.active() is not None
+            return None
+
+        return step
 
     def test_run_clears_spinner_before_error(self, monkeypatch) -> None:
         monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
@@ -110,18 +119,30 @@ class TestSelfUpdate(ServicesTestCase):
         shell.run.side_effect = RuntimeError("curl failed")
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        progress = MagicMock()
-        progress.__enter__ = MagicMock(return_value=progress)
-        progress.__exit__ = MagicMock(return_value=None)
-        with patch("raft.services.ops.update.TerminalProgress", return_value=progress):
-            with patch("raft.services.ops.update.say"):
-                try:
-                    upd.run()
-                    raise AssertionError("expected OperatorError")
-                except OperatorError:
-                    pass
-        progress.__exit__.assert_called_once()
+        with patch("raft.services.ops.update.say"):
+            try:
+                upd.run(progress_stream=object())
+                raise AssertionError("expected OperatorError")
+            except OperatorError:
+                pass
         assert shell.run.called
+        assert TerminalProgress.active() is None
+
+    def test_run_reuses_active_spinner(self, monkeypatch) -> None:
+        monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
+        monkeypatch.setattr(update_mod, "install_identity", lambda: None)
+        shell = MagicMock()
+        upd = SelfUpdate(self.stack)
+        upd.sh = shell
+        with TerminalProgress(prefix="raft update", label="updating"):
+            with patch("raft.services.ops.update.say"):
+                upd.run()
+            assert TerminalProgress.active() is not None
+            assert TerminalProgress.current()._finished
+        shell.run.assert_called_once()
+
+    def test_set_label_noop_without_active_spinner(self) -> None:
+        SelfUpdate._set_label("checking install")
 
 
 class TestInstallIdentity(ServicesTestCase):
