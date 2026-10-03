@@ -56,12 +56,10 @@ export function TrendsPanel() {
       setSeries(cached.series);
       setAvailable(cached.available);
       setCursor(cached.cursor);
-      setSelected(null);
     } else {
       setSeries([]);
       setAvailable([]);
       setCursor(null);
-      setSelected(null);
     }
     setBusy(true);
     setError(null);
@@ -70,7 +68,7 @@ export function TrendsPanel() {
         const payload = await fetchMetrics({ window: windowSec });
         if (cancelled) return;
         putMetrics(windowSec, payload);
-        applyFull(payload, setSeries, setAvailable, setCursor, setSelected);
+        applyFull(payload, setSeries, setAvailable, setCursor);
       } catch {
         if (!cancelled && !cached) {
           setError("Failed to load metrics history.");
@@ -426,12 +424,10 @@ function applyFull(
   setSeries: (s: MetricsSeries[]) => void,
   setAvailable: (a: MetricsAvailable[]) => void,
   setCursor: (c: string | null) => void,
-  setSelected: (s: string[] | null) => void,
 ) {
   setSeries(payload.series);
   setAvailable(payload.available);
   setCursor(payload.cursor);
-  setSelected(null);
 }
 
 async function pollIncremental(
