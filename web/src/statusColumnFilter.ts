@@ -1,7 +1,7 @@
 import type { StatusRow } from "./api";
 import { parseMemoryRatioPercent, parsePercent } from "./statusTone";
 
-export type SortKey = Exclude<keyof StatusRow, "external_urls">;
+export type SortKey = Exclude<keyof StatusRow, "external_urls" | "depends_on">;
 export type ColumnValueKind = "string" | "numeric";
 
 export const COLUMN_LABELS: Record<SortKey, string> = {

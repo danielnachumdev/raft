@@ -7,7 +7,7 @@ import { ExternalUrlLinks } from "./ExternalUrlLinks";
 import { ServiceQuickActions } from "./ServiceQuickActions";
 import { StatusPanelControls } from "./StatusPanelControls";
 import { COLUMN_LABELS, type SortKey } from "./statusColumnFilter";
-import { useStatusPanelView } from "./statusPanelView";
+import { useStatusPanelView, type StatusTreeRow } from "./statusPanelView";
 import {
   parseMemoryRatioPercent,
   parsePercent,
@@ -96,14 +96,14 @@ export function StatusTable(props: {
 }
 
 function StatusRowLink(props: {
-  row: StatusRow;
+  row: StatusTreeRow;
   onOpen: () => void;
   onActionDone: () => void;
 }) {
   const { row, onOpen, onActionDone } = props;
   return (
     <tr
-      className="status-row"
+      className={row.treeDepth > 0 ? "status-row status-row--child" : "status-row"}
       tabIndex={0}
       role="link"
       aria-label={`Open ${row.name}`}
@@ -129,14 +129,9 @@ function StatusRowLink(props: {
   );
 }
 
-function cellContent(key: SortKey, row: StatusRow) {
+function cellContent(key: SortKey, row: StatusTreeRow) {
   if (key === "name") {
-    return (
-      <span className="status-name-cell">
-        <span>{row.name}</span>
-        <ExternalUrlLinks urls={row.external_urls ?? []} compact />
-      </span>
-    );
+    return <NameCell row={row} />;
   }
   const value = row[key];
   if (key === "status") {
@@ -151,6 +146,26 @@ function cellContent(key: SortKey, row: StatusRow) {
     );
   }
   return value;
+}
+
+function NameCell(props: { row: StatusTreeRow }) {
+  const depth = props.row.treeDepth;
+  return (
+    <span
+      className={
+        depth > 0 ? "status-name-cell status-name-cell--tree" : "status-name-cell"
+      }
+      style={depth > 0 ? { ["--tree-depth" as string]: depth } : undefined}
+    >
+      {depth > 0 ? (
+        <span className="status-tree-guide" aria-hidden="true" />
+      ) : null}
+      <span className="status-name-body">
+        <span>{props.row.name}</span>
+        <ExternalUrlLinks urls={props.row.external_urls ?? []} compact />
+      </span>
+    </span>
+  );
 }
 
 function StatusBadge(props: { value: string }) {

@@ -9,6 +9,7 @@ from ...config.settings_types import EdgeConfig
 from ...models import Stack
 from ..ops.status import Status
 from ..ops.status.models import StatusSnapshot
+from .depends import ServeDependsMap
 from .external_urls import ExternalUrlBuilder
 from .view import ServeSnapshotView
 
@@ -43,7 +44,7 @@ class StatusRead:
         return self.payload_from_snapshot(self.collect(refresh_apps=refresh_apps))
 
     def payload_from_snapshot(self, snapshot: StatusSnapshot) -> Dict[str, Any]:
-        view = ServeSnapshotView(snapshot, urls=self._url_builder()).to_payload()
+        view = self._view(snapshot).to_payload()
         body = snapshot.to_dict()
         body["control_plane"] = view["control_plane"]
         body["apps"] = view["apps"]
@@ -51,8 +52,14 @@ class StatusRead:
 
     def service_detail(self, name: str, *, refresh_apps: bool = False) -> Optional[Dict[str, Any]]:
         """One service's container + presentation row, or None if unknown."""
-        snapshot = self.collect(refresh_apps=refresh_apps)
-        return ServeSnapshotView(snapshot, urls=self._url_builder()).service_detail(name)
+        return self._view(self.collect(refresh_apps=refresh_apps)).service_detail(name)
+
+    def _view(self, snapshot: StatusSnapshot) -> ServeSnapshotView:
+        return ServeSnapshotView(
+            snapshot,
+            urls=self._url_builder(),
+            depends=ServeDependsMap(self.stack),
+        )
 
     def _url_builder(self) -> ExternalUrlBuilder:
         edge = self._edge if self._edge is not None else load_config(self.stack.root).edge
