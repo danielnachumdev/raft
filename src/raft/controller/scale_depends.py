@@ -10,6 +10,7 @@ from raft.adapters.docker import DockerStack
 from raft.errors import OperatorError
 from raft.models.app_document import AppDocument
 from raft.models.depends import AppDependsGraph, DependsOnError, DependsOnSpec
+from raft.models.graph_event_store import SCALING_ACTION_IDLE_STOP, GraphEventStore
 from raft.models.manifest import AppSpec
 from raft.models.registry import AppRegistry
 from raft.models.scaling_store import ScalingStore
@@ -55,6 +56,7 @@ class ScaleDepends:
         except OperatorError as exc:
             logger.error("scale idle-stop failed app=%s: %s", name, exc)
             return
+        self._record_idle_stop_event(name, compose_id)
         logger.info("scale idle-stop ok app=%s", name)
 
     def costop_deps(self, name: str) -> Optional[Tuple[str, ...]]:
@@ -102,6 +104,13 @@ class ScaleDepends:
             if app.name == name:
                 return app.compose_id
         return None
+
+    def _record_idle_stop_event(self, name: str, compose_id: str) -> None:
+        GraphEventStore(self.home).record_scaling(
+            service=compose_id,
+            app=name,
+            action=SCALING_ACTION_IDLE_STOP,
+        )
 
     def _stop_scaled_chain(
         self,

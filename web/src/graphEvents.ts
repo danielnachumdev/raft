@@ -64,7 +64,24 @@ export function withEventRows<T extends { t: string; label: string }>(
 export function eventMarkerLabel(event: GraphEvent): string {
   if (event.label && event.label.trim()) return event.label.trim();
   if (event.kind === "deployment") return "Deploy";
+  if (event.kind === "stop") return "Stop";
+  if (event.kind === "scaling") return scalingMarkerLabel(event);
   return event.kind;
+}
+
+function scalingMarkerLabel(event: GraphEvent): string {
+  const action = event.metadata?.action;
+  if (action === "idle_stop") return "Idle stop";
+  if (action === "wake") return "Wake";
+  return "Scale";
+}
+
+/** Stroke color for a GraphEvent ReferenceLine by kind. */
+export function eventMarkerStroke(kind: string): string {
+  if (kind === "deployment") return "var(--accent)";
+  if (kind === "stop") return "var(--danger)";
+  if (kind === "scaling") return "var(--idle)";
+  return "var(--muted)";
 }
 
 export function shortTime(iso: string): string {

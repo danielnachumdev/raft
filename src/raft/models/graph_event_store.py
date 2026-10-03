@@ -1,8 +1,8 @@
 """Append-only GraphEvent JSONL under ``~/.raft/state/events/``.
 
-Deployments (and later other producers) append here; ``MetricsRead`` filters
-by the metrics window so Trends / Runtime charts can draw markers without
-inferring history from current deploy pins (pins only hold the live ref).
+Deploy / stop / scaling producers append here; ``MetricsRead`` filters by the
+metrics window so Trends / Runtime charts can draw markers without inferring
+history from current deploy pins (pins only hold the live ref).
 """
 
 from __future__ import annotations
@@ -12,13 +12,17 @@ import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterator, List, Optional, Sequence, Set
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Set
 
 from .graph_event import GraphEvent
 
 EVENTS_STATE_DIR = Path("state") / "events"
 EVENTS_FILENAME = "graph.jsonl"
 KIND_DEPLOYMENT = "deployment"
+KIND_STOP = "stop"
+KIND_SCALING = "scaling"
+SCALING_ACTION_IDLE_STOP = "idle_stop"
+SCALING_ACTION_WAKE = "wake"
 
 
 class GraphEventStore:
@@ -52,16 +56,80 @@ class GraphEventStore:
         label: Optional[str] = None,
     ) -> GraphEvent:
         """Convenience producer for apply / redeploy / cutover success."""
+        return self._record(
+            KIND_DEPLOYMENT,
+            service=service,
+            label=label or f"Deploy {app}",
+            metadata={"app": app, "ref": ref},
+            ts=ts,
+        )
+
+    def record_stop(
+        self,
+        *,
+        service: str,
+        app: Optional[str] = None,
+        ts: Optional[datetime] = None,
+        label: Optional[str] = None,
+    ) -> GraphEvent:
+        """Operator stop (serve/CLI) — not transient docker blips or heal restarts."""
+        name = app or service
+        meta: Dict[str, Any] = {}
+        if app is not None:
+            meta["app"] = app
+        return self._record(
+            KIND_STOP,
+            service=service,
+            label=label or f"Stop {name}",
+            metadata=meta,
+            ts=ts,
+        )
+
+    def record_scaling(
+        self,
+        *,
+        service: str,
+        app: str,
+        action: str,
+        ts: Optional[datetime] = None,
+        label: Optional[str] = None,
+    ) -> GraphEvent:
+        """Scale-to-zero lifecycle (idle-stop / wake) for Trends markers."""
+        return self._record(
+            KIND_SCALING,
+            service=service,
+            label=label or self._scaling_label(app, action),
+            metadata={"app": app, "action": action},
+            ts=ts,
+        )
+
+    def _record(
+        self,
+        kind: str,
+        *,
+        service: str,
+        label: str,
+        metadata: Dict[str, Any],
+        ts: Optional[datetime],
+    ) -> GraphEvent:
         when = ts or datetime.now(timezone.utc)
         return self.append(
             GraphEvent(
-                kind=KIND_DEPLOYMENT,
+                kind=kind,
                 ts=when.isoformat(),
                 service=service,
-                label=label or f"Deploy {app}",
-                metadata={"app": app, "ref": ref},
+                label=label,
+                metadata=metadata,
             )
         )
+
+    @staticmethod
+    def _scaling_label(app: str, action: str) -> str:
+        if action == SCALING_ACTION_IDLE_STOP:
+            return f"Idle stop {app}"
+        if action == SCALING_ACTION_WAKE:
+            return f"Wake {app}"
+        return f"Scale {app}"
 
     def events_in_window(
         self,

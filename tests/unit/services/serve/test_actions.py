@@ -6,11 +6,16 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from datetime import datetime, timezone
+
 from raft.errors import OperatorError
+from raft.models.graph_event_store import KIND_STOP, GraphEventStore
 from raft.models.scaling_store import ScalingStore
 from raft.services.serve.actions import ServeActions
 
 from ...base import RaftTestCase, make_app, make_stack, write_applied_app
+
+_EPOCH = datetime(2020, 1, 1, tzinfo=timezone.utc)
 
 _SCALING = {
     "idleSeconds": 60,
@@ -52,6 +57,11 @@ class TestServeActions(RaftTestCase):
             result = actions.stop("site")
         docker.stop_service.assert_called_once_with("site")
         assert result["action"] == "stop"
+        events = GraphEventStore(self.tmp_path).events_in_window(from_ts=_EPOCH)
+        assert len(events) == 1
+        assert events[0].kind == KIND_STOP
+        assert events[0].service == "site"
+        assert events[0].metadata["app"] == "site"
 
     def test_start_edge_uses_stack_lock(self) -> None:
         actions, docker, _orch = self._actions()
@@ -66,6 +76,11 @@ class TestServeActions(RaftTestCase):
             self._enter(locks)
             actions.stop("router")
         docker.stop_service.assert_called_once_with("raft-router")
+        events = GraphEventStore(self.tmp_path).events_in_window(from_ts=_EPOCH)
+        assert len(events) == 1
+        assert events[0].kind == KIND_STOP
+        assert events[0].service == "raft-router"
+        assert events[0].metadata == {}
 
     def test_start_clears_scaled_to_zero(self) -> None:
         write_applied_app(self.tmp_path, "site", extra={"scaling": _SCALING})

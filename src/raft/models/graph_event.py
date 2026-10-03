@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 
 @dataclass(frozen=True)
 class GraphEvent:
-    """Generic chart marker (deployments today; other kinds later)."""
+    """Generic chart marker (deployment, stop, scaling, …)."""
 
     kind: str
     ts: str

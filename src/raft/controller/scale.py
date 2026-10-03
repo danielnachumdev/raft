@@ -11,6 +11,7 @@ from typing import Callable, Optional, Tuple
 from raft.adapters.docker import DockerStack
 from raft.controller.scale_depends import ScaleDepends
 from raft.errors import OperatorError
+from raft.models.graph_event_store import SCALING_ACTION_WAKE, GraphEventStore
 from raft.models.manifest import AppSpec
 from raft.models.scaling_spec import ScalingSpec
 from raft.models.scaling_store import ScalingStore
@@ -191,7 +192,18 @@ class Scaler:
         if not self._wait_nginx_host(name, deadline):
             return False
         self.store.mark_awake(name, min_up_seconds=scaling.min_up_seconds, now=when)
+        self._record_wake_event(name)
         return True
+
+    def _record_wake_event(self, name: str) -> None:
+        compose_id = self._compose_id(name)
+        if compose_id is None:
+            return
+        GraphEventStore(self.home).record_scaling(
+            service=compose_id,
+            app=name,
+            action=SCALING_ACTION_WAKE,
+        )
 
     def _wait_app_reachable(self, name: str, deadline: float) -> bool:
         """Poll until the router network can reach the app container."""
