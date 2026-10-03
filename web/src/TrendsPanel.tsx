@@ -183,6 +183,7 @@ export function TrendsPanel() {
               series={series}
               visible={visible}
               metric={metric}
+              windowSec={windowSec}
               viewMode={viewMode}
               groupMode={groupMode}
               events={events}
@@ -216,6 +217,7 @@ function TrendsBody(props: {
   series: MetricsSeries[];
   visible: MetricsSeries[];
   metric: RuntimeMetricDef;
+  windowSec: number;
   viewMode: SeriesViewMode;
   groupMode: boolean;
   events: GraphEvent[];
@@ -249,6 +251,7 @@ function TrendsBody(props: {
       series={props.visible}
       metric={props.metric.id}
       unit={props.metric.unit}
+      windowSeconds={props.windowSec}
       aggregate={isSingleLineAvg(props.viewMode)}
       aggregateLabel={
         props.viewMode === "avg_group" ? "Group average" : "Average"

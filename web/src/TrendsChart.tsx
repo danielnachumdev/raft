@@ -5,15 +5,19 @@ import {
   LineChart,
   ResponsiveContainer,
   Tooltip,
-  XAxis,
   YAxis,
 } from "recharts";
 import type { GraphEvent, MetricsSeries } from "./api";
+import {
+  formatTooltipTime,
+  mergeTimedRows,
+  toEpochMs,
+  type TimedValue,
+} from "./chartTimeScale";
 import { GraphEventMarkers } from "./GraphEventMarkers";
 import {
   eventsForSeries,
   seriesForEventFilter,
-  shortTime,
   withEventRows,
 } from "./graphEvents";
 import {
@@ -23,6 +27,7 @@ import {
   type RuntimeMetricId,
   type RuntimeUnit,
 } from "./runtimeMetrics";
+import { TimeScaleXAxis } from "./TimeScaleXAxis";
 
 const COLORS = [
   "#0f6b5c",
@@ -38,7 +43,12 @@ const COLORS = [
 const HOST_AXIS = "host";
 const SERVICE_AXIS = "service";
 
-type ChartRow = { t: string; label: string; [key: string]: string | number | null };
+type ChartRow = {
+  ts: number;
+  t: string;
+  label: string;
+  [key: string]: string | number | null;
+};
 
 type PlotSeries = {
   chartKey: string;
@@ -51,6 +61,7 @@ export function TrendsChart(props: {
   series: MetricsSeries[];
   metric: RuntimeMetricId;
   unit: RuntimeUnit;
+  windowSeconds: number;
   aggregate: boolean;
   aggregateLabel?: string;
   events?: GraphEvent[];
@@ -67,7 +78,7 @@ export function TrendsChart(props: {
   const baseRows = props.aggregate
     ? buildAggregateRows(props.series, props.metric)
     : buildPerServiceRows(props.series, plots, props.metric);
-  const rows = withEventRows(baseRows, markers, (t, label) => ({ t, label }));
+  const rows = withEventRows(baseRows, markers, emptyChartRow);
   const labels = props.aggregate
     ? { aggregate: avgLabel }
     : Object.fromEntries(plots.map((p) => [p.chartKey, p.label]));
@@ -83,12 +94,7 @@ export function TrendsChart(props: {
       <ResponsiveContainer width="100%" height={280}>
         <LineChart data={rows} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" />
-          <XAxis
-            dataKey="t"
-            tick={{ fill: "var(--muted)", fontSize: 11 }}
-            minTickGap={28}
-            tickFormatter={shortTime}
-          />
+          <TimeScaleXAxis windowSeconds={props.windowSeconds} />
           <YAxis
             yAxisId={SERVICE_AXIS}
             tick={{ fill: "var(--muted)", fontSize: 11 }}
@@ -116,7 +122,7 @@ export function TrendsChart(props: {
             }}
             labelFormatter={(_, payload) => {
               const row = payload?.[0]?.payload as ChartRow | undefined;
-              return row?.t ? formatTime(row.t) : "";
+              return row?.t ? formatTooltipTime(row.t) : "";
             }}
             formatter={(value: number | string, name: string) => [
               formatRuntimeValue(Number(value), props.unit),
@@ -136,8 +142,7 @@ export function TrendsChart(props: {
               strokeWidth={2}
               dot={false}
               isAnimationActive={false}
-              connectNulls
-              xAxisId={0}
+              connectNulls={false}
             />
           ) : (
             plots.map((plot, i) => (
@@ -151,8 +156,7 @@ export function TrendsChart(props: {
                 strokeWidth={2}
                 dot={false}
                 isAnimationActive={false}
-                connectNulls
-                xAxisId={0}
+                connectNulls={false}
               />
             ))
           )}
@@ -172,6 +176,11 @@ export function tooltipItemSortKey(item: {
   const mag = Number.isFinite(n) ? n : -1;
   const rank = String(1_000_000_000 - Math.round(mag * 1000)).padStart(12, "0");
   return `${rank}\0${String(item.name ?? "")}`;
+}
+
+function emptyChartRow(t: string, label: string): ChartRow {
+  const ts = toEpochMs(t) ?? 0;
+  return { ts, t, label };
 }
 
 function toPlotSeries(series: MetricsSeries[]): PlotSeries[] {
@@ -204,18 +213,14 @@ export function buildPerServiceRows(
   plots: PlotSeries[],
   metric: RuntimeMetricId,
 ): ChartRow[] {
-  const byId = new Map(plots.map((p) => [p.id, p.chartKey]));
-  const byTime = new Map<string, ChartRow>();
-  for (const s of series) {
-    const key = byId.get(s.id);
-    if (!key) continue;
-    for (const p of s.points) {
-      const row = byTime.get(p.t) ?? { t: p.t, label: shortTime(p.t) };
-      row[key] = pointValue(p, metric);
-      byTime.set(p.t, row);
-    }
-  }
-  return [...byTime.values()].sort((a, b) => a.t.localeCompare(b.t));
+  const keyed = plots.map((p) => ({
+    key: p.chartKey,
+    points: timedPointsForSeries(
+      series.find((s) => s.id === p.id),
+      metric,
+    ),
+  }));
+  return mergeTimedRows(keyed) as ChartRow[];
 }
 
 function buildAggregateRows(
@@ -232,23 +237,30 @@ function buildAggregateRows(
       byTime.set(p.t, list);
     }
   }
-  return [...byTime.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([t, vals]) => ({
-      t,
-      label: shortTime(t),
-      aggregate: vals.reduce((a, b) => a + b, 0) / vals.length,
-    }));
+  const points: TimedValue[] = [...byTime.entries()].map(([t, vals]) => ({
+    ts: toEpochMs(t) ?? 0,
+    t,
+    value: vals.reduce((a, b) => a + b, 0) / vals.length,
+  }));
+  return mergeTimedRows([{ key: "aggregate", points }]) as ChartRow[];
+}
+
+function timedPointsForSeries(
+  series: MetricsSeries | undefined,
+  metric: RuntimeMetricId,
+): TimedValue[] {
+  if (!series) return [];
+  const out: TimedValue[] = [];
+  for (const p of series.points) {
+    const ts = toEpochMs(p.t);
+    if (ts === null) continue;
+    out.push({ ts, t: p.t, value: pointValue(p, metric) });
+  }
+  return out;
 }
 
 function formatAxisTick(value: number, unit: RuntimeUnit): string {
   if (unit === "bytes") return formatRuntimeValue(value, "bytes");
   if (unit === "seconds") return formatRuntimeValue(value, "seconds");
   return String(value);
-}
-
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString();
 }
