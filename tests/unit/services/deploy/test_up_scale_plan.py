@@ -62,6 +62,22 @@ class TestStackUpScalePlan(ControllerTestCase):
         plan.mark_scaled_to_zero()
         assert ScalingStore(home).is_scaled_to_zero(self.APP)
 
+    def test_deferred_pull_vs_build_by_source(self, tmp_path: Path) -> None:
+        home = self.raft_home(tmp_path)
+        write_applied_app(
+            home,
+            "api",
+            source="docker",
+            image="ghcr.io/example/api",
+            build_context=None,
+            extra=self.scaling_extra(),
+        )
+        write_applied_app(home, self.APP, extra=self.scaling_extra())
+        plan = StackUpScalePlan(load_stack(home))
+        assert plan.deferred_pull_compose_ids() == ("api",)
+        assert plan.deferred_build_compose_ids() == (self.APP,)
+        assert set(plan.deferred_compose_ids()) == {"api", self.APP}
+
     def test_broken_depends_still_defers_scaling_app(self, tmp_path: Path) -> None:
         home = self.applied_home(
             tmp_path,

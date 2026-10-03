@@ -164,9 +164,10 @@ class OrchestratorDeploy:
                 self.nginx.point_absent(app, reload=False)
 
     def _prepare_deferred_images(self, plan: StackUpScalePlan) -> None:
-        services = plan.deferred_compose_ids()
-        self.docker.pull_services(services)
-        self.docker.build_services(services)
+        # Split by source: image-only apps have nothing to build (Compose WARNs),
+        # and buildable apps are skipped by ``pull --ignore-buildable``.
+        self.docker.pull_services(plan.deferred_pull_compose_ids())
+        self.docker.build_services(plan.deferred_build_compose_ids())
 
     def _record_deploy_event(self, app) -> None:
         """Append a GraphEvent so Trends charts can mark this deploy."""
