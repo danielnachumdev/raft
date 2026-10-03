@@ -44,6 +44,28 @@ class TestDockerLifecycle(DockerTestCase):
         self.shell.compose.assert_any_call("down", "--remove-orphans", capture=False, check=False)
         self.shell.docker.assert_called()
 
+    def test_stop_stack_clears_labeled_leftovers(self) -> None:
+        self.shell.compose.return_value = self.ok()
+        # stop_stack removes each app tmp container before labeled cleanup.
+        self.shell.docker.side_effect = [
+            self.ok(""),  # rm -f app tmp
+            self.ok("cid1\n"),  # ps -aq labeled
+            self.ok("/raft-orphan\n"),  # inspect name
+            self.ok(""),  # rm -f leftover
+        ]
+        self.docker.stop_stack()
+        labeled_rms = [
+            call
+            for call in self.shell.docker.call_args_list
+            if call.args[:3] == ("rm", "-f", "cid1")
+        ]
+        assert labeled_rms
+
+    def test_network_holders_uses_router_network(self) -> None:
+        with patch.object(self.docker, "router_network", return_value="raft_default"):
+            self.shell.docker.return_value = self.ok("raft-orphan other\n")
+            assert self.docker.network_holders() == ["raft-orphan", "other"]
+
     def test_recreate_rebuild(self) -> None:
         self.shell.compose.return_value = self.ok()
         self.docker.recreate_router()

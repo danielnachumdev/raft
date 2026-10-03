@@ -63,6 +63,8 @@ from .domain import (
     require_int,
     require_mapping,
     service_not_running,
+    stack_already_running,
+    stack_down_incomplete,
     unknown_app,
     unknown_logs_target,
 )
@@ -142,6 +144,8 @@ __all__ = [
     "run_compose_checked",
     "run_docker_checked",
     "service_not_running",
+    "stack_already_running",
+    "stack_down_incomplete",
     "subprocess_detail",
     "summarize_health_inspect",
     "unknown_app",

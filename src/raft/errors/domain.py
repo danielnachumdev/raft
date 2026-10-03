@@ -33,6 +33,37 @@ def service_not_running(service: str) -> OperatorError:
     )
 
 
+def stack_already_running(running: Sequence[str], *, holders: Sequence[str] = ()) -> OperatorError:
+    joined = ", ".join(running)
+    hold = ", ".join(holders) if holders else "(none listed)"
+    return OperatorError(
+        f"stack already running ({joined}). "
+        f"Refusing to rebuild/reload everything.\n"
+        f"Network holders on raft_default: {hold}\n"
+        f"Fix: docker compose -f ~/.raft/compose.yaml ps\n"
+        f"     raft down                    # must finish with no running services\n"
+        f"     # if down warned 'Network … still in use', another process may have\n"
+        f"     # restarted containers — run raft down again, then:\n"
+        f"     docker compose -f ~/.raft/compose.yaml ps   # expect empty / Exited\n"
+        f"     raft up\n"
+        f"     # targeted update instead of full rebuild: raft redeploy <app|router>",
+        has_fix=False,
+    )
+
+
+def stack_down_incomplete(running: Sequence[str], *, holders: Sequence[str] = ()) -> OperatorError:
+    joined = ", ".join(running) if running else "(none)"
+    hold = ", ".join(holders) if holders else "(none listed)"
+    return OperatorError(
+        f"raft down did not fully stop the stack — still running: {joined}.\n"
+        f"Network holders on raft_default: {hold}\n"
+        f"Fix: docker compose -f ~/.raft/compose.yaml ps\n"
+        f"     docker compose -f ~/.raft/compose.yaml down --remove-orphans\n"
+        f"     # if something immediately restarts (other terminal/CI), stop it first\n"
+        f"     raft down && raft up"
+    )
+
+
 def redeploy_requires_app() -> OperatorError:
     return OperatorError("redeploy requires APP.\n" "Fix: raft redeploy <app>|router")
 
@@ -158,6 +189,8 @@ __all__ = [
     "require_int",
     "require_mapping",
     "service_not_running",
+    "stack_already_running",
+    "stack_down_incomplete",
     "unknown_app",
     "unknown_logs_target",
 ]

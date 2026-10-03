@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
+from raft.errors import OperatorError
 from tests.shared.compose_ids import RunningServices
 
 from ....base import write_applied_app
@@ -100,15 +101,41 @@ class TestOrchRenderStart(OrchestratorTestCase):
         self.orch.docker.recreate_gate.assert_called_once()
 
     def test_stop_already_stopped(self) -> None:
-        self.set_running()
+        self.orch.docker.running_services.side_effect = [[], []]
+        self.orch.docker.network_holders.return_value = []
         self.orch.stop()
         self.orch.docker.remove_container.assert_called()
-        self.orch.docker.stop_stack.assert_not_called()
+        self.orch.docker.stop_stack.assert_called_once()
 
     def test_stop_running(self) -> None:
-        self.set_running(*RunningServices.gate_only())
+        self.orch.docker.running_services.side_effect = [
+            list(RunningServices.gate_only()),
+            [],
+        ]
+        self.orch.docker.network_holders.return_value = []
         self.orch.stop()
         self.orch.docker.stop_stack.assert_called_once()
+
+    def test_stop_incomplete_raises(self) -> None:
+        self.orch.docker.running_services.side_effect = [
+            list(RunningServices.gate_only()),
+            list(RunningServices.gate_only()),
+        ]
+        self.orch.docker.network_holders.return_value = ["raft-raft-gate-1"]
+        with pytest.raises(OperatorError, match="did not fully stop"):
+            self.orch.stop()
+
+    def test_stop_warns_when_network_still_held(self, capsys) -> None:
+        self.orch.docker.running_services.side_effect = [
+            list(RunningServices.gate_only()),
+            [],
+        ]
+        self.orch.docker.network_holders.return_value = ["sneaky"]
+        self.orch.stop()
+        captured = capsys.readouterr()
+        text = captured.out + captured.err
+        assert "network still has containers" in text
+        assert "sneaky" in text
 
     def test_redeploy_routes_to_router_and_app(self) -> None:
         with patch.object(self.orch, "redeploy_router") as rr:
