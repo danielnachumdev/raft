@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
+from ...models.graph_event_store import GraphEventStore
 from ...ui import say
 from ..ops.certs import require_origin_certs
 from .cutover import DEPLOY_CUTOVER, CutoverSession
@@ -36,6 +37,7 @@ class OrchestratorDeploy:
             )
             logger.info("redeploy cutover for %s (%s)", app.name, app.public_host)
             self._run_cutover(session, app.name)
+            self._record_deploy_event(app)
             say(f"redeployed {app.name}", style="ok")
 
     def _run_cutover(self, session: CutoverSession, app_name: str) -> None:
@@ -97,6 +99,7 @@ class OrchestratorDeploy:
         self.docker.rebuild_service(app.compose_id)
         self.docker.nginx_test_and_reload()
         self._wait_app_ready(app)
+        self._record_deploy_event(app)
         say(f"deployed {app.name}", style="ok")
 
     def _start_stack_for_app(
@@ -123,5 +126,14 @@ class OrchestratorDeploy:
         logger.info("waiting for readiness checks")
         for app in self.stack.apps:
             self._wait_app_ready(app)
+        self._record_deploy_event(self.stack.app(app_name))
         say("stack is up", style="ok")
         say(f"deployed {app_name}", style="ok")
+
+    def _record_deploy_event(self, app) -> None:
+        """Append a GraphEvent so Trends charts can mark this deploy."""
+        GraphEventStore(self.stack.root).record_deployment(
+            service=app.compose_id,
+            app=app.name,
+            ref=app.ref,
+        )

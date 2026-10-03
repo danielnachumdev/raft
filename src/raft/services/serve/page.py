@@ -18,7 +18,7 @@ from .log_stream import LogSseStream
 from .paths import ServePaths
 
 # GET /api/status — shared read contract (see raft.services.read).
-# GET /api/metrics — historical series from resources.jsonl (poll + since).
+# GET /api/metrics — historical series + GraphEvents (poll + since).
 # GET /api/service/{name} — one Compose service from the status snapshot.
 # GET /api/service/{name}/logs — container stdout/stderr tail (Logs.snapshot).
 # GET /api/service/{name}/logs/follow — SSE follow (Logs.follow; CLI ``-f``).

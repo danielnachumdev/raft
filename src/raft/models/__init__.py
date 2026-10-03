@@ -11,6 +11,8 @@ from .app import (
     display_service_label,
 )
 from .app_document import AppDocument
+from .graph_event import GraphEvent
+from .graph_event_store import KIND_DEPLOYMENT, GraphEventStore
 from .manifest import (
     CONTRACT_API_VERSION,
     CONTRACT_KIND,
@@ -38,6 +40,9 @@ __all__ = [
     "AppDocument",
     "AppRegistry",
     "AppSpec",
+    "GraphEvent",
+    "GraphEventStore",
+    "KIND_DEPLOYMENT",
     "VolumeSpec",
     "PortSpec",
     "ReadinessSpec",

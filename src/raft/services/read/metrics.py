@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
 from raft.controller.metrics import METRICS_DIR, METRICS_FILENAME
+from raft.models.graph_event_store import GraphEventStore
 
 from .metrics_jsonl import MetricsJsonlReader
 from .metrics_series import MetricsSeriesBuilder
@@ -25,11 +26,13 @@ class MetricsRead:
         *,
         reader: Optional[MetricsJsonlReader] = None,
         builder: Optional[MetricsSeriesBuilder] = None,
+        events: Optional[GraphEventStore] = None,
     ) -> None:
         self.home = home
         self.path = home / METRICS_DIR / METRICS_FILENAME
         self._reader = reader or MetricsJsonlReader(self.path)
         self._builder = builder or MetricsSeriesBuilder()
+        self._events = events or GraphEventStore(home)
 
     def history(
         self,
@@ -80,4 +83,20 @@ class MetricsRead:
                 self._builder.downsample(s, max_points=max_points)
                 for s in series_map.values()
             ],
+            # Full-window events (ignore ``since``) so polls stay idempotent.
+            "events": self._events_payload(
+                from_ts=from_ts, to_ts=to_ts, services=services
+            ),
         }
+
+    def _events_payload(
+        self,
+        *,
+        from_ts: datetime,
+        to_ts: datetime,
+        services: Optional[Sequence[str]],
+    ) -> List[Dict[str, Any]]:
+        events = self._events.events_in_window(
+            from_ts=from_ts, to_ts=to_ts, services=services
+        )
+        return [event.to_mapping() for event in events]

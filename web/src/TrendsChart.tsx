@@ -8,7 +8,14 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { MetricsSeries } from "./api";
+import type { GraphEvent, MetricsSeries } from "./api";
+import { GraphEventMarkers } from "./GraphEventMarkers";
+import {
+  eventsForSeries,
+  seriesForEventFilter,
+  shortTime,
+  withEventRows,
+} from "./graphEvents";
 import {
   formatRuntimeValue,
   runtimePointValue,
@@ -46,12 +53,21 @@ export function TrendsChart(props: {
   unit: RuntimeUnit;
   aggregate: boolean;
   aggregateLabel?: string;
+  events?: GraphEvent[];
+  /** Full window series — used to map group charts back to deploy services. */
+  allSeries?: MetricsSeries[];
 }) {
   const avgLabel = props.aggregateLabel ?? "Average";
+  const eventSeries = seriesForEventFilter(
+    props.allSeries ?? props.series,
+    props.series,
+  );
+  const markers = eventsForSeries(props.events, eventSeries);
   const plots = props.aggregate ? [] : toPlotSeries(props.series);
-  const rows = props.aggregate
+  const baseRows = props.aggregate
     ? buildAggregateRows(props.series, props.metric)
     : buildPerServiceRows(props.series, plots, props.metric);
+  const rows = withEventRows(baseRows, markers, (t, label) => ({ t, label }));
   const labels = props.aggregate
     ? { aggregate: avgLabel }
     : Object.fromEntries(plots.map((p) => [p.chartKey, p.label]));
@@ -68,9 +84,10 @@ export function TrendsChart(props: {
         <LineChart data={rows} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" />
           <XAxis
-            dataKey="label"
+            dataKey="t"
             tick={{ fill: "var(--muted)", fontSize: 11 }}
             minTickGap={28}
+            tickFormatter={shortTime}
           />
           <YAxis
             yAxisId={SERVICE_AXIS}
@@ -108,6 +125,7 @@ export function TrendsChart(props: {
             itemSorter={tooltipItemSortKey}
           />
           <Legend formatter={(value) => labels[value] ?? value} />
+          <GraphEventMarkers events={markers} />
           {props.aggregate ? (
             <Line
               type="monotone"
@@ -227,12 +245,6 @@ function formatAxisTick(value: number, unit: RuntimeUnit): string {
   if (unit === "bytes") return formatRuntimeValue(value, "bytes");
   if (unit === "seconds") return formatRuntimeValue(value, "seconds");
   return String(value);
-}
-
-function shortTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 function formatTime(iso: string): string {

@@ -3,6 +3,7 @@ import type { Dispatch, SetStateAction } from "react";
 import {
   fetchMetrics,
   METRICS_POLL_MS,
+  type GraphEvent,
   type MetricsAvailable,
   type MetricsPayload,
   type MetricsSeries,
@@ -41,6 +42,9 @@ export function TrendsPanel() {
   const [cursor, setCursor] = useState<string | null>(() => {
     return peekMetrics(DEFAULT_RUNTIME_WINDOW)?.cursor ?? null;
   });
+  const [events, setEvents] = useState<GraphEvent[]>(() => {
+    return peekMetrics(DEFAULT_RUNTIME_WINDOW)?.events ?? [];
+  });
   const [busy, setBusy] = useState(
     () => peekMetrics(DEFAULT_RUNTIME_WINDOW) === null,
   );
@@ -56,10 +60,12 @@ export function TrendsPanel() {
       setSeries(cached.series);
       setAvailable(cached.available);
       setCursor(cached.cursor);
+      setEvents(cached.events ?? []);
     } else {
       setSeries([]);
       setAvailable([]);
       setCursor(null);
+      setEvents([]);
     }
     setBusy(true);
     setError(null);
@@ -68,7 +74,13 @@ export function TrendsPanel() {
         const payload = await fetchMetrics({ window: windowSec });
         if (cancelled) return;
         putMetrics(windowSec, payload);
-        applyFull(payload, setSeries, setAvailable, setCursor);
+        applyFull(
+          payload,
+          setSeries,
+          setAvailable,
+          setCursor,
+          setEvents,
+        );
       } catch {
         if (!cancelled && !cached) {
           setError("Failed to load metrics history.");
@@ -85,7 +97,14 @@ export function TrendsPanel() {
   useEffect(() => {
     if (busy) return;
     const id = window.setInterval(() => {
-      void pollIncremental(windowSec, cursor, setSeries, setAvailable, setCursor);
+      void pollIncremental(
+        windowSec,
+        cursor,
+        setSeries,
+        setAvailable,
+        setCursor,
+        setEvents,
+      );
     }, METRICS_POLL_MS);
     return () => window.clearInterval(id);
   }, [windowSec, cursor, busy]);
@@ -166,6 +185,7 @@ export function TrendsPanel() {
               metric={metric}
               viewMode={viewMode}
               groupMode={groupMode}
+              events={events}
             />
           )}
         </div>
@@ -198,6 +218,7 @@ function TrendsBody(props: {
   metric: RuntimeMetricDef;
   viewMode: SeriesViewMode;
   groupMode: boolean;
+  events: GraphEvent[];
 }) {
   if (props.error) {
     return (
@@ -232,6 +253,8 @@ function TrendsBody(props: {
       aggregateLabel={
         props.viewMode === "avg_group" ? "Group average" : "Average"
       }
+      events={props.events}
+      allSeries={props.series}
     />
   );
 }
@@ -424,10 +447,12 @@ function applyFull(
   setSeries: (s: MetricsSeries[]) => void,
   setAvailable: (a: MetricsAvailable[]) => void,
   setCursor: (c: string | null) => void,
+  setEvents: (e: GraphEvent[]) => void,
 ) {
   setSeries(payload.series);
   setAvailable(payload.available);
   setCursor(payload.cursor);
+  setEvents(payload.events ?? []);
 }
 
 async function pollIncremental(
@@ -436,6 +461,7 @@ async function pollIncremental(
   setSeries: Dispatch<SetStateAction<MetricsSeries[]>>,
   setAvailable: (a: MetricsAvailable[]) => void,
   setCursor: (c: string | null) => void,
+  setEvents: (e: GraphEvent[]) => void,
 ) {
   try {
     const payload = await fetchMetrics({
@@ -443,6 +469,7 @@ async function pollIncremental(
       since: cursor ?? undefined,
     });
     if (payload.available.length) setAvailable(payload.available);
+    setEvents(payload.events ?? []);
     if (!payload.series.length) return;
     setSeries((prev) => mergeSeries(prev, payload.series));
     if (payload.cursor) setCursor(payload.cursor);
