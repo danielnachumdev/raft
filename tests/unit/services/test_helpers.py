@@ -94,8 +94,16 @@ class TestOrchestratorPolicy(ServicesTestCase):
             "running_services",
             return_value=RunningServices.edge(),
         ):
-            with pytest.raises(OperatorError, match="already running"):
-                self.orch.start()
+            with patch.object(
+                self.orch.docker,
+                "network_holders",
+                return_value=["cling-on"],
+            ):
+                with pytest.raises(OperatorError, match="already running") as caught:
+                    self.orch.start()
+        assert "Network holders" in str(caught.value)
+        assert "cling-on" in str(caught.value)
+        assert "compose.yaml ps" in str(caught.value)
 
     def test_redeploy_router_requires_gate(self) -> None:
         with patch.object(self.orch.docker, "running_services", return_value=["router"]):

@@ -5,7 +5,12 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from raft.errors import OperatorError, append_diagnostics
+from raft.errors import (
+    OperatorError,
+    append_diagnostics,
+    stack_already_running,
+    stack_down_incomplete,
+)
 
 from ...adapters.docker import DockerStack
 from ...adapters.http import HttpProbe
@@ -123,14 +128,7 @@ class Orchestrator(OrchestratorDeploy):
             say("redeploy with: raft redeploy <app>", style="info")
 
     def _refuse_full_rebuild(self, running: list[str]) -> None:
-        joined = ", ".join(running)
-        raise OperatorError(
-            f"stack already running ({joined}). "
-            "Refusing to rebuild/reload everything — "
-            "run `raft down` first, "
-            "or `raft redeploy <app|router>` for a targeted update.",
-            has_fix=False,
-        )
+        raise stack_already_running(running, holders=self.docker.network_holders())
 
     def _assert_core_edge_running(self) -> None:
         """Compose can report Started even when nginx then exits on bad config."""
@@ -158,10 +156,27 @@ class Orchestrator(OrchestratorDeploy):
                 say("stack already stopped", style="info")
                 for app in self.stack.apps:
                     self.docker.remove_container(app.tmp_container)
+                self.docker.stop_stack()
+                self._assert_stack_stopped()
                 return
             logger.info("stopping stack (%s)", ", ".join(running))
             self.docker.stop_stack()
+            self._assert_stack_stopped()
             say("stack stopped", style="ok")
+
+    def _assert_stack_stopped(self) -> None:
+        still = self.docker.running_services()
+        holders = self.docker.network_holders()
+        if still:
+            raise stack_down_incomplete(still, holders=holders)
+        if holders:
+            say(
+                "network still has containers after down: "
+                + ", ".join(holders)
+                + " — another process may have restarted the stack; "
+                "run `raft down` again before `raft up`",
+                style="warn",
+            )
 
     def redeploy(self, target: str) -> None:
         # Accept short edge aliases (gate/router) or full compose ids.

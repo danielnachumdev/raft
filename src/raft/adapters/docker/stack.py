@@ -21,6 +21,7 @@ from .compose_status import ComposeStatusTable
 from .edge import DockerEdge
 from .images import DockerImages
 from .inspect import DockerInspect
+from .project_cleanup import ComposeProjectCleanup
 
 _PS_FORMAT = "{{.Service}} {{.State}} {{.Health}}"
 
@@ -55,6 +56,14 @@ class DockerStack(DockerInspect, DockerImages, DockerEdge):
         )
         for app in self.stack.apps:
             self.remove_container(app.tmp_container)
+        leftover = ComposeProjectCleanup(self.sh).remove_labeled()
+        if leftover:
+            logger.info("cleared leftover project containers after down: %s", leftover)
+
+    def network_holders(self) -> list:
+        """Names still attached to the compose default network."""
+        network = self.router_network()
+        return ComposeProjectCleanup(self.sh).network_holders(network)
 
     def compose_service_status(self) -> ComposeStatusTable:
         """One ``docker compose ps`` batch: Service / State / Health per service."""
