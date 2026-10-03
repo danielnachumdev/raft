@@ -17,6 +17,7 @@ from ...adapters.http import HttpProbe
 from ...adapters.nginx import NginxUpstreams
 from ...adapters.shell import Shell
 from ...config.settings import load_config
+from ...models.scaling_store import ScalingStore
 from ...models.stack import Stack
 from ...ui import say
 from ..ops.certs import require_origin_certs
@@ -74,6 +75,8 @@ class Orchestrator(OrchestratorDeploy):
         stamp.write(stamp.fingerprint())
 
     def _wait_app_ready(self, app, *, timeout: Optional[float] = None) -> None:
+        if self._skip_scaled_host_wait(app):
+            return
         strategy = ReadinessStrategy.from_spec(self.stack.spec_for(app))
         predicate = strategy.wait_predicate(
             app,
@@ -92,6 +95,20 @@ class Orchestrator(OrchestratorDeploy):
             diagnostics=lambda: self.docker.diagnostics_for(app.compose_id),
         )
 
+    def _skip_scaled_host_wait(self, app) -> bool:
+        """Gate holds scaled apps; doctor skips Host too — don't fail `raft up` on 404."""
+        if not app.public_host:
+            return False
+        if not ScalingStore(self.stack.root).is_scaled_to_zero(app.name):
+            return False
+        logger.info("skip Host readiness for %s (scaled to zero)", app.name)
+        return True
+
+    def _reload_router_for_host_waits(self) -> None:
+        """Re-resolve upstream DNS after Compose start (router may have raced apps)."""
+        logger.info("reloading router nginx before Host readiness waits")
+        self.docker.reload_router_nginx()
+
     @staticmethod
     def _ready_fix(app, strategy) -> str:
         return (
@@ -104,7 +121,8 @@ class Orchestrator(OrchestratorDeploy):
     @staticmethod
     def _readiness_label(app, strategy) -> str:
         if strategy.kind == "http":
-            return f"Host {app.public_host}"
+            path = strategy.path if strategy.path.startswith("/") else f"/{strategy.path}"
+            return f"Host {app.public_host}{path}"
         if strategy.port is not None and strategy.port.expose == "none":
             return f"compose readiness for {app.name}"
         return f"{strategy.kind} readiness for {app.name}"
