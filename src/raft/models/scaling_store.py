@@ -77,12 +77,16 @@ class ScalingStore:
 
     def save(self, name: str, state: AppScalingState) -> None:
         self.ensure_dirs()
-        path = self.path_for(name)
-        path.write_text(
-            json.dumps(state.to_mapping(), indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
+        self._atomic_write_json(self.path_for(name), state.to_mapping())
         self._sync_markers(name, state)
+
+    @staticmethod
+    def _atomic_write_json(path: Path, data: dict[str, Any]) -> None:
+        """Write via temp+replace so concurrent readers never see torn JSON."""
+        text = json.dumps(data, indent=2, sort_keys=True) + "\n"
+        tmp = path.with_suffix(path.suffix + ".tmp")
+        tmp.write_text(text, encoding="utf-8")
+        tmp.replace(path)
 
     def is_scaled_to_zero(self, name: str) -> bool:
         return self.load(name).scaled_to_zero

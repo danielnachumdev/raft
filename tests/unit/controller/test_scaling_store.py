@@ -56,3 +56,12 @@ class TestScalingStore(ControllerTestCase):
         store.clear_scaled_to_zero(self.APP)
         assert not store.is_scaled_to_zero(self.APP)
         assert not (home / "state/scaling/markers/web.zero").is_file()
+
+    def test_save_is_atomic(self, tmp_path: Path) -> None:
+        home = self.raft_home(tmp_path)
+        store = ScalingStore(home)
+        store.touch_activity(self.APP, now=0.0)
+        path = store.path_for(self.APP)
+        assert path.is_file()
+        assert not path.with_suffix(path.suffix + ".tmp").exists()
+        assert store.load(self.APP).last_activity_at == 0.0
