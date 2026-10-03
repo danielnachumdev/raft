@@ -161,3 +161,31 @@ class TestMetricsRecorder(ControllerTestCase):
         )
         rec.tick()
         rotation.maintain.assert_called_once_with(rec.path)
+
+    def test_permission_denied_logs_fix_and_reraises(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        rec = self._denied_write_recorder(tmp_path, monkeypatch)
+        with patch("raft.controller.metrics.logger") as log:
+            raised = False
+            try:
+                rec.tick()
+            except PermissionError:
+                raised = True
+            assert raised and "Fix:" in log.error.call_args.args[0]
+
+    def _denied_write_recorder(self, tmp_path: Path, monkeypatch) -> MetricsRecorder:
+        home = self.raft_home(tmp_path)
+        rec = self._recorder(
+            home,
+            samples=[{"host": {}, "containers": []}],
+            batch_size=1,
+            clock_values=[0.0, 0.0],
+        )
+        rec.path.parent.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr(Path, "open", self._deny_open)
+        return rec
+
+    @staticmethod
+    def _deny_open(self, *args, **kwargs):
+        raise PermissionError("denied")

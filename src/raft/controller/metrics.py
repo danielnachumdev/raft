@@ -96,9 +96,21 @@ class MetricsRecorder:
     def _write_batch(self, rows: List[Dict[str, Any]]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         chunk = "".join(self._line(row) for row in rows)
-        with self.path.open("a", encoding="utf-8") as handle:
-            handle.write(chunk)
+        try:
+            with self.path.open("a", encoding="utf-8") as handle:
+                handle.write(chunk)
+        except PermissionError:
+            self._log_permission_denied()
+            raise
         logger.debug("metrics flushed count=%s path=%s", len(rows), self.path)
+
+    def _log_permission_denied(self) -> None:
+        logger.error(
+            "metrics append denied path=%s — Trends stays empty until fixed. "
+            'Fix: sudo chown "$(whoami):$(whoami)" %s',
+            self.path,
+            self.path,
+        )
 
     @staticmethod
     def _line(row: Dict[str, Any]) -> str:
