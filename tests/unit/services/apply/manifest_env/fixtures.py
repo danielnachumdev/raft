@@ -76,17 +76,17 @@ spec:
 
 PLACEHOLDER_ENV: dict[str, str] = {
     "RAFT_APP_NAME": "frontend-dev",
-    "RAFT_APP_GROUP": "limudpsanter-dev",
+    "RAFT_APP_GROUP": "demo-stack",
     "RAFT_APP_REF": "abc123",
     "RAFT_APP_PATH": "apps/frontend-dev",
 }
 
-MIXED_PLACEHOLDERS_TEXT = "name: ${NAME}\nhost: ${HOST:-fallback}\nliteral: $${NAME}\n"
+MIXED_PLACEHOLDERS_TEXT = "name: ${NAME}\nhost: ${HOST:-fallback}\nnote: ok\n"
 
 EXPECTED_EXPANDED_SNIPPET = """\
 name: web
 host: a.example
-literal: ${NAME}
+note: ok
 """
 
 MIXED_PLACEHOLDERS_ENV: dict[str, str] = {

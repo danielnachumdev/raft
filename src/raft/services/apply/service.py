@@ -22,7 +22,7 @@ from ...ui import say
 from ..auth import GitAuthManager
 from ..deploy.locking import app_and_stack_locks, app_deploy_lock
 from ..deploy.orchestrator import Orchestrator
-from .manifest_env import ManifestYamlLoader
+from .manifest_preprocess import ManifestYamlLoader
 
 logger = logging.getLogger(__name__)
 

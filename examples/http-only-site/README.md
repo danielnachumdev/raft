@@ -9,7 +9,8 @@ HTTP behind the gate, or when TLS is handled upstream (e.g. Cloudflare Flexible)
 - No VPS-side HTTPS for this app
 - You want the richest field comments in one place (see `.raft/app.yaml`),
   including optional `spec.resources` (Compose `deploy.resources`) and
-  optional `spec.scaling` (scale-to-zero; all fields required when present)
+  optional `spec.scaling` (scale-to-zero; all fields required when present).
+  For an optional block via `${{ if }}`, see `optional-block.snippet.yaml`.
 
 ## Apply (recommended)
 

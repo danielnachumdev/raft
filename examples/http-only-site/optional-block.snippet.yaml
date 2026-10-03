@@ -1,0 +1,14 @@
+# Paste under `spec:` in `.raft/app.yaml` (match indent). Not a full App.
+#
+#   raft apply --file .raft/app.yaml --ref $SHA \
+#     --env INCLUDE_SCALING=true \
+#     --env SCALE_IDLE_SECONDS=300 \
+#     --env SCALE_WAKE_TIMEOUT_SECONDS=60 \
+#     --env SCALE_MIN_UP_SECONDS=60
+
+${{ if ${INCLUDE_SCALING} == 'true' }}
+scaling:
+  idleSeconds: ${SCALE_IDLE_SECONDS}
+  wakeTimeoutSeconds: ${SCALE_WAKE_TIMEOUT_SECONDS}
+  minUpSeconds: ${SCALE_MIN_UP_SECONDS}
+${{ endif }}

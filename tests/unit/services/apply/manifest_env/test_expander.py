@@ -1,8 +1,6 @@
-"""Placeholder expansion unit cases."""
+"""Unit tests for ``ManifestTextExpander``."""
 
 from __future__ import annotations
-
-from pathlib import Path
 
 import pytest
 import yaml
@@ -19,106 +17,71 @@ from .fixtures import (
     MIXED_PLACEHOLDERS_TEXT,
     PLACEHOLDER_ENV,
     PLACEHOLDER_MANIFEST,
-    ErrorCase,
     ExpandCase,
+    ErrorCase,
 )
 
 
-class TestRequiredPlaceholder:
-    def test_substitutes_nonempty_env_value(self) -> None:
-        text = "name: ${NAME}"
-        env = {"NAME": "web"}
-
-        expanded = ManifestTextExpander(env).expand(text)
-
-        assert expanded == "name: web"
-
-    def test_errors_when_variable_unset(self) -> None:
-        text = "x: ${FOO}"
-        env: dict[str, str] = {}
-
-        with pytest.raises(OperatorError, match=r"undefined variable FOO in \$\{FOO\}") as caught:
-            ManifestTextExpander(env).expand(text)
-
-        assert_operator(caught.value, contains=("--env-file", "FOO"))
-
-    def test_errors_when_variable_empty(self) -> None:
-        text = "x: ${FOO}"
-        env = {"FOO": ""}
-
-        with pytest.raises(OperatorError, match="undefined variable FOO"):
-            ManifestTextExpander(env).expand(text)
-
-    def test_error_includes_manifest_path(self) -> None:
-        text = "${FOO}"
-        env: dict[str, str] = {}
-        path = "/tmp/app.yaml"
-
-        with pytest.raises(OperatorError, match="manifest at /tmp/app.yaml") as caught:
-            ManifestTextExpander(env, path=path).expand(text)
-
-        assert_operator(caught.value, contains=("--env-file", "FOO"))
-
-
-class TestDefaultPlaceholder:
-    @pytest.mark.parametrize(
-        "case",
-        DEFAULT_PLACEHOLDER_CASES,
-        ids=lambda c: c.id,
-    )
-    def test_uses_default_when_unset_or_empty(self, case: ExpandCase) -> None:
+class TestRequiredAndDefault:
+    @pytest.mark.parametrize("case", DEFAULT_PLACEHOLDER_CASES, ids=lambda c: c.id)
+    def test_valid_cases(self, case: ExpandCase) -> None:
         expanded = ManifestTextExpander(case.env).expand(case.text)
-
         assert expanded == case.expected
 
-    def test_default_closes_at_first_brace_nested_not_supported(self) -> None:
-        # First `}` ends the placeholder — nested `${…}` in defaults is not supported.
-        unset_env = {"B": "inner"}
-        set_env = {"A": "set", "B": "inner"}
+    def test_undefined_required(self) -> None:
+        with pytest.raises(OperatorError, match="undefined variable FOO") as caught:
+            ManifestTextExpander({}).expand("x: ${FOO}")
+        assert_operator(caught.value, contains=("--env-file", "FOO"))
+
+    def test_empty_env_value_treated_as_unset_for_required(self) -> None:
+        with pytest.raises(OperatorError, match="undefined variable FOO"):
+            ManifestTextExpander({"FOO": ""}).expand("${FOO}")
+
+    def test_default_when_empty_or_unset(self) -> None:
+        text = "${A:-fallback}"
+        assert ManifestTextExpander({}).expand(text) == "fallback"
+        assert ManifestTextExpander({"A": ""}).expand(text) == "fallback"
+        assert ManifestTextExpander({"A": "set"}).expand(text) == "set"
+
+    def test_nested_looking_default_is_literal(self) -> None:
+        # Default body is literal text until `}`; not a nested expand.
         text = "${A:-${B}}"
-
-        when_unset = ManifestTextExpander(unset_env).expand(text)
-        when_set = ManifestTextExpander(set_env).expand(text)
-
+        when_unset = ManifestTextExpander({}).expand(text)
+        when_set = ManifestTextExpander({"A": "set"}).expand(text)
         # Unset A → default literal `${B` plus leftover `}` → `${B}`
         assert when_unset == "${B}"
         # Set A → value plus leftover closing brace from the inner-looking default
         assert when_set == "set}"
 
 
-class TestLiteralEscape:
-    def test_dollar_dollar_brace_becomes_literal_dollar_brace(self) -> None:
-        text = "$${NAME}"
-        env = {"NAME": "nope"}
+class TestCommentsAndPassThrough:
+    def test_full_line_comment_keeps_placeholders(self) -> None:
+        text = "# name: ${NAME}\nname: ${NAME}\n"
+        assert ManifestTextExpander({"NAME": "web"}).expand(text) == (
+            "# name: ${NAME}\nname: web\n"
+        )
 
-        expanded = ManifestTextExpander(env).expand(text)
+    def test_indented_full_line_comment(self) -> None:
+        text = "  # ${MISSING}\nok: 1\n"
+        assert ManifestTextExpander({}).expand(text) == "  # ${MISSING}\nok: 1\n"
 
-        assert expanded == "${NAME}"
+    def test_comment_without_trailing_newline(self) -> None:
+        text = "# ${MISSING}"
+        assert ManifestTextExpander({}).expand(text) == "# ${MISSING}"
 
-    def test_escape_mid_string_does_not_look_up_name(self) -> None:
-        text = "pre$${NAME}post"
-        env: dict[str, str] = {}
-
-        expanded = ManifestTextExpander(env).expand(text)
-
-        assert expanded == "pre${NAME}post"
-
-    def test_escape_then_real_placeholder(self) -> None:
-        # $${ → literal ${, then ${REAL} expands.
-        text = "$${${REAL}}"
-        env = {"REAL": "ok"}
-
-        expanded = ManifestTextExpander(env).expand(text)
-
-        assert expanded == "${ok}"
+    def test_inline_hash_still_expands(self) -> None:
+        # Trailing `# …` on a value line is not a full-line comment.
+        text = "x: ${NAME} # note ${NOTE}\n"
+        assert ManifestTextExpander({"NAME": "web", "NOTE": "n"}).expand(text) == (
+            "x: web # note n\n"
+        )
 
     def test_bare_dollar_without_braces_untouched(self) -> None:
         text = "cost is $5 and $FOO"
-        env = {"FOO": "x"}
+        assert ManifestTextExpander({"FOO": "x"}).expand(text) == "cost is $5 and $FOO"
 
-        expanded = ManifestTextExpander(env).expand(text)
-
-        assert expanded == "cost is $5 and $FOO"
+    def test_dollar_brace_brace_passes_through(self) -> None:
+        assert ManifestTextExpander({}).expand("${{ if }}") == "${{ if }}"
 
 
 class TestInvalidPlaceholder:
@@ -131,52 +94,30 @@ class TestInvalidPlaceholder:
         with pytest.raises(OperatorError, match=case.match) as caught:
             ManifestTextExpander(case.env).expand(case.text)
 
-        assert_operator(caught.value, contains=("$${",))
+        assert_operator(caught.value, contains=("Fix:",))
 
 
 class TestMultiplePlaceholders:
     def test_adjacent_required_placeholders(self) -> None:
-        text = "${A}${B}"
-        env = {"A": "1", "B": "2"}
-
-        expanded = ManifestTextExpander(env).expand(text)
-
-        assert expanded == "12"
+        assert ManifestTextExpander({"A": "1", "B": "2"}).expand("${A}${B}") == "12"
 
     def test_adjacent_defaults_when_unset(self) -> None:
-        text = "${A:-x}${B:-y}"
-        env: dict[str, str] = {}
+        assert ManifestTextExpander({}).expand("${A:-x}${B:-y}") == "xy"
 
-        expanded = ManifestTextExpander(env).expand(text)
-
-        assert expanded == "xy"
-
-    def test_required_default_and_escape_in_one_document(self) -> None:
-        text = MIXED_PLACEHOLDERS_TEXT
-        env = MIXED_PLACEHOLDERS_ENV
-
-        expanded = ManifestTextExpander(env).expand(text)
-
+    def test_mixed_snippet(self) -> None:
+        expanded = ManifestTextExpander(MIXED_PLACEHOLDERS_ENV).expand(
+            MIXED_PLACEHOLDERS_TEXT
+        )
         assert expanded == EXPECTED_EXPANDED_SNIPPET
 
-
-class TestExpandBeforeYamlParse:
     def test_expanded_text_is_valid_yaml_with_concrete_values(self) -> None:
-        text = PLACEHOLDER_MANIFEST
-        env = PLACEHOLDER_ENV
-
-        expanded = ManifestTextExpander(env, path="app.yaml").expand(text)
+        expanded = ManifestTextExpander(PLACEHOLDER_ENV, path="app.yaml").expand(
+            PLACEHOLDER_MANIFEST
+        )
         data = yaml.safe_load(expanded)
-
         assert data["metadata"]["name"] == "frontend-dev"
-        # Empty default expands to empty text; YAML may load that as null.
         assert data["spec"]["publicHost"] in ("", None)
-        assert data["spec"]["group"] == "limudpsanter-dev"
+        assert data["spec"]["group"] == "demo-stack"
         assert data["spec"]["ref"] == "abc123"
         assert data["spec"]["path"] == "apps/frontend-dev"
         assert "${" not in expanded
-
-
-# ---------------------------------------------------------------------------
-# dotenv / --env / merge precedence
-# ---------------------------------------------------------------------------

@@ -51,16 +51,16 @@ class TestDiagnosticsHelpers:
 
     def test_compose_services_from_failure_text(self) -> None:
         text = (
-            "dependency failed to start: " "container raft-limudpsanter-frontend-dev-1 is unhealthy"
+            "dependency failed to start: " "container raft-demo-stack-frontend-1 is unhealthy"
         )
         found = compose_services_from_failure_text(
             text,
-            known_services=("limudpsanter-frontend-dev", "limudpsanter-backend-dev"),
+            known_services=("demo-stack-frontend", "demo-stack-backend"),
         )
-        assert found[0] == "limudpsanter-frontend-dev"
-        assert "limudpsanter-frontend-dev" in compose_services_from_failure_text(
-            "service limudpsanter-frontend-dev failed",
-            known_services=("limudpsanter-frontend-dev",),
+        assert found[0] == "demo-stack-frontend"
+        assert "demo-stack-frontend" in compose_services_from_failure_text(
+            "service demo-stack-frontend failed",
+            known_services=("demo-stack-frontend",),
         )
         # Non-project container name is kept as-is.
         assert compose_services_from_failure_text("container weird_name is unhealthy") == [
