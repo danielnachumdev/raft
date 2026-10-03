@@ -64,6 +64,13 @@ class Scaler:
     def record_activity(self, name: str) -> None:
         self.store.touch_activity(name, now=self._clock())
 
+    def idle_stop_now(self, name: str) -> None:
+        """Stop a running scaled app (and co-stop deps) as if idle elapsed."""
+        compose_id = self._compose_id(name)
+        if compose_id is None:
+            return
+        self._deps.idle_stop(name, compose_id)
+
     def request_wake(self, name: str) -> None:
         spec = self._load_spec(name)
         if spec is None or spec.scaling is None:

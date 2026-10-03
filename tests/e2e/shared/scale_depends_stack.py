@@ -90,14 +90,12 @@ class ScaleDependsWakeStack:
     def when_the_frontend_idle_stops(self) -> None:
         """Controller idle-stop: co-stops dependsOn (default scaleWithParent).
 
-        Call ``idle_stop`` directly. Seeding ``lastActivityAt=0`` then
-        ``tick(now=idle+1)`` races async gate ``/activity`` (and torn JSON
-        loads that look like ``last is None`` → reseed to tick time). That
-        flake survived patching ``record_activity`` (#84); idle timing stays
-        covered in unit tests.
+        Use ``idle_stop_now`` — not seed+``tick``. Async gate ``/activity`` can
+        wipe a seeded ``lastActivityAt=0`` (or make tick load ``last is None``
+        and reseed to tick time=3601). That is the CI fingerprint; see
+        ``test_idle_activity_races.py``. Idle timing stays in unit tests.
         """
-        scaler = self._inner.scaler
-        scaler._deps.idle_stop(FRONTEND, FRONTEND_COMPOSE)
+        self._inner.scaler.idle_stop_now(FRONTEND)
         if not self.store.is_scaled_to_zero(FRONTEND):
             raise AssertionError(self._idle_stop_debug())
         ServiceRuntimeWait(self.docker, FRONTEND_COMPOSE).until_stopped()
