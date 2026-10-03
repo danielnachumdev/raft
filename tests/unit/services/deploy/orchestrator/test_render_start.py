@@ -1,11 +1,13 @@
 """Orchestrator sync/render/start/stop."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
+from raft.adapters import DockerStack
 from raft.errors import OperatorError
 from tests.shared.compose_ids import RunningServices
+from tests.unit.base import completed
 
 from ....base import write_applied_app
 from .base import OrchestratorTestCase
@@ -106,6 +108,18 @@ class TestOrchRenderStart(OrchestratorTestCase):
         self.orch.stop()
         self.orch.docker.remove_container.assert_called()
         self.orch.docker.stop_stack.assert_called_once()
+
+    def test_stop_after_down_does_not_raise_service_not_running(self, capsys) -> None:
+        """Regression: assert-stopped must not require a running router."""
+        orch = self.orchestrator(mock_deps=False)
+        shell = MagicMock()
+        orch.docker = DockerStack(orch.stack, shell)
+        shell.compose.return_value = completed("")
+        shell.docker.return_value = completed("", returncode=1)
+        orch.stop()
+        text = capsys.readouterr().out + capsys.readouterr().err
+        assert "stack already stopped" in text
+        assert "not running" not in text
 
     def test_stop_running(self) -> None:
         self.orch.docker.running_services.side_effect = [
