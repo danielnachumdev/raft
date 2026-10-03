@@ -86,6 +86,7 @@ class TestApplyEnv(ApplyTestCase):
         assert 'DATABASE_URL: "postgres://from-ci-flag"' in compose
         assert "LOG_LEVEL: info" in compose
         assert "env_file:" in compose
+        # Outside data home → left absolute (controller cannot see it either way).
         assert "/home/raft/.raft/api-dev.env" in compose
 
     def test_apply_git_expands_env_into_registry(self) -> None:

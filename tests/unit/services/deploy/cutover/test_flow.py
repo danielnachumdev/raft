@@ -57,18 +57,39 @@ class TestCutoverFlow(CutoverTestCase):
         assert "sha_new" in (self.tmp_path / "deploy" / "app.image").read_text(encoding="utf-8")
 
     def test_start_tmp_passes_env_file_and_readiness_path(self) -> None:
+        env_file = self.tmp_path / "app.env"
+        env_file.write_text("A=1\n", encoding="utf-8")
         write_applied_app(
             self.tmp_path,
             "app",
             extra={
-                "envFile": "/home/raft/.raft/app.env",
+                "envFile": str(env_file),
                 "readiness": {"type": "http", "port": "http", "path": "/ping"},
             },
         )
         s = self._tmp_session_ready()
         with patch("raft.services.deploy.cutover.time.sleep"):
             s.start_tmp_from_previous()
-        self._assert_tmp_env_and_path(s)
+        self._assert_tmp_env_and_path(s, str(env_file.resolve()))
+
+    def test_start_tmp_remaps_host_env_file_under_data_home(self) -> None:
+        env_file = self.tmp_path / "app.env"
+        env_file.write_text("A=1\n", encoding="utf-8")
+        write_applied_app(
+            self.tmp_path,
+            "app",
+            extra={"envFile": "/home/raft/.raft/app.env"},
+        )
+        s = self._tmp_session_ready()
+        with patch("raft.services.deploy.cutover.time.sleep"):
+            s.start_tmp_from_previous()
+        s.docker.run_tmp.assert_called_once_with(
+            name=s.app.tmp_container,
+            alias=s.app.tmp_alias,
+            image="img:old",
+            network="net1",
+            env_file=str(env_file),
+        )
 
     def _tmp_session_ready(self):
         s = self.session
@@ -77,13 +98,13 @@ class TestCutoverFlow(CutoverTestCase):
         s.docker.router_can_fetch.return_value = True
         return s
 
-    def _assert_tmp_env_and_path(self, s) -> None:
+    def _assert_tmp_env_and_path(self, s, env_file: str) -> None:
         s.docker.run_tmp.assert_called_once_with(
             name=s.app.tmp_container,
             alias=s.app.tmp_alias,
             image="img:old",
             network="net1",
-            env_file="/home/raft/.raft/app.env",
+            env_file=env_file,
         )
         s.docker.router_can_fetch.assert_called_with(s.app.tmp_alias, port=80, path="/ping")
 

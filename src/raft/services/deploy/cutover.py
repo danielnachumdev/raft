@@ -12,6 +12,7 @@ from ...adapters.http import HttpProbe
 from ...adapters.nginx import NginxUpstreams
 from ...models.app import COMPOSE_PROJECT, App
 from ...models.stack import Stack
+from ..render.env_file_path import ComposeEnvFilePath
 from .readiness import ReadinessStrategy
 from .wait import Step, wait_until
 
@@ -94,10 +95,15 @@ class CutoverSession:
             alias=self.app.tmp_alias,
             image=self.previous_image,
             network=self.network,
-            env_file=spec.env_file,
+            env_file=self._runtime_env_file(spec.env_file),
         )
         self.tmp_active = True
         self._wait_tmp_reachable()
+
+    def _runtime_env_file(self, env_file: Optional[str]) -> Optional[str]:
+        if not env_file:
+            return None
+        return ComposeEnvFilePath(self.stack.root).for_runtime(env_file)
 
     def _wait_tmp_reachable(self) -> None:
         self._wait_http_reachable(

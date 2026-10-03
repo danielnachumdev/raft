@@ -7,6 +7,7 @@ from ...models.manifest import AppSpec
 from ...models.stack import Stack
 from ..deploy.readiness import ReadinessStrategy
 from .edge import EdgeFragments
+from .env_file_path import ComposeEnvFilePath
 
 
 def compose_str(value: str) -> str:
@@ -24,6 +25,7 @@ class ComposeAppsYaml:
 
     def __init__(self, stack: Stack) -> None:
         self.stack = stack
+        self._env_files = ComposeEnvFilePath(stack.root)
 
     def build(self, specs: dict[str, AppSpec], fragments: EdgeFragments) -> str:
         if not self.stack.apps:
@@ -129,11 +131,10 @@ class ComposeAppsYaml:
         for entry in host_ports:
             lines.append(f"      - {entry}")
 
-    @staticmethod
-    def _append_env(lines: list[str], c: AppSpec) -> None:
+    def _append_env(self, lines: list[str], c: AppSpec) -> None:
         if c.env_file:
             lines.append("    env_file:")
-            lines.append(f"      - {c.env_file}")
+            lines.append(f"      - {self._env_files.for_compose(c.env_file)}")
         if not c.env:
             return
         lines.append("    environment:")
