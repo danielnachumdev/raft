@@ -18,7 +18,7 @@ from raft.config.settings_types import (
 from raft.models.stack import Stack
 from raft.services.ops.status import Status
 
-from .metrics_retention import MetricsRetention
+from .metrics_rotation import MetricsRotation
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class MetricsRecorder:
         retention_max_bytes: int = DEFAULT_METRICS_RETENTION_MAX_BYTES,
         collect_fn: Optional[CollectFn] = None,
         clock: ClockFn = time.monotonic,
-        retention: Optional[MetricsRetention] = None,
+        rotation: Optional[MetricsRotation] = None,
     ) -> None:
         self.home = home
         self.batch_size = batch_size
@@ -51,7 +51,7 @@ class MetricsRecorder:
         self._clock = clock
         self._buffer: List[Dict[str, Any]] = []
         self._last_flush_at = clock()
-        self._retention = retention or MetricsRetention(
+        self._rotation = rotation or MetricsRotation(
             max_age_days=retention_max_age_days,
             max_bytes=retention_max_bytes,
         )
@@ -71,8 +71,8 @@ class MetricsRecorder:
         rows = self._buffer
         self._buffer = []
         self._last_flush_at = self._clock()
+        self._rotation.maintain(self.path)
         self._write_batch(rows)
-        self._retention.prune(self.path)
 
     def _should_flush(self) -> bool:
         if len(self._buffer) >= self.batch_size:

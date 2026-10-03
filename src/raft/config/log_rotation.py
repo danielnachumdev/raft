@@ -39,13 +39,26 @@ class LogArchiveNames:
         return self.archive_for(day, part)
 
     def parse_day(self, path: Path) -> Optional[date]:
-        match = _ARCHIVE_NAME.match(path.name)
-        if match is None or match.group("base") != self.active.name:
+        match = self._match(path)
+        if match is None:
             return None
         try:
             return date.fromisoformat(match.group("day"))
         except ValueError:
             return None
+
+    def parse_part(self, path: Path) -> Optional[int]:
+        match = self._match(path)
+        if match is None:
+            return None
+        raw = match.group("part")
+        return 1 if raw is None else int(raw)
+
+    def _match(self, path: Path):
+        match = _ARCHIVE_NAME.match(path.name)
+        if match is None or match.group("base") != self.active.name:
+            return None
+        return match
 
 
 class LogArchiveRetention:

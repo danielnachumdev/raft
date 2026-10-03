@@ -1,15 +1,17 @@
-"""Stream ``resources.jsonl`` newest-first without loading the whole file."""
+"""Stream ``resources.jsonl`` (+ sealed archives) newest-first."""
 
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Any, BinaryIO, Dict, Iterator, List, Optional
+from typing import Any, BinaryIO, Dict, Iterator, List, Optional, Tuple
+
+from raft.config.log_rotation import LogArchiveNames
 
 
 class MetricsJsonlReader:
-    """Parse controller metrics JSONL; reverse-read for time windows."""
+    """Parse controller metrics JSONL; reverse-read active then archives."""
 
     def __init__(self, path: Path, *, chunk_size: int = 65536) -> None:
         self.path = path
@@ -32,8 +34,6 @@ class MetricsJsonlReader:
         from_ts: datetime,
         since: Optional[datetime] = None,
     ) -> Iterator[Dict[str, Any]]:
-        if not self.path.is_file():
-            return
         for sample in self._iter_parsed_newest_first():
             ts = self.parse_ts(sample.get("ts"))
             if ts is None:
@@ -45,11 +45,39 @@ class MetricsJsonlReader:
             yield sample
 
     def _iter_parsed_newest_first(self) -> Iterator[Dict[str, Any]]:
-        with self.path.open("rb") as handle:
-            for raw in self._reverse_lines(handle):
-                sample = self._parse_line(raw)
-                if sample is not None:
-                    yield sample
+        for path in self._sources_newest_first():
+            with path.open("rb") as handle:
+                for raw in self._reverse_lines(handle):
+                    sample = self._parse_line(raw)
+                    if sample is not None:
+                        yield sample
+
+    def _sources_newest_first(self) -> List[Path]:
+        names = LogArchiveNames(self.path)
+        parent = self.path.parent
+        if not parent.is_dir():
+            return [self.path] if self.path.is_file() else []
+        keyed: List[Tuple[date, int, Path]] = []
+        for path in parent.iterdir():
+            entry = self._archive_entry(names, path)
+            if entry is not None:
+                keyed.append(entry)
+        keyed.sort(key=lambda item: (item[0], item[1]), reverse=True)
+        out = [self.path] if self.path.is_file() else []
+        out.extend(path for _, _, path in keyed)
+        return out
+
+    @staticmethod
+    def _archive_entry(
+        names: LogArchiveNames, path: Path
+    ) -> Optional[Tuple[date, int, Path]]:
+        if not path.is_file():
+            return None
+        day = names.parse_day(path)
+        if day is None:
+            return None
+        part = names.parse_part(path)
+        return None if part is None else (day, part, path)
 
     def _reverse_lines(self, handle: BinaryIO) -> Iterator[str]:
         handle.seek(0, 2)
