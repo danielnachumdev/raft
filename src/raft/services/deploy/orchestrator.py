@@ -117,13 +117,7 @@ class Orchestrator(OrchestratorDeploy):
             logger.info("syncing service sources from inventory")
             self.sync()
             require_origin_certs(self.stack)
-            logger.info("starting stack")
-            self.docker.start_stack()
-            self._assert_core_edge_running()
-            self._mark_gate_nginx_loaded()
-            logger.info("waiting for readiness checks")
-            for app in self.stack.apps:
-                self._wait_app_ready(app)
+            self._bring_stack_up()
             say("stack is up", style="ok")
             say("redeploy with: raft redeploy <app>", style="info")
 
