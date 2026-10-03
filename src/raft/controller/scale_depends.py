@@ -46,7 +46,8 @@ class ScaleDepends:
         costop = self.costop_deps(name)
         if costop is None:
             return
-        order = costop + (name,)
+        # Reverse of wake start order: stop the scaled parent first, then co-deps.
+        order = (name,) + tuple(reversed(costop))
         logger.info("scale idle-stop app=%s chain=%s", name, ",".join(order))
         try:
             with apps_and_stack_locks(self.home, order):

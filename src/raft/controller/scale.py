@@ -62,7 +62,7 @@ class Scaler:
             self._consider(app.name, app.compose_id, spec.scaling, when)
 
     def record_activity(self, name: str) -> None:
-        self.store.touch_activity(name)
+        self.store.touch_activity(name, now=self._clock())
 
     def request_wake(self, name: str) -> None:
         spec = self._load_spec(name)
