@@ -1,14 +1,14 @@
-# Snippet: optional `spec.scaling` behind an apply-time directive.
-# Paste under `spec:` in `.raft/app.yaml` (indent to match). Not a full App.
-#
-# Pipeline: resolve ${{ if }} (expr uses ${VAR} + quotes) → expand ${VAR} → YAML.
-# Nested ${{ if }} is supported. Comments are scanned — escape demos as $${{ }.
+# Live snippet (single $) — paste under `spec:` in `.raft/app.yaml` (match indent).
+# Not a full App. Pipeline: resolve ${{ if }} → expand ${VAR} → YAML.
 #
 #   raft apply --file .raft/app.yaml --ref $SHA \
 #     --env INCLUDE_SCALING=true \
 #     --env SCALE_IDLE_SECONDS=300 \
 #     --env SCALE_WAKE_TIMEOUT_SECONDS=60 \
 #     --env SCALE_MIN_UP_SECONDS=60
+#
+# Note: comments inside a real App YAML that *document* this syntax must use
+# $${ and $${{ escapes, because apply scans the whole file including comments.
 
 ${{ if ${INCLUDE_SCALING} == 'true' }}
 scaling:
