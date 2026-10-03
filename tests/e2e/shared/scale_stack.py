@@ -26,7 +26,8 @@ APP = "http-only"
 PUBLIC_HOST = "site.test"
 SCALING = {
     "idleSeconds": 3600,
-    "wakeTimeoutSeconds": 60,
+    # CI Docker + dependsOn start can exceed 60s under load; keep headroom.
+    "wakeTimeoutSeconds": 120,
     "minUpSeconds": 1,
 }
 

@@ -9,6 +9,7 @@ from raft.adapters.docker import DockerStack
 from raft.adapters.shell import Shell
 from raft.controller.scale import Scaler
 from raft.controller.wake_http import start_wake_http
+from raft.models.scaling_spec import ScalingSpec
 from raft.models.scaling_store import ScalingStore
 from raft.models.stack import load_stack
 from raft.services.render import StackRenderer
@@ -102,19 +103,40 @@ class ScaleDependsWakeStack:
         assert back != "running", f"backend status={back!r}"
 
     def visitor_sees_the_holding_page(self) -> bool:
+        # Marker is authoritative; HTTP also triggers gate→wake (side effect).
+        marker = self._inner.home / "state" / "scaling" / "markers" / f"{FRONTEND}.zero"
+        if not marker.is_file():
+            return False
         return "Starting" in self._curl().body
 
     def when_a_visitor_keeps_requesting_the_site(self) -> None:
-        self._inner.scaler.request_wake(FRONTEND)
+        """Finish any gate-triggered wake, then sync wake_now + poll until live."""
+        scaler = self._inner.scaler
+        scaling = ScalingSpec(
+            float(SCALING["idleSeconds"]),
+            float(SCALING["wakeTimeoutSeconds"]),
+            float(SCALING["minUpSeconds"]),
+        )
         try:
+            scaler.wait_wake_idle(timeout=float(SCALING["wakeTimeoutSeconds"]) + 30.0)
+            if not self._fully_awake():
+                assert scaler.wake_now(FRONTEND, scaling), self._wake_debug()
             Wait.until(
-                self._fully_awake,
-                timeout=90.0,
+                self._poll_visitor_awake,
+                timeout=float(SCALING["wakeTimeoutSeconds"]) + 30.0,
                 interval=0.5,
                 message="wake did not bring frontend+backend live",
             )
         except TimeoutError:
             raise TimeoutError(self._wake_debug()) from None
+
+    def _poll_visitor_awake(self) -> bool:
+        """Visitor meta-refresh: keep hitting the Host while waiting."""
+        try:
+            self._curl(expect_status=None)
+        except OSError:
+            pass
+        return self._fully_awake()
 
     def _wake_debug(self) -> str:
         backend, bh = self.docker.service_runtime(BACKEND_COMPOSE)

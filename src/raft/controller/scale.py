@@ -72,14 +72,40 @@ class Scaler:
         self._start_wake_thread(name, spec.scaling)
 
     def wake_now(self, name: str, scaling: ScalingSpec, *, now: Optional[float] = None) -> bool:
-        """Start a scaled-to-zero app (and dependsOn); False on failure/timeout."""
+        """Start a scaled-to-zero app (and dependsOn); False on failure/timeout.
+
+        If the store already says awake but the Compose chain is down (e.g. a
+        prior wake cleared markers then containers vanished), still start them.
+        """
         when = time.time() if now is None else now
-        state = self.store.load(name)
-        if not state.scaled_to_zero:
-            return True
         if self._compose_id(name) is None:
             return False
+        if not self.store.load(name).scaled_to_zero and self._chain_running(name):
+            return True
         return self._do_wake(name, scaling, when)
+
+    def _chain_running(self, name: str) -> bool:
+        chain = self._deps.wake_chain(name)
+        if chain is None:
+            return False
+        for dep in chain:
+            compose_id = self._compose_id(dep)
+            if compose_id is None:
+                return False
+            status, _health = self.docker.service_runtime(compose_id)
+            if status != "running":
+                return False
+        return True
+
+    def wait_wake_idle(self, *, timeout: float = 60.0) -> None:
+        """Block until no wake worker is in-flight for this scaler (tests / sync)."""
+        deadline = self._clock() + timeout
+        while self._clock() < deadline:
+            with self._wake_lock:
+                if not self._waking:
+                    return
+            self._sleep(_WAKE_POLL_SECONDS)
+        raise TimeoutError("wake worker still running")
 
     def _consider(self, name: str, compose_id: str, scaling: ScalingSpec, when: float) -> None:
         state = self.store.load(name)

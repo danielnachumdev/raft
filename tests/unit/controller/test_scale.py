@@ -241,12 +241,14 @@ class TestScaler(ControllerTestCase):
 
     def test_wake_now_already_up(self, tmp_path: Path) -> None:
         scaler, docker = self._scaler(tmp_path)
+        docker.service_runtime.return_value = ("running", "healthy")
         assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5)) is True
+        docker.start_service.assert_not_called()
         scaler.store.mark_scaled_to_zero("ghost")
         assert scaler.wake_now("ghost", ScalingSpec(10, 30, 5)) is False
         scaler.request_wake("ghost")
         scaler.request_wake(self.APP)
-        self._wait_waking_idle(scaler)
+        scaler.wait_wake_idle(timeout=5.0)
         docker.reload_router_nginx.reset_mock()
         scaler.store.mark_scaled_to_zero(self.APP)
         docker.service_runtime.return_value = ("running", "none")
@@ -255,14 +257,6 @@ class TestScaler(ControllerTestCase):
             assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5), now=1.0) is True
         docker.reload_router_nginx.assert_called_once_with()
         docker.router_serves_host.assert_called_once_with(f"{self.APP}.test", path="/")
-
-    @staticmethod
-    def _wait_waking_idle(scaler: Scaler) -> None:
-        for _ in range(50):
-            with scaler._wake_lock:
-                if not scaler._waking:
-                    return
-            time.sleep(0.01)
 
     def test_scaled_idle_branches(self, tmp_path: Path) -> None:
         scaler, docker = self._scaler(tmp_path)
