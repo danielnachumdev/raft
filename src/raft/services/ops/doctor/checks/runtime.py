@@ -41,15 +41,28 @@ class RuntimeChecks:
 
     @classmethod
     def _edge_running(cls, ctx: DoctorContext, running: set[str]) -> list[CheckResult]:
-        results: list[CheckResult] = []
-        for name in (ctx.stack.gate, ctx.stack.router):
-            if name not in running:
-                results.append(
-                    CheckResult(name, "running", "warn", "not running", fix="raft up")
-                )
-            else:
-                results.append(cls._health_result(ctx, name))
-        return results
+        return [
+            cls._edge_service_result(ctx, name, running)
+            for name in (ctx.stack.gate, ctx.stack.router)
+        ]
+
+    @classmethod
+    def _edge_service_result(
+        cls, ctx: DoctorContext, name: str, running: set[str]
+    ) -> CheckResult:
+        if name in running:
+            return cls._health_result(ctx, name)
+        crash = cls._crash_loop_bad(ctx, name)
+        if crash is not None:
+            level, detail = crash
+            return CheckResult(
+                name,
+                "running",
+                level,
+                detail,
+                fix=CrashLoopDetector.fix_cta(name),
+            )
+        return CheckResult(name, "running", "warn", "not running", fix="raft up")
 
     @staticmethod
     def _scaled_apps(ctx: DoctorContext) -> list[CheckResult]:

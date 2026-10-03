@@ -18,6 +18,15 @@ logger = logging.getLogger(__name__)
 class NginxUpstreamText:
     """Canonical ``upstream { … }`` snippet body (render + live cutover)."""
 
+    # Static ``server hostname:port`` fails nginx -t when the Compose DNS name
+    # is absent (scaled-to-zero). Park those upstreams on loopback so router
+    # can start/reload; gate holding pages handle visitor traffic.
+    ABSENT_HOSTNAME = "127.0.0.1"
+
+    @classmethod
+    def hostname_for(cls, compose_id: str, *, absent: bool) -> str:
+        return cls.ABSENT_HOSTNAME if absent else compose_id
+
     @staticmethod
     def block(
         name: str,
@@ -64,6 +73,14 @@ class NginxUpstreams:
             self._write_upstream(app, target_hostname, p)
             if reload:
                 self._assert_router_sees(app, target_hostname, p)
+
+    def point_absent(self, app: App, *, reload: bool = False) -> None:
+        """Park HTTP upstreams on loopback so nginx can start without the app."""
+        self.point_at(app, NginxUpstreamText.ABSENT_HOSTNAME, reload=reload)
+
+    def point_steady(self, app: App, *, reload: bool = False) -> None:
+        """Point HTTP upstreams at the steady Compose service hostname."""
+        self.point_at(app, app.compose_id, reload=reload)
 
     def _write_upstream(self, app: App, target_hostname: str, p: PortSpec) -> None:
         path = self.stack.upstream_file(app, p)

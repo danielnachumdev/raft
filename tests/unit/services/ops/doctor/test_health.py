@@ -141,3 +141,36 @@ class TestDoctorHealth(DoctorTestCase):
             results = {(r.service, r.check): r for r in RuntimeChecks().run(ctx)}
         assert ("app", "running") not in results
         assert results[("app", "scaling")].status == "ok"
+
+    def test_edge_crash_loop_when_not_in_running_set(self) -> None:
+        """Restarting router is absent from compose ``running`` but still crash-loops."""
+        docker = self.mock_docker(running=RunningServices.gate_only())
+        docker.compose_service_status.return_value = ComposeStatusTable.from_runtime_map(
+            {
+                "raft-gate": ("running", "none"),
+                "raft-router": ("restarting", "none"),
+            }
+        )
+        ctx = self._ctx(docker)
+        ctx._runtime_cache["rows"] = {"raft-router": self._restarting_row()}
+        with patch("shutil.which", return_value="/usr/bin/docker"):
+            results = {(r.service, r.check): r for r in RuntimeChecks().run(ctx)}
+        hit = results[("raft-router", "running")]
+        assert hit.status == "fail"
+        assert "crash-looping" in hit.detail
+        assert "not running" not in hit.detail
+
+    @staticmethod
+    def _restarting_row() -> ContainerRuntimeRow:
+        started = (datetime.now(timezone.utc) - timedelta(seconds=30)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        return ContainerRuntimeRow(
+            container_id="rtr",
+            status="restarting",
+            health="none",
+            started_at=started,
+            memory_bytes=0,
+            stats=None,
+            restart_count=8,
+        )
