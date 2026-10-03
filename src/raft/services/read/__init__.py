@@ -19,8 +19,9 @@ raw (bytes, percents, seconds) — format in the UI or CLI human path.
 
 Serve ``GET /api/status`` returns that snapshot **plus** presentation lists
 ``control_plane`` / ``apps`` (display labels + human cpu/memory/started/uptime
-strings, Compose ``service`` id for deep links, and ``external_urls`` from
-``publicHost`` + edge scheme/port) for the dashboard SPA tables.
+strings, Compose ``service`` id for deep links, ``external_urls`` from
+``publicHost`` + edge scheme/port, and ``depends_on`` Compose ids from App
+``spec.dependsOn`` for SPA parent/child tree layout) for the dashboard tables.
 Prefer ``containers`` for new FE work (#35/#9).
 
 Serve ``GET /api/service/{name}`` returns ``host`` + one ``container`` object
@@ -38,6 +39,7 @@ Doctor JSON is deferred for a full dashboard health view; see
 ``DoctorRead.intended_payload_shape`` and ``DoctorRead.from_results``.
 """
 
+from .depends import ServeDependsMap
 from .doctor import DoctorRead
 from .external_urls import ExternalUrlBuilder
 from .metrics import MetricsRead
@@ -48,6 +50,7 @@ __all__ = [
     "DoctorRead",
     "ExternalUrlBuilder",
     "MetricsRead",
+    "ServeDependsMap",
     "ServeRow",
     "ServeSnapshotView",
     "StatusRead",

@@ -80,8 +80,10 @@ class TestServeSnapshotView:
             "started",
             "uptime",
             "external_urls",
+            "depends_on",
         }
         assert row["external_urls"] == []
+        assert row["depends_on"] == []
         assert "UTC" in row["started"]
 
     def test_service_detail_returns_container_and_presentation(self) -> None:
