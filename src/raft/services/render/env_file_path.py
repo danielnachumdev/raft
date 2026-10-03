@@ -21,9 +21,12 @@ class ComposeEnvFilePath:
     def for_compose(self, env_file: str) -> str:
         """Project-relative path when under data home; otherwise unchanged."""
         rel = self._relative_to_root(env_file)
-        if rel is None:
-            return env_file
-        return rel.as_posix()
+        if rel is not None:
+            return rel.as_posix()
+        remapped = self._remap_host_suffix(Path(env_file))
+        if remapped is not None:
+            return remapped.as_posix()
+        return env_file
 
     def for_runtime(self, env_file: str) -> str:
         """Filesystem path readable by docker CLI in this process."""

@@ -18,6 +18,12 @@ class TestComposeEnvFilePath:
         assert helper.for_compose("nested/app.env") == "nested/app.env"
         assert helper.for_compose("/tmp/outside.env") == "/tmp/outside.env"
 
+    def test_for_compose_remaps_host_absolute_when_present(self, tmp_path: Path) -> None:
+        env = tmp_path / "limudpsanter-dev.env"
+        env.write_text("A=1\n", encoding="utf-8")
+        host_path = "/home/raft/.raft/limudpsanter-dev.env"
+        assert ComposeEnvFilePath(tmp_path).for_compose(host_path) == "limudpsanter-dev.env"
+
     def test_for_runtime_joins_relative_and_keeps_external(self, tmp_path: Path) -> None:
         helper = ComposeEnvFilePath(tmp_path)
         assert helper.for_runtime("app.env") == str(tmp_path / "app.env")
