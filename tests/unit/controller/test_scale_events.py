@@ -76,3 +76,29 @@ class TestScaleGraphEvents(ControllerTestCase):
         scaler, _docker, home = self._scaler(tmp_path)
         scaler._record_wake_event("missing-app")
         assert GraphEventStore(home).events_in_window(from_ts=_EPOCH) == []
+
+    def test_wake_event_oserror_does_not_raise(self, tmp_path: Path, monkeypatch) -> None:
+        scaler, _docker, home = self._scaler(tmp_path)
+
+        def boom(*_a, **_k):
+            raise OSError("read-only filesystem")
+
+        monkeypatch.setattr(GraphEventStore, "record_scaling", boom)
+        scaler._record_wake_event(self.APP)
+        assert GraphEventStore(home).events_in_window(from_ts=_EPOCH) == []
+
+    def test_idle_stop_event_oserror_does_not_raise(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        scaler, docker, home = self._scaler(tmp_path)
+        docker.service_runtime.return_value = ("running", "healthy")
+        scaler.store.touch_activity(self.APP, now=0.0)
+
+        def boom(*_a, **_k):
+            raise OSError("read-only filesystem")
+
+        monkeypatch.setattr(GraphEventStore, "record_scaling", boom)
+        with self.with_scale_locks():
+            scaler.tick(now=20.0)
+        assert GraphEventStore(home).events_in_window(from_ts=_EPOCH) == []
+        docker.stop_service.assert_called()

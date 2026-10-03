@@ -19,7 +19,7 @@ import {
   mergeTimedRows,
   toEpochMs,
 } from "./chartTimeScale";
-import { GraphEventMarkers } from "./GraphEventMarkers";
+import { graphEventMarkers } from "./GraphEventMarkers";
 import { eventsForSeries, withEventRows } from "./graphEvents";
 import {
   DEFAULT_RUNTIME_WINDOW,
@@ -31,7 +31,7 @@ import {
   type RuntimeMetricId,
   yAxisUnit,
 } from "./runtimeMetrics";
-import { TimeScaleXAxis } from "./TimeScaleXAxis";
+import { timeScaleXAxis } from "./TimeScaleXAxis";
 
 type ChartRow = {
   ts: number;
@@ -240,7 +240,7 @@ function ServiceRuntimeChart(props: {
           margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
         >
           <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" />
-          <TimeScaleXAxis windowSeconds={props.windowSec} />
+          {timeScaleXAxis(props.windowSec)}
           <YAxis
             tick={{ fill: "var(--muted)", fontSize: 11 }}
             unit={unit || undefined}
@@ -277,7 +277,7 @@ function ServiceRuntimeChart(props: {
             isAnimationActive={false}
             connectNulls={false}
           />
-          <GraphEventMarkers events={props.events} />
+          {graphEventMarkers(props.events)}
         </LineChart>
       </ResponsiveContainer>
     </div>

@@ -111,11 +111,17 @@ class ScaleDepends:
         return None
 
     def _record_idle_stop_event(self, name: str, compose_id: str) -> None:
-        GraphEventStore(self.home).record_scaling(
-            service=compose_id,
-            app=name,
-            action=SCALING_ACTION_IDLE_STOP,
-        )
+        try:
+            GraphEventStore(self.home).record_scaling(
+                service=compose_id,
+                app=name,
+                action=SCALING_ACTION_IDLE_STOP,
+            )
+        except OSError:
+            # Idle-stop must still succeed if events FS is RO (stale mounts).
+            logger.warning(
+                "graph event idle-stop record failed app=%s", name, exc_info=True
+            )
 
     def _stop_scaled_chain(
         self,

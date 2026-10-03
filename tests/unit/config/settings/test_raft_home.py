@@ -62,7 +62,9 @@ class TestRaftHome(RaftTestCase):
         assert "/var/run/docker.sock:/var/run/docker.sock" in compose
         assert ".:/raft:ro" in compose and "./state/locks:/raft/state/locks" in compose
         assert "./state/metrics:/raft/state/metrics" in compose
+        assert "./state/events:/raft/state/events" in compose
         assert "RAFT_HOST_UID" in compose and "working_dir: /raft" in compose
+        assert (home / "state" / "events").is_dir()
         assert "RAFT_DOCKER_GID" in compose and "group_add:" in compose
         assert "memory: 128M" in compose
         assert (home / "generated" / "compose.apps.yaml").is_file()

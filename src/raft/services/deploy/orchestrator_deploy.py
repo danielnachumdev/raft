@@ -118,6 +118,7 @@ class OrchestratorDeploy:
         self._sync_cold_start(app_name, ref_override=ref_override, force_sync=force_sync)
         require_origin_certs(self.stack)
         self._bring_stack_up()
+        GraphEventStore(self.stack.root).record_stack_up()
         self._record_deploy_event(self.stack.app(app_name))
         say("stack is up", style="ok")
         say(f"deployed {app_name}", style="ok")
