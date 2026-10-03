@@ -46,10 +46,23 @@ class TestScalingStore(ControllerTestCase):
         assert store.load(self.APP).wake_requested_at == 1.0
         store.request_wake(self.APP, now=9.0)
         assert store.load(self.APP).wake_requested_at == 1.0
+        store.request_wake("nope")
+
+    def test_timeout_marker_exclusive_and_retry_resets(self, tmp_path: Path) -> None:
+        home = self.raft_home(tmp_path)
+        store = ScalingStore(home)
+        store.mark_scaled_to_zero(self.APP)
+        store.request_wake(self.APP, now=1.0)
         store.mark_wake_timeout(self.APP)
         assert store.load(self.APP).wake_timed_out is True
         assert (home / "state/scaling/markers/web.timeout").is_file()
-        store.request_wake("nope")
+        assert not (home / "state/scaling/markers/web.zero").is_file()
+        store.request_wake(self.APP, now=50.0)
+        state = store.load(self.APP)
+        assert state.wake_timed_out is False
+        assert state.wake_requested_at == 50.0
+        assert (home / "state/scaling/markers/web.zero").is_file()
+        assert not (home / "state/scaling/markers/web.timeout").is_file()
 
     def test_clear_scaled_to_zero(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)

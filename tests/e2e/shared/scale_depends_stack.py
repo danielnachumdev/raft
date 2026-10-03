@@ -124,7 +124,7 @@ class ScaleDependsWakeStack:
         marker = self._inner.home / "state" / "scaling" / "markers" / f"{FRONTEND}.zero"
         if not marker.is_file():
             return False
-        return "Starting" in self._curl().body
+        return "Just a moment" in self._curl().body
 
     def when_a_visitor_keeps_requesting_the_site(self) -> None:
         """Finish any gate-triggered wake, then sync wake_now + poll until live."""
@@ -200,7 +200,7 @@ class ScaleDependsWakeStack:
             resp = self._curl(expect_status=None)
         except OSError:
             return False
-        bad = ("Starting", "Unavailable")
+        bad = ("Just a moment", "Still getting ready", "Unavailable")
         return resp.status == 200 and not any(s in resp.body for s in bad)
 
     def _curl(self, *, expect_status: Optional[int] = 200) -> HttpResponse:

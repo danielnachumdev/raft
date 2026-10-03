@@ -13,10 +13,10 @@ pytestmark = pytest.mark.e2e
 class TestE2EScaleWake:
     def test_holding_page_then_wake(self, isolated_raft_env) -> None:
         with ScaleE2EStack.create(isolated_raft_env) as stack:
-            assert "Starting" not in stack.curl_host().body
+            assert "Just a moment" not in stack.curl_host().body
 
             stack.scale_to_zero()
-            assert "Starting" in stack.curl_host().body
+            assert "Just a moment" in stack.curl_host().body
 
             Wait.until(
                 lambda: self._is_live(stack),
@@ -24,7 +24,7 @@ class TestE2EScaleWake:
                 interval=0.5,
                 message="app did not wake from holding-page requests",
             )
-            assert "Starting" not in stack.curl_host().body
+            assert "Just a moment" not in stack.curl_host().body
 
     @staticmethod
     def _is_live(stack: ScaleE2EStack) -> bool:

@@ -33,7 +33,14 @@ class TestScalingRender(RaftTestCase):
             "/wake/web",
             "/activity/web",
             "server_name web.test",
+            "holding-timeout.html",
         )
+        conf = (gen / "nginx/gate-http/listeners.conf").read_text(encoding="utf-8")
+        zero_at = conf.index("web.zero")
+        timeout_at = conf.index("web.timeout")
+        # Live ``/`` must prefer holding (``.zero``) before timeout.
+        assert zero_at < timeout_at
+        assert conf.count("/_raft_wake_web") >= 2
 
     def test_tls_scaling_snippet(self) -> None:
         write_applied_app(

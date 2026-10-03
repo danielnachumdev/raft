@@ -69,10 +69,13 @@ class ScalingGate:
     def _live_location(self, app: App, zero: str, timeout: str) -> str:
         hold = f"/_raft_hold_{app.name}"
         timed = f"/_raft_timeout_{app.name}"
+        # Prefer holding (``.zero``) over timeout so a scaled app always wakes
+        # on a fresh hit when both markers somehow exist; exclusive sync normally
+        # keeps only one marker at a time.
         head = (
             "    location / {\n"
-            f"        if (-f {timeout}) {{ rewrite ^ {timed} last; }}\n"
             f"        if (-f {zero}) {{ rewrite ^ {hold} last; }}\n"
+            f"        if (-f {timeout}) {{ rewrite ^ {timed} last; }}\n"
             f"        mirror /_raft_activity_{app.name};\n"
             "        mirror_request_body off;\n"
         )
@@ -98,19 +101,29 @@ class ScalingGate:
     def _holding_locations(app: App) -> str:
         hold = f"/_raft_hold_{app.name}"
         timed = f"/_raft_timeout_{app.name}"
+        wake = f"/_raft_wake_{app.name}"
         return (
-            f"    location = {hold} {{\n"
-            f"        mirror /_raft_wake_{app.name};\n"
+            ScalingGate._static_mirror_page(hold, wake, "holding.html")
+            + ScalingGate._static_mirror_page(timed, wake, "holding-timeout.html")
+            + ScalingGate._offline_location()
+        )
+
+    @staticmethod
+    def _static_mirror_page(location: str, wake: str, page: str) -> str:
+        # Mirror wake on holding and timeout so refresh / Try again never dead-ends.
+        return (
+            f"    location = {location} {{\n"
+            f"        mirror {wake};\n"
             "        mirror_request_body off;\n"
             "        default_type text/html;\n"
-            "        alias /usr/share/nginx/errors/holding.html;\n"
+            f"        alias /usr/share/nginx/errors/{page};\n"
             "    }\n"
             "\n"
-            f"    location = {timed} {{\n"
-            "        default_type text/html;\n"
-            "        alias /usr/share/nginx/errors/holding-timeout.html;\n"
-            "    }\n"
-            "\n"
+        )
+
+    @staticmethod
+    def _offline_location() -> str:
+        return (
             "    location = /offline.html {\n"
             "        internal;\n"
             "        root /usr/share/nginx/errors;\n"

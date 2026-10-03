@@ -108,7 +108,12 @@ class ScaleE2EStack:
         except OSError:
             # Gate/nginx may reset during reload while the stack is still coming up.
             return False
-        return resp.status == 200 and "Starting" not in resp.body and "Unavailable" not in resp.body
+        return (
+            resp.status == 200
+            and "Just a moment" not in resp.body
+            and "Still getting ready" not in resp.body
+            and "Unavailable" not in resp.body
+        )
 
     def wait_app_stopped(self, *, timeout: float = 45.0) -> None:
         ServiceRuntimeWait(self.docker, APP).until_stopped(timeout=timeout)
