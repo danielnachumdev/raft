@@ -29,6 +29,6 @@ class ServeInstructions:
             f"  gcloud compute ssh VM_NAME --zone=ZONE -- -L {port}:127.0.0.1:{port}\n"
             "\n"
             f"Then open {url} in your laptop browser.\n"
-            "Stop with Ctrl+C.\n"
+            "Stop with Ctrl+C, or from another shell: raft serve --stop\n"
             "\n"
         )

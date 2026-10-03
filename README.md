@@ -42,13 +42,14 @@ One process on the VM: a React SPA plus JSON APIs, bound to **`127.0.0.1` only**
 ```bash
 raft serve                 # default http://127.0.0.1:8787/
 raft serve --port=8787     # optional
+raft serve --stop          # stop an already-running serve on that port
 
 # on your laptop (pick one):
 ssh -L 8787:127.0.0.1:8787 USER@VM_HOST
 gcloud compute ssh VM_NAME --zone=ZONE -- -L 8787:127.0.0.1:8787
 ```
 
-Then open `http://127.0.0.1:8787/`. Stop with Ctrl+C.
+Then open `http://127.0.0.1:8787/`. Stop with Ctrl+C or `raft serve --stop`.
 
 **What you get:**
 
@@ -66,7 +67,7 @@ Same facts as `raft status` / `raft logs`, in a UI you can leave open while you 
 | `raft apply --file …` / `--git …` | Register + deploy (default path) |
 | `raft doctor` | Health check + fix hints |
 | `raft status` | CPU/memory snapshot (`--live` to watch) |
-| `raft serve` | Localhost ops dashboard (default `:8787`); SSH tunnel from your laptop |
+| `raft serve` | Localhost ops dashboard (default `:8787`); `--stop` to terminate; SSH tunnel from your laptop |
 | `raft logs [name…]` | Container stdout/stderr (`--tail N`; `-f` / `--follow`) |
 | `raft redeploy <app>` | Cutover when the app is already running |
 | `raft gate recreate` | After changing published edge ports in settings |
