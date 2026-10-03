@@ -1,0 +1,24 @@
+import { XAxis } from "recharts";
+import {
+  formatTickTime,
+  timeAxisTicks,
+  windowDomain,
+} from "./chartTimeScale";
+
+/** Numeric epoch X axis over the selected metrics window. */
+export function TimeScaleXAxis(props: { windowSeconds: number }) {
+  const domain = windowDomain(props.windowSeconds);
+  const ticks = timeAxisTicks(domain);
+  const spanMs = domain.endMs - domain.startMs;
+  return (
+    <XAxis
+      dataKey="ts"
+      type="number"
+      domain={[domain.startMs, domain.endMs]}
+      ticks={ticks}
+      tick={{ fill: "var(--muted)", fontSize: 11 }}
+      minTickGap={28}
+      tickFormatter={(ms: number) => formatTickTime(ms, spanMs)}
+    />
+  );
+}

@@ -1,4 +1,5 @@
 import type { GraphEvent, MetricsSeries } from "./api";
+import { formatTickTime, toEpochMs } from "./chartTimeScale";
 import { groupKey } from "./trendsView";
 
 /** Keep events that apply to the plotted series (or global / no service). */
@@ -46,7 +47,9 @@ export function seriesForEventFilter(
 }
 
 /** Merge event timestamps into chart rows so ReferenceLine x keys exist. */
-export function withEventRows<T extends { t: string; label: string }>(
+export function withEventRows<
+  T extends { t: string; ts: number; label: string },
+>(
   rows: T[],
   events: GraphEvent[],
   emptyRow: (t: string, label: string) => T,
@@ -55,10 +58,12 @@ export function withEventRows<T extends { t: string; label: string }>(
   const byT = new Map(rows.map((r) => [r.t, r]));
   for (const event of events) {
     if (!byT.has(event.ts)) {
-      byT.set(event.ts, emptyRow(event.ts, shortTime(event.ts)));
+      const ms = toEpochMs(event.ts);
+      const label = ms === null ? shortTime(event.ts) : formatTickTime(ms);
+      byT.set(event.ts, emptyRow(event.ts, label));
     }
   }
-  return [...byT.values()].sort((a, b) => a.t.localeCompare(b.t));
+  return [...byT.values()].sort((a, b) => a.ts - b.ts);
 }
 
 export function eventMarkerLabel(event: GraphEvent): string {

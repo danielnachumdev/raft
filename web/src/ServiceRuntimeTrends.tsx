@@ -6,7 +6,6 @@ import {
   LineChart,
   ResponsiveContainer,
   Tooltip,
-  XAxis,
   YAxis,
 } from "recharts";
 import {
@@ -15,8 +14,13 @@ import {
   type GraphEvent,
   type MetricsSeries,
 } from "./api";
+import {
+  formatTooltipTime,
+  mergeTimedRows,
+  toEpochMs,
+} from "./chartTimeScale";
 import { GraphEventMarkers } from "./GraphEventMarkers";
-import { eventsForSeries, shortTime, withEventRows } from "./graphEvents";
+import { eventsForSeries, withEventRows } from "./graphEvents";
 import {
   DEFAULT_RUNTIME_WINDOW,
   formatRuntimeValue,
@@ -27,8 +31,14 @@ import {
   type RuntimeMetricId,
   yAxisUnit,
 } from "./runtimeMetrics";
+import { TimeScaleXAxis } from "./TimeScaleXAxis";
 
-type ChartRow = { t: string; label: string; value: number | null };
+type ChartRow = {
+  ts: number;
+  t: string;
+  label: string;
+  value: number | null;
+};
 
 /** Per-service Runtime history charts (same /api/metrics as Trends). */
 export function ServiceRuntimeTrends(props: { service: string }) {
@@ -95,6 +105,7 @@ export function ServiceRuntimeTrends(props: { service: string }) {
   const rows = useMemo(
     () =>
       withEventRows(buildRows(series, metric.id), markers, (t, label) => ({
+        ts: toEpochMs(t) ?? 0,
         t,
         label,
         value: null,
@@ -153,6 +164,7 @@ export function ServiceRuntimeTrends(props: { service: string }) {
         series={series}
         rows={rows}
         metric={metric}
+        windowSec={windowSec}
         events={markers}
       />
     </section>
@@ -165,6 +177,7 @@ function RuntimeTrendsBody(props: {
   series: MetricsSeries | null;
   rows: ChartRow[];
   metric: RuntimeMetricDef;
+  windowSec: number;
   events: GraphEvent[];
 }) {
   if (props.error) {
@@ -202,6 +215,7 @@ function RuntimeTrendsBody(props: {
     <ServiceRuntimeChart
       rows={props.rows}
       metric={props.metric}
+      windowSec={props.windowSec}
       events={props.events}
     />
   );
@@ -210,6 +224,7 @@ function RuntimeTrendsBody(props: {
 function ServiceRuntimeChart(props: {
   rows: ChartRow[];
   metric: RuntimeMetricDef;
+  windowSec: number;
   events: GraphEvent[];
 }) {
   const unit = yAxisUnit(props.metric.unit);
@@ -225,12 +240,7 @@ function ServiceRuntimeChart(props: {
           margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
         >
           <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" />
-          <XAxis
-            dataKey="t"
-            tick={{ fill: "var(--muted)", fontSize: 11 }}
-            minTickGap={28}
-            tickFormatter={shortTime}
-          />
+          <TimeScaleXAxis windowSeconds={props.windowSec} />
           <YAxis
             tick={{ fill: "var(--muted)", fontSize: 11 }}
             unit={unit || undefined}
@@ -250,7 +260,7 @@ function ServiceRuntimeChart(props: {
             }}
             labelFormatter={(_, payload) => {
               const row = payload?.[0]?.payload as ChartRow | undefined;
-              return row?.t ? formatTime(row.t) : "";
+              return row?.t ? formatTooltipTime(row.t) : "";
             }}
             formatter={(value: number | string) => [
               formatRuntimeValue(Number(value), props.metric.unit),
@@ -266,7 +276,7 @@ function ServiceRuntimeChart(props: {
             strokeWidth={2}
             dot={false}
             isAnimationActive={false}
-            connectNulls
+            connectNulls={false}
           />
         </LineChart>
       </ResponsiveContainer>
@@ -279,13 +289,14 @@ function buildRows(
   metric: RuntimeMetricId,
 ): ChartRow[] {
   if (!series) return [];
-  return series.points
-    .map((p) => ({
-      t: p.t,
-      label: shortTime(p.t),
-      value: runtimePointValue(p, metric),
-    }))
-    .sort((a, b) => a.t.localeCompare(b.t));
+  const points = series.points
+    .map((p) => {
+      const ts = toEpochMs(p.t);
+      if (ts === null) return null;
+      return { ts, t: p.t, value: runtimePointValue(p, metric) };
+    })
+    .filter((p): p is NonNullable<typeof p> => p !== null);
+  return mergeTimedRows([{ key: "value", points }]) as ChartRow[];
 }
 
 async function pollServiceMetrics(
@@ -324,10 +335,4 @@ function mergePoints(
     if (!seen.has(p.t)) points.push(p);
   }
   return { ...prev, points };
-}
-
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString();
 }
