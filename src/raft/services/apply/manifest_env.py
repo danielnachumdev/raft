@@ -1,9 +1,9 @@
-"""Expand ``${VAR}`` placeholders in App manifest text before YAML parse.
+"""Apply env map (``--env`` / ``--env-file``) and ``${VAR}`` expansion.
 
-Expansion is apply-time only (``raft apply --file`` / ``--git``). Registry
-files store the expanded concrete document — render/redeploy/doctor never
-re-expand. ``--env-file`` / ``--env`` feed this expander only; they are not
-Compose / container environment.
+``ManifestPreprocessor`` owns the full apply-time text pipeline; this module
+feeds it the env map and implements the placeholder expand step. Registry
+stores concrete YAML — render/redeploy/doctor never re-expand. ``--env*`` is
+not Compose / container environment.
 """
 
 from __future__ import annotations
@@ -14,19 +14,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Optional, Sequence, Union
 
-import yaml
-
 from raft.errors import OperatorError
 
 _NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _ASSIGN = re.compile(r"^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$")
 
 EnvOverrides = Union[None, str, Sequence[str]]
-
-
-# ---------------------------------------------------------------------------
-# KEY=VALUE parsing (--env flags / dotenv lines)
-# ---------------------------------------------------------------------------
 
 
 class EnvAssignment:
@@ -55,11 +48,6 @@ class EnvAssignment:
             f"invalid --env value {raw!r} (expected KEY=VALUE)\n"
             f"Fix: pass --env NAME=value (NAME matching [A-Za-z_][A-Za-z0-9_]*)"
         )
-
-
-# ---------------------------------------------------------------------------
-# Dotenv file loading
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -130,11 +118,6 @@ class DotenvLoader:
         )
 
 
-# ---------------------------------------------------------------------------
-# Env merge: process → --env-file → --env
-# ---------------------------------------------------------------------------
-
-
 @dataclass(frozen=True)
 class ApplyEnvSources:
     """Merge process env → ``--env-file`` → ``--env`` (later wins)."""
@@ -175,14 +158,9 @@ class ApplyEnvSources:
             merged[key] = value
 
 
-# ---------------------------------------------------------------------------
-# Manifest text expansion (${NAME} / ${NAME:-default} / $${)
-# ---------------------------------------------------------------------------
-
-
 @dataclass(frozen=True)
 class ManifestTextExpander:
-    """Pure ``${…}`` / ``$${`` expander over raw manifest text."""
+    """``${…}`` / ``$${`` expander; leaves ``${{`` / ``$${{`` for compile."""
 
     env: Mapping[str, str]
     path: Union[Path, str, None] = None
@@ -190,20 +168,35 @@ class ManifestTextExpander:
     def expand(self, text: str) -> str:
         out: list[str] = []
         i = 0
-        n = len(text)
-        while i < n:
-            if text.startswith("$${", i):
-                out.append("${")
-                i += 3
-                continue
-            if text.startswith("${", i):
-                value, end = self._expand_placeholder(text, i)
-                out.append(value)
-                i = end
-                continue
-            out.append(text[i])
-            i += 1
+        while i < len(text):
+            i = self._expand_step(text, i, out)
         return "".join(out)
+
+    def _expand_step(self, text: str, i: int, out: list[str]) -> int:
+        passed = self._pass_through_conditional(text, i, out)
+        if passed is not None:
+            return passed
+        if text.startswith("$${", i):
+            out.append("${")
+            return i + 3
+        if text.startswith("${", i):
+            value, end = self._expand_placeholder(text, i)
+            out.append(value)
+            return end
+        out.append(text[i])
+        return i + 1
+
+    @staticmethod
+    def _pass_through_conditional(
+        text: str, i: int, out: list[str]
+    ) -> Optional[int]:
+        if text.startswith("$${{", i):
+            out.append("$${{")
+            return i + 4
+        if text.startswith("${{", i):
+            out.append("${{")
+            return i + 3
+        return None
 
     def _expand_placeholder(self, text: str, start: int) -> tuple[str, int]:
         """Parse and resolve one ``${…}`` starting at ``start``; return ``(value, end)``."""
@@ -274,19 +267,3 @@ class ManifestTextExpander:
             f"{self._snippet(near)!r}\n"
             f"Fix: use ${{NAME}}, ${{NAME:-default}}, or $${{ for a literal ${{"
         )
-
-
-# ---------------------------------------------------------------------------
-# Expand then YAML-load (apply path)
-# ---------------------------------------------------------------------------
-
-
-@dataclass(frozen=True)
-class ManifestYamlLoader:
-    """Expand apply-time placeholders, then ``yaml.safe_load`` the result."""
-
-    env: Mapping[str, str]
-
-    def load(self, raw: str, *, path: Union[Path, str]):
-        expanded = ManifestTextExpander(self.env, path=path).expand(raw)
-        return yaml.safe_load(expanded)

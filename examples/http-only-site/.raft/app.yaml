@@ -6,15 +6,17 @@
 # When to use: a normal website/API behind the gate+router with no HTTPS
 # Origin certs on the VPS (Cloudflare Flexible, or TLS terminated elsewhere).
 #
-# Stage-aware apply (Dev/Prod): placeholders expand at `raft apply` on the
-# entire file text (including these comments). Escape demo placeholders:
+# Apply-time preprocess (entire file text, including these comments):
+#   1) $${{ if expr }} … $${{ endif }} (operands: 'str' / $${VAR}; == != && ||)
+#   2) $${VAR} / $${VAR:-default} expansion on the kept text
+# Escape demos so comments survive: $${NAME} and $${{ … }}.
 #   name: $${RAFT_APP_NAME}
 #   publicHost: $${RAFT_APP_PUBLIC_HOST:-site.example.com}
 #   env:
 #     DATABASE_URL: $${CI_DATABASE_URL}   # Docker name ← CI/process/--env name
-# Pass process env and/or --env-file / --env to fill real templates (later wins).
+# Pass process env and/or --env-file / --env (values only; later wins).
 # CLI --env alone does not inject Compose env without a spec.env / envFile bridge.
-# Registry stores the expanded concrete YAML.
+# Registry stores concrete YAML (no placeholders or directives left).
 
 apiVersion: raft/v1
 kind: App
@@ -118,3 +120,12 @@ spec:
   #   idleSeconds: 300
   #   wakeTimeoutSeconds: 60
   #   minUpSeconds: 60
+  #
+  # Optional keys via apply-time directives (see AGENTS.md). Live copy-paste
+  # (unescaped) in optional-block.snippet.yaml:
+  #   $${{ if $${INCLUDE_SCALING} == 'true' }}
+  #   scaling:
+  #     idleSeconds: $${SCALE_IDLE_SECONDS}
+  #     wakeTimeoutSeconds: $${SCALE_WAKE_TIMEOUT_SECONDS}
+  #     minUpSeconds: $${SCALE_MIN_UP_SECONDS}
+  #   $${{ endif }}

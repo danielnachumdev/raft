@@ -49,10 +49,11 @@ class RaftCLI:
         env_file: Optional[str] = None,
         env: Optional[Union[str, Sequence[str]]] = None,
     ) -> None:
-        """Register an App from ``--file`` or ``--git``; expand env, then deploy.
+        """Register an App from ``--file`` or ``--git``; preprocess, then deploy.
 
-        ``--env-file`` / ``--env`` expand ``${VAR}`` in the manifest text (not
-        Compose inject). Precedence: process → ``--env-file`` → ``--env``.
+        ``--env-file`` / ``--env`` feed ``ManifestPreprocessor`` (placeholder
+        values and ``${{ }}`` directive identifiers — not Compose inject).
+        Precedence: process → ``--env-file`` → ``--env``.
         """
         self._dispatch_apply(
             file=file,

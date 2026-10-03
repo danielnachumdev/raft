@@ -14,7 +14,7 @@ User-facing samples live under **[`examples/`](examples/)**: operator settings (
 
 **Shipped:** App `volumes` / `envFile` / `group` / `expose: none` (required for multi-App stacks).
 
-**Shipped:** App-manifest `${VAR}` / `${VAR:-default}` expansion at `raft apply` (one template for Dev/Prod; registry stores expanded YAML). Expansion runs on the **entire** manifest text (including comments) before YAML parse — escape demo placeholders as `$${NAME}` or omit them from comments. Bridge CI values into the container via `spec.env` / `spec.envFile` placeholders (`DATABASE_URL: ${CI_DATABASE_URL}`).
+**Shipped:** App-manifest apply preprocess (`ManifestPreprocessor`): resolve `${{ if … }}` / `${{ endif }}` (`==` `!=` `&&` `||`, nesting allowed; operands are quoted strings or `${VAR}` / `${VAR:-default}`), then expand remaining `${VAR}` in the kept text, then YAML parse. Registry stores concrete YAML. Both steps run on the **entire** manifest text (including comments) — escape demos as `$${NAME}` and `$${{ … }}`, or omit them from comments. `--env*` supply **string values** only (any shape). Bridge CI values into the container via `spec.env` / `spec.envFile` placeholders (`DATABASE_URL: ${CI_DATABASE_URL}`).
 
 **Shipped:** Per-app scale-to-zero via `spec.scaling` (all fields required; omit = off). HTTP + `publicHost` only. Gate holding page + wake; controller idle-stop (co-stops `dependsOn` with `scaleWithParent` default true); healer skips intentional `scaledToZero`. Healing stays separate (`healing:` in settings).
 
@@ -171,6 +171,27 @@ spec:
   # (settings healing:); see examples/settings.yaml.
 ```
 
+### Apply-time preprocess (`ManifestPreprocessor`)
+
+`raft apply` runs on the raw manifest text **before** YAML parse:
+
+1. Resolve `${{ if expr }}` … `${{ endif }}` (literal `${{` → `$${{`).
+2. Expand remaining `${NAME}` / `${NAME:-default}` in the kept text (literal `${` → `$${`).
+3. `yaml.safe_load` → `AppDocument` → registry (concrete; no placeholders/directives left).
+
+In `expr`, operands are only quoted strings (`'…'` / `"…"`) or env refs (`${NAME}` / `${NAME:-default}` — same rules as body placeholders). No barewords. After resolve, comparisons are **string** equality (`==` / `!=`); combine with `&&` / `||` (`&&` binds tighter); parentheses group. Nested `${{ if }}` is supported. Env values may be any string (spaces, punctuation, etc.). Unmatched `if`/`endif`, leftover `${{`, undefined variables, or bad expressions → `OperatorError` with a Fix CTA. Comments are scanned too. Render / redeploy / doctor never re-run the pipeline.
+
+Optional keys (omit the whole mapping when the predicate is false):
+
+```yaml
+${{ if ${INCLUDE_SCALING} == 'true' }}
+scaling:
+  idleSeconds: ${SCALE_IDLE_SECONDS}
+  wakeTimeoutSeconds: ${SCALE_WAKE_TIMEOUT_SECONDS}
+  minUpSeconds: ${SCALE_MIN_UP_SECONDS}
+${{ endif }}
+```
+
 `apply --git` clones briefly, reads `.raft/app.yaml`, copies into `~/.raft/state/apps/`. `sync` refreshes sources then `render` regenerates `~/.raft/generated/`.
 
 ### `spec.scaling` (scale-to-zero)
@@ -268,7 +289,7 @@ Top-level **commands** (not nested groups, except `auth` and `gate`):
 
 | Command | Purpose |
 |---------|---------|
-| `apply` | `--file` or `--git` (+ `--ref`, `--no-deploy`, `--force-sync`, `--env-file`, repeatable `--env`) — default **deploys** via `ensure_app_deployed`; `--no-deploy` registers only; `--env*` expand `${VAR}` in the manifest text (incl. comments) |
+| `apply` | `--file` or `--git` (+ `--ref`, `--no-deploy`, `--force-sync`, `--env-file`, repeatable `--env`) — default **deploys** via `ensure_app_deployed`; `--no-deploy` registers only; `--env*` feed `ManifestPreprocessor` (`${VAR}` + `${{ if }}`, incl. comments) |
 | `get` | `get apps` / `get app NAME` |
 | `delete` | `delete app NAME` |
 | `up` / `down` | Stack bring-up / tear-down (when apps already applied; not the usual CI path) |
@@ -295,7 +316,7 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | `src/raft/config/` | `~/.raft` paths, `settings.yaml` (logging + edge + healing + metrics), logging setup |
 | `src/raft/models/` | Types + parse/registry: `App`, `AppSpec`, `AppDocument` / fields, `AppRegistry`, `AppDependsGraph`, `PortSpec`, `Stack`, `ScalingSpec`, `ScalingStore` (runtime scale-to-zero JSON/markers) |
 | `src/raft/adapters/` | `shell`; `docker/` (`DockerStack`, `ContainerRuntimeGateway`, edge/images/inspect); nginx upstreams; HTTP probe; host |
-| `src/raft/services/apply/` | `AppApply`, `manifest_env` (`${VAR}` at apply) |
+| `src/raft/services/apply/` | `AppApply`, `manifest_preprocess` (`ManifestPreprocessor`), `manifest_env` (apply env + `${VAR}`), `manifest_expr` (directive predicates) |
 | `src/raft/services/auth/` | `GitAuthManager` + ssh/urls helpers |
 | `src/raft/services/sync/` | `SourceSync` |
 | `src/raft/services/render/` | `StackRenderer`, `compose_apps`, `gate_nginx`, `edge` handlers, `scaling_gate` (holding/wake snippets) |

@@ -120,6 +120,12 @@ class TestLiteralEscape:
 
         assert expanded == "cost is $5 and $FOO"
 
+    def test_dollar_dollar_brace_brace_passes_through(self) -> None:
+        assert ManifestTextExpander({}).expand("$${{ if }}") == "$${{ if }}"
+
+    def test_dollar_brace_brace_passes_through(self) -> None:
+        assert ManifestTextExpander({}).expand("${{ if }}") == "${{ if }}"
+
 
 class TestInvalidPlaceholder:
     @pytest.mark.parametrize(
@@ -171,7 +177,7 @@ class TestExpandBeforeYamlParse:
         assert data["metadata"]["name"] == "frontend-dev"
         # Empty default expands to empty text; YAML may load that as null.
         assert data["spec"]["publicHost"] in ("", None)
-        assert data["spec"]["group"] == "limudpsanter-dev"
+        assert data["spec"]["group"] == "demo-stack"
         assert data["spec"]["ref"] == "abc123"
         assert data["spec"]["path"] == "apps/frontend-dev"
         assert "${" not in expanded
