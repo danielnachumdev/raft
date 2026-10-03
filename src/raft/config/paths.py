@@ -9,6 +9,7 @@ from importlib.metadata import requires as distribution_requires
 from pathlib import Path
 from typing import Optional
 
+from raft.config.dir_tree_sync import DirTreeSync
 from raft.errors import OperatorError
 
 DATA_HOME_ENV = "RAFT_DATA_HOME"
@@ -138,10 +139,8 @@ def sync_product_templates(home: Path, package_root: Path) -> None:
         src = package_root / name
         if not src.is_dir():
             raise FileNotFoundError(f"missing package template dir: {src}")
-        dest = home / name
-        if dest.exists():
-            shutil.rmtree(dest)
-        shutil.copytree(src, dest)
+        # In-place: gate/router bind-mount nginx/errors (and related paths).
+        DirTreeSync().sync(src, home / name)
     _sync_controller_package(home, package_root)
 
 
