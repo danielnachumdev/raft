@@ -127,8 +127,11 @@ class ScalingStore:
             state = self._load_unlocked(name)
             if not state.scaled_to_zero:
                 return
-            if state.wake_requested_at is None:
-                state.wake_requested_at = time.time() if now is None else now
+            when = time.time() if now is None else now
+            # Fresh deadline after timeout (or first request). Sticky only while
+            # the same wake attempt is still in flight.
+            if state.wake_requested_at is None or state.wake_timed_out:
+                state.wake_requested_at = when
             state.wake_timed_out = False
             self._save_unlocked(name, state)
 
@@ -176,11 +179,13 @@ class ScalingStore:
             raise
 
     def _sync_markers(self, name: str, state: AppScalingState) -> None:
+        """Exclusive markers: ``.zero`` (holding) or ``.timeout``, never both."""
         self.ensure_dirs()
         zero = self.markers / f"{name}.zero"
         timeout = self.markers / f"{name}.timeout"
-        self._set_marker(zero, state.scaled_to_zero)
-        self._set_marker(timeout, state.scaled_to_zero and state.wake_timed_out)
+        timed_out = state.scaled_to_zero and state.wake_timed_out
+        self._set_marker(zero, state.scaled_to_zero and not state.wake_timed_out)
+        self._set_marker(timeout, timed_out)
 
     @staticmethod
     def _set_marker(path: Path, present: bool) -> None:
