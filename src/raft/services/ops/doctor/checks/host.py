@@ -2,10 +2,20 @@
 
 from __future__ import annotations
 
+import os
 import shutil
+from pathlib import Path
+from typing import Optional
 
 from ..context import DoctorContext
 from ..models import INFRA, CheckResult
+
+_METRICS_REL = Path("state") / "metrics" / "resources.jsonl"
+_METRICS_CHOWN = (
+    'sudo chown "$(whoami):$(whoami)" '
+    '"${RAFT_DATA_HOME:-$HOME/.raft}/state/metrics" '
+    '"${RAFT_DATA_HOME:-$HOME/.raft}/state/metrics/resources.jsonl"'
+)
 
 
 class HostChecks:
@@ -17,6 +27,7 @@ class HostChecks:
             self._generated(ctx),
         ]
         out.extend(self._docker(ctx))
+        out.extend(self._metrics_if_bad(ctx))
         return out
 
     def _compose_file(self, ctx: DoctorContext) -> CheckResult:
@@ -69,4 +80,29 @@ class HostChecks:
             "fail",
             brief,
             fix="start the Docker daemon (and join the `docker` group if permission denied)",
+        )
+
+    def _metrics_if_bad(self, ctx: DoctorContext) -> list[CheckResult]:
+        result = self._metrics(ctx)
+        return [] if result is None else [result]
+
+    def _metrics(self, ctx: DoctorContext) -> Optional[CheckResult]:
+        path = ctx.stack.root / _METRICS_REL
+        parent = path.parent
+        if not parent.is_dir():
+            return None
+        if not os.access(parent, os.W_OK):
+            return self._metrics_fail(parent)
+        if path.is_file() and not os.access(path, os.W_OK):
+            return self._metrics_fail(path)
+        return None
+
+    @staticmethod
+    def _metrics_fail(path: Path) -> CheckResult:
+        return CheckResult(
+            INFRA,
+            "metrics",
+            "fail",
+            f"not writable by host user: {path}",
+            fix=_METRICS_CHOWN,
         )
