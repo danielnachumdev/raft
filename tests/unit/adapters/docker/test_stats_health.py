@@ -67,6 +67,10 @@ class TestDockerStatsHealth(DockerTestCase):
             "status": "running",
             "health": "healthy",
             "started_at": "2024-01-01T00:00:00Z",
+            "finished_at": "",
+            "restart_count": 0,
+            "oom_killed": False,
+            "exit_code": None,
             "nano_cpus": 250000000,
             "memory_bytes": 67108864,
         }

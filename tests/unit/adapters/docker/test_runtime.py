@@ -14,6 +14,46 @@ class TestContainerRuntimeGateway(DockerTestCase):
     def _gateway(self) -> ContainerRuntimeGateway:
         return ContainerRuntimeGateway(self.shell)
 
+    def test_collect_parses_restart_and_oom(self) -> None:
+        self.shell.docker.side_effect = self._ps_inspect_stats_restart()
+        row = self._gateway().collect(["raft-controller"])["raft-controller"]
+        assert row.restart_count == 629
+        assert row.oom_killed is True
+        assert row.exit_code == 137
+
+    def _ps_inspect_stats_restart(self):
+        payload = [self._restart_inspect_dict()]
+        stats = (
+            '{"ID":"ctrl","CPUPerc":"1%","MemUsage":"1MiB / 128MiB",'
+            '"MemPerc":"1%","NetIO":"0B / 0B","BlockIO":"0B / 0B","PIDs":"1"}\n'
+        )
+
+        def docker(*args, **kwargs):
+            if args[:1] == ("ps",):
+                return self.ok("ctrl\traft-controller\n")
+            if args[:1] == ("inspect",):
+                return self.ok(json.dumps(payload))
+            if args[:1] == ("stats",):
+                return self.ok(stats)
+            return self.ok()
+
+        return docker
+
+    @staticmethod
+    def _restart_inspect_dict() -> dict:
+        return {
+            "Id": "ctrlFULL",
+            "RestartCount": 629,
+            "State": {
+                "Status": "running",
+                "StartedAt": "2024-01-01T00:00:00Z",
+                "FinishedAt": "0001-01-01T00:00:00Z",
+                "OOMKilled": True,
+                "ExitCode": 137,
+            },
+            "HostConfig": {"Memory": 128},
+        }
+
     def test_collect_empty_when_ps_fails(self) -> None:
         self.shell.docker.return_value = self.ok("", returncode=1)
         assert self._gateway().collect(["raft-gate"]) == {}
@@ -24,6 +64,8 @@ class TestContainerRuntimeGateway(DockerTestCase):
         assert set(rows) == {"raft-gate", "app"}
         assert rows["raft-gate"].status == "running"
         assert rows["raft-gate"].health == "none"
+        assert rows["raft-gate"].restart_count == 0
+        assert rows["raft-gate"].oom_killed is False
         assert rows["raft-gate"].stats is not None
         assert rows["raft-gate"].stats["CPUPerc"] == "1.5%"
         assert rows["app"].health == "healthy"
@@ -72,11 +114,15 @@ class TestContainerRuntimeGateway(DockerTestCase):
         state = {
             "Status": status,
             "StartedAt": "2024-01-01T00:00:00Z",
+            "FinishedAt": "0001-01-01T00:00:00Z",
+            "OOMKilled": False,
+            "ExitCode": 0,
         }
         if health is not None:
             state["Health"] = {"Status": health}
         return {
             "Id": cid,
+            "RestartCount": 0,
             "State": state,
             "HostConfig": {"NanoCpus": 0, "Memory": mem},
         }

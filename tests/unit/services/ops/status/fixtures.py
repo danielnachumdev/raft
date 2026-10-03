@@ -129,6 +129,8 @@ class StatusFixtures:
         started: Optional[str] = None,
         memory_bytes: Optional[int] = 33554432,
         stats: Optional[dict] = None,
+        restart_count: int = 0,
+        oom_killed: bool = False,
     ) -> ContainerRuntimeRow:
         return ContainerRuntimeRow(
             container_id=cid,
@@ -137,6 +139,8 @@ class StatusFixtures:
             started_at=started or StatusFixtures.started_iso(),
             memory_bytes=memory_bytes,
             stats=stats,
+            restart_count=restart_count,
+            oom_killed=oom_killed,
         )
 
     @classmethod

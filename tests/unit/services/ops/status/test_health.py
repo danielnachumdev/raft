@@ -20,7 +20,7 @@ class TestStatusHealth(RaftTestCase):
         assert StatusFormatters.container_status("running", "healthy") == "running"
         assert StatusFormatters.container_status("running", "unhealthy") == STATUS_UNHEALTHY
         assert StatusFormatters.container_status("running", "starting") == STATUS_STARTING
-        assert StatusFormatters.container_status("restarting", "none") == "restarting"
+        assert StatusFormatters.container_status("restarting", "none") == "crash-looping"
         assert StatusFormatters.container_status("", "none") == "unknown"
 
     def test_collect_marks_unhealthy(self) -> None:

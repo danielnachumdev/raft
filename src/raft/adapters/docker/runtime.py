@@ -27,6 +27,10 @@ class ContainerRuntimeRow:
     started_at: str
     memory_bytes: Optional[int]
     stats: Optional[Dict[str, Any]]
+    restart_count: int = 0
+    oom_killed: bool = False
+    finished_at: str = ""
+    exit_code: Optional[int] = None
 
 
 class ContainerRuntimeGateway:
@@ -177,6 +181,7 @@ class ContainerRuntimeGateway:
         stats: Optional[Dict[str, Any]],
     ) -> ContainerRuntimeRow:
         mem = runtime.get("memory_bytes")
+        exit_code = runtime.get("exit_code")
         return ContainerRuntimeRow(
             container_id=cid,
             status=str(runtime.get("status") or "unknown"),
@@ -184,4 +189,8 @@ class ContainerRuntimeGateway:
             started_at=str(runtime.get("started_at") or ""),
             memory_bytes=mem if isinstance(mem, int) else None,
             stats=stats,
+            restart_count=int(runtime.get("restart_count") or 0),
+            oom_killed=bool(runtime.get("oom_killed")),
+            finished_at=str(runtime.get("finished_at") or ""),
+            exit_code=exit_code if isinstance(exit_code, int) else None,
         )
