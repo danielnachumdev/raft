@@ -93,6 +93,37 @@ class TestDoctorProbes(DoctorTestCase):
         assert empty[0].status == "fail" and "—" not in empty[0].detail
         assert non_str[0].status == "fail" and "—" not in non_str[0].detail
 
+    def test_readiness_path_from_spec(self) -> None:
+        write_applied_app(
+            self.tmp_path,
+            "app",
+            extra={"readiness": {"type": "http", "port": "http", "path": "/ready"}},
+        )
+        ctx = DoctorContext(
+            stack=load_stack(self.tmp_path),
+            shell=MagicMock(),
+            auth=MagicMock(),
+            docker=MagicMock(),
+        )
+        assert PublicHostChecks._readiness_path(ctx, ctx.stack.app("app")) == "/ready"
+
+    def test_readiness_path_fallbacks(self) -> None:
+        app = App(name="app", public_host="app.test", source="local", path="apps/app")
+        broken = MagicMock()
+        broken.spec_for.side_effect = RuntimeError("gone")
+        assert PublicHostChecks._readiness_path(self._ctx(broken), app) == "/"
+        empty = MagicMock()
+        empty.spec_for.return_value = MagicMock(readiness=MagicMock(path=""))
+        assert PublicHostChecks._readiness_path(self._ctx(empty), app) == "/"
+        relative = MagicMock()
+        relative.spec_for.return_value = MagicMock(readiness=MagicMock(path="ping"))
+        assert PublicHostChecks._readiness_path(self._ctx(relative), app) == "/ping"
+
+    def _ctx(self, stack) -> DoctorContext:
+        return DoctorContext(
+            stack=stack, shell=MagicMock(), auth=MagicMock(), docker=MagicMock()
+        )
+
     def test_public_host_probe_skips_blank_host(self) -> None:
         app = App(name="internal", public_host="", source="local", path="apps/internal")
         ctx = DoctorContext(

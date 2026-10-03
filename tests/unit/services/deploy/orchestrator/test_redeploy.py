@@ -58,6 +58,43 @@ class TestOrchRedeploy(OrchestratorTestCase):
             orch._wait_app_ready(app, timeout=5)
         wait.assert_not_called()
 
+    def test_wait_app_ready_skips_scaled_to_zero_host(self) -> None:
+        from raft.models.scaling_store import ScalingStore
+
+        write_applied_app(
+            self.tmp_path,
+            "app",
+            public_host="app.test",
+            extra={"readiness": {"type": "http", "port": "http", "path": "/health"}},
+        )
+        orch = self.orchestrator()
+        ScalingStore(self.tmp_path).mark_scaled_to_zero("app")
+        app = orch.stack.app("app")
+        with patch("raft.services.deploy.orchestrator.wait_until") as wait:
+            orch._wait_app_ready(app, timeout=5)
+        wait.assert_not_called()
+
+    def test_skip_scaled_host_wait_requires_public_host(self) -> None:
+        from raft.models.app import App
+
+        orch = self.orchestrator()
+        app = App(name="internal", public_host="", source="local", path="apps/x")
+        assert orch._skip_scaled_host_wait(app) is False
+
+    def test_wait_app_ready_label_includes_readiness_path(self) -> None:
+        write_applied_app(
+            self.tmp_path,
+            "app",
+            public_host="app.test",
+            extra={"readiness": {"type": "http", "port": "http", "path": "/health"}},
+        )
+        orch = self.orchestrator()
+        self.stub_http_ready(orch.http)
+        app = orch.stack.app("app")
+        with patch("raft.services.deploy.orchestrator.wait_until") as wait:
+            orch._wait_app_ready(app, timeout=5)
+        assert wait.call_args.args[0] == "Host app.test/health"
+
     def test_wait_app_ready_label_for_published_tcp(self) -> None:
         self._test_wait_app_ready_label_for_published_tcp_p1()
         self._test_wait_app_ready_label_for_published_tcp_p2()

@@ -109,19 +109,29 @@ class ReadinessStrategy:
         if self.kind == "none":
             return None
         if self.kind == "http":
-            return lambda: http.public_host_ok(app)
+            probe_path = self.path
+            return lambda: http.public_host_ok(app, path=probe_path)
         if self.kind == "tcp":
-            assert self.port is not None
-            # Internal-only ports are not published on the host — wait on Compose
-            # health/running instead of probing 127.0.0.1:<containerPort>.
-            if self.port.expose == "none":
-                if compose_ready is not None:
-                    return compose_ready
-                if tcp_ok is not None:
-                    return lambda: tcp_ok(self.port.container_port)
-                return lambda: False
-            port_num = self.port.public_port or self.port.container_port
-            if tcp_ok is not None:
-                return lambda: tcp_ok(port_num)
-            return lambda: http.tcp_port_ok(port_num)
+            return self._tcp_wait_predicate(http, tcp_ok=tcp_ok, compose_ready=compose_ready)
         raise ValueError(f"unknown readiness kind {self.kind!r}")
+
+    def _tcp_wait_predicate(
+        self,
+        http: HttpProbe,
+        *,
+        tcp_ok: Optional[Callable[[int], bool]],
+        compose_ready: Optional[Callable[[], bool]],
+    ) -> Callable[[], bool]:
+        assert self.port is not None
+        # Internal-only ports are not published on the host — wait on Compose
+        # health/running instead of probing 127.0.0.1:<containerPort>.
+        if self.port.expose == "none":
+            if compose_ready is not None:
+                return compose_ready
+            if tcp_ok is not None:
+                return lambda: tcp_ok(self.port.container_port)
+            return lambda: False
+        port_num = self.port.public_port or self.port.container_port
+        if tcp_ok is not None:
+            return lambda: tcp_ok(port_num)
+        return lambda: http.tcp_port_ok(port_num)

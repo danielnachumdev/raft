@@ -40,9 +40,12 @@ class TestAdapterCoverage(RaftTestCase):
 
     def _assert_http_tcp(self, app, stack, http) -> None:
         strategy = ReadinessStrategy(
-            kind="http", port=PortSpec(name="http", container_port=80, expose="http")
+            kind="http",
+            port=PortSpec(name="http", container_port=80, expose="http"),
+            path="/health",
         )
         assert strategy.wait_predicate(app, stack, http)() is True
+        http.public_host_ok.assert_called_with(app, path="/health")
         tcp = ReadinessStrategy(
             kind="tcp",
             port=PortSpec(name="smtp", container_port=25, expose="stream", public_port=25),

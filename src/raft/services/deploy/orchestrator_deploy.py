@@ -115,31 +115,40 @@ class OrchestratorDeploy:
         if running:
             self._refuse_full_rebuild(running)
         logger.info("stack not up; full start to deploy %s", app_name)
-        self.sync([app_name], ref_override=ref_override, force=force_sync)
-        others = [a.name for a in self.stack.apps if a.name != app_name]
-        if others:
-            self.sync(others, force=force_sync)
+        self._sync_cold_start(app_name, ref_override=ref_override, force_sync=force_sync)
         require_origin_certs(self.stack)
         self._bring_stack_up()
         self._record_deploy_event(self.stack.app(app_name))
         say("stack is up", style="ok")
         say(f"deployed {app_name}", style="ok")
 
+    def _sync_cold_start(
+        self, app_name: str, *, ref_override: Optional[str], force_sync: bool
+    ) -> None:
+        self.sync([app_name], ref_override=ref_override, force=force_sync)
+        others = [a.name for a in self.stack.apps if a.name != app_name]
+        if others:
+            self.sync(others, force=force_sync)
+
     def _bring_stack_up(self) -> None:
         """Cold ``compose up``: pull/mark scale-to-zero apps; start the rest."""
         plan = StackUpScalePlan(self.stack)
         logger.info("starting stack")
+        self._compose_up_with_scale_plan(plan)
+        self._assert_core_edge_running()
+        self._mark_gate_nginx_loaded()
+        self._reload_router_for_host_waits()
+        logger.info("waiting for readiness checks")
+        for app in plan.apps_to_start():
+            self._wait_app_ready(app)
+
+    def _compose_up_with_scale_plan(self, plan: StackUpScalePlan) -> None:
         if plan.has_deferred():
             self._prepare_deferred_images(plan)
             self.docker.start_stack(plan.start_compose_ids())
             plan.mark_scaled_to_zero()
-        else:
-            self.docker.start_stack()
-        self._assert_core_edge_running()
-        self._mark_gate_nginx_loaded()
-        logger.info("waiting for readiness checks")
-        for app in plan.apps_to_start():
-            self._wait_app_ready(app)
+            return
+        self.docker.start_stack()
 
     def _prepare_deferred_images(self, plan: StackUpScalePlan) -> None:
         services = plan.deferred_compose_ids()

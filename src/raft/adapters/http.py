@@ -23,30 +23,37 @@ class HttpProbe:
         self.stack = stack
         self._opener = urllib.request.build_opener(_NoRedirect)
 
-    def public_host_ok(self, app: App) -> bool:
+    def public_host_ok(self, app: App, *, path: str = "/") -> bool:
         if not app.public_host:
             return True
         request = urllib.request.Request(
-            self.stack.public_base_url + "/",
+            self._public_url(path),
             headers={"Host": app.public_host},
             method="GET",
         )
         try:
             with self._opener.open(request, timeout=3) as response:
-                ok = self._status_ok(response.status)
-                logger.debug("probe Host %s -> %s", app.public_host, response.status)
-                return ok
+                return self._accept_status(app.public_host, response.status)
         except urllib.error.HTTPError as exc:
             # No-redirect opener surfaces 3xx as HTTPError; treat as edge-reachable.
-            ok = self._status_ok(exc.code)
-            logger.debug("probe Host %s -> %s (HTTPError)", app.public_host, exc.code)
-            return ok
+            return self._accept_status(app.public_host, exc.code, via="HTTPError")
         except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as exc:
             logger.debug("probe Host %s failed: %s", app.public_host, exc)
             return False
 
+    def _public_url(self, path: str) -> str:
+        suffix = path if path.startswith("/") else f"/{path}"
+        return self.stack.public_base_url.rstrip("/") + suffix
+
+    def _accept_status(self, host: str, status: int, *, via: str = "") -> bool:
+        ok = self._status_ok(status)
+        suffix = f" ({via})" if via else ""
+        logger.debug("probe Host %s -> %s%s", host, status, suffix)
+        return ok
+
     @staticmethod
     def _status_ok(status: int) -> bool:
+        # 2xx/3xx: includes oauth login redirects and oauth2-proxy static 202.
         return 200 <= status < 400
 
     def tcp_port_ok(self, port: int, *, host: str = "127.0.0.1") -> bool:
