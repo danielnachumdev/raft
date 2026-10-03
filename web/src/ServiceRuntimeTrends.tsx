@@ -12,8 +12,11 @@ import {
 import {
   fetchMetrics,
   METRICS_POLL_MS,
+  type GraphEvent,
   type MetricsSeries,
 } from "./api";
+import { GraphEventMarkers } from "./GraphEventMarkers";
+import { eventsForSeries, shortTime, withEventRows } from "./graphEvents";
 import {
   DEFAULT_RUNTIME_WINDOW,
   formatRuntimeValue,
@@ -32,6 +35,7 @@ export function ServiceRuntimeTrends(props: { service: string }) {
   const [windowSec, setWindowSec] = useState(DEFAULT_RUNTIME_WINDOW);
   const [metricId, setMetricId] = useState<RuntimeMetricId>("cpu_percent");
   const [series, setSeries] = useState<MetricsSeries | null>(null);
+  const [events, setEvents] = useState<GraphEvent[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +48,7 @@ export function ServiceRuntimeTrends(props: { service: string }) {
     setBusy(true);
     setError(null);
     setSeries(null);
+    setEvents([]);
     setCursor(null);
     void (async () => {
       try {
@@ -55,6 +60,7 @@ export function ServiceRuntimeTrends(props: { service: string }) {
         const match =
           payload.series.find((s) => s.id === props.service) ?? null;
         setSeries(match);
+        setEvents(payload.events ?? []);
         setCursor(payload.cursor);
       } catch {
         if (!cancelled) setError("Failed to load runtime metrics.");
@@ -76,14 +82,24 @@ export function ServiceRuntimeTrends(props: { service: string }) {
         cursor,
         setSeries,
         setCursor,
+        setEvents,
       );
     }, METRICS_POLL_MS);
     return () => window.clearInterval(id);
   }, [props.service, windowSec, cursor, busy]);
 
+  const markers = useMemo(
+    () => eventsForSeries(events, series ? [series] : []),
+    [events, series],
+  );
   const rows = useMemo(
-    () => buildRows(series, metric.id),
-    [series, metric.id],
+    () =>
+      withEventRows(buildRows(series, metric.id), markers, (t, label) => ({
+        t,
+        label,
+        value: null,
+      })),
+    [series, metric.id, markers],
   );
   const showCold = busy && series === null && !error;
 
@@ -137,6 +153,7 @@ export function ServiceRuntimeTrends(props: { service: string }) {
         series={series}
         rows={rows}
         metric={metric}
+        events={markers}
       />
     </section>
   );
@@ -148,6 +165,7 @@ function RuntimeTrendsBody(props: {
   series: MetricsSeries | null;
   rows: ChartRow[];
   metric: RuntimeMetricDef;
+  events: GraphEvent[];
 }) {
   if (props.error) {
     return (
@@ -180,12 +198,19 @@ function RuntimeTrendsBody(props: {
       </p>
     );
   }
-  return <ServiceRuntimeChart rows={props.rows} metric={props.metric} />;
+  return (
+    <ServiceRuntimeChart
+      rows={props.rows}
+      metric={props.metric}
+      events={props.events}
+    />
+  );
 }
 
 function ServiceRuntimeChart(props: {
   rows: ChartRow[];
   metric: RuntimeMetricDef;
+  events: GraphEvent[];
 }) {
   const unit = yAxisUnit(props.metric.unit);
   return (
@@ -201,9 +226,10 @@ function ServiceRuntimeChart(props: {
         >
           <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" />
           <XAxis
-            dataKey="label"
+            dataKey="t"
             tick={{ fill: "var(--muted)", fontSize: 11 }}
             minTickGap={28}
+            tickFormatter={shortTime}
           />
           <YAxis
             tick={{ fill: "var(--muted)", fontSize: 11 }}
@@ -231,6 +257,7 @@ function ServiceRuntimeChart(props: {
               props.metric.label,
             ]}
           />
+          <GraphEventMarkers events={props.events} />
           <Line
             type="monotone"
             dataKey="value"
@@ -267,6 +294,7 @@ async function pollServiceMetrics(
   cursor: string | null,
   setSeries: Dispatch<SetStateAction<MetricsSeries | null>>,
   setCursor: (c: string | null) => void,
+  setEvents: (e: GraphEvent[]) => void,
 ) {
   try {
     const payload = await fetchMetrics({
@@ -274,6 +302,7 @@ async function pollServiceMetrics(
       since: cursor ?? undefined,
       services: [service],
     });
+    setEvents(payload.events ?? []);
     const delta = payload.series.find((s) => s.id === service);
     if (delta && delta.points.length) {
       setSeries((prev) => mergePoints(prev, delta));
@@ -295,12 +324,6 @@ function mergePoints(
     if (!seen.has(p.t)) points.push(p);
   }
   return { ...prev, points };
-}
-
-function shortTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 function formatTime(iso: string): string {

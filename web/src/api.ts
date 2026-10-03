@@ -96,6 +96,16 @@ export type MetricsAvailable = {
   group?: string | null;
 };
 
+/** Chart annotation from ``state/events/graph.jsonl`` (deployments, …). */
+export type GraphEvent = {
+  kind: string;
+  ts: string;
+  service?: string | null;
+  label?: string | null;
+  metadata?: Record<string, unknown>;
+  id?: string | null;
+};
+
 export type MetricsPayload = {
   window_seconds: number;
   from: string;
@@ -103,6 +113,8 @@ export type MetricsPayload = {
   cursor: string | null;
   available: MetricsAvailable[];
   series: MetricsSeries[];
+  /** Optional for older servers; treat missing as []. */
+  events?: GraphEvent[];
 };
 
 /** Poll /api/metrics every N ms with ``since`` cursor (no WebSocket). */

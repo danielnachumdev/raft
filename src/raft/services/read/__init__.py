@@ -29,8 +29,10 @@ service id (404 if unknown).
 
 Serve ``GET /api/metrics`` returns historical series from
 ``state/metrics/resources.jsonl`` via ``MetricsRead`` (window + optional
-``since`` cursor for SPA polling). Live updates use HTTP polling — simpler
-and durable for one FastAPI process than WebSockets.
+``since`` cursor for SPA polling), plus ``events`` from
+``state/events/graph.jsonl`` (GraphEvent markers; full window each poll).
+Live updates use HTTP polling — simpler and durable for one FastAPI process
+than WebSockets.
 
 Doctor JSON is deferred for a full dashboard health view; see
 ``DoctorRead.intended_payload_shape`` and ``DoctorRead.from_results``.
