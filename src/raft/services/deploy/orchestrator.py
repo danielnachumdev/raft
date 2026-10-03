@@ -17,6 +17,7 @@ from ...adapters.http import HttpProbe
 from ...adapters.nginx import NginxUpstreams
 from ...adapters.shell import Shell
 from ...config.settings import load_config
+from ...models.graph_event_store import GraphEventStore
 from ...models.scaling_store import ScalingStore
 from ...models.stack import Stack
 from ...ui import say
@@ -136,6 +137,7 @@ class Orchestrator(OrchestratorDeploy):
             self.sync()
             require_origin_certs(self.stack)
             self._bring_stack_up()
+            GraphEventStore(self.stack.root).record_stack_up()
             say("stack is up", style="ok")
             say("redeploy with: raft redeploy <app>", style="info")
 
@@ -170,10 +172,12 @@ class Orchestrator(OrchestratorDeploy):
                     self.docker.remove_container(app.tmp_container)
                 self.docker.stop_stack()
                 self._assert_stack_stopped()
+                GraphEventStore(self.stack.root).record_stack_down()
                 return
             logger.info("stopping stack (%s)", ", ".join(running))
             self.docker.stop_stack()
             self._assert_stack_stopped()
+            GraphEventStore(self.stack.root).record_stack_down()
             say("stack stopped", style="ok")
 
     def _assert_stack_stopped(self) -> None:
@@ -221,6 +225,7 @@ class Orchestrator(OrchestratorDeploy):
             self.docker.recreate_gate()
             self._mark_gate_nginx_loaded()
             self._wait_edge_listeners()
+            GraphEventStore(self.stack.root).record_gate_recreate()
             say("gate recreated", style="ok")
 
     def _wait_edge_listeners(self) -> None:
@@ -245,4 +250,10 @@ class Orchestrator(OrchestratorDeploy):
             logger.info("waiting for readiness via gate")
             for app in self.stack.apps:
                 self._wait_app_ready(app)
+            GraphEventStore(self.stack.root).record_deployment(
+                service=self.stack.router,
+                app="router",
+                ref="-",
+                label="Redeploy router",
+            )
             say("router redeployed", style="ok")

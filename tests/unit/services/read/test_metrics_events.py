@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from raft.models.graph_event_store import (
+    KIND_DOWN,
     KIND_SCALING,
     KIND_STOP,
     SCALING_ACTION_IDLE_STOP,
@@ -53,6 +54,25 @@ class TestMetricsReadEvents(RaftTestCase):
         )
         kinds = [e["kind"] for e in payload["events"]]
         assert kinds == [KIND_STOP, KIND_SCALING]
+
+    def test_history_includes_raft_level_when_service_filtered(self) -> None:
+        home, now = self._seed_samples()
+        store = GraphEventStore(home)
+        store.record_stack_down(ts=now - timedelta(minutes=3))
+        store.record_stop(
+            service="raft-gate", ts=now - timedelta(minutes=2)
+        )
+        store.record_deployment(
+            service="other",
+            app="other",
+            ref="nope",
+            ts=now - timedelta(minutes=1),
+        )
+        payload = MetricsRead(home).history(
+            window_seconds=3600, services=["web"], now=now
+        )
+        kinds = [e["kind"] for e in payload["events"]]
+        assert kinds == [KIND_DOWN, KIND_STOP]
 
     def test_history_empty_events_when_no_store(self) -> None:
         home = self.tmp_path / "raft"

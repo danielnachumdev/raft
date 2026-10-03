@@ -1,8 +1,8 @@
 """Append-only GraphEvent JSONL under ``~/.raft/state/events/``.
 
-Deploy / stop / scaling producers append here; ``MetricsRead`` filters by the
-metrics window so Trends / Runtime charts can draw markers without inferring
-history from current deploy pins (pins only hold the live ref).
+Lifecycle producers append here; ``MetricsRead`` filters by the metrics window
+so Trends / Runtime charts can draw markers without inferring history from
+current deploy pins (pins only hold the live ref).
 """
 
 from __future__ import annotations
@@ -14,15 +14,27 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Sequence, Set
 
+from .app import CONTROLLER_COMPOSE_ID, GATE_COMPOSE_ID, ROUTER_COMPOSE_ID
 from .graph_event import GraphEvent
 
 EVENTS_STATE_DIR = Path("state") / "events"
 EVENTS_FILENAME = "graph.jsonl"
 KIND_DEPLOYMENT = "deployment"
 KIND_STOP = "stop"
+KIND_START = "start"
 KIND_SCALING = "scaling"
+KIND_UP = "up"
+KIND_DOWN = "down"
+KIND_UPDATE = "update"
+KIND_GATE_RECREATE = "gate_recreate"
 SCALING_ACTION_IDLE_STOP = "idle_stop"
 SCALING_ACTION_WAKE = "wake"
+RAFT_LEVEL_SERVICES = frozenset(
+    {GATE_COMPOSE_ID, ROUTER_COMPOSE_ID, CONTROLLER_COMPOSE_ID}
+)
+RAFT_LEVEL_KINDS = frozenset(
+    {KIND_UP, KIND_DOWN, KIND_UPDATE, KIND_GATE_RECREATE}
+)
 
 
 class GraphEventStore:
@@ -73,16 +85,21 @@ class GraphEventStore:
         label: Optional[str] = None,
     ) -> GraphEvent:
         """Operator stop (serve/CLI) — not transient docker blips or heal restarts."""
-        name = app or service
-        meta: Dict[str, Any] = {}
-        if app is not None:
-            meta["app"] = app
-        return self._record(
-            KIND_STOP,
-            service=service,
-            label=label or f"Stop {name}",
-            metadata=meta,
-            ts=ts,
+        return self._record_named(
+            KIND_STOP, service=service, app=app, ts=ts, label=label, verb="Stop"
+        )
+
+    def record_start(
+        self,
+        *,
+        service: str,
+        app: Optional[str] = None,
+        ts: Optional[datetime] = None,
+        label: Optional[str] = None,
+    ) -> GraphEvent:
+        """Operator start (serve) after an intentional stop / wake-adjacent start."""
+        return self._record_named(
+            KIND_START, service=service, app=app, ts=ts, label=label, verb="Start"
         )
 
     def record_scaling(
@@ -103,14 +120,58 @@ class GraphEventStore:
             ts=ts,
         )
 
-    def _record(
+    def record_stack_up(self, *, ts: Optional[datetime] = None) -> GraphEvent:
+        """Full stack bring-up (``raft up`` / cold start)."""
+        return self._record(KIND_UP, label="Stack up", metadata={}, ts=ts)
+
+    def record_stack_down(self, *, ts: Optional[datetime] = None) -> GraphEvent:
+        """Full stack tear-down (``raft down``)."""
+        return self._record(KIND_DOWN, label="Stack down", metadata={}, ts=ts)
+
+    def record_update(self, *, ts: Optional[datetime] = None) -> GraphEvent:
+        """CLI self-update (``raft update``) completed."""
+        return self._record(KIND_UPDATE, label="Raft update", metadata={}, ts=ts)
+
+    def record_gate_recreate(self, *, ts: Optional[datetime] = None) -> GraphEvent:
+        """Published-edge recreate (``raft gate recreate``)."""
+        return self._record(
+            KIND_GATE_RECREATE,
+            service=GATE_COMPOSE_ID,
+            label="Gate recreate",
+            metadata={},
+            ts=ts,
+        )
+
+    def _record_named(
         self,
         kind: str,
         *,
         service: str,
+        app: Optional[str],
+        ts: Optional[datetime],
+        label: Optional[str],
+        verb: str,
+    ) -> GraphEvent:
+        name = app or service
+        meta: Dict[str, Any] = {}
+        if app is not None:
+            meta["app"] = app
+        return self._record(
+            kind,
+            service=service,
+            label=label or f"{verb} {name}",
+            metadata=meta,
+            ts=ts,
+        )
+
+    def _record(
+        self,
+        kind: str,
+        *,
         label: str,
         metadata: Dict[str, Any],
         ts: Optional[datetime],
+        service: Optional[str] = None,
     ) -> GraphEvent:
         when = ts or datetime.now(timezone.utc)
         return self.append(
@@ -193,9 +254,18 @@ class GraphEventStore:
     ) -> bool:
         if wanted is None:
             return True
-        if event.service is None:
+        if GraphEventStore.is_raft_level(event):
             return True
         return event.service in wanted
+
+    @staticmethod
+    def is_raft_level(event: GraphEvent) -> bool:
+        """Stack-wide / edge events — always relevant on Trends (and Runtime)."""
+        if event.service is None:
+            return True
+        if event.kind in RAFT_LEVEL_KINDS:
+            return True
+        return event.service in RAFT_LEVEL_SERVICES
 
     @staticmethod
     def _parse_ts(value: str) -> Optional[datetime]:

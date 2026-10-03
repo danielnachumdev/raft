@@ -3,27 +3,34 @@ import type { GraphEvent } from "./api";
 import { toEpochMs } from "./chartTimeScale";
 import { eventMarkerLabel, eventMarkerStroke } from "./graphEvents";
 
-/** Dashed vertical markers for GraphEvents (deploy / stop / scaling). */
-export function GraphEventMarkers(props: { events: GraphEvent[] }) {
+/** Dashed vertical markers for GraphEvents (deploy / stop / scale / …). */
+export function GraphEventMarkers(props: {
+  events: GraphEvent[];
+  /** Must match a chart YAxis id when axes are named (Trends uses ``service``). */
+  yAxisId?: string | number;
+}) {
   if (!props.events.length) return null;
   return (
     <>
       {props.events.map((event) => {
         const x = toEpochMs(event.ts);
         if (x === null) return null;
+        const stroke = eventMarkerStroke(event.kind);
         return (
           <ReferenceLine
             key={eventKey(event)}
             x={x}
-            stroke={eventMarkerStroke(event.kind)}
+            yAxisId={props.yAxisId}
+            stroke={stroke}
             strokeDasharray="4 4"
-            strokeWidth={1}
-            ifOverflow="extendDomain"
+            strokeWidth={1.5}
+            ifOverflow="hidden"
             label={{
               value: eventMarkerLabel(event),
-              position: "insideTopRight",
-              fill: eventMarkerStroke(event.kind),
+              position: "insideTopLeft",
+              fill: stroke,
               fontSize: 10,
+              fontWeight: 600,
             }}
           />
         );

@@ -9,8 +9,13 @@ from pathlib import Path
 from raft.models.graph_event import GraphEvent
 from raft.models.graph_event_store import (
     KIND_DEPLOYMENT,
+    KIND_DOWN,
+    KIND_GATE_RECREATE,
     KIND_SCALING,
+    KIND_START,
     KIND_STOP,
+    KIND_UP,
+    KIND_UPDATE,
     SCALING_ACTION_IDLE_STOP,
     SCALING_ACTION_WAKE,
     GraphEventStore,
@@ -180,3 +185,48 @@ class TestGraphEventStore(RaftTestCase):
             service="x", app="x", action="other", ts=when
         )
         assert other.label == "Scale x"
+
+    def test_record_start_and_stack_lifecycle(self) -> None:
+        home = self.tmp_path / "raft"
+        store = GraphEventStore(home)
+        when = datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)
+        start = store.record_start(service="demo-web", app="web", ts=when)
+        up = store.record_stack_up(ts=when)
+        down = store.record_stack_down(ts=when)
+        update = store.record_update(ts=when)
+        gate = store.record_gate_recreate(ts=when)
+        assert start.kind == KIND_START
+        assert start.label == "Start web"
+        assert up.kind == KIND_UP and up.service is None
+        assert down.kind == KIND_DOWN
+        assert update.kind == KIND_UPDATE
+        assert gate.kind == KIND_GATE_RECREATE
+        assert gate.service == "raft-gate"
+
+    def test_raft_level_events_pass_service_filter(self) -> None:
+        home = self.tmp_path / "raft"
+        store = GraphEventStore(home)
+        when = datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)
+        store.record_stack_down(ts=when)
+        store.record_stop(service="raft-gate", ts=when)
+        store.record_deployment(
+            service="other", app="other", ref="x", ts=when
+        )
+        got = store.events_in_window(from_ts=when, services=["demo-web"])
+        kinds = [e.kind for e in got]
+        assert kinds == [KIND_DOWN, KIND_STOP]
+
+    def test_raft_level_kind_passes_even_with_app_service(self) -> None:
+        home = self.tmp_path / "raft"
+        store = GraphEventStore(home)
+        when = datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)
+        store.append(
+            GraphEvent(
+                kind=KIND_UP,
+                ts=when.isoformat(),
+                service="legacy-marker",
+                label="Stack up",
+            )
+        )
+        got = store.events_in_window(from_ts=when, services=["demo-web"])
+        assert [e.kind for e in got] == [KIND_UP]

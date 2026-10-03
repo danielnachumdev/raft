@@ -131,7 +131,6 @@ export function TrendsChart(props: {
             itemSorter={tooltipItemSortKey}
           />
           <Legend formatter={(value) => labels[value] ?? value} />
-          <GraphEventMarkers events={markers} />
           {props.aggregate ? (
             <Line
               type="monotone"
@@ -160,6 +159,8 @@ export function TrendsChart(props: {
               />
             ))
           )}
+          {/* After Lines so markers paint above series; yAxisId must match. */}
+          <GraphEventMarkers events={markers} yAxisId={SERVICE_AXIS} />
         </LineChart>
       </ResponsiveContainer>
     </div>

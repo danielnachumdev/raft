@@ -6,12 +6,17 @@ from pathlib import Path
 from typing import Optional
 from unittest.mock import MagicMock, patch
 
+from datetime import datetime, timezone
+
 from raft.errors import OperatorError
+from raft.models.graph_event_store import KIND_UPDATE, GraphEventStore
 from raft.services.ops import update as update_mod
 from raft.services.ops.update import DEFAULT_INSTALL_URL, SelfUpdate, install_identity
 from raft.ui.progress import TerminalProgress
 
 from ..base import ServicesTestCase
+
+_EPOCH = datetime(2020, 1, 1, tzinfo=timezone.utc)
 
 
 class TestSelfUpdate(ServicesTestCase):
@@ -40,6 +45,8 @@ class TestSelfUpdate(ServicesTestCase):
         assert "ok" in styles and styles.count("info") >= 1
         next_body = " ".join(c.args[0] for c in say.call_args_list if c.args)
         assert "raft render" in next_body and "raft doctor" in next_body
+        events = GraphEventStore(self.stack.root).events_in_window(from_ts=_EPOCH)
+        assert [e.kind for e in events] == [KIND_UPDATE]
 
     def test_run_reports_already_up_to_date_when_identity_unchanged(self, monkeypatch) -> None:
         monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
