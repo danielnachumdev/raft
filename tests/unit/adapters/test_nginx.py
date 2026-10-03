@@ -35,3 +35,19 @@ class TestNginxUpstreams(AdapterTestCase):
         docker.router_sees_upstream_target.return_value = False
         with pytest.raises(RuntimeError, match="does not see upstream target"):
             nginx.point_at(self.app, "missing")
+
+    def test_point_absent_and_steady(self) -> None:
+        from raft.adapters.nginx import NginxUpstreamText
+
+        self.stack.upstreams_dir.mkdir(parents=True)
+        nginx = NginxUpstreams(self.stack, MagicMock())
+        port = PortSpec(name="http", container_port=80, expose="http")
+        nginx.point_absent(self.app)
+        UpstreamFile.assert_contains(
+            self.stack.upstream_file(self.app, port),
+            f"server {NginxUpstreamText.ABSENT_HOSTNAME}:80",
+        )
+        nginx.point_steady(self.app)
+        UpstreamFile.assert_contains(self.stack.upstream_file(self.app, port), "server app:80")
+        assert NginxUpstreamText.hostname_for("app", absent=True) == "127.0.0.1"
+        assert NginxUpstreamText.hostname_for("app", absent=False) == "app"

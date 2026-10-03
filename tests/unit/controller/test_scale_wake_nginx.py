@@ -72,3 +72,39 @@ class TestScalerWakeNginx(TestScaler):
             assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5), now=1.0) is True
         assert docker.reload_router_nginx.call_count == 2
         assert not scaler.store.is_scaled_to_zero(self.APP)
+
+    def test_idle_stop_parks_upstream_wake_restores(self, tmp_path: Path) -> None:
+        from raft.adapters.nginx import NginxUpstreamText
+
+        scaler, docker, up = self._scaler_with_upstream(tmp_path)
+        docker.service_runtime.return_value = ("running", "healthy")
+        scaler.store.touch_activity(self.APP, now=0.0)
+        with self.with_scale_locks():
+            scaler.tick(now=20.0)
+        assert NginxUpstreamText.ABSENT_HOSTNAME in up.read_text(encoding="utf-8")
+        self._wake_ok(scaler, docker)
+        assert f"server {self.APP}:80" in up.read_text(encoding="utf-8")
+
+    def _scaler_with_upstream(self, tmp_path: Path):
+        from raft.models.ports import PortSpec
+        from raft.models.stack import load_stack
+
+        scaler, docker = self._scaler(tmp_path)
+        stack = load_stack(scaler.home)
+        port = PortSpec(name="http", container_port=80, expose="http")
+        up = stack.upstream_file(stack.apps[0], port)
+        up.parent.mkdir(parents=True, exist_ok=True)
+        up.write_text(f"server {self.APP}:80;\n", encoding="utf-8")
+        return scaler, docker, up
+
+    def _wake_ok(self, scaler, docker) -> None:
+        docker.service_runtime.return_value = ("running", "none")
+        docker.router_can_fetch.return_value = True
+        docker.router_serves_host.return_value = True
+        with self.with_scale_locks():
+            assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5), now=1.0) is True
+
+    def test_park_restore_skips_unknown_app_names(self, tmp_path: Path) -> None:
+        scaler, _docker = self._scaler(tmp_path)
+        scaler._deps._park_upstreams(("ghost",))
+        scaler._deps._restore_upstreams(("ghost",))

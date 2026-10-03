@@ -7,7 +7,9 @@ from pathlib import Path
 from typing import Callable, Dict, Optional, Tuple
 
 from raft.adapters.docker import DockerStack
+from raft.adapters.nginx import NginxUpstreams
 from raft.errors import OperatorError
+from raft.models.app import App
 from raft.models.app_document import AppDocument
 from raft.models.depends import AppDependsGraph, DependsOnError, DependsOnSpec
 from raft.models.graph_event_store import SCALING_ACTION_IDLE_STOP, GraphEventStore
@@ -87,7 +89,10 @@ class ScaleDepends:
             if not self._start_named(dep_name, deadline):
                 return False
             self.store.clear_scaled_to_zero(dep_name)
-        return self._start_named(root, deadline)
+        if not self._start_named(root, deadline):
+            return False
+        self._restore_upstreams(chain)
+        return True
 
     def load_spec(self, name: str) -> Optional[AppSpec]:
         path = AppRegistry(self.home).path_for(name)
@@ -124,6 +129,28 @@ class ScaleDepends:
             if compose_id is not None:
                 self.docker.stop_service(compose_id)
             self.store.mark_scaled_to_zero(dep)
+        self._park_upstreams(order)
+
+    def _park_upstreams(self, names: Tuple[str, ...]) -> None:
+        """Loopback HTTP upstreams so router nginx -t survives absent DNS names."""
+        nginx, by_name = self._nginx_by_name()
+        for name in names:
+            app = by_name.get(name)
+            if app is not None:
+                nginx.point_absent(app, reload=False)
+
+    def _restore_upstreams(self, names: Tuple[str, ...]) -> None:
+        """Point HTTP upstreams back at Compose hostnames before router reload."""
+        nginx, by_name = self._nginx_by_name()
+        for name in names:
+            app = by_name.get(name)
+            if app is not None:
+                nginx.point_steady(app, reload=False)
+
+    def _nginx_by_name(self) -> Tuple[NginxUpstreams, Dict[str, App]]:
+        stack = Stack.load_apps(self.home)
+        by_name = {app.name: app for app in stack.apps}
+        return NginxUpstreams(stack, self.docker), by_name
 
     def _start_named(self, name: str, deadline: float) -> bool:
         compose_id = self.compose_id(name)
