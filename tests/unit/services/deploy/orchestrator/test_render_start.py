@@ -1,16 +1,26 @@
 """Orchestrator sync/render/start/stop."""
 
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from raft.adapters import DockerStack
 from raft.errors import OperatorError
+from raft.models.graph_event_store import (
+    KIND_DEPLOYMENT,
+    KIND_DOWN,
+    KIND_GATE_RECREATE,
+    KIND_UP,
+    GraphEventStore,
+)
 from tests.shared.compose_ids import RunningServices
 from tests.unit.base import completed
 
 from ....base import write_applied_app
 from .base import OrchestratorTestCase
+
+_EPOCH = datetime(2020, 1, 1, tzinfo=timezone.utc)
 
 
 class TestOrchRenderStart(OrchestratorTestCase):
@@ -82,6 +92,8 @@ class TestOrchRenderStart(OrchestratorTestCase):
         sync.assert_called_once()
         self.orch.docker.start_stack.assert_called_once()
         self.orch.docker.reload_router_nginx.assert_called_once()
+        events = GraphEventStore(self.tmp_path).events_in_window(from_ts=_EPOCH)
+        assert [e.kind for e in events] == [KIND_UP]
 
     def test_start_fails_if_gate_exits(self) -> None:
         self.orch.docker.running_services.side_effect = [
@@ -102,6 +114,8 @@ class TestOrchRenderStart(OrchestratorTestCase):
         with patch.object(self.orch, "render"):
             self.orch.recreate_gate()
         self.orch.docker.recreate_gate.assert_called_once()
+        events = GraphEventStore(self.tmp_path).events_in_window(from_ts=_EPOCH)
+        assert [e.kind for e in events] == [KIND_GATE_RECREATE]
 
     def test_stop_already_stopped(self) -> None:
         self.orch.docker.running_services.side_effect = [[], []]
@@ -130,6 +144,8 @@ class TestOrchRenderStart(OrchestratorTestCase):
         self.orch.docker.network_holders.return_value = []
         self.orch.stop()
         self.orch.docker.stop_stack.assert_called_once()
+        events = GraphEventStore(self.tmp_path).events_in_window(from_ts=_EPOCH)
+        assert [e.kind for e in events] == [KIND_DOWN]
 
     def test_stop_incomplete_raises(self) -> None:
         self.orch.docker.running_services.side_effect = [
@@ -165,3 +181,8 @@ class TestOrchRenderStart(OrchestratorTestCase):
         self.stub_http_ready(self.orch.http)
         self.orch.redeploy_router()
         self.orch.docker.recreate_router.assert_called_once()
+        events = GraphEventStore(self.tmp_path).events_in_window(from_ts=_EPOCH)
+        assert len(events) == 1
+        assert events[0].kind == KIND_DEPLOYMENT
+        assert events[0].service == "raft-router"
+        assert events[0].label == "Redeploy router"

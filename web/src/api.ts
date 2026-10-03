@@ -96,7 +96,7 @@ export type MetricsAvailable = {
   group?: string | null;
 };
 
-/** Chart annotation from ``state/events/graph.jsonl`` (deploy/stop/scaling). */
+/** Chart annotation from ``state/events/graph.jsonl`` (lifecycle markers). */
 export type GraphEvent = {
   kind: string;
   ts: string;
