@@ -130,6 +130,34 @@ class TestMetricsJsonlReader(RaftTestCase):
         )
         assert [s["containers"][0]["cpu_percent"] for s in got] == [3]
 
+    def test_reads_sealed_archives_newest_first(self) -> None:
+        home = self.tmp_path / "raft"
+        now = datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)
+        path = home / METRICS_DIR / METRICS_FILENAME
+        path.parent.mkdir(parents=True)
+        (path.parent / "noise-dir").mkdir()
+        archive = path.parent / f"{METRICS_FILENAME}.2026-10-02"
+        archive.write_text(
+            json.dumps(_MetricsFixtures.sample(now - timedelta(hours=2), cpu=1)) + "\n",
+            encoding="utf-8",
+        )
+        path.write_text(
+            json.dumps(_MetricsFixtures.sample(now - timedelta(minutes=5), cpu=9)) + "\n",
+            encoding="utf-8",
+        )
+        got = MetricsJsonlReader(path).samples_in_window(
+            from_ts=now - timedelta(hours=3),
+        )
+        assert [s["containers"][0]["cpu_percent"] for s in got] == [1, 9]
+
+    def test_missing_parent_dir_yields_empty(self) -> None:
+        path = self.tmp_path / "missing" / METRICS_FILENAME
+        now = datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)
+        assert (
+            MetricsJsonlReader(path).samples_in_window(from_ts=now - timedelta(hours=1))
+            == []
+        )
+
 
 class TestMetricsRead(RaftTestCase):
     def test_history_builds_host_and_container_series(self) -> None:

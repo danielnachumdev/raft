@@ -42,6 +42,12 @@ class TestLogArchiveNames:
         names = LogArchiveNames(tmp_path / "raft.log")
         assert names.parse_day(tmp_path / "raft.log.2026-02-30") is None
 
+    def test_parse_part_defaults_and_suffix(self, tmp_path: Path) -> None:
+        names = LogArchiveNames(tmp_path / "raft.log")
+        assert names.parse_part(tmp_path / "raft.log.2026-10-03") == 1
+        assert names.parse_part(tmp_path / "raft.log.2026-10-03.2") == 2
+        assert names.parse_part(tmp_path / "other.log.2026-10-03") is None
+
 
 class TestLogArchiveRetention:
     def test_deletes_archives_older_than_max_days(self, tmp_path: Path) -> None:
