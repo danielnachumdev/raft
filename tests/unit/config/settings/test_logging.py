@@ -22,6 +22,7 @@ from raft.config import (
     setup_logging,
     sync_product_templates,
 )
+from raft.config.log_rotation import LogRotatingFileHandler
 from raft.config.settings_types import EdgeConfig
 from raft.config.trace_context import TraceContext
 
@@ -43,7 +44,7 @@ class TestSetupLogging(RaftTestCase):
         assert log_file.parent.is_dir()
         root = logging.getLogger("raft")
         assert len(root.handlers) == 1
-        assert isinstance(root.handlers[0], logging.FileHandler)
+        assert isinstance(root.handlers[0], LogRotatingFileHandler)
         assert root.propagate is False
         logging.getLogger("raft.test").info("hello-file")
         assert "hello-file" in log_file.read_text(encoding="utf-8")
@@ -66,7 +67,7 @@ class TestSetupLogging(RaftTestCase):
         text = log_file.read_text(encoding="utf-8")
         assert " INFO - [raft.test] no-scope-line" in text
 
-    def test_setup_prunes_oversized_existing_log(
+    def test_setup_seals_oversized_existing_log(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.delenv("RAFT_LOG_DIR", raising=False)
@@ -74,17 +75,17 @@ class TestSetupLogging(RaftTestCase):
         log_dir.mkdir(parents=True, exist_ok=True)
         log_file = log_dir / "raft.log"
         stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_file.write_text(
+        payload = (
             f"{stamp} INFO [raft] old-line-aaaaaaaa\n"
-            f"{stamp} INFO [raft] new-line-bbbbbbbb\n",
-            encoding="utf-8",
+            f"{stamp} INFO [raft] new-line-bbbbbbbb\n"
         )
+        log_file.write_text(payload, encoding="utf-8")
         cfg = RaftConfig(
             logging=LoggingConfig(retention_max_age_days=30, retention_max_bytes=55),
             edge=EdgeConfig(),
         )
         setup_logging(self.tmp_path, cfg)
-        text = log_file.read_text(encoding="utf-8")
-        assert "old-line" not in text
-        assert "new-line" in text
-        assert log_file.stat().st_size <= 55
+        day = datetime.now().strftime("%Y-%m-%d")
+        sealed = log_dir / f"raft.log.{day}"
+        assert sealed.read_text(encoding="utf-8") == payload
+        assert "old-line" not in log_file.read_text(encoding="utf-8")

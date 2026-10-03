@@ -8,10 +8,11 @@
 
 # ---------------------------------------------------------------------------
 # logging — file logging only; the terminal stays plain text.
-# Retention prunes oldest lines first when age or size limits are hit
-# (defaults: 30 days, 100 MiB). Enforced at CLI start (setup_logging).
-# Age uses the leading asctime field (%Y-%m-%d %H:%M:%S); unparseable
-# lines are treated as ancient. Size is the hard bound for raft.log.
+# Timed + size-split rotation (defaults: 30 days, 100 MiB per active
+# segment). Enforced at CLI start (setup_logging) and on each emit —
+# no full-file rewrite. Active file stays raft.log; sealed archives are
+# raft.log.YYYY-MM-DD, then raft.log.YYYY-MM-DD.2, .3, … for same-day
+# overflow. Age deletes sealed files by the date suffix.
 # ---------------------------------------------------------------------------
 logging:
   # Directory for log files. Relative paths are under the data home
@@ -19,14 +20,14 @@ logging:
   # Override entirely with env RAFT_LOG_DIR.
   dir: logs
 
-  # Log file name inside logging.dir.
+  # Log file name inside logging.dir (live append target).
   file: raft.log
 
   # Minimum level written to the file: DEBUG | INFO | WARNING | ERROR
   level: INFO
 
-  # retentionMaxAgeDays: 30       # drop lines older than this
-  # retentionMaxBytes: 104857600  # 100 MiB; drop oldest until under limit
+  # retentionMaxAgeDays: 30       # keep this many calendar days of archives
+  # retentionMaxBytes: 104857600  # 100 MiB; max size of one day's active segment
 
 # ---------------------------------------------------------------------------
 # healing — raft-controller self-heal (Compose restart, then raft redeploy).

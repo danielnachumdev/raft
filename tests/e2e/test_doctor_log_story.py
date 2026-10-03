@@ -25,16 +25,16 @@ _UUID = re.compile(
 
 
 class TestDoctorLogObservability:
-    """Operator-facing doctor log story (retention + tid + suite timings).
+    """Operator-facing doctor log story (rotation + tid + suite timings).
 
     Scenario:
       1) raft.log is oversized under configured retentionMaxBytes.
-      2) Operator bootstraps logging (CLI setup_logging path) → prune.
+      2) Operator bootstraps logging (CLI setup_logging path) → seal aside.
       3) Operator runs ``raft doctor`` under one TraceContext.
       4) raft.log shows one tid on suite timings and compose-call summary.
     """
 
-    def test_prune_then_doctor_writes_tid_and_suite_timings(
+    def test_seal_then_doctor_writes_tid_and_suite_timings(
         self, isolated_raft_env: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         home = isolated_raft_env
@@ -42,21 +42,18 @@ class TestDoctorLogObservability:
         log_file = self._seed_oversized_log(home, monkeypatch)
         reset_logging_for_tests()
         setup_logging(home, load_config(home))
-        assert "ancient-noise" not in log_file.read_text(encoding="utf-8")
+        self._assert_oversized_sealed(log_file)
+        # Tiny maxBytes is only for the seal step; doctor must fit in one active file.
+        self._raise_retention_bytes(home, max_bytes=1_000_000)
+        reset_logging_for_tests()
+        setup_logging(home, load_config(home))
         with TraceContext() as tid:
             Doctor(load_stack(home)).report(out=StringIO(), color=False)
         self._assert_observability(log_file.read_text(encoding="utf-8"), tid)
 
     def _seed_oversized_log(self, home: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         monkeypatch.delenv("RAFT_LOG_DIR", raising=False)
-        YamlDoc(home / "settings.yaml").merge_root(
-            "logging",
-            {
-                "level": "INFO",
-                "retentionMaxAgeDays": 30,
-                "retentionMaxBytes": 120,
-            },
-        )
+        self._write_logging_settings(home, max_bytes=120)
         log_dir = home / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         log_file = log_dir / "raft.log"
@@ -67,6 +64,26 @@ class TestDoctorLogObservability:
             encoding="utf-8",
         )
         return log_file
+
+    def _assert_oversized_sealed(self, log_file: Path) -> None:
+        active = log_file.read_text(encoding="utf-8") if log_file.is_file() else ""
+        assert "ancient-noise" not in active
+        archives = list(log_file.parent.glob(f"{log_file.name}.*"))
+        assert any("ancient-noise" in p.read_text(encoding="utf-8") for p in archives)
+
+    def _raise_retention_bytes(self, home: Path, *, max_bytes: int) -> None:
+        self._write_logging_settings(home, max_bytes=max_bytes)
+
+    @staticmethod
+    def _write_logging_settings(home: Path, *, max_bytes: int) -> None:
+        YamlDoc(home / "settings.yaml").merge_root(
+            "logging",
+            {
+                "level": "INFO",
+                "retentionMaxAgeDays": 30,
+                "retentionMaxBytes": max_bytes,
+            },
+        )
 
     def _assert_observability(self, text: str, tid: str) -> None:
         assert tid in text
