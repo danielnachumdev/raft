@@ -10,6 +10,7 @@ from ...ui import say
 from ..ops.certs import require_origin_certs
 from .cutover import DEPLOY_CUTOVER, CutoverSession
 from .locking import app_and_stack_locks
+from .up_scale_plan import StackUpScalePlan
 
 logger = logging.getLogger(__name__)
 
@@ -119,16 +120,31 @@ class OrchestratorDeploy:
         if others:
             self.sync(others, force=force_sync)
         require_origin_certs(self.stack)
-        logger.info("starting stack")
-        self.docker.start_stack()
-        self._assert_core_edge_running()
-        self._mark_gate_nginx_loaded()
-        logger.info("waiting for readiness checks")
-        for app in self.stack.apps:
-            self._wait_app_ready(app)
+        self._bring_stack_up()
         self._record_deploy_event(self.stack.app(app_name))
         say("stack is up", style="ok")
         say(f"deployed {app_name}", style="ok")
+
+    def _bring_stack_up(self) -> None:
+        """Cold ``compose up``: pull/mark scale-to-zero apps; start the rest."""
+        plan = StackUpScalePlan(self.stack)
+        logger.info("starting stack")
+        if plan.has_deferred():
+            self._prepare_deferred_images(plan)
+            self.docker.start_stack(plan.start_compose_ids())
+            plan.mark_scaled_to_zero()
+        else:
+            self.docker.start_stack()
+        self._assert_core_edge_running()
+        self._mark_gate_nginx_loaded()
+        logger.info("waiting for readiness checks")
+        for app in plan.apps_to_start():
+            self._wait_app_ready(app)
+
+    def _prepare_deferred_images(self, plan: StackUpScalePlan) -> None:
+        services = plan.deferred_compose_ids()
+        self.docker.pull_services(services)
+        self.docker.build_services(services)
 
     def _record_deploy_event(self, app) -> None:
         """Append a GraphEvent so Trends charts can mark this deploy."""

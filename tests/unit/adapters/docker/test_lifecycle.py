@@ -195,3 +195,54 @@ class TestDockerLifecycle(DockerTestCase):
                 self.docker.start_service("app")
             with pytest.raises(RuntimeError, match="--- app ---"):
                 self.docker.stop_service("app")
+
+    def test_start_stack_selective_uses_no_deps(self) -> None:
+        self.shell.compose.return_value = self.ok()
+        self.docker.start_stack(("raft-gate", "raft-router"))
+        self.shell.compose.assert_any_call(
+            "up",
+            "-d",
+            "--build",
+            "--remove-orphans",
+            "--no-deps",
+            "raft-gate",
+            "raft-router",
+            capture=False,
+            check=False,
+        )
+
+    def test_pull_and_build_services(self) -> None:
+        self.shell.compose.return_value = self.ok()
+        self.docker.pull_services(())
+        self.docker.build_services(())
+        assert self.shell.compose.call_count == 0
+        self.docker.pull_services(("app", "api"))
+        self.docker.build_services(("app",))
+        self.shell.compose.assert_any_call(
+            "pull",
+            "--ignore-buildable",
+            "app",
+            "api",
+            capture=False,
+            check=False,
+        )
+        self.shell.compose.assert_any_call(
+            "build", "app", capture=False, check=False
+        )
+
+    def test_pull_and_build_enrich_failures(self) -> None:
+        from raft.errors import OperatorError
+
+        with patch.object(
+            self.docker,
+            "enrich_compose_failure",
+            side_effect=lambda exc, **kw: OperatorError(
+                f"{exc}\n\n--- app ---\nbad",
+                has_fix=True,
+            ),
+        ):
+            self.shell.compose.return_value = self.ok(returncode=1)
+            with pytest.raises(RuntimeError, match="--- app ---"):
+                self.docker.pull_services(("app",))
+            with pytest.raises(RuntimeError, match="--- app ---"):
+                self.docker.build_services(("app",))

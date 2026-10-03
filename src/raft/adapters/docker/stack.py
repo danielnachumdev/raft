@@ -17,53 +17,22 @@ from ...models.app import App
 from ...models.stack import Stack
 from ..shell import Shell
 from .compose_diagnostics import DIAG_LOG_TAIL, DIAG_MAX_LINES, ComposeDiagnostics
+from .compose_lifecycle import DockerComposeLifecycle
 from .compose_status import ComposeStatusTable
 from .edge import DockerEdge
 from .images import DockerImages
 from .inspect import DockerInspect
-from .project_cleanup import ComposeProjectCleanup
 
 _PS_FORMAT = "{{.Service}} {{.State}} {{.Health}}"
 
 logger = logging.getLogger(__name__)
 
 
-class DockerStack(DockerInspect, DockerImages, DockerEdge):
+class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdge):
     def __init__(self, stack: Stack, shell: Shell) -> None:
         self.stack = stack
         self.sh = shell
         self._diagnostics = ComposeDiagnostics(stack, shell, self)
-
-    def start_stack(self) -> None:
-        logger.info("compose up -d --build --remove-orphans")
-        try:
-            run_compose_checked(
-                self.sh,
-                ("up", "-d", "--build", "--remove-orphans"),
-                action="bring the stack up",
-                stream=True,
-            )
-        except OperatorError as exc:
-            raise self.enrich_compose_failure(exc) from exc
-
-    def stop_stack(self) -> None:
-        logger.info("compose down --remove-orphans")
-        run_compose_checked(
-            self.sh,
-            ("down", "--remove-orphans"),
-            action="bring the stack down",
-            stream=True,
-        )
-        for app in self.stack.apps:
-            self.remove_container(app.tmp_container)
-        leftover = ComposeProjectCleanup(self.sh).remove_labeled()
-        if leftover:
-            logger.info("cleared leftover project containers after down: %s", leftover)
-
-    def network_holders(self) -> list:
-        """Names still attached to the compose default network."""
-        network = self.router_network()
-        return ComposeProjectCleanup(self.sh).network_holders(network)
 
     def compose_service_status(self) -> ComposeStatusTable:
         """One ``docker compose ps`` batch: Service / State / Health per service."""
