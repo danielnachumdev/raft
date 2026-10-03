@@ -81,6 +81,7 @@ class TestOrchRenderStart(OrchestratorTestCase):
             self.orch.start()
         sync.assert_called_once()
         self.orch.docker.start_stack.assert_called_once()
+        self.orch.docker.reload_router_nginx.assert_called_once()
 
     def test_start_fails_if_gate_exits(self) -> None:
         self.orch.docker.running_services.side_effect = [

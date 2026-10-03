@@ -29,6 +29,21 @@ class TestHttpProbe(AdapterTestCase):
             opener.open.return_value = self._response(200)
             assert probe.public_host_ok(self.app) is True
 
+    def test_public_host_ok_uses_readiness_path(self) -> None:
+        """Compose healthchecks use readiness.path; Host wait must hit the same URL."""
+        probe = HttpProbe(self.stack)
+        with patch.object(probe, "_opener") as opener:
+            opener.open.return_value = self._response(200)
+            assert probe.public_host_ok(self.app, path="/health") is True
+            request = opener.open.call_args.args[0]
+            assert request.full_url == "http://127.0.0.1/health"
+
+    def test_public_host_ok_accepts_oauth_static_202(self) -> None:
+        probe = HttpProbe(self.stack)
+        with patch.object(probe, "_opener") as opener:
+            opener.open.return_value = self._response(202)
+            assert probe.public_host_ok(self.app, path="/") is True
+
     def test_public_host_ok_accepts_oauth_redirect_without_following(self) -> None:
         """Dev oauth2 gate returns 302; following off-box yields 404 and false negatives."""
         probe = HttpProbe(self.stack)

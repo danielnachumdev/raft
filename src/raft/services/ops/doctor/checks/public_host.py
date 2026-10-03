@@ -29,12 +29,13 @@ class PublicHostChecks:
                 "ok",
                 f"Host {host} (scaled to zero)",
             )
-        if http.public_host_ok(app):
-            return CheckResult(app.compose_id, "host", "ok", f"Host {host}")
-        return self._host_fail(ctx, app, host)
+        path = self._readiness_path(ctx, app)
+        if http.public_host_ok(app, path=path):
+            return CheckResult(app.compose_id, "host", "ok", f"Host {host}{path}")
+        return self._host_fail(ctx, app, host, path=path)
 
-    def _host_fail(self, ctx: DoctorContext, app, host: str) -> CheckResult:
-        detail = f"Host {host} not OK on {ctx.stack.public_base_url}"
+    def _host_fail(self, ctx: DoctorContext, app, host: str, *, path: str) -> CheckResult:
+        detail = f"Host {host}{path} not OK on {ctx.stack.public_base_url}"
         first = self._first_diag_line(ctx, app)
         if first:
             detail = f"{detail} — {first}"
@@ -50,6 +51,16 @@ class PublicHostChecks:
                 f"{app.compose_id}"
             ),
         )
+
+    @staticmethod
+    def _readiness_path(ctx: DoctorContext, app) -> str:
+        try:
+            path = ctx.stack.spec_for(app).readiness.path
+        except Exception:  # noqa: BLE001 — doctor must still probe /
+            return "/"
+        if not path:
+            return "/"
+        return path if path.startswith("/") else f"/{path}"
 
     @staticmethod
     def _first_diag_line(ctx: DoctorContext, app) -> str:
