@@ -12,7 +12,14 @@ from .app import (
 )
 from .app_document import AppDocument
 from .graph_event import GraphEvent
-from .graph_event_store import KIND_DEPLOYMENT, GraphEventStore
+from .graph_event_store import (
+    KIND_DEPLOYMENT,
+    KIND_SCALING,
+    KIND_STOP,
+    SCALING_ACTION_IDLE_STOP,
+    SCALING_ACTION_WAKE,
+    GraphEventStore,
+)
 from .manifest import (
     CONTRACT_API_VERSION,
     CONTRACT_KIND,
@@ -43,6 +50,10 @@ __all__ = [
     "GraphEvent",
     "GraphEventStore",
     "KIND_DEPLOYMENT",
+    "KIND_SCALING",
+    "KIND_STOP",
+    "SCALING_ACTION_IDLE_STOP",
+    "SCALING_ACTION_WAKE",
     "VolumeSpec",
     "PortSpec",
     "ReadinessSpec",

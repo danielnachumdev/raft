@@ -7,7 +7,14 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from raft.models.graph_event import GraphEvent
-from raft.models.graph_event_store import KIND_DEPLOYMENT, GraphEventStore
+from raft.models.graph_event_store import (
+    KIND_DEPLOYMENT,
+    KIND_SCALING,
+    KIND_STOP,
+    SCALING_ACTION_IDLE_STOP,
+    SCALING_ACTION_WAKE,
+    GraphEventStore,
+)
 
 from ..base import RaftTestCase
 
@@ -132,3 +139,44 @@ class TestGraphEventStore(RaftTestCase):
         assert later == []
         kept = store.events_in_window(from_ts=when - timedelta(hours=1), to_ts=when)
         assert [e.id for e in kept] == ["keep"]
+
+    def test_record_stop(self) -> None:
+        home = self.tmp_path / "raft"
+        store = GraphEventStore(home)
+        when = datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)
+        stop = store.record_stop(service="demo-web", app="web", ts=when)
+        edge = store.record_stop(service="raft-gate", ts=when)
+        assert stop.kind == KIND_STOP
+        assert stop.label == "Stop web"
+        assert stop.metadata["app"] == "web"
+        assert edge.metadata == {}
+        assert edge.label == "Stop raft-gate"
+
+    def test_record_scaling_idle_and_wake(self) -> None:
+        home = self.tmp_path / "raft"
+        store = GraphEventStore(home)
+        when = datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)
+        idle = store.record_scaling(
+            service="demo-web",
+            app="web",
+            action=SCALING_ACTION_IDLE_STOP,
+            ts=when,
+        )
+        wake = store.record_scaling(
+            service="demo-web",
+            app="web",
+            action=SCALING_ACTION_WAKE,
+            ts=when,
+        )
+        assert idle.kind == KIND_SCALING
+        assert idle.metadata["action"] == SCALING_ACTION_IDLE_STOP
+        assert idle.label == "Idle stop web"
+        assert wake.label == "Wake web"
+
+    def test_record_scaling_unknown_action_label(self) -> None:
+        home = self.tmp_path / "raft"
+        when = datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)
+        other = GraphEventStore(home).record_scaling(
+            service="x", app="x", action="other", ts=when
+        )
+        assert other.label == "Scale x"

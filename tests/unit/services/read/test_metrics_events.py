@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from raft.models.graph_event_store import GraphEventStore
+from raft.models.graph_event_store import (
+    KIND_SCALING,
+    KIND_STOP,
+    SCALING_ACTION_IDLE_STOP,
+    GraphEventStore,
+)
 from raft.services.read.metrics import MetricsRead
 
 from .test_metrics_read import _MetricsFixtures
@@ -30,6 +35,24 @@ class TestMetricsReadEvents(RaftTestCase):
         )
         assert len(payload["events"]) == 1
         assert payload["events"][0]["metadata"]["ref"] == "old"
+
+    def test_history_includes_stop_and_scaling_events(self) -> None:
+        home, now = self._seed_samples()
+        store = GraphEventStore(home)
+        store.record_stop(
+            service="web", app="web", ts=now - timedelta(minutes=4)
+        )
+        store.record_scaling(
+            service="web",
+            app="web",
+            action=SCALING_ACTION_IDLE_STOP,
+            ts=now - timedelta(minutes=2),
+        )
+        payload = MetricsRead(home).history(
+            window_seconds=3600, services=["web"], now=now
+        )
+        kinds = [e["kind"] for e in payload["events"]]
+        assert kinds == [KIND_STOP, KIND_SCALING]
 
     def test_history_empty_events_when_no_store(self) -> None:
         home = self.tmp_path / "raft"

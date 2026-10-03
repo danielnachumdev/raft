@@ -9,6 +9,7 @@ from raft.errors import OperatorError
 from ...adapters.docker import DockerStack
 from ...adapters.shell import Shell
 from ...models import App, Stack
+from ...models.graph_event_store import GraphEventStore
 from ...models.scaling_store import ScalingStore
 from ..deploy.locking import app_and_stack_locks, stack_lock
 from ..deploy.orchestrator import Orchestrator
@@ -51,6 +52,7 @@ class ServeActions:
             self._docker_stack().stop_service(compose_id)
             if app is not None:
                 self._mark_scaled_to_zero(app)
+            self._record_stop_event(compose_id, app)
         return self._ok("stop", compose_id)
 
     def redeploy(self, name: str) -> Dict[str, Any]:
@@ -104,6 +106,13 @@ class ServeActions:
         if self._scaling_spec(app) is None:
             return
         ScalingStore(self.stack.root).mark_scaled_to_zero(app.name)
+
+    def _record_stop_event(self, compose_id: str, app: Optional[App]) -> None:
+        """Append a GraphEvent so Trends charts mark intentional stops."""
+        GraphEventStore(self.stack.root).record_stop(
+            service=compose_id,
+            app=None if app is None else app.name,
+        )
 
     def _min_up_seconds(self, app: App) -> float:
         scaling = self._scaling_spec(app)
