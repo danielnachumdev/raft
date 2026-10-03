@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator, Optional
-from unittest.mock import patch
+from typing import Optional
 
 from raft.adapters.docker import DockerStack
 from raft.adapters.shell import Shell
@@ -90,24 +88,18 @@ class ScaleDependsWakeStack:
         ServiceRuntimeWait(self.docker, FRONTEND_COMPOSE).until_stopped()
 
     def when_the_frontend_idle_stops(self) -> None:
-        """Controller idle-stop: co-stops dependsOn (default scaleWithParent)."""
-        scaler = self._inner.scaler
-        with self._ignore_gate_activity(scaler):
-            self.store.touch_activity(FRONTEND, now=0.0)
-            scaler.tick(now=float(SCALING["idleSeconds"]) + 1.0)
+        """Controller idle-stop: co-stops dependsOn (default scaleWithParent).
+
+        Use ``idle_stop_now`` — not seed+``tick``. Async gate ``/activity`` can
+        wipe a seeded ``lastActivityAt=0`` (or make tick load ``last is None``
+        and reseed to tick time=3601). That is the CI fingerprint; see
+        ``test_idle_activity_races.py``. Idle timing stays in unit tests.
+        """
+        self._inner.scaler.idle_stop_now(FRONTEND)
         if not self.store.is_scaled_to_zero(FRONTEND):
             raise AssertionError(self._idle_stop_debug())
         ServiceRuntimeWait(self.docker, FRONTEND_COMPOSE).until_stopped()
         ServiceRuntimeWait(self.docker, BACKEND_COMPOSE).until_stopped()
-
-    @staticmethod
-    @contextmanager
-    def _ignore_gate_activity(scaler: Scaler) -> Iterator[None]:
-        # Live curls make nginx ``mirror`` /activity asynchronously. A late
-        # wall-clock bump after seeding lastActivityAt=0 races tick(now=idle+1)
-        # and skips idle-stop (CI: redis never co-stops).
-        with patch.object(scaler, "record_activity"):
-            yield
 
     def _idle_stop_debug(self) -> str:
         state = self.store.load(FRONTEND)

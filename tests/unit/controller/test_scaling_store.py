@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
+
+import pytest
 
 from raft.models.scaling_store import AppScalingState, ScalingStore
 
@@ -56,3 +59,37 @@ class TestScalingStore(ControllerTestCase):
         store.clear_scaled_to_zero(self.APP)
         assert not store.is_scaled_to_zero(self.APP)
         assert not (home / "state/scaling/markers/web.zero").is_file()
+
+    def test_save_is_atomic(self, tmp_path: Path) -> None:
+        home = self.raft_home(tmp_path)
+        store = ScalingStore(home)
+        store.touch_activity(self.APP, now=0.0)
+        path = store.path_for(self.APP)
+        assert path.is_file()
+        assert store.load(self.APP).last_activity_at == 0.0
+
+    def test_public_save_round_trip(self, tmp_path: Path) -> None:
+        store = ScalingStore(self.raft_home(tmp_path))
+        state = AppScalingState(last_activity_at=3.0)
+        store.save(self.APP, state)
+        assert store.load(self.APP).last_activity_at == 3.0
+
+    def test_atomic_write_cleans_temp_on_replace_failure(self, tmp_path: Path) -> None:
+        home = self.raft_home(tmp_path)
+        store = ScalingStore(home)
+        store.ensure_dirs()
+        path = store.path_for(self.APP)
+        with patch("raft.models.scaling_store.os.replace", side_effect=OSError("boom")):
+            with pytest.raises(OSError, match="boom"):
+                store._atomic_write_json(path, {"scaledToZero": False})
+        assert list(path.parent.glob(".web.json.*.tmp")) == []
+
+    def test_atomic_write_ignores_unlink_errors(self, tmp_path: Path) -> None:
+        home = self.raft_home(tmp_path)
+        store = ScalingStore(home)
+        store.ensure_dirs()
+        path = store.path_for(self.APP)
+        with patch("raft.models.scaling_store.os.replace", side_effect=OSError("boom")):
+            with patch("raft.models.scaling_store.os.unlink", side_effect=OSError("gone")):
+                with pytest.raises(OSError, match="boom"):
+                    store._atomic_write_json(path, {"scaledToZero": False})
