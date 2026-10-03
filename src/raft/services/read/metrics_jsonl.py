@@ -59,17 +59,25 @@ class MetricsJsonlReader:
             return [self.path] if self.path.is_file() else []
         keyed: List[Tuple[date, int, Path]] = []
         for path in parent.iterdir():
-            if not path.is_file():
-                continue
-            day = names.parse_day(path)
-            part = names.parse_part(path)
-            if day is None or part is None:
-                continue
-            keyed.append((day, part, path))
+            entry = self._archive_entry(names, path)
+            if entry is not None:
+                keyed.append(entry)
         keyed.sort(key=lambda item: (item[0], item[1]), reverse=True)
         out = [self.path] if self.path.is_file() else []
         out.extend(path for _, _, path in keyed)
         return out
+
+    @staticmethod
+    def _archive_entry(
+        names: LogArchiveNames, path: Path
+    ) -> Optional[Tuple[date, int, Path]]:
+        if not path.is_file():
+            return None
+        day = names.parse_day(path)
+        if day is None:
+            return None
+        part = names.parse_part(path)
+        return None if part is None else (day, part, path)
 
     def _reverse_lines(self, handle: BinaryIO) -> Iterator[str]:
         handle.seek(0, 2)
