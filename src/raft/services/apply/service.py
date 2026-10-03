@@ -99,7 +99,7 @@ class AppApply:
         from_label: Optional[str] = None,
     ) -> str:
         app, app_spec = AppDocument.parse(data, path=path)
-        self._warn_missing_deps(app.name, app_spec.depends_on)
+        self._warn_missing_deps(app.name, app_spec.depend_names())
         with app_deploy_lock(self.stack.root, app.name):
             dest = AppRegistry(self.stack.root).write(data)
             self._announce_applied(app.name, dest, from_label)
@@ -229,7 +229,7 @@ class AppApply:
         if not spec.get("source"):
             spec["source"] = "docker" if spec.get("image") else "git"
 
-    def _warn_missing_deps(self, name: str, depends_on: list[str]) -> None:
+    def _warn_missing_deps(self, name: str, depends_on: tuple[str, ...]) -> None:
         known = {a.name for a in self.stack.apps}
         missing = [d for d in depends_on if d not in known and d != name]
         if not missing:

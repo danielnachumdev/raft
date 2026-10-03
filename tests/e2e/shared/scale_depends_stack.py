@@ -86,6 +86,21 @@ class ScaleDependsWakeStack:
         self.store.mark_scaled_to_zero(FRONTEND)
         ServiceRuntimeWait(self.docker, FRONTEND_COMPOSE).until_stopped()
 
+    def when_the_frontend_idle_stops(self) -> None:
+        """Controller idle-stop: co-stops dependsOn (default scaleWithParent)."""
+        self.store.touch_activity(FRONTEND, now=0.0)
+        self._inner.scaler.tick(now=float(SCALING["idleSeconds"]) + 1.0)
+        ServiceRuntimeWait(self.docker, BACKEND_COMPOSE).until_stopped()
+        ServiceRuntimeWait(self.docker, FRONTEND_COMPOSE).until_stopped()
+
+    def then_both_are_scaled_to_zero(self) -> None:
+        assert self.store.is_scaled_to_zero(FRONTEND)
+        assert self.store.is_scaled_to_zero(BACKEND)
+        front, _ = self.docker.service_runtime(FRONTEND_COMPOSE)
+        back, _ = self.docker.service_runtime(BACKEND_COMPOSE)
+        assert front != "running", f"frontend status={front!r}"
+        assert back != "running", f"backend status={back!r}"
+
     def visitor_sees_the_holding_page(self) -> bool:
         return "Starting" in self._curl().body
 

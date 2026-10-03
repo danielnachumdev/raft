@@ -101,6 +101,16 @@ class ScalingStore:
         state.wake_timed_out = False
         self.save(name, state)
 
+    def clear_scaled_to_zero(self, name: str) -> None:
+        """Drop intentional zero marker (co-stopped deps on wake) without min-up."""
+        state = self.load(name)
+        if not state.scaled_to_zero:
+            return
+        state.scaled_to_zero = False
+        state.wake_requested_at = None
+        state.wake_timed_out = False
+        self.save(name, state)
+
     def mark_awake(
         self,
         name: str,

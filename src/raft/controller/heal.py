@@ -199,7 +199,7 @@ class Healer:
             _, spec = AppDocument.load(path, expect_name=name)
         except (OSError, ValueError, OperatorError):
             return ()
-        return tuple(spec.depends_on)
+        return spec.depend_names()
 
     def _ensure_one_dep(self, dep: str, for_app: str) -> bool:
         if ScalingStore(self.home).is_scaled_to_zero(dep):

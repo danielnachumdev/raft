@@ -106,6 +106,13 @@ spec:
   # Idle stop + gate holding page + wake ship together; holding-page reloads
   # do not count as activity. Healing is separate (settings healing:); the
   # healer skips intentional scaledToZero.
+  # With dependsOn, idle-stop also co-stops deps with scaleWithParent true
+  # (default); wake still starts the full dependsOn chain (names only).
+  #
+  # dependsOn:
+  #   - backend-dev
+  #   - name: some-sidecar
+  #     scaleWithParent: false
   #
   # scaling:
   #   idleSeconds: 300

@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+from .depends import DependsOnSpec
 from .ports import PortSpec
 from .readiness_spec import ReadinessSpec
 from .scaling_spec import ScalingSpec
@@ -43,11 +44,15 @@ class AppSpec:
     memory_reservation: str = "32M"
     metadata_name: Optional[str] = None
     group: Optional[str] = None
-    depends_on: tuple[str, ...] = ()
+    depends_on: tuple[DependsOnSpec, ...] = ()
     env_file: Optional[str] = None
     env: tuple[tuple[str, str], ...] = ()
     volumes: tuple[VolumeSpec, ...] = ()
     scaling: Optional[ScalingSpec] = None
+
+    def depend_names(self) -> tuple[str, ...]:
+        """Compose / wake / heal order — names only (ignore ``scaleWithParent``)."""
+        return tuple(dep.name for dep in self.depends_on)
 
     def server_names(self, public_host: str) -> tuple[str, ...]:
         names: list[str] = [public_host]

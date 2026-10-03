@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from raft.models.depends import AppDependsGraph, DependsOnError
+from raft.models.depends import AppDependsGraph, DependsOnError, DependsOnSpec
 
 
 class TestAppDependsGraph:
@@ -12,11 +12,13 @@ class TestAppDependsGraph:
         g = AppDependsGraph({"a": ()})
         assert g.before("a") == ()
         assert g.wake_chain("a") == ("a",)
+        assert g.costop_before("a") == ()
 
     def test_direct_dep(self) -> None:
         g = AppDependsGraph({"a": ("b",), "b": ()})
         assert g.before("a") == ("b",)
         assert g.wake_chain("a") == ("b", "a")
+        assert g.costop_before("a") == ("b",)
 
     def test_transitive_chain(self) -> None:
         g = AppDependsGraph({"a": ("b",), "b": ("c",), "c": ()})
@@ -33,6 +35,33 @@ class TestAppDependsGraph:
             }
         )
         assert g.before("a") == ("d", "b", "c")
+
+    def test_costop_filters_scale_with_parent_false(self) -> None:
+        g = AppDependsGraph(
+            {
+                "front": (
+                    DependsOnSpec("api", scale_with_parent=True),
+                    DependsOnSpec("sidecar", scale_with_parent=False),
+                ),
+                "api": (DependsOnSpec("db", scale_with_parent=True),),
+                "sidecar": (),
+                "db": (),
+            }
+        )
+        assert g.costop_before("front") == ("db", "api")
+        assert g.before("front") == ("db", "api", "sidecar")
+        assert g.wake_chain("front") == ("db", "api", "sidecar", "front")
+
+    def test_costop_stops_at_false_edge(self) -> None:
+        g = AppDependsGraph(
+            {
+                "front": (DependsOnSpec("api", scale_with_parent=True),),
+                "api": (DependsOnSpec("db", scale_with_parent=False),),
+                "db": (),
+            }
+        )
+        assert g.costop_before("front") == ("api",)
+        assert g.before("front") == ("db", "api")
 
     def test_unknown_root(self) -> None:
         g = AppDependsGraph({"a": ()})
