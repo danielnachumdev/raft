@@ -99,6 +99,7 @@ def _ensure_data_dirs(root: Path) -> None:
         "state/scaling/markers",
         "state/metrics",
         "state/events",
+        "state/serve",
         f"{GENERATED_DIRNAME}/nginx/gate-tls",
         f"{GENERATED_DIRNAME}/nginx/gate-http",
         f"{GENERATED_DIRNAME}/nginx/gate-stream",

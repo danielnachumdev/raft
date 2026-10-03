@@ -69,6 +69,7 @@ class TestRaftHome(RaftTestCase):
         assert (home / "generated" / "compose.edge.yaml").is_file()
         assert (home / "state" / "apps").is_dir()
         assert (home / "state" / "metrics").is_dir()
+        assert (home / "state" / "serve").is_dir()
 
     def test_sync_replaces_existing_controller_package(self) -> None:
         from raft.config import paths as paths_mod

@@ -148,14 +148,19 @@ class RaftCLI:
         """
         deps.Status(self._stack).report(as_json=json, live=live)
 
-    def serve(self, port: int = 8787) -> None:
+    def serve(self, port: int = 8787, stop: bool = False) -> None:
         """Start a localhost-only SSR UI for stack and control-plane visibility.
 
         Binds ``127.0.0.1`` (default port 8787). Prints SSH / gcloud tunnel
         instructions on start; open the forwarded URL on your laptop. Stop
-        with Ctrl+C. Not published via gate/edge.
+        with Ctrl+C or ``raft serve --stop``. Not published via gate/edge.
+        Pass ``--stop`` to terminate an already-running serve on this port.
         """
-        deps.Serve(self._stack).run(port=port)
+        serve = deps.Serve(self._stack)
+        if stop:
+            serve.stop(port=port)
+            return
+        serve.run(port=port)
 
     def logs(
         self,

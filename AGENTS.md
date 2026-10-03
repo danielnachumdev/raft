@@ -71,6 +71,7 @@ Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**), then `OperatorError` w
 | `~/.raft/apps/` | Sync checkouts |
 | `~/.raft/deploy/` | Image/ref pins from sync/cutover |
 | `~/.raft/state/locks/` | `flock` files serializing apply/redeploy/render (`app-<name>.lock`, `stack.lock`) |
+| `~/.raft/state/serve/` | Per-port `raft serve` flock + pid (`port-<port>.lock`); used by start / `--stop` |
 | `~/.raft/state/scaling/` | Per-app scale-to-zero JSON + gate marker files (when `spec.scaling` is set) |
 | `~/.raft/state/metrics/` | Controller resource samples (`resources.jsonl`); batched append; daily + size-split rotation like logs (`resources.jsonl.YYYY-MM-DD[.N]`); `metrics.retentionMaxAgeDays` / `retentionMaxBytes` |
 | `~/.raft/certs/` | Origin PEMs (only for `tls: origin`) |
@@ -90,7 +91,7 @@ Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 6. Manual cold start when apps are already applied: `raft up` (refuses if stack already up; `down` first).
 7. `raft doctor` before trusting the site (certs only for `tls: origin`; gate drift → `raft gate recreate`). Doctor is group-first: built-in **`raft`** (edge services; healthy docker/compose/generated/stack/port probes stay hidden), then App `spec.group` (at most one); ungrouped apps appear without a heading. Member labels drop the `{group}-` prefix under a group heading (Compose ids stay `raft-gate` / `raft-router` / `GROUP-NAME` for Docker; doctor shows `gate` / `router` under `raft`). Healthy OK lines append ports in use (gate: published host ports; apps/router: contract / listen ports). File log records per-suite start/done with `elapsed_ms` plus a compose-call summary (`total` / `ps`) for diagnosing slow doctor runs.
 8. `raft status` (optional `--json`, or `--live` to refresh the human table until Ctrl+C) for a point-in-time host + container CPU/memory/uptime/started snapshot — declared Compose limits vs live usage via `ContainerRuntimeGateway`. Human NAME column drops `{group}-` (edge: `gate` / `router` with GROUP `raft`); JSON keeps Compose service ids. The always-on **controller** also samples the same plane on a metrics job interval (default 60s; settings `metrics:`) and **batch-appends** JSONL under `~/.raft/state/metrics/resources.jsonl` (flush every 10 samples or 60s; seals on day change / `retentionMaxBytes` like `raft.log`; defaults 30 days / 100 MiB). `raft serve` Trends + service Runtime charts read that history via `/api/metrics`.
-9. `raft serve` (optional `--port`, default **8787**) — localhost-only ops UI (`127.0.0.1`) for applied apps + gate/router/controller. One FastAPI process: packaged SPA + status/metrics/service/actions/logs APIs. Prints SSH/`gcloud` port-forward instructions on start; Ctrl+C stops. **Not** an edge listener. See **Serve / ops UI** below.
+9. `raft serve` (optional `--port`, default **8787**) — localhost-only ops UI (`127.0.0.1`) for applied apps + gate/router/controller. One FastAPI process: packaged SPA + status/metrics/service/actions/logs APIs. Prints SSH/`gcloud` port-forward instructions on start; Ctrl+C or `raft serve --stop` stops. A second start on the same port fails fast with an already-running CTA. **Not** an edge listener. See **Serve / ops UI** below.
 10. `raft logs [name…]` for container stdout/stderr (not `~/.raft/logs/raft.log`). Snapshot by default (`--tail N`, default 100); `-f` / `--follow` streams until Ctrl+C. Names: applied app, `gate` / `router` / `controller`, or Compose ids (`raft-gate`, `GROUP-NAME`); omit names for all core services. Unknown / missing containers → OperatorError with Fix CTA. Serve detail reuses the same `Logs` path (snapshot + SSE follow).
 11. Updates: prefer `raft apply … --ref …` again (handles first-boot and cutover). Use `raft redeploy <app>` only when the app Compose service is **already running** and you want cutover without re-writing the registry (optional `--ref` / `--force-sync`). `raft redeploy router` for the inner nginx. New edge listeners: `raft gate recreate`.
 12. Tear down: `raft down`.
@@ -231,7 +232,7 @@ Localhost dashboard for operators (`raft serve`). **Hard rules:** bind `127.0.0.
 
 | Piece | Path / type | Role |
 |-------|-------------|------|
-| CLI entry | `raft serve` → `services/serve/service.py` | uvicorn on `--port` (default **8787**); prints tunnel CTAs |
+| CLI entry | `raft serve` → `services/serve/service.py` | uvicorn on `--port` (default **8787**); prints tunnel CTAs; flock lease under `state/serve/`; `--stop` |
 | App factory | `ServeAppFactory` | mounts `/assets`, SPA catch-all, registers `/api/*` |
 | Page / routes | `ServePage` | status, metrics, service detail, logs, start/stop/redeploy |
 | Actions | `ServeActions` | Compose start/stop; redeploy via `Orchestrator`; scaling mark/clear on stop/start |
@@ -298,7 +299,7 @@ Top-level **commands** (not nested groups, except `auth` and `gate`):
 | `gate recreate` | Recreate gate for new published edge ports |
 | `doctor` | Health + fix hints |
 | `status` | Host + container resource usage (point-in-time; `--json` or `--live`; Started column beside Uptime) |
-| `serve` | Localhost ops UI (`127.0.0.1`, default **8787**; optional `--port`); SPA + status/metrics/service/actions/logs APIs; SSH tunnel; Ctrl+C stops |
+| `serve` | Localhost ops UI (`127.0.0.1`, default **8787**; optional `--port` / `--stop`); SPA + status/metrics/service/actions/logs APIs; SSH tunnel; Ctrl+C or `--stop` |
 | `logs` | Container stdout/stderr (`--tail N` snapshot; `-f` / `--follow` until Ctrl+C). Names: app, `gate`/`router`/`controller`, or Compose ids; omit = all |
 | `update` | Re-install CLI from GitHub (`install.sh`) |
 | `uninstall` | Full removal (`--yes`; optional `--uv` to remove uv too) |

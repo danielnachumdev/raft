@@ -33,6 +33,23 @@ def service_not_running(service: str) -> OperatorError:
     )
 
 
+def serve_already_running(port: int) -> OperatorError:
+    return OperatorError(
+        f"raft serve is already running on 127.0.0.1:{port}.\n"
+        f"Fix: raft serve --stop\n"
+        f"     raft serve --port=<other>   # or listen on a free port"
+    )
+
+
+def serve_stop_failed(port: int, pid: int, detail: str) -> OperatorError:
+    who = f"pid {pid}" if pid else "unknown pid"
+    return OperatorError(
+        f"could not stop raft serve on 127.0.0.1:{port} ({who}): {detail}.\n"
+        f"Fix: raft serve --stop --port={port}\n"
+        f"     # or stop the process holding ~/.raft/state/serve/port-{port}.lock"
+    )
+
+
 def stack_already_running(running: Sequence[str], *, holders: Sequence[str] = ()) -> OperatorError:
     joined = ", ".join(running)
     hold = ", ".join(holders) if holders else "(none listed)"
@@ -188,6 +205,8 @@ __all__ = [
     "require_bool",
     "require_int",
     "require_mapping",
+    "serve_already_running",
+    "serve_stop_failed",
     "service_not_running",
     "stack_already_running",
     "stack_down_incomplete",

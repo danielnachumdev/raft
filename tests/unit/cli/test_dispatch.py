@@ -55,6 +55,16 @@ class TestCliDispatch(CliTestCase):
         assert serve.run.call_args_list[0].kwargs == {"port": 8787}
         assert serve.run.call_args_list[1].kwargs == {"port": 9001}
 
+    def test_serve_dispatches_stop(self) -> None:
+        serve = MagicMock()
+        with self.patched_deps(Serve=serve) as deps:
+            assert cli.main(["serve", "--stop"]) == 0
+            assert cli.main(["serve", "--stop", "--port", "9001"]) == 0
+        deps["Serve"].assert_called_with(self.stack)
+        serve.run.assert_not_called()
+        assert serve.stop.call_args_list[0].kwargs == {"port": 8787}
+        assert serve.stop.call_args_list[1].kwargs == {"port": 9001}
+
     def test_logs_dispatches_snapshot_and_follow(self) -> None:
         logs = MagicMock()
         with self.patched_deps(Logs=logs) as deps:
