@@ -8,11 +8,17 @@ import {
   normalizeColumnFilters,
   type SortKey,
 } from "./statusColumnFilter";
+import {
+  attachTreeDepths,
+  orderByDependsTree,
+  type StatusTreeRow,
+} from "./statusDependsTree";
 import { parseMemoryRatioPercent, parsePercent } from "./statusTone";
 
 export type { SortKey } from "./statusColumnFilter";
 export type SortDir = "asc" | "desc";
 export type { ColumnFilter, ColumnFilters, FilterOp } from "./statusColumnFilter";
+export type { StatusTreeRow } from "./statusDependsTree";
 
 export type StatusPanelPrefs = {
   sortKey: SortKey | null;
@@ -101,12 +107,12 @@ export function useStatusPanelView(storageKey: string, rows: StatusRow[]) {
 export function applyView(
   rows: StatusRow[],
   prefs: StatusPanelPrefs,
-): StatusRow[] {
+): StatusTreeRow[] {
   const filtered = rows.filter((row) => matchesFilters(row, prefs));
   if (!prefs.sortKey) {
-    return filtered;
+    return orderByDependsTree(filtered);
   }
-  return sortRows(filtered, prefs.sortKey, prefs.sortDir);
+  return attachTreeDepths(sortRows(filtered, prefs.sortKey, prefs.sortDir));
 }
 
 function matchesFilters(row: StatusRow, prefs: StatusPanelPrefs): boolean {
