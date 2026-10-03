@@ -12,6 +12,7 @@ from raft.errors import OperatorError
 from .app import App
 from .app_mount_fields import AppMountFields
 from .app_spec_fields import AppSpecFields
+from .depends_fields import DependsOnFields
 from .manifest import (
     CONTRACT_API_VERSION,
     CONTRACT_KIND,
@@ -201,10 +202,9 @@ class AppDocument:
     @staticmethod
     def _mount_kwargs(spec: dict[str, Any], path: Path) -> dict[str, Any]:
         return {
-            "depends_on": AppSpecFields._parse_name_list(
+            "depends_on": DependsOnFields.parse(
                 spec.get("dependsOn", spec.get("depends_on")),
                 path=path,
-                label="spec.dependsOn",
             ),
             "env_file": AppMountFields.parse_env_file(spec, path),
             "env": AppMountFields.parse_env(spec, path),

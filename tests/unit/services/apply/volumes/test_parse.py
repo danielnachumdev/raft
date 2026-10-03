@@ -71,7 +71,8 @@ class TestVolumesParse(VolumesTestCase):
         data = self.base_docker()
         data["spec"]["dependsOn"] = "stack-redis"
         _, spec = AppDocument.parse(data, path=Path("b4.yaml"))
-        assert spec.depends_on == ("stack-redis",)
+        assert spec.depend_names() == ("stack-redis",)
+        assert spec.depends_on[0].scale_with_parent is True
         data_bad = self.base_docker()
         data_bad["spec"]["dependsOn"] = 123
         with pytest.raises(ValueError, match="must be a string or array"):
@@ -79,7 +80,7 @@ class TestVolumesParse(VolumesTestCase):
         data_dup = self.base_docker()
         data_dup["spec"]["dependsOn"] = ["a", "a", ""]
         _, spec_dup = AppDocument.parse(data_dup, path=Path("b6.yaml"))
-        assert spec_dup.depends_on == ("a",)
+        assert spec_dup.depend_names() == ("a",)
 
     def test_env_file_and_env_errors(self) -> None:
         self._assert_env_file_errors()

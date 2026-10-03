@@ -16,7 +16,7 @@ User-facing samples live under **[`examples/`](examples/)**: operator settings (
 
 **Shipped:** App-manifest `${VAR}` / `${VAR:-default}` expansion at `raft apply` (one template for Dev/Prod; registry stores expanded YAML). Expansion runs on the **entire** manifest text (including comments) before YAML parse — escape demo placeholders as `$${NAME}` or omit them from comments. Bridge CI values into the container via `spec.env` / `spec.envFile` placeholders (`DATABASE_URL: ${CI_DATABASE_URL}`).
 
-**Shipped:** Per-app scale-to-zero via `spec.scaling` (all fields required; omit = off). HTTP + `publicHost` only. Gate holding page + wake; controller idle-stop; healer skips intentional `scaledToZero`. Healing stays separate (`healing:` in settings).
+**Shipped:** Per-app scale-to-zero via `spec.scaling` (all fields required; omit = off). HTTP + `publicHost` only. Gate holding page + wake; controller idle-stop (co-stops `dependsOn` with `scaleWithParent` default true); healer skips intentional `scaledToZero`. Healing stays separate (`healing:` in settings).
 
 **Shipped:** `raft serve` localhost ops UI — packaged React SPA (`share/serve/spa/`) + FastAPI JSON/actions/logs APIs; shared `StatusRead` / `MetricsRead` with CLI; trends from controller `resources.jsonl`. Source in `web/`; not an edge listener.
 
@@ -120,7 +120,13 @@ spec:
   publicHost: app.example.com   # required when any port uses expose=http
   tls: off                      # off | origin
   group: demo               # optional; at most one group
-  dependsOn: [other-app]        # optional; Compose depends_on + wake/heal order
+  # dependsOn: optional. Strings or { name, scaleWithParent? }.
+  # Compose / wake / heal use names only. When this app has spec.scaling,
+  # idle-stop also stops transitive deps with scaleWithParent true (default).
+  dependsOn:
+    - other-app                   # ≡ { name: other-app, scaleWithParent: true }
+    - name: some-sidecar
+      scaleWithParent: false      # stay up when parent idle-stops
   envFile: /home/raft/.raft/demo.env
   env: { KEY: value }           # overrides envFile on clash
   volumes:
@@ -177,7 +183,7 @@ Omit `spec.scaling` → no scaling. When present, **every** field is required (n
 | `wakeTimeoutSeconds` | Holding page → timeout page if wake exceeds this |
 | `minUpSeconds` | Do not idle-stop until this long after wake/start |
 
-Eligible only with ≥1 `expose: http` port and `publicHost`. Not for stream/host/none-only apps. Controller idle-stops and wakes; gate serves a holding page (meta-refresh) and calls an internal wake API; holding-page reloads do not reset the idle timer. On wake, the controller starts the app’s transitive `spec.dependsOn` chain first (same edges Compose already renders), waits until each service is Compose `running` within `wakeTimeoutSeconds`, then marks the scaled app awake. Idle-stop still only stops apps that declare `spec.scaling` (deps without scaling stay up). State under `~/.raft/state/scaling/`. Independent of `healing:` in settings — healer skips apps marked `scaledToZero`. Before restart/escalate, healer starts transitive `spec.dependsOn` (same graph as Compose); defers if a dep is intentionally scaled to zero.
+Eligible only with ≥1 `expose: http` port and `publicHost`. Not for stream/host/none-only apps. Controller idle-stops and wakes; gate serves a holding page (meta-refresh) and calls an internal wake API; holding-page reloads do not reset the idle timer. On wake, the controller starts the app’s full transitive `spec.dependsOn` chain (names only — ignore `scaleWithParent`), waits until each service is Compose `running` within `wakeTimeoutSeconds`, then marks the scaled app awake. On idle-stop, the controller also stops the **co-stop set**: transitive deps of the parent reached only via edges whose effective `scaleWithParent` is true (default; string form ≡ true). Stop order is deps-before-parent; co-stopped deps are marked intentional `scaledToZero` for healer skip even without their own `spec.scaling` (cleared when wake starts them). Opt out per dep with `scaleWithParent: false`. Activity is still recorded only on the edge app’s Host. State under `~/.raft/state/scaling/`. Independent of `healing:` in settings — healer skips apps marked `scaledToZero`. Before restart/escalate, healer starts transitive `spec.dependsOn` (same graph as Compose); defers if a dep is intentionally scaled to zero.
 
 ### `spec.resources` → Compose
 

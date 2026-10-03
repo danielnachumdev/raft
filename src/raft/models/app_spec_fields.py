@@ -55,36 +55,6 @@ class AppSpecFields:
         raise ValueError(f"{path}: spec.extraHosts must be a string or array")
 
     @staticmethod
-    def _parse_name_list(
-        raw: Any,
-        *,
-        path: Path,
-        label: str,
-    ) -> tuple[str, ...]:
-        items = AppSpecFields._coerce_name_items(raw, path=path, label=label)
-        return AppSpecFields._unique_preserve_order(items)
-
-    @staticmethod
-    def _coerce_name_items(raw: Any, *, path: Path, label: str) -> list[str]:
-        if raw is None:
-            return []
-        if isinstance(raw, str):
-            return [raw.strip()] if raw.strip() else []
-        if isinstance(raw, list):
-            return [str(x).strip() for x in raw if str(x).strip()]
-        raise ValueError(f"{path}: {label} must be a string or array")
-
-    @staticmethod
-    def _unique_preserve_order(items: list[str]) -> tuple[str, ...]:
-        out: list[str] = []
-        seen: set[str] = set()
-        for item in items:
-            if item not in seen:
-                seen.add(item)
-                out.append(item)
-        return tuple(out)
-
-    @staticmethod
     def _parse_group(spec: dict[str, Any], path: Path) -> Optional[str]:
         if "groups" in spec and spec.get("groups") is not None:
             raise ValueError(f"{path}: use spec.group (a single string), not spec.groups")

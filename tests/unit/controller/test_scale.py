@@ -166,13 +166,15 @@ class TestScaler(ControllerTestCase):
         def compose_id(name: str):
             return None if name == "api" else self.APP
 
-        with self.with_scale_locks(), patch.object(scaler, "_compose_id", side_effect=compose_id):
+        with self.with_scale_locks(), patch.object(
+            scaler._deps, "compose_id", side_effect=compose_id
+        ):
             assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5), now=1.0) is False
 
     def test_depends_edges_skips_bad_spec(self, tmp_path: Path) -> None:
         scaler, _docker = self._scaler(tmp_path)
-        with patch.object(scaler, "_load_spec", return_value=None):
-            assert scaler._depends_edges() == {self.APP: ()}
+        with patch.object(scaler._deps, "load_spec", return_value=None):
+            assert scaler._deps.depends_edges() == {self.APP: ()}
 
     def test_record_activity_and_skip_no_scaling(self, tmp_path: Path) -> None:
         scaler, docker = self._scaler(tmp_path, with_scaling=False)

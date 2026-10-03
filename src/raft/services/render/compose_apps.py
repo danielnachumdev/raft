@@ -151,7 +151,7 @@ class ComposeAppsYaml:
 
     @staticmethod
     def _append_depends(lines: list[str], c: AppSpec, compose_by_name: dict[str, str]) -> None:
-        deps = [compose_by_name[d] for d in c.depends_on if d in compose_by_name]
+        deps = [compose_by_name[d] for d in c.depend_names() if d in compose_by_name]
         if not deps:
             return
         lines.append("    depends_on:")

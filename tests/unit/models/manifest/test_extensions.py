@@ -57,7 +57,7 @@ class TestAppSpecExtensions(ManifestTestCase):
         app, spec = AppDocument.parse(GROUP_VOL_DOC, path=Path("app.yaml"))
         assert app.public_host == ""
         assert spec.group == "demo"
-        assert spec.depends_on == ("stack-front",)
+        assert spec.depend_names() == ("stack-front",)
         assert spec.env_file == "/home/raft/.raft/demo.env"
         assert spec.env == (("A", "1"),)
         assert len(spec.volumes) == 1 and spec.volumes[0].read_only is True

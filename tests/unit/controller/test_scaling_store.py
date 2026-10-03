@@ -47,3 +47,12 @@ class TestScalingStore(ControllerTestCase):
         assert store.load(self.APP).wake_timed_out is True
         assert (home / "state/scaling/markers/web.timeout").is_file()
         store.request_wake("nope")
+
+    def test_clear_scaled_to_zero(self, tmp_path: Path) -> None:
+        home = self.raft_home(tmp_path)
+        store = ScalingStore(home)
+        store.clear_scaled_to_zero(self.APP)
+        store.mark_scaled_to_zero(self.APP)
+        store.clear_scaled_to_zero(self.APP)
+        assert not store.is_scaled_to_zero(self.APP)
+        assert not (home / "state/scaling/markers/web.zero").is_file()
