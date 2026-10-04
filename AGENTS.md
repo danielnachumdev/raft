@@ -18,7 +18,7 @@ User-facing samples live under **[`examples/`](examples/)**: operator settings (
 
 **Shipped:** Per-app scale-to-zero via `spec.scaling` (all fields required; omit = off). HTTP + `publicHost` only. Gate holding page + wake; controller idle-stop (co-stops `dependsOn` with `scaleWithParent` default true); healer skips intentional `scaledToZero`. Healing stays separate (`healing:` in settings).
 
-**Shipped:** `raft serve` localhost ops UI — packaged React SPA (`share/serve/spa/`) + FastAPI JSON/actions/logs APIs; shared `StatusRead` / `MetricsRead` with CLI; trends from controller `resources.jsonl`. Source in `web/`; not an edge listener.
+**Shipped:** `raft serve` localhost ops UI — packaged React SPA (`share/serve/spa/`) + FastAPI JSON/actions/logs APIs; shared `StatusRead` / `MetricsRead` with CLI; trends from controller `resources.jsonl`. Source in `src/spa/`; not an edge listener.
 
 ---
 
@@ -254,7 +254,7 @@ Localhost dashboard for operators (`raft serve`). **Hard rules:** bind `127.0.0.
 
 Doctor JSON for the SPA is deferred (`DoctorRead.intended_payload_shape`).
 
-### SPA source (`web/`)
+### SPA source (`src/spa/`)
 
 | Area | Files (indicative) | Notes |
 |------|--------------------|-------|
@@ -268,7 +268,7 @@ Doctor JSON for the SPA is deferred (`DoctorRead.intended_payload_shape`).
 | UX chrome | `Modal.tsx`, `ConfirmPopup.tsx`, `toast.ts`, `ToastHost.tsx` | **no** native `alert`/`confirm`; toasts for action feedback |
 | API client | `api.ts` | typed fetches against the FastAPI routes above |
 
-Develop: `cd web && npm ci && npm run dev` (Vite `:5173`, proxies `/api` → `raft serve :8787`). Release FE: `npm run build` → updates `share/serve/spa/`. See [`web/README.md`](web/README.md).
+Develop: `cd src/spa && npm ci && npm run dev` (Vite `:5173`, proxies `/api` → `raft serve :8787`). Release FE: `npm run build` → updates `share/serve/spa/`. See [`src/spa/README.md`](src/spa/README.md).
 
 ### Metrics pipeline (CLI + serve + controller)
 
@@ -329,7 +329,7 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | `src/raft/controller/` | Always-on Compose `raft-controller` (job orchestrator for heal + metrics; idle-stop + wake via side_ticks when `spec.scaling`; healer skips `scaledToZero`; metrics batch → `resources.jsonl`) |
 | `src/raft/errors/` | Operator errors + CTAs |
 | `src/raft/share/` | Product Compose + nginx templates (synced into data home); `share/serve/spa/` = packaged dashboard assets |
-| `web/` | Dashboard SPA source (React + Vite + TypeScript); build output → `share/serve/spa/`; see **Serve / ops UI** |
+| `src/spa/` | Dashboard SPA source (React + Vite + TypeScript); build output → `share/serve/spa/`; see **Serve / ops UI** |
 | `tests/` | `unit/` (100% cov; include `services/serve/`, `services/read/`), `integration/`, `meta/`, `e2e/` |
 
 Compose mounts `generated/nginx/upstreams` into the router. Upstream files are keyed by app + port name (`<app>-<port>.conf`).

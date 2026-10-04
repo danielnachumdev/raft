@@ -100,4 +100,4 @@ uv run pytest
 uv run raft -- --help
 ```
 
-CI runs the suite across Python 3.8–3.13. Dashboard source is in **`web/`** (build writes `src/raft/share/serve/spa/`). Working on the codebase? See **[AGENTS.md](AGENTS.md)**.
+CI runs the suite across Python 3.8–3.13. Dashboard source is in **`src/spa/`** (build writes `src/raft/share/serve/spa/`). Working on the codebase? See **[AGENTS.md](AGENTS.md)**.

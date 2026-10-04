@@ -10,7 +10,7 @@ export default defineConfig({
   plugins: [react()],
   base: "/",
   build: {
-    outDir: path.resolve(rootDir, "../src/raft/share/serve/spa"),
+    outDir: path.resolve(rootDir, "../raft/share/serve/spa"),
     emptyOutDir: true,
     sourcemap: false,
   },

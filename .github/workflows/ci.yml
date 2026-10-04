@@ -34,10 +34,10 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: src/spa/package-lock.json
       - name: Build dashboard SPA
         run: |
-          cd web
+          cd src/spa
           npm ci
           npm run build
       - uses: astral-sh/setup-uv@v10.0.0
@@ -82,10 +82,10 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: src/spa/package-lock.json
       - name: Build dashboard SPA
         run: |
-          cd web
+          cd src/spa
           npm ci
           npm run build
       - uses: astral-sh/setup-uv@v10.0.0
