@@ -1,19 +1,17 @@
-# HTTP + stream (gate L4)
+# HTTP + stream
 
-Combines Host-routed HTTP with an `expose: stream` port (SMTP-shaped). The gate
-must publish that stream port via `edge.streams` in settings.
+Host-routed HTTP plus an `expose: stream` port (SMTP-shaped). The gate must publish that stream port via `edge.streams` in settings.
 
 ## When to use
 
-- You want nginx stream on the gate for a non-HTTP protocol
+- You want the gate to listen for a non-HTTP protocol (`stream {}`)
 - You are fine with the gate as the public listener (vs `expose: host`)
 
-For mail where client IP accuracy matters, prefer
-[`../host-published-ports/`](../host-published-ports/) instead.
+When client IP accuracy on mail-like ports matters, prefer [`../host-published-ports/`](../host-published-ports/) instead.
 
-## Operator settings
+## Settings
 
-Uncomment / add in `~/.raft/settings.yaml`, then recreate the gate:
+Add the stream listener in `~/.raft/settings.yaml`, then recreate the gate:
 
 ```yaml
 edge:
@@ -29,16 +27,11 @@ edge:
 raft gate recreate
 ```
 
-## Apply (recommended)
+## Apply
 
 ```bash
-raft apply --file examples/http-plus-stream/.raft/app.yaml
-# CI: raft apply --file .raft/app.yaml --ref "$SHA"
+raft apply --file examples/http-plus-stream/.raft/app.yaml --ref "$SHA"
 raft doctor
 ```
 
-Deploy is on by default (first boot or cutover). No separate `raft up` needed
-after apply unless you used `--no-deploy`.
-
-No Dockerfile here — `source: docker` pulls `image:ref`. Swap to `source: git` +
-`build:` if you build on the VPS.
+This sample uses `source: docker` (pull `image:ref`). Swap to `source: git` + `build:` if you build on the host.

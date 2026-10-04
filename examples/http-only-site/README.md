@@ -1,35 +1,26 @@
 # HTTP-only site
 
-Single Host-routed HTTP port with `tls: off`. No Origin PEMs. Use this for plain
-HTTP behind the gate, or when TLS is handled upstream (e.g. Cloudflare Flexible).
+One Host-routed HTTP port with `tls: off`. No Origin PEMs on the VPS. Use when the app is plain HTTP behind the gate, or when TLS is terminated upstream of this host.
 
 ## When to use
 
-- One website/API on a public hostname
-- No VPS-side HTTPS for this app
-- You want the richest field comments in one place (see `.raft/app.yaml`),
-  including optional `spec.resources` (Compose `deploy.resources`) and
-  optional `spec.scaling` (scale-to-zero; all fields required when present).
-  For an optional block via `${{ if }}`, see `optional-block.snippet.yaml`.
+- One website or API on a public hostname
+- No host-side HTTPS for this app
+- You want the richest commented manifest in one place (resources, optional scaling)
 
-## Apply (recommended)
+Optional scale-to-zero via apply-time `${{ if }}`: see [`optional-block.snippet.yaml`](optional-block.snippet.yaml). Broader preprocess docs: [`docs/app-manifest.md`](../../docs/app-manifest.md).
 
-Deploy is **on** by default. One command covers first boot and later cutovers:
+## Apply
+
+Deploy is **on** by default (first boot and later cutovers):
 
 ```bash
-# From this tree (adjust source/path if needed):
-raft apply --file examples/http-only-site/.raft/app.yaml
-
-# Typical service-repo / CI flow (pin the commit):
-raft apply --file .raft/app.yaml --ref "$SHA" --env KEY=value
-# or: raft apply --git git@github.com:example/http-only-site.git --ref "$SHA"
+raft apply --file examples/http-only-site/.raft/app.yaml --ref "$SHA"
+# Typical service-repo / CI:
+# raft apply --file .raft/app.yaml --ref "$SHA" --env KEY=value
+raft doctor
 ```
 
-Then: `raft doctor`.
-
-Optional: if the app Compose service is **already running** and you only want
-cutover without re-applying the manifest, `raft redeploy http-only-site --ref "$SHA"`.
-Do not use `--no-deploy` + `redeploy` for a new App — `redeploy` fails when the
-service is not up yet.
-
 Replace `publicHost`, `repo`, and `metadata.name` before a real deploy.
+
+`raft redeploy` is only for an app service that is **already running** when you want cutover without rewriting the registry. Do not use `--no-deploy` + `redeploy` for a new App.

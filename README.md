@@ -26,6 +26,7 @@ You keep services in their own repos. On the VPS you `apply` a manifest. raft sy
 
 - **One ship command** — `raft apply` registers desired state and deploys (first boot and later releases)
 - **Managed artifacts** — Compose apps, upstreams, and gate/router nginx are generated for you, not edited by hand each release
+- **Adaptive manifests** — apply-time `${VAR}` / `${{ if }}` and `--env` so one `.raft/app.yaml` can serve stages (see [`docs/app-manifest.md`](docs/app-manifest.md))
 - **Safer cutovers** — tmp cutover + router reload; published edge ports only need `raft gate recreate`
 - **Operator feedback** — `raft doctor` with fix hints; `raft status` / `raft logs` for the live plane
 - **Localhost ops UI** — `raft serve` for tables, actions, logs, and trends (never on the public gate)
@@ -48,7 +49,7 @@ raft apply --file .raft/app.yaml --ref "$SHA"
 raft status
 ```
 
-Copy-paste scenarios live in [`examples/`](examples/) (`http-only-site`, `https-origin-site`, `http-plus-stream`, `host-published-ports`, `grouped-volume-app`).
+Copy-paste scenarios live in [`examples/`](examples/). Manifest env / conditional blocks: [`docs/app-manifest.md`](docs/app-manifest.md).
 
 Later: `raft update` to refresh the CLI, `raft uninstall --yes` to remove everything.
 

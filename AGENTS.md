@@ -10,7 +10,7 @@ Public product: CLI + Compose/nginx templates + tests. Operators typically run [
 
 Desired apps are **not** a committed inventory. Operators `apply` App manifests; registry files live in `~/.raft/state/apps/*.yaml`.
 
-User-facing samples live under **[`examples/`](examples/)**: operator settings (`examples/settings.yaml`) and named service scenarios (`http-only-site`, `https-origin-site`, `http-plus-stream`, `host-published-ports`, `grouped-volume-app`).
+User-facing samples live under **[`examples/`](examples/)**: operator settings (`examples/settings.yaml`) and named service scenarios (`http-only-site`, `https-origin-site`, `http-plus-stream`, `host-published-ports`, `grouped-volume-app`). Human-oriented App manifest + preprocess overview: [`docs/app-manifest.md`](docs/app-manifest.md) (this file stays the exhaustive contract).
 
 **Shipped:** App `volumes` / `envFile` / `group` / `expose: none` (required for multi-App stacks).
 
