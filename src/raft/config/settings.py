@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 import yaml
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 
 from .paths import LOGS_DIRNAME, settings_path
 from .settings_edge import EdgeSettingsParser

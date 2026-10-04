@@ -6,14 +6,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from raft.adapters import DockerStack
-from raft.errors import OperatorError
-from raft.models.graph_event_store import (
+from raft.errors.cta import OperatorError
+from raft.models.state.graph_event_kinds import (
     KIND_DEPLOYMENT,
     KIND_DOWN,
     KIND_GATE_RECREATE,
     KIND_UP,
-    GraphEventStore,
 )
+from raft.models.state.graph_event_store import GraphEventStore
 from tests.shared.compose_ids import RunningServices
 from tests.unit.base import completed
 

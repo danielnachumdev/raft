@@ -8,7 +8,7 @@ from typing import Callable, Dict, Optional
 from ....adapters import DockerStack, Shell
 from ....adapters.docker.compose_status import ComposeStatusTable
 from ....adapters.docker.runtime import ContainerRuntimeGateway, ContainerRuntimeRow
-from ....models import Stack
+from ....models.stack import Stack
 from ....ui.progress import TerminalProgress
 from ...auth import GitAuthManager
 

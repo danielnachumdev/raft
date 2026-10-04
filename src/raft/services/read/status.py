@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 
 from ...config.settings import load_config
 from ...config.settings_types import EdgeConfig
-from ...models import Stack
+from ...models.stack import Stack
 from ..ops.status import Status
 from ..ops.status.models import StatusSnapshot
 from .depends import ServeDependsMap

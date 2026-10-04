@@ -18,7 +18,7 @@ from typing import List, Optional
 from unittest.mock import MagicMock, patch
 
 from raft.controller.scale import Scaler
-from raft.models.scaling_store import AppScalingState, ScalingStore
+from raft.models.state.scaling_store import AppScalingState, ScalingStore
 
 from .base import ControllerTestCase
 

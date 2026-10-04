@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 from raft.services.deploy.cutover import DEPLOY_CUTOVER
 from raft.services.deploy.wait import wait_until
 from tests.shared.compose_ids import RunningServices

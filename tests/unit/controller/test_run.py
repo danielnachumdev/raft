@@ -15,7 +15,7 @@ from raft.controller.job import JobId, QueuePolicy
 from raft.controller.logging import setup_controller_logging
 from raft.controller.run import main as main_impl
 from raft.controller.smoke import run_prereq_smoke as smoke_impl
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 
 from .base import ControllerTestCase
 

@@ -27,7 +27,7 @@ from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import Dict, Iterator, Optional, Sequence
 
-from raft.errors import deploy_lock_busy, invalid_lock_timeout
+from raft.errors.domain import deploy_lock_busy, invalid_lock_timeout
 
 logger = logging.getLogger(__name__)
 

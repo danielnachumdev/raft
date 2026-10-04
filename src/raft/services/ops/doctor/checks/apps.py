@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import Optional
 
-from raft.errors import OperatorError, missing_image_doctor_fix
+from raft.errors.cta import OperatorError
+from raft.errors.registry_msgs import missing_image_doctor_fix
 
 from .....models.registry import AppRegistry
 from ....auth.urls import parse_ssh_git_url, real_git_host

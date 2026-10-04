@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 from raft.services.deploy.locking import (
     ENV_LOCK_TIMEOUT,
     app_and_stack_locks,

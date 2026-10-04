@@ -8,9 +8,10 @@ from ....adapters import Shell
 from ....adapters.docker.crash_loop import CrashLoopDetector
 from ....adapters.docker.runtime import ContainerRuntimeGateway, ContainerRuntimeRow
 from ....adapters.host import DockerStatsText, HostGateway, HostResources
-from ....errors import OperatorError
-from ....models import EDGE_GROUP, Stack
-from ....models.scaling_store import ScalingStore
+from ....errors.cta import OperatorError
+from ....models.app import EDGE_GROUP
+from ....models.stack import Stack
+from ....models.state.scaling_store import ScalingStore
 from .allocated import StatusAllocated
 from .formatters import StatusFormatters
 from .models import (

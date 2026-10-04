@@ -10,12 +10,14 @@ from typing import Optional, Union
 
 import yaml
 
-from raft.errors import (
-    OperatorError,
+from raft.errors.classify import (
     SubprocessCtx,
     classify_subprocess,
-    filesystem_error,
     generic_command_failed,
+)
+from raft.errors.cta import OperatorError
+from raft.errors.domain import (
+    filesystem_error,
     invalid_yaml,
 )
 

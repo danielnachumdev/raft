@@ -1,7 +1,7 @@
 """Injectable imports for the CLI (patch `raft.cli.deps.*` in tests)."""
 
 from ..config import load_config, setup_logging
-from ..models import load_stack
+from ..models.stack import load_stack
 from ..services.apply import AppApply
 from ..services.auth import GitAuthManager
 from ..services.deploy.orchestrator import Orchestrator

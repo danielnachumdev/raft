@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ....errors import unknown_logs_target
+from ....errors.domain import unknown_logs_target
 from ....models.app import (
     CONTROLLER_COMPOSE_ID,
     GATE_COMPOSE_ID,

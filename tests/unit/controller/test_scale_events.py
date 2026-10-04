@@ -7,13 +7,13 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 from raft.controller.scale import Scaler
-from raft.errors import OperatorError
-from raft.models.graph_event_store import (
+from raft.errors.cta import OperatorError
+from raft.models.state.graph_event_kinds import (
     KIND_SCALING,
     SCALING_ACTION_IDLE_STOP,
     SCALING_ACTION_WAKE,
-    GraphEventStore,
 )
+from raft.models.state.graph_event_store import GraphEventStore
 from raft.models.scaling_spec import ScalingSpec
 
 from .base import ControllerTestCase
@@ -74,7 +74,7 @@ class TestScaleGraphEvents(ControllerTestCase):
 
     def test_wake_event_skips_unknown_compose(self, tmp_path: Path) -> None:
         scaler, _docker, home = self._scaler(tmp_path)
-        scaler._record_wake_event("missing-app")
+        scaler._wake.record_wake_event("missing-app")
         assert GraphEventStore(home).events_in_window(from_ts=_EPOCH) == []
 
     def test_wake_event_oserror_does_not_raise(self, tmp_path: Path, monkeypatch) -> None:
@@ -84,7 +84,7 @@ class TestScaleGraphEvents(ControllerTestCase):
             raise OSError("read-only filesystem")
 
         monkeypatch.setattr(GraphEventStore, "record_scaling", boom)
-        scaler._record_wake_event(self.APP)
+        scaler._wake.record_wake_event(self.APP)
         assert GraphEventStore(home).events_in_window(from_ts=_EPOCH) == []
 
     def test_idle_stop_event_oserror_does_not_raise(

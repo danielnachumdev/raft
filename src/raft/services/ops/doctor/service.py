@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Callable, Optional, TextIO
 
 from ....adapters import DockerStack, Shell
-from ....models import Stack
+from ....models.stack import Stack
 from ....ui.progress import TerminalProgress
 from ...auth import GitAuthManager
 from .checks import CHECK_SUITES

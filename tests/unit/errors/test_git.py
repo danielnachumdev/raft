@@ -6,14 +6,14 @@ import subprocess
 
 import pytest
 
-from raft.errors import (
-    OperatorError,
+from raft.errors.checked import raise_for_git_failure
+from raft.errors.cta import OperatorError
+from raft.errors.git_msgs import (
     git_auth_failure_message,
     git_generic_failure_message,
     git_network_failure_message,
     looks_like_git_auth_failure,
     looks_like_git_network_failure,
-    raise_for_git_failure,
 )
 
 from ..cta_asserts import assert_cta, assert_operator

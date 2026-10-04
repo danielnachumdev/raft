@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from ...models.graph_event_store import GraphEventStore
+from ...models.state.graph_event_store import GraphEventStore
 from ...ui import say
 from ..ops.certs import require_origin_certs
 from .cutover import DEPLOY_CUTOVER, CutoverSession

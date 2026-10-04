@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 from raft.services.apply.manifest_env import ApplyEnvSources, DotenvLoader, EnvAssignment
 
 DOTENV_SAMPLE = (

@@ -7,7 +7,7 @@ from typing import Optional
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from ...models import Stack
+from ...models.stack import Stack
 from ..ops.logs import Logs
 from ..ops.status import Status
 from .actions import ServeActions

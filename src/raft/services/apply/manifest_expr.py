@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Mapping, Optional, Sequence, Tuple, Union
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 
 from .manifest_env import ManifestTextExpander
 

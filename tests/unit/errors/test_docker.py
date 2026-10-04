@@ -7,8 +7,15 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from raft.errors import (
-    OperatorError,
+from raft.errors.checked import (
+    raise_for_compose_failure,
+    raise_for_docker_pull_failure,
+    run_checked,
+    run_compose_checked,
+    run_docker_checked,
+)
+from raft.errors.cta import OperatorError
+from raft.errors.docker_msgs import (
     compose_failure_message,
     docker_daemon_message,
     docker_pull_failure_message,
@@ -16,11 +23,6 @@ from raft.errors import (
     looks_like_image_missing,
     looks_like_port_in_use,
     port_in_use_message,
-    raise_for_compose_failure,
-    raise_for_docker_pull_failure,
-    run_checked,
-    run_compose_checked,
-    run_docker_checked,
 )
 
 from ..cta_asserts import assert_cta, assert_operator

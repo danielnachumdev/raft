@@ -6,7 +6,8 @@ import logging
 import subprocess
 from typing import Optional
 
-from raft.errors import OperatorError, raise_for_git_failure
+from raft.errors.checked import raise_for_git_failure
+from raft.errors.cta import OperatorError
 
 from ...adapters.host import HostGateway
 from ...adapters.shell import Shell

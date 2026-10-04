@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from raft.adapters.nginx import NginxUpstreamText
 from raft.models.ports import PortSpec
-from raft.models.scaling_store import ScalingStore
+from raft.models.state.scaling_store import ScalingStore
 from raft.models.stack import load_stack
 from raft.services.render import StackRenderer
 from raft.services.render.edge.fragments import EdgeFragments

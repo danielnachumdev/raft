@@ -6,7 +6,7 @@ from typing import Dict, Optional
 
 import pytest
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 from raft.services.apply.manifest_expr import DirectiveExpression
 
 from ....cta_asserts import assert_operator

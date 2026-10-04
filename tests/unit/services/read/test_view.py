@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from io import StringIO
 
-from raft.models import EDGE_GROUP
+from raft.models.app import EDGE_GROUP
 from raft.services.ops.status.models import StatusSnapshot
 from raft.services.serve.instructions import ServeInstructions
 from raft.services.serve.paths import ServePaths

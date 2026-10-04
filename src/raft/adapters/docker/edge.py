@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import logging
 
-from raft.errors import (
-    OperatorError,
+from raft.errors.certs_msgs import (
     format_missing_origin_certs,
     looks_like_missing_origin_cert,
     missing_origin_certs_fallback,
+)
+from raft.errors.cta import OperatorError
+from raft.errors.docker_msgs import (
     nginx_rejected,
     nginx_reload_failed,
 )

@@ -6,8 +6,8 @@ import json
 import logging
 from typing import TYPE_CHECKING, Any, Optional, Sequence
 
-from raft.errors import (
-    OperatorError,
+from raft.errors.cta import OperatorError
+from raft.errors.diagnostics import (
     append_diagnostics,
     compose_services_from_failure_text,
     format_service_log_block,

@@ -7,9 +7,9 @@ from typing import Any, Dict, List, Optional
 from fastapi import HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 
-from ...models import Stack
+from ...models.stack import Stack
 from ..ops.logs import DEFAULT_LOG_TAIL, Logs
 from ..ops.status import Status
 from ..read import MetricsRead, StatusRead

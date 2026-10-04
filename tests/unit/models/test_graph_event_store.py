@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from raft.models.graph_event import GraphEvent
-from raft.models.graph_event_store import (
+from raft.models.state.graph_event_kinds import (
     KIND_DEPLOYMENT,
     KIND_DOWN,
     KIND_GATE_RECREATE,
@@ -18,8 +18,8 @@ from raft.models.graph_event_store import (
     KIND_UPDATE,
     SCALING_ACTION_IDLE_STOP,
     SCALING_ACTION_WAKE,
-    GraphEventStore,
 )
+from raft.models.state.graph_event_store import GraphEventStore
 
 from ..base import RaftTestCase
 

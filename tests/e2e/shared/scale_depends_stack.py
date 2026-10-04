@@ -10,7 +10,7 @@ from raft.adapters.shell import Shell
 from raft.controller.scale import Scaler
 from raft.controller.wake_http import start_wake_http
 from raft.models.scaling_spec import ScalingSpec
-from raft.models.scaling_store import ScalingStore
+from raft.models.state.scaling_store import ScalingStore
 from raft.models.stack import load_stack
 from raft.services.render import StackRenderer
 from tests.e2e.shared.compose import new_project_name

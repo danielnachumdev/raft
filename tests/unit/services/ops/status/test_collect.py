@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 from raft.services.ops.status import Status
 from raft.services.ops.status.allocated import StatusAllocated
 from raft.services.ops.status.models import EDGE_CPUS_LIMIT

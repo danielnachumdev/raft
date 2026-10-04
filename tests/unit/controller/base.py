@@ -14,7 +14,7 @@ from raft.controller.heal import Healer
 from ..base import write_applied_app
 
 LOCKS_HEAL = "raft.controller.heal.app_and_stack_locks"
-LOCKS_SCALE_APPS = "raft.controller.scale.apps_and_stack_locks"
+LOCKS_SCALE_APPS = "raft.controller.scale_wake.apps_and_stack_locks"
 LOCKS_SCALE_DEPS = "raft.controller.scale_depends.apps_and_stack_locks"
 
 

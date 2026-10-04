@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from raft.errors import unknown_app
+from raft.errors.domain import unknown_app
 
 from ..config.paths import (
     CERTS_DIRNAME,

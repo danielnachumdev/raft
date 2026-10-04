@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from raft.adapters import HttpProbe
 from raft.adapters.http import _NoRedirect
-from raft.models import App
+from raft.models.app import App
 
 from .base import AdapterTestCase
 

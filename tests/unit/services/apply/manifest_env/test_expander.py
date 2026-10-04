@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 import yaml
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 from raft.services.apply.manifest_env import ManifestTextExpander
 
 from ....cta_asserts import assert_operator

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from raft.errors import OperatorError
-from raft.models import CONTROLLER_COMPOSE_ID, GATE_COMPOSE_ID, ROUTER_COMPOSE_ID
+from raft.errors.cta import OperatorError
+from raft.models.app import CONTROLLER_COMPOSE_ID, GATE_COMPOSE_ID, ROUTER_COMPOSE_ID
 from raft.services.ops.logs.targets import LogsTargets
 
 from ....base import RaftTestCase, make_app, make_stack

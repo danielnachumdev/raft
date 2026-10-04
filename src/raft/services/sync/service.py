@@ -8,7 +8,8 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-from raft.errors import OperatorError, raise_for_docker_pull_failure, raise_for_git_failure
+from raft.errors.checked import raise_for_docker_pull_failure, raise_for_git_failure
+from raft.errors.cta import OperatorError
 
 from ...adapters.shell import Shell
 from ...models.app import App

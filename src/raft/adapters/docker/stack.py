@@ -5,13 +5,13 @@ from __future__ import annotations
 import logging
 from typing import Optional, Sequence
 
-from raft.errors import (
-    OperatorError,
+from raft.errors.checked import (
     raise_for_compose_failure,
     raise_for_docker_pull_failure,
     run_compose_checked,
     run_docker_checked,
 )
+from raft.errors.cta import OperatorError
 
 from ...models.app import App
 from ...models.stack import Stack

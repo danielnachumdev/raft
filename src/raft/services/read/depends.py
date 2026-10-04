@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Dict, Tuple
 
-from ...errors import OperatorError
-from ...models import App, Stack
+from ...errors.cta import OperatorError
+from ...models.app import App
+from ...models.stack import Stack
 
 
 class ServeDependsMap:

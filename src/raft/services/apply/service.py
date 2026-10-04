@@ -11,7 +11,12 @@ from typing import Any, Mapping, Optional
 
 import yaml
 
-from raft.errors import OperatorError, app_not_applied, missing_manifest, raise_for_git_failure
+from raft.errors.checked import raise_for_git_failure
+from raft.errors.cta import OperatorError
+from raft.errors.domain import (
+    app_not_applied,
+    missing_manifest,
+)
 
 from ...adapters.shell import Shell
 from ...models.app_document import AppDocument

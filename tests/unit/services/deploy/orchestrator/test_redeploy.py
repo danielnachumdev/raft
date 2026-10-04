@@ -59,7 +59,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
         wait.assert_not_called()
 
     def test_wait_app_ready_skips_scaled_to_zero_host(self) -> None:
-        from raft.models.scaling_store import ScalingStore
+        from raft.models.state.scaling_store import ScalingStore
 
         write_applied_app(
             self.tmp_path,
