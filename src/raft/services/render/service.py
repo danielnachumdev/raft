@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional
 
 from raft.adapters.nginx import NginxUpstreamText
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 
 from ...config.paths import GENERATED_DIRNAME
 from ...config.settings import load_config
@@ -17,7 +17,7 @@ from ...models.app_document import AppDocument
 from ...models.manifest import AppSpec
 from ...models.ports import PortSpec
 from ...models.registry import AppRegistry
-from ...models.scaling_store import ScalingStore
+from ...models.state.scaling_store import ScalingStore
 from ...models.stack import Stack
 from .compose_apps import ComposeAppsYaml
 from .edge import EDGE_HANDLERS, EdgeFragments, TlsEdge

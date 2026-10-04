@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, Optional, Tuple
 
-from ...models import display_service_label
+from ...models.app import display_service_label
 from ..ops.status.formatters import StatusFormatters
 from ..ops.status.models import ContainerStatus, StatusSnapshot
 from .depends import ServeDependsMap

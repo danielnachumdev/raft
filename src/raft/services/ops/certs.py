@@ -4,10 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from raft.errors import (
-    format_missing_origin_certs,
-    looks_like_missing_origin_cert,
-)
+from raft.errors.certs_msgs import format_missing_origin_certs, looks_like_missing_origin_cert
 from raft.errors.cta import OperatorError
 
 from ...models.stack import Stack

@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Optional, Sequence, Union
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 
 from .manifest_comments import ManifestFullLineComment
 

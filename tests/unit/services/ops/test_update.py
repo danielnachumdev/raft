@@ -8,8 +8,9 @@ from unittest.mock import MagicMock, patch
 
 from datetime import datetime, timezone
 
-from raft.errors import OperatorError
-from raft.models.graph_event_store import KIND_UPDATE, GraphEventStore
+from raft.errors.cta import OperatorError
+from raft.models.state.graph_event_kinds import KIND_UPDATE
+from raft.models.state.graph_event_store import GraphEventStore
 from raft.services.ops import update as update_mod
 from raft.services.ops.update import DEFAULT_INSTALL_URL, SelfUpdate, install_identity
 from raft.ui.progress import TerminalProgress

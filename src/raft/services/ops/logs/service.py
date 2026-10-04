@@ -6,7 +6,7 @@ import sys
 from typing import Iterator, Optional, TextIO
 
 from ....adapters import DockerStack, Shell
-from ....errors import service_not_running
+from ....errors.domain import service_not_running
 from ....models.stack import Stack
 from .targets import LogsTargets
 

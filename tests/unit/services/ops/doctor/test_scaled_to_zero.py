@@ -5,7 +5,7 @@ from __future__ import annotations
 from io import StringIO
 from unittest.mock import MagicMock, patch
 
-from raft.models.scaling_store import ScalingStore
+from raft.models.state.scaling_store import ScalingStore
 from raft.models.stack import load_stack
 from raft.services.ops.doctor import INFRA, CheckResult
 from raft.services.ops.doctor.checks.public_host import PublicHostChecks

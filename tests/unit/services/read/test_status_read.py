@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from raft.models import EDGE_GROUP
+from raft.models.app import EDGE_GROUP
 from raft.services.ops.doctor.models import CheckResult
 from raft.services.ops.status.models import StatusSnapshot
 from raft.services.read import DoctorRead, StatusRead

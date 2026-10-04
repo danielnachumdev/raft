@@ -8,14 +8,15 @@ from typing import Callable, Dict, Optional, Tuple
 
 from raft.adapters.docker import DockerStack
 from raft.adapters.nginx import NginxUpstreams
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 from raft.models.app import App
 from raft.models.app_document import AppDocument
 from raft.models.depends import AppDependsGraph, DependsOnError, DependsOnSpec
-from raft.models.graph_event_store import SCALING_ACTION_IDLE_STOP, GraphEventStore
+from raft.models.state.graph_event_kinds import SCALING_ACTION_IDLE_STOP
+from raft.models.state.graph_event_store import GraphEventStore
 from raft.models.manifest import AppSpec
 from raft.models.registry import AppRegistry
-from raft.models.scaling_store import ScalingStore
+from raft.models.state.scaling_store import ScalingStore
 from raft.models.stack import Stack
 from raft.services.deploy.locking import apps_and_stack_locks
 

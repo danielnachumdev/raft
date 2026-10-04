@@ -8,9 +8,13 @@ import pytest
 
 from datetime import datetime, timezone
 
-from raft.errors import OperatorError
-from raft.models.graph_event_store import KIND_START, KIND_STOP, GraphEventStore
-from raft.models.scaling_store import ScalingStore
+from raft.errors.cta import OperatorError
+from raft.models.state.graph_event_kinds import (
+    KIND_START,
+    KIND_STOP,
+)
+from raft.models.state.graph_event_store import GraphEventStore
+from raft.models.state.scaling_store import ScalingStore
 from raft.services.serve.actions import ServeActions
 
 from ...base import RaftTestCase, make_app, make_stack, write_applied_app

@@ -7,8 +7,8 @@ from unittest.mock import MagicMock, patch
 
 from raft.config.settings_types import HealingConfig
 from raft.controller.heal import Healer
-from raft.errors import OperatorError
-from raft.models.scaling_store import ScalingStore
+from raft.errors.cta import OperatorError
+from raft.models.state.scaling_store import ScalingStore
 
 from ..base import write_applied_app
 from .base import ControllerTestCase
@@ -65,16 +65,16 @@ class TestHealerDependsOn(ControllerTestCase):
 
     def test_edges_for_missing_and_bad(self, tmp_path: Path) -> None:
         healer = Healer(self.raft_home(tmp_path), HealingConfig(enabled=True), MagicMock())
-        assert healer._edges_for(tmp_path / "nope.yaml", "x") == ()
+        assert healer._deps.edges_for(tmp_path / "nope.yaml", "x") == ()
         bad = tmp_path / "bad.yaml"
         bad.write_text("not: yaml: [[", encoding="utf-8")
-        assert healer._edges_for(bad, "x") == ()
+        assert healer._deps.edges_for(bad, "x") == ()
 
     def test_ensure_dep_missing_compose(self, tmp_path: Path) -> None:
         _home, docker, healer = self._dep_healer(
             tmp_path, api_status="running", api_health="healthy"
         )
-        with patch.object(healer, "_compose_id", return_value=None):
+        with patch.object(healer._deps, "compose_id", return_value=None):
             with self.with_heal_locks():
                 healer.tick(now=1.0)
         docker.start_service.assert_not_called()
@@ -93,7 +93,7 @@ class TestHealerDependsOn(ControllerTestCase):
 
     def test_compose_id_unknown(self, tmp_path: Path) -> None:
         healer = Healer(self.applied_home(tmp_path), HealingConfig(enabled=True), MagicMock())
-        assert healer._compose_id("ghost") is None
+        assert healer._deps.compose_id("ghost") is None
 
     def _dep_healer(self, tmp_path: Path, *, api_status: str, api_health: str):
         home = self.raft_home(tmp_path)

@@ -7,7 +7,8 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Optional
 
-from raft.errors import OperatorError, append_diagnostics
+from raft.errors.cta import OperatorError
+from raft.errors.diagnostics import append_diagnostics
 
 logger = logging.getLogger(__name__)
 

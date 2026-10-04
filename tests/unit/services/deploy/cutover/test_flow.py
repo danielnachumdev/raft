@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 from tests.shared.nginx import NginxEmerg
 
 from ....base import write_applied_app

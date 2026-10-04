@@ -7,7 +7,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from raft.models.graph_event_store import KIND_DEPLOYMENT, KIND_UP, GraphEventStore
+from raft.models.state.graph_event_kinds import (
+    KIND_DEPLOYMENT,
+    KIND_UP,
+)
+from raft.models.state.graph_event_store import GraphEventStore
 
 from .base import OrchestratorTestCase
 

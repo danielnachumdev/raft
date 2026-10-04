@@ -6,15 +6,13 @@ import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Dict, Optional
 
 from raft.adapters.docker import DockerStack
 from raft.config.settings_types import HealingConfig
-from raft.errors import OperatorError
-from raft.models.app_document import AppDocument
-from raft.models.depends import AppDependsGraph, DependsOnError
-from raft.models.registry import AppRegistry
-from raft.models.scaling_store import ScalingStore
+from raft.controller.heal_deps import HealDepends
+from raft.errors.cta import OperatorError
+from raft.models.state.scaling_store import ScalingStore
 from raft.models.stack import Stack
 from raft.services.deploy.locking import app_and_stack_locks
 from raft.services.deploy.orchestrator import Orchestrator
@@ -47,6 +45,9 @@ class Healer:
     restart_counts: Dict[str, int] = field(default_factory=dict)
     escalate_counts: Dict[str, int] = field(default_factory=dict)
     last_act_at: Dict[str, float] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        self._deps = HealDepends(self.home, self.docker)
 
     def tick(self, *, now: Optional[float] = None) -> None:
         if not self.config.enabled:
@@ -156,7 +157,7 @@ class Healer:
         )
 
     def _do_restart(self, name: str, compose_id: str, status: str) -> bool:
-        if not self._ensure_deps_running(name):
+        if not self._deps.ensure_deps_running(name):
             return False
         try:
             with app_and_stack_locks(self.home, name):
@@ -168,66 +169,6 @@ class Healer:
             logger.error("heal failed app=%s: %s", name, exc)
             return False
         return True
-
-    def _ensure_deps_running(self, name: str) -> bool:
-        deps = self._deps_before(name)
-        if deps is None:
-            return False
-        for dep in deps:
-            if not self._ensure_one_dep(dep, name):
-                return False
-        return True
-
-    def _deps_before(self, name: str) -> Optional[Tuple[str, ...]]:
-        try:
-            return AppDependsGraph(self._depends_edges()).before(name)
-        except DependsOnError as exc:
-            logger.error("heal dependsOn app=%s: %s", name, exc)
-            return None
-
-    def _depends_edges(self) -> Dict[str, Tuple[str, ...]]:
-        edges: Dict[str, Tuple[str, ...]] = {}
-        for app in Stack.load_apps(self.home).apps:
-            path = AppRegistry(self.home).path_for(app.name)
-            edges[app.name] = self._edges_for(path, app.name)
-        return edges
-
-    def _edges_for(self, path: Path, name: str) -> Tuple[str, ...]:
-        if not path.is_file():
-            return ()
-        try:
-            _, spec = AppDocument.load(path, expect_name=name)
-        except (OSError, ValueError, OperatorError):
-            return ()
-        return spec.depend_names()
-
-    def _ensure_one_dep(self, dep: str, for_app: str) -> bool:
-        if ScalingStore(self.home).is_scaled_to_zero(dep):
-            logger.info("heal defer app=%s dep=%s scaled-to-zero", for_app, dep)
-            return False
-        compose_id = self._compose_id(dep)
-        if compose_id is None:
-            return False
-        status, _health = self.docker.service_runtime(compose_id)
-        if status == "running":
-            return True
-        return self._start_dep(dep, compose_id)
-
-    def _start_dep(self, dep: str, compose_id: str) -> bool:
-        logger.info("heal start dep=%s compose=%s", dep, compose_id)
-        try:
-            with app_and_stack_locks(self.home, dep):
-                self.docker.start_service(compose_id)
-        except OperatorError as exc:
-            logger.error("heal start dep failed dep=%s: %s", dep, exc)
-            return False
-        return True
-
-    def _compose_id(self, name: str) -> Optional[str]:
-        for app in Stack.load_apps(self.home).apps:
-            if app.name == name:
-                return app.compose_id
-        return None
 
     def _escalate(self, name: str, compose_id: str, when: float) -> None:
         restarts = self.restart_counts.get(name, 0)
@@ -246,7 +187,7 @@ class Healer:
         logger.info("heal redeploy ok app=%s", name)
 
     def _do_escalate(self, name: str) -> bool:
-        if not self._ensure_deps_running(name):
+        if not self._deps.ensure_deps_running(name):
             return False
         try:
             self._deploy_app(name)

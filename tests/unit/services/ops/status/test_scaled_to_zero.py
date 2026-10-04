@@ -5,7 +5,7 @@ from __future__ import annotations
 from io import StringIO
 from unittest.mock import patch
 
-from raft.models.scaling_store import ScalingStore
+from raft.models.state.scaling_store import ScalingStore
 from raft.services.ops.status import Status
 from raft.services.ops.status.models import STATUS_NOT_RUNNING, STATUS_SCALED_TO_ZERO
 from raft.services.ops.status.report import StatusReportWriter

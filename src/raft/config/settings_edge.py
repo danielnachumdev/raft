@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 
 from .settings_types import STREAM_PROTOCOLS, EdgeConfig, EdgeStream
 

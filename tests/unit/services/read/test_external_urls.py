@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import Optional
 
 from raft.config.settings_types import EdgeConfig
-from raft.models import App, Stack
+from raft.models.app import App
+from raft.models.stack import Stack
 from raft.services.read import ExternalUrlBuilder
 
 from ...base import RaftTestCase, make_app, make_stack, write_applied_app

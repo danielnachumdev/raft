@@ -54,7 +54,7 @@ class TestNginxUpstreams(AdapterTestCase):
 
     def test_persist_upstream_oserror_has_fix(self, tmp_path) -> None:
         from raft.adapters.nginx import NginxUpstreams
-        from raft.errors import OperatorError
+        from raft.errors.cta import OperatorError
 
         path = tmp_path / "missing-parent" / "up.conf"
         # Parent cannot be created when a file occupies the path.

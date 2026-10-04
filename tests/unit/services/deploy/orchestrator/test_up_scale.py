@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from raft.models.scaling_store import ScalingStore
+from raft.models.state.scaling_store import ScalingStore
 from raft.models.stack import load_stack
 from raft.services.deploy.orchestrator import Orchestrator
 from tests.shared.compose_ids import RunningServices

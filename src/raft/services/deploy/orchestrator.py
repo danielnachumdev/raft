@@ -5,9 +5,9 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from raft.errors import (
-    OperatorError,
-    append_diagnostics,
+from raft.errors.cta import OperatorError
+from raft.errors.diagnostics import append_diagnostics
+from raft.errors.domain import (
     stack_already_running,
     stack_down_incomplete,
 )
@@ -17,8 +17,8 @@ from ...adapters.http import HttpProbe
 from ...adapters.nginx import NginxUpstreams
 from ...adapters.shell import Shell
 from ...config.settings import load_config
-from ...models.graph_event_store import GraphEventStore
-from ...models.scaling_store import ScalingStore
+from ...models.state.graph_event_store import GraphEventStore
+from ...models.state.scaling_store import ScalingStore
 from ...models.stack import Stack
 from ...ui import say
 from ..ops.certs import require_origin_certs

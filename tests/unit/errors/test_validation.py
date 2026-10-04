@@ -9,13 +9,15 @@ import pytest
 
 from raft.config.paths import raft_home
 from raft.config.settings import load_config
-from raft.errors import (
+from raft.errors.cta import (
     OperatorError,
     format_cta,
     operator,
+    subprocess_detail,
+)
+from raft.errors.domain import (
     require_bool,
     require_mapping,
-    subprocess_detail,
 )
 from raft.models.ports import parse_ports
 from raft.services.deploy.wait import wait_until

@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from typing import Optional, Tuple
 
-from raft.errors import serve_already_running, serve_stop_failed
+from raft.errors.domain import serve_already_running, serve_stop_failed
 
 SERVE_STATE_DIR = Path("state") / "serve"
 _POLL_SECONDS = 0.05

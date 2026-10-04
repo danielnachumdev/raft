@@ -8,10 +8,10 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 
 from ...adapters.shell import Shell
-from ...models import Stack
+from ...models.stack import Stack
 from ...ui import say
 from ..auth.urls import default_ssh_dir
 

@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 from raft.services.ops.status import Status
 from raft.services.ops.status.report import StatusReportWriter
 

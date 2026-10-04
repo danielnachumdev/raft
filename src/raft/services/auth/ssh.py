@@ -6,7 +6,7 @@ import os
 import re
 from pathlib import Path
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 
 from ...adapters.shell import Shell
 from .urls import default_ssh_dir

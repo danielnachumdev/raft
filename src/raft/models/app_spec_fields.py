@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from typing import Any, Optional
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 
 from .manifest import TLS_MODES
 

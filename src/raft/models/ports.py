@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
-from raft.errors import require_bool, require_int
+from raft.errors.domain import require_bool, require_int
 
 EXPOSE_MODES = frozenset({"http", "stream", "host", "none"})
 PORT_PROTOCOLS = frozenset({"tcp", "udp"})

@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from raft.errors import auth_requires_service
+from raft.errors.domain import auth_requires_service
 
 from ..ui import say
 from . import deps

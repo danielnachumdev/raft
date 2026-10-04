@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import Optional, Tuple
 
 from ...config.settings_types import EdgeConfig
-from ...models import App, Stack
+from ...models.app import App
+from ...models.stack import Stack
 from ...models.manifest import AppSpec
 
 

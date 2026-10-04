@@ -6,7 +6,7 @@ from typing import Optional
 
 import uvicorn
 
-from ...models import Stack
+from ...models.stack import Stack
 from ...ui import say
 from ..ops.status import Status
 from .app import ServeAppFactory

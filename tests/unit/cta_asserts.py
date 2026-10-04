@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Optional, Sequence, Union
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 
 
 def assert_operator(

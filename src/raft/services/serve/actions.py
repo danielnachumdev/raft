@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 
 from ...adapters.docker import DockerStack
 from ...adapters.shell import Shell
-from ...models import App, Stack
-from ...models.graph_event_store import GraphEventStore
-from ...models.scaling_store import ScalingStore
+from ...models.app import App
+from ...models.stack import Stack
+from ...models.state.graph_event_store import GraphEventStore
+from ...models.state.scaling_store import ScalingStore
 from ..deploy.locking import app_and_stack_locks, stack_lock
 from ..deploy.orchestrator import Orchestrator
 from ..ops.logs.targets import LogsTargets

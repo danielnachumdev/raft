@@ -83,7 +83,7 @@ class TestCutoverWait(CutoverTestCase):
         )
 
     def test_wait_until_reports_budget_and_diagnostics(self, caplog) -> None:
-        from raft.errors import OperatorError
+        from raft.errors.cta import OperatorError
         from raft.services.deploy.wait import wait_until
 
         sleep_p, mono_p = self._clock_patches(0.02)
@@ -110,7 +110,7 @@ class TestCutoverWait(CutoverTestCase):
         )
 
     def test_wait_until_logs_progress(self, caplog) -> None:
-        from raft.errors import OperatorError
+        from raft.errors.cta import OperatorError
         from raft.services.deploy.wait import wait_until
 
         sleep_p, mono_p = self._clock_patches(0.1)

@@ -9,7 +9,8 @@ from unittest.mock import MagicMock
 import pytest
 import yaml
 
-from raft.models import App, Stack
+from raft.models.app import App
+from raft.models.stack import Stack
 from raft.models.stack import load_stack
 from raft.services.render import StackRenderer
 

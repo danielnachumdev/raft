@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Set
 
-from raft.models import display_service_label
+from raft.models.app import display_service_label
 
 HOST_SERIES_ID = "host"
 

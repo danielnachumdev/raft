@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 from raft.adapters.docker.compose_status import ComposeStatusTable
 from raft.adapters.docker.runtime import ContainerRuntimeRow
-from raft.models.scaling_store import ScalingStore
+from raft.models.state.scaling_store import ScalingStore
 from raft.models.stack import load_stack
 from raft.services.ops.doctor.checks.runtime import RuntimeChecks
 from raft.services.ops.doctor.context import DoctorContext

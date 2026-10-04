@@ -191,7 +191,7 @@ class TestDockerLifecycle(DockerTestCase):
         )
 
     def test_restart_and_start_service_enrich_failures(self) -> None:
-        from raft.errors import OperatorError
+        from raft.errors.cta import OperatorError
 
         with patch.object(
             self.docker,
@@ -244,7 +244,7 @@ class TestDockerLifecycle(DockerTestCase):
         )
 
     def test_pull_and_build_enrich_failures(self) -> None:
-        from raft.errors import OperatorError
+        from raft.errors.cta import OperatorError
 
         with patch.object(
             self.docker,

@@ -6,7 +6,8 @@ import re
 import sys
 from typing import Optional, TextIO
 
-from ....models import Stack, display_service_label
+from ....models.app import display_service_label
+from ....models.stack import Stack
 from ....ui import BOLD, CYAN, DIM, GREEN, RED, YELLOW, paint, want_color
 from .models import (
     INFRA,

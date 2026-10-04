@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 import pytest
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 from raft.services.serve import runtime as runtime_mod
 from raft.services.serve.runtime import ServeRuntime
 from raft.services.serve.service import Serve

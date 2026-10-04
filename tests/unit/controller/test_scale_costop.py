@@ -9,7 +9,7 @@ from raft.config.settings_types import HealingConfig
 from raft.controller.heal import Healer
 from raft.controller.scale import Scaler
 from raft.models.scaling_spec import ScalingSpec
-from raft.models.scaling_store import ScalingStore
+from raft.models.state.scaling_store import ScalingStore
 
 from ..base import write_applied_app
 from .base import ControllerTestCase

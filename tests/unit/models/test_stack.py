@@ -257,13 +257,13 @@ class TestApp(RaftTestCase):
         assert app.abs_path(self.tmp_path) == (self.tmp_path / "apps" / "d").resolve()
 
     def test_display_service_label(self) -> None:
-        from raft.models import (
-            CONTROLLER_COMPOSE_ID,
-            EDGE_GROUP,
-            GATE_COMPOSE_ID,
-            ROUTER_COMPOSE_ID,
-            display_service_label,
-        )
+        from raft.models.app import (
+    CONTROLLER_COMPOSE_ID,
+    EDGE_GROUP,
+    GATE_COMPOSE_ID,
+    ROUTER_COMPOSE_ID,
+    display_service_label,
+)
 
         assert display_service_label(GATE_COMPOSE_ID, EDGE_GROUP) == "gate"
         assert display_service_label(ROUTER_COMPOSE_ID, EDGE_GROUP) == "router"

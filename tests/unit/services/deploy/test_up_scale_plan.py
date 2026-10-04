@@ -7,8 +7,8 @@ from unittest.mock import patch
 
 import pytest
 
-from raft.errors import OperatorError
-from raft.models.scaling_store import ScalingStore
+from raft.errors.cta import OperatorError
+from raft.models.state.scaling_store import ScalingStore
 from raft.models.stack import load_stack
 from raft.services.deploy.up_scale_plan import StackUpScalePlan
 from tests.unit.base import write_applied_app

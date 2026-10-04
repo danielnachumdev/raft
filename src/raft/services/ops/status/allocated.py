@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ....errors import OperatorError
+from ....errors.cta import OperatorError
 from ....models.app import App
 from ....models.stack import Stack
 from .models import (

@@ -10,7 +10,7 @@ from raft.adapters.shell import Shell
 from raft.config.paths import raft_home
 from raft.config.settings import load_config
 from raft.config.settings_types import HealingConfig, MetricsConfig, RaftConfig
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 from raft.models.stack import Stack
 
 from .heal import Healer

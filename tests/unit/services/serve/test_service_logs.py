@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 from fastapi.testclient import TestClient
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 from raft.services.ops.status.models import StatusSnapshot
 from raft.services.serve.app import ServeAppFactory
 from raft.services.serve.log_stream import LogSseStream

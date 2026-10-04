@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from raft.controller.scale import Scaler
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 from raft.models.scaling_spec import ScalingSpec
 
 from ..base import write_applied_app
@@ -140,8 +140,8 @@ class TestScaler(ControllerTestCase):
             assert scaler.wake_now(self.APP, ScalingSpec(10, 5, 5), now=1.0) is False
         docker.reload_router_nginx.assert_not_called()
         assert scaler.store.is_scaled_to_zero(self.APP)
-        assert scaler._http_fetch_targets("ghost") == ()
-        assert scaler._host_fetch_target("ghost") is None
+        assert scaler._wake.http_fetch_targets("ghost") == ()
+        assert scaler._wake.host_fetch_target("ghost") is None
 
     def test_wake_deadline_before_start(self, tmp_path: Path) -> None:
         scaler, docker = self._scaler(tmp_path)
@@ -266,7 +266,9 @@ class TestScaler(ControllerTestCase):
         scaler.store.mark_scaled_to_zero(self.APP)
         docker.service_runtime.return_value = ("running", "none")
         docker.router_serves_host.return_value = True
-        with self.with_scale_locks(), patch.object(scaler, "_http_fetch_targets", return_value=()):
+        with self.with_scale_locks(), patch.object(
+            scaler._wake, "http_fetch_targets", return_value=()
+        ):
             assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5), now=1.0) is True
         docker.reload_router_nginx.assert_called_once_with()
         docker.router_serves_host.assert_called_once_with(f"{self.APP}.test", path="/")

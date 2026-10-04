@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
 from raft.controller.metrics import METRICS_DIR, METRICS_FILENAME
-from raft.models.graph_event_store import GraphEventStore
+from raft.models.state.graph_event_store import GraphEventStore
 
 from .metrics_jsonl import MetricsJsonlReader
 from .metrics_series import MetricsSeriesBuilder

@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 
 from raft.controller.metrics import METRICS_DIR, METRICS_FILENAME
-from raft.models import EDGE_GROUP
+from raft.models.app import EDGE_GROUP
 from raft.services.ops.status.models import StatusSnapshot
 from raft.services.serve.app import ServeAppFactory
 from raft.services.serve.service import DEFAULT_SERVE_PORT, Serve
@@ -150,7 +150,7 @@ class TestServeAppFactory(RaftTestCase):
         actions.redeploy.assert_called_once_with("site")
 
     def test_api_service_action_operator_error_is_400(self) -> None:
-        from raft.errors import OperatorError
+        from raft.errors.cta import OperatorError
 
         stack = make_stack(self.tmp_path, (make_app("site"),))
         actions = MagicMock()
@@ -163,7 +163,7 @@ class TestServeAppFactory(RaftTestCase):
         assert "gate" in response.json()["detail"]
 
     def test_api_service_action_unknown_is_404(self) -> None:
-        from raft.errors import OperatorError
+        from raft.errors.cta import OperatorError
 
         stack = make_stack(self.tmp_path)
         actions = MagicMock()

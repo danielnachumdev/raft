@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Optional
 
 from raft.config.dir_tree_sync import DirTreeSync
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 
 DATA_HOME_ENV = "RAFT_DATA_HOME"
 SETTINGS_FILENAME = "settings.yaml"

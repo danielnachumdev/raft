@@ -14,7 +14,7 @@ from typing import Mapping, Union
 
 import yaml
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 
 from .manifest_comments import ManifestFullLineComment
 from .manifest_env import ManifestTextExpander

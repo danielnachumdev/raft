@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from raft.models.scaling_store import AppScalingState, ScalingStore
+from raft.models.state.scaling_store import AppScalingState, ScalingStore
 
 from .base import ControllerTestCase
 
@@ -92,7 +92,7 @@ class TestScalingStore(ControllerTestCase):
         store = ScalingStore(home)
         store.ensure_dirs()
         path = store.path_for(self.APP)
-        with patch("raft.models.scaling_store.os.replace", side_effect=OSError("boom")):
+        with patch("raft.models.state.scaling_store.os.replace", side_effect=OSError("boom")):
             with pytest.raises(OSError, match="boom"):
                 store._atomic_write_json(path, {"scaledToZero": False})
         assert list(path.parent.glob(".web.json.*.tmp")) == []
@@ -102,7 +102,7 @@ class TestScalingStore(ControllerTestCase):
         store = ScalingStore(home)
         store.ensure_dirs()
         path = store.path_for(self.APP)
-        with patch("raft.models.scaling_store.os.replace", side_effect=OSError("boom")):
-            with patch("raft.models.scaling_store.os.unlink", side_effect=OSError("gone")):
+        with patch("raft.models.state.scaling_store.os.replace", side_effect=OSError("boom")):
+            with patch("raft.models.state.scaling_store.os.unlink", side_effect=OSError("gone")):
                 with pytest.raises(OSError, match="boom"):
                     store._atomic_write_json(path, {"scaledToZero": False})

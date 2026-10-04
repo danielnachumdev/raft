@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from raft.errors import (
+from raft.errors.diagnostics import (
     append_diagnostics,
     compact_log_lines,
     compose_services_from_failure_text,

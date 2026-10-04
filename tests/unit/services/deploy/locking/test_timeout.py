@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 from raft.models.ports import PortSpec
 from raft.services.deploy.locking import (
     DEFAULT_LOCK_TIMEOUT_SECONDS,

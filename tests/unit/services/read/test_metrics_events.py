@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from raft.models.graph_event_store import (
+from raft.models.state.graph_event_kinds import (
     KIND_DOWN,
     KIND_SCALING,
     KIND_STOP,
     SCALING_ACTION_IDLE_STOP,
-    GraphEventStore,
 )
+from raft.models.state.graph_event_store import GraphEventStore
 from raft.services.read.metrics import MetricsRead
 
 from .test_metrics_read import _MetricsFixtures

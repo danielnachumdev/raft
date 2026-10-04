@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from raft.errors import OperatorError
+from raft.errors.cta import OperatorError
 
 from ....config.settings_types import EdgeConfig
 from ....models.app import App
