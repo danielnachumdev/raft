@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import type { StatusRow } from "./api";
-import { servicePath } from "./api";
+import type { StatusRow } from "../shared/api";
+import { servicePath } from "../shared/api";
 import { ColumnHeaderMenu } from "./ColumnHeaderMenu";
-import { ExternalUrlLinks } from "./ExternalUrlLinks";
+import { ExternalUrlLinks } from "../shared/ExternalUrlLinks";
 import { ServiceQuickActions } from "./ServiceQuickActions";
 import { StatusPanelControls } from "./StatusPanelControls";
 import { COLUMN_LABELS, type SortKey } from "./statusColumnFilter";

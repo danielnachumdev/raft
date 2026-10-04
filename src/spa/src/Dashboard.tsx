@@ -4,11 +4,11 @@ import {
   STATUS_POLL_MS,
   type StatusPayload,
   type StatusRow,
-} from "./api";
-import { peekStatus, refreshStatus } from "./dashboardCache";
-import { LiveIndicator } from "./LiveIndicator";
-import { StatusTable } from "./StatusTable";
-import { TrendsPanel } from "./TrendsPanel";
+} from "./shared/api";
+import { peekStatus, refreshStatus } from "./shared/dashboardCache";
+import { LiveIndicator } from "./chrome/LiveIndicator";
+import { StatusTable } from "./status/StatusTable";
+import { TrendsPanel } from "./trends/TrendsPanel";
 
 /** Main dashboard: cached paint, quiet poll while visible, then background refresh. */
 export function Dashboard() {

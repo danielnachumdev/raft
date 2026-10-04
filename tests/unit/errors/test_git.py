@@ -16,7 +16,7 @@ from raft.errors import (
     raise_for_git_failure,
 )
 
-from ...cta_asserts import assert_cta, assert_operator
+from ..cta_asserts import assert_cta, assert_operator
 
 
 class TestGitErrors:

@@ -1,4 +1,4 @@
-import type { GraphEvent, MetricsSeries } from "./api.ts";
+import type { GraphEvent, MetricsSeries } from "../shared/api.ts";
 import { formatTickTime, toEpochMs } from "./chartTimeScale.ts";
 
 /** Match ``trendsView`` ungrouped bucket without importing that module (node tests). */

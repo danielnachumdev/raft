@@ -1,8 +1,8 @@
 import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { serviceLogsPath, type ServiceAction } from "./api";
-import { ServiceActionConfirm } from "./ServiceActionConfirm";
-import { useServiceActionRunner } from "./useServiceActionRunner";
+import { serviceLogsPath, type ServiceAction } from "../shared/api";
+import { ServiceActionConfirm } from "../service/ServiceActionConfirm";
+import { useServiceActionRunner } from "../service/useServiceActionRunner";
 
 type Props = {
   service: string;

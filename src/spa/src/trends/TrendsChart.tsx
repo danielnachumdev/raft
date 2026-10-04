@@ -7,7 +7,7 @@ import {
   Tooltip,
   YAxis,
 } from "recharts";
-import type { GraphEvent, MetricsSeries } from "./api";
+import type { GraphEvent, MetricsSeries } from "../shared/api";
 import {
   formatTooltipTime,
   mergeTimedRows,

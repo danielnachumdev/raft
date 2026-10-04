@@ -1,7 +1,7 @@
-import type { ServiceDetailPayload } from "./api";
-import { ExternalUrlLinks } from "./ExternalUrlLinks";
+import type { ServiceDetailPayload } from "../shared/api";
+import { ExternalUrlLinks } from "../shared/ExternalUrlLinks";
 import { ServiceActions } from "./ServiceActions";
-import { ServiceLogs } from "./ServiceLogs";
+import { ServiceLogs } from "../logs/ServiceLogs";
 import { ServiceRuntimeTrends } from "./ServiceRuntimeTrends";
 
 /** Render full status contract fields for one Compose service. */

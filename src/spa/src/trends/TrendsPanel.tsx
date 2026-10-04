@@ -7,8 +7,8 @@ import {
   type MetricsAvailable,
   type MetricsPayload,
   type MetricsSeries,
-} from "./api";
-import { peekMetrics, putMetrics } from "./dashboardCache";
+} from "../shared/api";
+import { peekMetrics, putMetrics } from "../shared/dashboardCache";
 import { TrendsChart } from "./TrendsChart";
 import {
   DEFAULT_RUNTIME_WINDOW,

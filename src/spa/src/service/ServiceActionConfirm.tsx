@@ -1,4 +1,4 @@
-import { ConfirmPopup } from "./ConfirmPopup";
+import { ConfirmPopup } from "../chrome/ConfirmPopup";
 import type { ServiceActionRunner } from "./useServiceActionRunner";
 
 /** Renders the pending stop/redeploy confirm from a service action runner. */

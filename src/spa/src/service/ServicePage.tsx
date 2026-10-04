@@ -4,12 +4,12 @@ import {
   documentTitleForHost,
   fetchService,
   type ServiceDetailPayload,
-} from "./api";
+} from "../shared/api";
 import {
   invalidateMetrics,
   invalidateStatus,
   refreshStatus,
-} from "./dashboardCache";
+} from "../shared/dashboardCache";
 import { ServiceDetail } from "./ServiceDetail";
 
 /** Deep-linked service page: `/service/:service`. */

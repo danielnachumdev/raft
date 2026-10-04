@@ -1,4 +1,4 @@
-import type { ServiceAction } from "./api";
+import type { ServiceAction } from "../shared/api";
 import { ServiceActionConfirm } from "./ServiceActionConfirm";
 import { useServiceActionRunner } from "./useServiceActionRunner";
 

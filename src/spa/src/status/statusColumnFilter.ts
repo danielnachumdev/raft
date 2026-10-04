@@ -1,4 +1,4 @@
-import type { StatusRow } from "./api";
+import type { StatusRow } from "../shared/api";
 import { parseMemoryRatioPercent, parsePercent } from "./statusTone";
 
 export type SortKey = Exclude<keyof StatusRow, "external_urls" | "depends_on">;

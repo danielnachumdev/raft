@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { MetricsSeries } from "../src/api.ts";
+import type { MetricsSeries } from "../src/shared/api.ts";
 import {
   buildPerGroupSeries,
   isSingleLineAvg,
   resolveVisibleSeries,
   seriesInGroups,
   UNGROUPED_ID,
-} from "../src/trendsView.ts";
+} from "../src/trends/trendsView.ts";
 
 function point(t: string, cpu: number | null) {
   return {

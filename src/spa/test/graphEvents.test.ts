@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { GraphEvent, MetricsSeries } from "../src/api.ts";
+import type { GraphEvent, MetricsSeries } from "../src/shared/api.ts";
 import {
   eventMarkerLabel,
   eventMarkerStroke,
@@ -8,7 +8,7 @@ import {
   isRaftLevelEvent,
   seriesForEventFilter,
   withEventRows,
-} from "../src/graphEvents.ts";
+} from "../src/trends/graphEvents.ts";
 
 function series(id: string, group = "demo"): MetricsSeries {
   return {

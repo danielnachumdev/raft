@@ -13,14 +13,14 @@ import {
   METRICS_POLL_MS,
   type GraphEvent,
   type MetricsSeries,
-} from "./api";
+} from "../shared/api";
 import {
   formatTooltipTime,
   mergeTimedRows,
   toEpochMs,
-} from "./chartTimeScale";
-import { graphEventMarkers } from "./GraphEventMarkers";
-import { eventsForSeries, withEventRows } from "./graphEvents";
+} from "../trends/chartTimeScale";
+import { graphEventMarkers } from "../trends/GraphEventMarkers";
+import { eventsForSeries, withEventRows } from "../trends/graphEvents";
 import {
   DEFAULT_RUNTIME_WINDOW,
   formatRuntimeValue,
@@ -30,8 +30,8 @@ import {
   type RuntimeMetricDef,
   type RuntimeMetricId,
   yAxisUnit,
-} from "./runtimeMetrics";
-import { timeScaleXAxis } from "./TimeScaleXAxis";
+} from "../trends/runtimeMetrics";
+import { timeScaleXAxis } from "../trends/TimeScaleXAxis";
 
 type ChartRow = {
   ts: number;

@@ -10,7 +10,7 @@ from raft.models.ports import PortSpec, parse_ports
 from raft.models.readiness_parser import parse_readiness
 from raft.models.readiness_spec import ReadinessSpec
 
-from ...base import RaftTestCase
+from ..base import RaftTestCase
 
 PATH = Path("app.yaml")
 

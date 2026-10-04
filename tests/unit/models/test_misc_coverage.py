@@ -16,7 +16,7 @@ from raft.models.registry import AppRegistry
 from raft.models.stack import load_stack
 from raft.services.render import StackRenderer
 
-from ...base import RaftTestCase, write_applied_app
+from ..base import RaftTestCase, write_applied_app
 
 UNIQ_DOC = {
     "apiVersion": "raft/v1",

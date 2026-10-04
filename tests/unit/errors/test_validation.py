@@ -21,8 +21,8 @@ from raft.models.ports import parse_ports
 from raft.services.deploy.wait import wait_until
 from raft.services.ops.update import SelfUpdate
 
-from ...base import RaftTestCase, make_stack
-from ...cta_asserts import assert_cta, assert_operator
+from ..base import RaftTestCase, make_stack
+from ..cta_asserts import assert_cta, assert_operator
 
 SETTINGS_BAD_CASES = [
     ("edge:\n  http: eighty\n", "integer port"),

@@ -8,8 +8,8 @@ from raft.models.stack import load_stack
 from raft.services.ops.doctor import INFRA
 from tests.shared.compose_ids import RunningServices
 
-from ...base import RaftTestCase, write_applied_app
-from .doctor_fixture import CoverageDoctor
+from ....base import RaftTestCase, write_applied_app
+from .coverage_fixture import CoverageDoctor
 
 
 class TestDoctorEdgeCoverage(RaftTestCase):

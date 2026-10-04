@@ -3,7 +3,7 @@ import {
   DEFAULT_LOG_TAIL,
   fetchServiceLogs,
   openServiceLogsFollow,
-} from "./api";
+} from "../shared/api";
 import { LogLines } from "./LogLines";
 import { filterLogLines, parseLogText } from "./logParse";
 

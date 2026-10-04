@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
-import type { ServiceAction } from "./api";
-import { postServiceAction, servicePath } from "./api";
-import { toast } from "./toast";
+import type { ServiceAction } from "../shared/api";
+import { postServiceAction, servicePath } from "../shared/api";
+import { toast } from "../chrome/toast";
 
 export type ServiceConfirmRequest = {
   action: ServiceAction;

@@ -23,7 +23,7 @@ from raft.errors import (
     run_docker_checked,
 )
 
-from ...cta_asserts import assert_cta, assert_operator
+from ..cta_asserts import assert_cta, assert_operator
 
 
 class TestCommandErrors:

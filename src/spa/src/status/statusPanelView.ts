@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import type { StatusRow } from "./api";
+import type { StatusRow } from "../shared/api";
 import {
   activeColumnFilterEntries,
   type ColumnFilter,
