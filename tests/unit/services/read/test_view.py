@@ -17,8 +17,9 @@ class TestServeInstructions:
     def test_render_includes_url_and_tunnel_examples(self) -> None:
         text = ServeInstructions(8787).render()
         assert "http://127.0.0.1:8787/" in text
-        assert "ssh -L 8787:127.0.0.1:8787 USER@VM_HOST" in text
-        assert "gcloud compute ssh VM_NAME --zone=ZONE -- -L 8787:127.0.0.1:8787" in text
+        assert "ssh -L 8787:127.0.0.1:8787 USER@HOST" in text
+        assert "gcloud" not in text
+        assert "laptop" not in text
         assert "Ctrl+C" in text
 
     def test_print_writes_render(self) -> None:

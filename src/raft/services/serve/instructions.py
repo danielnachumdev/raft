@@ -1,4 +1,4 @@
-"""Stdout connection instructions for terminal-only VMs."""
+"""Stdout connection instructions for localhost-only serve."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Optional, TextIO
 
 
 class ServeInstructions:
-    """Print VM URL + SSH / gcloud port-forward examples before listening."""
+    """Print bind URL and a generic port-forward example before listening."""
 
     def __init__(self, port: int) -> None:
         self.port = port
@@ -23,12 +23,11 @@ class ServeInstructions:
         return (
             f"raft serve listening on {url} (localhost only)\n"
             "\n"
-            "This VM is terminal-only — open the UI from your laptop via a tunnel:\n"
+            "Open that URL on the host, or forward the port from elsewhere:\n"
             "\n"
-            f"  ssh -L {port}:127.0.0.1:{port} USER@VM_HOST\n"
-            f"  gcloud compute ssh VM_NAME --zone=ZONE -- -L {port}:127.0.0.1:{port}\n"
+            f"  ssh -L {port}:127.0.0.1:{port} USER@HOST\n"
             "\n"
-            f"Then open {url} in your laptop browser.\n"
+            f"Then open {url} in a browser.\n"
             "Stop with Ctrl+C, or from another shell: raft serve --stop\n"
             "\n"
         )

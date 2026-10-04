@@ -8,7 +8,7 @@ Temporarily maps applied App `publicHost` values to `127.0.0.1` in the local hos
 
 ### What it is for
 
-Raft’s gate routes by `Host`. On a laptop/WSL box you often hit `http://127.0.0.1/` while Cloudflare DNS still points at the VPS. Without a hosts entry (or an explicit `curl -H 'Host: …'`), the browser sends the wrong hostname and the router will not select your app.
+Raft’s gate routes by `Host`. On a local/WSL box you often hit `http://127.0.0.1/` while Cloudflare DNS still points at the VPS. Without a hosts entry (or an explicit `curl -H 'Host: …'`), the browser sends the wrong hostname and the router will not select your app.
 
 `hosts` reads applied manifests under `~/.raft/state/apps/*.yaml` (or `RAFT_DATA_HOME`), collects each `publicHost` (and a `www.` alias when missing), and injects a managed block into:
 
