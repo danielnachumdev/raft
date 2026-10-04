@@ -1,4 +1,6 @@
 # Test matrix: Python 3.8+ (runtime config is YAML via PyYAML; no tomllib).
+# SPA (src/spa) is tested/built once — not per Python version. Packaged assets
+# under src/raft/share/serve/spa/ are committed; unit/integration/e2e use those.
 name: CI
 
 on:
@@ -15,6 +17,23 @@ permissions:
   contents: read
 
 jobs:
+  spa:
+    name: SPA
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: src/spa/package-lock.json
+      - name: Install, test, and build dashboard SPA
+        run: |
+          cd src/spa
+          npm ci
+          npm test
+          npm run build
+
   test:
     name: Unit+Integration (Py ${{ matrix.python-version }})
     runs-on: ubuntu-latest
@@ -30,17 +49,6 @@ jobs:
           - "3.13"
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: src/spa/package-lock.json
-      - name: Build dashboard SPA
-        run: |
-          cd src/spa
-          npm ci
-          npm test
-          npm run build
       - uses: astral-sh/setup-uv@v10.0.0
         with:
           python-version: ${{ matrix.python-version }}
@@ -79,16 +87,6 @@ jobs:
           - "3.13"
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: src/spa/package-lock.json
-      - name: Build dashboard SPA
-        run: |
-          cd src/spa
-          npm ci
-          npm run build
       - uses: astral-sh/setup-uv@v10.0.0
         with:
           python-version: ${{ matrix.python-version }}
