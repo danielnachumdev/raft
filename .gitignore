@@ -9,8 +9,8 @@ __pycache__/
 htmlcov/
 
 # Dashboard SPA
-web/node_modules/
-web/dist/
+src/spa/node_modules/
+src/spa/dist/
 
 # Operator data if accidentally created in a checkout
 /certs/

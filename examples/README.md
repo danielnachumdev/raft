@@ -2,6 +2,8 @@
 
 Copy-paste operator settings and App manifests. Hostnames use `*.example.com` only — replace before a real deploy.
 
+These folders are **operator-facing samples**, not the minimal trees under `tests/fixtures/` used by automated tests. Prefer copying from here; do not treat fixture YAML as documentation.
+
 ## Pick a scenario
 
 | Path | When |

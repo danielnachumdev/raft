@@ -100,4 +100,13 @@ uv run pytest
 uv run raft -- --help
 ```
 
-CI runs the suite across Python 3.8–3.13. Dashboard source is in **`web/`** (build writes `src/raft/share/serve/spa/`). Working on the codebase? See **[AGENTS.md](AGENTS.md)**.
+CI runs the suite across Python 3.8–3.13. Dashboard source is in **`src/spa/`** (build writes `src/raft/share/serve/spa/`). Working on the codebase? See **[AGENTS.md](AGENTS.md)**.
+
+## License
+
+raft is dual-licensed (see [`LICENSING.md`](LICENSING.md)):
+
+- **AGPL-3.0** — free under copyleft terms ([`LICENSE`](LICENSE))
+- **Commercial** — paid option for closed-source use; contact the maintainer for details ([`LICENSE-COMMERCIAL.md`](LICENSE-COMMERCIAL.md))
+
+Docker and nginx remain under their own licenses; they are not relicensed by raft.

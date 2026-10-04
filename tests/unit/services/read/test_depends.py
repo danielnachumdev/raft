@@ -47,20 +47,20 @@ class TestServeDependsMap(RaftTestCase):
 
 class TestStatusDependsPresentation(RaftTestCase):
     def test_api_payload_apps_include_depends_on(self) -> None:
-        self._seed_limud_apps()
+        self._seed_demo_apps()
         stack = make_stack(
             self.tmp_path,
             (
-                make_app("frontend-dev", group="limud"),
-                make_app("backend-dev", group="limud"),
+                make_app("frontend-dev", group="demo"),
+                make_app("backend-dev", group="demo"),
             ),
         )
         status = MagicMock()
-        status.collect.return_value = self._limud_snap()
+        status.collect.return_value = self._demo_snap()
         payload = StatusRead(stack, status=status).api_payload()
         apps = {row["service"]: row for row in payload["apps"]}
-        assert apps["limud-frontend-dev"]["depends_on"] == ["limud-backend-dev"]
-        assert apps["limud-backend-dev"]["depends_on"] == []
+        assert apps["demo-frontend-dev"]["depends_on"] == ["demo-backend-dev"]
+        assert apps["demo-backend-dev"]["depends_on"] == []
         assert payload["control_plane"][0]["depends_on"] == []
 
     def test_view_uses_depends_map(self) -> None:
@@ -81,32 +81,32 @@ class TestStatusDependsPresentation(RaftTestCase):
         assert by_svc["front"] == ("back",)
         assert by_svc["back"] == ()
 
-    def _seed_limud_apps(self) -> None:
+    def _seed_demo_apps(self) -> None:
         write_applied_app(
             self.tmp_path,
             "frontend-dev",
-            extra={"group": "limud", "dependsOn": ["backend-dev"]},
+            extra={"group": "demo", "dependsOn": ["backend-dev"]},
         )
         write_applied_app(
-            self.tmp_path, "backend-dev", extra={"group": "limud"}
+            self.tmp_path, "backend-dev", extra={"group": "demo"}
         )
 
-    def _limud_snap(self) -> StatusSnapshot:
+    def _demo_snap(self) -> StatusSnapshot:
         fx = StatusFixtures
         return StatusSnapshot(
             host=fx.empty_host_status(),
             containers=(
                 fx.container(
-                    "limud-frontend-dev",
+                    "demo-frontend-dev",
                     role="app",
                     app="frontend-dev",
-                    group="limud",
+                    group="demo",
                 ),
                 fx.container(
-                    "limud-backend-dev",
+                    "demo-backend-dev",
                     role="app",
                     app="backend-dev",
-                    group="limud",
+                    group="demo",
                 ),
                 fx.container("raft-gate", role="gate", group=EDGE_GROUP),
             ),

@@ -18,7 +18,7 @@ User-facing samples live under **[`examples/`](examples/)**: operator settings (
 
 **Shipped:** Per-app scale-to-zero via `spec.scaling` (all fields required; omit = off). HTTP + `publicHost` only. Gate holding page + wake; controller idle-stop (co-stops `dependsOn` with `scaleWithParent` default true); healer skips intentional `scaledToZero`. Healing stays separate (`healing:` in settings).
 
-**Shipped:** `raft serve` localhost ops UI — packaged React SPA (`share/serve/spa/`) + FastAPI JSON/actions/logs APIs; shared `StatusRead` / `MetricsRead` with CLI; trends from controller `resources.jsonl`. Source in `web/`; not an edge listener.
+**Shipped:** `raft serve` localhost ops UI — packaged React SPA (`share/serve/spa/`) + FastAPI JSON/actions/logs APIs; shared `StatusRead` / `MetricsRead` with CLI; trends from controller `resources.jsonl`. Source in `src/spa/`; not an edge listener.
 
 ---
 
@@ -254,21 +254,21 @@ Localhost dashboard for operators (`raft serve`). **Hard rules:** bind `127.0.0.
 
 Doctor JSON for the SPA is deferred (`DoctorRead.intended_payload_shape`).
 
-### SPA source (`web/`)
+### SPA source (`src/spa/`)
 
-| Area | Files (indicative) | Notes |
-|------|--------------------|-------|
-| Shell / routes | `App.tsx`, `main.tsx`, `Dashboard.tsx`, `ServicePage.tsx` | client routes; FastAPI serves `index.html` for non-`/api` paths |
-| Status tables | `StatusTable.tsx`, `ColumnHeaderMenu.tsx`, `statusColumnFilter.ts`, `statusTone.ts`, `statusPanelView.ts` | compact-only; per-column sort/filter menus; health/utilization tones; Started column |
-| Live refresh | `LiveIndicator.tsx`, `dashboardCache.ts` | auto-refresh while tab visible; cache for instant back-navigation |
-| Quick actions | `ServiceQuickActions.tsx` | row icons → start/stop/redeploy/logs |
-| Service detail | `ServiceDetail.tsx`, `ServiceActions.tsx`, `ServiceRuntimeTrends.tsx`, `ExternalUrlLinks.tsx` | public URLs; Runtime charts from metrics history; lifecycle buttons |
-| Logs | `ServiceLogs.tsx`, `LogLines.tsx`, `logParse.ts` | follow / expand / severity filter |
-| Trends | `TrendsPanel.tsx`, `TrendsChart.tsx`, `runtimeMetrics.ts` | historical series; sidebar filters; poll `/api/metrics` |
-| UX chrome | `Modal.tsx`, `ConfirmPopup.tsx`, `toast.ts`, `ToastHost.tsx` | **no** native `alert`/`confirm`; toasts for action feedback |
-| API client | `api.ts` | typed fetches against the FastAPI routes above |
+Feature folders under `src/spa/src/` (shell files stay at the root of that tree):
 
-Develop: `cd web && npm ci && npm run dev` (Vite `:5173`, proxies `/api` → `raft serve :8787`). Release FE: `npm run build` → updates `share/serve/spa/`. See [`web/README.md`](web/README.md).
+| Area | Path | Notes |
+|------|------|-------|
+| Shell / routes | `App.tsx`, `main.tsx`, `Dashboard.tsx` | client routes; FastAPI serves `index.html` for non-`/api` paths |
+| Shared | `shared/api.ts`, `shared/dashboardCache.ts`, `shared/ExternalUrlLinks.tsx` | typed `/api` client + status/metrics cache |
+| Status tables | `status/` (`StatusTable`, column menus/filters, tones, `ServiceQuickActions`) | compact-only; Started column; row quick actions |
+| Live chrome | `chrome/LiveIndicator.tsx` (+ `Modal` / `ConfirmPopup` / toasts) | auto-refresh while tab visible; **no** native `alert`/`confirm` |
+| Service detail | `service/` (`ServicePage`, detail, actions, Runtime trends) | lifecycle buttons; Runtime charts from metrics history |
+| Logs | `logs/` (`ServiceLogs`, `LogLines`, `logParse`) | follow / expand / severity filter |
+| Trends | `trends/` (`TrendsPanel`, `TrendsChart`, `runtimeMetrics`, graph-event helpers) | historical series; sidebar filters; poll `/api/metrics` |
+
+Develop: `cd src/spa && npm ci && npm run dev` (Vite `:5173`, proxies `/api` → `raft serve :8787`). Release FE: `npm run build` → updates `share/serve/spa/`. See [`src/spa/README.md`](src/spa/README.md).
 
 ### Metrics pipeline (CLI + serve + controller)
 
@@ -315,22 +315,22 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 |------|-------|
 | `src/raft/cli/` | Fire root + auth + gate; `deps.py` patched in tests |
 | `src/raft/config/` | `~/.raft` paths, `settings.yaml` (logging + edge + healing + metrics), logging setup |
-| `src/raft/models/` | Types + parse/registry: `App`, `AppSpec`, `AppDocument` / fields, `AppRegistry`, `AppDependsGraph`, `PortSpec`, `Stack`, `ScalingSpec`, `ScalingStore` (runtime scale-to-zero JSON/markers) |
+| `src/raft/models/` | Types + parse/registry: `App`, `AppSpec`, `AppDocument` / fields, `AppRegistry`, `AppDependsGraph`, `PortSpec`, `Stack`, `ScalingSpec`; also runtime JSON stores colocated here today (`ScalingStore`, `GraphEventStore`) |
 | `src/raft/adapters/` | `shell`; `docker/` (`DockerStack`, `ContainerRuntimeGateway`, edge/images/inspect); nginx upstreams; HTTP probe; host |
 | `src/raft/services/apply/` | `AppApply`, `manifest_preprocess` (`ManifestPreprocessor`), `manifest_env` (apply env + `${VAR}`), `manifest_expr` (directive predicates), `manifest_comments` (full-line `#` skip) |
 | `src/raft/services/auth/` | `GitAuthManager` + ssh/urls helpers |
 | `src/raft/services/sync/` | `SourceSync` |
-| `src/raft/services/render/` | `StackRenderer`, `compose_apps`, `gate_nginx`, `edge` handlers, `scaling_gate` (holding/wake snippets) |
+| `src/raft/services/render/` | `StackRenderer`, `compose_apps`, `gate_nginx`, `edge/` nginx fragments (http/stream/tls), `scaling_gate` (holding/wake snippets). Distinct from `adapters/docker/edge.py` (Compose edge service ops). |
 | `src/raft/services/deploy/` | orchestrator, cutover, wait, locking, readiness |
-| `src/raft/services/ops/` | doctor, status (Started + allocated limits), logs, uninstall, update, certs |
-| `src/raft/services/read/` | Shared read contracts for CLI + serve (`StatusRead`, `MetricsRead`, `DoctorRead`, `ServeSnapshotView`, `ExternalUrlBuilder`) |
+| `src/raft/services/ops/` | doctor, **status collect/format** (Started + allocated limits), logs, uninstall, update, certs |
+| `src/raft/services/read/` | Shared **CLI+serve contracts/presentation** over ops collectors (`StatusRead`, `MetricsRead`, `DoctorRead`, `ServeSnapshotView`, `ExternalUrlBuilder`) — not a second status collector |
 | `src/raft/ui/` | Operator terminal output (`say`) + shared TTY `TerminalProgress` spinner (doctor, update; `current()` / `set_text` for inner frames; entered at CLI entry before stack/logging init) |
 | `src/raft/services/serve/` | `raft serve`: FastAPI factory, `ServePage`, `ServeActions`, SSE log bridge, SPA paths/instructions |
 | `src/raft/controller/` | Always-on Compose `raft-controller` (job orchestrator for heal + metrics; idle-stop + wake via side_ticks when `spec.scaling`; healer skips `scaledToZero`; metrics batch → `resources.jsonl`) |
 | `src/raft/errors/` | Operator errors + CTAs |
 | `src/raft/share/` | Product Compose + nginx templates (synced into data home); `share/serve/spa/` = packaged dashboard assets |
-| `web/` | Dashboard SPA source (React + Vite + TypeScript); build output → `share/serve/spa/`; see **Serve / ops UI** |
-| `tests/` | `unit/` (100% cov; include `services/serve/`, `services/read/`), `integration/`, `meta/`, `e2e/` |
+| `src/spa/` | Dashboard SPA source (React + Vite + TypeScript); build output → `share/serve/spa/`; see **Serve / ops UI** |
+| `tests/` | `unit/` mirrors `src/raft/` packages (100% cov), plus `integration/`, `meta/`, `e2e/`, shared helpers under `tests/shared/`. Minimal Compose fixtures under `tests/fixtures/` are **not** the operator samples in `examples/`. |
 
 Compose mounts `generated/nginx/upstreams` into the router. Upstream files are keyed by app + port name (`<app>-<port>.conf`).
 
