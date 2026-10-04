@@ -87,6 +87,8 @@ class TestLogRotationBootstrap:
         payload = "x" * 200
         active.write_text(payload, encoding="utf-8")
         now = datetime(2026, 10, 3, 15, 0, 0)
+        # Seal day comes from mtime; keep it aligned with the injected clock.
+        os.utime(active, (now.timestamp(), now.timestamp()))
         LogRotationBootstrap(
             max_age_days=30, max_bytes=100, wall_clock=lambda: now
         ).prepare(active)
