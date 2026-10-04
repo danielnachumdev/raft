@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "raft"
 version = "0.1.0"
 description = "Kubernetes-ish behaviour with Docker and nginx — App manifests and a kubectl-style CLI"
+license = { text = "AGPL-3.0-only" }
 requires-python = ">=3.8"
 dependencies = [
     "fire>=0.7.1",
