@@ -39,6 +39,7 @@ jobs:
         run: |
           cd src/spa
           npm ci
+          npm test
           npm run build
       - uses: astral-sh/setup-uv@v10.0.0
         with:
