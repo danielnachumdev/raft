@@ -52,7 +52,7 @@ When SSH and `docker stats` are not enough, run **`raft serve`**. One process on
 Open one service for the full picture: actions, live logs, overview, allocated limits, and runtime charts.
 
 <p align="center">
-  <img src="media/service.png" alt="raft serve service detail: actions, logs, overview, limits, and runtime trends" width="900" />
+  <img src="media/service-detail.png" alt="raft serve service detail: actions, logs, overview, limits, and runtime trends" width="900" />
 </p>
 
 <p align="center"><em>Service detail — actions, follow logs, overview, limits, and historical runtime charts.</em></p>
