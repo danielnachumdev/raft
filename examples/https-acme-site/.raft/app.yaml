@@ -1,0 +1,40 @@
+# Direct HTTPS via Let's Encrypt on the gate (`tls: acme`).
+# Apply: raft apply --file examples/https-acme-site/.raft/app.yaml
+#
+# Before deploy: DNS A/AAAA for publicHost (+ extraHosts) → VPS; TCP 80+443;
+# set acme.email in ~/.raft/settings.yaml (see examples/settings.yaml).
+# Do NOT paste PEMs — live material is certs/<name>/acme.{pem,key}.
+# For Cloudflare Origin PEMs use examples/https-origin-site/ (tls: origin).
+
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: https-acme-site
+
+spec:
+  publicHost: secure.example.com
+  # Optional aliases become SANs on the ACME cert (www is not automatic):
+  # extraHosts:
+  #   - www.secure.example.com
+
+  tls: acme
+
+  source: git
+  repo: git@github.com:example/https-acme-site.git
+  ref: main
+  path: apps/https-acme-site
+
+  build:
+    context: .
+    dockerfile: Dockerfile
+
+  ports:
+    - name: http
+      containerPort: 80
+      # App still speaks HTTP to the router; the gate terminates TLS for clients.
+      expose: http
+
+  readiness:
+    type: http
+    port: http
+    path: /

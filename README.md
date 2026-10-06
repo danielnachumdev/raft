@@ -40,7 +40,9 @@ Needs **Python 3.9+**, Docker, and Compose.
 curl -fsSL https://raw.githubusercontent.com/danielnachumdev/raft/main/install.sh | bash
 ```
 
-Operator data lives under **`~/.raft/`** (override with `RAFT_DATA_HOME`). Copy ideas from [`examples/settings.yaml`](examples/settings.yaml) into `~/.raft/settings.yaml`. For `tls: origin`, put PEMs under `~/.raft/certs/<app>/` before the first deploy.
+Operator data lives under **`~/.raft/`** (override with `RAFT_DATA_HOME`). Copy ideas from [`examples/settings.yaml`](examples/settings.yaml) into `~/.raft/settings.yaml`.
+
+**TLS:** browser → VPS directly → `tls: acme` (Let's Encrypt HTTP-01 on the gate; set DNS A/AAAA, open 80/443, and `acme.email` — no PEMs to paste). Behind Cloudflare Origin (or similar) → `tls: origin` (install `origin.{pem,key}` under `~/.raft/certs/<app>/` before deploy).
 
 ```bash
 raft doctor

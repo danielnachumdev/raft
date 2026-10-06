@@ -8,9 +8,10 @@ These folders are **operator-facing samples**, not the minimal trees under `test
 
 | Path | When |
 |------|------|
-| [`settings.yaml`](settings.yaml) | Operator settings (`logging` + `edge` + optional `healing` / `metrics`) → `~/.raft/settings.yaml` |
+| [`settings.yaml`](settings.yaml) | Operator settings (`logging` + `edge` + optional `healing` / `metrics` / `acme`) → `~/.raft/settings.yaml` |
 | [`http-only-site/`](http-only-site/) | Single Host-routed HTTP app (`tls: off`); richest field comments + optional `${{ if }}` scaling snippet |
-| [`https-origin-site/`](https-origin-site/) | Same shape with `tls: origin` (Origin PEMs on the host) |
+| [`https-acme-site/`](https-acme-site/) | Direct HTTPS via `tls: acme` (Let's Encrypt on the gate; DNS + ports 80/443 + `acme.email`) |
+| [`https-origin-site/`](https-origin-site/) | HTTPS via `tls: origin` (Cloudflare Origin PEMs on the host) |
 | [`http-plus-stream/`](http-plus-stream/) | HTTP + gate `expose: stream` (needs `edge.streams`) |
 | [`host-published-ports/`](host-published-ports/) | HTTP + `expose: host` ports (gate not involved for those) |
 | [`grouped-volume-app/`](grouped-volume-app/) | `spec.group` + `volumes` + `expose: none` (manifest-only sample) |
@@ -21,7 +22,9 @@ Manifest preprocess (`${VAR}`, `${{ if }}`, `--env`) is documented in [`docs/app
 
 1. Copy ideas from [`settings.yaml`](settings.yaml) into `~/.raft/settings.yaml`.
 2. Pick a folder that matches how you expose the app.
-3. For `tls: origin`, install PEMs under `~/.raft/certs/<metadata.name>/` **before** deploy.
+3. TLS prep:
+   - `tls: acme` — DNS A/AAAA, ports 80/443, set `acme.email` (no PEMs to paste).
+   - `tls: origin` — install `origin.{pem,key}` under `~/.raft/certs/<metadata.name>/` **before** deploy.
 4. Apply (deploy is **on** by default — first boot or cutover):
 
 ```bash

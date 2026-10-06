@@ -12,12 +12,32 @@ Typical `spec` concerns (omit what you do not need):
 |------|----------|
 | Source | `local` / `git` / `docker` + `ref` |
 | Exposure | `ports[]` with `expose: http \| stream \| host \| none`; `publicHost` when any port is `http` |
-| Host aliases | `extraHosts` — additional Host names for router (and future ACME SANs); `www.<publicHost>` is **not** automatic — list it here if you want it |
-| TLS | `tls: off` (default), `origin` (Origin PEMs under `~/.raft/certs/<app>/origin.*`), or `acme` (public ACME; live `acme.{pem,key}`; HTTP-01 on the gate) |
+| Host aliases | `extraHosts` — additional Host names for router + ACME SANs; `www.<publicHost>` is **not** automatic — list it here if you want it |
+| TLS | `tls: off` (default), `origin` (operator PEMs), or `acme` (public Let's Encrypt on the gate) — see **TLS modes** below |
 | Runtime | `env` / `envFile`, `volumes`, `group`, `dependsOn`, `resources`, `readiness` |
 | Scaling | `scaling` (`idleSeconds`/`minUpSeconds` required; `wakeTimeoutSeconds` defaults to 60; HTTP + `publicHost` only) |
 
 **Breaking change:** Unknown `spec` / `metadata` keys fail apply (allowlist). Hostnames are `publicHost` + `extraHosts` only — put former `www` aliases in `extraHosts` (e.g. `www.<publicHost>`).
+
+## TLS modes
+
+| Mode | When | Operator action |
+|------|------|-----------------|
+| `tls: off` | HTTP only (or TLS terminated elsewhere) | None |
+| `tls: acme` | Browser hits the VPS on :443 (direct HTTPS) | DNS A/AAAA for `publicHost` + each `extraHosts` entry → VPS; TCP **80** and **443** open; set `acme.email` in settings; apply. **Do not paste PEMs.** |
+| `tls: origin` | Upstream proxy (e.g. Cloudflare) presents the browser cert; gate uses Origin PEMs | Install `~/.raft/certs/<name>/origin.{pem,key}` **before** deploy |
+
+### `tls: acme` checklist
+
+1. Point DNS A/AAAA for `publicHost` (and every `extraHosts` name) at the VPS.
+2. Keep `edge.http` (default 80) and `edge.https` (default 443) published — HTTP-01 is answered by the **gate**, not the App (works while scale-to-zero).
+3. Set `acme.email` in `~/.raft/settings.yaml` (see [`examples/settings.yaml`](../examples/settings.yaml)). Production directory is the default; use the Let's Encrypt **staging** URL for labs.
+4. `raft apply …` (deploy on). Issuance is best-effort after the gate is up — apply does **not** fail if ACME is slow/down; check `raft doctor` / `raft doctor <name>`.
+5. Renewal is the always-on controller (`acme:<name>` jobs). Gate reloads nginx only — never `raft gate recreate` for cert rotation.
+
+**Not shipped:** DNS-01 / wildcards. If port 80 cannot be opened to the public internet, use `tls: origin` behind a proxy, or terminate TLS elsewhere — do not expect raft to issue via DNS-01 in v1.
+
+Sample App: [`examples/https-acme-site/`](../examples/https-acme-site/).
 
 ## Apply-time preprocess
 
