@@ -177,14 +177,14 @@ class AppSpecFields:
         return repo, image
 
     @staticmethod
-    def _parse_www(spec: dict[str, Any], path: Path) -> bool:
-        www_raw = spec.get("www", True)
-        if not isinstance(www_raw, bool):
-            raise OperatorError(
-                f"{path}: spec.www must be a boolean, got {www_raw!r}.\n"
-                f"Fix: use `www: true` or `www: false` (unquoted) in .raft/app.yaml"
-            )
-        return www_raw
+    def _reject_removed_www(spec: dict[str, Any], path: Path) -> None:
+        if "www" not in spec:
+            return
+        raise OperatorError(
+            f"{path}: spec.www is not supported.\n"
+            f"Fix: remove `www:` and list aliases under `extraHosts` "
+            f"(e.g. `extraHosts: [www.example.com]`)"
+        )
 
     @staticmethod
     def _parse_build(spec: dict[str, Any], path: Path) -> tuple[Optional[str], Optional[str]]:

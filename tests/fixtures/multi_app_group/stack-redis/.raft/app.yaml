@@ -8,7 +8,6 @@ spec:
   image: redis
   ref: alpine
   path: apps/stack-redis
-  www: false
   ports:
     - name: redis
       containerPort: 6379

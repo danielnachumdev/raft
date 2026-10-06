@@ -4,7 +4,6 @@ metadata:
   name: tls-origin
 spec:
   publicHost: secure.test
-  www: false
   tls: origin
   source: docker
   image: hashicorp/http-echo

@@ -4,7 +4,6 @@ metadata:
   name: http-plus-stream
 spec:
   publicHost: mail-ui.test
-  www: false
   tls: off
   source: docker
   image: hashicorp/http-echo

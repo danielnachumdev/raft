@@ -4,7 +4,6 @@ metadata:
   name: http-only
 spec:
   publicHost: site.test
-  www: true
   tls: off
   source: docker
   image: hashicorp/http-echo

@@ -16,7 +16,6 @@ metadata:
 
 spec:
   publicHost: mail-ui.example.com
-  www: false
   tls: off
 
   # docker source: image without tag; pin/tag in ref. Optional repo for apply --git refresh.

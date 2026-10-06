@@ -60,7 +60,6 @@ class TestManifestResourceCoverage(RaftTestCase):
                     "tls": False,
                     "build": {"context": "  ", "dockerfile": "  "},
                     "extraHosts": "alias.test",
-                    "www": False,
                 },
             },
             path=PATH,

@@ -12,9 +12,12 @@ Typical `spec` concerns (omit what you do not need):
 |------|----------|
 | Source | `local` / `git` / `docker` + `ref` |
 | Exposure | `ports[]` with `expose: http \| stream \| host \| none`; `publicHost` when any port is `http` |
+| Host aliases | `extraHosts` — additional Host names for router (and future ACME SANs); `www.<publicHost>` is **not** automatic — list it here if you want it |
 | TLS | `tls: off` (default) or `origin` (needs PEMs under `~/.raft/certs/<app>/`) |
 | Runtime | `env` / `envFile`, `volumes`, `group`, `dependsOn`, `resources`, `readiness` |
 | Scaling | `scaling` (`idleSeconds`/`minUpSeconds` required; `wakeTimeoutSeconds` defaults to 60; HTTP + `publicHost` only) |
+
+**Breaking change:** `spec.www` was removed. Routing hostnames are `publicHost` + `extraHosts` only. If you previously relied on the default `www: true`, add `www.<your-publicHost>` to `extraHosts`.
 
 ## Apply-time preprocess
 

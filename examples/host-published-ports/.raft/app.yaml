@@ -17,7 +17,6 @@ metadata:
 
 spec:
   publicHost: mail.example.com
-  www: false
   tls: origin
 
   source: docker

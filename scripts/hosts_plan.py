@@ -21,6 +21,10 @@ _LEGACY_MARKER_PAIRS = (("# >>> raft hosts-manager BEGIN", "# <<< raft hosts-man
 _PUBLIC_HOST_RE = re.compile(
     r'^(?:publicHost|public_host)\s*:\s*["\']?([^"\'#\s]+)["\']?\s*(?:#.*)?$'
 )
+_EXTRA_HOSTS_KEY_RE = re.compile(
+    r'^(?:extraHosts|extra_hosts)\s*:\s*(.*)$'
+)
+_LIST_ITEM_RE = re.compile(r'^-\s+["\']?([^"\'#]+)["\']?\s*$')
 
 
 def data_home() -> Path:
@@ -33,18 +37,64 @@ def data_home() -> Path:
 def public_hosts_from_registry(registry_dir: Path) -> tuple[str, ...]:
     names: list[str] = []
     for path in sorted(registry_dir.glob("*.yaml")):
-        host = ""
-        for line in path.read_text(encoding="utf-8").splitlines():
-            match = _PUBLIC_HOST_RE.match(line.strip())
-            if match:
-                host = match.group(1).strip()
-                break
-        if not host:
+        names.extend(_hostnames_from_app_yaml(path))
+    return tuple(_unique(names))
+
+
+def _hostnames_from_app_yaml(path: Path) -> list[str]:
+    found: list[str] = []
+    pending_extra = False
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.split("#", 1)[0].rstrip()
+        if not line.strip():
             continue
-        names.append(host)
-        if not host.startswith("www."):
-            names.append(f"www.{host}")
-    return tuple(names)
+        pending_extra = _consume_line(line, found, pending_extra)
+    return found
+
+
+def _consume_line(line: str, found: list[str], pending_extra: bool) -> bool:
+    stripped = line.strip()
+    indent = len(line) - len(line.lstrip())
+    if pending_extra:
+        return _consume_extra_list_item(stripped, indent, found)
+    match = _PUBLIC_HOST_RE.match(stripped)
+    if match:
+        found.append(match.group(1).strip())
+        return False
+    return _maybe_start_extra_hosts(stripped, found)
+
+
+def _consume_extra_list_item(stripped: str, indent: int, found: list[str]) -> bool:
+    if indent == 0:
+        return False
+    item = _LIST_ITEM_RE.match(stripped)
+    if item:
+        host = item.group(1).strip()
+        if host:
+            found.append(host)
+        return True
+    return False
+
+
+def _maybe_start_extra_hosts(stripped: str, found: list[str]) -> bool:
+    match = _EXTRA_HOSTS_KEY_RE.match(stripped)
+    if not match:
+        return False
+    rest = match.group(1).strip().strip("\"'")
+    if rest:
+        found.append(rest)
+        return False
+    return True
+
+
+def _unique(names: list[str]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for name in names:
+        if name not in seen:
+            seen.add(name)
+            out.append(name)
+    return out
 
 
 @dataclass(frozen=True)
@@ -132,5 +182,3 @@ def parse_cli_entry(raw: str) -> HostBinding:
         return HostBinding(ip=ip, names=tuple(names))
     except ValueError as exc:
         raise argparse.ArgumentTypeError(str(exc)) from exc
-
-

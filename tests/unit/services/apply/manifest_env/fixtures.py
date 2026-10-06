@@ -108,7 +108,6 @@ spec:
   source: local
   path: apps/${RAFT_APP_NAME}
   ref: main
-  www: true
   ports:
     - name: http
       containerPort: 80

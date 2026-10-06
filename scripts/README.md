@@ -16,7 +16,7 @@ Browsers don’t. That’s what `hosts.py` is for.
 
 ## What `hosts.py` does
 
-CLI entry is `scripts/hosts.py` (split helpers: `hosts_plan.py`, `hosts_session.py`, `hosts_windows.py`). Reads applied Apps under `~/.raft/state/apps/` (or `RAFT_DATA_HOME`), collects each `publicHost` (plus a `www.` alias when missing), and temporarily maps them to `127.0.0.1` in the local hosts file(s). On exit — Ctrl+C, signal, or command finish — it **always** restores the previous contents.
+CLI entry is `scripts/hosts.py` (split helpers: `hosts_plan.py`, `hosts_session.py`, `hosts_windows.py`). Reads applied Apps under `~/.raft/state/apps/` (or `RAFT_DATA_HOME`), collects each `publicHost` and any `extraHosts`, and temporarily maps them to `127.0.0.1` in the local hosts file(s). On exit — Ctrl+C, signal, or command finish — it **always** restores the previous contents.
 
 Targets:
 

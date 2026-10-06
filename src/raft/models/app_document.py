@@ -175,12 +175,12 @@ class AppDocument:
         group: Optional[str],
     ) -> dict[str, Any]:
         fields = AppSpecFields
+        fields._reject_removed_www(spec, path)
         context, dockerfile = fields._parse_build(spec, path)
         return {
             "ports": ports,
             "tls": fields._parse_tls(spec, path, public_host=public_host),
             "readiness": parse_readiness(spec, ports, path),
-            "www": fields._parse_www(spec, path),
             "extra_hosts": fields._extra_hosts(spec, path),
             "build_context": context,
             "dockerfile": dockerfile,

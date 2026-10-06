@@ -34,7 +34,6 @@ class AppSpec:
     ports: tuple[PortSpec, ...]
     tls: str = "off"
     readiness: ReadinessSpec = ReadinessSpec()
-    www: bool = True
     extra_hosts: tuple[str, ...] = ()
     build_context: Optional[str] = None
     dockerfile: Optional[str] = None
@@ -55,9 +54,8 @@ class AppSpec:
         return tuple(dep.name for dep in self.depends_on)
 
     def server_names(self, public_host: str) -> tuple[str, ...]:
+        """Hostnames for nginx routing: ``publicHost`` plus ``extraHosts`` only."""
         names: list[str] = [public_host]
-        if self.www:
-            names.append(f"www.{public_host}")
         names.extend(h.strip() for h in self.extra_hosts if h.strip())
         return self._unique_names(names)
 

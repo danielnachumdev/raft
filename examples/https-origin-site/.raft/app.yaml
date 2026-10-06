@@ -14,7 +14,9 @@ metadata:
 
 spec:
   publicHost: secure.example.com
-  www: true
+  # Optional aliases (www is not automatic — list it when you need it):
+  # extraHosts:
+  #   - www.secure.example.com
 
   # origin → gate includes TLS snippets from certs/<name>/ for this host.
   tls: origin

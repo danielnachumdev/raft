@@ -114,7 +114,6 @@ class TestRenderEdgeCoverage(RaftTestCase):
     def test_server_names_blank_extra(self) -> None:
         spec = AppSpec(
             ports=(PortSpec(name="http", container_port=80, expose="http"),),
-            www=False,
             extra_hosts=("  ",),
         )
         assert spec.server_names("a.test") == ("a.test",)

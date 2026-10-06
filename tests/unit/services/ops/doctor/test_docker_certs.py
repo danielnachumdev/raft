@@ -52,7 +52,7 @@ class TestDoctorDockerCerts(DoctorTestCase):
             "apiVersion: raft/v1\nkind: App\nmetadata:\n  name: hub\nspec:\n"
             "  publicHost: hub.test\n  source: docker\n  image: ghcr.io/org/hub\n"
             "  ref: main\n  repo: git@github.com:org/hub.git\n  path: apps/hub\n"
-            "  www: false\n  ports:\n"
+            "  ports:\n"
             "    - name: http\n      containerPort: 80\n      expose: http\n",
             encoding="utf-8",
         )

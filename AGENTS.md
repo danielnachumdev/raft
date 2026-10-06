@@ -119,6 +119,9 @@ Canonical path in a service repo: **`.raft/app.yaml`** only. Shape: `apiVersion:
 ```yaml
 spec:
   publicHost: app.example.com   # required when any port uses expose=http
+  # extraHosts:                   # optional Host aliases (routed + future ACME SANs)
+  #   - www.app.example.com       # www is not automatic — list it when you need it
+  #   - api.app.example.com
   tls: off                      # off | origin
   group: demo               # optional; at most one group
   # dependsOn: optional. Strings or { name, scaleWithParent? }.

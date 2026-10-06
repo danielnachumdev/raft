@@ -16,7 +16,6 @@ spec:
   image: redis
   ref: alpine
   path: apps/grouped-volume-app
-  www: false
   envFile: /home/raft/.raft/demo.env
   volumes:
     - name: data

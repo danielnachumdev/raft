@@ -69,7 +69,7 @@ class TestStatusRead(RaftTestCase):
         from ...base import make_app, write_applied_app
 
         write_applied_app(
-            self.tmp_path, "site", public_host="site.test", www=False, tls="origin"
+            self.tmp_path, "site", public_host="site.test", tls="origin"
         )
         snap = StatusSnapshot(
             host=StatusFixtures.empty_host_status(),
