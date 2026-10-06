@@ -6,6 +6,8 @@ import {
   type MetricsAvailable,
   type MetricsSeries,
 } from "../shared/api";
+import { DownloadMenu } from "../export/DownloadMenu";
+import { metricsDownloadUrl } from "../export/urls";
 import { peekMetrics, putMetrics } from "../shared/dashboardCache";
 import { TrendsBody } from "./TrendsBody";
 import { TrendsFilters } from "./TrendsFilters";
@@ -142,6 +144,17 @@ export function TrendsPanel() {
               ? "Updating…"
               : "Historical · recorded metrics"}
         </p>
+        <DownloadMenu
+          kind="metrics"
+          hrefFor={(formatId) =>
+            metricsDownloadUrl({
+              formatId,
+              window: windowSec,
+              services: showingAll ? undefined : activeIds,
+            })
+          }
+          disabled={showColdLoad || (!showingAll && activeIds.length === 0)}
+        />
       </div>
 
       <div className="trends-layout">

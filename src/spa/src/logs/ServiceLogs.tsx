@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { DownloadMenu } from "../export/DownloadMenu";
+import { logsDownloadUrl } from "../export/urls";
 import {
   DEFAULT_LOG_TAIL,
   fetchServiceLogs,
@@ -186,6 +188,11 @@ export function ServiceLogs(props: { service: string }) {
       >
         {expanded ? "Collapse" : "Expand"}
       </button>
+      <DownloadMenu
+        kind="logs"
+        hrefFor={(formatId) => logsDownloadUrl(props.service, formatId, tail)}
+        disabled={Boolean(error)}
+      />
     </div>
   );
 
