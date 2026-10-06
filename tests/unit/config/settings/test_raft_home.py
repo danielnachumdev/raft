@@ -189,7 +189,7 @@ edge:
             lambda _name: [
                 "fire>=0.7.1",
                 'pytest>=7.0; extra == "dev"',
-                'PyYAML>=6.0; python_version >= "3.8"',
+                'PyYAML>=6.0; python_version >= "3.9"',
             ],
         )
         paths._write_controller_pyproject_from_installed(dest)

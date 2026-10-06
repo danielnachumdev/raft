@@ -7,13 +7,12 @@ name = "raft"
 version = "0.1.0"
 description = "Kubernetes-ish behaviour with Docker and nginx — App manifests and a kubectl-style CLI"
 license = { text = "AGPL-3.0-only" }
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
     "fire>=0.7.1",
     "PyYAML>=6.0",
-    # FastAPI 0.125+ dropped Python 3.8; pin ≤0.124.4 for raft's 3.8–3.13 range.
-    "fastapi>=0.115.0,<=0.124.4",
-    "uvicorn>=0.30.0,<0.35",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
 ]
 
 [project.optional-dependencies]
@@ -77,7 +76,7 @@ exclude_also = [
 
 [tool.black]
 line-length = 100
-target-version = ["py38"]
+target-version = ["py39"]
 
 [tool.isort]
 profile = "black"
