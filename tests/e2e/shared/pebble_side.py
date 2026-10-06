@@ -168,7 +168,12 @@ def _pebble_svc() -> dict:
             f"{CHALLTEST_SVC}:8053",
             "-strict=false",
         ],
-        "environment": {"PEBBLE_VA_NOSLEEP": "1", "PEBBLE_WFE_NONCEREJECT": "0"},
+        "environment": {
+            "PEBBLE_VA_NOSLEEP": "1",
+            "PEBBLE_WFE_NONCEREJECT": "0",
+            # Avoid reusing valid authzs so renew always runs a fresh HTTP-01.
+            "PEBBLE_AUTHZREUSE": "0",
+        },
         "volumes": ["./pebble-e2e.json:/test/config/pebble-e2e.json:ro"],
         "ports": ["127.0.0.1::14000", "127.0.0.1::15000"],
         "depends_on": [CHALLTEST_SVC],
