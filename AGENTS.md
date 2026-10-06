@@ -83,7 +83,7 @@ Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 
 ## Operator loop
 
-1. `install.sh` (or `uv sync` in a clone; Python **3.8+**).
+1. `install.sh` (or `uv sync` in a clone; Python **3.9+**).
 2. Private git apps: `raft auth setup <name> --repo git@host:owner/repo.git` (works before apply) → paste pubkey as read-only deploy key (`~/.ssh/raft/`). Then `raft auth test <name> --repo …` and `raft apply --git …`.
 3. **Recommended ship path:** `raft apply --file …` or `raft apply --git …` with deploy **on** (default). Writes `~/.raft/state/apps/<name>.yaml`, then `ensure_app_deployed`: cutover if the Compose service is already running, start that service if the gate is up, else full stack `up`. Pass `--ref SHA` (and optional `--env-file` / `--env`) so CI first-boot and later cutovers share one command. Do **not** default to `--no-deploy` + `sync` + `redeploy` — `redeploy` requires the app service to already be running and fails on a new App with `service '…' is not running — bring the stack up first`.
 4. If any app uses `tls: origin`, install PEMs under `~/.raft/certs/<name>/` **before** first deploy (apply-with-deploy or `raft up`).
@@ -351,7 +351,7 @@ Compose mounts `generated/nginx/upstreams` into the router. Upstream files are k
 
 | Repo | Role |
 |------|------|
-| **raft** (this) | Product + **Test** CI (Py 3.8–3.13). No Terraform here. |
+| **raft** (this) | Product + **Test** CI (Py 3.9–3.13). No Terraform here. |
 | **Private ops** | Host/VM + SSH job that pulls this repo onto the VPS |
 | **Service repos** | Own `.raft/app.yaml` + their CI. **CI should** `raft apply --file .raft/app.yaml --ref $SHA --env …` (deploy on). Avoid `--no-deploy` + `raft redeploy` as the default pipeline — that breaks on a new App. |
 

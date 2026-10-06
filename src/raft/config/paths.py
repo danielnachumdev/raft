@@ -221,7 +221,7 @@ def _controller_pyproject_text(deps: list[str]) -> str:
         "[project]",
         'name = "raft-controller-deps"',
         'version = "0"',
-        'requires-python = ">=3.8"',
+        'requires-python = ">=3.9"',
         "dependencies = [",
     ]
     for dep in deps:

@@ -1,4 +1,4 @@
-# Test matrix: Python 3.8+ (runtime config is YAML via PyYAML; no tomllib).
+# Test matrix: Python 3.9+ (runtime config is YAML via PyYAML; no tomllib).
 # SPA (src/spa) is tested/built once — not per Python version. Packaged assets
 # under src/raft/share/serve/spa/ are committed; unit/integration/e2e use those.
 name: CI
@@ -41,7 +41,6 @@ jobs:
       fail-fast: false
       matrix:
         python-version:
-          - "3.8"
           - "3.9"
           - "3.10"
           - "3.11"
@@ -79,7 +78,6 @@ jobs:
       fail-fast: false
       matrix:
         python-version:
-          - "3.8"
           - "3.9"
           - "3.10"
           - "3.11"
