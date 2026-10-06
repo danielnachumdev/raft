@@ -13,6 +13,7 @@ dependencies = [
     "PyYAML>=6.0",
     "fastapi>=0.115.0",
     "uvicorn>=0.30.0",
+    "acme>=2.0",
 ]
 
 [project.optional-dependencies]

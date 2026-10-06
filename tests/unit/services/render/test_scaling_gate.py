@@ -110,7 +110,25 @@ class TestScalingRender(RaftTestCase):
         assert "acme_challenge.inc" in text
         assert text.index("acme_challenge.inc") < text.index("location /")
 
-    def test_tls_acme_scaling_uses_acme_certs_when_present(self) -> None:
+    def test_tls_acme_scaling_redirect_when_certs_present(self) -> None:
+        write_applied_app(
+            self.tmp_path,
+            "web",
+            public_host="web.test",
+            tls="acme",
+            extra={"scaling": _SCALING},
+        )
+        d = self.tmp_path / "certs" / "web"
+        d.mkdir(parents=True)
+        (d / "acme.pem").write_text("pem\n", encoding="utf-8")
+        (d / "acme.key").write_text("key\n", encoding="utf-8")
+        gen = self.render_applied(edge=_EDGE)
+        body = (gen / "nginx/gate-tls/web.conf").read_text(encoding="utf-8")
+        assert "acme.pem" in body and "origin.pem" not in body
+        http = (gen / "nginx/gate-http/listeners.conf").read_text(encoding="utf-8")
+        assert "acme-redirect:web" in http and "scaling:web" not in http
+
+    def test_tls_acme_scaling_skips_tls_without_pems(self) -> None:
         write_applied_app(
             self.tmp_path,
             "web",
@@ -120,12 +138,3 @@ class TestScalingRender(RaftTestCase):
         )
         gen = self.render_applied(edge=_EDGE)
         assert not (gen / "nginx/gate-tls/web.conf").is_file()
-        d = self.tmp_path / "certs" / "web"
-        d.mkdir(parents=True)
-        (d / "acme.pem").write_text("pem\n", encoding="utf-8")
-        (d / "acme.key").write_text("key\n", encoding="utf-8")
-        gen = self.render_applied(edge=_EDGE)
-        body = (gen / "nginx/gate-tls/web.conf").read_text(encoding="utf-8")
-        assert "acme.pem" in body
-        assert "origin.pem" not in body
-        assert body.index("acme_challenge.inc") < body.index("location /")

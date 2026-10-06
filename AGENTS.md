@@ -57,7 +57,7 @@ Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**), then `OperatorError` w
 - `expose: host` → app publishes the host port itself (gate not involved).
 - `expose: none` → Compose `expose` only (internal); no host publish; no router; no `publicHost` required.
 - Optional multi-app stacks: `spec.group`, `spec.dependsOn`, `spec.envFile` / `spec.env`, `spec.volumes`.
-- `spec.tls`: **`off` (default)**, **`origin`**, or **`acme`**. HTTP-only apps need no PEMs. `tls: origin` requires `~/.raft/certs/<app>/origin.{pem,key}` and `edge.https`. `tls: acme` requires `publicHost`, ≥1 `expose: http`, `edge.http` + `edge.https`, and (later) live `~/.raft/certs/<app>/acme.{pem,key}` — HTTP-01 is answered by the gate, not the App.
+- `spec.tls`: **`off` (default)**, **`origin`**, or **`acme`**. HTTP-only apps need no PEMs. `tls: origin` requires `~/.raft/certs/<app>/origin.{pem,key}` and `edge.https`. `tls: acme` requires `publicHost`, ≥1 `expose: http`, `edge.http` + `edge.https`, and `acme.email` in settings; live material is `~/.raft/certs/<app>/acme.{pem,key}` (never `origin.*`). Apply/`up` best-effort HTTP-01 after the gate is up (failures persist `lastError` under `state/acme/` and do **not** fail deploy). When live PEMs exist: gate SNI + HTTP→HTTPS redirect (challenge path carved out).
 - Gate published ports come from `~/.raft/settings.yaml` `edge:` (`http`, `https`, `streams[]`), rendered into `generated/compose.edge.yaml`.
 
 ### Data home vs product templates
@@ -334,9 +334,10 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | `src/raft/models/state/` | Runtime JSON stores (`ScalingStore`, `GraphEventStore` + kinds/records) under `~/.raft/state/` |
 | `src/raft/adapters/` | `shell`; `docker/` (`DockerStack`, `ContainerRuntimeGateway`, edge/images/inspect); nginx upstreams; HTTP probe; host |
 | `src/raft/services/apply/` | `AppApply`, `manifest_preprocess` (`ManifestPreprocessor`), `manifest_env` (apply env + `${VAR}`), `manifest_expr` (directive predicates), `manifest_comments` (full-line `#` skip) |
+| `src/raft/services/acme/` | `AcmePaths`, `AcmeEnsure` (HTTP-01 via official PyPI `acme`), `AcmeGateInstall` (render + nginx reload), `AcmeHttpRedirect` |
 | `src/raft/services/auth/` | `GitAuthManager` + ssh/urls helpers |
 | `src/raft/services/sync/` | `SourceSync` |
-| `src/raft/services/render/` | `StackRenderer`, `compose_apps`, `gate_nginx`, `edge/` nginx fragments (http/stream/tls), `scaling_gate` (holding/wake snippets). Distinct from `adapters/docker/edge.py` (Compose edge service ops). |
+| `src/raft/services/render/` | `StackRenderer`, `FragmentCollector`, `compose_apps`, `gate_nginx`, `edge/` nginx fragments (http/stream/tls), `scaling_gate` (holding/wake snippets). Distinct from `adapters/docker/edge.py` (Compose edge service ops). |
 | `src/raft/services/deploy/` | orchestrator, cutover, wait, locking, readiness |
 | `src/raft/services/ops/` | doctor, **status collect/format** (Started + allocated limits), logs, uninstall, update, certs |
 | `src/raft/services/read/` | Shared **CLI+serve contracts/presentation** over ops collectors (`StatusRead`, `MetricsRead`, `DoctorRead`, `ServeSnapshotView`, `ExternalUrlBuilder`) — not a second status collector |

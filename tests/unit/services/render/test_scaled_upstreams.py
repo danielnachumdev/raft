@@ -8,6 +8,7 @@ from raft.models.state.scaling_store import ScalingStore
 from raft.models.stack import load_stack
 from raft.services.render import StackRenderer
 from raft.services.render.edge.fragments import EdgeFragments
+from raft.services.render.fragment_collector import FragmentCollector
 from tests.shared.files import FileText
 
 from ...base import RaftTestCase, make_app, write_applied_app
@@ -43,7 +44,8 @@ class TestScaledUpstreamRender(RaftTestCase):
         frag = EdgeFragments(upstreams={"other.conf": "x"})
         stream = PortSpec(name="smtp", container_port=25, expose="stream")
         http = PortSpec(name="http", container_port=80, expose="http")
-        StackRenderer._park_http_upstreams(frag, app, stream)
+        FragmentCollector._park_http_upstreams(frag, app, stream)
         assert frag.upstreams == {"other.conf": "x"}
-        StackRenderer._park_http_upstreams(frag, app, http)
+        FragmentCollector._park_http_upstreams(frag, app, http)
         assert frag.upstreams == {"other.conf": "x"}
+        FragmentCollector._park_http_upstreams(EdgeFragments(), app, http)

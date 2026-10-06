@@ -144,6 +144,10 @@ class TestRenderTlsAcme:
         body = FileText.read(gen.path("nginx", "gate-tls", "tls-acme.conf"))
         assert "acme.pem" in body
         assert "origin.pem" not in body
+        listeners = FileText.read(gen.path("nginx", "gate-http", "listeners.conf"))
+        assert "acme-redirect:tls-acme" in listeners
+        assert "return 301 https://$host$request_uri;" in listeners
+        assert listeners.index("acme_challenge.inc") < listeners.index("return 301")
 
     def test_int_tls_acme_requires_edge_http(self, isolated_raft_env: Path) -> None:
         with pytest.raises(Exception, match="edge.http"):

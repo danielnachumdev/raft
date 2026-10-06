@@ -95,6 +95,29 @@ class TestDockerNginxReload(DockerTestCase):
         with pytest.raises(RuntimeError, match="could not load Origin TLS certificates"):
             self.docker.reload_gate_nginx()
 
+    def test_reload_gate_nginx_captures_acme_cert_failure(self) -> None:
+        self.shell.compose.return_value = self.ok(
+            returncode=1,
+            stderr='cannot load certificate "/etc/nginx/certs/web/acme.pem"',
+        )
+        with pytest.raises(RuntimeError, match="ACME TLS certificates"):
+            self.docker.reload_gate_nginx()
+
+    def test_reload_gate_nginx_lists_missing_acme_certs(self) -> None:
+        from raft.services.ops.certs import MissingAcmeCerts
+
+        self.shell.compose.return_value = self.ok(
+            returncode=1,
+            stderr='cannot load certificate "/etc/nginx/certs/web/acme.pem"',
+        )
+        missing = [MissingAcmeCerts("web", ("acme.pem",))]
+        with patch(
+            "raft.adapters.docker.edge.missing_acme_certs",
+            return_value=missing,
+        ):
+            with pytest.raises(RuntimeError, match="ACME TLS certificates missing"):
+                self.docker.reload_gate_nginx()
+
     def test_reload_gate_nginx_lists_missing_certs(self) -> None:
         self.shell.compose.return_value = self.ok(
             returncode=1,

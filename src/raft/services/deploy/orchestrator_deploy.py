@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Optional, Sequence
 
 from ...models.state.graph_event_store import GraphEventStore
 from ...ui import say
+from ..acme.ensure import AcmeEnsure
+from ..acme.install import AcmeGateInstall
 from ..ops.certs import require_origin_certs
 from .cutover import DEPLOY_CUTOVER, CutoverSession
 from .locking import app_and_stack_locks
@@ -39,6 +41,7 @@ class OrchestratorDeploy:
             logger.info("redeploy cutover for %s (%s)", app.name, app.public_host)
             self._run_cutover(session, app.name)
             self._record_deploy_event(app)
+            self._ensure_acme_best_effort([app.name])
             say(f"redeployed {app.name}", style="ok")
 
     def _run_cutover(self, session: CutoverSession, app_name: str) -> None:
@@ -101,6 +104,7 @@ class OrchestratorDeploy:
         self.docker.nginx_test_and_reload()
         self._wait_app_ready(app)
         self._record_deploy_event(app)
+        self._ensure_acme_best_effort([app.name])
         say(f"deployed {app.name}", style="ok")
 
     def _start_stack_for_app(
@@ -142,6 +146,17 @@ class OrchestratorDeploy:
         logger.info("waiting for readiness checks")
         for app in plan.apps_to_start():
             self._wait_app_ready(app)
+        self._ensure_acme_best_effort()
+
+    def _ensure_acme_best_effort(self, app_names: Optional[Sequence[str]] = None) -> None:
+        """Issue/renew ``tls: acme`` certs after gate is up; never fail deploy."""
+        try:
+            AcmeEnsure(
+                self.stack,
+                installer=AcmeGateInstall(self.stack, self.docker),
+            ).run(app_names)
+        except Exception as exc:  # noqa: BLE001 — apply/up must still succeed
+            logger.warning("ACME ensure aborted (best-effort): %s", exc)
 
     def _compose_up_with_scale_plan(self, plan: StackUpScalePlan) -> None:
         if not plan.has_deferred():

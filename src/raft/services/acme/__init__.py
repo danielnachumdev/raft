@@ -1,1 +1,1 @@
-"""ACME TLS paths and (later) issuance helpers — no CA client in this package yet."""
+"""ACME TLS paths, issue/install, and HTTP→HTTPS redirect helpers."""

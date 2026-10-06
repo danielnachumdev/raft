@@ -220,3 +220,10 @@ class TestOrchRedeploy(OrchestratorTestCase):
         ]
         with pytest.raises(RuntimeError, match="already running"):
             self.orch.ensure_app_deployed("app")
+
+    def test_ensure_acme_best_effort_swallows_errors(self) -> None:
+        with patch(
+            "raft.services.deploy.orchestrator_deploy.AcmeEnsure",
+            side_effect=RuntimeError("acme boom"),
+        ):
+            self.orch._ensure_acme_best_effort(["app"])

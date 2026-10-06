@@ -59,3 +59,9 @@ class TestOriginCerts(RaftTestCase):
         assert looks_like_missing_origin_cert(nginx)
         assert looks_like_missing_origin_cert("BIO_new_file() failed while opening origin.pem")
         assert not looks_like_missing_origin_cert("connection refused")
+        acme = 'cannot load certificate "/etc/nginx/certs/web/acme.pem"'
+        assert not looks_like_missing_origin_cert(acme)
+        from raft.errors.certs_msgs import looks_like_missing_acme_cert
+
+        assert looks_like_missing_acme_cert(acme)
+        assert looks_like_missing_acme_cert("BIO_new_file() failed while opening acme.key")

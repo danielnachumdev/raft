@@ -6,9 +6,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from raft.adapters.nginx import NginxUpstreamText
 from raft.errors.cta import OperatorError
-from raft.services.acme.paths import AcmePaths
 
 from ...config.paths import GENERATED_DIRNAME
 from ...config.settings import load_config
@@ -16,13 +14,11 @@ from ...config.settings_types import EdgeConfig
 from ...models.app import App
 from ...models.app_document import AppDocument
 from ...models.manifest import AppSpec
-from ...models.ports import PortSpec
 from ...models.registry import AppRegistry
-from ...models.state.scaling_store import ScalingStore
 from ...models.stack import Stack
 from .compose_apps import ComposeAppsYaml
-from .edge import EDGE_HANDLERS, EdgeFragments, TlsEdge
-from .scaling_gate import ScalingGate
+from .edge import EdgeFragments
+from .fragment_collector import FragmentCollector
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +71,9 @@ class StackRenderer:
     def render(self, specs: Optional[dict[str, AppSpec]] = None) -> None:
         resolved = specs if specs is not None else self.load_all_specs()
         self._validate_all(resolved)
-        fragments = self._collect_fragments(resolved)
+        fragments = FragmentCollector(root=self.stack.root, edge=self.edge).collect(
+            list(self.stack.apps), resolved
+        )
         self._ensure_dirs()
         self._write_all(resolved, fragments)
         logger.info(
@@ -94,70 +92,6 @@ class StackRenderer:
                     f"~/.raft/state/apps/{app.name}.yaml; then raft render"
                 )
             self._validate_app_spec(app, resolved[app.name])
-
-    def _collect_fragments(self, resolved: dict[str, AppSpec]) -> EdgeFragments:
-        fragments = EdgeFragments()
-        tls = TlsEdge()
-        scaling = ScalingGate()
-        store = ScalingStore(self.stack.root)
-        for app in self.stack.apps:
-            app_spec = resolved[app.name]
-            absent = store.is_scaled_to_zero(app.name)
-            fragments.merge(self._tls_fragment(tls, scaling, app, app_spec))
-            for port in app_spec.ports:
-                handler = EDGE_HANDLERS[port.expose]
-                frag = handler.contribute(app, app_spec, port, edge=self.edge)
-                if absent:
-                    self._park_http_upstreams(frag, app, port)
-                fragments.merge(frag)
-            fragments.merge(scaling.contribute_http(app, app_spec, edge=self.edge))
-        return fragments
-
-    @staticmethod
-    def _park_http_upstreams(frag: EdgeFragments, app: App, port: PortSpec) -> None:
-        """Rewrite HTTP upstream bodies to loopback when the app is at zero."""
-        if port.expose != "http" or not frag.upstreams:
-            return
-        filename = f"{app.name}-{port.name}.conf"
-        if filename not in frag.upstreams:
-            return
-        frag.upstreams[filename] = NginxUpstreamText.block(
-            f"{app.name}_{port.name}",
-            NginxUpstreamText.ABSENT_HOSTNAME,
-            port.container_port,
-        )
-
-    def _tls_fragment(
-        self,
-        tls: TlsEdge,
-        scaling: ScalingGate,
-        app: App,
-        app_spec: AppSpec,
-    ) -> EdgeFragments:
-        if app_spec.tls in {"origin", "acme"} and app_spec.scaling is not None:
-            return self._scaling_tls_fragment(tls, scaling, app, app_spec)
-        return tls.contribute_app(
-            app, app_spec, edge=self.edge, data_home=self.stack.root
-        )
-
-    def _scaling_tls_fragment(
-        self,
-        tls: TlsEdge,
-        scaling: ScalingGate,
-        app: App,
-        app_spec: AppSpec,
-    ) -> EdgeFragments:
-        if app_spec.tls == "acme":
-            tls.require_acme_edge(app, self.edge)
-            if not AcmePaths(self.stack.root).live_material_present(app.name):
-                return EdgeFragments()
-        elif self.edge.https is None:
-            raise OperatorError(
-                f"{app.name}: tls=origin requires edge.https in settings.yaml.\n"
-                f"Fix: set edge.https (e.g. 443) in ~/.raft/settings.yaml, then: raft render"
-            )
-        body = scaling.contribute_tls(app, app_spec)
-        return EdgeFragments(gate_tls={f"{app.name}.conf": body})
 
     def _ensure_dirs(self) -> None:
         self.generated_root.mkdir(parents=True, exist_ok=True)
