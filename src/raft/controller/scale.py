@@ -141,10 +141,11 @@ class Scaler:
         elapsed = when - state.wake_requested_at
         if elapsed >= scaling.wake_timeout_seconds and not state.wake_timed_out:
             logger.warning(
-                "scale wake timeout app=%s id=%s after %.0fs",
+                "scale wake timeout app=%s id=%s after %.0fs %s",
                 name,
                 state.wake_id or "-",
                 scaling.wake_timeout_seconds,
+                self.store.wake_progress_log(name),
             )
             self.store.mark_wake_timeout(name)
             return

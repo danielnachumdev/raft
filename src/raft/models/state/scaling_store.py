@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
+from .wake_progress import WakeProgress
+
 SCALING_STATE_DIR = Path("state") / "scaling"
 SCALING_MARKERS_DIR = SCALING_STATE_DIR / "markers"
 
@@ -26,6 +28,7 @@ class AppScalingState:
     wake_requested_at: Optional[float] = None
     wake_timed_out: bool = False
     wake_id: Optional[str] = None
+    wake_progress: Optional[WakeProgress] = None
 
     @classmethod
     def from_mapping(cls, data: dict[str, Any]) -> "AppScalingState":
@@ -36,6 +39,7 @@ class AppScalingState:
             wake_requested_at=cls._opt_float(data.get("wakeRequestedAt")),
             wake_timed_out=bool(data.get("wakeTimedOut", False)),
             wake_id=cls._opt_id(data.get("wakeId")),
+            wake_progress=WakeProgress.from_mapping(data.get("lastWakeProgress")),
         )
 
     def to_mapping(self) -> dict[str, Any]:
@@ -46,6 +50,9 @@ class AppScalingState:
             "wakeRequestedAt": self.wake_requested_at,
             "wakeTimedOut": self.wake_timed_out,
             "wakeId": self.wake_id,
+            "lastWakeProgress": (
+                None if self.wake_progress is None else self.wake_progress.to_mapping()
+            ),
         }
 
     @staticmethod
@@ -104,6 +111,7 @@ class ScalingStore:
             state.wake_requested_at = None
             state.wake_timed_out = False
             state.wake_id = None
+            state.wake_progress = None
             self._save_unlocked(name, state)
 
     def clear_scaled_to_zero(self, name: str) -> None:
@@ -116,6 +124,7 @@ class ScalingStore:
             state.wake_requested_at = None
             state.wake_timed_out = False
             state.wake_id = None
+            state.wake_progress = None
             self._save_unlocked(name, state)
 
     def mark_awake(
@@ -132,6 +141,7 @@ class ScalingStore:
             state.wake_requested_at = None
             state.wake_timed_out = False
             state.wake_id = None
+            state.wake_progress = None
             state.last_activity_at = when
             state.min_up_until = when + float(min_up_seconds)
             self._save_unlocked(name, state)
@@ -147,8 +157,10 @@ class ScalingStore:
             if state.wake_requested_at is None or state.wake_timed_out:
                 state.wake_requested_at = when
                 state.wake_id = self._new_wake_id()
+                state.wake_progress = None
             elif not state.wake_id:
                 state.wake_id = self._new_wake_id()
+                state.wake_progress = None
             state.wake_timed_out = False
             self._save_unlocked(name, state)
             return state.wake_id
@@ -162,6 +174,25 @@ class ScalingStore:
             state = self._load_unlocked(name)
             state.wake_timed_out = True
             self._save_unlocked(name, state)
+
+    def note_wake_progress(
+        self,
+        name: str,
+        stage: str,
+        *,
+        service: Optional[str] = None,
+        detail: Optional[str] = None,
+    ) -> None:
+        with self._lock:
+            state = self._load_unlocked(name)
+            state.wake_progress = WakeProgress(
+                stage=stage, service=service, detail=detail
+            )
+            self._save_unlocked(name, state)
+
+    def wake_progress_log(self, name: str) -> str:
+        progress = self.load(name).wake_progress
+        return progress.log_tail() if progress is not None else "-"
 
     def _load_unlocked(self, name: str) -> AppScalingState:
         path = self.path_for(name)

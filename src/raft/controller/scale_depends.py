@@ -87,10 +87,10 @@ class ScaleDepends:
         deps = chain[:-1]
         root = chain[-1]
         for dep_name in deps:
-            if not self._start_named(dep_name, deadline):
+            if not self._start_named(dep_name, deadline, progress_app=root):
                 return False
             self.store.clear_scaled_to_zero(dep_name)
-        if not self._start_named(root, deadline):
+        if not self._start_named(root, deadline, progress_app=root):
             return False
         self._restore_upstreams(chain)
         return True
@@ -159,27 +159,60 @@ class ScaleDepends:
         by_name = {app.name: app for app in stack.apps}
         return NginxUpstreams(stack, self.docker), by_name
 
-    def _start_named(self, name: str, deadline: float) -> bool:
+    def _start_named(
+        self, name: str, deadline: float, *, progress_app: str
+    ) -> bool:
         compose_id = self.compose_id(name)
         if compose_id is None:
+            self.store.note_wake_progress(
+                progress_app, "unknown_app", service=name
+            )
             return False
-        return self._ensure_running(compose_id, deadline)
+        return self._ensure_running(
+            name, compose_id, deadline, progress_app=progress_app
+        )
 
-    def _ensure_running(self, compose_id: str, deadline: float) -> bool:
+    def _ensure_running(
+        self,
+        name: str,
+        compose_id: str,
+        deadline: float,
+        *,
+        progress_app: str,
+    ) -> bool:
         # Compose health is not a wake gate: start_period reports "starting", and
         # some images fail healthchecks while still serving (router_can_fetch is).
         status, _health = self.docker.service_runtime(compose_id)
         if status == "running":
             return True
         if self._clock() >= deadline:
+            self._note_wait_running(progress_app, name, status)
             return False
         self.docker.start_service(compose_id)
-        return self._wait_running(compose_id, deadline)
+        return self._wait_running(
+            name, compose_id, deadline, progress_app=progress_app
+        )
 
-    def _wait_running(self, compose_id: str, deadline: float) -> bool:
+    def _wait_running(
+        self,
+        name: str,
+        compose_id: str,
+        deadline: float,
+        *,
+        progress_app: str,
+    ) -> bool:
+        status = "unknown"
         while self._clock() < deadline:
             status, _health = self.docker.service_runtime(compose_id)
             if status == "running":
                 return True
             self._sleep(_WAKE_POLL_SECONDS)
+        self._note_wait_running(progress_app, name, status)
         return False
+
+    def _note_wait_running(
+        self, progress_app: str, service: str, status: str
+    ) -> None:
+        self.store.note_wake_progress(
+            progress_app, "wait_running", service=service, detail=status
+        )
