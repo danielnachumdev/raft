@@ -33,14 +33,47 @@ class TestEdgeHandlers(RaftTestCase):
 
     def test_tls_edge_requires_https(self) -> None:
         app = make_app("web", public_host="web.example.com")
+        home = self.tmp_path
         spec = AppSpec(
             ports=(PortSpec(name="http", container_port=80, expose="http"),),
             tls="origin",
         )
         with pytest.raises(RuntimeError, match="edge.https"):
-            TlsEdge().contribute_app(app, spec, edge=EdgeConfig(https=None))
-        frag = TlsEdge().contribute_app(app, spec, edge=EdgeConfig())
+            TlsEdge().contribute_app(app, spec, edge=EdgeConfig(https=None), data_home=home)
+        frag = TlsEdge().contribute_app(app, spec, edge=EdgeConfig(), data_home=home)
         assert "web.conf" in frag.gate_tls
+
+    def test_tls_acme_requires_http_and_https(self) -> None:
+        app = make_app("web", public_host="web.example.com")
+        home = self.tmp_path
+        spec = AppSpec(
+            ports=(PortSpec(name="http", container_port=80, expose="http"),),
+            tls="acme",
+        )
+        self._assert_acme_edge_required(app, spec, home)
+        self._assert_acme_tls_when_pems(app, spec, home)
+
+    def _assert_acme_edge_required(self, app, spec, home) -> None:
+        with pytest.raises(RuntimeError, match="edge.http"):
+            TlsEdge().contribute_app(
+                app, spec, edge=EdgeConfig(http=None, https=443), data_home=home
+            )
+        with pytest.raises(RuntimeError, match="edge.https"):
+            TlsEdge().contribute_app(
+                app, spec, edge=EdgeConfig(http=80, https=None), data_home=home
+            )
+        assert TlsEdge().contribute_app(
+            app, spec, edge=EdgeConfig(), data_home=home
+        ).gate_tls == {}
+
+    def _assert_acme_tls_when_pems(self, app, spec, home) -> None:
+        d = home / "certs" / "web"
+        d.mkdir(parents=True)
+        (d / "acme.pem").write_text("pem\n", encoding="utf-8")
+        (d / "acme.key").write_text("key\n", encoding="utf-8")
+        frag = TlsEdge().contribute_app(app, spec, edge=EdgeConfig(), data_home=home)
+        assert "acme.pem" in frag.gate_tls["web.conf"]
+        assert "origin.pem" not in frag.gate_tls["web.conf"]
 
     def test_stream_edge_undeclared(self) -> None:
         app = make_app("mail", public_host="mail.example.com")

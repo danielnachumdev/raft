@@ -98,3 +98,34 @@ class TestScalingRender(RaftTestCase):
         )
         with pytest.raises(Exception, match="edge.https"):
             self.render_applied(edge=EdgeConfig(http=80, https=None, streams=()))
+
+    def test_acme_challenge_before_location_slash(self) -> None:
+        write_applied_app(self.tmp_path, "web", public_host="web.test", extra={"scaling": _SCALING})
+        gen = self.render_applied(edge=_EDGE)
+        conf = (gen / "nginx/gate-http/listeners.conf").read_text(encoding="utf-8")
+        assert "acme_challenge.inc" in conf
+        assert conf.index("acme_challenge.inc") < conf.index("location /")
+        product = find_package_root() / "nginx" / "gate" / "proxy_router.inc"
+        text = product.read_text(encoding="utf-8")
+        assert "acme_challenge.inc" in text
+        assert text.index("acme_challenge.inc") < text.index("location /")
+
+    def test_tls_acme_scaling_uses_acme_certs_when_present(self) -> None:
+        write_applied_app(
+            self.tmp_path,
+            "web",
+            public_host="web.test",
+            tls="acme",
+            extra={"scaling": _SCALING},
+        )
+        gen = self.render_applied(edge=_EDGE)
+        assert not (gen / "nginx/gate-tls/web.conf").is_file()
+        d = self.tmp_path / "certs" / "web"
+        d.mkdir(parents=True)
+        (d / "acme.pem").write_text("pem\n", encoding="utf-8")
+        (d / "acme.key").write_text("key\n", encoding="utf-8")
+        gen = self.render_applied(edge=_EDGE)
+        body = (gen / "nginx/gate-tls/web.conf").read_text(encoding="utf-8")
+        assert "acme.pem" in body
+        assert "origin.pem" not in body
+        assert body.index("acme_challenge.inc") < body.index("location /")

@@ -49,6 +49,10 @@ HEALING_ERROR_CASES = [
     ("metrics:\n  retentionMaxBytes: abc\n", "retentionMaxBytes"),
     ("logging:\n  retentionMaxAgeDays: 0\n", "retentionMaxAgeDays"),
     ("logging:\n  retentionMaxBytes: abc\n", "retentionMaxBytes"),
+    ("acme: []\n", "acme must be a mapping"),
+    ("acme:\n  challenge: dns-01\n", "acme.challenge"),
+    ("acme:\n  directory: ''\n", "acme.directory"),
+    ("acme:\n  renewDaysBeforeExpiry: 0\n", "renewDaysBeforeExpiry"),
 ]
 
 
@@ -71,6 +75,38 @@ class TestConfig(RaftTestCase):
         assert cfg.metrics.flush_seconds == 60.0
         assert cfg.metrics.retention_max_age_days == 30
         assert cfg.metrics.retention_max_bytes == 100 * 1024 * 1024
+        self._assert_acme_defaults(cfg)
+
+    def _assert_acme_defaults(self, cfg) -> None:
+        assert cfg.acme.email is None
+        assert cfg.acme.directory.startswith("https://acme-v02.api.letsencrypt.org")
+        assert cfg.acme.renew_days_before_expiry == 30
+        assert cfg.acme.challenge == "http-01"
+
+    def test_load_acme_section(self) -> None:
+        (self.tmp_path / "settings.yaml").write_text(
+            "acme:\n"
+            "  email: ops@example.com\n"
+            "  directory: https://acme-staging-v02.api.letsencrypt.org/directory\n"
+            "  renewDaysBeforeExpiry: 14\n"
+            "  challenge: http-01\n",
+            encoding="utf-8",
+        )
+        cfg = load_config(self.tmp_path)
+        assert cfg.acme.email == "ops@example.com"
+        assert "staging" in cfg.acme.directory
+        assert cfg.acme.renew_days_before_expiry == 14
+        assert cfg.acme.challenge == "http-01"
+
+    def test_load_acme_defaults_challenge_when_omitted(self) -> None:
+        (self.tmp_path / "settings.yaml").write_text(
+            "acme:\n  email: ops@example.com\n",
+            encoding="utf-8",
+        )
+        cfg = load_config(self.tmp_path)
+        assert cfg.acme.email == "ops@example.com"
+        assert cfg.acme.challenge == "http-01"
+        assert cfg.acme.directory.startswith("https://acme-v02")
 
     def test_load_healing_section(self) -> None:
         (self.tmp_path / "settings.yaml").write_text(HEALING_OK_YAML, encoding="utf-8")

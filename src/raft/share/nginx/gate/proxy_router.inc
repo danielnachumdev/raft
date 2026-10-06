@@ -1,5 +1,7 @@
 resolver 127.0.0.11 valid=10s ipv6=off;
 
+include /etc/nginx/gate/acme_challenge.inc;
+
 location / {
     set $router_upstream http://raft-router:80;
     proxy_pass $router_upstream;

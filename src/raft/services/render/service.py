@@ -8,6 +8,7 @@ from typing import Optional
 
 from raft.adapters.nginx import NginxUpstreamText
 from raft.errors.cta import OperatorError
+from raft.services.acme.paths import AcmePaths
 
 from ...config.paths import GENERATED_DIRNAME
 from ...config.settings import load_config
@@ -133,15 +134,30 @@ class StackRenderer:
         app: App,
         app_spec: AppSpec,
     ) -> EdgeFragments:
-        if app_spec.tls == "origin" and app_spec.scaling is not None:
-            if self.edge.https is None:
-                raise OperatorError(
-                    f"{app.name}: tls=origin requires edge.https in settings.yaml.\n"
-                    f"Fix: set edge.https (e.g. 443) in ~/.raft/settings.yaml, then: raft render"
-                )
-            body = scaling.contribute_tls(app, app_spec)
-            return EdgeFragments(gate_tls={f"{app.name}.conf": body})
-        return tls.contribute_app(app, app_spec, edge=self.edge)
+        if app_spec.tls in {"origin", "acme"} and app_spec.scaling is not None:
+            return self._scaling_tls_fragment(tls, scaling, app, app_spec)
+        return tls.contribute_app(
+            app, app_spec, edge=self.edge, data_home=self.stack.root
+        )
+
+    def _scaling_tls_fragment(
+        self,
+        tls: TlsEdge,
+        scaling: ScalingGate,
+        app: App,
+        app_spec: AppSpec,
+    ) -> EdgeFragments:
+        if app_spec.tls == "acme":
+            tls.require_acme_edge(app, self.edge)
+            if not AcmePaths(self.stack.root).live_material_present(app.name):
+                return EdgeFragments()
+        elif self.edge.https is None:
+            raise OperatorError(
+                f"{app.name}: tls=origin requires edge.https in settings.yaml.\n"
+                f"Fix: set edge.https (e.g. 443) in ~/.raft/settings.yaml, then: raft render"
+            )
+        body = scaling.contribute_tls(app, app_spec)
+        return EdgeFragments(gate_tls={f"{app.name}.conf": body})
 
     def _ensure_dirs(self) -> None:
         self.generated_root.mkdir(parents=True, exist_ok=True)

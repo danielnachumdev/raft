@@ -22,6 +22,10 @@ from .settings_types import (
     DEFAULT_METRICS_RETENTION_MAX_AGE_DAYS,
     DEFAULT_METRICS_RETENTION_MAX_BYTES,
     DEFAULT_METRICS_TIMEOUT_SECONDS,
+    DEFAULT_ACME_CHALLENGE,
+    DEFAULT_ACME_DIRECTORY,
+    DEFAULT_ACME_RENEW_DAYS_BEFORE_EXPIRY,
+    AcmeConfig,
     HealingConfig,
     LoggingConfig,
     MetricsConfig,
@@ -46,6 +50,7 @@ class SettingsLoader:
             edge=self._edge.parse(data.get("edge")),
             healing=self._parse_healing(data.get("healing")),
             metrics=self._parse_metrics(data.get("metrics")),
+            acme=self._parse_acme(data.get("acme")),
         )
 
     def _read_mapping(self, config_path: Path) -> dict[str, Any]:
@@ -185,6 +190,60 @@ class SettingsLoader:
                 "metrics",
             ),
         }
+
+    def _parse_acme(self, raw: Any) -> AcmeConfig:
+        if raw is None:
+            return AcmeConfig()
+        if not isinstance(raw, dict):
+            raise OperatorError(
+                "settings.yaml acme must be a mapping.\n"
+                "Fix: set acme: {email: ops@example.com, ...} in ~/.raft/settings.yaml"
+            )
+        return AcmeConfig(
+            email=self._optional_email(raw.get("email")),
+            directory=self._acme_directory(raw.get("directory")),
+            renew_days_before_expiry=self._pos_int(
+                raw,
+                "renewDaysBeforeExpiry",
+                DEFAULT_ACME_RENEW_DAYS_BEFORE_EXPIRY,
+                "acme",
+            ),
+            challenge=self._acme_challenge(raw.get("challenge")),
+        )
+
+    @staticmethod
+    def _optional_email(raw: Any) -> Optional[str]:
+        if raw is None:
+            return None
+        text = str(raw).strip()
+        return text or None
+
+    @staticmethod
+    def _acme_directory(raw: Any) -> str:
+        if raw is None:
+            return DEFAULT_ACME_DIRECTORY
+        text = str(raw).strip()
+        if not text:
+            raise OperatorError(
+                "settings.yaml acme.directory must be a non-empty URL.\n"
+                "Fix: set acme.directory in ~/.raft/settings.yaml "
+                f"(default {DEFAULT_ACME_DIRECTORY})"
+            )
+        return text
+
+    @staticmethod
+    def _acme_challenge(raw: Any) -> str:
+        if raw is None:
+            return DEFAULT_ACME_CHALLENGE
+        text = str(raw).strip().lower() or DEFAULT_ACME_CHALLENGE
+        if text != DEFAULT_ACME_CHALLENGE:
+            raise OperatorError(
+                f"settings.yaml acme.challenge must be {DEFAULT_ACME_CHALLENGE!r} "
+                f"(v1), got {text!r}.\n"
+                f"Fix: set acme.challenge: {DEFAULT_ACME_CHALLENGE} "
+                f"or omit the key in ~/.raft/settings.yaml"
+            )
+        return text
 
     @staticmethod
     def _pos_float(raw: dict, key: str, default: float, section: str) -> float:

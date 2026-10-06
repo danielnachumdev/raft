@@ -1,4 +1,4 @@
-"""Origin TLS cert presence checks shared by doctor and deploy/render paths."""
+"""TLS cert presence checks for ``tls: origin`` and doctor ``tls: acme`` skeleton."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from raft.errors.certs_msgs import format_missing_origin_certs, looks_like_missing_origin_cert
 from raft.errors.cta import OperatorError
+from raft.services.acme.paths import AcmePaths
 
 from ...models.stack import Stack
 
@@ -28,6 +29,28 @@ class MissingOriginCerts:
         )
 
 
+@dataclass(frozen=True)
+class MissingAcmeCerts:
+    """Doctor skeleton when ``tls: acme`` live material is not on disk yet."""
+
+    app_name: str
+    missing: tuple[str, ...]
+
+    @property
+    def detail(self) -> str:
+        return f"missing {', '.join(self.missing)} under certs/{self.app_name}/"
+
+    @property
+    def fix(self) -> str:
+        return (
+            f"point DNS A/AAAA for {self.app_name} publicHost (+ extraHosts) at this host; "
+            f"keep edge.http (:80) and edge.https (:443) published; set acme.email in "
+            f"~/.raft/settings.yaml; then re-apply so ACME can issue "
+            f"~/.raft/certs/{self.app_name}/acme.pem and acme.key "
+            f"(do not paste Origin PEMs for tls: acme)"
+        )
+
+
 def missing_origin_certs(stack: Stack) -> list[MissingOriginCerts]:
     """Return missing PEM/key pairs for every applied app with ``tls: origin``."""
     results: list[MissingOriginCerts] = []
@@ -42,6 +65,24 @@ def missing_origin_certs(stack: Stack) -> list[MissingOriginCerts]:
         missing = tuple(p.name for p in (pem, key) if not p.is_file())
         if missing:
             results.append(MissingOriginCerts(app.name, missing))
+    return results
+
+
+def missing_acme_certs(stack: Stack) -> list[MissingAcmeCerts]:
+    """Return missing ACME live pairs for ``tls: acme`` apps (doctor only; not deploy-blocking)."""
+    paths = AcmePaths(stack.root)
+    results: list[MissingAcmeCerts] = []
+    for app in stack.apps:
+        try:
+            app_spec = stack.spec_for(app)
+        except (ValueError, FileNotFoundError, OperatorError):
+            continue
+        if app_spec.tls != "acme":
+            continue
+        pem, key = paths.cert_files(app.name)
+        missing = tuple(p.name for p in (pem, key) if not p.is_file())
+        if missing:
+            results.append(MissingAcmeCerts(app.name, missing))
     return results
 
 
