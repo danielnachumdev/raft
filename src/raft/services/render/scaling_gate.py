@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Optional
+
+from raft.services.acme.paths import AcmePaths
+
 from ...config.settings_types import EdgeConfig
 from ...models.app import App
 from ...models.manifest import AppSpec
@@ -14,13 +19,23 @@ MARKERS_DIR = "/etc/nginx/scaling/markers"
 class ScalingGate:
     """Emit Host-specific gate servers that idle-stop via markers + wake API."""
 
-    def contribute_http(self, app: App, spec: AppSpec, *, edge: EdgeConfig) -> EdgeFragments:
+    def contribute_http(
+        self,
+        app: App,
+        spec: AppSpec,
+        *,
+        edge: EdgeConfig,
+        data_home: Optional[Path] = None,
+    ) -> EdgeFragments:
         if spec.scaling is None or not app.public_host:
             return EdgeFragments()
         if edge.http is None:
             return EdgeFragments()
+        # Live ACME certs: HTTP→HTTPS redirect owns the Host HTTP server.
+        if spec.tls == "acme" and data_home is not None:
+            if AcmePaths(data_home).live_material_present(app.name):
+                return EdgeFragments()
         return EdgeFragments(gate_http=[self._server_block(app, spec, listen=edge.http, ssl=False)])
-
     def contribute_tls(self, app: App, spec: AppSpec) -> str:
         return self._server_block(app, spec, listen=443, ssl=True)
 

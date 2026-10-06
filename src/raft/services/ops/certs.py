@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from raft.errors.certs_msgs import format_missing_origin_certs, looks_like_missing_origin_cert
+from raft.errors.certs_msgs import (
+    format_missing_acme_certs,
+    format_missing_origin_certs,
+    looks_like_missing_acme_cert,
+    looks_like_missing_origin_cert,
+)
 from raft.errors.cta import OperatorError
 from raft.services.acme.paths import AcmePaths
 
