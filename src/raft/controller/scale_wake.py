@@ -58,6 +58,9 @@ class ScaleWake:
         except OperatorError as exc:
             logger.error("scale wake failed app=%s id=%s: %s", name, diag, exc)
             return False
+        return self._log_wake_outcome(name, diag, ok)
+
+    def _log_wake_outcome(self, name: str, diag: str, ok: bool) -> bool:
         if ok:
             logger.info("scale wake ok app=%s id=%s", name, diag)
         else:
