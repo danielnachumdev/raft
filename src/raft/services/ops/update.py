@@ -81,8 +81,16 @@ class SelfUpdate:
         self._set_label("verifying")
         after = install_identity()
         TerminalProgress.finish_active()
-        GraphEventStore(self.stack.root).record_update()
+        self._finish(before, after)
+
+    def _finish(self, before: Optional[str], after: Optional[str]) -> None:
+        if not self._already_current(before, after):
+            GraphEventStore(self.stack.root).record_update()
         self._announce(before, after)
+
+    @staticmethod
+    def _already_current(before: Optional[str], after: Optional[str]) -> bool:
+        return before is not None and before == after
 
     @staticmethod
     def _set_label(label: str) -> None:
@@ -92,7 +100,7 @@ class SelfUpdate:
 
     @staticmethod
     def _announce(before: Optional[str], after: Optional[str]) -> None:
-        if before is not None and before == after:
+        if SelfUpdate._already_current(before, after):
             say("raft is already up to date", style="info")
             return
         say("OK: raft updated", style="ok")

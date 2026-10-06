@@ -60,6 +60,8 @@ class TestSelfUpdate(ServicesTestCase):
         styles = [c.kwargs.get("style") for c in say.call_args_list]
         assert styles == ["info"]
         assert "already up to date" in say.call_args_list[0].args[0]
+        events = GraphEventStore(self.stack.root).events_in_window(from_ts=_EPOCH)
+        assert events == []
 
     def test_run_reports_updated_when_identity_changes(self, monkeypatch) -> None:
         monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
@@ -72,6 +74,8 @@ class TestSelfUpdate(ServicesTestCase):
             upd.run()
         styles = [c.kwargs.get("style") for c in say.call_args_list]
         assert "ok" in styles and styles.count("info") >= 1
+        events = GraphEventStore(self.stack.root).events_in_window(from_ts=_EPOCH)
+        assert [e.kind for e in events] == [KIND_UPDATE]
 
     def test_run_respects_install_url_env(self, monkeypatch) -> None:
         url = "https://example.test/install.sh"

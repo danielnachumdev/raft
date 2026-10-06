@@ -95,7 +95,7 @@ class GraphEventRecords:
         return self._record(KIND_DOWN, label="Stack down", metadata={}, ts=ts)
 
     def record_update(self, *, ts: Optional[datetime] = None) -> GraphEvent:
-        """CLI self-update (``raft update``) completed."""
+        """CLI self-update when the installed identity actually changed."""
         return self._record(KIND_UPDATE, label="Raft update", metadata={}, ts=ts)
 
     def record_gate_recreate(self, *, ts: Optional[datetime] = None) -> GraphEvent:
