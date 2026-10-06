@@ -1,15 +1,6 @@
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  YAxis,
-} from "recharts";
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, YAxis } from "recharts";
 import type { GraphEvent } from "../shared/api";
-import {
-  formatTooltipTime,
-} from "../trends/chartTimeScale";
+import { formatTooltipTime } from "../trends/chartTimeScale";
 import { graphEventMarkers } from "../trends/GraphEventMarkers";
 import {
   formatRuntimeValue,
@@ -17,7 +8,10 @@ import {
   yAxisUnit,
 } from "../trends/runtimeMetrics";
 import { timeScaleXAxis } from "../trends/TimeScaleXAxis";
+import { useChartHover } from "../trends/useChartHover";
 import type { ChartRow } from "./runtimeTrendsPoll";
+
+const SERIES_ID = "value";
 
 export function ServiceRuntimeChart(props: {
   rows: ChartRow[];
@@ -25,12 +19,14 @@ export function ServiceRuntimeChart(props: {
   windowSec: number;
   events: GraphEvent[];
 }) {
+  const hover = useChartHover();
   const unit = yAxisUnit(props.metric.unit);
   return (
     <div
       className="trends-chart"
       role="img"
       aria-label={`${props.metric.label} trend chart`}
+      onMouseLeave={hover.clearHover}
     >
       <ResponsiveContainer width="100%" height={260}>
         <LineChart
@@ -67,15 +63,21 @@ export function ServiceRuntimeChart(props: {
           />
           <Line
             type="monotone"
-            dataKey="value"
+            dataKey={SERIES_ID}
             name={props.metric.label}
             stroke="#0f6b5c"
-            strokeWidth={2}
+            strokeWidth={hover.highlight.lineStrokeWidth(SERIES_ID)}
+            strokeOpacity={hover.highlight.lineOpacity(SERIES_ID)}
             dot={false}
+            activeDot={false}
             isAnimationActive={false}
             connectNulls={false}
+            onMouseEnter={() => hover.hoverSeries(SERIES_ID)}
           />
-          {graphEventMarkers(props.events)}
+          {graphEventMarkers(props.events, {
+            highlight: hover.highlight,
+            onHoverKind: hover.hoverEventKind,
+          })}
         </LineChart>
       </ResponsiveContainer>
     </div>

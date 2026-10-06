@@ -1,7 +1,6 @@
 import {
   CartesianGrid,
   Legend,
-  Line,
   LineChart,
   ResponsiveContainer,
   Tooltip,
@@ -24,17 +23,8 @@ import {
   type RuntimeUnit,
 } from "./runtimeMetrics";
 import { timeScaleXAxis } from "./TimeScaleXAxis";
-
-const COLORS = [
-  "#0f6b5c",
-  "#b45309",
-  "#0e7490",
-  "#9a3412",
-  "#166534",
-  "#44403c",
-  "#a16207",
-  "#1e3a5f",
-];
+import { trendPlotLines } from "./trendPlotLines";
+import { useChartHover } from "./useChartHover";
 
 const HOST_AXIS = "host";
 const SERVICE_AXIS = "service";
@@ -64,6 +54,7 @@ export function TrendsChart(props: {
   /** Full window series — used to map group charts back to deploy services. */
   allSeries?: MetricsSeries[];
 }) {
+  const hover = useChartHover();
   const avgLabel = props.aggregateLabel ?? "Average";
   const eventSeries = seriesForEventFilter(
     props.allSeries ?? props.series,
@@ -85,7 +76,12 @@ export function TrendsChart(props: {
   }
 
   return (
-    <div className="trends-chart" role="img" aria-label="Resource trend chart">
+    <div
+      className="trends-chart"
+      role="img"
+      aria-label="Resource trend chart"
+      onMouseLeave={hover.clearHover}
+    >
       <ResponsiveContainer width="100%" height={280}>
         <LineChart data={rows} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" />
@@ -125,37 +121,29 @@ export function TrendsChart(props: {
             ]}
             itemSorter={tooltipItemSortKey}
           />
-          <Legend formatter={(value) => labels[value] ?? value} />
-          {props.aggregate ? (
-            <Line
-              type="monotone"
-              dataKey="aggregate"
-              name={avgLabel}
-              yAxisId={SERVICE_AXIS}
-              stroke={COLORS[0]}
-              strokeWidth={2}
-              dot={false}
-              isAnimationActive={false}
-              connectNulls={false}
-            />
-          ) : (
-            plots.map((plot, i) => (
-              <Line
-                key={plot.chartKey}
-                type="monotone"
-                dataKey={plot.chartKey}
-                name={plot.label}
-                yAxisId={splitAxes ? plot.axis : SERVICE_AXIS}
-                stroke={COLORS[i % COLORS.length]}
-                strokeWidth={2}
-                dot={false}
-                isAnimationActive={false}
-                connectNulls={false}
-              />
-            ))
-          )}
+          <Legend
+            formatter={(value) => labels[value] ?? value}
+            onMouseEnter={(item) => {
+              if (typeof item.dataKey === "string") {
+                hover.hoverSeries(item.dataKey);
+              }
+            }}
+          />
+          {trendPlotLines({
+            aggregate: props.aggregate,
+            avgLabel,
+            plots,
+            splitAxes,
+            serviceAxis: SERVICE_AXIS,
+            highlight: hover.highlight,
+            onHoverSeries: hover.hoverSeries,
+          })}
           {/* Direct children — Recharts ignores wrapper components for ReferenceLine. */}
-          {graphEventMarkers(markers, SERVICE_AXIS)}
+          {graphEventMarkers(markers, {
+            yAxisId: SERVICE_AXIS,
+            highlight: hover.highlight,
+            onHoverKind: hover.hoverEventKind,
+          })}
         </LineChart>
       </ResponsiveContainer>
     </div>
