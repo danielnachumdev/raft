@@ -87,7 +87,9 @@ Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 1. `install.sh` (or `uv sync` in a clone; Python **3.9+**).
 2. Private git apps: `raft auth setup <name> --repo git@host:owner/repo.git` (works before apply) → paste pubkey as read-only deploy key (`~/.ssh/raft/`). Then `raft auth test <name> --repo …` and `raft apply --git …`.
 3. **Recommended ship path:** `raft apply --file …` or `raft apply --git …` with deploy **on** (default). Writes `~/.raft/state/apps/<name>.yaml`, then `ensure_app_deployed`: cutover if the Compose service is already running, start that service if the gate is up, else full stack `up`. Pass `--ref SHA` (and optional `--env-file` / `--env`) so CI first-boot and later cutovers share one command. Do **not** default to `--no-deploy` + `sync` + `redeploy` — `redeploy` requires the app service to already be running and fails on a new App with `service '…' is not running — bring the stack up first`.
-4. If any app uses `tls: origin`, install PEMs under `~/.raft/certs/<name>/` **before** first deploy (apply-with-deploy or `raft up`).
+4. **TLS before trusting HTTPS:**
+   - `tls: acme` (direct browser → VPS): DNS A/AAAA for `publicHost` + each `extraHosts` name; TCP 80 + 443 open; set `acme.email` in settings; then apply. **Do not paste PEMs** — live material is written under `certs/<name>/acme.*` by apply/controller. Staging directory for labs; production is the settings default. DNS-01 / wildcards are **not** shipped.
+   - `tls: origin` (Cloudflare Origin / upstream proxy): install `~/.raft/certs/<name>/origin.{pem,key}` **before** first deploy.
 5. `--no-deploy` only when you intentionally register desired state without bringing the app live (e.g. apply several manifests, then one `raft up`; or register before Origin PEMs exist). After that, deploy with `raft apply …` again (deploy on) or `raft up` / `raft redeploy` as appropriate.
 6. Manual cold start when apps are already applied: `raft up` (refuses if stack already up; `down` first).
 7. `raft doctor` before trusting the site (certs for `tls: origin` / `tls: acme`; gate drift → `raft gate recreate`). Doctor is group-first: built-in **`raft`** (edge services; healthy docker/compose/generated/stack/port probes stay hidden), then App `spec.group` (at most one); ungrouped apps appear without a heading. Member labels drop the `{group}-` prefix under a group heading (Compose ids stay `raft-gate` / `raft-router` / `GROUP-NAME` for Docker; doctor shows `gate` / `router` under `raft`). Healthy OK lines append ports in use (gate: published host ports; apps/router: contract / listen ports). File log records per-suite start/done with `elapsed_ms` plus a compose-call summary (`total` / `ps`) for diagnosing slow doctor runs.
@@ -122,10 +124,12 @@ Unknown `spec` / `metadata` keys fail parse (`OperatorError` with Fix CTA). Host
 ```yaml
 spec:
   publicHost: app.example.com   # required when any port uses expose=http
-  # extraHosts:                   # optional Host aliases (routed + future ACME SANs)
+  # extraHosts:                   # optional Host aliases (routed + ACME SANs)
   #   - www.app.example.com       # www is not automatic — list it when you need it
   #   - api.app.example.com
   tls: off                      # off | origin | acme
+  # acme → gate HTTP-01 + live certs/<name>/acme.*; needs DNS, :80/:443, acme.email
+  # origin → paste Origin PEMs at certs/<name>/origin.*; acme never uses origin.*
   group: demo               # optional; at most one group
   # dependsOn: optional. Strings or { name, scaleWithParent? }.
   # Compose / wake / heal use names only. When this app has spec.scaling,

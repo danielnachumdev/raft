@@ -1,11 +1,13 @@
 # HTTPS Origin site
 
-Same shape as the HTTP-only sample, but `tls: origin` so the gate terminates HTTPS for this hostname using Origin PEMs on the host.
+Same shape as the HTTP-only sample, but `tls: origin` so the gate terminates HTTPS using **operator-installed Origin PEMs** (typical behind Cloudflare Full / Origin CA).
 
 ## When to use
 
-- You want HTTPS on the VPS with Origin certificates
+- An upstream proxy presents the browser-trusted cert; the gate only needs Origin material
 - `edge.https` is enabled in `~/.raft/settings.yaml` (default 443)
+
+For **direct** browser → VPS HTTPS (Let's Encrypt on the gate), use [`../https-acme-site/`](../https-acme-site/) (`tls: acme`) instead — that path does **not** use `origin.*` PEMs.
 
 ## Certs
 

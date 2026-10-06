@@ -96,8 +96,15 @@ edge:
   #     protocol: udp
 
 # ---------------------------------------------------------------------------
-# Optional ACME (Let's Encrypt) — required knobs when any app uses tls: acme.
-# HTTP-01 is answered by the gate (not the App). Do not set edge.http: null.
+# Optional ACME (Let's Encrypt) — required when any app uses tls: acme.
+# Direct HTTPS on the VPS (browser → DNS → gate :443). Not for Cloudflare
+# Origin PEMs — those stay tls: origin + certs/<app>/origin.*.
+#
+# Checklist: DNS A/AAAA for publicHost + extraHosts → this host; TCP 80 and
+# 443 open; set email below; raft apply; raft doctor [name]. Renewal is the
+# controller (acme:<name>); do not paste PEMs. HTTP-01 is answered by the
+# gate (works while the App is scaled to zero). DNS-01 / wildcards: not shipped.
+# Do not set edge.http: null.
 # ---------------------------------------------------------------------------
 # acme:
 #   email: ops@example.com
@@ -105,4 +112,4 @@ edge:
 #   # directory: https://acme-staging-v02.api.letsencrypt.org/directory
 #   directory: https://acme-v02.api.letsencrypt.org/directory
 #   renewDaysBeforeExpiry: 30
-#   challenge: http-01
+#   challenge: http-01   # only http-01 in v1

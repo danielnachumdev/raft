@@ -30,11 +30,14 @@ spec:
   #   - api.site.example.com
   #   - staging.site.example.com
 
-  # off (default) | origin
-  # off  → HTTP only through the gate; no PEMs required.
-  # origin → gate terminates Cloudflare Origin TLS; needs
+  # off (default) | origin | acme
+  # off   → HTTP only through the gate; no PEMs required.
+  # acme  → public Let's Encrypt on the gate (direct HTTPS). Needs DNS
+  #         A/AAAA, edge.http+https, acme.email — do not paste PEMs.
+  #         See examples/https-acme-site/.
+  # origin → Cloudflare Origin (or similar) PEMs on the host; needs
   #          ~/.raft/certs/<metadata.name>/origin.pem + origin.key
-  #          and edge.https enabled in settings.
+  #          and edge.https. See examples/https-origin-site/.
   tls: off
 
   # How raft obtains the app tree / image.
