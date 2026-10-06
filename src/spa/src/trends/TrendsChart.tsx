@@ -15,11 +15,7 @@ import {
   type TimedValue,
 } from "./chartTimeScale";
 import { graphEventMarkers } from "./GraphEventMarkers";
-import {
-  eventsForSeries,
-  seriesForEventFilter,
-  withEventRows,
-} from "./graphEvents";
+import { eventsForSeries, seriesForEventFilter } from "./graphEvents";
 import {
   formatRuntimeValue,
   runtimePointValue,
@@ -75,10 +71,9 @@ export function TrendsChart(props: {
   );
   const markers = eventsForSeries(props.events, eventSeries);
   const plots = props.aggregate ? [] : toPlotSeries(props.series);
-  const baseRows = props.aggregate
+  const rows = props.aggregate
     ? buildAggregateRows(props.series, props.metric)
     : buildPerServiceRows(props.series, plots, props.metric);
-  const rows = withEventRows(baseRows, markers, emptyChartRow);
   const labels = props.aggregate
     ? { aggregate: avgLabel }
     : Object.fromEntries(plots.map((p) => [p.chartKey, p.label]));
@@ -177,11 +172,6 @@ export function tooltipItemSortKey(item: {
   const mag = Number.isFinite(n) ? n : -1;
   const rank = String(1_000_000_000 - Math.round(mag * 1000)).padStart(12, "0");
   return `${rank}\0${String(item.name ?? "")}`;
-}
-
-function emptyChartRow(t: string, label: string): ChartRow {
-  const ts = toEpochMs(t) ?? 0;
-  return { ts, t, label };
 }
 
 function toPlotSeries(series: MetricsSeries[]): PlotSeries[] {

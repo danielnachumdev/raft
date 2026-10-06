@@ -5,8 +5,7 @@ import {
   type GraphEvent,
   type MetricsSeries,
 } from "../shared/api";
-import { toEpochMs } from "../trends/chartTimeScale";
-import { eventsForSeries, withEventRows } from "../trends/graphEvents";
+import { eventsForSeries } from "../trends/graphEvents";
 import {
   DEFAULT_RUNTIME_WINDOW,
   RUNTIME_METRICS,
@@ -82,14 +81,8 @@ export function ServiceRuntimeTrends(props: { service: string }) {
     [events, series],
   );
   const rows = useMemo(
-    () =>
-      withEventRows(buildRows(series, metric.id), markers, (t, label) => ({
-        ts: toEpochMs(t) ?? 0,
-        t,
-        label,
-        value: null,
-      })),
-    [series, metric.id, markers],
+    () => buildRows(series, metric.id),
+    [series, metric.id],
   );
   const showCold = busy && series === null && !error;
 

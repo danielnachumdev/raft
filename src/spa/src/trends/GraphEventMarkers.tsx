@@ -7,6 +7,9 @@ import { eventMarkerLabel, eventMarkerStroke } from "./graphEvents";
 /**
  * Build dashed vertical GraphEvent markers for a Recharts chart.
  *
+ * Overlay only: ``x`` is epoch ms on the numeric time axis — do not insert
+ * null sample rows for these timestamps (that breaks ``connectNulls={false}``).
+ *
  * Must be inlined as ``{graphEventMarkers(...)}`` — Recharts only discovers
  * ``ReferenceLine`` among *direct* chart children (wrapper components are skipped).
  */
