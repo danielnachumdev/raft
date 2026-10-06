@@ -144,6 +144,11 @@ class AcmeE2EStack:
                 "challenge": "http-01",
             },
         )
+        # Drop live PEMs so ensure re-issues. Pebble often rejects a second
+        # order against the same authz ("challenge … status valid").
+        pem, key = AcmePaths(self.home).cert_files(APP)
+        pem.unlink(missing_ok=True)
+        key.unlink(missing_ok=True)
 
     def pem_digest(self) -> str:
         pem = (self.home / "certs" / APP / "acme.pem").read_bytes()
