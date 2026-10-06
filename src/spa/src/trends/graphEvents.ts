@@ -1,5 +1,4 @@
 import type { GraphEvent, MetricsSeries } from "../shared/api.ts";
-import { formatTickTime, toEpochMs } from "./chartTimeScale.ts";
 
 /** Match ``trendsView`` ungrouped bucket without importing that module (node tests). */
 const UNGROUPED_ID = "__ungrouped__";
@@ -90,26 +89,6 @@ function seriesGroupKey(group: string | null | undefined): string {
   return group && group.trim() ? group.trim() : UNGROUPED_ID;
 }
 
-/** Merge event timestamps into chart rows so ReferenceLine x keys exist. */
-export function withEventRows<
-  T extends { t: string; ts: number; label: string },
->(
-  rows: T[],
-  events: GraphEvent[],
-  emptyRow: (t: string, label: string) => T,
-): T[] {
-  if (!events.length) return rows;
-  const byT = new Map(rows.map((r) => [r.t, r]));
-  for (const event of events) {
-    if (!byT.has(event.ts)) {
-      const ms = toEpochMs(event.ts);
-      const label = ms === null ? shortTime(event.ts) : formatTickTime(ms);
-      byT.set(event.ts, emptyRow(event.ts, label));
-    }
-  }
-  return [...byT.values()].sort((a, b) => a.ts - b.ts);
-}
-
 export function eventMarkerLabel(event: GraphEvent): string {
   if (event.label && event.label.trim()) return event.label.trim();
   if (event.kind === "deployment") return "Deploy";
@@ -133,10 +112,4 @@ function scalingMarkerLabel(event: GraphEvent): string {
 /** Stroke color for a GraphEvent ReferenceLine by kind. */
 export function eventMarkerStroke(kind: string): string {
   return KIND_STROKE[kind] ?? "#5c564c";
-}
-
-export function shortTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }

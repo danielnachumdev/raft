@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { GraphEvent, MetricsSeries } from "../src/shared/api.ts";
+import { mergeTimedRows } from "../src/trends/chartTimeScale.ts";
 import {
   eventMarkerLabel,
   eventMarkerStroke,
   eventsForSeries,
   isRaftLevelEvent,
   seriesForEventFilter,
-  withEventRows,
 } from "../src/trends/graphEvents.ts";
 
 function series(id: string, group = "demo"): MetricsSeries {
@@ -73,15 +73,37 @@ describe("eventMarkerStroke / label", () => {
   });
 });
 
-describe("withEventRows", () => {
-  it("inserts epoch rows for event timestamps missing from samples", () => {
-    const rows = withEventRows(
-      [{ t: "2026-10-03T12:00:00.000Z", ts: Date.parse("2026-10-03T12:00:00.000Z"), label: "a", v: 1 }],
-      [{ kind: "up", ts: "2026-10-03T12:30:00.000Z" }],
-      (t, label) => ({ t, ts: Date.parse(t), label, v: null }),
+describe("series continuity with graph events", () => {
+  it("does not insert null metric rows at event timestamps", () => {
+    const t0 = Date.parse("2026-10-03T12:00:00.000Z");
+    const t1 = t0 + 60_000;
+    const eventTs = t0 + 30_000;
+    const t0Iso = new Date(t0).toISOString();
+    const t1Iso = new Date(t1).toISOString();
+    const eventIso = new Date(eventTs).toISOString();
+    const rows = mergeTimedRows([
+      {
+        key: "v0",
+        points: [
+          { ts: t0, t: t0Iso, value: 10 },
+          { ts: t1, t: t1Iso, value: 20 },
+        ],
+      },
+    ]);
+    const markers = eventsForSeries(
+      [{ kind: "deployment", ts: eventIso, service: "demo-web" }],
+      [series("demo-web")],
     );
+    assert.equal(markers.length, 1);
     assert.equal(rows.length, 2);
-    assert.equal(rows[1].t, "2026-10-03T12:30:00.000Z");
+    assert.equal(
+      rows.every((r) => typeof r.v0 === "number"),
+      true,
+    );
+    assert.equal(
+      rows.some((r) => Number(r.ts) === eventTs),
+      false,
+    );
   });
 });
 
