@@ -9,7 +9,6 @@ spec:
   image: hashicorp/http-echo
   ref: "1.0.0"
   path: apps/stack-front
-  www: false
   ports:
     - name: http
       containerPort: 5678

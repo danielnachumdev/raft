@@ -8,7 +8,6 @@ spec:
   image: redis
   ref: alpine
   path: apps/expose-none-vol
-  www: false
   envFile: /tmp/raft-e2e-demo.env
   env:
     DEMO_FLAG: "1"

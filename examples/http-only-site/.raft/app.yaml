@@ -23,10 +23,10 @@ spec:
   # Required when any port uses expose: http (Host routing).
   publicHost: site.example.com
 
-  # Also serve www.<publicHost> via the router (default true).
-  www: true
-  # Extra Host names routed to this app (in addition to publicHost / www).
+  # Extra Host names routed to this app (in addition to publicHost).
+  # List www.<publicHost> here if you still want the www alias (no longer automatic).
   # extraHosts:
+  #   - www.site.example.com
   #   - api.site.example.com
   #   - staging.site.example.com
 

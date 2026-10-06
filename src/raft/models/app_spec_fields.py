@@ -12,6 +12,38 @@ from .manifest import TLS_MODES
 
 _GROUP_NAME = re.compile(r"^[a-z][a-z0-9-]*$")
 
+# Keys read by AppDocument / field parsers. Legacy aliases and keys that only
+# exist to emit a specific Fix CTA (port, readinessProbe, groups) stay listed.
+_KNOWN_SPEC_KEYS = frozenset(
+    {
+        "source",
+        "repo",
+        "image",
+        "ref",
+        "path",
+        "publicHost",
+        "public_host",
+        "ports",
+        "port",
+        "tls",
+        "readiness",
+        "readinessProbe",
+        "extraHosts",
+        "extra_hosts",
+        "build",
+        "scaling",
+        "resources",
+        "dependsOn",
+        "depends_on",
+        "envFile",
+        "env_file",
+        "env",
+        "volumes",
+        "group",
+        "groups",
+    }
+)
+
 
 class AppSpecFields:
     """Parse individual AppSpec fields from a raw ``spec`` mapping."""
@@ -177,14 +209,16 @@ class AppSpecFields:
         return repo, image
 
     @staticmethod
-    def _parse_www(spec: dict[str, Any], path: Path) -> bool:
-        www_raw = spec.get("www", True)
-        if not isinstance(www_raw, bool):
-            raise OperatorError(
-                f"{path}: spec.www must be a boolean, got {www_raw!r}.\n"
-                f"Fix: use `www: true` or `www: false` (unquoted) in .raft/app.yaml"
-            )
-        return www_raw
+    def _reject_unknown(spec: dict[str, Any], path: Path) -> None:
+        unknown = sorted(set(spec) - _KNOWN_SPEC_KEYS)
+        if not unknown:
+            return
+        keys = ", ".join(unknown)
+        raise OperatorError(
+            f"{path}: unsupported spec field(s): {keys}\n"
+            f"Fix: remove unknown keys from spec "
+            f"(see docs/app-manifest.md for supported fields)"
+        )
 
     @staticmethod
     def _parse_build(spec: dict[str, Any], path: Path) -> tuple[Optional[str], Optional[str]]:

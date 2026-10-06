@@ -34,17 +34,17 @@ class TestExternalUrlBuilder(RaftTestCase):
         stack = make_stack(self.tmp_path, (make_app("site"),))
         assert self._builder(stack).urls_for(service="missing", role="app") == ()
 
-    def test_http_tls_off_uses_http_with_www(self) -> None:
+    def test_http_tls_off_uses_http(self) -> None:
         write_applied_app(self.tmp_path, "site", public_host="site.test", tls="off")
         stack = make_stack(self.tmp_path, (make_app("site", public_host="site.test"),))
         urls = self._builder(stack).urls_for(service="site", role="app")
-        assert urls == ("http://site.test/", "http://www.site.test/")
+        assert urls == ("http://site.test/",)
 
     def test_origin_tls_prefers_https(self) -> None:
         write_applied_app(self.tmp_path, "site", public_host="site.test", tls="origin")
         stack = make_stack(self.tmp_path, (make_app("site", public_host="site.test"),))
         urls = self._builder(stack).urls_for(service="site", role="app")
-        assert urls == ("https://site.test/", "https://www.site.test/")
+        assert urls == ("https://site.test/",)
 
     def test_custom_https_port_is_included(self) -> None:
         write_applied_app(self.tmp_path, "site", public_host="site.test", tls="origin")
@@ -52,7 +52,7 @@ class TestExternalUrlBuilder(RaftTestCase):
         urls = self._builder(stack, http=8080, https=8443).urls_for(
             service="site", role="app"
         )
-        assert urls == ("https://site.test:8443/", "https://www.site.test:8443/")
+        assert urls == ("https://site.test:8443/",)
 
     def test_custom_http_port_is_included(self) -> None:
         write_applied_app(self.tmp_path, "site", public_host="site.test", tls="off")
@@ -60,7 +60,7 @@ class TestExternalUrlBuilder(RaftTestCase):
         urls = self._builder(stack, http=8080, https=None).urls_for(
             service="site", role="app"
         )
-        assert urls == ("http://site.test:8080/", "http://www.site.test:8080/")
+        assert urls == ("http://site.test:8080/",)
 
     def test_https_only_edge_falls_back_to_https(self) -> None:
         write_applied_app(self.tmp_path, "site", public_host="site.test", tls="off")
@@ -68,7 +68,7 @@ class TestExternalUrlBuilder(RaftTestCase):
         urls = self._builder(stack, http=None, https=443).urls_for(
             service="site", role="app"
         )
-        assert urls == ("https://site.test/", "https://www.site.test/")
+        assert urls == ("https://site.test/",)
 
     def test_no_edge_listeners_yields_empty(self) -> None:
         write_applied_app(self.tmp_path, "site", public_host="site.test")
@@ -77,27 +77,19 @@ class TestExternalUrlBuilder(RaftTestCase):
             service="site", role="app"
         ) == ()
 
-    def test_www_disabled_single_url(self) -> None:
-        write_applied_app(
-            self.tmp_path, "site", public_host="site.test", www=False, tls="origin"
-        )
-        stack = make_stack(self.tmp_path, (make_app("site", public_host="site.test"),))
-        urls = self._builder(stack).urls_for(service="site", role="app")
-        assert urls == ("https://site.test/",)
-
     def test_extra_hosts_are_listed(self) -> None:
         write_applied_app(
             self.tmp_path,
             "site",
             public_host="site.test",
-            www=False,
             tls="origin",
-            extra={"extraHosts": ["alias.test", "other.test"]},
+            extra={"extraHosts": ["www.site.test", "alias.test", "other.test"]},
         )
         stack = make_stack(self.tmp_path, (make_app("site", public_host="site.test"),))
         urls = self._builder(stack).urls_for(service="site", role="app")
         assert urls == (
             "https://site.test/",
+            "https://www.site.test/",
             "https://alias.test/",
             "https://other.test/",
         )
@@ -107,7 +99,6 @@ class TestExternalUrlBuilder(RaftTestCase):
             self.tmp_path,
             "web",
             public_host="web.test",
-            www=False,
             tls="off",
             extra={"group": "demo"},
         )
@@ -127,7 +118,6 @@ class TestExternalUrlBuilder(RaftTestCase):
             self.tmp_path,
             "db",
             public_host="",
-            www=False,
             extra={
                 "ports": [
                     {"name": "pg", "containerPort": 5432, "expose": "none"},
@@ -146,7 +136,6 @@ class TestExternalUrlBuilder(RaftTestCase):
             self.tmp_path,
             "mail",
             public_host="mail.test",
-            www=False,
             extra=self._stream_only_extra(),
         )
         stack = make_stack(

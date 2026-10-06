@@ -4,7 +4,6 @@ metadata:
   name: host-publish
 spec:
   publicHost: mail.test
-  www: false
   tls: off
   source: docker
   image: hashicorp/http-echo

@@ -32,7 +32,6 @@ class ApplyTestCase(ServicesTestCase):
             "source": source,
             "path": f"apps/{name}",
             "ref": "main",
-            "www": True,
             "ports": [{"name": "http", "containerPort": 80, "expose": "http"}],
             "build": {"context": "."},
             **spec_extra,

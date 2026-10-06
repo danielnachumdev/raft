@@ -15,7 +15,6 @@ class ManifestTestCase(RaftTestCase):
         *,
         name: str = "web",
         context: Optional[str] = ".",
-        www: bool = True,
         port: int = 80,
         dockerfile: Optional[str] = None,
         extra_hosts: Optional[Union[str, Sequence[str]]] = None,
@@ -28,7 +27,7 @@ class ManifestTestCase(RaftTestCase):
         tls: str = "off",
         registry_root=None,
     ) -> None:
-        lines = self._header_lines(name, public_host, source, tls, www)
+        lines = self._header_lines(name, public_host, source, tls)
         lines.extend(self._optional_lines(repo, image, extra_hosts))
         lines.extend(self._ports_build_ready(port, context, dockerfile, probe, resources))
         path = checkout / ".raft" / "app.yaml"
@@ -39,7 +38,7 @@ class ManifestTestCase(RaftTestCase):
             reg.parent.mkdir(parents=True, exist_ok=True)
             reg.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
 
-    def _header_lines(self, name, public_host, source, tls, www) -> List[str]:
+    def _header_lines(self, name, public_host, source, tls) -> List[str]:
         return [
             "apiVersion: raft/v1",
             "kind: App",
@@ -50,7 +49,6 @@ class ManifestTestCase(RaftTestCase):
             f"  source: {source}",
             f"  path: apps/{name}",
             f"  tls: {tls}",
-            f"  www: {'true' if www else 'false'}",
         ]
 
     def _optional_lines(self, repo, image, extra_hosts) -> List[str]:

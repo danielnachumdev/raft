@@ -59,7 +59,9 @@ class TestAppSpec(ManifestTestCase):
     def test_load_and_server_names(self) -> None:
         checkout = self.tmp_path / "app"
         checkout.mkdir()
-        self.write_manifest(checkout, www=True, extra_hosts=["alias.test"])
+        self.write_manifest(
+            checkout, extra_hosts=["www.example.com", "alias.test"]
+        )
         c = AppDocument.load_contract(checkout)
         assert c.ports[0].container_port == 80 and c.tls == "off"
         assert c.build_context == "."
@@ -72,7 +74,6 @@ class TestAppSpec(ManifestTestCase):
     def test_server_names_skips_duplicates(self) -> None:
         c = AppSpec(
             ports=(PortSpec(name="http", container_port=80, expose="http"),),
-            www=True,
             extra_hosts=("example.com", "www.example.com", "  ", "other.test"),
         )
         assert c.server_names("example.com") == (
@@ -174,11 +175,21 @@ class TestAppSpec(ManifestTestCase):
                 {"apiVersion": "x", "kind": "App", "metadata": {"name": "a"}}, path=path
             )
 
-    def test_parse_rejects_bad_www_and_build_types(self) -> None:
+    def test_parse_rejects_unknown_spec_and_metadata_keys(self) -> None:
         path = self.tmp_path / "app.yaml"
         base = self._minimal_local_doc()
-        with pytest.raises(RuntimeError, match="spec.www must be a boolean"):
-            AppDocument.parse({**base, "spec": {**base["spec"], "www": "yes"}}, path=path)
+        with pytest.raises(RuntimeError, match="unsupported spec field\\(s\\): www"):
+            AppDocument.parse({**base, "spec": {**base["spec"], "www": True}}, path=path)
+        with pytest.raises(RuntimeError, match="unsupported spec field\\(s\\): typoField"):
+            AppDocument.parse({**base, "spec": {**base["spec"], "typoField": 1}}, path=path)
+        with pytest.raises(RuntimeError, match="unsupported metadata field\\(s\\): labels"):
+            AppDocument.parse(
+                {**base, "metadata": {"name": "a", "labels": {"x": "y"}}}, path=path
+            )
+
+    def test_parse_rejects_bad_build_types(self) -> None:
+        path = self.tmp_path / "app.yaml"
+        base = self._minimal_local_doc()
         with pytest.raises(RuntimeError, match="build.context must be a string"):
             AppDocument.parse(
                 {**base, "spec": {**base["spec"], "build": {"context": 1}}}, path=path
