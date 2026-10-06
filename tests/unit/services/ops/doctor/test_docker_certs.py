@@ -126,6 +126,10 @@ class TestDoctorDockerCerts(DoctorTestCase):
         self.seed_compose()
         self.ensure_checkouts("app")
         write_applied_app(self.tmp_path, "app", tls="acme")
+        (self.tmp_path / "settings.yaml").write_text(
+            "edge:\n  http: 80\n  https: 443\nacme:\n  email: ops@example.com\n",
+            encoding="utf-8",
+        )
         results = self.run_keyed(
             shell=self.mock_shell(), docker=self.mock_docker(), auth=MagicMock()
         )
@@ -140,12 +144,29 @@ class TestDoctorDockerCerts(DoctorTestCase):
         self.seed_compose()
         self.ensure_checkouts("app")
         write_applied_app(self.tmp_path, "app", tls="acme")
-        d = self.tmp_path / "certs" / "app"
-        d.mkdir(parents=True)
-        (d / "acme.pem").write_text("pem\n", encoding="utf-8")
-        (d / "acme.key").write_text("key\n", encoding="utf-8")
+        from ....services.acme.cert_helpers import plant_live_acme
+
+        plant_live_acme(self.tmp_path, "app", ["app.test"], days=60)
+        (self.tmp_path / "settings.yaml").write_text(
+            "edge:\n  http: 80\n  https: 443\nacme:\n  email: ops@example.com\n",
+            encoding="utf-8",
+        )
         results = self.run_keyed(
             shell=self.mock_shell(), docker=self.mock_docker(), auth=MagicMock()
         )
         assert results[("app", "certs")].status == "ok"
         assert "acme.pem+key" in results[("app", "certs")].detail
+
+    def test_certs_acme_fails_without_email(self) -> None:
+        self.seed_compose()
+        self.ensure_checkouts("app")
+        write_applied_app(self.tmp_path, "app", tls="acme")
+        (self.tmp_path / "settings.yaml").write_text(
+            "edge:\n  http: 80\n  https: 443\nacme: {}\n",
+            encoding="utf-8",
+        )
+        results = self.run_keyed(
+            shell=self.mock_shell(), docker=self.mock_docker(), auth=MagicMock()
+        )
+        assert results[("app", "certs")].status == "fail"
+        assert "acme.email" in results[("app", "certs")].detail

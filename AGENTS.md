@@ -312,7 +312,7 @@ Top-level **commands** (not nested groups, except `auth` and `gate`):
 | `sync` / `render` | Sources / regenerate `~/.raft/generated/` |
 | `redeploy` | Cutover for an **already-running** app, or recreate `router` (`gate` refused). Fails if the app service is not up — use apply-with-deploy (or `raft up`) for first boot |
 | `gate recreate` | Recreate gate for new published edge ports |
-| `doctor` | Health + fix hints |
+| `doctor` | Health + fix hints; optional `raft doctor [name]` filters to one App |
 | `status` | Host + container resource usage (point-in-time; `--json` or `--live`; Started column beside Uptime) |
 | `serve` | Localhost ops UI (`127.0.0.1`, default **8787**; optional `--port` / `--stop`); SPA + status/metrics/service/actions/logs APIs; SSH tunnel; Ctrl+C or `--stop` |
 | `logs` | Container stdout/stderr (`--tail N` snapshot; `-f` / `--follow` until Ctrl+C). Names: app, `gate`/`router`/`controller`, or Compose ids; omit = all |
@@ -344,7 +344,7 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | `src/raft/services/export/` | Open-closed download encoders (`ExportRegistry` + `Exporter` subclasses); serve catalogs/attachments |
 | `src/raft/ui/` | Operator terminal output (`say`) + shared TTY `TerminalProgress` spinner (doctor, update; `current()` / `set_text` for inner frames; entered at CLI entry before stack/logging init) |
 | `src/raft/services/serve/` | `raft serve`: FastAPI factory, `ServePage`, `ServeActions`, SSE log bridge, SPA paths/instructions |
-| `src/raft/controller/` | Always-on Compose `raft-controller` (job orchestrator for heal + metrics; idle-stop + wake via side_ticks when `spec.scaling`; healer skips `scaledToZero`; metrics batch → `resources.jsonl`) |
+| `src/raft/controller/` | Always-on Compose `raft-controller` (job orchestrator for heal + metrics + per-app `acme:<name>` when `tls: acme`; idle-stop + wake via side_ticks when `spec.scaling`; healer skips `scaledToZero`; metrics batch → `resources.jsonl`) |
 | `src/raft/errors/` | Operator errors + CTAs (`cta`, `domain`, `docker_msgs`, …). Import from owning modules — package `__init__` is not a re-export barrel. |
 | `src/raft/share/` | Product Compose + nginx templates (synced into data home); `share/serve/spa/` = packaged dashboard assets |
 | `src/spa/` | Dashboard SPA source (React + Vite + TypeScript); build output → `share/serve/spa/`; see **Serve / ops UI** |

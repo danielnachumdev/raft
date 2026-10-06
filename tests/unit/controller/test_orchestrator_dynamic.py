@@ -74,10 +74,19 @@ class TestDynamicJobIds:
             run=run,
         )
 
+    def test_append_side_tick(self) -> None:
+        hits: List[str] = []
+        orch = JobOrchestrator()
+        orch.append_side_tick(lambda: hits.append("x"))
+        clock = _Clock(datetime(2026, 1, 1, 0, 0, 0))
+        orch.run_until(lambda: len(hits) >= 1, sleep_fn=lambda _: None, clock=clock)
+        assert hits == ["x"]
+
     def test_register_and_drop_dynamic_ids(self) -> None:
         runs: List[str] = []
         clock = _Clock(datetime(2026, 1, 1, 0, 0, 0))
         orch = JobOrchestrator()
+        assert orch.registered_ids() == frozenset()
         orch.register(self._spec(JobIds.HEAL, lambda: runs.append("heal")))
         orch._arm_first_fires(clock())
         acme = JobIds.of(JobType.ACME, "a")

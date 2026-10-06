@@ -17,7 +17,7 @@ from .report import GroupReportWriter
 
 
 class Doctor:
-    """Environment diagnostics for operators (`raft doctor`)."""
+    """Environment diagnostics for operators (`raft doctor` / `raft doctor NAME`)."""
 
     def __init__(self, stack: Stack) -> None:
         self.stack = stack
@@ -27,11 +27,17 @@ class Doctor:
         self._suites = CHECK_SUITES
         self._reporter = GroupReportWriter()
 
-    def run(self, *, progress: Optional[TerminalProgress] = None) -> list[CheckResult]:
+    def run(
+        self,
+        *,
+        progress: Optional[TerminalProgress] = None,
+        app_name: Optional[str] = None,
+    ) -> list[CheckResult]:
         counter = ComposeCallCounter()
         counter.install(self.sh, getattr(self.docker, "sh", None))
         try:
-            return self._run_suites(progress, counter)
+            results = self._run_suites(progress, counter)
+            return self._filter_results(results, app_name)
         finally:
             counter.uninstall()
 
@@ -42,17 +48,27 @@ class Doctor:
         out: Optional[TextIO] = None,
         color: Optional[bool] = None,
         progress_stream: Optional[TextIO] = None,
+        app_name: Optional[str] = None,
     ) -> int:
-        resolved = results if results is not None else self._run_with_progress(progress_stream)
+        resolved = (
+            results
+            if results is not None
+            else self._run_with_progress(progress_stream, app_name=app_name)
+        )
         TerminalProgress.finish_active()
         return self._reporter.write(self.stack, resolved, out=out, color=color)
 
-    def _run_with_progress(self, stream: Optional[TextIO]) -> list[CheckResult]:
+    def _run_with_progress(
+        self,
+        stream: Optional[TextIO],
+        *,
+        app_name: Optional[str],
+    ) -> list[CheckResult]:
         existing = TerminalProgress.active()
         if existing is not None:
-            return self.run(progress=existing)
+            return self.run(progress=existing, app_name=app_name)
         with TerminalProgress(stream, prefix="raft doctor", label="checking") as progress:
-            return self.run(progress=progress)
+            return self.run(progress=progress, app_name=app_name)
 
     def _run_suites(
         self,
@@ -74,6 +90,19 @@ class Doctor:
             return suite.run(ctx)
         finally:
             timing.done()
+
+    def _filter_results(
+        self,
+        results: list[CheckResult],
+        app_name: Optional[str],
+    ) -> list[CheckResult]:
+        if not app_name:
+            return results
+        app = self._resolve_filter_app(app_name)
+        return [r for r in results if r.service == app.compose_id]
+
+    def _resolve_filter_app(self, app_name: str):
+        return self.stack.app(app_name.strip())
 
     def _context(self, progress: Optional[TerminalProgress]) -> DoctorContext:
         on_progress = self._progress_hook(progress)

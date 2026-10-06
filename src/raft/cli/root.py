@@ -138,9 +138,13 @@ class RaftCLI:
         """Generate Compose/nginx from ~/.raft/state/apps/*.yaml."""
         deps.Orchestrator(self._stack).render()
 
-    def doctor(self) -> None:
-        """Check docker, auth, sync, upstreams, and stack status; print fixes."""
-        code = deps.Doctor(self._stack).report()
+    def doctor(self, name: Optional[str] = None) -> None:
+        """Check docker, auth, sync, upstreams, and stack status; print fixes.
+
+        Optional ``name`` filters to one applied App (CI: ``raft doctor shop``).
+        Exit status then reflects that App's checks only.
+        """
+        code = deps.Doctor(self._stack).report(app_name=name)
         if code:
             raise SystemExit(code)
 
