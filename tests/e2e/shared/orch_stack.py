@@ -163,13 +163,23 @@ class OrchE2EStack:
         )
 
     def run_until(self, predicate: Callable[[], bool]) -> None:
-        """Drive cycles until predicate; preserves schedule across calls."""
+        """Drive cycles until predicate; preserves schedule across calls.
+
+        Join workers before the predicate / sleep decision so (1) SKIP_IF_RUNNING
+        does not burn slots while a Docker tick is still running, and (2) heal's
+        one-shot enqueue is visible to ``_sleep_until_next`` before the clock
+        jumps to the next periodic due time.
+        """
 
         def sleep(delay: float) -> None:
             if delay > 0:
                 self.clock.advance(delay)
 
-        self.orch.run_until(predicate, sleep_fn=sleep, clock=self.clock)
+        def ready() -> bool:
+            self.orch.join_running()
+            return predicate()
+
+        self.orch.run_until(ready, sleep_fn=sleep, clock=self.clock)
 
     def stop_app(self) -> None:
         self.docker.sh.compose("stop", self.APP, check=True, capture=True)

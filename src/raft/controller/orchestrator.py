@@ -41,6 +41,11 @@ class JobOrchestrator:
         self._next_due.pop(job_id, None)
         self._pending.pop(job_id, None)
 
+    def join_running(self, timeout: Optional[float] = None) -> None:
+        """Wait for in-flight workers (virtual-clock tests; not used in prod loop)."""
+        for worker in list(self._workers.values()):
+            worker.join(timeout=timeout)
+
     def enqueue(self, request: JobRequest) -> None:
         if request.job_id not in self._specs:
             raise ValueError(f"unknown job id: {request.job_id}")

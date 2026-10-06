@@ -103,6 +103,7 @@ class TestDynamicJobKeys:
             runs["b"] += 1
 
         return run_a, run_b
+
     def test_failure_does_not_skip_sibling(self) -> None:
         runs: List[str] = []
 
@@ -167,6 +168,17 @@ class TestDynamicJobKeys:
     def test_dispatch_ignores_unknown_id(self) -> None:
         JobOrchestrator()._dispatch("acme:missing", advance_schedule=True)
 
+    def test_join_running_waits_for_worker(self) -> None:
+        release = threading.Event()
+        orch = JobOrchestrator()
+        orch.register(self._spec("acme:a", release.wait, interval=10.0, timeout=5.0))
+        orch._arm_first_fires(datetime(2026, 1, 1))
+        orch._dispatch_cycle(lambda: datetime(2026, 1, 1))
+        assert orch._is_running("acme:a")
+        release.set()
+        orch.join_running(timeout=2.0)
+        assert not orch._is_running("acme:a")
+
     def test_soft_timeout_paths(self) -> None:
         hold = threading.Event()
         clock = _Clock(datetime(2026, 1, 1, 0, 0, 0))
@@ -182,10 +194,24 @@ class TestDynamicJobKeys:
         hold.set()
 
     def _orphan_worker_soft_check(self, orch: JobOrchestrator, hold: threading.Event) -> None:
+        # Dead worker → ``not worker.is_alive()`` continue branch.
+        dead = threading.Thread(target=lambda: None, daemon=True)
+        dead.start()
+        dead.join(timeout=1.0)
+        orch._workers["dead"] = dead
+        orch._check_soft_timeouts()
+        orch._workers.pop("dead", None)
         orphan = threading.Thread(target=hold.wait, daemon=True)
         orch._workers["orphan"] = orphan
         orphan.start()
-        orch._check_soft_timeouts()  # started/timeout missing → skip
+        # Hit each side of ``started is None or timeout is None``.
+        orch._timeouts["orphan"] = 1.0
+        orch._check_soft_timeouts()
+        del orch._timeouts["orphan"]
+        orch._started_mono["orphan"] = time.monotonic()
+        orch._check_soft_timeouts()
+        del orch._started_mono["orphan"]
+        orch._check_soft_timeouts()
 
     def _run_cycles(self, orch: JobOrchestrator, clock: _Clock, *, cycles: int) -> None:
         orch._arm_first_fires(clock())
