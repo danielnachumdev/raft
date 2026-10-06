@@ -57,7 +57,7 @@ Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**), then `OperatorError` w
 - `expose: host` → app publishes the host port itself (gate not involved).
 - `expose: none` → Compose `expose` only (internal); no host publish; no router; no `publicHost` required.
 - Optional multi-app stacks: `spec.group`, `spec.dependsOn`, `spec.envFile` / `spec.env`, `spec.volumes`.
-- `spec.tls`: **`off` (default)** or **`origin`**. HTTP-only apps need no PEMs. `tls: origin` requires `~/.raft/certs/<app>/origin.{pem,key}` and `edge.https`.
+- `spec.tls`: **`off` (default)**, **`origin`**, or **`acme`**. HTTP-only apps need no PEMs. `tls: origin` requires `~/.raft/certs/<app>/origin.{pem,key}` and `edge.https`. `tls: acme` requires `publicHost`, ≥1 `expose: http`, `edge.http` + `edge.https`, and (later) live `~/.raft/certs/<app>/acme.{pem,key}` — HTTP-01 is answered by the gate, not the App.
 - Gate published ports come from `~/.raft/settings.yaml` `edge:` (`http`, `https`, `streams[]`), rendered into `generated/compose.edge.yaml`.
 
 ### Data home vs product templates
@@ -65,7 +65,7 @@ Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**), then `OperatorError` w
 | Path | Role |
 |------|------|
 | `compose.yaml`, `nginx/` (`src/raft/share/`) | Product templates; synced into the data home on use |
-| `~/.raft/settings.yaml` | Operator settings (logging + **edge** + optional **healing** / **metrics**); see [`examples/settings.yaml`](examples/settings.yaml) |
+| `~/.raft/settings.yaml` | Operator settings (logging + **edge** + optional **healing** / **metrics** / **acme**); see [`examples/settings.yaml`](examples/settings.yaml) |
 | `~/.raft/state/apps/*.yaml` | Applied desired state |
 | `~/.raft/generated/` | Compose apps + compose.edge + router hosts + gate-http/stream/tls + **upstreams** |
 | `~/.raft/apps/` | Sync checkouts |
@@ -74,7 +74,8 @@ Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**), then `OperatorError` w
 | `~/.raft/state/serve/` | Per-port `raft serve` flock + pid (`port-<port>.lock`); used by start / `--stop` |
 | `~/.raft/state/scaling/` | Per-app scale-to-zero JSON + gate marker files (when `spec.scaling` is set) |
 | `~/.raft/state/metrics/` | Controller resource samples (`resources.jsonl`); batched append; daily + size-split rotation like logs (`resources.jsonl.YYYY-MM-DD[.N]`); `metrics.retentionMaxAgeDays` / `retentionMaxBytes` |
-| `~/.raft/certs/` | Origin PEMs (only for `tls: origin`) |
+| `~/.raft/state/acme/` | ACME account + HTTP-01 webroot + per-app state JSON (when using `tls: acme`) |
+| `~/.raft/certs/` | Origin PEMs (`origin.*` for `tls: origin`) and ACME live material (`acme.*` for `tls: acme`) |
 | `~/.raft/logs/` | Structured log file (default); daily + size-split rotation via `logging.retentionMaxAgeDays` / `retentionMaxBytes` (at CLI `setup_logging`) |
 
 Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
@@ -89,7 +90,7 @@ Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 4. If any app uses `tls: origin`, install PEMs under `~/.raft/certs/<name>/` **before** first deploy (apply-with-deploy or `raft up`).
 5. `--no-deploy` only when you intentionally register desired state without bringing the app live (e.g. apply several manifests, then one `raft up`; or register before Origin PEMs exist). After that, deploy with `raft apply …` again (deploy on) or `raft up` / `raft redeploy` as appropriate.
 6. Manual cold start when apps are already applied: `raft up` (refuses if stack already up; `down` first).
-7. `raft doctor` before trusting the site (certs only for `tls: origin`; gate drift → `raft gate recreate`). Doctor is group-first: built-in **`raft`** (edge services; healthy docker/compose/generated/stack/port probes stay hidden), then App `spec.group` (at most one); ungrouped apps appear without a heading. Member labels drop the `{group}-` prefix under a group heading (Compose ids stay `raft-gate` / `raft-router` / `GROUP-NAME` for Docker; doctor shows `gate` / `router` under `raft`). Healthy OK lines append ports in use (gate: published host ports; apps/router: contract / listen ports). File log records per-suite start/done with `elapsed_ms` plus a compose-call summary (`total` / `ps`) for diagnosing slow doctor runs.
+7. `raft doctor` before trusting the site (certs for `tls: origin` / `tls: acme`; gate drift → `raft gate recreate`). Doctor is group-first: built-in **`raft`** (edge services; healthy docker/compose/generated/stack/port probes stay hidden), then App `spec.group` (at most one); ungrouped apps appear without a heading. Member labels drop the `{group}-` prefix under a group heading (Compose ids stay `raft-gate` / `raft-router` / `GROUP-NAME` for Docker; doctor shows `gate` / `router` under `raft`). Healthy OK lines append ports in use (gate: published host ports; apps/router: contract / listen ports). File log records per-suite start/done with `elapsed_ms` plus a compose-call summary (`total` / `ps`) for diagnosing slow doctor runs.
 8. `raft status` (optional `--json`, or `--live` to refresh the human table until Ctrl+C) for a point-in-time host + container CPU/memory/uptime/started snapshot — declared Compose limits vs live usage via `ContainerRuntimeGateway`. Human NAME column drops `{group}-` (edge: `gate` / `router` with GROUP `raft`); JSON keeps Compose service ids. The always-on **controller** also samples the same plane on a metrics job interval (default 60s; settings `metrics:`) and **batch-appends** JSONL under `~/.raft/state/metrics/resources.jsonl` (flush every 10 samples or 60s; seals on day change / `retentionMaxBytes` like `raft.log`; defaults 30 days / 100 MiB). `raft serve` Trends + service Runtime charts read that history via `/api/metrics`.
 9. `raft serve` (optional `--port`, default **8787**) — localhost-only ops UI (`127.0.0.1`) for applied apps + gate/router/controller. One FastAPI process: packaged SPA + status/metrics/service/actions/logs APIs. Prints bind URL + a generic SSH port-forward example on start; Ctrl+C or `raft serve --stop` stops. A second start on the same port fails fast with an already-running CTA. **Not** an edge listener. See **Serve / ops UI** below.
 10. `raft logs [name…]` for container stdout/stderr (not `~/.raft/logs/raft.log`). Snapshot by default (`--tail N`, default 100); `-f` / `--follow` streams until Ctrl+C. Names: applied app, `gate` / `router` / `controller`, or Compose ids (`raft-gate`, `GROUP-NAME`); omit names for all core services. Unknown / missing containers → OperatorError with Fix CTA. Serve detail reuses the same `Logs` path (snapshot + SSE follow).
@@ -124,7 +125,7 @@ spec:
   # extraHosts:                   # optional Host aliases (routed + future ACME SANs)
   #   - www.app.example.com       # www is not automatic — list it when you need it
   #   - api.app.example.com
-  tls: off                      # off | origin
+  tls: off                      # off | origin | acme
   group: demo               # optional; at most one group
   # dependsOn: optional. Strings or { name, scaleWithParent? }.
   # Compose / wake / heal use names only. When this app has spec.scaling,

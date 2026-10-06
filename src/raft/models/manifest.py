@@ -18,7 +18,7 @@ CONTRACT_API_VERSION = "raft/v1"
 CONTRACT_KIND = "App"
 CONTRACT_REL_PATH = Path(".raft") / "app.yaml"
 REGISTRY_DIR = Path("state") / "apps"
-TLS_MODES = frozenset({"off", "origin"})
+TLS_MODES = frozenset({"off", "origin", "acme"})
 
 
 @dataclass(frozen=True)

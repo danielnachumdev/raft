@@ -19,6 +19,7 @@ from .paths import (
 from .settings import load_config
 from .settings_types import (
     CONFIG_FILENAME,
+    AcmeConfig,
     EdgeConfig,
     EdgeStream,
     HealingConfig,
@@ -30,6 +31,7 @@ from .settings_types import (
 
 __all__ = [
     "APPS_DIRNAME",
+    "AcmeConfig",
     "CERTS_DIRNAME",
     "CONFIG_FILENAME",
     "DATA_HOME_ENV",

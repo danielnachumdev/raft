@@ -74,12 +74,12 @@ logging:
 # ---------------------------------------------------------------------------
 edge:
   # Public HTTP port on the host (gate). Default 80.
-  # Set to null to disable the HTTP listener entirely.
+  # Required for tls: acme (HTTP-01). Set to null to disable the HTTP listener entirely.
   http: 80
   # http: null
 
   # Public HTTPS port on the host (gate). Default 443.
-  # Needed when any app uses tls: origin. Set to null to omit HTTPS.
+  # Needed when any app uses tls: origin or tls: acme. Set to null to omit HTTPS.
   https: 443
   # https: null
 
@@ -94,3 +94,15 @@ edge:
   #   - name: dns
   #     port: 53
   #     protocol: udp
+
+# ---------------------------------------------------------------------------
+# Optional ACME (Let's Encrypt) — required knobs when any app uses tls: acme.
+# HTTP-01 is answered by the gate (not the App). Do not set edge.http: null.
+# ---------------------------------------------------------------------------
+# acme:
+#   email: ops@example.com
+#   # Default: Let's Encrypt production. Staging for labs:
+#   # directory: https://acme-staging-v02.api.letsencrypt.org/directory
+#   directory: https://acme-v02.api.letsencrypt.org/directory
+#   renewDaysBeforeExpiry: 30
+#   challenge: http-01

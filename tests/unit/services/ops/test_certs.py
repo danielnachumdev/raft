@@ -37,6 +37,21 @@ class TestOriginCerts(RaftTestCase):
 
         assert missing_origin_certs(load_stack(self.tmp_path)) == []
 
+    def test_tls_acme_ignored_by_origin_require(self) -> None:
+        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
+        from raft.models.stack import load_stack
+
+        stack = load_stack(self.tmp_path)
+        assert missing_origin_certs(stack) == []
+        require_origin_certs(stack)
+        from raft.services.ops.certs import missing_acme_certs
+
+        missing = missing_acme_certs(stack)
+        assert len(missing) == 1
+        assert "acme.pem" in missing[0].missing
+        assert "DNS" in missing[0].fix
+        assert "Cloudflare" not in missing[0].fix
+
     def test_looks_like_missing_origin_cert(self) -> None:
         nginx = (
             'cannot load certificate "/etc/nginx/certs/web/origin.pem": ' "BIO_new_file() failed"

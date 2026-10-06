@@ -27,7 +27,7 @@ class ScalingGate:
     def _server_block(self, app: App, spec: AppSpec, *, listen: int, ssl: bool) -> str:
         names = " ".join(spec.server_names(app.public_host))
         listen_line = self._listen_line(listen, ssl=ssl)
-        certs = self._tls_certs(app) if ssl else ""
+        certs = self._tls_certs(app, spec) if ssl else ""
         return (
             f"# scaling:{app.name}\n"
             "server {\n"
@@ -47,10 +47,11 @@ class ScalingGate:
         return f"    listen {port};\n"
 
     @staticmethod
-    def _tls_certs(app: App) -> str:
+    def _tls_certs(app: App, spec: AppSpec) -> str:
+        stem = "acme" if spec.tls == "acme" else "origin"
         return (
-            f"    ssl_certificate     /etc/nginx/certs/{app.name}/origin.pem;\n"
-            f"    ssl_certificate_key /etc/nginx/certs/{app.name}/origin.key;\n"
+            f"    ssl_certificate     /etc/nginx/certs/{app.name}/{stem}.pem;\n"
+            f"    ssl_certificate_key /etc/nginx/certs/{app.name}/{stem}.key;\n"
             "\n"
         )
 
@@ -58,10 +59,15 @@ class ScalingGate:
         zero = f"{MARKERS_DIR}/{app.name}.zero"
         timeout = f"{MARKERS_DIR}/{app.name}.timeout"
         return (
-            self._proxy_location(app, zero, timeout)
+            self._acme_challenge_include()
+            + self._proxy_location(app, zero, timeout)
             + self._internal_mirrors(app)
             + self._holding_locations(app)
         )
+
+    @staticmethod
+    def _acme_challenge_include() -> str:
+        return "    include /etc/nginx/gate/acme_challenge.inc;\n\n"
 
     def _proxy_location(self, app: App, zero: str, timeout: str) -> str:
         return self._live_location(app, zero, timeout)

@@ -23,6 +23,9 @@ DEFAULT_METRICS_RETENTION_MAX_AGE_DAYS = 30
 DEFAULT_METRICS_RETENTION_MAX_BYTES = 100 * 1024 * 1024  # 100 MiB
 DEFAULT_LOGGING_RETENTION_MAX_AGE_DAYS = 30
 DEFAULT_LOGGING_RETENTION_MAX_BYTES = 100 * 1024 * 1024  # 100 MiB
+DEFAULT_ACME_DIRECTORY = "https://acme-v02.api.letsencrypt.org/directory"
+DEFAULT_ACME_RENEW_DAYS_BEFORE_EXPIRY = 30
+DEFAULT_ACME_CHALLENGE = "http-01"
 
 
 @dataclass(frozen=True)
@@ -100,11 +103,22 @@ class MetricsConfig:
 
 
 @dataclass(frozen=True)
+class AcmeConfig:
+    """Public ACME TLS (``tls: acme``). Email required when any such app is applied."""
+
+    email: Optional[str] = None
+    directory: str = DEFAULT_ACME_DIRECTORY
+    renew_days_before_expiry: int = DEFAULT_ACME_RENEW_DAYS_BEFORE_EXPIRY
+    challenge: str = DEFAULT_ACME_CHALLENGE
+
+
+@dataclass(frozen=True)
 class RaftConfig:
     logging: LoggingConfig = LoggingConfig()
     edge: EdgeConfig = field(default_factory=EdgeConfig)
     healing: HealingConfig = field(default_factory=HealingConfig)
     metrics: MetricsConfig = field(default_factory=MetricsConfig)
+    acme: AcmeConfig = field(default_factory=AcmeConfig)
 
 
 def default_config() -> RaftConfig:

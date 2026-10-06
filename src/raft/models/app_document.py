@@ -193,7 +193,7 @@ class AppDocument:
         context, dockerfile = fields._parse_build(spec, path)
         return {
             "ports": ports,
-            "tls": fields._parse_tls(spec, path, public_host=public_host),
+            "tls": fields._parse_tls(spec, path, public_host=public_host, ports=ports),
             "readiness": parse_readiness(spec, ports, path),
             "extra_hosts": fields._extra_hosts(spec, path),
             "build_context": context,

@@ -13,7 +13,7 @@ Typical `spec` concerns (omit what you do not need):
 | Source | `local` / `git` / `docker` + `ref` |
 | Exposure | `ports[]` with `expose: http \| stream \| host \| none`; `publicHost` when any port is `http` |
 | Host aliases | `extraHosts` — additional Host names for router (and future ACME SANs); `www.<publicHost>` is **not** automatic — list it here if you want it |
-| TLS | `tls: off` (default) or `origin` (needs PEMs under `~/.raft/certs/<app>/`) |
+| TLS | `tls: off` (default), `origin` (Origin PEMs under `~/.raft/certs/<app>/origin.*`), or `acme` (public ACME; live `acme.{pem,key}`; HTTP-01 on the gate) |
 | Runtime | `env` / `envFile`, `volumes`, `group`, `dependsOn`, `resources`, `readiness` |
 | Scaling | `scaling` (`idleSeconds`/`minUpSeconds` required; `wakeTimeoutSeconds` defaults to 60; HTTP + `publicHost` only) |
 

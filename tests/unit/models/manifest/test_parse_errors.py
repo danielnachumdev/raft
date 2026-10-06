@@ -64,6 +64,47 @@ PARSE_ERROR_DOCS = [
         },
         "tls=origin requires",
     ),
+    (
+        {
+            "apiVersion": "raft/v1",
+            "kind": "App",
+            "metadata": {"name": "a"},
+            "spec": {
+                "source": "local",
+                "tls": "acme",
+                "ports": [
+                    {
+                        "name": "smtp",
+                        "containerPort": 25,
+                        "expose": "stream",
+                        "publicPort": 25,
+                    }
+                ],
+            },
+        },
+        "tls=acme requires",
+    ),
+    (
+        {
+            "apiVersion": "raft/v1",
+            "kind": "App",
+            "metadata": {"name": "a"},
+            "spec": {
+                "publicHost": "a.test",
+                "source": "local",
+                "tls": "acme",
+                "ports": [
+                    {
+                        "name": "smtp",
+                        "containerPort": 25,
+                        "expose": "stream",
+                        "publicPort": 25,
+                    }
+                ],
+            },
+        },
+        "expose: http",
+    ),
 ]
 
 NULL_RESOURCES_YAML = """\

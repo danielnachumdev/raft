@@ -22,6 +22,29 @@ LOGS_DIRNAME = "logs"
 STATE_DIR = Path("state") / "apps"
 LOCKS_DIR = Path("state") / "locks"
 
+_DATA_DIR_RELS = (
+    GENERATED_DIRNAME,
+    DEPLOY_DIRNAME,
+    APPS_DIRNAME,
+    CERTS_DIRNAME,
+    LOGS_DIRNAME,
+    str(STATE_DIR),
+    str(LOCKS_DIR),
+    "state/scaling",
+    "state/scaling/markers",
+    "state/metrics",
+    "state/events",
+    "state/serve",
+    "state/acme",
+    "state/acme/http-01",
+    "state/acme/apps",
+    f"{GENERATED_DIRNAME}/nginx/gate-tls",
+    f"{GENERATED_DIRNAME}/nginx/gate-http",
+    f"{GENERATED_DIRNAME}/nginx/gate-stream",
+    f"{GENERATED_DIRNAME}/nginx/router",
+    f"{GENERATED_DIRNAME}/nginx/upstreams",
+)
+
 _TEMPLATE_FILES = ("compose.yaml",)
 _TEMPLATE_DIRS = ("nginx", "controller")
 # Synced into ~/.raft/controller/raft so Compose can build raft-controller.
@@ -87,25 +110,7 @@ def ensure_raft_home(
 
 
 def _ensure_data_dirs(root: Path) -> None:
-    for rel in (
-        GENERATED_DIRNAME,
-        DEPLOY_DIRNAME,
-        APPS_DIRNAME,
-        CERTS_DIRNAME,
-        LOGS_DIRNAME,
-        str(STATE_DIR),
-        str(LOCKS_DIR),
-        "state/scaling",
-        "state/scaling/markers",
-        "state/metrics",
-        "state/events",
-        "state/serve",
-        f"{GENERATED_DIRNAME}/nginx/gate-tls",
-        f"{GENERATED_DIRNAME}/nginx/gate-http",
-        f"{GENERATED_DIRNAME}/nginx/gate-stream",
-        f"{GENERATED_DIRNAME}/nginx/router",
-        f"{GENERATED_DIRNAME}/nginx/upstreams",
-    ):
+    for rel in _DATA_DIR_RELS:
         (root / rel).mkdir(parents=True, exist_ok=True)
 
 

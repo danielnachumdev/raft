@@ -1,0 +1,19 @@
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: tls-acme
+spec:
+  publicHost: secure-acme.test
+  tls: acme
+  source: docker
+  image: hashicorp/http-echo
+  ref: "1.0.0"
+  path: apps/tls-acme
+  ports:
+    - name: http
+      containerPort: 5678
+      expose: http
+  readiness:
+    type: http
+    port: http
+    path: /

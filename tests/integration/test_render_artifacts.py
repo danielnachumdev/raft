@@ -112,6 +112,48 @@ class TestRenderTlsOrigin:
         )
 
 
+class TestRenderTlsAcme:
+    def test_int_tls_acme_challenge_and_no_tls_without_pems(
+        self, isolated_raft_env: Path
+    ) -> None:
+        gen = GeneratedArtifacts(
+            RaftHomeFixtures.apply_and_render(
+                isolated_raft_env, RaftHomeFixtures.fixture_app_yamls("tls_acme")
+            )
+        )
+        listeners = FileText.read(gen.path("nginx", "gate-http", "listeners.conf"))
+        assert "acme_challenge.inc" in listeners or "proxy_router.inc" in listeners
+        product = (
+            isolated_raft_env / "nginx" / "gate" / "proxy_router.inc"
+        ).read_text(encoding="utf-8")
+        assert "acme_challenge.inc" in product
+        assert product.index("acme_challenge.inc") < product.index("location /")
+        assert list(gen.path("nginx", "gate-tls").glob("*.conf")) == []
+
+    def test_int_tls_acme_with_pems(self, isolated_raft_env: Path) -> None:
+        RaftHomeFixtures.prepare(isolated_raft_env)
+        d = isolated_raft_env / "certs" / "tls-acme"
+        d.mkdir(parents=True)
+        (d / "acme.pem").write_text("pem\n", encoding="utf-8")
+        (d / "acme.key").write_text("key\n", encoding="utf-8")
+        gen = GeneratedArtifacts(
+            RaftHomeFixtures.apply_and_render(
+                isolated_raft_env, RaftHomeFixtures.fixture_app_yamls("tls_acme")
+            )
+        )
+        body = FileText.read(gen.path("nginx", "gate-tls", "tls-acme.conf"))
+        assert "acme.pem" in body
+        assert "origin.pem" not in body
+
+    def test_int_tls_acme_requires_edge_http(self, isolated_raft_env: Path) -> None:
+        with pytest.raises(Exception, match="edge.http"):
+            RaftHomeFixtures.apply_and_render(
+                isolated_raft_env,
+                RaftHomeFixtures.fixture_app_yamls("tls_acme"),
+                edge=EdgeConfig(http=None, https=443, streams=()),
+            )
+
+
 class TestRenderEdgeSettings:
     def test_int_edge_settings(self, isolated_raft_env: Path) -> None:
         edge = FileText.read(

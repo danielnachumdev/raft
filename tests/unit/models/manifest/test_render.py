@@ -66,6 +66,30 @@ class TestStackRenderer(ManifestTestCase):
             "certs/web/origin.pem",
         )
 
+    def test_render_tls_acme_without_pems_skips_gate_tls(self) -> None:
+        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
+        gen = GeneratedArtifacts(self.render_applied())
+        assert list(gen.path("nginx", "gate-tls").glob("*.conf")) == []
+
+    def test_render_tls_acme_with_pems_writes_acme_paths(self) -> None:
+        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
+        d = self.tmp_path / "certs" / "web"
+        d.mkdir(parents=True)
+        (d / "acme.pem").write_text("pem\n", encoding="utf-8")
+        (d / "acme.key").write_text("key\n", encoding="utf-8")
+        gen = GeneratedArtifacts(self.render_applied())
+        FileText.contains(
+            gen.path("nginx", "gate-tls", "web.conf"),
+            "certs/web/acme.pem",
+        )
+        body = gen.path("nginx", "gate-tls", "web.conf").read_text(encoding="utf-8")
+        assert "origin.pem" not in body
+
+    def test_render_tls_acme_requires_edge_http(self) -> None:
+        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
+        with pytest.raises(Exception, match="edge.http"):
+            self.render_applied(edge=EdgeConfig(http=None, https=443, streams=()))
+
     def test_render_rejects_undeclared_stream_port(self) -> None:
         write_applied_app(
             self.tmp_path,

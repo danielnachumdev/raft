@@ -183,11 +183,13 @@ def _gate_volumes() -> list:
     return [
         "./nginx/gate/nginx.conf:/etc/nginx/nginx.conf:ro",
         "./nginx/gate/proxy_router.inc:/etc/nginx/gate/proxy_router.inc:ro",
+        "./nginx/gate/acme_challenge.inc:/etc/nginx/gate/acme_challenge.inc:ro",
         "./generated/nginx/gate-http:/etc/nginx/http-generated:ro",
         "./generated/nginx/gate-stream:/etc/nginx/stream-generated:ro",
         "./generated/nginx/gate-tls:/etc/nginx/gate-tls:ro",
         "./nginx/errors:/usr/share/nginx/errors:ro",
         "./certs:/etc/nginx/certs:ro",
+        "./state/acme/http-01:/etc/nginx/acme-www:ro",
         "./state/scaling/markers:/etc/nginx/scaling/markers:ro",
     ]
 

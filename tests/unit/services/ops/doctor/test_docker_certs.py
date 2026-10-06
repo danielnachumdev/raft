@@ -121,3 +121,31 @@ class TestDoctorDockerCerts(DoctorTestCase):
         assert results[("app", "certs")].status == "fail"
         assert "origin.key" in results[("app", "certs")].detail
         assert "tls: origin" in results[("app", "certs")].fix
+
+    def test_certs_acme_missing_fail_cta(self) -> None:
+        self.seed_compose()
+        self.ensure_checkouts("app")
+        write_applied_app(self.tmp_path, "app", tls="acme")
+        results = self.run_keyed(
+            shell=self.mock_shell(), docker=self.mock_docker(), auth=MagicMock()
+        )
+        assert results[("app", "certs")].status == "fail"
+        assert "acme.pem" in results[("app", "certs")].detail
+        fix = results[("app", "certs")].fix or ""
+        assert "DNS" in fix and "edge.http" in fix and "acme.email" in fix
+        assert "Cloudflare" not in fix
+        assert "tls: origin" not in fix
+
+    def test_certs_acme_ok_when_present(self) -> None:
+        self.seed_compose()
+        self.ensure_checkouts("app")
+        write_applied_app(self.tmp_path, "app", tls="acme")
+        d = self.tmp_path / "certs" / "app"
+        d.mkdir(parents=True)
+        (d / "acme.pem").write_text("pem\n", encoding="utf-8")
+        (d / "acme.key").write_text("key\n", encoding="utf-8")
+        results = self.run_keyed(
+            shell=self.mock_shell(), docker=self.mock_docker(), auth=MagicMock()
+        )
+        assert results[("app", "certs")].status == "ok"
+        assert "acme.pem+key" in results[("app", "certs")].detail

@@ -9,6 +9,7 @@ from typing import Any, Optional
 from raft.errors.cta import OperatorError
 
 from .manifest import TLS_MODES
+from .ports import PortSpec
 
 _GROUP_NAME = re.compile(r"^[a-z][a-z0-9-]*$")
 
@@ -147,13 +148,35 @@ class AppSpecFields:
         return limits, requests
 
     @staticmethod
-    def _parse_tls(spec: dict[str, Any], path: Path, *, public_host: str) -> str:
+    def _parse_tls(
+        spec: dict[str, Any],
+        path: Path,
+        *,
+        public_host: str,
+        ports: tuple[PortSpec, ...],
+    ) -> str:
         tls = AppSpecFields._normalize_tls(spec.get("tls", "off"), path)
         if tls not in TLS_MODES:
             raise ValueError(f"{path}: spec.tls must be one of {sorted(TLS_MODES)}, got {tls!r}")
-        if tls == "origin" and not public_host:
-            raise ValueError(f"{path}: spec.tls=origin requires spec.publicHost")
+        AppSpecFields._require_tls_host(tls, public_host, path)
+        AppSpecFields._require_tls_http_port(tls, ports, path)
         return tls
+
+    @staticmethod
+    def _require_tls_host(tls: str, public_host: str, path: Path) -> None:
+        if tls in {"origin", "acme"} and not public_host:
+            raise ValueError(f"{path}: spec.tls={tls} requires spec.publicHost")
+
+    @staticmethod
+    def _require_tls_http_port(tls: str, ports: tuple[PortSpec, ...], path: Path) -> None:
+        if tls != "acme":
+            return
+        if any(p.expose == "http" for p in ports):
+            return
+        raise ValueError(
+            f"{path}: spec.tls=acme requires at least one port with expose: http "
+            f"(and publicHost). Stream/host/none-only apps cannot use ACME."
+        )
 
     @staticmethod
     def _normalize_tls(raw_tls: Any, path: Path) -> str:
@@ -161,7 +184,7 @@ class AppSpecFields:
             if raw_tls:
                 raise ValueError(
                     f"{path}: spec.tls must be one of {sorted(TLS_MODES)} "
-                    f"(YAML true is not valid; use 'origin')"
+                    f"(YAML true is not valid; use 'origin' or 'acme')"
                 )
             return "off"
         return str(raw_tls).strip().lower() or "off"
