@@ -23,6 +23,8 @@ from .ports import PortSpec, parse_ports
 from .readiness_parser import parse_readiness
 from .scaling_spec import ScalingSpecParser
 
+_KNOWN_METADATA_KEYS = frozenset({"name"})
+
 
 class AppDocument:
     """Parse YAML App documents into ``App`` + ``AppSpec``."""
@@ -42,6 +44,7 @@ class AppDocument:
         cls._require_api_kind(data, path)
         name = cls._metadata_name(data, path, expect_name=expect_name)
         spec = cls._spec_mapping(data, path)
+        AppSpecFields._reject_unknown(spec, path)
         ports = parse_ports(spec, path)
         public_host = cls._require_public_host(spec, ports, path)
         return cls._assemble(name, public_host, spec, ports, path)
@@ -96,6 +99,7 @@ class AppDocument:
         metadata = data.get("metadata") or {}
         if not isinstance(metadata, dict):
             raise ValueError(f"{path}: metadata must be an object")
+        AppDocument._reject_unknown_metadata(metadata, path)
         meta_name = metadata.get("name")
         name = str(meta_name).strip() if meta_name is not None else ""
         if not name:
@@ -105,6 +109,17 @@ class AppDocument:
                 f"{path}: metadata.name {name!r} does not match expected {expect_name!r}"
             )
         return name
+
+    @staticmethod
+    def _reject_unknown_metadata(metadata: dict[str, Any], path: Path) -> None:
+        unknown = sorted(set(metadata) - _KNOWN_METADATA_KEYS)
+        if not unknown:
+            return
+        keys = ", ".join(unknown)
+        raise OperatorError(
+            f"{path}: unsupported metadata field(s): {keys}\n"
+            f"Fix: only metadata.name is supported — remove unknown keys"
+        )
 
     @staticmethod
     def _spec_mapping(data: dict[str, Any], path: Path) -> dict[str, Any]:
@@ -175,7 +190,6 @@ class AppDocument:
         group: Optional[str],
     ) -> dict[str, Any]:
         fields = AppSpecFields
-        fields._reject_removed_www(spec, path)
         context, dockerfile = fields._parse_build(spec, path)
         return {
             "ports": ports,

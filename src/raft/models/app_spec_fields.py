@@ -12,6 +12,38 @@ from .manifest import TLS_MODES
 
 _GROUP_NAME = re.compile(r"^[a-z][a-z0-9-]*$")
 
+# Keys read by AppDocument / field parsers. Legacy aliases and keys that only
+# exist to emit a specific Fix CTA (port, readinessProbe, groups) stay listed.
+_KNOWN_SPEC_KEYS = frozenset(
+    {
+        "source",
+        "repo",
+        "image",
+        "ref",
+        "path",
+        "publicHost",
+        "public_host",
+        "ports",
+        "port",
+        "tls",
+        "readiness",
+        "readinessProbe",
+        "extraHosts",
+        "extra_hosts",
+        "build",
+        "scaling",
+        "resources",
+        "dependsOn",
+        "depends_on",
+        "envFile",
+        "env_file",
+        "env",
+        "volumes",
+        "group",
+        "groups",
+    }
+)
+
 
 class AppSpecFields:
     """Parse individual AppSpec fields from a raw ``spec`` mapping."""
@@ -177,13 +209,15 @@ class AppSpecFields:
         return repo, image
 
     @staticmethod
-    def _reject_removed_www(spec: dict[str, Any], path: Path) -> None:
-        if "www" not in spec:
+    def _reject_unknown(spec: dict[str, Any], path: Path) -> None:
+        unknown = sorted(set(spec) - _KNOWN_SPEC_KEYS)
+        if not unknown:
             return
+        keys = ", ".join(unknown)
         raise OperatorError(
-            f"{path}: spec.www is not supported.\n"
-            f"Fix: remove `www:` and list aliases under `extraHosts` "
-            f"(e.g. `extraHosts: [www.example.com]`)"
+            f"{path}: unsupported spec field(s): {keys}\n"
+            f"Fix: remove unknown keys from spec "
+            f"(see docs/app-manifest.md for supported fields)"
         )
 
     @staticmethod

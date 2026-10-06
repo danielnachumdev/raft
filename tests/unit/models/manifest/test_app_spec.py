@@ -175,11 +175,21 @@ class TestAppSpec(ManifestTestCase):
                 {"apiVersion": "x", "kind": "App", "metadata": {"name": "a"}}, path=path
             )
 
-    def test_parse_rejects_removed_www_and_bad_build_types(self) -> None:
+    def test_parse_rejects_unknown_spec_and_metadata_keys(self) -> None:
         path = self.tmp_path / "app.yaml"
         base = self._minimal_local_doc()
-        with pytest.raises(RuntimeError, match="spec.www is not supported"):
+        with pytest.raises(RuntimeError, match="unsupported spec field\\(s\\): www"):
             AppDocument.parse({**base, "spec": {**base["spec"], "www": True}}, path=path)
+        with pytest.raises(RuntimeError, match="unsupported spec field\\(s\\): typoField"):
+            AppDocument.parse({**base, "spec": {**base["spec"], "typoField": 1}}, path=path)
+        with pytest.raises(RuntimeError, match="unsupported metadata field\\(s\\): labels"):
+            AppDocument.parse(
+                {**base, "metadata": {"name": "a", "labels": {"x": "y"}}}, path=path
+            )
+
+    def test_parse_rejects_bad_build_types(self) -> None:
+        path = self.tmp_path / "app.yaml"
+        base = self._minimal_local_doc()
         with pytest.raises(RuntimeError, match="build.context must be a string"):
             AppDocument.parse(
                 {**base, "spec": {**base["spec"], "build": {"context": 1}}}, path=path

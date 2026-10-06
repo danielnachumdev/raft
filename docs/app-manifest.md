@@ -17,7 +17,7 @@ Typical `spec` concerns (omit what you do not need):
 | Runtime | `env` / `envFile`, `volumes`, `group`, `dependsOn`, `resources`, `readiness` |
 | Scaling | `scaling` (`idleSeconds`/`minUpSeconds` required; `wakeTimeoutSeconds` defaults to 60; HTTP + `publicHost` only) |
 
-**Breaking change:** `spec.www` was removed. Routing hostnames are `publicHost` + `extraHosts` only. If you previously relied on the default `www: true`, add `www.<your-publicHost>` to `extraHosts`.
+**Breaking change:** Unknown `spec` / `metadata` keys fail apply (allowlist). Hostnames are `publicHost` + `extraHosts` only — put former `www` aliases in `extraHosts` (e.g. `www.<publicHost>`).
 
 ## Apply-time preprocess
 

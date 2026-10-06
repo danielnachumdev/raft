@@ -106,6 +106,8 @@ Logging: `~/.raft/settings.yaml` `logging:`; default active file `~/.raft/logs/r
 
 Canonical path in a service repo: **`.raft/app.yaml`** only. Shape: `apiVersion: raft/v1`, `kind: App`, `metadata`, `spec`.
 
+Unknown `spec` / `metadata` keys fail parse (`OperatorError` with Fix CTA). Host aliases use `extraHosts` (not a separate www flag).
+
 ### `spec.source`
 
 | `source` | Meaning |
