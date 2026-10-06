@@ -20,7 +20,7 @@ class TestScalingSpec(ManifestTestCase):
         spec = AppDocument.load_contract(checkout)
         assert spec.scaling is None
 
-    def test_all_fields_required(self) -> None:
+    def test_idle_and_min_up_required(self) -> None:
         checkout = self.tmp_path / "app"
         checkout.mkdir()
         self.write_manifest(checkout)
@@ -28,8 +28,21 @@ class TestScalingSpec(ManifestTestCase):
         text = path.read_text(encoding="utf-8")
         text += "\n  scaling:\n    idleSeconds: 60\n"
         path.write_text(text, encoding="utf-8")
-        with pytest.raises(ValueError, match="wakeTimeoutSeconds"):
+        with pytest.raises(ValueError, match="minUpSeconds"):
             AppDocument.load_contract(checkout)
+
+    def test_wake_timeout_defaults_to_sixty(self) -> None:
+        checkout = self.tmp_path / "app"
+        checkout.mkdir()
+        self.write_manifest(checkout)
+        path = checkout / ".raft" / "app.yaml"
+        text = path.read_text(encoding="utf-8")
+        text += "\n  scaling:\n    idleSeconds: 30\n    minUpSeconds: 15\n"
+        path.write_text(text, encoding="utf-8")
+        spec = AppDocument.load_contract(checkout)
+        assert spec.scaling == ScalingSpec(
+            idle_seconds=30.0, wake_timeout_seconds=60.0, min_up_seconds=15.0
+        )
 
     def test_positive_numbers(self) -> None:
         checkout = self.tmp_path / "app"
@@ -110,4 +123,19 @@ class TestScalingSpec(ManifestTestCase):
             encoding="utf-8",
         )
         with pytest.raises(ValueError, match="idleSeconds"):
+            AppDocument.load_contract(checkout)
+
+    def test_rejects_zero_wake_timeout(self) -> None:
+        checkout = self.tmp_path / "app"
+        checkout.mkdir()
+        self.write_manifest(checkout)
+        path = checkout / ".raft" / "app.yaml"
+        text = path.read_text(encoding="utf-8")
+        path.write_text(
+            text
+            + "\n  scaling:\n    idleSeconds: 30\n"
+            + "    wakeTimeoutSeconds: 0\n    minUpSeconds: 15\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match="wakeTimeoutSeconds"):
             AppDocument.load_contract(checkout)

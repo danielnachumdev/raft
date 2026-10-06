@@ -85,7 +85,9 @@ class Scaler:
         spec = self._load_spec(name)
         if spec is None or spec.scaling is None:
             return
-        self.store.request_wake(name)
+        wake_id = self.store.request_wake(name)
+        if wake_id:
+            logger.info("scale wake request app=%s id=%s", name, wake_id)
         self._start_wake_thread(name, spec.scaling)
 
     def wake_now(self, name: str, scaling: ScalingSpec, *, now: Optional[float] = None) -> bool:
@@ -139,8 +141,9 @@ class Scaler:
         elapsed = when - state.wake_requested_at
         if elapsed >= scaling.wake_timeout_seconds and not state.wake_timed_out:
             logger.warning(
-                "scale wake timeout app=%s after %.0fs",
+                "scale wake timeout app=%s id=%s after %.0fs",
                 name,
+                state.wake_id or "-",
                 scaling.wake_timeout_seconds,
             )
             self.store.mark_wake_timeout(name)

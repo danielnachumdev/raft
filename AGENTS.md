@@ -16,7 +16,7 @@ User-facing samples live under **[`examples/`](examples/)**: operator settings (
 
 **Shipped:** App-manifest apply preprocess (`ManifestPreprocessor`): resolve `${{ if … }}` / `${{ endif }}` (`==` `!=` `&&` `||`, nesting allowed; operands are quoted strings or `${VAR}` / `${VAR:-default}`), then expand remaining `${VAR}` in the kept text, then YAML parse. Full-line `#` comments are ignored by preprocess (so demos may use a single `$` under `#`). `--env*` supply **string values** only (any shape). Bridge CI values into the container via `spec.env` / `spec.envFile` placeholders (`DATABASE_URL: ${CI_DATABASE_URL}`).
 
-**Shipped:** Per-app scale-to-zero via `spec.scaling` (all fields required; omit = off). HTTP + `publicHost` only. Gate holding page + wake; controller idle-stop (co-stops `dependsOn` with `scaleWithParent` default true); healer skips intentional `scaledToZero`. Healing stays separate (`healing:` in settings).
+**Shipped:** Per-app scale-to-zero via `spec.scaling` (`idleSeconds` + `minUpSeconds` required; `wakeTimeoutSeconds` defaults to **60**; omit the block = off). HTTP + `publicHost` only. Gate holding page + wake; controller idle-stop (co-stops `dependsOn` with `scaleWithParent` default true); healer skips intentional `scaledToZero`. Healing stays separate (`healing:` in settings). After the wake budget, the product timeout page shows an admin CTA plus a server-minted diagnostic id (same `id=` on controller wake/timeout logs).
 
 **Shipped:** `raft serve` localhost ops UI — packaged React SPA (`share/serve/spa/`) + FastAPI JSON/actions/logs APIs; shared `StatusRead` / `MetricsRead` with CLI; trends from controller `resources.jsonl`. Source in `src/spa/`; not an edge listener.
 
@@ -161,15 +161,17 @@ spec:
     reservations:               # floor / alias: requests
       cpu: "0.10"               # → deploy.resources.reservations.cpus
       memory: 32M               # → deploy.resources.reservations.memory
-  # Optional scale-to-zero (omit = no scaling). When present, ALL fields required:
+  # Optional scale-to-zero (omit = no scaling). When present, idleSeconds and
+  # minUpSeconds are required; wakeTimeoutSeconds defaults to 60 if omitted.
   # scaling:
   #   idleSeconds: 300          # stop after this much idle (HTTP activity via gate)
-  #   wakeTimeoutSeconds: 60    # holding page → timeout page if wake exceeds this
+  #   wakeTimeoutSeconds: 60    # holding page → timeout page if wake exceeds this (default 60)
   #   minUpSeconds: 60          # do not idle-stop until this long after wake/start
   # Requires at least one expose: http + publicHost (not stream/host/none alone).
   # Idle stop + gate holding/wake ship together. Holding hits do not count as
-  # activity. Healer skips intentional scaledToZero. Healing is separate
-  # (settings healing:); see examples/settings.yaml.
+  # activity. After wakeTimeoutSeconds the product timeout page includes an
+  # admin CTA and a diagnostic id (grep controller logs for `id=`). Healing is
+  # separate (settings healing:); see examples/settings.yaml.
 ```
 
 ### Apply-time preprocess (`ManifestPreprocessor`)
@@ -197,15 +199,17 @@ ${{ endif }}
 
 ### `spec.scaling` (scale-to-zero)
 
-Omit `spec.scaling` → no scaling. When present, **every** field is required (no defaults):
+Omit `spec.scaling` → no scaling. When present, **`idleSeconds` and `minUpSeconds` are required**. **`wakeTimeoutSeconds` is optional** (omit → **60**; set on the App → that value). Same scaler, `.timeout` marker, and product `holding-timeout.html` swap.
 
 | Field | Role |
 |-------|------|
 | `idleSeconds` | Stop the Compose service after this much idle (activity recorded via gate on real proxied traffic) |
-| `wakeTimeoutSeconds` | Holding page → timeout page if wake exceeds this |
+| `wakeTimeoutSeconds` | Holding page → timeout page if wake exceeds this (default **60**) |
 | `minUpSeconds` | Do not idle-stop until this long after wake/start |
 
 Eligible only with ≥1 `expose: http` port and `publicHost`. Not for stream/host/none-only apps. Controller idle-stops and wakes; gate serves a holding page (meta-refresh) and calls an internal wake API; holding-page reloads do not reset the idle timer. On wake, the controller starts the app’s full transitive `spec.dependsOn` chain (names only — ignore `scaleWithParent`), waits until each service is Compose `running` within `wakeTimeoutSeconds`, then marks the scaled app awake. On idle-stop, the controller also stops the **co-stop set**: transitive deps of the parent reached only via edges whose effective `scaleWithParent` is true (default; string form ≡ true). Stop order is deps-before-parent; co-stopped deps are marked intentional `scaledToZero` for healer skip even without their own `spec.scaling` (cleared when wake starts them). Opt out per dep with `scaleWithParent: false`. Activity is still recorded only on the edge app’s Host. State under `~/.raft/state/scaling/`. Independent of `healing:` in settings — healer skips apps marked `scaledToZero`. Before restart/escalate, healer starts transitive `spec.dependsOn` (same graph as Compose); defers if a dep is intentionally scaled to zero.
+
+Wake requests mint an opaque diagnostic id (scaling JSON + `{app}.id` marker). Successful wakes within budget never show it. After the wake budget, the product timeout page shows “contact the administrator” plus that id (SSI). The same id is on controller log lines (`scale wake request` / `scale wake` / `scale wake timeout` … `id=`). Grep controller logs for `id=<code-from-page>`. The holding page stays “Just a moment” + auto-refresh (no admin CTA).
 
 ### `spec.resources` → Compose
 

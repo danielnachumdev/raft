@@ -14,7 +14,7 @@ Typical `spec` concerns (omit what you do not need):
 | Exposure | `ports[]` with `expose: http \| stream \| host \| none`; `publicHost` when any port is `http` |
 | TLS | `tls: off` (default) or `origin` (needs PEMs under `~/.raft/certs/<app>/`) |
 | Runtime | `env` / `envFile`, `volumes`, `group`, `dependsOn`, `resources`, `readiness` |
-| Scaling | `scaling` (all fields required when present; HTTP + `publicHost` only) |
+| Scaling | `scaling` (`idleSeconds`/`minUpSeconds` required; `wakeTimeoutSeconds` defaults to 60; HTTP + `publicHost` only) |
 
 ## Apply-time preprocess
 
@@ -78,3 +78,9 @@ raft apply --file .raft/app.yaml --ref "$SHA" --env KEY=value
 ```
 
 Same command for first boot and later cutovers. Depth and edge cases: [`AGENTS.md`](../AGENTS.md) (App manifest model + ManifestPreprocessor).
+
+## Scale-to-zero (`spec.scaling`)
+
+Omit the whole `scaling` mapping → the App is not scaled. When present, `idleSeconds` and `minUpSeconds` are required. **`wakeTimeoutSeconds` may be omitted and defaults to 60**; set it on the App to override.
+
+After the wake budget, the product `holding-timeout.html` page asks visitors to contact the administrator and shows a **server-minted** diagnostic id (not a browser UUID). The same id is on controller log lines (`id=`). Successful wakes within budget never show the timeout page. The holding page stays “Just a moment” + auto-refresh.

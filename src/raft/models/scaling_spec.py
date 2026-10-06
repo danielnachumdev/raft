@@ -8,7 +8,9 @@ from typing import Any, Optional
 
 from .ports import PortSpec
 
-_REQUIRED_KEYS = (
+DEFAULT_WAKE_TIMEOUT_SECONDS = 60.0
+
+_FIELD_KEYS = (
     ("idleSeconds", "idle_seconds"),
     ("wakeTimeoutSeconds", "wake_timeout_seconds"),
     ("minUpSeconds", "min_up_seconds"),
@@ -17,7 +19,7 @@ _REQUIRED_KEYS = (
 
 @dataclass(frozen=True)
 class ScalingSpec:
-    """Idle stop + wake; all fields required when ``spec.scaling`` is present."""
+    """Idle stop + wake. ``idleSeconds`` / ``minUpSeconds`` required; wake timeout defaults to 60."""
 
     idle_seconds: float
     wake_timeout_seconds: float
@@ -42,7 +44,12 @@ class ScalingSpecParser:
         cls._require_http_eligible(ports, path)
         return ScalingSpec(
             idle_seconds=cls._positive(raw, "idleSeconds", path),
-            wake_timeout_seconds=cls._positive(raw, "wakeTimeoutSeconds", path),
+            wake_timeout_seconds=cls._positive(
+                raw,
+                "wakeTimeoutSeconds",
+                path,
+                default=DEFAULT_WAKE_TIMEOUT_SECONDS,
+            ),
             min_up_seconds=cls._positive(raw, "minUpSeconds", path),
         )
 
@@ -56,14 +63,25 @@ class ScalingSpecParser:
         )
 
     @classmethod
-    def _positive(cls, raw: dict[str, Any], camel: str, path: Path) -> float:
+    def _positive(
+        cls,
+        raw: dict[str, Any],
+        camel: str,
+        path: Path,
+        default: Optional[float] = None,
+    ) -> float:
         snake = cls._snake_for(camel)
         if camel not in raw and snake not in raw:
+            if default is not None:
+                return float(default)
             raise ValueError(
                 f"{path}: spec.scaling.{camel} is required "
-                f"(idleSeconds, wakeTimeoutSeconds, minUpSeconds — no defaults)"
+                f"(idleSeconds and minUpSeconds — wakeTimeoutSeconds defaults to 60)"
             )
-        value = raw.get(camel, raw.get(snake))
+        return cls._parse_positive(raw.get(camel, raw.get(snake)), camel, path)
+
+    @staticmethod
+    def _parse_positive(value: Any, camel: str, path: Path) -> float:
         try:
             number = float(value)
         except (TypeError, ValueError) as exc:
@@ -78,7 +96,7 @@ class ScalingSpecParser:
 
     @staticmethod
     def _snake_for(camel: str) -> str:
-        for cam, snake in _REQUIRED_KEYS:
+        for cam, snake in _FIELD_KEYS:
             if cam == camel:
                 return snake
         raise AssertionError(f"unknown scaling field {camel!r}")  # pragma: no cover
