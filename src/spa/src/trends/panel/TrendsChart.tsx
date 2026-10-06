@@ -8,9 +8,11 @@ import {
 } from "recharts";
 import type { GraphEvent, MetricsSeries } from "../../shared/api";
 import {
+  clipRowsToDomain,
   formatTooltipTime,
   mergeTimedRows,
   toEpochMs,
+  windowDomain,
   type TimedValue,
 } from "../chart/chartTimeScale";
 import { graphEventMarkers } from "../chart/GraphEventMarkers";
@@ -63,9 +65,14 @@ export function TrendsChart(props: {
   );
   const markers = eventsForSeries(props.events, eventSeries);
   const plots = props.aggregate ? [] : toPlotSeries(props.series);
-  const rows = props.aggregate
-    ? buildAggregateRows(props.series, props.metric)
-    : buildPerServiceRows(props.series, plots, props.metric);
+  const endMs = props.rangeEndMs ?? Date.now();
+  const domain = windowDomain(props.windowSeconds, endMs);
+  const rows = clipRowsToDomain(
+    props.aggregate
+      ? buildAggregateRows(props.series, props.metric)
+      : buildPerServiceRows(props.series, plots, props.metric),
+    domain,
+  );
   const labels = props.aggregate
     ? { aggregate: avgLabel }
     : Object.fromEntries(plots.map((p) => [p.chartKey, p.label]));
@@ -86,7 +93,7 @@ export function TrendsChart(props: {
       <ResponsiveContainer width="100%" height={280}>
         <LineChart data={rows} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" />
-          {timeScaleXAxis(props.windowSeconds, props.rangeEndMs)}
+          {timeScaleXAxis(props.windowSeconds, endMs)}
           <YAxis
             yAxisId={SERVICE_AXIS}
             tick={{ fill: "var(--muted)", fontSize: 11 }}

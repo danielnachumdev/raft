@@ -1,6 +1,10 @@
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, YAxis } from "recharts";
 import type { GraphEvent } from "../../shared/api";
-import { formatTooltipTime } from "../chart/chartTimeScale";
+import {
+  clipRowsToDomain,
+  formatTooltipTime,
+  windowDomain,
+} from "../chart/chartTimeScale";
 import { graphEventMarkers } from "../chart/GraphEventMarkers";
 import {
   formatRuntimeValue,
@@ -22,6 +26,11 @@ export function ServiceRuntimeChart(props: {
 }) {
   const hover = useChartHover();
   const unit = yAxisUnit(props.metric.unit);
+  const endMs = props.rangeEndMs ?? Date.now();
+  const rows = clipRowsToDomain(
+    props.rows,
+    windowDomain(props.windowSec, endMs),
+  );
   return (
     <div
       className="trends-chart"
@@ -31,11 +40,11 @@ export function ServiceRuntimeChart(props: {
     >
       <ResponsiveContainer width="100%" height={260}>
         <LineChart
-          data={props.rows}
+          data={rows}
           margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
         >
           <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" />
-          {timeScaleXAxis(props.windowSec, props.rangeEndMs)}
+          {timeScaleXAxis(props.windowSec, endMs)}
           <YAxis
             tick={{ fill: "var(--muted)", fontSize: 11 }}
             unit={unit || undefined}

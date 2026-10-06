@@ -107,10 +107,15 @@ export function isLiveQuery(
   opts: MetricsQueryOpts,
   nowMs: number = Date.now(),
 ): boolean {
-  if (!opts.end) return true;
-  const end = Date.parse(opts.end);
+  if (isRollingWindow(opts)) return true;
+  const end = Date.parse(opts.end ?? "");
   if (!Number.isFinite(end)) return true;
   return nowMs - end < 120_000;
+}
+
+/** Lookback (preset / custom duration) — no pinned start/end. */
+export function isRollingWindow(opts: MetricsQueryOpts): boolean {
+  return !opts.start && !opts.end;
 }
 
 export function toDatetimeLocal(ms: number): string {

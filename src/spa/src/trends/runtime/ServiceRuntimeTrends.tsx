@@ -9,6 +9,8 @@ import {
   type MetricsSeries,
 } from "../../shared/api";
 import { eventsForSeries } from "../chart/graphEvents";
+import { chartEndMs } from "../chart/chartTimeScale";
+import { useLiveNow } from "../chart/useLiveNow";
 import {
   RUNTIME_METRICS,
   type RuntimeMetricId,
@@ -17,6 +19,7 @@ import { TrendsRangeControls } from "../TrendsRangeControls";
 import {
   defaultRangeState,
   isLiveQuery,
+  isRollingWindow,
   toQuery,
   type TrendsRangeState,
 } from "../trendsRange";
@@ -30,6 +33,8 @@ import {
 export function ServiceRuntimeTrends(props: { service: string }) {
   const [range, setRange] = useState<TrendsRangeState>(defaultRangeState);
   const query = useMemo(() => toQuery(range), [range]);
+  const rolling = isRollingWindow(query);
+  const nowMs = useLiveNow(rolling);
   const [metricId, setMetricId] = useState<RuntimeMetricId>("cpu_percent");
   const [series, setSeries] = useState<MetricsSeries | null>(null);
   const [events, setEvents] = useState<GraphEvent[]>([]);
@@ -149,7 +154,7 @@ export function ServiceRuntimeTrends(props: { service: string }) {
         rows={rows}
         metric={metric}
         windowSec={windowSec}
-        rangeEndIso={rangeTo}
+        rangeEndMs={chartEndMs({ rolling, nowMs, rangeEndIso: rangeTo })}
         events={markers}
       />
     </section>
