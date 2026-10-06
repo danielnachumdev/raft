@@ -206,6 +206,15 @@ class TestServeAppFactory(RaftTestCase):
         data = client.get("/api/metrics", params={"window": 3600}).json()
         assert data["cursor"] == ts
         assert {s["id"] for s in data["series"]} == {"host", "raft-gate"}
+        assert data["bounds"]["max_window_seconds"] >= 86400
+        assert data["clamped"] is False
+
+    def test_api_metrics_rejects_bad_start(self) -> None:
+        client, _ = _ServeFixtures.client_and_status(
+            make_stack(self.tmp_path), _ServeFixtures.empty_snapshot()
+        )
+        res = client.get("/api/metrics", params={"start": "not-a-time"})
+        assert res.status_code == 400
 
     def test_spa_assets_are_served(self) -> None:
         client, _ = _ServeFixtures.client_and_status(

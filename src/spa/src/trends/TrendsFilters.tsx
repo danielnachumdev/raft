@@ -1,15 +1,18 @@
 import { useMemo, useState } from "react";
-import type { MetricsAvailable } from "../shared/api";
+import type { MetricsAvailable, MetricsBounds } from "../shared/api";
 import {
   RUNTIME_METRICS,
-  RUNTIME_WINDOWS,
   type RuntimeMetricDef,
   type RuntimeMetricId,
 } from "./runtimeMetrics";
+import { TrendsRangeControls } from "./TrendsRangeControls";
+import type { TrendsRangeState } from "./trendsRange";
 import type { GroupOption, SeriesViewMode } from "./trendsView";
 
 export function TrendsFilters(props: {
-  windowSec: number;
+  range: TrendsRangeState;
+  bounds: MetricsBounds | null;
+  clampMessage: string | null;
   metric: RuntimeMetricDef;
   viewMode: SeriesViewMode;
   groupMode: boolean;
@@ -18,7 +21,7 @@ export function TrendsFilters(props: {
   activeIds: string[];
   showingAll: boolean;
   busy: boolean;
-  onWindow: (n: number) => void;
+  onRange: (next: TrendsRangeState) => void;
   onMetric: (m: RuntimeMetricId) => void;
   onViewMode: (m: SeriesViewMode) => void;
   onToggle: (id: string) => void;
@@ -27,21 +30,13 @@ export function TrendsFilters(props: {
 }) {
   return (
     <aside className="trends-sidebar" aria-label="Trend filters">
-      <label className="trends-field">
-        <span>Range</span>
-        <select
-          value={props.windowSec}
-          onChange={(e) => props.onWindow(Number(e.target.value))}
-          aria-label="Time range"
-          disabled={props.busy}
-        >
-          {RUNTIME_WINDOWS.map((w) => (
-            <option key={w.seconds} value={w.seconds}>
-              {w.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      <TrendsRangeControls
+        range={props.range}
+        bounds={props.bounds}
+        clampMessage={props.clampMessage}
+        busy={props.busy}
+        onChange={props.onRange}
+      />
       <label className="trends-field">
         <span>Metric</span>
         <select

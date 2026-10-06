@@ -5,15 +5,21 @@ import {
   fetchMetrics,
   METRICS_POLL_MS,
   type GraphEvent,
+  type MetricsBounds,
   type MetricsSeries,
 } from "../shared/api";
 import { eventsForSeries } from "../trends/graphEvents";
 import {
-  DEFAULT_RUNTIME_WINDOW,
   RUNTIME_METRICS,
-  RUNTIME_WINDOWS,
   type RuntimeMetricId,
 } from "../trends/runtimeMetrics";
+import { TrendsRangeControls } from "../trends/TrendsRangeControls";
+import {
+  defaultRangeState,
+  isLiveQuery,
+  toQuery,
+  type TrendsRangeState,
+} from "../trends/trendsRange";
 import { RuntimeTrendsBody } from "./RuntimeTrendsBody";
 import {
   buildRows,
@@ -22,14 +28,18 @@ import {
 
 /** Per-service Runtime history charts (same /api/metrics as Trends). */
 export function ServiceRuntimeTrends(props: { service: string }) {
-  const [windowSec, setWindowSec] = useState(DEFAULT_RUNTIME_WINDOW);
+  const [range, setRange] = useState<TrendsRangeState>(defaultRangeState);
+  const query = useMemo(() => toQuery(range), [range]);
   const [metricId, setMetricId] = useState<RuntimeMetricId>("cpu_percent");
   const [series, setSeries] = useState<MetricsSeries | null>(null);
   const [events, setEvents] = useState<GraphEvent[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
+  const [bounds, setBounds] = useState<MetricsBounds | null>(null);
+  const [clampMessage, setClampMessage] = useState<string | null>(null);
+  const [windowSec, setWindowSec] = useState(query.window);
+  const [rangeTo, setRangeTo] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const metric =
     RUNTIME_METRICS.find((m) => m.id === metricId) ?? RUNTIME_METRICS[0];
 
@@ -43,15 +53,17 @@ export function ServiceRuntimeTrends(props: { service: string }) {
     void (async () => {
       try {
         const payload = await fetchMetrics({
-          window: windowSec,
+          ...query,
           services: [props.service],
         });
         if (cancelled) return;
-        const match =
-          payload.series.find((s) => s.id === props.service) ?? null;
-        setSeries(match);
+        setSeries(payload.series.find((s) => s.id === props.service) ?? null);
         setEvents(payload.events ?? []);
         setCursor(payload.cursor);
+        setBounds(payload.bounds ?? null);
+        setClampMessage(payload.clamped ? payload.clamp_message ?? null : null);
+        setWindowSec(payload.window_seconds);
+        setRangeTo(payload.to);
       } catch {
         if (!cancelled) setError("Failed to load runtime metrics.");
       } finally {
@@ -61,22 +73,17 @@ export function ServiceRuntimeTrends(props: { service: string }) {
     return () => {
       cancelled = true;
     };
-  }, [props.service, windowSec]);
+  }, [props.service, query]);
 
   useEffect(() => {
-    if (busy) return;
+    if (busy || !isLiveQuery(query)) return;
     const id = window.setInterval(() => {
       void pollServiceMetrics(
-        props.service,
-        windowSec,
-        cursor,
-        setSeries,
-        setCursor,
-        setEvents,
+        props.service, query, cursor, setSeries, setCursor, setEvents,
       );
     }, METRICS_POLL_MS);
     return () => window.clearInterval(id);
-  }, [props.service, windowSec, cursor, busy]);
+  }, [props.service, query, cursor, busy]);
 
   const markers = useMemo(
     () => eventsForSeries(events, series ? [series] : []),
@@ -112,21 +119,13 @@ export function ServiceRuntimeTrends(props: { service: string }) {
         />
       </div>
       <div className="service-runtime-controls">
-        <label className="trends-field">
-          <span>Range</span>
-          <select
-            value={windowSec}
-            onChange={(e) => setWindowSec(Number(e.target.value))}
-            aria-label="Time range"
-            disabled={busy && series === null}
-          >
-            {RUNTIME_WINDOWS.map((w) => (
-              <option key={w.seconds} value={w.seconds}>
-                {w.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <TrendsRangeControls
+          range={range}
+          bounds={bounds}
+          clampMessage={clampMessage}
+          busy={busy && series === null}
+          onChange={setRange}
+        />
         <label className="trends-field">
           <span>Metric</span>
           <select
@@ -150,6 +149,7 @@ export function ServiceRuntimeTrends(props: { service: string }) {
         rows={rows}
         metric={metric}
         windowSec={windowSec}
+        rangeEndIso={rangeTo}
         events={markers}
       />
     </section>

@@ -1,4 +1,5 @@
 import type { GraphEvent, MetricsSeries } from "../shared/api";
+import { toEpochMs } from "./chartTimeScale";
 import { TrendsChart } from "./TrendsChart";
 import type { RuntimeMetricDef } from "./runtimeMetrics";
 import { isSingleLineAvg, type SeriesViewMode } from "./trendsView";
@@ -9,6 +10,7 @@ export function TrendsBody(props: {
   visible: MetricsSeries[];
   metric: RuntimeMetricDef;
   windowSec: number;
+  rangeEndIso?: string | null;
   viewMode: SeriesViewMode;
   groupMode: boolean;
   events: GraphEvent[];
@@ -43,10 +45,16 @@ export function TrendsBody(props: {
       metric={props.metric.id}
       unit={props.metric.unit}
       windowSeconds={props.windowSec}
+      rangeEndMs={toRangeEndMs(props.rangeEndIso)}
       aggregate={isSingleLineAvg(props.viewMode)}
       aggregateLabel="Average"
       events={props.events}
       allSeries={props.series}
     />
   );
+}
+
+function toRangeEndMs(iso: string | null | undefined): number | undefined {
+  if (!iso) return undefined;
+  return toEpochMs(iso) ?? undefined;
 }

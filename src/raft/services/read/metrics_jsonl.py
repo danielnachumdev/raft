@@ -22,21 +22,35 @@ class MetricsJsonlReader:
         *,
         from_ts: datetime,
         since: Optional[datetime] = None,
+        to_ts: Optional[datetime] = None,
     ) -> List[Dict[str, Any]]:
-        """Chronological samples with ``ts >= from_ts`` (and ``> since``)."""
-        newest_first = list(self.iter_newest_first(from_ts=from_ts, since=since))
+        """Chronological samples with ``from_ts <= ts`` (and ``<= to_ts``, ``> since``)."""
+        newest_first = list(
+            self.iter_newest_first(from_ts=from_ts, since=since, to_ts=to_ts)
+        )
         newest_first.reverse()
         return newest_first
+
+    def earliest_ts(self) -> Optional[datetime]:
+        """Oldest parseable sample timestamp, or ``None`` if the store is empty."""
+        for path in reversed(self._sources_newest_first()):
+            ts = self._first_sample_ts(path)
+            if ts is not None:
+                return ts
+        return None
 
     def iter_newest_first(
         self,
         *,
         from_ts: datetime,
         since: Optional[datetime] = None,
+        to_ts: Optional[datetime] = None,
     ) -> Iterator[Dict[str, Any]]:
         for sample in self._iter_parsed_newest_first():
             ts = self.parse_ts(sample.get("ts"))
             if ts is None:
+                continue
+            if to_ts is not None and ts > to_ts:
                 continue
             if since is not None and ts <= since:
                 return
@@ -95,6 +109,20 @@ class MetricsJsonlReader:
                     yield raw.decode("utf-8", errors="replace")
         if remainder.strip():
             yield remainder.decode("utf-8", errors="replace")
+
+    def _first_sample_ts(self, path: Path) -> Optional[datetime]:
+        try:
+            with path.open("r", encoding="utf-8", errors="replace") as handle:
+                for raw in handle:
+                    sample = self._parse_line(raw)
+                    if sample is None:
+                        continue
+                    ts = self.parse_ts(sample.get("ts"))
+                    if ts is not None:
+                        return ts
+        except OSError:
+            return None
+        return None
 
     @staticmethod
     def _parse_line(raw: str) -> Optional[Dict[str, Any]]:

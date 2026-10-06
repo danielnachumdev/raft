@@ -34,7 +34,7 @@ export function buildRows(
 
 export async function pollServiceMetrics(
   service: string,
-  windowSec: number,
+  query: { window: number; start?: string; end?: string },
   cursor: string | null,
   setSeries: Dispatch<SetStateAction<MetricsSeries | null>>,
   setCursor: (c: string | null) => void,
@@ -42,7 +42,7 @@ export async function pollServiceMetrics(
 ) {
   try {
     const payload = await fetchMetrics({
-      window: windowSec,
+      ...query,
       since: cursor ?? undefined,
       services: [service],
     });

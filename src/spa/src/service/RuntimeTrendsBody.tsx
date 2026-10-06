@@ -10,6 +10,7 @@ export function RuntimeTrendsBody(props: {
   rows: ChartRow[];
   metric: RuntimeMetricDef;
   windowSec: number;
+  rangeEndIso?: string | null;
   events: GraphEvent[];
 }) {
   if (props.error) {
@@ -48,7 +49,14 @@ export function RuntimeTrendsBody(props: {
       rows={props.rows}
       metric={props.metric}
       windowSec={props.windowSec}
+      rangeEndMs={toEndMs(props.rangeEndIso)}
       events={props.events}
     />
   );
+}
+
+function toEndMs(iso: string | null | undefined): number | undefined {
+  if (!iso) return undefined;
+  const ms = Date.parse(iso);
+  return Number.isFinite(ms) ? ms : undefined;
 }

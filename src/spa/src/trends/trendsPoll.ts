@@ -3,9 +3,11 @@ import {
   fetchMetrics,
   type GraphEvent,
   type MetricsAvailable,
+  type MetricsBounds,
   type MetricsPayload,
   type MetricsSeries,
 } from "../shared/api";
+import type { MetricsQueryOpts } from "./trendsRange";
 
 export function applyFull(
   payload: MetricsPayload,
@@ -20,8 +22,21 @@ export function applyFull(
   setEvents(payload.events ?? []);
 }
 
+export function applyPayloadMeta(
+  payload: MetricsPayload,
+  setBounds: (b: MetricsBounds | null) => void,
+  setClampMessage: (m: string | null) => void,
+  setRangeTo: (t: string | null) => void,
+  setWindowSec: (n: number) => void,
+) {
+  setBounds(payload.bounds ?? null);
+  setClampMessage(payload.clamped ? payload.clamp_message ?? null : null);
+  setRangeTo(payload.to);
+  setWindowSec(payload.window_seconds);
+}
+
 export async function pollIncremental(
-  windowSec: number,
+  query: MetricsQueryOpts,
   cursor: string | null,
   setSeries: Dispatch<SetStateAction<MetricsSeries[]>>,
   setAvailable: (a: MetricsAvailable[]) => void,
@@ -30,7 +45,7 @@ export async function pollIncremental(
 ) {
   try {
     const payload = await fetchMetrics({
-      window: windowSec,
+      ...query,
       since: cursor ?? undefined,
     });
     if (payload.available.length) setAvailable(payload.available);
