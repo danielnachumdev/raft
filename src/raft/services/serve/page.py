@@ -23,6 +23,7 @@ from .paths import ServePaths
 # GET /api/service/{name}/logs — container stdout/stderr tail (Logs.snapshot).
 # GET /api/service/{name}/logs/follow — SSE follow (Logs.follow; CLI ``-f``).
 # POST /api/service/{name}/start|stop|redeploy — mutative lifecycle actions.
+# GET /api/exports + */download — ServeDownloads (export registry).
 # GET / and non-API paths — compiled React SPA (deep-link fallback).
 
 _MAX_LOG_TAIL = 5000

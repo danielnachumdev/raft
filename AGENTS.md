@@ -235,6 +235,7 @@ Localhost dashboard for operators (`raft serve`). **Hard rules:** bind `127.0.0.
 | CLI entry | `raft serve` → `services/serve/service.py` | uvicorn on `--port` (default **8787**); prints tunnel CTAs; flock lease under `state/serve/`; `--stop` |
 | App factory | `ServeAppFactory` | mounts `/assets`, SPA catch-all, registers `/api/*` |
 | Page / routes | `ServePage` | status, metrics, service detail, logs, start/stop/redeploy |
+| Downloads | `ServeDownloads` + `services/export/` | catalog-driven log/metrics file export (register an `Exporter`) |
 | Actions | `ServeActions` | Compose start/stop; redeploy via `Orchestrator`; scaling mark/clear on stop/start |
 | Logs bridge | `LogSseStream` + `ops/logs.Logs` | snapshot JSON + SSE follow (same follow path as CLI `-f`) |
 | Read contracts | `services/read/` | `StatusRead`, `MetricsRead`, `ServeSnapshotView`, `ExternalUrlBuilder` |
@@ -250,6 +251,9 @@ Localhost dashboard for operators (`raft serve`). **Hard rules:** bind `127.0.0.
 | `GET` | `/api/service/{name}` | one container + presentation row (404 if unknown) |
 | `GET` | `/api/service/{name}/logs` | log snapshot (`tail`) |
 | `GET` | `/api/service/{name}/logs/follow` | SSE live follow |
+| `GET` | `/api/exports` | download format catalog (`logs` / `metrics` exporter ids) |
+| `GET` | `/api/service/{name}/logs/download` | log snapshot file (`format`, `tail`) via export registry |
+| `GET` | `/api/metrics/download` | metrics table file (`format`, `window`, optional `services`) |
 | `POST` | `/api/service/{name}/start\|stop\|redeploy` | `ServeActions` |
 
 Doctor JSON for the SPA is deferred (`DoctorRead.intended_payload_shape`).
@@ -265,8 +269,9 @@ Feature folders under `src/spa/src/` (shell files stay at the root of that tree)
 | Status tables | `status/` (`StatusTable`, column menus/filters, tones, `ServiceQuickActions`) | compact-only; Started column; row quick actions |
 | Live chrome | `chrome/LiveIndicator.tsx` (+ `Modal` / `ConfirmPopup` / toasts) | auto-refresh while tab visible; **no** native `alert`/`confirm` |
 | Service detail | `service/` (`ServicePage`, detail, actions, Runtime trends) | lifecycle buttons; Runtime charts from metrics history |
-| Logs | `logs/` (`ServiceLogs`, `LogLines`, `logParse`) | follow / expand / severity filter |
-| Trends | `trends/` (`TrendsPanel`, `TrendsFilters`, `TrendsBody`, `trendsPoll`, `TrendsChart`, `runtimeMetrics`, graph-event helpers) | historical series; sidebar filters; poll `/api/metrics` |
+| Logs | `logs/` (`ServiceLogs`, `LogLines`, `logParse`) | follow / expand / severity filter; catalog download |
+| Trends | `trends/` (`TrendsPanel`, `TrendsFilters`, `TrendsBody`, `trendsPoll`, `TrendsChart`, `runtimeMetrics`, graph-event helpers) | historical series; sidebar filters; poll `/api/metrics`; catalog download |
+| Export | `export/` (`DownloadMenu`, catalog/urls) | generic download links from `/api/exports` |
 
 Develop: `cd src/spa && npm ci && npm run dev` (Vite `:5173`, proxies `/api` → `raft serve :8787`). Release FE: `npm run build` → updates `share/serve/spa/`. See [`src/spa/README.md`](src/spa/README.md).
 
@@ -325,6 +330,7 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | `src/raft/services/deploy/` | orchestrator, cutover, wait, locking, readiness |
 | `src/raft/services/ops/` | doctor, **status collect/format** (Started + allocated limits), logs, uninstall, update, certs |
 | `src/raft/services/read/` | Shared **CLI+serve contracts/presentation** over ops collectors (`StatusRead`, `MetricsRead`, `DoctorRead`, `ServeSnapshotView`, `ExternalUrlBuilder`) — not a second status collector |
+| `src/raft/services/export/` | Open-closed download encoders (`ExportRegistry` + `Exporter` subclasses); serve catalogs/attachments |
 | `src/raft/ui/` | Operator terminal output (`say`) + shared TTY `TerminalProgress` spinner (doctor, update; `current()` / `set_text` for inner frames; entered at CLI entry before stack/logging init) |
 | `src/raft/services/serve/` | `raft serve`: FastAPI factory, `ServePage`, `ServeActions`, SSE log bridge, SPA paths/instructions |
 | `src/raft/controller/` | Always-on Compose `raft-controller` (job orchestrator for heal + metrics; idle-stop + wake via side_ticks when `spec.scaling`; healer skips `scaledToZero`; metrics batch → `resources.jsonl`) |

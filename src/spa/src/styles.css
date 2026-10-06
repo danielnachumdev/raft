@@ -120,6 +120,7 @@ code {
   justify-content: space-between;
   gap: 0.75rem;
   margin-bottom: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .panel-head h2 {
@@ -531,6 +532,31 @@ th {
   align-items: center;
   gap: 0.65rem;
   flex-wrap: wrap;
+}
+
+.download-menu {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.download-menu-label {
+  font-size: 0.82rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+a.download-link {
+  text-decoration: none;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.85rem;
+}
+
+a.download-link[aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .logs-follow {

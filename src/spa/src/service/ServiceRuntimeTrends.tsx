@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { DownloadMenu } from "../export/DownloadMenu";
+import { metricsDownloadUrl } from "../export/urls";
 import {
   fetchMetrics,
   METRICS_POLL_MS,
@@ -97,6 +99,17 @@ export function ServiceRuntimeTrends(props: { service: string }) {
               ? "Updating…"
               : "Historical · recorded metrics"}
         </p>
+        <DownloadMenu
+          kind="metrics"
+          hrefFor={(formatId) =>
+            metricsDownloadUrl({
+              formatId,
+              window: windowSec,
+              services: [props.service],
+            })
+          }
+          disabled={showCold || Boolean(error)}
+        />
       </div>
       <div className="service-runtime-controls">
         <label className="trends-field">
