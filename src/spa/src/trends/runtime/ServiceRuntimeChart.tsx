@@ -1,14 +1,14 @@
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, YAxis } from "recharts";
-import type { GraphEvent } from "../shared/api";
-import { formatTooltipTime } from "../trends/chartTimeScale";
-import { graphEventMarkers } from "../trends/GraphEventMarkers";
+import type { GraphEvent } from "../../shared/api";
+import { formatTooltipTime } from "../chart/chartTimeScale";
+import { graphEventMarkers } from "../chart/GraphEventMarkers";
 import {
   formatRuntimeValue,
   type RuntimeMetricDef,
   yAxisUnit,
-} from "../trends/runtimeMetrics";
-import { timeScaleXAxis } from "../trends/TimeScaleXAxis";
-import { useChartHover } from "../trends/useChartHover";
+} from "../runtimeMetrics";
+import { timeScaleXAxis } from "../chart/TimeScaleXAxis";
+import { useChartHover } from "../chart/useChartHover";
 import type { ChartRow } from "./runtimeTrendsPoll";
 
 const SERIES_ID = "value";

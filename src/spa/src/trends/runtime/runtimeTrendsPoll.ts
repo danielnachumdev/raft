@@ -3,12 +3,12 @@ import {
   fetchMetrics,
   type GraphEvent,
   type MetricsSeries,
-} from "../shared/api";
+} from "../../shared/api";
 import {
   mergeTimedRows,
   toEpochMs,
-} from "../trends/chartTimeScale";
-import { runtimePointValue, type RuntimeMetricId } from "../trends/runtimeMetrics";
+} from "../chart/chartTimeScale";
+import { runtimePointValue, type RuntimeMetricId } from "../runtimeMetrics";
 
 export type ChartRow = {
   ts: number;

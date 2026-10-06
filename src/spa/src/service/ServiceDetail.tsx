@@ -2,7 +2,7 @@ import type { ServiceDetailPayload } from "../shared/api";
 import { ExternalUrlLinks } from "../shared/ExternalUrlLinks";
 import { ServiceActions } from "./ServiceActions";
 import { ServiceLogs } from "../logs/ServiceLogs";
-import { ServiceRuntimeTrends } from "./ServiceRuntimeTrends";
+import { ServiceRuntimeTrends } from "../trends/runtime/ServiceRuntimeTrends";
 
 /** Render full status contract fields for one Compose service. */
 export function ServiceDetail(props: {

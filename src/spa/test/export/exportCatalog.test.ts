@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { buildDownloadItems, type ExportOption } from "../src/export/items.ts";
-import { logsDownloadUrl, metricsDownloadUrl } from "../src/export/urls.ts";
+import { buildDownloadItems, type ExportOption } from "../../src/export/items.ts";
+import { logsDownloadUrl, metricsDownloadUrl } from "../../src/export/urls.ts";
 
 const logs: ExportOption[] = [
   {

@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
-import type { MetricsAvailable, MetricsBounds } from "../shared/api";
+import type { MetricsAvailable, MetricsBounds } from "../../shared/api";
 import {
   RUNTIME_METRICS,
   type RuntimeMetricDef,
   type RuntimeMetricId,
-} from "./runtimeMetrics";
-import { TrendsRangeControls } from "./TrendsRangeControls";
-import type { TrendsRangeState } from "./trendsRange";
+} from "../runtimeMetrics";
+import { TrendsRangeControls } from "../TrendsRangeControls";
+import type { TrendsRangeState } from "../trendsRange";
 import type { GroupOption, SeriesViewMode } from "./trendsView";
 
 export function TrendsFilters(props: {

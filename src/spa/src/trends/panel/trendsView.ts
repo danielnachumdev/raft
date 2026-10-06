@@ -1,8 +1,8 @@
-import type { MetricsAvailable, MetricsPoint, MetricsSeries } from "../shared/api.ts";
+import type { MetricsAvailable, MetricsPoint, MetricsSeries } from "../../shared/api.ts";
 import {
   runtimePointValue,
   type RuntimeMetricId,
-} from "./runtimeMetrics.ts";
+} from "../runtimeMetrics.ts";
 
 export type SeriesViewMode =
   | "per_service"

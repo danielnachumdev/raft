@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { GraphEvent } from "../src/shared/api.ts";
+import type { GraphEvent } from "../../src/shared/api.ts";
 import {
   ChartHoverHighlight,
   eventKindHover,
   seriesHover,
-} from "../src/trends/chartHover.ts";
+} from "../../src/trends/chart/chartHover.ts";
 
 describe("ChartHoverHighlight series grouping", () => {
   it("emphasizes every id in the hovered series group, not other series", () => {

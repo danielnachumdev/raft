@@ -1,4 +1,4 @@
-import type { GraphEvent, MetricsSeries } from "../shared/api.ts";
+import type { GraphEvent, MetricsSeries } from "../../shared/api.ts";
 
 /** Match ``trendsView`` ungrouped bucket without importing that module (node tests). */
 const UNGROUPED_ID = "__ungrouped__";

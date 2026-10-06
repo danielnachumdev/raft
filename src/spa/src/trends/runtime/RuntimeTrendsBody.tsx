@@ -1,5 +1,5 @@
-import type { GraphEvent, MetricsSeries } from "../shared/api";
-import type { RuntimeMetricDef } from "../trends/runtimeMetrics";
+import type { GraphEvent, MetricsSeries } from "../../shared/api";
+import type { RuntimeMetricDef } from "../runtimeMetrics";
 import { ServiceRuntimeChart } from "./ServiceRuntimeChart";
 import type { ChartRow } from "./runtimeTrendsPoll";
 
