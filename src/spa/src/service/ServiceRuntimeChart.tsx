@@ -17,6 +17,7 @@ export function ServiceRuntimeChart(props: {
   rows: ChartRow[];
   metric: RuntimeMetricDef;
   windowSec: number;
+  rangeEndMs?: number;
   events: GraphEvent[];
 }) {
   const hover = useChartHover();
@@ -34,7 +35,7 @@ export function ServiceRuntimeChart(props: {
           margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
         >
           <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" />
-          {timeScaleXAxis(props.windowSec)}
+          {timeScaleXAxis(props.windowSec, props.rangeEndMs)}
           <YAxis
             tick={{ fill: "var(--muted)", fontSize: 11 }}
             unit={unit || undefined}

@@ -104,14 +104,21 @@ class ServePage:
         self,
         window: int = 3600,
         since: Optional[str] = None,
+        start: Optional[str] = None,
+        end: Optional[str] = None,
         services: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Historical CPU/memory series; ``since`` enables incremental polls."""
-        return self._metrics.history(
-            window_seconds=window,
-            since=since,
-            services=self._split_services(services),
-        )
+        """Historical series; ``start``/``end`` pin a range, ``since`` polls."""
+        try:
+            return self._metrics.history(
+                window_seconds=window,
+                since=since,
+                start=start,
+                end=end,
+                services=self._split_services(services),
+            )
+        except OperatorError as exc:
+            raise self._http_for_operator(exc) from exc
 
     def _run_action(self, fn, name: str) -> Dict[str, Any]:
         try:

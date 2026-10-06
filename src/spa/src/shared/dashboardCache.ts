@@ -13,7 +13,7 @@ const METRICS_KEY_PREFIX = "raft.serve.metrics.v1.";
 type Entry<T> = { fetchedAt: number; payload: T };
 
 let statusMemory: Entry<StatusPayload> | null = null;
-const metricsMemory = new Map<number, Entry<MetricsPayload>>();
+const metricsMemory = new Map<string, Entry<MetricsPayload>>();
 
 /** Fresh cached status, or null if missing/stale. */
 export function peekStatus(): StatusPayload | null {
@@ -47,23 +47,23 @@ export async function refreshStatus(): Promise<StatusPayload> {
   return payload;
 }
 
-/** Fresh cached full metrics for a window, or null. */
-export function peekMetrics(windowSec: number): MetricsPayload | null {
-  const mem = metricsMemory.get(windowSec);
+/** Fresh cached full metrics for a query key, or null. */
+export function peekMetrics(cacheKey: string): MetricsPayload | null {
+  const mem = metricsMemory.get(cacheKey);
   if (mem && !expired(mem.fetchedAt)) return mem.payload;
-  const fromSession = readSession<MetricsPayload>(metricsKey(windowSec));
+  const fromSession = readSession<MetricsPayload>(metricsKey(cacheKey));
   if (!fromSession) {
-    metricsMemory.delete(windowSec);
+    metricsMemory.delete(cacheKey);
     return null;
   }
-  metricsMemory.set(windowSec, fromSession);
+  metricsMemory.set(cacheKey, fromSession);
   return fromSession.payload;
 }
 
-export function putMetrics(windowSec: number, payload: MetricsPayload): void {
+export function putMetrics(cacheKey: string, payload: MetricsPayload): void {
   const entry: Entry<MetricsPayload> = { fetchedAt: Date.now(), payload };
-  metricsMemory.set(windowSec, entry);
-  writeSession(metricsKey(windowSec), entry);
+  metricsMemory.set(cacheKey, entry);
+  writeSession(metricsKey(cacheKey), entry);
 }
 
 export function invalidateMetrics(): void {
@@ -77,8 +77,8 @@ export function invalidateMetrics(): void {
   for (const key of doomed) sessionStorage.removeItem(key);
 }
 
-function metricsKey(windowSec: number): string {
-  return `${METRICS_KEY_PREFIX}${windowSec}`;
+function metricsKey(cacheKey: string): string {
+  return `${METRICS_KEY_PREFIX}${cacheKey}`;
 }
 
 function expired(fetchedAt: number): boolean {

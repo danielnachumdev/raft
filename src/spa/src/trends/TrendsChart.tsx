@@ -48,6 +48,7 @@ export function TrendsChart(props: {
   metric: RuntimeMetricId;
   unit: RuntimeUnit;
   windowSeconds: number;
+  rangeEndMs?: number;
   aggregate: boolean;
   aggregateLabel?: string;
   events?: GraphEvent[];
@@ -85,7 +86,7 @@ export function TrendsChart(props: {
       <ResponsiveContainer width="100%" height={280}>
         <LineChart data={rows} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" />
-          {timeScaleXAxis(props.windowSeconds)}
+          {timeScaleXAxis(props.windowSeconds, props.rangeEndMs)}
           <YAxis
             yAxisId={SERVICE_AXIS}
             tick={{ fill: "var(--muted)", fontSize: 11 }}

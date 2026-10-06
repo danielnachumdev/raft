@@ -2,19 +2,26 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
+from raft.config.settings import SettingsLoader
+from raft.config.settings_types import MetricsConfig
 from raft.controller.metrics import METRICS_DIR, METRICS_FILENAME
 from raft.models.state.graph_event_store import GraphEventStore
 
 from .metrics_jsonl import MetricsJsonlReader
 from .metrics_series import MetricsSeriesBuilder
+from .metrics_window import (
+    DEFAULT_WINDOW_SECONDS,
+    PRESET_WINDOW_SECONDS,
+    MetricsRangeQuery,
+    ResolvedMetricsRange,
+)
 
-DEFAULT_WINDOW_SECONDS = 3600
 DEFAULT_MAX_POINTS = 480
-WINDOW_CHOICES = (900, 3600, 21600, 86400, 604800)
+WINDOW_CHOICES = PRESET_WINDOW_SECONDS
 
 
 class MetricsRead:
@@ -27,39 +34,67 @@ class MetricsRead:
         reader: Optional[MetricsJsonlReader] = None,
         builder: Optional[MetricsSeriesBuilder] = None,
         events: Optional[GraphEventStore] = None,
+        metrics_config: Optional[MetricsConfig] = None,
     ) -> None:
         self.home = home
         self.path = home / METRICS_DIR / METRICS_FILENAME
         self._reader = reader or MetricsJsonlReader(self.path)
         self._builder = builder or MetricsSeriesBuilder()
         self._events = events or GraphEventStore(home)
+        self._metrics_cfg = metrics_config or SettingsLoader().load(home).metrics
 
     def history(
         self,
         *,
         window_seconds: int = DEFAULT_WINDOW_SECONDS,
         since: Optional[str] = None,
+        start: Optional[str] = None,
+        end: Optional[str] = None,
         services: Optional[Sequence[str]] = None,
         max_points: int = DEFAULT_MAX_POINTS,
         now: Optional[datetime] = None,
     ) -> Dict[str, Any]:
         wall = now or datetime.now(timezone.utc)
-        window = self._clamp_window(window_seconds)
-        from_ts = wall - timedelta(seconds=window)
+        query = self._query(wall)
+        resolved = query.resolve(
+            window_seconds=window_seconds, start=start, end=end
+        )
         since_ts = MetricsJsonlReader.parse_ts(since) if since else None
-        samples = self._reader.samples_in_window(from_ts=from_ts, since=since_ts)
-        return self._build_payload(
-            samples, from_ts=from_ts, to_ts=wall, window=window,
-            services=services, max_points=max_points,
+        samples = self._reader.samples_in_window(
+            from_ts=resolved.from_ts, since=since_ts, to_ts=resolved.to_ts
+        )
+        return self._finish_payload(samples, resolved, query, services, max_points)
+
+    def _query(self, wall: datetime) -> MetricsRangeQuery:
+        cfg = self._metrics_cfg
+        return MetricsRangeQuery(
+            max_age_days=cfg.retention_max_age_days,
+            retention_max_bytes=cfg.retention_max_bytes,
+            earliest=self._reader.earliest_ts(),
+            now=wall,
         )
 
-    @staticmethod
-    def _clamp_window(window_seconds: int) -> int:
-        if window_seconds in WINDOW_CHOICES:
-            return window_seconds
-        if window_seconds < 1:
-            return DEFAULT_WINDOW_SECONDS
-        return min(max(window_seconds, 60), WINDOW_CHOICES[-1])
+    def _finish_payload(
+        self,
+        samples: List[Dict[str, Any]],
+        resolved: ResolvedMetricsRange,
+        query: MetricsRangeQuery,
+        services: Optional[Sequence[str]],
+        max_points: int,
+    ) -> Dict[str, Any]:
+        payload = self._build_payload(
+            samples,
+            from_ts=resolved.from_ts,
+            to_ts=resolved.to_ts,
+            window=resolved.window_seconds,
+            services=services,
+            max_points=max_points,
+        )
+        payload["bounds"] = query.bounds().to_mapping()
+        payload["clamped"] = resolved.clamped
+        if resolved.clamp_message:
+            payload["clamp_message"] = resolved.clamp_message
+        return payload
 
     def _build_payload(
         self,
@@ -83,7 +118,6 @@ class MetricsRead:
                 self._builder.downsample(s, max_points=max_points)
                 for s in series_map.values()
             ],
-            # Full-window events (ignore ``since``) so polls stay idempotent.
             "events": self._events_payload(
                 from_ts=from_ts, to_ts=to_ts, services=services
             ),

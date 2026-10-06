@@ -108,6 +108,14 @@ export type GraphEvent = {
   id?: string | null;
 };
 
+export type MetricsBounds = {
+  retention_max_age_days: number;
+  retention_max_bytes: number;
+  available_from: string;
+  earliest_ts: string | null;
+  max_window_seconds: number;
+};
+
 export type MetricsPayload = {
   window_seconds: number;
   from: string;
@@ -117,6 +125,9 @@ export type MetricsPayload = {
   series: MetricsSeries[];
   /** Optional for older servers; treat missing as []. */
   events?: GraphEvent[];
+  bounds?: MetricsBounds;
+  clamped?: boolean;
+  clamp_message?: string;
 };
 
 /** Poll /api/metrics every N ms with ``since`` cursor (no WebSocket). */
@@ -271,19 +282,22 @@ function detailFromBody(body: unknown): string | null {
 export async function fetchMetrics(opts: {
   window: number;
   since?: string | null;
+  start?: string;
+  end?: string;
   services?: string[];
 }): Promise<MetricsPayload> {
   const params = new URLSearchParams();
   params.set("window", String(opts.window));
-  if (opts.since) {
-    params.set("since", opts.since);
-  }
+  if (opts.since) params.set("since", opts.since);
+  if (opts.start) params.set("start", opts.start);
+  if (opts.end) params.set("end", opts.end);
   if (opts.services && opts.services.length > 0) {
     params.set("services", opts.services.join(","));
   }
   const res = await fetch(`/api/metrics?${params.toString()}`);
+  const body = await readJsonBody(res);
   if (!res.ok) {
-    throw new Error(`metrics ${res.status}`);
+    throw new Error(detailFromBody(body) || `metrics ${res.status}`);
   }
-  return (await res.json()) as MetricsPayload;
+  return body as MetricsPayload;
 }

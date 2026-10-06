@@ -817,7 +817,7 @@ a.download-link[aria-disabled="true"] {
 }
 
 .trends-sidebar {
-  flex: 0 0 13.5rem;
+  flex: 0 0 16rem;
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
@@ -840,6 +840,7 @@ a.download-link[aria-disabled="true"] {
 }
 
 .trends-field select,
+.trends-field input,
 .trends-services-search {
   font: inherit;
   text-transform: none;
@@ -853,6 +854,7 @@ a.download-link[aria-disabled="true"] {
 }
 
 .trends-field select:disabled,
+.trends-field input:disabled,
 .trends-services-search:disabled {
   opacity: 0.6;
   cursor: wait;
@@ -985,6 +987,32 @@ a.download-link[aria-disabled="true"] {
 
 .service-runtime-controls .trends-field {
   min-width: 8rem;
+}
+
+.trends-range,
+.trends-range-custom,
+.trends-range-absolute {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.service-runtime-controls .trends-range {
+  min-width: 12rem;
+  flex: 1 1 16rem;
+}
+
+.trends-range-hint,
+.trends-range-limit {
+  margin: 0;
+  font-size: 0.78rem;
+  text-transform: none;
+  letter-spacing: normal;
+  line-height: 1.35;
+}
+
+.trends-range-limit {
+  color: var(--warn, #9a3412);
 }
 
 .trends-loading {

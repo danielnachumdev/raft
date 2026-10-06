@@ -29,9 +29,10 @@ plus a ``presentation`` row (including ``external_urls``) for that Compose
 service id (404 if unknown).
 
 Serve ``GET /api/metrics`` returns historical series from
-``state/metrics/resources.jsonl`` via ``MetricsRead`` (window + optional
-``since`` cursor for SPA polling), plus ``events`` from
-``state/events/graph.jsonl`` (deploy/stop/scaling GraphEvent markers; full window).
+``state/metrics/resources.jsonl`` via ``MetricsRead`` (window, optional
+``start``/``end`` absolute range, optional ``since`` cursor for SPA polling),
+plus ``events`` from ``state/events/graph.jsonl``. Payload includes ``bounds``
+from metrics retention (``retentionMaxAgeDays`` / earliest sample).
 Live updates use HTTP polling — simpler and durable for one FastAPI process
 than WebSockets.
 

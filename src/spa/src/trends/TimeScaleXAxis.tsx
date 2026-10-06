@@ -12,8 +12,11 @@ import {
  * Must be inlined as ``{timeScaleXAxis(...)}`` — Recharts only discovers
  * ``XAxis`` among *direct* chart children (wrapper components are skipped).
  */
-export function timeScaleXAxis(windowSeconds: number): ReactElement {
-  const domain = windowDomain(windowSeconds);
+export function timeScaleXAxis(
+  windowSeconds: number,
+  endMs: number = Date.now(),
+): ReactElement {
+  const domain = windowDomain(windowSeconds, endMs);
   const ticks = timeAxisTicks(domain);
   const spanMs = domain.endMs - domain.startMs;
   return (

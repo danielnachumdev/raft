@@ -11,6 +11,7 @@ from raft.controller.metrics import METRICS_DIR, METRICS_FILENAME
 from raft.services.read.metrics import MetricsRead
 from raft.services.read.metrics_jsonl import MetricsJsonlReader
 from raft.services.read.metrics_series import MetricsSeriesBuilder
+from raft.services.read.metrics_window import MetricsRangeQuery
 from raft.services.serve.page import ServePage
 
 from ...base import RaftTestCase
@@ -18,9 +19,16 @@ from ...base import RaftTestCase
 
 class TestMetricsEdges(RaftTestCase):
     def test_clamp_window_and_naive_ts(self) -> None:
-        assert MetricsRead._clamp_window(0) == 3600
-        assert MetricsRead._clamp_window(120) == 120
-        assert MetricsRead._clamp_window(999999) == 604800
+        now = datetime(2026, 10, 2, 12, 0, tzinfo=timezone.utc)
+        query = MetricsRangeQuery(
+            max_age_days=30,
+            retention_max_bytes=1,
+            earliest=None,
+            now=now,
+        )
+        assert query.resolve(window_seconds=0).window_seconds == 3600
+        assert query.resolve(window_seconds=120).window_seconds == 120
+        assert query.resolve(window_seconds=9999999).window_seconds == 30 * 86400
         naive = MetricsJsonlReader.parse_ts("2026-10-02T12:00:00")
         assert naive is not None and naive.tzinfo is not None
         assert MetricsJsonlReader.parse_ts("") is None
