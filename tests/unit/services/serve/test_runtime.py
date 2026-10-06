@@ -147,12 +147,14 @@ class TestServeRuntime(RaftTestCase):
 
     def test_wait_until_released_escalates(self) -> None:
         rt = ServeRuntime(self.tmp_path)
+        # Enter the poll loop once (hits sleep), then expire the deadline.
         with patch.object(rt, "_probe", return_value=(True, 1)), patch.object(
             rt, "_kill_force"
         ) as kill_force, patch(
-            "raft.services.serve.runtime.time.monotonic", side_effect=[0.0, 10.0]
-        ), patch("raft.services.serve.runtime.time.sleep"):
+            "raft.services.serve.runtime.time.monotonic", side_effect=[0.0, 0.1, 10.0]
+        ), patch("raft.services.serve.runtime.time.sleep") as sleep:
             rt._wait_until_released(8787, 99)
+        sleep.assert_called_once()
         kill_force.assert_called_once_with(99, 8787)
 
     def test_wait_until_released_returns_when_free(self) -> None:
@@ -161,6 +163,20 @@ class TestServeRuntime(RaftTestCase):
             rt, "_kill_force"
         ) as kill_force:
             rt._wait_until_released(8787, 99)
+        kill_force.assert_not_called()
+
+    def test_wait_until_released_polls_then_returns(self) -> None:
+        """Held on first probe → sleep; free on second → return (no force-kill)."""
+        rt = ServeRuntime(self.tmp_path)
+        with patch.object(
+            rt, "_probe", side_effect=[(True, 1), (False, None)]
+        ), patch.object(rt, "_kill_force") as kill_force, patch(
+            "raft.services.serve.runtime.time.sleep"
+        ) as sleep, patch(
+            "raft.services.serve.runtime.time.monotonic", side_effect=[0.0, 0.1, 0.2]
+        ):
+            rt._wait_until_released(8787, 99)
+        sleep.assert_called_once()
         kill_force.assert_not_called()
 
     def test_unlink_quiet_swallows_oserror(self) -> None:

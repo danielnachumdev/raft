@@ -105,19 +105,23 @@ class TestDynamicJobIds:
     def test_skip_if_running_is_per_id(self) -> None:
         """While A is still running, a due tick skips A but still runs B."""
         pair = _SkipIfRunningPair()
+        a_id = JobIds.of(JobType.ACME, "a")
+        b_id = JobIds.of(JobType.ACME, "b")
         clock = _Clock(datetime(2026, 1, 1, 0, 0, 0))
         orch = JobOrchestrator()
-        orch.register(self._spec(JobIds.of(JobType.ACME, "a"), pair.run_a, interval=1.0))
-        orch.register(self._spec(JobIds.of(JobType.ACME, "b"), pair.run_b, interval=1.0))
+        orch.register(self._spec(a_id, pair.run_a, interval=1.0))
+        orch.register(self._spec(b_id, pair.run_b, interval=1.0))
         self._run_cycles(orch, clock, cycles=1)
         pair.await_a_started()
         pair.await_b_finished()
         assert (pair.a_runs, pair.b_runs) == (1, 1)
+        assert orch._is_running(a_id) and not orch._is_running(b_id)
         clock.advance(1.0)
         self._run_one_cycle(orch, clock)
         pair.await_b_finished()
         assert (pair.a_runs, pair.b_runs) == (1, 2)
         pair.release_a()
+        orch.join_running(timeout=2.0)
 
     def _overlap_pair(self, barrier, release, synced):
         def party() -> None:
