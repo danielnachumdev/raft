@@ -13,6 +13,7 @@ from raft.config.settings_types import HealingConfig, MetricsConfig, RaftConfig
 from raft.errors.cta import OperatorError
 from raft.models.stack import Stack
 
+from .acme_jobs import AcmeJobSync
 from .heal import Healer
 from .job import JobIds, JobRequest, JobSpec, QueuePolicy
 from .logging import setup_controller_logging
@@ -62,11 +63,12 @@ def _run_forever(
     clock: Optional[ClockFn] = None,
     orchestrator: Optional[JobOrchestrator] = None,
 ) -> None:
-    orch = orchestrator or JobOrchestrator(
-        side_ticks=[_safe_tick(scaler.tick, "scale")],
-    )
-    healer, metrics = _build_jobs(home, config, docker, orch)
+    orch = orchestrator or JobOrchestrator()
+    healer, metrics, acme_sync = _build_jobs(home, config, docker, orch)
+    orch.append_side_tick(_safe_tick(scaler.tick, "scale"))
+    orch.append_side_tick(_safe_tick(acme_sync.tick, "acme-sync"))
     _register_jobs(orch, config.healing, config.metrics, healer, metrics)
+    acme_sync.tick()
     _log_startup(config.healing, config.metrics)
     kwargs = {}
     if sleep_fn is not None:
@@ -88,7 +90,8 @@ def _build_jobs(home, config: RaftConfig, docker: DockerStack, orch: JobOrchestr
         retention_max_age_days=config.metrics.retention_max_age_days,
         retention_max_bytes=config.metrics.retention_max_bytes,
     )
-    return healer, metrics
+    acme_sync = AcmeJobSync(home, docker, orch)
+    return healer, metrics, acme_sync
 
 
 def _register_jobs(

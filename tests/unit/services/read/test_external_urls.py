@@ -46,6 +46,20 @@ class TestExternalUrlBuilder(RaftTestCase):
         urls = self._builder(stack).urls_for(service="site", role="app")
         assert urls == ("https://site.test/",)
 
+    def test_acme_tls_prefers_https(self) -> None:
+        write_applied_app(self.tmp_path, "site", public_host="site.test", tls="acme")
+        stack = make_stack(self.tmp_path, (make_app("site", public_host="site.test"),))
+        urls = self._builder(stack).urls_for(service="site", role="app")
+        assert urls == ("https://site.test/",)
+
+    def test_acme_tls_without_https_falls_back_to_http(self) -> None:
+        write_applied_app(self.tmp_path, "site", public_host="site.test", tls="acme")
+        stack = make_stack(self.tmp_path, (make_app("site", public_host="site.test"),))
+        urls = self._builder(stack, http=80, https=None).urls_for(
+            service="site", role="app"
+        )
+        assert urls == ("http://site.test/",)
+
     def test_custom_https_port_is_included(self) -> None:
         write_applied_app(self.tmp_path, "site", public_host="site.test", tls="origin")
         stack = make_stack(self.tmp_path, (make_app("site", public_host="site.test"),))

@@ -16,16 +16,24 @@ def _key() -> RSAPrivateKey:
     return rsa.generate_private_key(public_exponent=65537, key_size=2048)
 
 
-def _cert(key: RSAPrivateKey, names: list[str], *, days: int) -> x509.Certificate:
+def _validity(days: int) -> tuple[datetime, datetime]:
     now = datetime.now(timezone.utc)
+    if days >= 0:
+        return now - timedelta(minutes=1), now + timedelta(days=days)
+    not_after = now + timedelta(days=days)
+    return not_after - timedelta(days=1), not_after
+
+
+def _cert(key: RSAPrivateKey, names: list[str], *, days: int) -> x509.Certificate:
+    not_before, not_after = _validity(days)
     return (
         x509.CertificateBuilder()
         .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, names[0])]))
         .issuer_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, names[0])]))
         .public_key(key.public_key())
         .serial_number(x509.random_serial_number())
-        .not_valid_before(now - timedelta(minutes=1))
-        .not_valid_after(now + timedelta(days=days))
+        .not_valid_before(not_before)
+        .not_valid_after(not_after)
         .add_extension(
             x509.SubjectAlternativeName([x509.DNSName(n) for n in names]),
             critical=False,

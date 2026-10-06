@@ -39,8 +39,8 @@ class ExternalUrlBuilder:
         )
 
     def _scheme_and_port(self, spec: AppSpec) -> Optional[Tuple[str, int]]:
-        """Prefer HTTPS for ``tls: origin``; else HTTP; HTTPS-only edge as fallback."""
-        if spec.tls == "origin" and self._edge.https is not None:
+        """Prefer HTTPS for ``tls: origin`` / ``tls: acme``; else HTTP; HTTPS-only fallback."""
+        if spec.tls in {"origin", "acme"} and self._edge.https is not None:
             return ("https", self._edge.https)
         if self._edge.http is not None:
             return ("http", self._edge.http)

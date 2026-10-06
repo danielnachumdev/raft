@@ -1,4 +1,4 @@
-"""Best-effort ACME ensure for ``tls: acme`` apps (CLI path; controller is later)."""
+"""Best-effort ACME ensure for ``tls: acme`` apps (CLI apply + controller jobs)."""
 
 from __future__ import annotations
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Optional
 
+from raft.services.deploy.locking import stack_lock
 from raft.services.render import StackRenderer
 from raft.services.render.gate_nginx import GateNginxStamp
 
@@ -24,6 +25,11 @@ class AcmeGateInstall:
         self.docker = docker
 
     def apply(self) -> None:
+        """Hold ``stack.lock`` only around render + gate nginx reload."""
+        with stack_lock(self.stack.root):
+            self._apply_locked()
+
+    def _apply_locked(self) -> None:
         StackRenderer(self.stack).render()
         if self.docker is None:
             return

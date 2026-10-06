@@ -31,9 +31,17 @@ class JobOrchestrator:
         self._last_now: Optional[datetime] = None
         self._side_ticks: List[SideTick] = list(side_ticks)
 
+    def append_side_tick(self, tick: SideTick) -> None:
+        """Add a per-cycle hook (scale, ACME job sync, …)."""
+        self._side_ticks.append(tick)
+
     def register(self, spec: JobSpec) -> None:
         self._specs[spec.job_id] = spec
         self._arm_registered(spec.job_id)
+
+    def registered_ids(self) -> frozenset[str]:
+        """Job ids currently scheduled (excludes in-flight dropped workers)."""
+        return frozenset(self._specs)
 
     def drop(self, job_id: str) -> None:
         """Stop scheduling ``job_id``; a running worker is left to finish."""

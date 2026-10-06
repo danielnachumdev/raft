@@ -76,16 +76,21 @@ class TestControllerPrereq(ControllerTestCase):
         from raft.controller.run import _run_forever
 
         home = self.raft_home(tmp_path)
-        scaler = MagicMock()
         orch = MagicMock()
+        orch.registered_ids.return_value = frozenset()
         orch.run_forever.side_effect = StopIteration
         cfg = RaftConfig(
             healing=HealingConfig(enabled=True, interval_seconds=15.0, timeout_seconds=120.0),
             metrics=MetricsConfig(interval_seconds=60.0, timeout_seconds=30.0),
         )
         with pytest.raises(StopIteration):
-            _run_forever(home, cfg, MagicMock(), scaler, orchestrator=orch)
+            _run_forever(home, cfg, MagicMock(), MagicMock(), orchestrator=orch)
+        self._assert_core_jobs(orch)
+
+    @staticmethod
+    def _assert_core_jobs(orch: MagicMock) -> None:
         assert orch.register.call_count == 2
+        assert orch.append_side_tick.call_count == 2
         specs = [c.args[0] for c in orch.register.call_args_list]
         by_id = {s.job_id: s for s in specs}
         assert by_id[JobIds.HEAL].timeout_seconds == 120.0
@@ -102,12 +107,13 @@ class TestControllerPrereq(ControllerTestCase):
         cfg = default_config()
         with patch("raft.controller.run.JobOrchestrator") as orch_cls:
             orch = MagicMock()
+            orch.registered_ids.return_value = frozenset()
             orch_cls.return_value = orch
             orch.run_forever.side_effect = StopIteration
             with pytest.raises(StopIteration):
                 _run_forever(home, cfg, MagicMock(), scaler)
         assert orch_cls.call_count == 1
-        assert "side_ticks" in orch_cls.call_args.kwargs
+        assert orch.append_side_tick.call_count == 2
         assert orch.register.call_count == 2
 
     def test_run_forever_passes_sleep_and_clock(self, tmp_path: Path) -> None:
@@ -115,6 +121,7 @@ class TestControllerPrereq(ControllerTestCase):
 
         home = self.raft_home(tmp_path)
         orch = MagicMock()
+        orch.registered_ids.return_value = frozenset()
         orch.run_forever.side_effect = StopIteration
         sleep = MagicMock()
         clock = MagicMock()
@@ -135,7 +142,7 @@ class TestControllerPrereq(ControllerTestCase):
 
         home = self.raft_home(tmp_path)
         orch = MagicMock()
-        healer, _metrics = _build_jobs(home, default_config(), MagicMock(), orch)
+        healer, _metrics, _acme = _build_jobs(home, default_config(), MagicMock(), orch)
         healer.on_needs_heal()
         orch.enqueue.assert_called_once()
         assert orch.enqueue.call_args.args[0].job_id == JobIds.METRICS
