@@ -26,6 +26,36 @@ class _Clock:
         self.now = self.now + timedelta(seconds=seconds)
 
 
+class _SkipIfRunningPair:
+    """Job A holds while running; job B signals each completion."""
+
+    def __init__(self) -> None:
+        self.a_runs = 0
+        self.b_runs = 0
+        self._hold_a = threading.Event()
+        self._started_a = threading.Event()
+        self._finished_b = threading.Event()
+
+    def run_a(self) -> None:
+        self.a_runs += 1
+        self._started_a.set()
+        self._hold_a.wait(timeout=5)
+
+    def run_b(self) -> None:
+        self.b_runs += 1
+        self._finished_b.set()
+
+    def await_a_started(self) -> None:
+        assert self._started_a.wait(timeout=2), "job a did not start"
+
+    def await_b_finished(self) -> None:
+        assert self._finished_b.wait(timeout=2), "job b did not finish"
+        self._finished_b.clear()
+
+    def release_a(self) -> None:
+        self._hold_a.set()
+
+
 class TestJobIds:
     def test_singleton_and_subject_keys(self) -> None:
         assert JobIds.of(JobType.HEAL) == JobIds.HEAL == "heal"
@@ -73,22 +103,21 @@ class TestDynamicJobIds:
         release.set()
 
     def test_skip_if_running_is_per_id(self) -> None:
-        hold_a, started_a = threading.Event(), threading.Event()
-        runs = {"a": 0, "b": 0}
-        run_a, run_b = self._hold_and_count(runs, started_a, hold_a)
+        """While A is still running, a due tick skips A but still runs B."""
+        pair = _SkipIfRunningPair()
         clock = _Clock(datetime(2026, 1, 1, 0, 0, 0))
         orch = JobOrchestrator()
-        orch.register(self._spec(JobIds.of(JobType.ACME, "a"), run_a, interval=1.0))
-        orch.register(self._spec(JobIds.of(JobType.ACME, "b"), run_b, interval=1.0))
+        orch.register(self._spec(JobIds.of(JobType.ACME, "a"), pair.run_a, interval=1.0))
+        orch.register(self._spec(JobIds.of(JobType.ACME, "b"), pair.run_b, interval=1.0))
         self._run_cycles(orch, clock, cycles=1)
-        assert started_a.wait(timeout=2) and runs == {"a": 1, "b": 1}
+        pair.await_a_started()
+        pair.await_b_finished()
+        assert (pair.a_runs, pair.b_runs) == (1, 1)
         clock.advance(1.0)
         self._run_one_cycle(orch, clock)
-        deadline = time.monotonic() + 2.0
-        while time.monotonic() < deadline and runs["b"] < 2:
-            time.sleep(0.01)
-        assert runs == {"a": 1, "b": 2}
-        hold_a.set()
+        pair.await_b_finished()
+        assert (pair.a_runs, pair.b_runs) == (1, 2)
+        pair.release_a()
 
     def _overlap_pair(self, barrier, release, synced):
         def party() -> None:
@@ -100,17 +129,6 @@ class TestDynamicJobIds:
             release.wait(timeout=5)
 
         return party, party
-
-    def _hold_and_count(self, runs, started_a, hold_a):
-        def run_a() -> None:
-            runs["a"] += 1
-            started_a.set()
-            hold_a.wait(timeout=5)
-
-        def run_b() -> None:
-            runs["b"] += 1
-
-        return run_a, run_b
 
     def test_failure_does_not_skip_sibling(self) -> None:
         runs: List[str] = []
@@ -124,9 +142,7 @@ class TestDynamicJobIds:
         orch.register(self._spec(JobIds.of(JobType.ACME, "b"), lambda: runs.append("b")))
         orch.register(self._spec(JobIds.METRICS, lambda: runs.append("m")))
         self._run_cycles(orch, clock, cycles=1)
-        deadline = time.monotonic() + 2.0
-        while time.monotonic() < deadline and set(runs) != {"b", "m"}:
-            time.sleep(0.01)
+        orch.join_running(timeout=2.0)
         assert set(runs) == {"b", "m"}
 
     def test_soft_timeout_does_not_block_sibling_start(self) -> None:
@@ -156,9 +172,7 @@ class TestDynamicJobIds:
         orch.register(self._spec(JobIds.HEAL, lambda: runs.append("heal")))
         orch.register(self._spec(JobIds.METRICS, lambda: runs.append("metrics")))
         self._run_cycles(orch, clock, cycles=1)
-        deadline = time.monotonic() + 2.0
-        while time.monotonic() < deadline and set(runs) != {"heal", "metrics"}:
-            time.sleep(0.01)
+        orch.join_running(timeout=2.0)
         assert set(runs) == {"heal", "metrics"}
 
     def test_drop_clears_pending(self) -> None:
