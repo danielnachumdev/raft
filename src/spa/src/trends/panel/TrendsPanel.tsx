@@ -10,6 +10,8 @@ import {
 import { DownloadMenu } from "../../export/DownloadMenu";
 import { metricsDownloadUrl } from "../../export/urls";
 import { peekMetrics, putMetrics } from "../../shared/dashboardCache";
+import { chartEndMs } from "../chart/chartTimeScale";
+import { useLiveNow } from "../chart/useLiveNow";
 import { TrendsBody } from "./TrendsBody";
 import { TrendsFilters } from "./TrendsFilters";
 import {
@@ -25,6 +27,7 @@ import {
 import {
   defaultRangeState,
   isLiveQuery,
+  isRollingWindow,
   metricsCacheKey,
   toQuery,
   type TrendsRangeState,
@@ -43,6 +46,8 @@ const INITIAL_KEY = metricsCacheKey(toQuery(INITIAL));
 export function TrendsPanel() {
   const [range, setRange] = useState<TrendsRangeState>(INITIAL);
   const query = useMemo(() => toQuery(range), [range]);
+  const rolling = isRollingWindow(query);
+  const nowMs = useLiveNow(rolling);
   const cacheKey = metricsCacheKey(query);
   const [metricId, setMetricId] = useState<RuntimeMetricId>("cpu_percent");
   const [viewMode, setViewMode] = useState<SeriesViewMode>("per_service");
@@ -193,7 +198,7 @@ export function TrendsPanel() {
               visible={visible}
               metric={metric}
               windowSec={windowSec}
-              rangeEndIso={rangeTo}
+              rangeEndMs={chartEndMs({ rolling, nowMs, rangeEndIso: rangeTo })}
               viewMode={viewMode}
               groupMode={groupMode}
               events={events}

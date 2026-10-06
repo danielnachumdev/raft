@@ -26,6 +26,29 @@ export function windowDomain(
 }
 
 /**
+ * Rolling lookback follows ``nowMs`` so the axis crawls with wall time.
+ * Point-in-time ranges stay on the payload/query end.
+ */
+export function chartEndMs(args: {
+  rolling: boolean;
+  nowMs: number;
+  rangeEndIso?: string | null;
+}): number {
+  if (args.rolling) return args.nowMs;
+  return toEpochMs(args.rangeEndIso ?? "") ?? args.nowMs;
+}
+
+/** Drop samples that have scrolled out of the visible window. */
+export function clipRowsToDomain<T extends { ts: number }>(
+  rows: T[],
+  domain: TimeDomain,
+): T[] {
+  return rows.filter(
+    (row) => row.ts >= domain.startMs && row.ts <= domain.endMs,
+  );
+}
+
+/**
  * Insert null-valued breakpoints between sparse samples so Recharts
  * ``connectNulls={false}`` leaves a visual gap (time-proportional X).
  */

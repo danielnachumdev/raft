@@ -7,6 +7,7 @@ import {
   customSeconds,
   defaultRangeState,
   isLiveQuery,
+  isRollingWindow,
   metricsCacheKey,
   selectRangeKind,
   toQuery,
@@ -42,6 +43,17 @@ describe("toQuery / cache / live", () => {
     assert.deepEqual(q, { window: 3600 });
     assert.equal(metricsCacheKey(q), "win:3600");
     assert.equal(isLiveQuery(q), true);
+    assert.equal(isRollingWindow(q), true);
+  });
+
+  it("custom duration is rolling (not pinned)", () => {
+    const q = toQuery({
+      ...defaultRangeState(),
+      mode: "custom",
+      windowSec: 7200,
+    });
+    assert.deepEqual(q, { window: 7200 });
+    assert.equal(isRollingWindow(q), true);
   });
 
   it("absolute query is not live when end is in the past", () => {
@@ -51,6 +63,7 @@ describe("toQuery / cache / live", () => {
       end: "2026-10-05T11:00:00.000Z",
     };
     assert.equal(isLiveQuery(q, Date.parse("2026-10-06T12:00:00.000Z")), false);
+    assert.equal(isRollingWindow(q), false);
     assert.equal(
       metricsCacheKey(q),
       "abs:2026-10-05T10:00:00.000Z:2026-10-05T11:00:00.000Z",

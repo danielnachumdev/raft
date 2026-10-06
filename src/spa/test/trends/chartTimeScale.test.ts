@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  clipRowsToDomain,
   DEFAULT_SAMPLE_INTERVAL_MS,
   GAP_INTERVAL_MULTIPLIER,
+  chartEndMs,
   mergeTimedRows,
   tickStepMs,
   timeAxisTicks,
@@ -28,6 +30,52 @@ describe("windowDomain", () => {
     const domain = windowDomain(900, end);
     assert.equal(domain.endMs, end);
     assert.equal(domain.startMs, end - 900_000);
+  });
+});
+
+describe("chartEndMs", () => {
+  it("follows now for rolling lookback", () => {
+    const now = Date.parse("2026-10-06T12:00:00.000Z");
+    assert.equal(
+      chartEndMs({
+        rolling: true,
+        nowMs: now,
+        rangeEndIso: "2026-10-06T11:00:00.000Z",
+      }),
+      now,
+    );
+  });
+
+  it("pins point-in-time to payload end", () => {
+    const iso = "2026-10-05T11:00:00.000Z";
+    assert.equal(
+      chartEndMs({
+        rolling: false,
+        nowMs: Date.parse("2026-10-06T12:00:00.000Z"),
+        rangeEndIso: iso,
+      }),
+      Date.parse(iso),
+    );
+  });
+});
+
+describe("clipRowsToDomain", () => {
+  it("drops samples outside the window", () => {
+    const end = Date.parse("2026-10-03T19:00:00.000Z");
+    const domain = windowDomain(60, end);
+    const rows = clipRowsToDomain(
+      [
+        { ts: domain.startMs - 1, v: 1 },
+        { ts: domain.startMs, v: 2 },
+        { ts: domain.endMs, v: 3 },
+        { ts: domain.endMs + 1, v: 4 },
+      ],
+      domain,
+    );
+    assert.deepEqual(
+      rows.map((r) => r.v),
+      [2, 3],
+    );
   });
 });
 
