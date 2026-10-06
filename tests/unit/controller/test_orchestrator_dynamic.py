@@ -84,6 +84,9 @@ class TestDynamicJobIds:
         assert started_a.wait(timeout=2) and runs == {"a": 1, "b": 1}
         clock.advance(1.0)
         self._run_one_cycle(orch, clock)
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline and runs["b"] < 2:
+            time.sleep(0.01)
         assert runs == {"a": 1, "b": 2}
         hold_a.set()
 
