@@ -115,6 +115,7 @@ class TestDynamicJobIds:
         pair.await_a_started()
         pair.await_b_finished()
         assert (pair.a_runs, pair.b_runs) == (1, 1)
+        self._await_not_running(orch, b_id)
         assert orch._is_running(a_id) and not orch._is_running(b_id)
         clock.advance(1.0)
         self._run_one_cycle(orch, clock)
@@ -122,6 +123,13 @@ class TestDynamicJobIds:
         assert (pair.a_runs, pair.b_runs) == (1, 2)
         pair.release_a()
         orch.join_running(timeout=2.0)
+
+    @staticmethod
+    def _await_not_running(orch: JobOrchestrator, job_id: str) -> None:
+        deadline = time.monotonic() + 2.0
+        while orch._is_running(job_id) and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert not orch._is_running(job_id), f"{job_id} still marked running"
 
     def _overlap_pair(self, barrier, release, synced):
         def party() -> None:
