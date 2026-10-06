@@ -1,4 +1,4 @@
-"""Dynamic JobKey ids: parallel dispatch, drop, skip/fail isolation."""
+"""Dynamic string job ids: parallel dispatch, drop, skip/fail isolation."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from raft.controller.job import JobId, JobKey, JobKeys, JobRequest, JobSpec, QueuePolicy
+from raft.controller.job import JobIds, JobRequest, JobSpec, JobType, QueuePolicy
 from raft.controller.orchestrator import JobOrchestrator
 from raft.controller.schedule import IntervalSchedule
 
@@ -26,8 +26,16 @@ class _Clock:
         self.now = self.now + timedelta(seconds=seconds)
 
 
-class TestDynamicJobKeys:
-    def _spec(self, job_id: JobKey, run, interval: float = 10.0, timeout: float = 5.0) -> JobSpec:
+class TestJobIds:
+    def test_singleton_and_subject_keys(self) -> None:
+        assert JobIds.of(JobType.HEAL) == JobIds.HEAL == "heal"
+        assert JobIds.of(JobType.METRICS) == JobIds.METRICS == "metrics"
+        assert JobIds.of(JobType.ACME, "shop") == "acme:shop"
+        assert JobIds.of(JobType.ACME, "") == "acme"
+
+
+class TestDynamicJobIds:
+    def _spec(self, job_id: str, run, interval: float = 10.0, timeout: float = 5.0) -> JobSpec:
         return JobSpec(
             job_id=job_id,
             schedule=IntervalSchedule(interval),
@@ -36,24 +44,21 @@ class TestDynamicJobKeys:
             run=run,
         )
 
-    def test_job_keys_label(self) -> None:
-        assert JobKeys.label(JobId.HEAL) == "heal"
-        assert JobKeys.label("acme:shop") == "acme:shop"
-
     def test_register_and_drop_dynamic_ids(self) -> None:
         runs: List[str] = []
         clock = _Clock(datetime(2026, 1, 1, 0, 0, 0))
         orch = JobOrchestrator()
-        orch.register(self._spec(JobId.HEAL, lambda: runs.append("heal")))
+        orch.register(self._spec(JobIds.HEAL, lambda: runs.append("heal")))
         orch._arm_first_fires(clock())
-        orch.register(self._spec("acme:a", lambda: runs.append("a")))
+        acme = JobIds.of(JobType.ACME, "a")
+        orch.register(self._spec(acme, lambda: runs.append("a")))
         self._run_one_cycle(orch, clock)
         assert "heal" in runs and "a" in runs
-        orch.drop("acme:a")
-        assert "acme:a" not in orch._specs
-        assert "acme:a" not in orch._next_due
+        orch.drop(acme)
+        assert acme not in orch._specs
+        assert acme not in orch._next_due
         with pytest.raises(ValueError, match="unknown"):
-            orch.enqueue(JobRequest("acme:a"))
+            orch.enqueue(JobRequest(acme))
 
     def test_parallel_overlapping_dynamic_jobs(self) -> None:
         barrier = threading.Barrier(2)
@@ -61,10 +66,10 @@ class TestDynamicJobKeys:
         run_a, run_b = self._overlap_pair(barrier, release, synced)
         clock = _Clock(datetime(2026, 1, 1, 0, 0, 0))
         orch = JobOrchestrator()
-        orch.register(self._spec("acme:a", run_a, timeout=5.0))
-        orch.register(self._spec("acme:b", run_b, timeout=5.0))
+        orch.register(self._spec(JobIds.of(JobType.ACME, "a"), run_a, timeout=5.0))
+        orch.register(self._spec(JobIds.of(JobType.ACME, "b"), run_b, timeout=5.0))
         self._run_cycles(orch, clock, cycles=1)
-        assert synced.wait(timeout=2), "acme:a and acme:b did not overlap"
+        assert synced.wait(timeout=2), "acme jobs did not overlap"
         release.set()
 
     def test_skip_if_running_is_per_id(self) -> None:
@@ -73,8 +78,8 @@ class TestDynamicJobKeys:
         run_a, run_b = self._hold_and_count(runs, started_a, hold_a)
         clock = _Clock(datetime(2026, 1, 1, 0, 0, 0))
         orch = JobOrchestrator()
-        orch.register(self._spec("acme:a", run_a, interval=1.0, timeout=5.0))
-        orch.register(self._spec("acme:b", run_b, interval=1.0, timeout=5.0))
+        orch.register(self._spec(JobIds.of(JobType.ACME, "a"), run_a, interval=1.0))
+        orch.register(self._spec(JobIds.of(JobType.ACME, "b"), run_b, interval=1.0))
         self._run_cycles(orch, clock, cycles=1)
         assert started_a.wait(timeout=2) and runs == {"a": 1, "b": 1}
         clock.advance(1.0)
@@ -112,9 +117,9 @@ class TestDynamicJobKeys:
 
         clock = _Clock(datetime(2026, 1, 1, 0, 0, 0))
         orch = JobOrchestrator()
-        orch.register(self._spec("acme:a", boom))
-        orch.register(self._spec("acme:b", lambda: runs.append("b")))
-        orch.register(self._spec(JobId.METRICS, lambda: runs.append("m")))
+        orch.register(self._spec(JobIds.of(JobType.ACME, "a"), boom))
+        orch.register(self._spec(JobIds.of(JobType.ACME, "b"), lambda: runs.append("b")))
+        orch.register(self._spec(JobIds.METRICS, lambda: runs.append("m")))
         self._run_cycles(orch, clock, cycles=1)
         deadline = time.monotonic() + 2.0
         while time.monotonic() < deadline and set(runs) != {"b", "m"}:
@@ -132,8 +137,8 @@ class TestDynamicJobKeys:
 
         clock = _Clock(datetime(2026, 1, 1, 0, 0, 0))
         orch = JobOrchestrator()
-        orch.register(self._spec("acme:a", slow, timeout=0.05))
-        orch.register(self._spec("acme:b", started_fast.set, timeout=0.05))
+        orch.register(self._spec(JobIds.of(JobType.ACME, "a"), slow, timeout=0.05))
+        orch.register(self._spec(JobIds.of(JobType.ACME, "b"), started_fast.set, timeout=0.05))
         t0 = time.monotonic()
         self._run_cycles(orch, clock, cycles=1)
         assert started_fast.wait(timeout=2)
@@ -145,8 +150,8 @@ class TestDynamicJobKeys:
         runs: List[str] = []
         clock = _Clock(datetime(2026, 1, 1, 0, 0, 0))
         orch = JobOrchestrator()
-        orch.register(self._spec(JobId.HEAL, lambda: runs.append("heal")))
-        orch.register(self._spec(JobId.METRICS, lambda: runs.append("metrics")))
+        orch.register(self._spec(JobIds.HEAL, lambda: runs.append("heal")))
+        orch.register(self._spec(JobIds.METRICS, lambda: runs.append("metrics")))
         self._run_cycles(orch, clock, cycles=1)
         deadline = time.monotonic() + 2.0
         while time.monotonic() < deadline and set(runs) != {"heal", "metrics"}:
@@ -155,35 +160,38 @@ class TestDynamicJobKeys:
 
     def test_drop_clears_pending(self) -> None:
         orch = JobOrchestrator()
-        orch.register(self._spec("acme:a", lambda: None, interval=60.0))
+        acme = JobIds.of(JobType.ACME, "a")
+        orch.register(self._spec(acme, lambda: None, interval=60.0))
         orch._arm_first_fires(datetime(2026, 1, 1))
-        orch._next_due["acme:a"] = datetime(2026, 1, 1) + timedelta(seconds=60)
-        orch.enqueue(JobRequest("acme:a"))
-        orch.drop("acme:a")
-        assert "acme:a" not in orch._pending
+        orch._next_due[acme] = datetime(2026, 1, 1) + timedelta(seconds=60)
+        orch.enqueue(JobRequest(acme))
+        orch.drop(acme)
+        assert acme not in orch._pending
         sleep = MagicMock()
         orch._sleep_until_next(_Clock(datetime(2026, 1, 1)), sleep)
         sleep.assert_not_called()
 
     def test_dispatch_ignores_unknown_id(self) -> None:
-        JobOrchestrator()._dispatch("acme:missing", advance_schedule=True)
+        JobOrchestrator()._dispatch(JobIds.of(JobType.ACME, "missing"), advance_schedule=True)
 
     def test_join_running_waits_for_worker(self) -> None:
         release = threading.Event()
         orch = JobOrchestrator()
-        orch.register(self._spec("acme:a", release.wait, interval=10.0, timeout=5.0))
+        acme = JobIds.of(JobType.ACME, "a")
+        orch.register(self._spec(acme, release.wait, interval=10.0, timeout=5.0))
         orch._arm_first_fires(datetime(2026, 1, 1))
         orch._dispatch_cycle(lambda: datetime(2026, 1, 1))
-        assert orch._is_running("acme:a")
+        assert orch._is_running(acme)
         release.set()
         orch.join_running(timeout=2.0)
-        assert not orch._is_running("acme:a")
+        assert not orch._is_running(acme)
 
     def test_soft_timeout_paths(self) -> None:
         hold = threading.Event()
         clock = _Clock(datetime(2026, 1, 1, 0, 0, 0))
         orch = JobOrchestrator()
-        orch.register(self._spec("acme:a", hold.wait, interval=1.0, timeout=0.01))
+        acme = JobIds.of(JobType.ACME, "a")
+        orch.register(self._spec(acme, hold.wait, interval=1.0, timeout=0.01))
         orch._arm_first_fires(clock())
         orch._dispatch_cycle(clock)
         orch._check_soft_timeouts()  # still under timeout

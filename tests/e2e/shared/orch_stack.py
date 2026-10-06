@@ -12,7 +12,7 @@ from raft.adapters.docker import DockerStack
 from raft.adapters.shell import Shell
 from raft.config.settings_types import HealingConfig
 from raft.controller.heal import Healer
-from raft.controller.job import JobId, JobRequest, JobSpec, QueuePolicy
+from raft.controller.job import JobIds, JobRequest, JobSpec, QueuePolicy
 from raft.controller.metrics import MetricsRecorder
 from raft.controller.orchestrator import JobOrchestrator
 from raft.controller.schedule import IntervalSchedule
@@ -104,7 +104,7 @@ class OrchE2EStack:
             home,
             cls._healing(),
             docker,
-            on_needs_heal=lambda: orch.enqueue(JobRequest(job_id=JobId.METRICS)),
+            on_needs_heal=lambda: orch.enqueue(JobRequest(job_id=JobIds.METRICS)),
         )
         metrics = MetricsRecorder(
             home,
@@ -145,7 +145,7 @@ class OrchE2EStack:
     @staticmethod
     def _heal_spec(run) -> JobSpec:
         return JobSpec(
-            job_id=JobId.HEAL,
+            job_id=JobIds.HEAL,
             schedule=IntervalSchedule(HEAL_INTERVAL),
             timeout_seconds=HEAL_TIMEOUT,
             queue_policy=QueuePolicy.SKIP_IF_RUNNING,
@@ -155,7 +155,7 @@ class OrchE2EStack:
     @staticmethod
     def _metrics_spec(run) -> JobSpec:
         return JobSpec(
-            job_id=JobId.METRICS,
+            job_id=JobIds.METRICS,
             schedule=IntervalSchedule(METRICS_INTERVAL),
             timeout_seconds=METRICS_TIMEOUT,
             queue_policy=QueuePolicy.SKIP_IF_RUNNING,

@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from raft.controller.job import JobId, JobRequest, JobSpec, QueuePolicy
+from raft.controller.job import JobIds, JobRequest, JobSpec, QueuePolicy
 from raft.controller.orchestrator import JobOrchestrator
 from raft.controller.schedule import CronSchedule, IntervalSchedule
 
@@ -26,7 +26,7 @@ class _Clock:
 
 
 class TestJobOrchestrator:
-    def _spec(self, job_id: JobId, run, interval: float = 10.0, timeout: float = 1.0) -> JobSpec:
+    def _spec(self, job_id: str, run, interval: float = 10.0, timeout: float = 1.0) -> JobSpec:
         return JobSpec(
             job_id=job_id,
             schedule=IntervalSchedule(interval),
@@ -40,7 +40,7 @@ class TestJobOrchestrator:
         side = MagicMock()
         clock = _Clock(datetime(2026, 1, 1, 0, 0, 0))
         orch = JobOrchestrator(side_ticks=[side])
-        orch.register(self._spec(JobId.HEAL, lambda: runs.append("heal"), interval=15.0))
+        orch.register(self._spec(JobIds.HEAL, lambda: runs.append("heal"), interval=15.0))
 
         def sleep(delay: float) -> None:
             clock.advance(delay)
@@ -64,7 +64,7 @@ class TestJobOrchestrator:
 
         clock = _Clock(datetime(2026, 1, 1, 0, 0, 0))
         orch = JobOrchestrator()
-        orch.register(self._spec(JobId.HEAL, blocking, interval=1.0, timeout=0.05))
+        orch.register(self._spec(JobIds.HEAL, blocking, interval=1.0, timeout=0.05))
         self._run_cycles(orch, clock, cycles=1)
         assert started.wait(timeout=2)
         assert runs["n"] == 1
@@ -78,12 +78,12 @@ class TestJobOrchestrator:
         runs: List[str] = []
         clock = _Clock(datetime(2026, 1, 1, 0, 0, 0))
         orch = JobOrchestrator()
-        orch.register(self._spec(JobId.METRICS, lambda: runs.append("m"), interval=60.0))
+        orch.register(self._spec(JobIds.METRICS, lambda: runs.append("m"), interval=60.0))
         # Arm schedules without sleeping into periodic fire: enqueue only.
         orch._arm_first_fires(clock())
-        orch._next_due[JobId.METRICS] = clock() + timedelta(seconds=60)
-        orch.enqueue(JobRequest(JobId.METRICS))
-        orch.enqueue(JobRequest(JobId.METRICS))  # replace
+        orch._next_due[JobIds.METRICS] = clock() + timedelta(seconds=60)
+        orch.enqueue(JobRequest(JobIds.METRICS))
+        orch.enqueue(JobRequest(JobIds.METRICS))  # replace
         self._run_one_cycle(orch, clock)
         assert runs == ["m"]
 
@@ -94,7 +94,7 @@ class TestJobOrchestrator:
         def boom() -> None:
             raise RuntimeError("x")
 
-        orch.register(self._spec(JobId.HEAL, boom, interval=10.0))
+        orch.register(self._spec(JobIds.HEAL, boom, interval=10.0))
         self._run_cycles(orch, clock, cycles=1)
 
     def test_side_tick_runs_even_when_jobs_skip(self) -> None:
@@ -108,7 +108,7 @@ class TestJobOrchestrator:
             started.set()
             hold.wait(timeout=5)
 
-        orch.register(self._spec(JobId.HEAL, blocking, interval=1.0, timeout=0.05))
+        orch.register(self._spec(JobIds.HEAL, blocking, interval=1.0, timeout=0.05))
         self._run_cycles(orch, clock, cycles=1)
         assert started.wait(timeout=2)
         clock.advance(1.0)
@@ -122,13 +122,13 @@ class TestJobOrchestrator:
 
         clock = _Clock(datetime(2026, 1, 1, 0, 0, 0))
         orch = JobOrchestrator(side_ticks=[bad_side])
-        orch.register(self._spec(JobId.HEAL, lambda: None, interval=10.0))
+        orch.register(self._spec(JobIds.HEAL, lambda: None, interval=10.0))
         self._run_cycles(orch, clock, cycles=1)
 
     def test_enqueue_unknown_job(self) -> None:
         orch = JobOrchestrator()
         with pytest.raises(ValueError, match="unknown"):
-            orch.enqueue(JobRequest(JobId.METRICS))
+            orch.enqueue(JobRequest(JobIds.METRICS))
 
     def test_register_with_cron_schedule(self) -> None:
         runs: List[str] = []
@@ -136,7 +136,7 @@ class TestJobOrchestrator:
         orch = JobOrchestrator()
         orch.register(
             JobSpec(
-                job_id=JobId.METRICS,
+                job_id=JobIds.METRICS,
                 schedule=CronSchedule("*/1 * * * *"),
                 timeout_seconds=1.0,
                 queue_policy=QueuePolicy.SKIP_IF_RUNNING,
@@ -149,10 +149,10 @@ class TestJobOrchestrator:
     def test_sleep_skips_when_pending(self) -> None:
         clock = _Clock(datetime(2026, 1, 1, 0, 0, 0))
         orch = JobOrchestrator()
-        orch.register(self._spec(JobId.METRICS, lambda: None, interval=60.0))
+        orch.register(self._spec(JobIds.METRICS, lambda: None, interval=60.0))
         orch._arm_first_fires(clock())
-        orch._next_due[JobId.METRICS] = clock() + timedelta(seconds=60)
-        orch.enqueue(JobRequest(JobId.METRICS))
+        orch._next_due[JobIds.METRICS] = clock() + timedelta(seconds=60)
+        orch.enqueue(JobRequest(JobIds.METRICS))
         sleep = MagicMock()
         orch._sleep_until_next(clock, sleep)
         sleep.assert_not_called()
@@ -160,8 +160,8 @@ class TestJobOrchestrator:
     def test_sleep_skips_non_positive_delay(self) -> None:
         clock = _Clock(datetime(2026, 1, 1, 0, 0, 0))
         orch = JobOrchestrator()
-        orch.register(self._spec(JobId.HEAL, lambda: None, interval=10.0))
-        orch._next_due[JobId.HEAL] = clock()  # due now → delay 0
+        orch.register(self._spec(JobIds.HEAL, lambda: None, interval=10.0))
+        orch._next_due[JobIds.HEAL] = clock()  # due now → delay 0
         sleep = MagicMock()
         orch._sleep_until_next(clock, sleep)
         sleep.assert_not_called()
@@ -170,8 +170,8 @@ class TestJobOrchestrator:
         runs: List[str] = []
         clock = _Clock(datetime(2026, 1, 1, 0, 0, 0))
         orch = JobOrchestrator()
-        orch.register(self._spec(JobId.HEAL, lambda: runs.append("h"), interval=10.0))
-        orch.register(self._spec(JobId.METRICS, lambda: runs.append("m"), interval=60.0))
+        orch.register(self._spec(JobIds.HEAL, lambda: runs.append("h"), interval=10.0))
+        orch.register(self._spec(JobIds.METRICS, lambda: runs.append("m"), interval=60.0))
 
         def sleep(delay: float) -> None:
             clock.advance(delay)
@@ -187,14 +187,14 @@ class TestJobOrchestrator:
 
     def test_run_until_noop_when_predicate_already_true(self) -> None:
         orch = JobOrchestrator()
-        orch.register(self._spec(JobId.HEAL, lambda: None, interval=10.0))
+        orch.register(self._spec(JobIds.HEAL, lambda: None, interval=10.0))
         sleep = MagicMock()
         orch.run_until(lambda: True, sleep_fn=sleep, clock=_Clock(datetime(2026, 1, 1)))
         sleep.assert_not_called()
 
     def test_default_clock_path(self) -> None:
         orch = JobOrchestrator()
-        orch.register(self._spec(JobId.HEAL, lambda: None, interval=10.0))
+        orch.register(self._spec(JobIds.HEAL, lambda: None, interval=10.0))
         sleep = MagicMock(side_effect=StopIteration)
         with pytest.raises(StopIteration):
             orch.run_forever(sleep_fn=sleep)

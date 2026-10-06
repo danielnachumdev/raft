@@ -4,19 +4,31 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, Union
+from typing import Callable, Optional
 
 from .schedule import Schedule
 
 
-class JobId(Enum):
+class JobType(Enum):
+    """Kind of controller work (not the orchestrator key)."""
+
     HEAL = "heal"
     METRICS = "metrics"
+    ACME = "acme"
     # SCALE intentionally absent — transitional side_ticks only.
 
 
-# Fixed singletons (heal/metrics) plus dynamic string ids (e.g. ``acme:<app>``).
-JobKey = Union[JobId, str]
+class JobIds:
+    """Stable string orchestrator keys: ``{type}`` or ``{type}:{subject}``."""
+
+    HEAL = JobType.HEAL.value
+    METRICS = JobType.METRICS.value
+
+    @staticmethod
+    def of(job_type: JobType, subject: Optional[str] = None) -> str:
+        if not subject:
+            return job_type.value
+        return f"{job_type.value}:{subject}"
 
 
 class QueuePolicy(Enum):
@@ -27,7 +39,7 @@ class QueuePolicy(Enum):
 
 @dataclass(frozen=True)
 class JobSpec:
-    job_id: JobKey
+    job_id: str
     schedule: Schedule
     timeout_seconds: float
     queue_policy: QueuePolicy
@@ -38,12 +50,4 @@ class JobSpec:
 class JobRequest:
     """One-shot request; uses the registered JobSpec's timeout / policy / run."""
 
-    job_id: JobKey
-
-
-class JobKeys:
-    """Normalize JobKey for logs / thread names."""
-
-    @staticmethod
-    def label(job_id: JobKey) -> str:
-        return job_id.value if isinstance(job_id, JobId) else job_id
+    job_id: str

@@ -14,7 +14,7 @@ from raft.errors.cta import OperatorError
 from raft.models.stack import Stack
 
 from .heal import Healer
-from .job import JobId, JobRequest, JobSpec, QueuePolicy
+from .job import JobIds, JobRequest, JobSpec, QueuePolicy
 from .logging import setup_controller_logging
 from .metrics import MetricsRecorder
 from .orchestrator import ClockFn, JobOrchestrator, SleepFn
@@ -78,7 +78,7 @@ def _run_forever(
 
 def _build_jobs(home, config: RaftConfig, docker: DockerStack, orch: JobOrchestrator):
     def nudge() -> None:
-        orch.enqueue(JobRequest(job_id=JobId.METRICS))
+        orch.enqueue(JobRequest(job_id=JobIds.METRICS))
 
     healer = Healer(home=home, config=config.healing, docker=docker, on_needs_heal=nudge)
     metrics = MetricsRecorder(
@@ -100,7 +100,7 @@ def _register_jobs(
 ) -> None:
     orch.register(
         JobSpec(
-            job_id=JobId.HEAL,
+            job_id=JobIds.HEAL,
             schedule=IntervalSchedule(healing.interval_seconds),
             timeout_seconds=healing.timeout_seconds,
             queue_policy=QueuePolicy.SKIP_IF_RUNNING,
@@ -109,7 +109,7 @@ def _register_jobs(
     )
     orch.register(
         JobSpec(
-            job_id=JobId.METRICS,
+            job_id=JobIds.METRICS,
             schedule=IntervalSchedule(metrics_cfg.interval_seconds),
             timeout_seconds=metrics_cfg.timeout_seconds,
             queue_policy=QueuePolicy.SKIP_IF_RUNNING,

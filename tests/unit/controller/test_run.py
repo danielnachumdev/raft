@@ -11,7 +11,7 @@ import pytest
 
 from raft.config.settings_types import HealingConfig, MetricsConfig, RaftConfig, default_config
 from raft.controller import main, run_prereq_smoke
-from raft.controller.job import JobId, QueuePolicy
+from raft.controller.job import JobIds, QueuePolicy
 from raft.controller.logging import setup_controller_logging
 from raft.controller.run import main as main_impl
 from raft.controller.smoke import run_prereq_smoke as smoke_impl
@@ -88,11 +88,11 @@ class TestControllerPrereq(ControllerTestCase):
         assert orch.register.call_count == 2
         specs = [c.args[0] for c in orch.register.call_args_list]
         by_id = {s.job_id: s for s in specs}
-        assert by_id[JobId.HEAL].timeout_seconds == 120.0
-        assert by_id[JobId.HEAL].queue_policy == QueuePolicy.SKIP_IF_RUNNING
-        assert by_id[JobId.METRICS].timeout_seconds == 30.0
-        assert by_id[JobId.HEAL].schedule.interval_seconds == 15.0
-        assert by_id[JobId.METRICS].schedule.interval_seconds == 60.0
+        assert by_id[JobIds.HEAL].timeout_seconds == 120.0
+        assert by_id[JobIds.HEAL].queue_policy == QueuePolicy.SKIP_IF_RUNNING
+        assert by_id[JobIds.METRICS].timeout_seconds == 30.0
+        assert by_id[JobIds.HEAL].schedule.interval_seconds == 15.0
+        assert by_id[JobIds.METRICS].schedule.interval_seconds == 60.0
 
     def test_run_forever_builds_default_orchestrator(self, tmp_path: Path) -> None:
         from raft.controller.run import _run_forever
@@ -138,7 +138,7 @@ class TestControllerPrereq(ControllerTestCase):
         healer, _metrics = _build_jobs(home, default_config(), MagicMock(), orch)
         healer.on_needs_heal()
         orch.enqueue.assert_called_once()
-        assert orch.enqueue.call_args.args[0].job_id == JobId.METRICS
+        assert orch.enqueue.call_args.args[0].job_id == JobIds.METRICS
 
     def test_safe_tick_swallows(self) -> None:
         from raft.controller.run import _safe_tick
