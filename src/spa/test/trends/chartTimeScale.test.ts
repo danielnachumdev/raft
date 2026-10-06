@@ -9,7 +9,7 @@ import {
   toEpochMs,
   windowDomain,
   withGapBreaks,
-} from "../src/trends/chartTimeScale.ts";
+} from "../../src/trends/chart/chartTimeScale.ts";
 
 describe("toEpochMs", () => {
   it("parses ISO timestamps", () => {

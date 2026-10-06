@@ -6,8 +6,8 @@ import {
   type MetricsBounds,
   type MetricsPayload,
   type MetricsSeries,
-} from "../shared/api";
-import type { MetricsQueryOpts } from "./trendsRange";
+} from "../../shared/api";
+import type { MetricsQueryOpts } from "../trendsRange";
 
 export function applyFull(
   payload: MetricsPayload,

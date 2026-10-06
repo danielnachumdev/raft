@@ -6,16 +6,16 @@ import {
   type MetricsAvailable,
   type MetricsBounds,
   type MetricsSeries,
-} from "../shared/api";
-import { DownloadMenu } from "../export/DownloadMenu";
-import { metricsDownloadUrl } from "../export/urls";
-import { peekMetrics, putMetrics } from "../shared/dashboardCache";
+} from "../../shared/api";
+import { DownloadMenu } from "../../export/DownloadMenu";
+import { metricsDownloadUrl } from "../../export/urls";
+import { peekMetrics, putMetrics } from "../../shared/dashboardCache";
 import { TrendsBody } from "./TrendsBody";
 import { TrendsFilters } from "./TrendsFilters";
 import {
   RUNTIME_METRICS,
   type RuntimeMetricId,
-} from "./runtimeMetrics";
+} from "../runtimeMetrics";
 import {
   applyFull,
   applyPayloadMeta,
@@ -28,7 +28,7 @@ import {
   metricsCacheKey,
   toQuery,
   type TrendsRangeState,
-} from "./trendsRange";
+} from "../trendsRange";
 import {
   groupOptions,
   resolveVisibleSeries,

@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Dashboard } from "./Dashboard";
-import { ServicePage } from "./service/ServicePage";
-import { ToastHost } from "./chrome/ToastHost";
+import { ServicePage } from "../service/ServicePage";
+import { ToastHost } from "../chrome/ToastHost";
 
 export function App() {
   return (

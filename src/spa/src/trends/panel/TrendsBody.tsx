@@ -1,7 +1,7 @@
-import type { GraphEvent, MetricsSeries } from "../shared/api";
-import { toEpochMs } from "./chartTimeScale";
+import type { GraphEvent, MetricsSeries } from "../../shared/api";
+import { toEpochMs } from "../chart/chartTimeScale";
 import { TrendsChart } from "./TrendsChart";
-import type { RuntimeMetricDef } from "./runtimeMetrics";
+import type { RuntimeMetricDef } from "../runtimeMetrics";
 import { isSingleLineAvg, type SeriesViewMode } from "./trendsView";
 
 export function TrendsBody(props: {

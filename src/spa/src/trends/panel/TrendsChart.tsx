@@ -6,25 +6,25 @@ import {
   Tooltip,
   YAxis,
 } from "recharts";
-import type { GraphEvent, MetricsSeries } from "../shared/api";
+import type { GraphEvent, MetricsSeries } from "../../shared/api";
 import {
   formatTooltipTime,
   mergeTimedRows,
   toEpochMs,
   type TimedValue,
-} from "./chartTimeScale";
-import { graphEventMarkers } from "./GraphEventMarkers";
-import { eventsForSeries, seriesForEventFilter } from "./graphEvents";
+} from "../chart/chartTimeScale";
+import { graphEventMarkers } from "../chart/GraphEventMarkers";
+import { eventsForSeries, seriesForEventFilter } from "../chart/graphEvents";
 import {
   formatRuntimeValue,
   runtimePointValue,
   yAxisUnit,
   type RuntimeMetricId,
   type RuntimeUnit,
-} from "./runtimeMetrics";
-import { timeScaleXAxis } from "./TimeScaleXAxis";
-import { trendPlotLines } from "./trendPlotLines";
-import { useChartHover } from "./useChartHover";
+} from "../runtimeMetrics";
+import { timeScaleXAxis } from "../chart/TimeScaleXAxis";
+import { trendPlotLines } from "../chart/trendPlotLines";
+import { useChartHover } from "../chart/useChartHover";
 
 const HOST_AXIS = "host";
 const SERVICE_AXIS = "service";

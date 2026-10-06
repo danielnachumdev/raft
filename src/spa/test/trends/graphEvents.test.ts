@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { GraphEvent, MetricsSeries } from "../src/shared/api.ts";
-import { mergeTimedRows } from "../src/trends/chartTimeScale.ts";
+import type { GraphEvent, MetricsSeries } from "../../src/shared/api.ts";
+import { mergeTimedRows } from "../../src/trends/chart/chartTimeScale.ts";
 import {
   eventMarkerLabel,
   eventMarkerStroke,
   eventsForSeries,
   isRaftLevelEvent,
   seriesForEventFilter,
-} from "../src/trends/graphEvents.ts";
+} from "../../src/trends/chart/graphEvents.ts";
 
 function series(id: string, group = "demo"): MetricsSeries {
   return {

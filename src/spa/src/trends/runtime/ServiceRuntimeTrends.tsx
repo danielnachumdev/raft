@@ -1,25 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
-import { DownloadMenu } from "../export/DownloadMenu";
-import { metricsDownloadUrl } from "../export/urls";
+import { DownloadMenu } from "../../export/DownloadMenu";
+import { metricsDownloadUrl } from "../../export/urls";
 import {
   fetchMetrics,
   METRICS_POLL_MS,
   type GraphEvent,
   type MetricsBounds,
   type MetricsSeries,
-} from "../shared/api";
-import { eventsForSeries } from "../trends/graphEvents";
+} from "../../shared/api";
+import { eventsForSeries } from "../chart/graphEvents";
 import {
   RUNTIME_METRICS,
   type RuntimeMetricId,
-} from "../trends/runtimeMetrics";
-import { TrendsRangeControls } from "../trends/TrendsRangeControls";
+} from "../runtimeMetrics";
+import { TrendsRangeControls } from "../TrendsRangeControls";
 import {
   defaultRangeState,
   isLiveQuery,
   toQuery,
   type TrendsRangeState,
-} from "../trends/trendsRange";
+} from "../trendsRange";
 import { RuntimeTrendsBody } from "./RuntimeTrendsBody";
 import {
   buildRows,

@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { ReferenceLine } from "recharts";
-import type { GraphEvent } from "../shared/api";
+import type { GraphEvent } from "../../shared/api";
 import { ChartHoverHighlight } from "./chartHover";
 import { toEpochMs } from "./chartTimeScale";
 import { eventMarkerLabel, eventMarkerStroke } from "./graphEvents";
