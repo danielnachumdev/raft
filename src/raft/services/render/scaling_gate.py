@@ -104,19 +104,40 @@ class ScalingGate:
         wake = f"/_raft_wake_{app.name}"
         return (
             ScalingGate._static_mirror_page(hold, wake, "holding.html")
-            + ScalingGate._static_mirror_page(timed, wake, "holding-timeout.html")
+            + ScalingGate._static_mirror_page(
+                timed, wake, "holding-timeout.html", ssi=True
+            )
+            + ScalingGate._timeout_diag_location(app)
             + ScalingGate._offline_location()
         )
 
     @staticmethod
-    def _static_mirror_page(location: str, wake: str, page: str) -> str:
+    def _static_mirror_page(
+        location: str, wake: str, page: str, *, ssi: bool = False
+    ) -> str:
         # Mirror wake on holding and timeout so refresh / Try again never dead-ends.
+        extras = ""
+        if ssi:
+            extras = "        ssi on;\n        ssi_silent_errors on;\n"
         return (
             f"    location = {location} {{\n"
             f"        mirror {wake};\n"
             "        mirror_request_body off;\n"
+            f"{extras}"
             "        default_type text/html;\n"
             f"        alias /usr/share/nginx/errors/{page};\n"
+            "    }\n"
+            "\n"
+        )
+
+    @staticmethod
+    def _timeout_diag_location(app: App) -> str:
+        path = f"{MARKERS_DIR}/{app.name}.id"
+        return (
+            "    location = /_raft_timeout_diag {\n"
+            "        internal;\n"
+            "        default_type text/plain;\n"
+            f"        alias {path};\n"
             "    }\n"
             "\n"
         )

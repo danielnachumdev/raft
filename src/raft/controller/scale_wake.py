@@ -50,17 +50,18 @@ class ScaleWake:
         if chain is None:
             return False
         deadline = self._clock() + scaling.wake_timeout_seconds
-        logger.info("scale wake app=%s chain=%s", name, ",".join(chain))
+        diag = self._diag_id(name)
+        logger.info("scale wake app=%s id=%s chain=%s", name, diag, ",".join(chain))
         try:
             with apps_and_stack_locks(self.home, chain):
                 ok = self.wake_under_lock(name, chain, scaling, when, deadline)
         except OperatorError as exc:
-            logger.error("scale wake failed app=%s: %s", name, exc)
+            logger.error("scale wake failed app=%s id=%s: %s", name, diag, exc)
             return False
         if ok:
-            logger.info("scale wake ok app=%s", name)
+            logger.info("scale wake ok app=%s id=%s", name, diag)
         else:
-            logger.error("scale wake incomplete app=%s", name)
+            logger.error("scale wake incomplete app=%s id=%s", name, diag)
         return ok
 
     def wake_under_lock(
@@ -148,6 +149,9 @@ class ScaleWake:
             if not self.docker.router_can_fetch(host, port=port, path=path):
                 return False
         return True
+
+    def _diag_id(self, name: str) -> str:
+        return self.store.load(name).wake_id or "-"
 
     def _load_spec(self, name: str) -> Optional[AppSpec]:
         return self._deps.load_spec(name)

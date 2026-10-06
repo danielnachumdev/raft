@@ -7,6 +7,7 @@ import os
 import tempfile
 import threading
 import time
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
@@ -24,6 +25,7 @@ class AppScalingState:
     min_up_until: Optional[float] = None
     wake_requested_at: Optional[float] = None
     wake_timed_out: bool = False
+    wake_id: Optional[str] = None
 
     @classmethod
     def from_mapping(cls, data: dict[str, Any]) -> "AppScalingState":
@@ -33,6 +35,7 @@ class AppScalingState:
             min_up_until=cls._opt_float(data.get("minUpUntil")),
             wake_requested_at=cls._opt_float(data.get("wakeRequestedAt")),
             wake_timed_out=bool(data.get("wakeTimedOut", False)),
+            wake_id=cls._opt_id(data.get("wakeId")),
         )
 
     def to_mapping(self) -> dict[str, Any]:
@@ -42,6 +45,7 @@ class AppScalingState:
             "minUpUntil": self.min_up_until,
             "wakeRequestedAt": self.wake_requested_at,
             "wakeTimedOut": self.wake_timed_out,
+            "wakeId": self.wake_id,
         }
 
     @staticmethod
@@ -49,6 +53,13 @@ class AppScalingState:
         if value is None:
             return None
         return float(value)
+
+    @staticmethod
+    def _opt_id(value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text or None
 
 
 class ScalingStore:
@@ -92,6 +103,7 @@ class ScalingStore:
             state.scaled_to_zero = True
             state.wake_requested_at = None
             state.wake_timed_out = False
+            state.wake_id = None
             self._save_unlocked(name, state)
 
     def clear_scaled_to_zero(self, name: str) -> None:
@@ -103,6 +115,7 @@ class ScalingStore:
             state.scaled_to_zero = False
             state.wake_requested_at = None
             state.wake_timed_out = False
+            state.wake_id = None
             self._save_unlocked(name, state)
 
     def mark_awake(
@@ -118,22 +131,31 @@ class ScalingStore:
             state.scaled_to_zero = False
             state.wake_requested_at = None
             state.wake_timed_out = False
+            state.wake_id = None
             state.last_activity_at = when
             state.min_up_until = when + float(min_up_seconds)
             self._save_unlocked(name, state)
 
-    def request_wake(self, name: str, *, now: Optional[float] = None) -> None:
+    def request_wake(self, name: str, *, now: Optional[float] = None) -> Optional[str]:
         with self._lock:
             state = self._load_unlocked(name)
             if not state.scaled_to_zero:
-                return
+                return None
             when = time.time() if now is None else now
             # Fresh deadline after timeout (or first request). Sticky only while
             # the same wake attempt is still in flight.
             if state.wake_requested_at is None or state.wake_timed_out:
                 state.wake_requested_at = when
+                state.wake_id = self._new_wake_id()
+            elif not state.wake_id:
+                state.wake_id = self._new_wake_id()
             state.wake_timed_out = False
             self._save_unlocked(name, state)
+            return state.wake_id
+
+    @staticmethod
+    def _new_wake_id() -> str:
+        return uuid.uuid4().hex
 
     def mark_wake_timeout(self, name: str) -> None:
         with self._lock:
@@ -186,6 +208,15 @@ class ScalingStore:
         timed_out = state.scaled_to_zero and state.wake_timed_out
         self._set_marker(zero, state.scaled_to_zero and not state.wake_timed_out)
         self._set_marker(timeout, timed_out)
+        self._sync_id_marker(name, state)
+
+    def _sync_id_marker(self, name: str, state: AppScalingState) -> None:
+        ident = self.markers / f"{name}.id"
+        if state.scaled_to_zero and state.wake_id:
+            ident.write_text(state.wake_id, encoding="utf-8")
+            return
+        if ident.is_file():
+            ident.unlink()
 
     @staticmethod
     def _set_marker(path: Path, present: bool) -> None:

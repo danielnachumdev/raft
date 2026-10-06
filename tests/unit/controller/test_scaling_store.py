@@ -44,25 +44,33 @@ class TestScalingStore(ControllerTestCase):
         store.mark_scaled_to_zero(self.APP)
         store.request_wake(self.APP, now=1.0)
         assert store.load(self.APP).wake_requested_at == 1.0
+        first_id = store.load(self.APP).wake_id
+        assert first_id
         store.request_wake(self.APP, now=9.0)
         assert store.load(self.APP).wake_requested_at == 1.0
+        assert store.load(self.APP).wake_id == first_id
         store.request_wake("nope")
 
     def test_timeout_marker_exclusive_and_retry_resets(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
         store = ScalingStore(home)
         store.mark_scaled_to_zero(self.APP)
-        store.request_wake(self.APP, now=1.0)
+        first_id = store.request_wake(self.APP, now=1.0)
         store.mark_wake_timeout(self.APP)
         assert store.load(self.APP).wake_timed_out is True
+        assert store.load(self.APP).wake_id == first_id
         assert (home / "state/scaling/markers/web.timeout").is_file()
         assert not (home / "state/scaling/markers/web.zero").is_file()
         store.request_wake(self.APP, now=50.0)
         state = store.load(self.APP)
         assert state.wake_timed_out is False
         assert state.wake_requested_at == 50.0
+        assert state.wake_id and state.wake_id != first_id
         assert (home / "state/scaling/markers/web.zero").is_file()
         assert not (home / "state/scaling/markers/web.timeout").is_file()
+        assert (home / "state/scaling/markers/web.id").read_text(
+            encoding="utf-8"
+        ) == state.wake_id
 
     def test_clear_scaled_to_zero(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
@@ -86,6 +94,25 @@ class TestScalingStore(ControllerTestCase):
         state = AppScalingState(last_activity_at=3.0)
         store.save(self.APP, state)
         assert store.load(self.APP).last_activity_at == 3.0
+
+    def test_wake_id_mints_if_missing_and_clears_on_awake(self, tmp_path: Path) -> None:
+        home = self.raft_home(tmp_path)
+        store = ScalingStore(home)
+        store.save(
+            self.APP,
+            AppScalingState(scaled_to_zero=True, wake_requested_at=1.0),
+        )
+        minted = store.request_wake(self.APP, now=2.0)
+        assert minted
+        assert store.load(self.APP).wake_requested_at == 1.0
+        assert (home / "state/scaling/markers/web.id").read_text(encoding="utf-8") == minted
+        store.mark_awake(self.APP, min_up_seconds=1, now=3.0)
+        assert store.load(self.APP).wake_id is None
+        assert not (home / "state/scaling/markers/web.id").is_file()
+
+    def test_wake_id_blank_json_is_none(self) -> None:
+        state = AppScalingState.from_mapping({"wakeId": "  "})
+        assert state.wake_id is None
 
     def test_atomic_write_cleans_temp_on_replace_failure(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
