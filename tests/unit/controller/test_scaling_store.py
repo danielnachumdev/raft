@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pytest
 
 from raft.models.state.scaling_store import AppScalingState, ScalingStore
+from raft.models.state.wake_progress import WakeProgress
 
 from .base import ControllerTestCase
 
@@ -113,6 +114,33 @@ class TestScalingStore(ControllerTestCase):
     def test_wake_id_blank_json_is_none(self) -> None:
         state = AppScalingState.from_mapping({"wakeId": "  "})
         assert state.wake_id is None
+        assert WakeProgress.from_mapping(None) is None
+        assert WakeProgress.from_mapping({"stage": "  "}) is None
+        assert WakeProgress.from_mapping({"stage": "wait_host"}).log_tail() == (
+            "stage=wait_host"
+        )
+        assert WakeProgress("wait_host").to_mapping() == {"stage": "wait_host"}
+        assert WakeProgress("wait_host", service="web").to_mapping() == {
+            "stage": "wait_host",
+            "service": "web",
+        }
+        assert WakeProgress("wait_host", detail="refused").to_mapping() == {
+            "stage": "wait_host",
+            "detail": "refused",
+        }
+
+    def test_note_wake_progress_clears_on_awake(self, tmp_path: Path) -> None:
+        store = ScalingStore(self.raft_home(tmp_path))
+        store.mark_scaled_to_zero(self.APP)
+        store.request_wake(self.APP)
+        store.note_wake_progress(
+            self.APP, "wait_fetch", service=self.APP, detail="refused"
+        )
+        assert store.wake_progress_log(self.APP) == (
+            f"stage=wait_fetch service={self.APP} detail=refused"
+        )
+        store.mark_awake(self.APP, min_up_seconds=1, now=1.0)
+        assert store.wake_progress_log(self.APP) == "-"
 
     def test_atomic_write_cleans_temp_on_replace_failure(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)

@@ -61,7 +61,12 @@ class ScaleWake:
         if ok:
             logger.info("scale wake ok app=%s id=%s", name, diag)
         else:
-            logger.error("scale wake incomplete app=%s id=%s", name, diag)
+            logger.error(
+                "scale wake incomplete app=%s id=%s %s",
+                name,
+                diag,
+                self.store.wake_progress_log(name),
+            )
         return ok
 
     def wake_under_lock(
@@ -78,8 +83,10 @@ class ScaleWake:
         # re-resolved the upstream IP (static resolve at reload). Holding stays
         # until Host works so visitors never see a cleared marker + 502.
         if not self.wait_app_reachable(name, deadline):
+            self.store.note_wake_progress(name, "wait_fetch", service=name)
             return False
         if not self.wait_nginx_host(name, deadline):
+            self.store.note_wake_progress(name, "wait_host", service=name)
             return False
         self.store.mark_awake(name, min_up_seconds=scaling.min_up_seconds, now=when)
         self.record_wake_event(name)
