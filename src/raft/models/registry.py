@@ -64,16 +64,26 @@ class AppRegistry:
         return RegistryLoadResult(tuple(apps), tuple(issues))
 
     def write(self, document: dict[str, Any]) -> Path:
-        app, _ = AppDocument.parse(document, path=Path("<apply>"))
+        app, app_spec = AppDocument.parse(document, path=Path("<apply>"))
         directory = self.directory()
         directory.mkdir(parents=True, exist_ok=True)
         dest = self.path_for(app.name)
         self._assert_host_available(app, directory)
+        payload = self._canonical_for_dump(document, tls=app_spec.tls)
         dest.write_text(
-            yaml.safe_dump(document, sort_keys=False, default_flow_style=False),
+            yaml.safe_dump(payload, sort_keys=False, default_flow_style=False),
             encoding="utf-8",
         )
         return dest
+
+    @staticmethod
+    def _canonical_for_dump(document: dict[str, Any], *, tls: str) -> dict[str, Any]:
+        """Emit parsed ``spec.tls`` so YAML 1.1 ``off`` is never dumped as bool."""
+        payload = dict(document)
+        spec = payload.get("spec")
+        base = dict(spec) if isinstance(spec, dict) else {}
+        payload["spec"] = {**base, "tls": tls}
+        return payload
 
     def delete(self, name: str) -> bool:
         path = self.path_for(name)

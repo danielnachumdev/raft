@@ -1,6 +1,7 @@
 """AppRegistry load isolation and skip-bad-manifest behavior."""
 
 import pytest
+import yaml
 
 from raft.models.registry import AppRegistry
 from raft.models.stack import load_stack
@@ -195,3 +196,52 @@ services:
             }
         )
         assert path.name == "ok.yaml"
+
+    def test_write_round_trips_yaml11_tls_off(self) -> None:
+        raw = (
+            "apiVersion: raft/v1\nkind: App\nmetadata:\n  name: app\nspec:\n"
+            "  publicHost: app.test\n  source: local\n  path: apps/app\n"
+            "  tls: off\n"
+            "  ports:\n    - name: http\n      containerPort: 80\n      expose: http\n"
+        )
+        data = yaml.safe_load(raw)
+        assert data["spec"]["tls"] is False
+        path = AppRegistry(self.tmp_path).write(data)
+        text = path.read_text(encoding="utf-8")
+        assert "tls: false" not in text
+        assert "tls: False" not in text
+        assert yaml.safe_load(text)["spec"]["tls"] == "off"
+
+    def test_write_preserves_origin_and_acme_tls(self) -> None:
+        for mode in ("origin", "acme"):
+            path = AppRegistry(self.tmp_path).write(self._tls_doc(f"site-{mode}", mode))
+            text = path.read_text(encoding="utf-8")
+            assert f"tls: {mode}" in text
+            assert yaml.safe_load(text)["spec"]["tls"] == mode
+            path.unlink()
+
+    def test_write_null_spec_emits_canonical_tls_off(self) -> None:
+        path = AppRegistry(self.tmp_path).write(
+            {
+                "apiVersion": "raft/v1",
+                "kind": "App",
+                "metadata": {"name": "worker"},
+                "spec": None,
+            }
+        )
+        assert yaml.safe_load(path.read_text(encoding="utf-8"))["spec"]["tls"] == "off"
+
+    @staticmethod
+    def _tls_doc(name: str, tls: str) -> dict:
+        return {
+            "apiVersion": "raft/v1",
+            "kind": "App",
+            "metadata": {"name": name},
+            "spec": {
+                "publicHost": f"{name}.test",
+                "source": "local",
+                "path": f"apps/{name}",
+                "tls": tls,
+                "ports": [{"name": "http", "containerPort": 80, "expose": "http"}],
+            },
+        }
