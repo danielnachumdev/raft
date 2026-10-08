@@ -8,7 +8,7 @@ import {
 } from "../shared/api";
 import { LogLines } from "./LogLines";
 import { filterLogLines, parseLogText } from "./logParse";
-
+import "./ServiceLogs.css";
 const TAIL_CHOICES = [50, 100, 200, 500] as const;
 const NEAR_BOTTOM_PX = 48;
 

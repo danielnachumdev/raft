@@ -16,7 +16,7 @@ import {
   type StatusTone,
   type UtilTone,
 } from "./statusTone";
-
+import "./StatusTable.css";
 const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "name", label: COLUMN_LABELS.name },
   { key: "role", label: COLUMN_LABELS.role },

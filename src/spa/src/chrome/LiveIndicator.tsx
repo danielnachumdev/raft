@@ -1,5 +1,5 @@
+import "./LiveIndicator.css";
 export type LiveStatus = "live" | "connecting" | "offline";
-
 type Props = {
   /** When true (and no `status`), shows the live pulse. */
   isLive: boolean;

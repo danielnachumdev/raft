@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "./Modal";
-
+import "./ConfirmPopup.css";
 export type ConfirmPopupProps = {
   open: boolean;
   title: string;

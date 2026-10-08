@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { ParsedLogLine } from "./logParse";
-
+import "./LogLines.css";
 /** Render parsed log lines with severity tint and optional search highlight. */
 export function LogLines(props: {
   lines: ParsedLogLine[];

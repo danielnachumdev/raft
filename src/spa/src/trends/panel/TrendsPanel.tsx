@@ -38,7 +38,7 @@ import {
   usesGroupPicker,
   type SeriesViewMode,
 } from "./trendsView";
-
+import "./TrendsPanel.css";
 const INITIAL = defaultRangeState();
 const INITIAL_KEY = metricsCacheKey(toQuery(INITIAL));
 

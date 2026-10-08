@@ -281,7 +281,7 @@ Doctor JSON for the SPA is deferred (`DoctorRead.intended_payload_shape`).
 
 ### SPA source (`src/spa/`)
 
-Feature folders under `src/spa/src/` (`main.tsx` + `styles.css` at the root; shell under `shell/`):
+Feature folders under `src/spa/src/` (`main.tsx` + lean `styles.css` for tokens/resets/shared primitives; each UI component co-locates `ComponentName.css`; shell under `shell/`):
 
 | Area | Path | Notes |
 |------|------|-------|

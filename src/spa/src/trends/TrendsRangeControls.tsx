@@ -11,7 +11,7 @@ import {
   type DurationUnit,
   type TrendsRangeState,
 } from "./trendsRange";
-
+import "./TrendsRangeControls.css";
 export function TrendsRangeControls(props: {
   range: TrendsRangeState;
   bounds: MetricsBounds | null;

@@ -3,7 +3,7 @@ import { ExternalUrlLinks } from "../shared/ExternalUrlLinks";
 import { ServiceActions } from "./ServiceActions";
 import { ServiceLogs } from "../logs/ServiceLogs";
 import { ServiceRuntimeTrends } from "../trends/runtime/ServiceRuntimeTrends";
-
+import "./ServiceDetail.css";
 /** Render full status contract fields for one Compose service. */
 export function ServiceDetail(props: {
   data: ServiceDetailPayload;

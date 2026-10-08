@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { serviceLogsPath, type ServiceAction } from "../shared/api";
 import { ServiceActionConfirm } from "../service/ServiceActionConfirm";
 import { useServiceActionRunner } from "../service/useServiceActionRunner";
-
+import "./ServiceQuickActions.css";
 type Props = {
   service: string;
   name: string;
