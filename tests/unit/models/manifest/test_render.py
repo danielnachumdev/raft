@@ -125,6 +125,36 @@ class TestStackRenderer(ManifestTestCase):
         gen = GeneratedArtifacts(self.render_applied())
         FileText.contains(gen.path("compose.apps.yaml"), "services: {}")
 
+    def test_render_worker_no_ports(self) -> None:
+        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="off")
+        write_applied_app(
+            self.tmp_path,
+            "worker",
+            source="docker",
+            image="ghcr.io/example/worker",
+            public_host="",
+            build_context=None,
+            extra={
+                "ports": [],
+                "readiness": {"type": "none"},
+            },
+        )
+        text = GeneratedArtifacts(self.render_applied()).path("compose.apps.yaml").read_text(
+            encoding="utf-8"
+        )
+        self._assert_worker_compose(text)
+
+    def _assert_worker_compose(self, text: str) -> None:
+        assert "  worker:\n    image: ghcr.io/example/worker" in text
+        assert "restart: unless-stopped" in text
+        assert 'cpus: "0.50"' in text
+        # Worker service has no expose/healthcheck; web still has both.
+        assert 'expose:\n      - "80"' in text  # web only
+        assert text.count("expose:") == 1
+        assert text.count("healthcheck:") == 1  # web only
+        assert "      web:\n        condition: service_healthy" in text
+        assert "      worker:\n        condition: service_started" in text
+
     def test_validate_requires_build_context(self) -> None:
         write_applied_app(self.tmp_path, "web", build_context=None, extra={"build": {}})
         with pytest.raises(ValueError, match="context is required"):

@@ -11,11 +11,32 @@ Typical `spec` concerns (omit what you do not need):
 | Area | Examples |
 |------|----------|
 | Source | `local` / `git` / `docker` + `ref` |
-| Exposure | `ports[]` with `expose: http \| stream \| host \| none`; `publicHost` when any port is `http` |
+| Exposure | `ports[]` with `expose: http \| stream \| host \| none`; `publicHost` when any port is `http`; omit / `ports: []` for workers (see below) |
 | Host aliases | `extraHosts` — additional Host names for router + ACME SANs; `www.<publicHost>` is **not** automatic — list it here if you want it |
 | TLS | `tls: off` (default), `origin` (operator PEMs), or `acme` (public Let's Encrypt on the gate) — see **TLS modes** below |
 | Runtime | `env` / `envFile`, `volumes`, `group`, `dependsOn`, `resources`, `readiness` |
 | Scaling | `scaling` (`idleSeconds`/`minUpSeconds` required; `wakeTimeoutSeconds` defaults to 60; HTTP + `publicHost` only) |
+
+## Worker Apps (no listeners)
+
+Background workers that only run a process (no HTTP/stream/host listeners) may **omit `spec.ports`** or set `ports: []`. Defaults when ports are empty: `readiness.type: none`, `tls: off`. Do not invent a placeholder port.
+
+```yaml
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: worker
+spec:
+  source: docker
+  image: ghcr.io/example/worker
+  ref: latest
+  # ports omitted or ports: []
+  readiness:
+    type: none
+  tls: off
+```
+
+**Health:** no Host/TCP probe and no edge route. Raft treats the container as healthy when Docker reports it running; the healer restarts exited/dead services; doctor reports runtime status. `raft status`, controller metrics, and `raft serve` still include the service. There is no deploy-time wait-until-running for `readiness: none`. Not eligible for `scaling` or `tls: origin|acme`.
 
 **Breaking change:** Unknown `spec` / `metadata` keys fail apply (allowlist). Hostnames are `publicHost` + `extraHosts` only — put former `www` aliases in `extraHosts` (e.g. `www.<publicHost>`).
 

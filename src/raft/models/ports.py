@@ -69,18 +69,22 @@ class PortListParser:
     """Parse ``spec.ports`` into validated :class:`PortSpec` tuples."""
 
     def parse(self, spec: dict[str, Any], path: Path) -> tuple[PortSpec, ...]:
+        self._reject_legacy_port(spec, path)
         raw = spec.get("ports")
-        if raw is None:
-            raise ValueError(f"{path}: spec.ports is required (non-empty list)")
-        if not isinstance(raw, list) or not raw:
-            raise ValueError(f"{path}: spec.ports must be a non-empty list")
-        if "port" in spec:
-            raise ValueError(f"{path}: spec.port is not supported; use spec.ports[]")
+        if raw is None or raw == []:
+            return ()
+        if not isinstance(raw, list):
+            raise ValueError(f"{path}: spec.ports must be a list")
         ports: list[PortSpec] = []
         seen: set[str] = set()
         for index, entry in enumerate(raw):
             ports.append(self._parse_entry(entry, index=index, path=path, seen=seen))
         return tuple(ports)
+
+    @staticmethod
+    def _reject_legacy_port(spec: dict[str, Any], path: Path) -> None:
+        if "port" in spec:
+            raise ValueError(f"{path}: spec.port is not supported; use spec.ports[]")
 
     def _parse_entry(
         self,

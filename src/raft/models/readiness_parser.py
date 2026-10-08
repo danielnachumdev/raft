@@ -37,6 +37,8 @@ class ReadinessParser:
 
     def _default_for_ports(self, ports: tuple[PortSpec, ...], path: Path) -> ReadinessSpec:
         timing = self._timing_from_raw({}, path)
+        if not ports:
+            return ReadinessSpec(type="none", **timing)
         http_ports = [p for p in ports if p.expose == "http"]
         if http_ports:
             return ReadinessSpec(
@@ -47,7 +49,7 @@ class ReadinessParser:
             )
         return ReadinessSpec(
             type="tcp",
-            port=ports[0].name if ports else None,
+            port=ports[0].name,
             **timing,
         )
 
