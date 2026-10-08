@@ -32,6 +32,14 @@ class TestPorts(RaftTestCase):
                 {"port": 80, "ports": [{"name": "http", "containerPort": 80}]},
                 Path("app.yaml"),
             )
+        with pytest.raises(ValueError, match="spec.port is not supported"):
+            parse_ports({"port": 80}, Path("app.yaml"))
+
+    def test_empty_or_omitted_ports(self) -> None:
+        assert parse_ports({}, Path("app.yaml")) == ()
+        assert parse_ports({"ports": []}, Path("app.yaml")) == ()
+        with pytest.raises(ValueError, match="spec.ports must be a list"):
+            parse_ports({"ports": {}}, Path("app.yaml"))
 
     def test_rejects_duplicate_names(self) -> None:
         with pytest.raises(ValueError, match="duplicate port name"):

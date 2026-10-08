@@ -29,8 +29,7 @@ PORT_VALIDATE_CASES = [
 ]
 
 PARSE_PORTS_CASES = [
-    ({}, "spec.ports is required"),
-    ({"ports": []}, "non-empty list"),
+    ({"ports": "http"}, "spec.ports must be a list"),
     ({"ports": ["x"]}, "must be an object"),
     ({"ports": [{"containerPort": 80}]}, "name is required"),
     ({"ports": [{"name": "http"}]}, "containerPort is required"),
@@ -57,6 +56,15 @@ class TestPortsAndReadinessCoverage(RaftTestCase):
         for raw, match in PARSE_PORTS_CASES:
             with pytest.raises(ValueError, match=match):
                 parse_ports(raw, PATH)
+
+    def test_empty_or_omitted_ports(self) -> None:
+        assert parse_ports({}, PATH) == ()
+        assert parse_ports({"ports": []}, PATH) == ()
+        assert parse_readiness({}, (), PATH).type == "none"
+        with pytest.raises(ValueError, match="readiness requires a named port"):
+            parse_readiness({"readiness": {"type": "tcp"}}, (), PATH)
+        with pytest.raises(ValueError, match="readiness requires a named port"):
+            parse_readiness({"readiness": {"type": "http"}}, (), PATH)
 
     def _ports(self):
         return (

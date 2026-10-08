@@ -69,6 +69,22 @@ class TestStatusCollect(RaftTestCase):
         assert app.service == "demo-web" and app.app == "web"
         assert app.group == "demo"
 
+    def test_collect_includes_no_port_worker(self) -> None:
+        write_applied_app(
+            self.tmp_path,
+            "worker",
+            source="docker",
+            image="ghcr.io/example/worker",
+            public_host="",
+            build_context=None,
+            extra={"ports": [], "readiness": {"type": "none"}},
+        )
+        status = self._idle_status(make_app("worker", public_host=""))
+        with self._patch_host():
+            snap = status.collect()
+        names = [c.service for c in snap.containers]
+        assert "worker" in names
+
     def test_app_allocated_fallback(self) -> None:
         stack = make_stack(self.tmp_path, (make_app("missing"),))
         allocated = StatusAllocated.app(stack, stack.apps[0])

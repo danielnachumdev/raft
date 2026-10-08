@@ -151,16 +151,17 @@ class TestMiscCoverage(RaftTestCase):
         self._test_parse_null_spec_tls_and_empty_extra_hosts_p3()
 
     def _test_parse_null_spec_tls_and_empty_extra_hosts_p1(self) -> None:
-        with pytest.raises(ValueError, match="spec.ports is required"):
-            AppDocument.parse(
-                {
-                    "apiVersion": "raft/v1",
-                    "kind": "App",
-                    "metadata": {"name": "bare"},
-                    "spec": None,
-                },
-                path=Path("bare.yaml"),
-            )
+        app, spec = AppDocument.parse(
+            {
+                "apiVersion": "raft/v1",
+                "kind": "App",
+                "metadata": {"name": "bare"},
+                "spec": None,
+            },
+            path=Path("bare.yaml"),
+        )
+        assert app.name == "bare" and app.source == "local"
+        assert spec.ports == () and spec.readiness.type == "none" and spec.tls == "off"
 
     def _test_parse_null_spec_tls_and_empty_extra_hosts_p2(self) -> None:
         with pytest.raises(ValueError, match="spec.tls must be"):

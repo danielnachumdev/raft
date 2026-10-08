@@ -169,6 +169,13 @@ class AppSpecFields:
 
     @staticmethod
     def _require_tls_http_port(tls: str, ports: tuple[PortSpec, ...], path: Path) -> None:
+        if tls not in {"origin", "acme"}:
+            return
+        if not ports:
+            raise ValueError(
+                f"{path}: spec.tls={tls} requires at least one port "
+                f"(worker Apps with empty ports use tls: off only)"
+            )
         if tls != "acme":
             return
         if any(p.expose == "http" for p in ports):
@@ -193,7 +200,7 @@ class AppSpecFields:
     def _parse_source(
         spec: dict[str, Any], path: Path, *, name: str
     ) -> tuple[str, Optional[str], Optional[str], str, str]:
-        source = str(spec.get("source", "git")).strip().lower()
+        source = AppSpecFields._resolve_source(spec)
         if source not in {"local", "git", "docker"}:
             raise ValueError(
                 f"{path}: spec.source must be 'local', 'git', or 'docker' " f"(got {source!r})"
@@ -202,6 +209,17 @@ class AppSpecFields:
         rel_path = str(spec.get("path", f"apps/{name}")).strip() or f"apps/{name}"
         repo, image = AppSpecFields._source_repo_image(source, spec, path)
         return source, repo, image, ref, rel_path
+
+    @staticmethod
+    def _resolve_source(spec: dict[str, Any]) -> str:
+        raw = spec.get("source")
+        if raw is not None and str(raw).strip():
+            return str(raw).strip().lower()
+        # Bare/empty specs (e.g. worker with omitted ports) default to local;
+        # a repo without source still implies git (historical omit-source shape).
+        if spec.get("repo") and str(spec.get("repo")).strip():
+            return "git"
+        return "local"
 
     @staticmethod
     def _source_repo_image(

@@ -51,7 +51,7 @@ Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**), then `OperatorError` w
 
 ### Ports and TLS
 
-- Each app declares `spec.ports[]` with `expose: http | stream | host | none`.
+- Each app declares `spec.ports[]` with `expose: http | stream | host | none`. Omit `ports` or use `ports: []` for **worker** Apps with no listeners (see below).
 - `expose: http` → Host routing via router (needs `publicHost`).
 - `expose: stream` → gate `stream {}` (port must be declared in settings `edge.streams`).
 - `expose: host` → app publishes the host port itself (gate not involved).
@@ -59,6 +59,12 @@ Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**), then `OperatorError` w
 - Optional multi-app stacks: `spec.group`, `spec.dependsOn`, `spec.envFile` / `spec.env`, `spec.volumes`.
 - `spec.tls`: **`off` (default)**, **`origin`**, or **`acme`**. HTTP-only apps need no PEMs. `tls: origin` requires `~/.raft/certs/<app>/origin.{pem,key}` and `edge.https`. `tls: acme` requires `publicHost`, ≥1 `expose: http`, `edge.http` + `edge.https`, and `acme.email` in settings; live material is `~/.raft/certs/<app>/acme.{pem,key}` (never `origin.*`). Apply/`up` best-effort HTTP-01 after the gate is up (failures persist `lastError` under `state/acme/` and do **not** fail deploy). When live PEMs exist: gate SNI + HTTP→HTTPS redirect (challenge path carved out).
 - Gate published ports come from `~/.raft/settings.yaml` `edge:` (`http`, `https`, `streams[]`), rendered into `generated/compose.edge.yaml`.
+
+### Worker Apps (no listeners)
+
+Background / worker Apps that only run a long-lived process may **omit `spec.ports`** or set `ports: []`. Happy path: `readiness.type: none` (default when ports are empty), `tls: off` (or omitted), no `scaling`. Do **not** invent a dummy port.
+
+**Health model:** no Host / TCP probe and no edge exposure. Health is Docker process liveness + the always-on healer + doctor runtime checks. `raft status` / metrics / `raft serve` still sample the Compose service like any other app. Deploy does **not** wait-until-running for `readiness: none`. Scale-to-zero and `tls: origin|acme` are not eligible (need `expose: http` / ports).
 
 ### Data home vs product templates
 
@@ -144,6 +150,7 @@ spec:
     - hostPath: /mnt/data/x
       containerPath: /data
       readOnly: false
+  # ports: omit or [] for worker Apps (no listeners; readiness defaults to none)
   ports:
     - name: http
       containerPort: 80
