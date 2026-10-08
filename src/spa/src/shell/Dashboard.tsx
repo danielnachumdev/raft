@@ -7,6 +7,7 @@ import {
 } from "../shared/api";
 import { peekStatus, refreshStatus } from "../shared/dashboardCache";
 import { LiveIndicator } from "../chrome/LiveIndicator";
+import { ThemeToggle } from "../chrome/ThemeToggle";
 import { StatusTable } from "../status/StatusTable";
 import { TrendsPanel } from "../trends/panel/TrendsPanel";
 
@@ -83,20 +84,23 @@ export function Dashboard() {
             </p>
           ) : null}
         </div>
-        <button
-          type="button"
-          className={busy ? "refresh is-loading" : "refresh"}
-          onClick={() => void load()}
-          disabled={busy || updating}
-          aria-busy={busy || updating}
-          aria-label="Refresh status"
-          id="status-refresh"
-        >
-          {busy ? (
-            <span className="spinner refresh-spinner" aria-hidden="true" />
-          ) : null}
-          Refresh
-        </button>
+        <div className="header-actions">
+          <ThemeToggle />
+          <button
+            type="button"
+            className={busy ? "refresh is-loading" : "refresh"}
+            onClick={() => void load()}
+            disabled={busy || updating}
+            aria-busy={busy || updating}
+            aria-label="Refresh status"
+            id="status-refresh"
+          >
+            {busy ? (
+              <span className="spinner refresh-spinner" aria-hidden="true" />
+            ) : null}
+            Refresh
+          </button>
+        </div>
       </header>
 
       {busy && data === null ? (

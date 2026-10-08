@@ -10,6 +10,7 @@ import {
   invalidateStatus,
   refreshStatus,
 } from "../shared/dashboardCache";
+import { ThemeToggle } from "../chrome/ThemeToggle";
 import { ServiceDetail } from "./ServiceDetail";
 import "./ServicePage.css";
 /** Deep-linked service page: `/service/:service`. */
@@ -70,9 +71,12 @@ export function ServicePage() {
           <p className="brand">raft</p>
           <h1>{(data?.presentation.name ?? service) || "Service"}</h1>
         </div>
-        <Link className="back-link" to="/">
-          ← Back to status
-        </Link>
+        <div className="header-actions">
+          <ThemeToggle />
+          <Link className="back-link" to="/">
+            ← Back to status
+          </Link>
+        </div>
       </header>
 
       {busy && data === null && !error ? (

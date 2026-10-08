@@ -6,7 +6,7 @@
   align-items: center;
   justify-content: center;
   padding: 1.25rem;
-  background: rgba(28, 25, 20, 0.45);
+  background: var(--overlay);
 }
 
 .modal-panel {
@@ -14,7 +14,7 @@
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 0.55rem;
-  box-shadow: 0 12px 32px rgba(28, 25, 20, 0.18);
+  box-shadow: 0 12px 32px var(--shadow-strong);
   outline: none;
 }
 
