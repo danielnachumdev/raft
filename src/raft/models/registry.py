@@ -2,14 +2,37 @@
 
 from __future__ import annotations
 
+import logging
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import yaml
+
+from raft.errors.cta import OperatorError
 
 from .app import App
 from .app_document import AppDocument
 from .manifest import REGISTRY_DIR
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class RegistryIssue:
+    """One applied manifest that failed to load (others still load)."""
+
+    file: str
+    error: str
+
+    def to_dict(self) -> dict[str, str]:
+        return {"file": self.file, "error": self.error}
+
+
+@dataclass(frozen=True)
+class RegistryLoadResult:
+    apps: tuple[App, ...]
+    issues: tuple[RegistryIssue, ...]
 
 
 class AppRegistry:
@@ -25,12 +48,20 @@ class AppRegistry:
         return self.directory() / f"{name}.yaml"
 
     def load(self) -> tuple[App, ...]:
+        return self.load_result().apps
+
+    def load_result(self) -> RegistryLoadResult:
         directory = self.directory()
         if not directory.is_dir():
-            return ()
-        apps = [self._load_named(path) for path in sorted(directory.glob("*.yaml"))]
+            return RegistryLoadResult((), ())
+        apps: list[App] = []
+        issues: list[RegistryIssue] = []
+        for path in sorted(directory.glob("*.yaml")):
+            app = self._try_load_named(path, issues)
+            if app is not None:
+                apps.append(app)
         self._assert_unique_hosts(apps)
-        return tuple(apps)
+        return RegistryLoadResult(tuple(apps), tuple(issues))
 
     def write(self, document: dict[str, Any]) -> Path:
         app, _ = AppDocument.parse(document, path=Path("<apply>"))
@@ -50,6 +81,17 @@ class AppRegistry:
             return False
         path.unlink()
         return True
+
+    def _try_load_named(
+        self, path: Path, issues: list[RegistryIssue]
+    ) -> Optional[App]:
+        try:
+            return self._load_named(path)
+        except (OperatorError, ValueError, OSError) as exc:
+            issue = RegistryIssue(file=path.name, error=str(exc))
+            issues.append(issue)
+            logger.warning("skipping invalid registry manifest %s: %s", path.name, exc)
+            return None
 
     @staticmethod
     def _load_named(path: Path) -> App:
@@ -73,9 +115,18 @@ class AppRegistry:
         for other in directory.glob("*.yaml"):
             if other.stem == app.name:
                 continue
-            other_app, _ = AppDocument.load(other)
+            other_app = AppRegistry._peek_app(other)
+            if other_app is None:
+                continue
             if other_app.public_host and other_app.public_host.lower() == app.public_host.lower():
                 raise ValueError(
                     f"publicHost {app.public_host!r} already used by applied app "
                     f"{other_app.name!r}"
                 )
+
+    @staticmethod
+    def _peek_app(path: Path) -> Optional[App]:
+        try:
+            return AppRegistry._load_named(path)
+        except (OperatorError, ValueError, OSError):
+            return None

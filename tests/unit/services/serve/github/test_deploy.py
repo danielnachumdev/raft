@@ -73,6 +73,7 @@ class TestGithubDeployRunner(RaftTestCase):
             self._wait(job)
         assert job.status == "succeeded"
         assert job.app_name == "http-only-site"
+        assert job.ci_pr and job.ci_pr["status"] == "opened"
         assert (self.tmp_path / "apps" / "http-only-site" / ".raft" / "app.yaml").is_file()
 
     def test_missing_manifest_fails(self) -> None:
@@ -102,6 +103,12 @@ class TestGithubDeployRunner(RaftTestCase):
         )
         runner._fill_next_steps(job, manifest)
         assert any(s["title"] == "DNS" for s in job.next_steps)
+
+    def test_deploy_key_url_requires_slash(self) -> None:
+        job = DeployJob(id="x", full_name="noslash", ref="main")
+        assert GithubDeployRunner._deploy_key_url(job) is None
+        job.full_name = "o/r"
+        assert "settings/keys/new" in GithubDeployRunner._deploy_key_url(job)
 
     def _write_registry_manifest(self) -> dict:
         apps = self.tmp_path / "state" / "apps"

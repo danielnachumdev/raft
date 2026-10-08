@@ -27,6 +27,12 @@ export type DeployNextStep = {
   body: string;
 };
 
+export type CiPrInfo = {
+  status: string;
+  detail: string;
+  pr_url?: string;
+};
+
 export type DeployJob = {
   id: string;
   full_name: string;
@@ -37,6 +43,7 @@ export type DeployJob = {
   steps: DeployStep[];
   next_steps: DeployNextStep[];
   deploy_pubkey: string | null;
+  ci_pr: CiPrInfo | null;
   created_at: number;
 };
 
@@ -107,4 +114,15 @@ export async function fetchDeployJob(id: string): Promise<DeployJob> {
     throw new Error(detailOf(body) || `deploy status ${res.status}`);
   }
   return body as DeployJob;
+}
+
+export function oauthErrorFromSearch(search: string): string | null {
+  const params = new URLSearchParams(search);
+  const raw = params.get("oauth_error") || params.get("error");
+  if (!raw || !raw.trim()) return null;
+  try {
+    return decodeURIComponent(raw.replace(/\+/g, " "));
+  } catch {
+    return raw;
+  }
 }

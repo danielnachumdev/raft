@@ -14,9 +14,10 @@ from raft.errors.cta import OperatorError
 
 from .session import GithubSession, GithubSessionStore
 
-# Least privilege for private repo listing via OAuth Apps. Deploy keys are
-# pasted manually in v1 — we do not request admin:public_key.
-GITHUB_OAUTH_SCOPES = "read:user repo"
+# Least privilege for private listing + Contents/PRs that add Actions workflows.
+# Deploy keys stay manual (no admin:public_key). ``workflow`` is required to
+# create or update ``.github/workflows/*`` via the API.
+GITHUB_OAUTH_SCOPES = "read:user repo workflow"
 _AUTHORIZE = "https://github.com/login/oauth/authorize"
 _TOKEN = "https://github.com/login/oauth/access_token"
 _USER = "https://api.github.com/user"
@@ -77,7 +78,7 @@ class GithubOauth:
         if pending is None or not pending.state or pending.state != state:
             raise OperatorError(
                 "OAuth state mismatch or expired.\n"
-                "Fix: start login again from raft serve → Deploy",
+                "Fix: start login again from raft serve → Add new service",
                 has_fix=False,
             )
         token = self._exchange_code(code)

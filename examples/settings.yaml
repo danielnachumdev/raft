@@ -126,4 +126,4 @@ edge:
 #   # sessionTtlSeconds: 3600  # default 1h; logout clears the session file
 # Env: RAFT_GITHUB_MOCK, RAFT_GITHUB_CLIENT_ID, RAFT_GITHUB_CLIENT_SECRET,
 #      RAFT_GITHUB_SESSION_TTL_SECONDS
-# Scopes: read:user repo (private listing; deploy keys pasted manually)
+# Scopes: read:user repo workflow (listing + CI workflow PR; deploy keys manual)

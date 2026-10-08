@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
+from urllib.parse import quote
 
 from fastapi import Body, HTTPException, Request
 from fastapi.responses import RedirectResponse
@@ -65,7 +66,7 @@ class ServeGithubApi:
         try:
             url = self._oauth.login_url(port=port)
         except OperatorError as exc:
-            raise self._http(exc) from exc
+            return self._oauth_error_redirect(str(exc))
         return RedirectResponse(url, status_code=302)
 
     def api_callback(
@@ -74,20 +75,35 @@ class ServeGithubApi:
         code: Optional[str] = None,
         state: Optional[str] = None,
         mock: Optional[str] = None,
+        error: Optional[str] = None,
+        error_description: Optional[str] = None,
     ) -> RedirectResponse:
+        del request
+        if error:
+            msg = error_description or error
+            return self._oauth_error_redirect(f"GitHub authorization failed: {msg}")
         try:
-            if mock == "1" or (self._cfg.mock and not code):
-                self._oauth.complete_mock()
-            else:
-                if not code or not state:
-                    raise OperatorError(
-                        "OAuth callback missing code/state.\nFix: start login again",
-                        has_fix=False,
-                    )
-                self._oauth.complete_oauth(code=code, state=state)
+            self._complete_callback(code=code, state=state, mock=mock)
         except OperatorError as exc:
-            raise self._http(exc) from exc
+            return self._oauth_error_redirect(str(exc))
         return RedirectResponse("/deploy", status_code=302)
+
+    def _complete_callback(
+        self,
+        *,
+        code: Optional[str],
+        state: Optional[str],
+        mock: Optional[str],
+    ) -> None:
+        if mock == "1" or (self._cfg.mock and not code):
+            self._oauth.complete_mock()
+            return
+        if not code or not state:
+            raise OperatorError(
+                "OAuth callback missing code/state.\nFix: start login again",
+                has_fix=False,
+            )
+        self._oauth.complete_oauth(code=code, state=state)
 
     def api_logout(self) -> Dict[str, Any]:
         self._sessions.clear()
@@ -160,7 +176,7 @@ class ServeGithubApi:
         if session is None or not session.access_token:
             raise HTTPException(
                 status_code=401,
-                detail="GitHub session required. Open Deploy and sign in (temporary).",
+                detail="GitHub session required. Open Add new service and sign in.",
             )
         return session
 
@@ -176,7 +192,8 @@ class ServeGithubApi:
                 "Serve stays on localhost/tunnel; this login is only for repo pick/deploy."
             )
         return (
-            "Temporary GitHub login lists repos you can access, then raft drives apply. "
+            "Temporary GitHub login lists repos you can access, then raft drives apply "
+            "and opens a CI workflow PR when needed. "
             "Serve remains localhost/tunnel admin — not a public multi-user console. "
             f"OAuth scopes: {GITHUB_OAUTH_SCOPES}."
         )
@@ -189,6 +206,13 @@ class ServeGithubApi:
             except ValueError:
                 pass
         return self._port
+
+    @staticmethod
+    def _oauth_error_redirect(message: str) -> RedirectResponse:
+        return RedirectResponse(
+            f"/deploy?oauth_error={quote(message, safe='')}",
+            status_code=302,
+        )
 
     @staticmethod
     def _http(exc: OperatorError) -> HTTPException:

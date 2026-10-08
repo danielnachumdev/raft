@@ -1,13 +1,33 @@
-# Serve: temporary GitHub deploy assist (v1)
+# Serve: add service from GitHub (v1)
 
-From `raft serve` (localhost / SSH tunnel), an admin can **temporarily** sign in
-with GitHub, pick one repository, and let raft drive apply/deploy. Anything raft
-cannot safely automate (secrets, host volumes, DNS/TLS, deploy-key paste) shows
-in an **Additional steps** panel afterward.
+From `raft serve` (localhost / SSH tunnel), an admin can add a service via the
+Apps **`+`** control → **Add new service** → **Add from GitHub**. Raft opens
+GitHub OAuth (required scopes), then the admin picks a repository and raft
+drives apply/deploy. After apply, raft opens a PR that adds a GitHub Actions
+workflow for push-based `raft apply` when secrets are configured.
+
+Anything raft cannot safely automate (secrets, host volumes, DNS/TLS, deploy-key
+paste, CI host secrets) shows in an **Additional steps** panel afterward.
 
 This is **not** a public multi-user console and **not** a full App lifecycle UI.
 
-## Mock mode (local / screenshots / CI)
+## UI flow
+
+1. Stack status → **Apps** → **`+`** → `/add-service`.
+2. Choose **Add from GitHub** (GitHub icon) → `/deploy`.
+3. Unauthenticated visits **auto-redirect** to `/api/github/login` (real OAuth
+   authorize page when configured; mock callback only when `github.mock` /
+   `RAFT_GITHUB_MOCK=1`).
+4. **OAuth failure** redirects to `/deploy?oauth_error=…` with a clear error and
+   retry control (not a bare API error page).
+5. Search, select one repo, optional ref → confirm → progress steps poll until
+   succeeded/failed; **deployment logs** reuse the service logs UI when an app
+   name is known.
+6. Read **Additional steps** (DNS, TLS, env, volumes, deploy key, merge CI PR).
+
+Deep link `/deploy` still works.
+
+## Mock mode (local / CI)
 
 No GitHub App registration required:
 
@@ -25,9 +45,8 @@ raft serve
 ```
 
 Mock login creates a short-lived session as `mock-operator` and lists fixture
-repos shipped under `share/serve/mock-github/` (`demo/http-only-site` has a
-valid `.raft/app.yaml`; `demo/no-manifest` demonstrates the missing-manifest
-error).
+repos under `share/serve/mock-github/`. CI PR setup returns a mock PR URL
+(no GitHub write).
 
 ## Real GitHub OAuth App
 
@@ -56,11 +75,27 @@ Env overrides (preferred for secrets):
 | Scope | Why |
 |-------|-----|
 | `read:user` | Identify the signed-in login |
-| `repo` | List private repositories the identity can access |
+| `repo` | List private repos; create branch / contents / pull requests |
+| `workflow` | Create or update `.github/workflows/*` via the Contents API |
 
-Deploy keys are **not** installed via the GitHub API in v1 (no
-`admin:public_key`). Raft generates a local deploy key, shows the **public**
-key + fingerprint in the UI, and asks the operator to paste it on GitHub.
+Deploy keys are **not** installed via the GitHub API (no `admin:public_key`).
+Raft generates a local deploy key, shows the **public** key + fingerprint, and
+asks the operator to paste it on GitHub.
+
+## CI workflow PR
+
+After a successful apply path, raft ensures
+`.github/workflows/raft-apply.yml` on a branch `raft/ci-apply` and opens a PR
+against the repo default branch when the file is missing.
+
+The workflow SSHes to the raft host and runs:
+
+`raft apply --git <ssh_url> --ref $GITHUB_SHA`
+
+After merge, set repository secrets: `RAFT_SSH_HOST`, `RAFT_SSH_USER`,
+`RAFT_SSH_KEY`. If the workflow already exists on the default branch, raft
+skips creating a PR and notes that in next steps. CI PR failures do **not**
+fail the deploy job; they appear as a failed step + next-step guidance.
 
 ## Token storage and retention
 
@@ -77,19 +112,23 @@ key + fingerprint in the UI, and asks the operator to paste it on GitHub.
 | Method | Path | Role |
 |--------|------|------|
 | `GET` | `/api/github/session` | Auth status + hint |
-| `GET` | `/api/github/login` | Start OAuth or mock callback |
-| `GET` | `/api/github/callback` | Finish login → redirect `/deploy` |
+| `GET` | `/api/github/login` | Start OAuth or mock callback (errors → `/deploy?oauth_error=`) |
+| `GET` | `/api/github/callback` | Finish login → `/deploy` or `?oauth_error=` |
 | `POST` | `/api/github/logout` | Clear session file |
 | `GET` | `/api/github/repos?q=` | List / search repos |
-| `POST` | `/api/github/deploy` | `{full_name, ref}` → job |
-| `GET` | `/api/github/deploy/{id}` | Poll progress / next steps |
+| `POST` | `/api/github/deploy` | `{full_name, ref}` → job (apply + CI PR step) |
+| `GET` | `/api/github/deploy/{id}` | Poll progress / `ci_pr` / next steps |
 
 Manifest path for v1: **`.raft/app.yaml` only**.
 
-## UI flow
+## Invalid App YAML
 
-1. Open `http://127.0.0.1:8787/deploy` (or **Deploy from GitHub** on the dashboard).
-2. Sign in (mock or real).
-3. Search, select exactly one repo, optional ref override (default branch).
-4. Confirm → progress steps poll until succeeded/failed.
-5. Read **Additional steps** (DNS, TLS, env file, volumes, deploy key).
+Bad manifests are **rejected at deploy/apply** with a clear error (job step /
+`OperatorError` Fix CTA). They must not cascade-fail the rest of the stack:
+
+- `AppRegistry.load` / `Stack.load_apps` **skip** unreadable or invalid
+  `state/apps/*.yaml` files and record them as `registry_issues`.
+- `GET /api/status` includes `registry_issues: [{file, error}, …]`.
+- Stack status shows an **Invalid App manifests** panel when any issues exist.
+
+Fix or remove the bad file under `~/.raft/state/apps/`, then refresh.

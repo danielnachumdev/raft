@@ -45,7 +45,26 @@ class TestStatusRead(RaftTestCase):
         assert payload["control_plane"][0]["external_urls"] == []
         assert payload["apps"][0]["name"] == "site"
         assert payload["apps"][0]["external_urls"] == []
+        assert payload["registry_issues"] == []
         status.collect.assert_called_once()
+
+    def test_api_payload_includes_registry_issues(self) -> None:
+        from raft.models.registry import RegistryIssue
+
+        snap = StatusSnapshot(host=StatusFixtures.empty_host_status(), containers=())
+        status = MagicMock()
+        status.collect.return_value = snap
+        stack = make_stack(
+            self.tmp_path,
+            (),
+            registry_issues=(
+                RegistryIssue(file="broken.yaml", error="invalid YAML"),
+            ),
+        )
+        payload = StatusRead(stack, status=status).api_payload()
+        assert payload["registry_issues"] == [
+            {"file": "broken.yaml", "error": "invalid YAML"}
+        ]
 
     def test_service_detail_known_and_unknown(self) -> None:
         snap = StatusSnapshot(

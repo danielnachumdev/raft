@@ -24,7 +24,7 @@ from .app import (
 )
 from .app_document import AppDocument
 from .ports import PortSpec
-from .registry import AppRegistry
+from .registry import AppRegistry, RegistryIssue
 
 __all__ = [
     "COMPOSE_PROJECT",
@@ -32,6 +32,7 @@ __all__ = [
     "GATE_COMPOSE_ID",
     "ROUTER_COMPOSE_ID",
     "App",
+    "RegistryIssue",
     "Stack",
     "load_stack",
 ]
@@ -41,6 +42,7 @@ __all__ = [
 class Stack:
     root: Path
     apps: tuple[App, ...]
+    registry_issues: tuple[RegistryIssue, ...] = ()
     gate: str = GATE_COMPOSE_ID
     router: str = ROUTER_COMPOSE_ID
     controller: str = CONTROLLER_COMPOSE_ID
@@ -107,8 +109,11 @@ class Stack:
 
         Controllers use this when ``~/.raft`` is mounted read-only (no
         ``ensure_raft_home``). Operator CLI paths should prefer ``load_stack``.
+        Invalid registry YAML is skipped (see ``registry_issues``); apply/write
+        still rejects bad manifests with a clear error.
         """
-        return cls(root=root, apps=AppRegistry(root).load())
+        result = AppRegistry(root).load_result()
+        return cls(root=root, apps=result.apps, registry_issues=result.issues)
 
 
 def load_stack(root: Optional[Path] = None) -> Stack:

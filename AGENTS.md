@@ -72,7 +72,7 @@ Background / worker Apps that only run a long-lived process may **omit `spec.por
 |------|------|
 | `compose.yaml`, `nginx/` (`src/raft/share/`) | Product templates; synced into the data home on use |
 | `~/.raft/settings.yaml` | Operator settings (logging + **edge** + optional **healing** / **metrics** / **acme**); see [`examples/settings.yaml`](examples/settings.yaml) |
-| `~/.raft/state/apps/*.yaml` | Applied desired state |
+| `~/.raft/state/apps/*.yaml` | Applied desired state (invalid files are skipped at load with `registry_issues`; apply/write still rejects bad YAML) |
 | `~/.raft/generated/` | Compose apps + compose.edge + router hosts + gate-http/stream/tls + **upstreams** |
 | `~/.raft/apps/` | Sync checkouts |
 | `~/.raft/deploy/` | Image/ref pins from sync/cutover |
@@ -279,9 +279,9 @@ Localhost dashboard for operators (`raft serve`). **Hard rules:** bind `127.0.0.
 | `GET` | `/api/github/session\|login\|callback` | Temporary GitHub OAuth / mock login |
 | `POST` | `/api/github/logout` | Clear short-lived session (`state/serve/github-session.json`) |
 | `GET` | `/api/github/repos` | List/search repos for the session |
-| `POST` / `GET` | `/api/github/deploy` / `/api/github/deploy/{id}` | Trigger + poll apply/deploy + next steps |
+| `POST` / `GET` | `/api/github/deploy` / `/api/github/deploy/{id}` | Trigger + poll apply/deploy + CI PR + next steps |
 
-GitHub deploy assist (v1): SPA route `/deploy`; settings `github:` / `RAFT_GITHUB_*`; see [`docs/serve-github-deploy.md`](docs/serve-github-deploy.md).
+GitHub add-service assist (v1): dashboard Apps **`+`** → `/add-service` → `/deploy` (auto OAuth); settings `github:` / `RAFT_GITHUB_*` scopes `read:user repo workflow`; CI PR adds `.github/workflows/raft-apply.yml`; see [`docs/serve-github-deploy.md`](docs/serve-github-deploy.md).
 
 Doctor JSON for the SPA is deferred (`DoctorRead.intended_payload_shape`).
 
