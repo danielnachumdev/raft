@@ -6,7 +6,7 @@ import logging
 import threading
 import time
 from datetime import datetime, timezone
-from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from .job import JobRequest, JobSpec, QueuePolicy
 
@@ -27,7 +27,6 @@ class JobOrchestrator:
         self._workers: Dict[str, threading.Thread] = {}
         self._started_mono: Dict[str, float] = {}
         self._timeouts: Dict[str, float] = {}
-        self._soft_warned: Set[str] = set()
         self._last_now: Optional[datetime] = None
         self._side_ticks: List[SideTick] = list(side_ticks)
 
@@ -146,7 +145,6 @@ class JobOrchestrator:
         self._workers[spec.job_id] = worker
         self._started_mono[spec.job_id] = time.monotonic()
         self._timeouts[spec.job_id] = spec.timeout_seconds
-        self._soft_warned.discard(spec.job_id)
         worker.start()
 
     def _safe_run(self, spec: JobSpec) -> None:
@@ -163,15 +161,12 @@ class JobOrchestrator:
         for job_id, worker in list(self._workers.items()):
             if worker.is_alive():
                 continue
-            self._workers.pop(job_id, None)
-            self._started_mono.pop(job_id, None)
-            self._timeouts.pop(job_id, None)
-            self._soft_warned.discard(job_id)
+            self._forget_worker(job_id)
 
     def _check_soft_timeouts(self) -> None:
         now = time.monotonic()
         for job_id, worker in list(self._workers.items()):
-            if not worker.is_alive() or job_id in self._soft_warned:
+            if not worker.is_alive():
                 continue
             started = self._started_mono.get(job_id)
             timeout = self._timeouts.get(job_id)
@@ -180,11 +175,18 @@ class JobOrchestrator:
             if now - started < timeout:
                 continue
             logger.warning(
-                "job soft-timeout id=%s timeout=%ss (worker continues; skip-if-running)",
+                "job soft-timeout id=%s timeout=%ss "
+                "(forgetting worker so skip-if-running can reschedule)",
                 job_id,
                 timeout,
             )
-            self._soft_warned.add(job_id)
+            self._forget_worker(job_id)
+
+    def _forget_worker(self, job_id: str) -> None:
+        """Drop tracking for a stuck worker; the daemon thread may still finish."""
+        self._workers.pop(job_id, None)
+        self._started_mono.pop(job_id, None)
+        self._timeouts.pop(job_id, None)
 
     def _run_side_ticks(self) -> None:
         for tick in self._side_ticks:

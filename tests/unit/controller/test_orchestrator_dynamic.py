@@ -234,9 +234,11 @@ class TestDynamicJobIds:
         orch._arm_first_fires(clock())
         orch._dispatch_cycle(clock)
         orch._check_soft_timeouts()  # still under timeout
+        assert orch._is_running(acme)
         time.sleep(0.03)
-        orch._check_soft_timeouts()  # warn
-        orch._check_soft_timeouts()  # already warned
+        orch._check_soft_timeouts()  # warn + forget stuck worker
+        assert not orch._is_running(acme)
+        orch._check_soft_timeouts()  # no tracked worker
         self._orphan_worker_soft_check(orch, hold)
         hold.set()
 

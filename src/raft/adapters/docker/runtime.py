@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 _PS_FORMAT = '{{.ID}}\t{{.Label "com.docker.compose.service"}}'
 _LABEL_PROJECT = "com.docker.compose.project"
+# Bound Engine probes so metrics/status cannot stall forever on a wedged daemon.
+_DOCKER_TIMEOUT_SECONDS = 25.0
 
 
 @dataclass(frozen=True)
@@ -67,6 +69,7 @@ class ContainerRuntimeGateway:
             _PS_FORMAT,
             capture=True,
             check=False,
+            timeout=_DOCKER_TIMEOUT_SECONDS,
         )
         if result.returncode != 0:
             logger.debug(
@@ -98,6 +101,7 @@ class ContainerRuntimeGateway:
             *container_ids,
             capture=True,
             check=False,
+            timeout=_DOCKER_TIMEOUT_SECONDS,
         )
         if result.returncode != 0:
             logger.debug(
@@ -151,6 +155,7 @@ class ContainerRuntimeGateway:
             *container_ids,
             capture=True,
             check=False,
+            timeout=_DOCKER_TIMEOUT_SECONDS,
         )
         if result.returncode != 0:
             logger.debug(
