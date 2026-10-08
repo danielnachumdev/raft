@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+import time
 from datetime import datetime, timedelta
 from typing import List
 from unittest.mock import MagicMock
@@ -64,15 +65,34 @@ class TestJobOrchestrator:
 
         clock = _Clock(datetime(2026, 1, 1, 0, 0, 0))
         orch = JobOrchestrator()
-        orch.register(self._spec(JobIds.HEAL, blocking, interval=1.0, timeout=0.05))
+        orch.register(self._spec(JobIds.HEAL, blocking, interval=1.0, timeout=60.0))
         self._run_cycles(orch, clock, cycles=1)
         assert started.wait(timeout=2)
         assert runs["n"] == 1
-        # Second cycle while first still running → skip
+        # Under soft-timeout budget while first still running → skip
         clock.advance(1.0)
         self._run_one_cycle(orch, clock)
         assert runs["n"] == 1
         release.set()
+
+    def test_soft_timeout_forgets_worker_for_reschedule(self) -> None:
+        hold = threading.Event()
+        runs = {"n": 0}
+
+        def blocking() -> None:
+            runs["n"] += 1
+            hold.wait(timeout=5)
+
+        clock = _Clock(datetime(2026, 1, 1, 0, 0, 0))
+        orch = JobOrchestrator()
+        orch.register(self._spec(JobIds.METRICS, blocking, interval=1.0, timeout=0.05))
+        self._run_cycles(orch, clock, cycles=1)
+        assert runs["n"] == 1
+        time.sleep(0.08)
+        clock.advance(1.0)
+        self._run_one_cycle(orch, clock)
+        assert runs["n"] == 2
+        hold.set()
 
     def test_one_shot_asap_and_replace_pending(self) -> None:
         runs: List[str] = []

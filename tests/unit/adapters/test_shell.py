@@ -81,6 +81,33 @@ class TestShell(RaftTestCase):
         ):
             assert self.shell.run(["false"], check=False).returncode == 1
 
+    def test_run_timeout_check_false_returns_124(self) -> None:
+        exc = subprocess.TimeoutExpired(
+            cmd=["sleep"], timeout=1.5, output=b"partial", stderr=b"err"
+        )
+        with patch("raft.adapters.shell.subprocess.run", side_effect=exc):
+            result = self.shell.run(["sleep", "9"], check=False, capture=True, timeout=1.5)
+        assert result.returncode == 124
+        assert result.stdout == "partial"
+        assert result.stderr == "err"
+
+    def test_timeout_stream_none_and_str(self) -> None:
+        assert Shell._timeout_stream(None) == ""
+        assert Shell._timeout_stream(12) == "12"
+
+    def test_run_timeout_empty_streams_message(self) -> None:
+        exc = subprocess.TimeoutExpired(cmd=["sleep"], timeout=0.2)
+        with patch("raft.adapters.shell.subprocess.run", side_effect=exc):
+            result = self.shell.run(["sleep", "9"], check=False, timeout=0.2)
+        assert result.returncode == 124
+        assert "timed out after 0.2s" in (result.stderr or "")
+
+    def test_run_timeout_check_true_raises(self) -> None:
+        exc = subprocess.TimeoutExpired(cmd=["sleep"], timeout=0.1)
+        with patch("raft.adapters.shell.subprocess.run", side_effect=exc):
+            with pytest.raises(subprocess.TimeoutExpired):
+                self.shell.run(["sleep", "9"], check=True, timeout=0.1)
+
     def test_compose_docker_git_wrappers(self) -> None:
         with patch.object(self.shell, "run", return_value=MagicMock()) as run:
             self.shell.compose("ps")

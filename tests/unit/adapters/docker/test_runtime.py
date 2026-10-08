@@ -108,6 +108,8 @@ class TestContainerRuntimeGateway(DockerTestCase):
         assert "gatecid" in inspect_args and "appcid" in inspect_args
         stats_args = self.shell.docker.call_args_list[2].args
         assert stats_args[0] == "stats"
+        for call in self.shell.docker.call_args_list:
+            assert call.kwargs.get("timeout") == 25.0
 
     @staticmethod
     def _inspect_dict(cid: str, *, status: str, health, mem: int) -> dict:

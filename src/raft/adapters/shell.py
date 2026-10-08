@@ -23,23 +23,64 @@ class Shell:
         capture: bool = False,
         input_text: Optional[str] = None,
         cwd: Optional[Path] = None,
+        timeout: Optional[float] = None,
     ) -> subprocess.CompletedProcess[str]:
         workdir = cwd or self.cwd
-        logger.debug("run cwd=%s check=%s capture=%s cmd=%s", workdir, check, capture, args)
-        completed = subprocess.run(
+        logger.debug(
+            "run cwd=%s check=%s capture=%s timeout=%s cmd=%s",
+            workdir,
+            check,
+            capture,
+            timeout,
             args,
-            cwd=workdir,
-            check=False,
-            text=True,
-            input=input_text,
-            capture_output=capture,
-            env=self._run_env(),
         )
+        completed = self._run_subprocess(
+            args,
+            workdir=workdir,
+            capture=capture,
+            input_text=input_text,
+            timeout=timeout,
+            check=check,
+        )
+        return self._finish_run(args, completed, check=check, capture=capture)
+
+    def _finish_run(
+        self,
+        args: list[str],
+        completed: subprocess.CompletedProcess[str],
+        *,
+        check: bool,
+        capture: bool,
+    ) -> subprocess.CompletedProcess[str]:
         if check and completed.returncode != 0:
             self._raise_failed(args, completed, capture=capture)
         if completed.returncode != 0:
             logger.debug("command returned rc=%s cmd=%s", completed.returncode, args)
         return completed
+
+    def _run_subprocess(
+        self,
+        args: list[str],
+        *,
+        workdir: Path,
+        capture: bool,
+        input_text: Optional[str],
+        timeout: Optional[float],
+        check: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        try:
+            return subprocess.run(
+                args,
+                cwd=workdir,
+                check=False,
+                text=True,
+                input=input_text,
+                capture_output=capture,
+                env=self._run_env(),
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired as exc:
+            return self._timeout_result(args, exc, timeout=timeout, check=check)
 
     @staticmethod
     def _run_env() -> dict:
@@ -101,15 +142,53 @@ class Shell:
             bufsize=1,
         )
 
-    def compose(
-        self, *args: str, check: bool = True, capture: bool = False
+    @staticmethod
+    def _timeout_result(
+        args: list[str],
+        exc: subprocess.TimeoutExpired,
+        *,
+        timeout: Optional[float],
+        check: bool,
     ) -> subprocess.CompletedProcess[str]:
-        return self.run(["docker", "compose", *args], check=check, capture=capture)
+        logger.error("command timed out after %ss cmd=%s", timeout, args)
+        if check:
+            raise exc
+        return subprocess.CompletedProcess(
+            args=args,
+            returncode=124,
+            stdout=Shell._timeout_stream(exc.stdout),
+            stderr=Shell._timeout_stream(exc.stderr) or f"timed out after {timeout}s",
+        )
+
+    @staticmethod
+    def _timeout_stream(value: object) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, bytes):
+            return value.decode("utf-8", errors="replace")
+        return str(value)
+
+    def compose(
+        self,
+        *args: str,
+        check: bool = True,
+        capture: bool = False,
+        timeout: Optional[float] = None,
+    ) -> subprocess.CompletedProcess[str]:
+        return self.run(
+            ["docker", "compose", *args], check=check, capture=capture, timeout=timeout
+        )
 
     def docker(
-        self, *args: str, check: bool = True, capture: bool = False
+        self,
+        *args: str,
+        check: bool = True,
+        capture: bool = False,
+        timeout: Optional[float] = None,
     ) -> subprocess.CompletedProcess[str]:
-        return self.run(["docker", *args], check=check, capture=capture)
+        return self.run(
+            ["docker", *args], check=check, capture=capture, timeout=timeout
+        )
 
     def git(
         self,
@@ -117,5 +196,8 @@ class Shell:
         cwd: Optional[Path] = None,
         check: bool = True,
         capture: bool = False,
+        timeout: Optional[float] = None,
     ) -> subprocess.CompletedProcess[str]:
-        return self.run(["git", *args], cwd=cwd, check=check, capture=capture)
+        return self.run(
+            ["git", *args], cwd=cwd, check=check, capture=capture, timeout=timeout
+        )

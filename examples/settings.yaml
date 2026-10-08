@@ -41,8 +41,8 @@ logging:
 # healing:
 #   enabled: true
 #   intervalSeconds: 15           # heal job poll period (also wakes scale side-tick)
-#   timeoutSeconds: 120           # soft join timeout for heal job (worker may
-#                                 # continue; overlapping heals are skipped)
+#   timeoutSeconds: 120           # soft timeout: forget stuck worker so the
+#                                 # next interval can run (daemon may linger)
 #   failThreshold: 3              # consecutive bad observations before act
 #   cooldownSeconds: 60           # min time between heal acts on the same app
 #   maxRestarts: 1                # Compose restart/start attempts (default: 1)
@@ -58,7 +58,9 @@ logging:
 # ---------------------------------------------------------------------------
 # metrics:
 #   intervalSeconds: 60           # periodic metrics job
-#   timeoutSeconds: 30            # soft join timeout (worker may continue)
+#   timeoutSeconds: 30            # soft timeout: forget stuck metrics worker
+#                                 # so sampling resumes (Engine probes also
+#                                 # use a 25s subprocess timeout)
 #   batchSize: 10                 # buffer before append
 #   flushSeconds: 60              # time-based flush even if batch not full
 #   retentionMaxAgeDays: 30       # delete sealed archives older than this
