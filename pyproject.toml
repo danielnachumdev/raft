@@ -54,6 +54,12 @@ addopts = [
     "--cov-report=term-missing",
     "--cov-fail-under=100",
 ]
+# Starlette TestClient still types anyio.abc.BlockingPortal; anyio 4.15+
+# deprecates that alias. Starlette 1.7.0 fixes it but requires Python>=3.10
+# and FastAPI stacks that drop 3.9 — keep this filter until we can upgrade.
+filterwarnings = [
+    "ignore:The anyio.abc.BlockingPortal alias is deprecated.*:DeprecationWarning:starlette\\.testclient",
+]
 markers = [
     "unit: fast mocked unit tests",
     "integration: app.yaml → render artifact checks (no Docker)",
