@@ -276,6 +276,12 @@ Localhost dashboard for operators (`raft serve`). **Hard rules:** bind `127.0.0.
 | `GET` | `/api/service/{name}/logs/download` | log snapshot file (`format`, `tail`) via export registry |
 | `GET` | `/api/metrics/download` | metrics table file (`format`, `window`, optional `services`) |
 | `POST` | `/api/service/{name}/start\|stop\|redeploy` | `ServeActions` |
+| `GET` | `/api/github/session\|login\|callback` | Temporary GitHub OAuth / mock login |
+| `POST` | `/api/github/logout` | Clear short-lived session (`state/serve/github-session.json`) |
+| `GET` | `/api/github/repos` | List/search repos for the session |
+| `POST` / `GET` | `/api/github/deploy` / `/api/github/deploy/{id}` | Trigger + poll apply/deploy + next steps |
+
+GitHub deploy assist (v1): SPA route `/deploy`; settings `github:` / `RAFT_GITHUB_*`; see [`docs/serve-github-deploy.md`](docs/serve-github-deploy.md).
 
 Doctor JSON for the SPA is deferred (`DoctorRead.intended_payload_shape`).
 

@@ -85,6 +85,9 @@ export function Dashboard() {
           ) : null}
         </div>
         <div className="header-actions">
+          <a className="refresh" href="/deploy" id="nav-deploy">
+            Deploy from GitHub
+          </a>
           <ThemeToggle />
           <button
             type="button"

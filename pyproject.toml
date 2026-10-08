@@ -38,6 +38,7 @@ raft = [
     "share/nginx/**/*",
     "share/controller/**/*",
     "share/serve/**/*",
+    "share/serve/mock-github/**/*",
 ]
 
 [tool.pytest.ini_options]

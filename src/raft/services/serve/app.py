@@ -12,8 +12,11 @@ from ..ops.logs import Logs
 from ..ops.status import Status
 from .actions import ServeActions
 from .downloads import ServeDownloads
+from .github import ServeGithubApi
 from .page import ServePage
 from .paths import ServePaths
+
+_DEFAULT_PORT = 8787
 
 
 class ServeAppFactory:
@@ -26,12 +29,16 @@ class ServeAppFactory:
         actions: Optional[ServeActions] = None,
         logs: Optional[Logs] = None,
         downloads: Optional[ServeDownloads] = None,
+        github: Optional[ServeGithubApi] = None,
+        port: int = _DEFAULT_PORT,
     ) -> None:
         self.stack = stack
         self._status = status
         self._actions = actions
         self._logs = logs
         self._downloads = downloads
+        self._github = github
+        self._port = port
 
     def create(self) -> FastAPI:
         app = FastAPI(title="raft serve", docs_url=None, redoc_url=None)
@@ -42,7 +49,8 @@ class ServeAppFactory:
             logs=self._logs,
         )
         downloads = self._downloads or ServeDownloads(self.stack, logs=self._logs)
-        self._register_api(app, page, downloads)
+        github = self._github or ServeGithubApi(self.stack, port=self._port)
+        self._register_api(app, page, downloads, github)
         app.mount(
             "/assets",
             StaticFiles(directory=str(ServePaths.spa_assets_dir())),
@@ -52,10 +60,16 @@ class ServeAppFactory:
         return app
 
     @staticmethod
-    def _register_api(app: FastAPI, page: ServePage, downloads: ServeDownloads) -> None:
+    def _register_api(
+        app: FastAPI,
+        page: ServePage,
+        downloads: ServeDownloads,
+        github: ServeGithubApi,
+    ) -> None:
         ServeAppFactory._register_read_api(app, page)
         ServeAppFactory._register_action_api(app, page)
         ServeAppFactory._register_download_api(app, downloads)
+        github.register(app)
 
     @staticmethod
     def _register_read_api(app: FastAPI, page: ServePage) -> None:
