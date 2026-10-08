@@ -21,7 +21,8 @@ Serve ``GET /api/status`` returns that snapshot **plus** presentation lists
 ``control_plane`` / ``apps`` (display labels + human cpu/memory/started/uptime
 strings, Compose ``service`` id for deep links, ``external_urls`` from
 ``publicHost`` + edge scheme/port, and ``depends_on`` Compose ids from App
-``spec.dependsOn`` for SPA parent/child tree layout) for the dashboard tables.
+``spec.dependsOn`` for SPA parent/child tree layout) and ``registry_issues``
+(skipped invalid ``state/apps/*.yaml`` entries) for the dashboard tables.
 Prefer ``containers`` for new FE work (#35/#9).
 
 Serve ``GET /api/service/{name}`` returns ``host`` + one ``container`` object

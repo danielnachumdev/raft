@@ -1,0 +1,36 @@
+.add-service-options {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+
+.add-service-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--line);
+  background: var(--input);
+  color: inherit;
+  text-decoration: none;
+}
+
+.add-service-option:hover {
+  border-color: var(--muted);
+}
+
+.add-service-option strong {
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+.add-service-option .muted {
+  display: block;
+  font-size: 0.88rem;
+}
+
+.github-mark {
+  flex: 0 0 auto;
+  margin-top: 0.1rem;
+  color: var(--text);
+}

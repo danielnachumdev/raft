@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from ....models.app import App
 from ....models.manifest import AppSpec
@@ -29,6 +29,45 @@ class DeployNextSteps:
         if not steps:
             steps.append(self._verify(app))
         return steps
+
+    def ci_steps(self, ci_pr: Optional[Dict[str, Any]]) -> List[Dict[str, str]]:
+        if not ci_pr:
+            return []
+        status = str(ci_pr.get("status") or "")
+        if status == "opened" and ci_pr.get("pr_url"):
+            return [self._ci_opened(str(ci_pr["pr_url"]))]
+        if status == "exists":
+            return [self._ci_exists()]
+        if status == "failed":
+            return [self._ci_failed(str(ci_pr.get("detail") or ""))]
+        return []
+
+    @staticmethod
+    def _ci_opened(pr_url: str) -> Dict[str, str]:
+        return {
+            "title": "Merge CI PR",
+            "body": (
+                f"Review and merge {pr_url}, then set repo secrets "
+                "RAFT_SSH_HOST, RAFT_SSH_USER, RAFT_SSH_KEY so push deploys run."
+            ),
+        }
+
+    @staticmethod
+    def _ci_exists() -> Dict[str, str]:
+        return {
+            "title": "CI workflow",
+            "body": (
+                "raft-apply workflow already present. Ensure "
+                "RAFT_SSH_* secrets are set for automatic deploys."
+            ),
+        }
+
+    @staticmethod
+    def _ci_failed(detail: str) -> Dict[str, str]:
+        return {
+            "title": "CI PR setup failed",
+            "body": detail or "Could not open CI PR. Re-login and retry.",
+        }
 
     def _dns(self, app: App, spec: AppSpec) -> List[Dict[str, str]]:
         if not app.public_host:

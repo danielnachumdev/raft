@@ -47,6 +47,7 @@ class TestServeGithubApi(RaftTestCase):
         session = client.get("/api/github/session").json()
         assert session["authenticated"] is True
         assert session["login"] == "mock-operator"
+        assert "workflow" in session["scopes"]
         repos = client.get("/api/github/repos").json()["repos"]
         assert any(r["full_name"] == "demo/http-only-site" for r in repos)
         assert client.post("/api/github/logout").json()["authenticated"] is False

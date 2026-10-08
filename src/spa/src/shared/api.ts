@@ -13,11 +13,18 @@ export type StatusRow = {
   depends_on?: string[];
 };
 
+export type RegistryIssue = {
+  file: string;
+  error: string;
+};
+
 export type StatusPayload = {
   host: { hostname?: string; [key: string]: unknown };
   containers: unknown[];
   control_plane: StatusRow[];
   apps: StatusRow[];
+  /** Applied manifests under state/apps that failed to parse (others still load). */
+  registry_issues?: RegistryIssue[];
 };
 
 export type ContainerDetail = {

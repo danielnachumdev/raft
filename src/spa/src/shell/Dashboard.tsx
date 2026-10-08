@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   documentTitleForHost,
   STATUS_POLL_MS,
@@ -85,9 +86,6 @@ export function Dashboard() {
           ) : null}
         </div>
         <div className="header-actions">
-          <a className="refresh" href="/deploy" id="nav-deploy">
-            Deploy from GitHub
-          </a>
           <ThemeToggle />
           <button
             type="button"
@@ -124,6 +122,29 @@ export function Dashboard() {
         </p>
       ) : null}
 
+      {data?.registry_issues && data.registry_issues.length > 0 ? (
+        <section className="panel registry-issues" id="registry-issues">
+          <div className="panel-head">
+            <h2>Invalid App manifests</h2>
+          </div>
+          <p className="muted">
+            These files under <code>state/apps/</code> were skipped so other
+            services keep working. Fix or remove them, then refresh. Apply/deploy
+            still rejects bad YAML with a clear error.
+          </p>
+          <ul className="registry-issue-list">
+            {data.registry_issues.map((issue) => (
+              <li key={issue.file}>
+                <code>{issue.file}</code>
+                <p className="error" role="alert">
+                  {issue.error}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       {data ? (
         <>
           <Section
@@ -141,6 +162,7 @@ export function Dashboard() {
             storageKey="raft-serve-status-apps"
             isLive={statusLive}
             onActionDone={() => void load({ quiet: true })}
+            addHref="/add-service"
           />
         </>
       ) : null}
@@ -157,15 +179,29 @@ function Section(props: {
   storageKey: string;
   isLive: boolean;
   onActionDone: () => void;
+  addHref?: string;
 }) {
   return (
     <section className="panel">
       <div className="panel-head">
         <h2>{props.title}</h2>
-        <LiveIndicator
-          isLive={props.isLive}
-          label={props.isLive ? undefined : "Paused · tab hidden"}
-        />
+        <div className="panel-head-actions">
+          {props.addHref ? (
+            <Link
+              className="panel-add"
+              to={props.addHref}
+              aria-label="Add new service"
+              id="add-service"
+              title="Add new service"
+            >
+              +
+            </Link>
+          ) : null}
+          <LiveIndicator
+            isLive={props.isLive}
+            label={props.isLive ? undefined : "Paused · tab hidden"}
+          />
+        </div>
       </div>
       <StatusTable
         rows={props.rows}

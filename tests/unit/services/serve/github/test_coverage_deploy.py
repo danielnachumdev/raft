@@ -55,8 +55,12 @@ class TestCoverageDeploy(RaftTestCase):
         )
         with patch.object(api._oauth, "complete_oauth", return_value=sample_session(mock=False)):
             assert api.api_callback(MagicMock(), code="c", state="good").status_code == 302
-        with pytest.raises(Exception):
-            api.api_callback(MagicMock(), code=None, state=None, mock=None)
+        bad = api.api_callback(MagicMock(), code=None, state=None, mock=None)
+        assert bad.status_code == 302 and "oauth_error=" in bad.headers["location"]
+        denied = api.api_callback(
+            MagicMock(), error="access_denied", error_description="user said no"
+        )
+        assert "oauth_error=" in denied.headers["location"]
 
     def test_api_port_and_repos_deploy(self) -> None:
         (self.tmp_path / "settings.yaml").write_text("github: {mock: true}\n", encoding="utf-8")
@@ -129,8 +133,8 @@ class TestCoverageDeploy(RaftTestCase):
         with patch.object(
             api._oauth, "login_url", side_effect=OperatorError("x", has_fix=False)
         ):
-            with pytest.raises(Exception):
-                api.api_login(MagicMock())
+            login = api.api_login(MagicMock())
+            assert login.status_code == 302 and "oauth_error=" in login.headers["location"]
         req = MagicMock()
         req.headers = {"host": "127.0.0.1:notaport"}
         assert api._request_port(req) == 8787

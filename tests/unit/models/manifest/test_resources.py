@@ -78,8 +78,14 @@ class TestManifestResourceCoverage(RaftTestCase):
             "      expose: http\n",
             encoding="utf-8",
         )
-        with pytest.raises(ValueError, match="filename stem"):
-            load_stack(self.tmp_path)
+        from raft.models.registry import AppRegistry
+
+        result = AppRegistry(self.tmp_path).load_result()
+        assert result.apps == ()
+        assert any("filename stem" in i.error for i in result.issues)
+        stack = load_stack(self.tmp_path)
+        assert stack.apps == ()
+        assert stack.registry_issues
 
     def test_parse_memory_gi_and_cpu_millis(self) -> None:
         assert AppSpecFields._parse_memory("2Gi", default="1M") == "2G"

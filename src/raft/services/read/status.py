@@ -48,6 +48,7 @@ class StatusRead:
         body = snapshot.to_dict()
         body["control_plane"] = view["control_plane"]
         body["apps"] = view["apps"]
+        body["registry_issues"] = [issue.to_dict() for issue in self.stack.registry_issues]
         return body
 
     def service_detail(self, name: str, *, refresh_apps: bool = False) -> Optional[Dict[str, Any]]:

@@ -1,17 +1,14 @@
-"""In-memory deploy job store + runner (AppApply / auth reuse)."""
+"""Deploy job runner (AppApply / auth reuse + CI PR setup)."""
 
 from __future__ import annotations
 
 import base64
 import hashlib
 import logging
-import secrets
 import shutil
 import threading
-import time
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
 import yaml
 
@@ -21,79 +18,33 @@ from ....models.app_document import AppDocument
 from ....models.stack import Stack, load_stack
 from ...apply.service import AppApply
 from ...auth.manager import GitAuthManager
+from .ci_pr import GithubCiPrSetup
+from .deploy_models import DeployJob, DeployJobStore, DeployStep
 from .next_steps import DeployNextSteps
 from .provider import GithubProvider, GithubRepo
 from .session import GithubSession
 
 logger = logging.getLogger(__name__)
 
-
-@dataclass
-class DeployStep:
-    name: str
-    status: str = "pending"
-    detail: str = ""
-
-
-@dataclass
-class DeployJob:
-    id: str
-    full_name: str
-    ref: str
-    status: str = "pending"
-    error: Optional[str] = None
-    app_name: Optional[str] = None
-    steps: List[DeployStep] = field(default_factory=list)
-    next_steps: List[Dict[str, str]] = field(default_factory=list)
-    deploy_pubkey: Optional[str] = None
-    created_at: float = field(default_factory=time.time)
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "id": self.id,
-            "full_name": self.full_name,
-            "ref": self.ref,
-            "status": self.status,
-            "error": self.error,
-            "app_name": self.app_name,
-            "steps": [{"name": s.name, "status": s.status, "detail": s.detail} for s in self.steps],
-            "next_steps": self.next_steps,
-            "deploy_pubkey": self.deploy_pubkey,
-            "created_at": self.created_at,
-        }
-
-
-class DeployJobStore:
-    """Process-local job map (serve is single-process)."""
-
-    def __init__(self) -> None:
-        self._jobs: Dict[str, DeployJob] = {}
-        self._lock = threading.Lock()
-
-    def create(self, full_name: str, ref: str) -> DeployJob:
-        job = DeployJob(id=secrets.token_hex(8), full_name=full_name, ref=ref)
-        with self._lock:
-            self._jobs[job.id] = job
-        return job
-
-    def get(self, job_id: str) -> Optional[DeployJob]:
-        with self._lock:
-            return self._jobs.get(job_id)
+__all__ = ["DeployJob", "DeployJobStore", "DeployStep", "GithubDeployRunner"]
 
 
 class GithubDeployRunner:
-    """Drive manifest fetch → optional auth → AppApply (mock local or git)."""
+    """Drive manifest fetch → optional auth → AppApply → CI workflow PR."""
 
     def __init__(
         self,
         stack: Stack,
         provider: GithubProvider,
         store: DeployJobStore,
+        *,
+        ci: Optional[GithubCiPrSetup] = None,
     ) -> None:
         self._stack = stack
         self._provider = provider
         self._store = store
         self._next = DeployNextSteps()
+        self._ci = ci or GithubCiPrSetup()
 
     def start(self, session: GithubSession, repo: GithubRepo, ref: str) -> DeployJob:
         job = self._store.create(repo.full_name, ref or repo.default_branch)
@@ -135,7 +86,20 @@ class GithubDeployRunner:
             self._deploy_local(job, local, data, app_name)
         else:
             self._deploy_git(job, session, repo, app_name)
+        self._setup_ci_pr(job, session, repo)
         self._fill_next_steps(job, data)
+
+    def _setup_ci_pr(
+        self, job: DeployJob, session: GithubSession, repo: GithubRepo
+    ) -> None:
+        self._step(job, "CI workflow PR", "running")
+        try:
+            result = self._ci.ensure(session.access_token, repo, mock=session.mock)
+            job.ci_pr = result.to_dict()
+            self._step(job, "CI workflow PR", "ok", result.detail)
+        except OperatorError as exc:
+            job.ci_pr = {"status": "failed", "detail": str(exc)}
+            self._step(job, "CI workflow PR", "failed", str(exc)[:200])
 
     def _deploy_local(
         self, job: DeployJob, tree: Path, data: dict, app_name: str
@@ -199,22 +163,29 @@ class GithubDeployRunner:
         if not job.app_name:
             return
         path = self._stack.root / "state" / "apps" / f"{job.app_name}.yaml"
-        if path.is_file():
-            data = yaml.safe_load(path.read_text(encoding="utf-8")) or data
+        data = self._registry_or(data, path)
         app, spec = AppDocument.parse(data, path=path if path.is_file() else Path("."))
-        fp = self._fingerprint(job.deploy_pubkey) if job.deploy_pubkey else None
-        url = (
-            f"https://github.com/{job.full_name}/settings/keys/new"
-            if "/" in job.full_name
-            else None
-        )
-        job.next_steps = self._next.build(
+        steps = self._next.build(
             app,
             spec,
             deploy_pubkey=job.deploy_pubkey,
-            deploy_key_url=url,
-            key_fingerprint=fp,
+            deploy_key_url=self._deploy_key_url(job),
+            key_fingerprint=self._fingerprint(job.deploy_pubkey) if job.deploy_pubkey else None,
         )
+        steps.extend(self._next.ci_steps(job.ci_pr))
+        job.next_steps = steps
+
+    @staticmethod
+    def _registry_or(data: dict, path: Path) -> dict:
+        if path.is_file():
+            return yaml.safe_load(path.read_text(encoding="utf-8")) or data
+        return data
+
+    @staticmethod
+    def _deploy_key_url(job: DeployJob) -> Optional[str]:
+        if "/" not in job.full_name:
+            return None
+        return f"https://github.com/{job.full_name}/settings/keys/new"
 
     @staticmethod
     def _rewrite_local_manifest(path: Path, data: dict, app_name: str) -> None:
