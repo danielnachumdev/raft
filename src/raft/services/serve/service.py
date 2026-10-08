@@ -30,7 +30,9 @@ class Serve:
         lease = self._runtime.acquire(port)
         try:
             ServeInstructions(port).print()
-            app = ServeAppFactory(self.stack, status=self._status).create()
+            app = ServeAppFactory(
+                self.stack, status=self._status, port=port
+            ).create()
             uvicorn.run(app, host=_BIND_HOST, port=port, log_level="warning")
         finally:
             lease.release()

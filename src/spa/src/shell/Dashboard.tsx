@@ -83,20 +83,25 @@ export function Dashboard() {
             </p>
           ) : null}
         </div>
-        <button
-          type="button"
-          className={busy ? "refresh is-loading" : "refresh"}
-          onClick={() => void load()}
-          disabled={busy || updating}
-          aria-busy={busy || updating}
-          aria-label="Refresh status"
-          id="status-refresh"
-        >
-          {busy ? (
-            <span className="spinner refresh-spinner" aria-hidden="true" />
-          ) : null}
-          Refresh
-        </button>
+        <div className="header-actions">
+          <a className="refresh" href="/deploy" id="nav-deploy">
+            Deploy from GitHub
+          </a>
+          <button
+            type="button"
+            className={busy ? "refresh is-loading" : "refresh"}
+            onClick={() => void load()}
+            disabled={busy || updating}
+            aria-busy={busy || updating}
+            aria-label="Refresh status"
+            id="status-refresh"
+          >
+            {busy ? (
+              <span className="spinner refresh-spinner" aria-hidden="true" />
+            ) : null}
+            Refresh
+          </button>
+        </div>
       </header>
 
       {busy && data === null ? (

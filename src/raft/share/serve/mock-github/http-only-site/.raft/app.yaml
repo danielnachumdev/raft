@@ -1,0 +1,19 @@
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: http-only-site
+spec:
+  publicHost: site.example.com
+  tls: off
+  source: local
+  path: apps/http-only-site
+  build:
+    context: .
+  ports:
+    - name: http
+      containerPort: 80
+      expose: http
+  readiness:
+    type: http
+    port: http
+    path: /

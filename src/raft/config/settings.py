@@ -11,6 +11,7 @@ from raft.errors.cta import OperatorError
 
 from .paths import LOGS_DIRNAME, settings_path
 from .settings_edge import EdgeSettingsParser
+from .settings_github import GithubSettingsParser
 from .settings_types import (
     DEFAULT_HEAL_INTERVAL_SECONDS,
     DEFAULT_HEAL_TIMEOUT_SECONDS,
@@ -39,11 +40,12 @@ class SettingsLoader:
 
     def __init__(self) -> None:
         self._edge = EdgeSettingsParser()
+        self._github = GithubSettingsParser()
 
     def load(self, data_home: Path, *, path: Optional[Path] = None) -> RaftConfig:
         config_path = path or settings_path(data_home)
         if not config_path.exists():
-            return default_config()
+            return self._with_github_env(default_config())
         data = self._read_mapping(config_path)
         return RaftConfig(
             logging=self._parse_logging(data.get("logging") or {}),
@@ -51,6 +53,18 @@ class SettingsLoader:
             healing=self._parse_healing(data.get("healing")),
             metrics=self._parse_metrics(data.get("metrics")),
             acme=self._parse_acme(data.get("acme")),
+            github=self._github.parse(data.get("github")),
+        )
+
+    def _with_github_env(self, cfg: RaftConfig) -> RaftConfig:
+        """Apply env overrides when settings.yaml is absent."""
+        return RaftConfig(
+            logging=cfg.logging,
+            edge=cfg.edge,
+            healing=cfg.healing,
+            metrics=cfg.metrics,
+            acme=cfg.acme,
+            github=self._github.parse(None),
         )
 
     def _read_mapping(self, config_path: Path) -> dict[str, Any]:

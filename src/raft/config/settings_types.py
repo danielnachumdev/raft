@@ -26,6 +26,7 @@ DEFAULT_LOGGING_RETENTION_MAX_BYTES = 100 * 1024 * 1024  # 100 MiB
 DEFAULT_ACME_DIRECTORY = "https://acme-v02.api.letsencrypt.org/directory"
 DEFAULT_ACME_RENEW_DAYS_BEFORE_EXPIRY = 30
 DEFAULT_ACME_CHALLENGE = "http-01"
+DEFAULT_GITHUB_SESSION_TTL_SECONDS = 3600
 
 
 @dataclass(frozen=True)
@@ -113,12 +114,23 @@ class AcmeConfig:
 
 
 @dataclass(frozen=True)
+class GithubServeConfig:
+    """Temporary GitHub OAuth for ``raft serve`` deploy assist (v1)."""
+
+    mock: bool = False
+    client_id: Optional[str] = None
+    client_secret: Optional[str] = None
+    session_ttl_seconds: int = DEFAULT_GITHUB_SESSION_TTL_SECONDS
+
+
+@dataclass(frozen=True)
 class RaftConfig:
     logging: LoggingConfig = LoggingConfig()
     edge: EdgeConfig = field(default_factory=EdgeConfig)
     healing: HealingConfig = field(default_factory=HealingConfig)
     metrics: MetricsConfig = field(default_factory=MetricsConfig)
     acme: AcmeConfig = field(default_factory=AcmeConfig)
+    github: GithubServeConfig = field(default_factory=GithubServeConfig)
 
 
 def default_config() -> RaftConfig:

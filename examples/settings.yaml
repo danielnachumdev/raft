@@ -113,3 +113,17 @@ edge:
 #   directory: https://acme-v02.api.letsencrypt.org/directory
 #   renewDaysBeforeExpiry: 30
 #   challenge: http-01   # only http-01 in v1
+
+# ---------------------------------------------------------------------------
+# github — temporary OAuth for ``raft serve`` deploy assist (v1).
+# Session file: ~/.raft/state/serve/github-session.json (mode 0600).
+# Docs: docs/serve-github-deploy.md
+# ---------------------------------------------------------------------------
+# github:
+#   mock: true                 # local fixture repos; no GitHub App needed
+#   # clientId: Iv1.example    # OAuth App; callback http://127.0.0.1:<port>/api/github/callback
+#   # clientSecret: …          # prefer RAFT_GITHUB_CLIENT_SECRET
+#   # sessionTtlSeconds: 3600  # default 1h; logout clears the session file
+# Env: RAFT_GITHUB_MOCK, RAFT_GITHUB_CLIENT_ID, RAFT_GITHUB_CLIENT_SECRET,
+#      RAFT_GITHUB_SESSION_TTL_SECONDS
+# Scopes: read:user repo (private listing; deploy keys pasted manually)
