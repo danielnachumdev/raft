@@ -17,13 +17,7 @@ from ....base import RaftTestCase
 
 class TestGithubSettingsParser(RaftTestCase):
     def test_parse_and_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        for key in (
-            "RAFT_GITHUB_MOCK",
-            "RAFT_GITHUB_CLIENT_ID",
-            "RAFT_GITHUB_CLIENT_SECRET",
-            "RAFT_GITHUB_SESSION_TTL_SECONDS",
-        ):
-            monkeypatch.delenv(key, raising=False)
+        self._clear_github_env(monkeypatch)
         p = GithubSettingsParser()
         assert p.parse(None).mock is False
         cfg = p.parse({"mock": True, "sessionTtlSeconds": 120})
@@ -32,14 +26,28 @@ class TestGithubSettingsParser(RaftTestCase):
             p.parse([])
         with pytest.raises(OperatorError):
             p.parse({"sessionTtlSeconds": 10})
-        monkeypatch.setenv("RAFT_GITHUB_MOCK", "1")
-        monkeypatch.setenv("RAFT_GITHUB_CLIENT_ID", "id")
-        monkeypatch.setenv("RAFT_GITHUB_CLIENT_SECRET", "sec")
-        monkeypatch.setenv("RAFT_GITHUB_SESSION_TTL_SECONDS", "90")
+        self._set_github_env(monkeypatch)
         env_cfg = p.parse({"mock": False})
         assert env_cfg.mock is True
         assert env_cfg.client_id == "id"
         assert env_cfg.session_ttl_seconds == 90
+
+    @staticmethod
+    def _clear_github_env(monkeypatch: pytest.MonkeyPatch) -> None:
+        for key in (
+            "RAFT_GITHUB_MOCK",
+            "RAFT_GITHUB_CLIENT_ID",
+            "RAFT_GITHUB_CLIENT_SECRET",
+            "RAFT_GITHUB_SESSION_TTL_SECONDS",
+        ):
+            monkeypatch.delenv(key, raising=False)
+
+    @staticmethod
+    def _set_github_env(monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("RAFT_GITHUB_MOCK", "1")
+        monkeypatch.setenv("RAFT_GITHUB_CLIENT_ID", "id")
+        monkeypatch.setenv("RAFT_GITHUB_CLIENT_SECRET", "sec")
+        monkeypatch.setenv("RAFT_GITHUB_SESSION_TTL_SECONDS", "90")
 
 
 class TestGithubOauth(RaftTestCase):
