@@ -277,6 +277,7 @@ Localhost dashboard for operators (`raft serve`). **Hard rules:** bind `127.0.0.
 | `GET` | `/api/metrics/download` | metrics table file (`format`, `window`, optional `services`) |
 | `POST` | `/api/service/{name}/start\|stop\|redeploy` | `ServeActions` |
 | `GET` | `/api/github/session\|login\|callback` | Temporary GitHub OAuth / mock login |
+| `GET` / `POST` | `/api/github/config` | OAuth setup status; paste client id/secret (or mock) → settings.yaml + reload |
 | `POST` | `/api/github/logout` | Clear short-lived session (`state/serve/github-session.json`) |
 | `GET` | `/api/github/repos` | List/search repos for the session |
 | `POST` / `GET` | `/api/github/deploy` / `/api/github/deploy/{id}` | Trigger + poll apply/deploy + CI PR + next steps |

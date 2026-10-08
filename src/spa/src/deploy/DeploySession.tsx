@@ -1,12 +1,47 @@
-import type { GithubSession } from "./githubApi";
+import type { GithubOauthConfig, GithubSession } from "./githubApi";
+import { OauthSetupPanel } from "./OauthSetupPanel";
 
 export function DeploySession(props: {
   session: GithubSession | null;
+  config: GithubOauthConfig | null;
   oauthError: string | null;
+  needsSetup: boolean;
   busy: boolean;
   onLogout: () => void;
+  onBusy: (busy: boolean) => void;
+  onSaved: () => void;
+  onError: (message: string) => void;
 }) {
-  const { session, oauthError, busy, onLogout } = props;
+  const {
+    session,
+    config,
+    oauthError,
+    needsSetup,
+    busy,
+    onLogout,
+    onBusy,
+    onSaved,
+    onError,
+  } = props;
+  if (needsSetup) {
+    return (
+      <>
+        {oauthError ? (
+          <p className="error" role="alert" id="oauth-error-message">
+            {oauthError}
+          </p>
+        ) : null}
+        <OauthSetupPanel
+          session={session}
+          config={config}
+          busy={busy}
+          onBusy={onBusy}
+          onSaved={onSaved}
+          onError={onError}
+        />
+      </>
+    );
+  }
   if (oauthError) {
     return (
       <section className="deploy-panel" id="github-oauth-error">

@@ -18,12 +18,16 @@ This is **not** a public multi-user console and **not** a full App lifecycle UI.
 3. Unauthenticated visits **auto-redirect** to `/api/github/login` (real OAuth
    authorize page when configured; mock callback only when `github.mock` /
    `RAFT_GITHUB_MOCK=1`).
-4. **OAuth failure** redirects to `/deploy?oauth_error=…` with a clear error and
-   retry control (not a bare API error page).
-5. Search, select one repo, optional ref → confirm → progress steps poll until
+4. If OAuth is **not configured**, `/deploy` shows setup instructions, links to
+   create a GitHub OAuth App + this guide, and paste-in controls for
+   `clientId` / `clientSecret` (or mock mode). Saving writes `github:` into
+   `~/.raft/settings.yaml` and reloads serve’s in-process config (no restart).
+5. **Other OAuth failures** redirect to `/deploy?oauth_error=…` with a clear
+   error and retry control (not a bare API error page).
+6. Search, select one repo, optional ref → confirm → progress steps poll until
    succeeded/failed; **deployment logs** reuse the service logs UI when an app
    name is known.
-6. Read **Additional steps** (DNS, TLS, env, volumes, deploy key, merge CI PR).
+7. Read **Additional steps** (DNS, TLS, env, volumes, deploy key, merge CI PR).
 
 Deep link `/deploy` still works.
 
@@ -50,10 +54,14 @@ repos under `share/serve/mock-github/`. CI PR setup returns a mock PR URL
 
 ## Real GitHub OAuth App
 
-1. Create an OAuth App on GitHub (Developer settings).
+1. Create an OAuth App:
+   [github.com/settings/applications/new](https://github.com/settings/applications/new).
 2. **Authorization callback URL:** `http://127.0.0.1:<port>/api/github/callback`
    (default port **8787**).
-3. Configure:
+3. Configure via **either**:
+   - **Serve UI** (recommended when you hit the not-configured state): paste
+     Client ID + Client Secret on `/deploy` → Save (writes `github:` and reloads).
+   - **settings.yaml / env** as below.
 
 ```yaml
 github:
@@ -63,12 +71,16 @@ github:
   sessionTtlSeconds: 3600     # default 1h; min 60
 ```
 
-Env overrides (preferred for secrets):
+Env overrides (preferred for secrets on long-lived hosts):
 
 - `RAFT_GITHUB_CLIENT_ID`
 - `RAFT_GITHUB_CLIENT_SECRET`
 - `RAFT_GITHUB_SESSION_TTL_SECONDS`
 - `RAFT_GITHUB_MOCK`
+
+Note: env overrides win over `settings.yaml`. If `RAFT_GITHUB_*` is set in the
+serve process environment, the UI paste path still updates the file, but env
+values take precedence until unset.
 
 ### Scopes (v1)
 
@@ -111,7 +123,9 @@ fail the deploy job; they appear as a failed step + next-step guidance.
 
 | Method | Path | Role |
 |--------|------|------|
-| `GET` | `/api/github/session` | Auth status + hint |
+| `GET` | `/api/github/session` | Auth status + hint + `oauth_configured` / setup URLs |
+| `GET` | `/api/github/config` | OAuth setup status (no secrets) + callback / docs links |
+| `POST` | `/api/github/config` | `{clientId, clientSecret}` or `{mock: true}` → write settings + reload |
 | `GET` | `/api/github/login` | Start OAuth or mock callback (errors → `/deploy?oauth_error=`) |
 | `GET` | `/api/github/callback` | Finish login → `/deploy` or `?oauth_error=` |
 | `POST` | `/api/github/logout` | Clear session file |
