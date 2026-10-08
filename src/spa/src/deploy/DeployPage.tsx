@@ -10,6 +10,7 @@ import {
   type GithubRepo,
   type GithubSession,
 } from "./githubApi";
+import "./DeployPage.css";
 
 const POLL_MS = 1000;
 

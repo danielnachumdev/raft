@@ -49,9 +49,13 @@ class AcmeOrderRunner:
     ) -> list[str]:
         tokens: list[str] = []
         for authz in order.authorizations:
+            if self._already_valid(getattr(authz.body, "status", None)):
+                continue
             challb = self._http01_body(authz)
             if challb is None:
                 raise errors.Error("ACME authorization missing HTTP-01 challenge")
+            if self._already_valid(getattr(challb, "status", None)):
+                continue
             response, validation = challb.response_and_validation(acme_client.net.key)
             token = challb.chall.encode("token")
             self._webroot.write(token, validation)
@@ -65,3 +69,8 @@ class AcmeOrderRunner:
             if isinstance(challb.chall, challenges.HTTP01):
                 return challb
         return None
+
+    @staticmethod
+    def _already_valid(status: object) -> bool:
+        """True when ACME already satisfied this authz/challenge (skip re-answer)."""
+        return status == messages.STATUS_VALID

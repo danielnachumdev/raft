@@ -4,7 +4,7 @@ Source for the `raft serve` UI (React + Vite + TypeScript).
 
 **Runtime is static only.** `npm run build` writes into [`src/raft/share/serve/spa/`](../raft/share/serve/spa/), which FastAPI serves from the same process as `/api/status` and `/api/metrics`. There is no separate Node server in production. Trends charts poll `/api/metrics` (with a `since` cursor) — no WebSocket.
 
-Source layout under `src/`: `main.tsx` + `styles.css` at the root; `shell/` (`App`, `Dashboard`); feature folders `shared/`, `chrome/`, `status/`, `service/` (page + actions), `logs/`, `export/` (download menu driven by `/api/exports`), and `trends/` with `panel/`, `chart/`, `runtime/` (plus root range/metrics helpers).
+Source layout under `src/`: `main.tsx` + lean `styles.css` (tokens, resets, shared primitives) at the root; each UI component imports a co-located `ComponentName.css`. Feature folders: `shell/` (`App`, `Dashboard`), `shared/`, `chrome/`, `status/`, `service/`, `logs/`, `export/`, and `trends/` with `panel/`, `chart/`, `runtime/` (plus root range/metrics helpers).
 
 ## Develop
 

@@ -7,6 +7,7 @@ import {
 } from "../shared/api";
 import { peekStatus, refreshStatus } from "../shared/dashboardCache";
 import { LiveIndicator } from "../chrome/LiveIndicator";
+import { ThemeToggle } from "../chrome/ThemeToggle";
 import { StatusTable } from "../status/StatusTable";
 import { TrendsPanel } from "../trends/panel/TrendsPanel";
 
@@ -87,6 +88,7 @@ export function Dashboard() {
           <a className="refresh" href="/deploy" id="nav-deploy">
             Deploy from GitHub
           </a>
+          <ThemeToggle />
           <button
             type="button"
             className={busy ? "refresh is-loading" : "refresh"}

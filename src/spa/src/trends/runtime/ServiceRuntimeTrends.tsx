@@ -28,7 +28,7 @@ import {
   buildRows,
   pollServiceMetrics,
 } from "./runtimeTrendsPoll";
-
+import "./ServiceRuntimeTrends.css";
 /** Per-service Runtime history charts (same /api/metrics as Trends). */
 export function ServiceRuntimeTrends(props: { service: string }) {
   const [range, setRange] = useState<TrendsRangeState>(defaultRangeState);

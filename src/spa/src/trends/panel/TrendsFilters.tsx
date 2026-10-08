@@ -8,7 +8,7 @@ import {
 import { TrendsRangeControls } from "../TrendsRangeControls";
 import type { TrendsRangeState } from "../trendsRange";
 import type { GroupOption, SeriesViewMode } from "./trendsView";
-
+import "./TrendsFilters.css";
 export function TrendsFilters(props: {
   range: TrendsRangeState;
   bounds: MetricsBounds | null;

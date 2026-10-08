@@ -27,7 +27,7 @@ import {
 import { timeScaleXAxis } from "../chart/TimeScaleXAxis";
 import { trendPlotLines } from "../chart/trendPlotLines";
 import { useChartHover } from "../chart/useChartHover";
-
+import "./TrendsChart.css";
 const HOST_AXIS = "host";
 const SERVICE_AXIS = "service";
 

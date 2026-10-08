@@ -10,7 +10,7 @@ import {
   type SortKey,
 } from "./statusColumnFilter";
 import type { SortDir } from "./statusPanelView";
-
+import "./ColumnHeaderMenu.css";
 export function ColumnHeaderMenu(props: {
   label: string;
   columnKey: SortKey;

@@ -1,7 +1,7 @@
 import type { ServiceAction } from "../shared/api";
 import { ServiceActionConfirm } from "./ServiceActionConfirm";
 import { useServiceActionRunner } from "./useServiceActionRunner";
-
+import "./ServiceActions.css";
 type Props = {
   service: string;
   disabled?: boolean;
