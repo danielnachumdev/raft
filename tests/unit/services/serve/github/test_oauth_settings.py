@@ -17,6 +17,13 @@ from ....base import RaftTestCase
 
 class TestGithubSettingsParser(RaftTestCase):
     def test_parse_and_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        for key in (
+            "RAFT_GITHUB_MOCK",
+            "RAFT_GITHUB_CLIENT_ID",
+            "RAFT_GITHUB_CLIENT_SECRET",
+            "RAFT_GITHUB_SESSION_TTL_SECONDS",
+        ):
+            monkeypatch.delenv(key, raising=False)
         p = GithubSettingsParser()
         assert p.parse(None).mock is False
         cfg = p.parse({"mock": True, "sessionTtlSeconds": 120})

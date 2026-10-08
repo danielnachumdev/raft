@@ -43,7 +43,8 @@ class TestCoverageDeploy(RaftTestCase):
                 runner._deploy_git(job, sample_session(), sample_repo(), "web")
         assert job.next_steps
 
-    def test_api_callback_oauth(self) -> None:
+    def test_api_callback_oauth(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("RAFT_GITHUB_MOCK", raising=False)
         (self.tmp_path / "settings.yaml").write_text(
             "github: {mock: false, clientId: id, clientSecret: sec}\n", encoding="utf-8"
         )
@@ -117,7 +118,8 @@ class TestCoverageDeploy(RaftTestCase):
         assert store.get(job.id).status == "failed"
         runner._run("missing", sample_session(), sample_repo())
 
-    def test_remaining_api_hints(self) -> None:
+    def test_remaining_api_hints(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("RAFT_GITHUB_MOCK", raising=False)
         (self.tmp_path / "settings.yaml").write_text(
             "github: {mock: false, clientId: id, clientSecret: sec}\n", encoding="utf-8"
         )
