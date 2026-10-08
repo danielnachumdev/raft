@@ -1,0 +1,13 @@
+.back-link {
+  color: var(--accent);
+  text-decoration: none;
+  font: inherit;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 0.4rem;
+  padding: 0.45rem 0.9rem;
+}
+
+.back-link:hover {
+  border-color: var(--accent);
+}

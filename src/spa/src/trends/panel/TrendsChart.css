@@ -1,0 +1,26 @@
+.trends-chart .recharts-line-curve {
+  cursor: pointer;
+  pointer-events: stroke;
+}
+
+.trends-chart .recharts-tooltip-cursor {
+  pointer-events: none;
+}
+
+.trends-chart .recharts-reference-line-line {
+  cursor: pointer;
+  pointer-events: stroke;
+}
+
+.trends-chart .recharts-label {
+  paint-order: stroke fill;
+  stroke: var(--panel);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  cursor: pointer;
+}
+
+.trends-chart {
+  width: 100%;
+  min-height: 280px;
+}

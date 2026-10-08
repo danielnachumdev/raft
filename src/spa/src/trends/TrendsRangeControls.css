@@ -1,0 +1,20 @@
+.trends-range,
+.trends-range-custom,
+.trends-range-absolute {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.trends-range-hint,
+.trends-range-limit {
+  margin: 0;
+  font-size: 0.78rem;
+  text-transform: none;
+  letter-spacing: normal;
+  line-height: 1.35;
+}
+
+.trends-range-limit {
+  color: var(--warn, #9a3412);
+}

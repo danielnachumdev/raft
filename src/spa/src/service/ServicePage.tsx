@@ -11,7 +11,7 @@ import {
   refreshStatus,
 } from "../shared/dashboardCache";
 import { ServiceDetail } from "./ServiceDetail";
-
+import "./ServicePage.css";
 /** Deep-linked service page: `/service/:service`. */
 export function ServicePage() {
   const { service: raw } = useParams<{ service: string }>();

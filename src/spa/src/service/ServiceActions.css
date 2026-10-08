@@ -1,0 +1,11 @@
+.actions-hint {
+  margin: 0 0 0.85rem;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}

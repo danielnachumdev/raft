@@ -1,6 +1,6 @@
 import { buildDownloadItems, type ExportKind } from "./items";
 import { useExportOptions } from "./catalog";
-
+import "./DownloadMenu.css";
 /** Catalog-driven download links; new formats appear without UI wiring. */
 export function DownloadMenu(props: {
   kind: ExportKind;

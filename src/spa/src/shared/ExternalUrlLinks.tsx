@@ -1,5 +1,5 @@
 /** Clickable external URL list for status rows and service detail. */
-
+import "./ExternalUrlLinks.css";
 export function ExternalUrlLinks(props: {
   urls: string[];
   compact?: boolean;

@@ -4,7 +4,7 @@ import {
   type ColumnFilter,
   type SortKey,
 } from "./statusColumnFilter";
-
+import "./StatusPanelControls.css";
 export function StatusPanelControls(props: {
   filtersActive: boolean;
   columnFilterEntries: { key: SortKey; filter: ColumnFilter }[];

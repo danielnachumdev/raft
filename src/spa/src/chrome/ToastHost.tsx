@@ -8,7 +8,7 @@ import {
   type ToastAction,
   type ToastRecord,
 } from "./toast";
-
+import "./ToastHost.css";
 /** Fixed bottom-right toast stack (subscribe to module store). */
 export function ToastHost() {
   const items = useSyncExternalStore(subscribeToasts, getToasts, getToasts);
