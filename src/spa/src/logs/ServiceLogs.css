@@ -38,7 +38,7 @@
   letter-spacing: normal;
   color: var(--ink);
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--input);
   border-radius: 0.35rem;
   padding: 0.3rem 0.45rem;
 }
@@ -73,7 +73,7 @@
   font: inherit;
   color: var(--ink);
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--input);
   border-radius: 0.35rem;
   padding: 0.35rem 0.55rem;
 }
@@ -90,8 +90,8 @@
   padding: 0.55rem 0.65rem;
   border: 1px solid var(--line);
   border-radius: 0.4rem;
-  background: #1c1914;
-  color: #e8e2d6;
+  background: var(--logs-bg);
+  color: var(--logs-fg);
   font-family: var(--font-mono);
   font-size: 0.78rem;
   line-height: 1.5;
@@ -110,7 +110,7 @@
   align-items: stretch;
   justify-content: center;
   padding: 1rem;
-  background: rgba(28, 25, 20, 0.55);
+  background: var(--overlay-strong);
 }
 
 .logs-overlay-panel {
@@ -123,7 +123,7 @@
   border: 1px solid var(--line);
   border-radius: 0.55rem;
   padding: 1rem 1.1rem 0.85rem;
-  box-shadow: 0 12px 40px rgba(28, 25, 20, 0.28);
+  box-shadow: 0 12px 40px var(--shadow-strong);
 }
 
 .logs-overlay-panel .logs-view {

@@ -1,9 +1,13 @@
 :root {
   color-scheme: light;
   --bg: #f3efe6;
+  --bg-glow: #e7f0ea;
+  --bg-top: #f7f2e8;
+  --bg-bottom: #ebe4d6;
   --ink: #1c1914;
   --muted: #5c564c;
   --panel: #fffcf7;
+  --input: #fff;
   --line: #d9d0c0;
   --accent: #0f6b5c;
   --danger: #8b2e1f;
@@ -15,9 +19,56 @@
   --bad-bg: #f3e4df;
   --idle-bg: #e6eef2;
   --muted-bg: #efeae2;
+  --row-hover: #f0ebe1;
+  --ok-border: #b7d5c6;
+  --warn-border: #e0d0a4;
+  --bad-border: #e0bfb5;
+  --idle-border: #c5d4dd;
+  --tree-guide: #9a9185;
+  --overlay: rgba(28, 25, 20, 0.45);
+  --overlay-strong: rgba(28, 25, 20, 0.55);
+  --shadow: rgba(28, 25, 20, 0.14);
+  --shadow-strong: rgba(28, 25, 20, 0.28);
+  --logs-bg: #1c1914;
+  --logs-fg: #e8e2d6;
   --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --font-body: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-mono: "IBM Plex Mono", "Consolas", monospace;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #161411;
+  --bg-glow: #1a2420;
+  --bg-top: #1a1713;
+  --bg-bottom: #12100e;
+  --ink: #e8e2d6;
+  --muted: #a39b8e;
+  --panel: #221f1a;
+  --input: #2a2620;
+  --line: #3d3830;
+  --accent: #4aaf9a;
+  --danger: #d4725f;
+  --ok: #5cb88a;
+  --warn: #d4a84b;
+  --idle: #7a9aab;
+  --ok-bg: #1a2e24;
+  --warn-bg: #2e2818;
+  --bad-bg: #2e1e1a;
+  --idle-bg: #1c262c;
+  --muted-bg: #2a2620;
+  --row-hover: #2c2822;
+  --ok-border: #2f5a45;
+  --warn-border: #6b5630;
+  --bad-border: #6b3d34;
+  --idle-border: #3d5560;
+  --tree-guide: #6e675c;
+  --overlay: rgba(8, 7, 5, 0.65);
+  --overlay-strong: rgba(8, 7, 5, 0.75);
+  --shadow: rgba(0, 0, 0, 0.35);
+  --shadow-strong: rgba(0, 0, 0, 0.5);
+  --logs-bg: #0e0c0a;
+  --logs-fg: #e8e2d6;
 }
 
 * {
@@ -30,8 +81,8 @@ body {
   font-family: var(--font-body);
   color: var(--ink);
   background:
-    radial-gradient(ellipse at top left, #e7f0ea 0%, transparent 45%),
-    linear-gradient(180deg, #f7f2e8 0%, var(--bg) 40%, #ebe4d6 100%);
+    radial-gradient(ellipse at top left, var(--bg-glow) 0%, transparent 45%),
+    linear-gradient(180deg, var(--bg-top) 0%, var(--bg) 40%, var(--bg-bottom) 100%);
 }
 
 code {
@@ -51,6 +102,13 @@ code {
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 1.5rem;
+}
+
+.header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-shrink: 0;
 }
 
 .brand {
@@ -207,7 +265,7 @@ code {
 
 .action-btn-danger {
   color: var(--danger);
-  border-color: #e0bfb5;
+  border-color: var(--bad-border);
 }
 
 .action-btn-danger:hover:not(:disabled) {
@@ -232,7 +290,7 @@ code {
   letter-spacing: normal;
   color: var(--ink);
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--input);
   border-radius: 0.35rem;
   padding: 0.35rem 0.55rem;
   width: 100%;

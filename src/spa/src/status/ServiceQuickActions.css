@@ -37,7 +37,7 @@
 
 .quick-action-danger {
   color: var(--danger);
-  border-color: #e0bfb5;
+  border-color: var(--bad-border);
 }
 
 .quick-action-danger:hover:not(:disabled) {

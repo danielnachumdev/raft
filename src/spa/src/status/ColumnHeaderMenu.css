@@ -108,7 +108,7 @@
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 0.4rem;
-  box-shadow: 0 8px 20px rgba(28, 25, 20, 0.08);
+  box-shadow: 0 8px 20px var(--shadow);
   text-transform: none;
   letter-spacing: normal;
   font-weight: 400;
@@ -172,7 +172,7 @@
   letter-spacing: normal;
   color: var(--ink);
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--input);
   border-radius: 0.3rem;
   padding: 0.3rem 0.45rem;
   width: 100%;

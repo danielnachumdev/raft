@@ -33,25 +33,25 @@ th {
 .status-badge.tone-ok {
   color: var(--ok);
   background: var(--ok-bg);
-  border-color: #b7d5c6;
+  border-color: var(--ok-border);
 }
 
 .status-badge.tone-warn {
   color: var(--warn);
   background: var(--warn-bg);
-  border-color: #e0d0a4;
+  border-color: var(--warn-border);
 }
 
 .status-badge.tone-bad {
   color: var(--danger);
   background: var(--bad-bg);
-  border-color: #e0bfb5;
+  border-color: var(--bad-border);
 }
 
 .status-badge.tone-idle {
   color: var(--idle);
   background: var(--idle-bg);
-  border-color: #c5d4dd;
+  border-color: var(--idle-border);
 }
 
 .status-badge.tone-muted {
@@ -89,7 +89,7 @@ th {
 }
 
 .status-row:hover td {
-  background: #f0ebe1;
+  background: var(--row-hover);
 }
 
 .status-row:focus {
@@ -112,7 +112,7 @@ th {
   flex: 0 0 0.55rem;
   align-self: stretch;
   margin: 0.1rem 0 0.1rem 0.15rem;
-  border-left: 1.5px dashed #9a9185;
+  border-left: 1.5px dashed var(--tree-guide);
 }
 
 .status-name-body {
