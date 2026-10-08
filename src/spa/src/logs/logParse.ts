@@ -44,16 +44,6 @@ export function parseLogLine(raw: string): ParsedLogLine {
   };
 }
 
-/** Case-insensitive substring filter over the original line text. */
-export function filterLogLines(
-  lines: ParsedLogLine[],
-  query: string,
-): ParsedLogLine[] {
-  const q = query.trim().toLowerCase();
-  if (!q) return lines;
-  return lines.filter((line) => line.raw.toLowerCase().includes(q));
-}
-
 function detectSeverity(raw: string): LogSeverity {
   const m = LEVEL_WORD.exec(raw);
   if (!m) return "unknown";

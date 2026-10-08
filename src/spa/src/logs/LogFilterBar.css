@@ -1,0 +1,81 @@
+.logs-filter {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  margin: 0.15rem 0 0.55rem;
+}
+
+.logs-filter-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.logs-filter-op {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 0 0 auto;
+}
+
+.logs-filter-op select {
+  font: inherit;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  background: var(--input);
+  border-radius: 0.35rem;
+  padding: 0.35rem 0.55rem;
+}
+
+.logs-filter-values {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.logs-filter-value-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.logs-filter-value-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: inherit;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  background: var(--input);
+  border-radius: 0.35rem;
+  padding: 0.35rem 0.55rem;
+}
+
+.logs-filter-add,
+.logs-filter-remove {
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 0.35rem;
+  padding: 0.3rem 0.55rem;
+  cursor: pointer;
+}
+
+.logs-filter-add:hover,
+.logs-filter-remove:hover,
+.logs-filter-add:focus-visible,
+.logs-filter-remove:focus-visible {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.logs-match-count {
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  align-self: center;
+}
