@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { DeployProgress } from "./DeployProgress";
 import { DeployRepoPicker } from "./DeployRepoPicker";
 import { DeploySession } from "./DeploySession";
 import {
   fetchDeployJob,
+  fetchGithubConfig,
   fetchGithubRepos,
   fetchGithubSession,
   logoutGithub,
+  needsOauthSetup,
   oauthErrorFromSearch,
   startGithubDeploy,
   type DeployJob,
+  type GithubOauthConfig,
   type GithubRepo,
   type GithubSession,
 } from "./githubApi";
@@ -22,8 +25,10 @@ const POLL_MS = 1000;
 /** GitHub OAuth → pick one repo → auto-deploy + CI PR + logs. */
 export function DeployPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const oauthError = oauthErrorFromSearch(location.search);
   const [session, setSession] = useState<GithubSession | null>(null);
+  const [config, setConfig] = useState<GithubOauthConfig | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [repos, setRepos] = useState<GithubRepo[]>([]);
@@ -32,11 +37,17 @@ export function DeployPage() {
   const [job, setJob] = useState<DeployJob | null>(null);
   const [busy, setBusy] = useState(false);
   const redirecting = useRef(false);
+  const needsSetup = needsOauthSetup(session, oauthError);
 
   const refreshSession = useCallback(async () => {
     setError(null);
     try {
-      setSession(await fetchGithubSession());
+      const [nextSession, nextConfig] = await Promise.all([
+        fetchGithubSession(),
+        fetchGithubConfig(),
+      ]);
+      setSession(nextSession);
+      setConfig(nextConfig);
     } catch {
       setError("Failed to load GitHub session.");
     }
@@ -47,12 +58,18 @@ export function DeployPage() {
   }, [refreshSession]);
 
   useEffect(() => {
-    if (oauthError || !session || session.authenticated || redirecting.current) {
+    if (
+      oauthError ||
+      needsSetup ||
+      !session ||
+      session.authenticated ||
+      redirecting.current
+    ) {
       return;
     }
     redirecting.current = true;
     window.location.assign("/api/github/login");
-  }, [session, oauthError]);
+  }, [session, oauthError, needsSetup]);
 
   useEffect(() => {
     if (!session?.authenticated) {
@@ -110,7 +127,7 @@ export function DeployPage() {
     setBusy(true);
     try {
       await logoutGithub();
-      setSession(await fetchGithubSession());
+      await refreshSession();
       setSelected(null);
       setJob(null);
       redirecting.current = false;
@@ -119,6 +136,13 @@ export function DeployPage() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const onOauthSaved = async () => {
+    redirecting.current = false;
+    navigate("/deploy", { replace: true });
+    await refreshSession();
+    window.location.assign("/api/github/login");
   };
 
   return (
@@ -150,12 +174,17 @@ export function DeployPage() {
 
       <DeploySession
         session={session}
+        config={config}
         oauthError={oauthError}
+        needsSetup={needsSetup}
         busy={busy}
         onLogout={() => void onLogout()}
+        onBusy={setBusy}
+        onSaved={() => void onOauthSaved()}
+        onError={(message) => setError(message || null)}
       />
 
-      {session?.authenticated && !oauthError ? (
+      {session?.authenticated && !oauthError && !needsSetup ? (
         <>
           <DeployRepoPicker
             query={query}

@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import time
+from typing import Optional
 from unittest.mock import MagicMock
 
+import pytest
 from fastapi.testclient import TestClient
 
 from raft.services.ops.status.models import StatusSnapshot
@@ -20,12 +22,12 @@ from ....services.ops.status.fixtures import StatusFixtures
 
 
 class TestServeGithubApi(RaftTestCase):
-    def _client(self) -> TestClient:
+    def _client(self, *, settings: Optional[str] = None) -> TestClient:
         stack = make_stack(self.tmp_path)
-        (self.tmp_path / "settings.yaml").write_text(
-            "edge: {http: 80, https: null}\ngithub: {mock: true}\n",
-            encoding="utf-8",
+        body = settings or (
+            "edge: {http: 80, https: null}\ngithub: {mock: true}\n"
         )
+        (self.tmp_path / "settings.yaml").write_text(body, encoding="utf-8")
         status = MagicMock()
         status.collect.return_value = StatusSnapshot(
             host=StatusFixtures.empty_host_status(), containers=()
@@ -41,6 +43,7 @@ class TestServeGithubApi(RaftTestCase):
         client = self._client()
         bare = client.get("/api/github/session").json()
         assert bare["authenticated"] is False and bare["mock"] is True
+        assert bare["oauth_configured"] is True
         assert client.get("/api/github/login", follow_redirects=False).status_code == 302
         cb = client.get("/api/github/callback?mock=1", follow_redirects=False)
         assert cb.status_code == 302 and cb.headers["location"] == "/deploy"
@@ -51,6 +54,42 @@ class TestServeGithubApi(RaftTestCase):
         repos = client.get("/api/github/repos").json()["repos"]
         assert any(r["full_name"] == "demo/http-only-site" for r in repos)
         assert client.post("/api/github/logout").json()["authenticated"] is False
+
+    def test_config_save_reloads_oauth(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._clear_github_env(monkeypatch)
+        client = self._client(settings="edge: {http: 80}\n")
+        bare = client.get("/api/github/config").json()
+        assert bare["oauth_configured"] is False
+        assert "applications/new" in bare["oauth_app_url"]
+        login = client.get("/api/github/login", follow_redirects=False)
+        assert login.status_code == 302 and "oauth_error=" in login.headers["location"]
+        saved = client.post(
+            "/api/github/config",
+            json={"clientId": "cid", "clientSecret": "csec", "mock": False},
+        ).json()
+        assert saved["ok"] and saved["reloaded"] and saved["oauth_configured"]
+        again = client.get("/api/github/login", follow_redirects=False)
+        assert again.status_code == 302
+        assert "github.com/login/oauth/authorize" in again.headers["location"]
+
+    def test_config_errors_and_hints(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self._clear_github_env(monkeypatch)
+        client = self._client(settings="edge: {http: 80}\n")
+        assert "not configured" in client.get("/api/github/session").json()["hint"]
+        assert client.post("/api/github/config", json={"mock": False}).status_code == 400
+        assert ServeGithubApi._optional_bool(None) is None
+        assert ServeGithubApi._optional_bool("yes") is True
+
+    @staticmethod
+    def _clear_github_env(monkeypatch: pytest.MonkeyPatch) -> None:
+        for key in (
+            "RAFT_GITHUB_MOCK",
+            "RAFT_GITHUB_CLIENT_ID",
+            "RAFT_GITHUB_CLIENT_SECRET",
+        ):
+            monkeypatch.delenv(key, raising=False)
 
     def test_deploy_requires_session_and_valid_name(self) -> None:
         client = self._client()

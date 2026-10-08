@@ -16,6 +16,7 @@ from .deploy_job import DeployJobStore, GithubDeployRunner
 from .oauth import GITHUB_OAUTH_SCOPES, GithubOauth
 from .provider import GithubProvider, MockGithubProvider, RealGithubProvider
 from .session import GithubSessionStore
+from .settings_write import GithubSettingsWriter
 
 
 class ServeGithubApi:
@@ -31,15 +32,19 @@ class ServeGithubApi:
     ) -> None:
         self.stack = stack
         self._port = port
-        self._cfg = load_config(stack.root).github
+        self._settings = GithubSettingsWriter(stack.root)
         self._sessions = GithubSessionStore(stack.root)
+        self._provider_override = provider
+        self._jobs = jobs or DeployJobStore()
+        self._cfg = load_config(stack.root).github
         self._oauth = GithubOauth(self._cfg, self._sessions)
         self._provider = provider or self._default_provider()
-        self._jobs = jobs or DeployJobStore()
         self._runner = GithubDeployRunner(stack, self._provider, self._jobs)
 
     def register(self, app) -> None:
         app.get("/api/github/session")(self.api_session)
+        app.get("/api/github/config")(self.api_config)
+        app.post("/api/github/config")(self.api_save_config)
         app.get("/api/github/login")(self.api_login)
         app.get("/api/github/callback")(self.api_callback)
         app.post("/api/github/logout")(self.api_logout)
@@ -49,16 +54,39 @@ class ServeGithubApi:
 
     def api_session(self) -> Dict[str, Any]:
         session = self._sessions.load()
+        base = self._settings.public_status(port=self._port)
+        base["scopes"] = GITHUB_OAUTH_SCOPES
+        base["hint"] = self._login_hint()
         if session is None or not session.access_token:
-            return {
-                "authenticated": False,
-                "mock": self._cfg.mock,
-                "scopes": GITHUB_OAUTH_SCOPES,
-                "hint": self._login_hint(),
-            }
+            base["authenticated"] = False
+            return base
         out = session.to_public()
+        out.update(base)
+        return out
+
+    def api_config(self, request: Request) -> Dict[str, Any]:
+        port = self._request_port(request)
+        out = self._settings.public_status(port=port)
         out["scopes"] = GITHUB_OAUTH_SCOPES
-        out["hint"] = self._login_hint()
+        return out
+
+    def api_save_config(
+        self, request: Request, body: Dict[str, Any] = Body(...)
+    ) -> Dict[str, Any]:
+        del request
+        try:
+            cfg = self._settings.save(
+                client_id=body.get("clientId") or body.get("client_id"),
+                client_secret=body.get("clientSecret") or body.get("client_secret"),
+                mock=self._optional_bool(body.get("mock")),
+            )
+        except OperatorError as exc:
+            raise self._http(exc) from exc
+        self._reload_github(cfg)
+        out = self._settings.public_status(port=self._port)
+        out["scopes"] = GITHUB_OAUTH_SCOPES
+        out["ok"] = True
+        out["reloaded"] = True
         return out
 
     def api_login(self, request: Request) -> RedirectResponse:
@@ -185,7 +213,26 @@ class ServeGithubApi:
             return MockGithubProvider()
         return RealGithubProvider()
 
+    def _reload_github(self, cfg) -> None:
+        self._cfg = cfg
+        self._oauth = GithubOauth(cfg, self._sessions)
+        self._provider = self._provider_override or self._default_provider()
+        self._runner = GithubDeployRunner(self.stack, self._provider, self._jobs)
+
+    @staticmethod
+    def _optional_bool(raw: Any) -> Optional[bool]:
+        if raw is None:
+            return None
+        if isinstance(raw, bool):
+            return raw
+        return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+
     def _login_hint(self) -> str:
+        if not GithubSettingsWriter.oauth_ready(self._cfg):
+            return (
+                "GitHub OAuth is not configured. Create an OAuth App, paste "
+                "client id/secret below (saved to settings.yaml), then continue."
+            )
         if self._cfg.mock:
             return (
                 "Mock GitHub mode is on — login is local and lists fixture repos. "

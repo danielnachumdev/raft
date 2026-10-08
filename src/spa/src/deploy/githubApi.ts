@@ -1,3 +1,16 @@
+export type GithubOauthConfig = {
+  oauth_configured: boolean;
+  mock: boolean;
+  client_id_set: boolean;
+  callback_url: string;
+  oauth_app_url: string;
+  docs_url: string;
+  settings_path: string;
+  scopes?: string;
+  ok?: boolean;
+  reloaded?: boolean;
+};
+
 export type GithubSession = {
   authenticated: boolean;
   login?: string;
@@ -5,6 +18,12 @@ export type GithubSession = {
   expires_at?: number;
   scopes?: string;
   hint?: string;
+  oauth_configured?: boolean;
+  client_id_set?: boolean;
+  callback_url?: string;
+  oauth_app_url?: string;
+  docs_url?: string;
+  settings_path?: string;
 };
 
 export type GithubRepo = {
@@ -77,6 +96,45 @@ export async function logoutGithub(): Promise<void> {
     const body = await readJson(res);
     throw new Error(detailOf(body) || `logout ${res.status}`);
   }
+}
+
+export async function fetchGithubConfig(): Promise<GithubOauthConfig> {
+  const res = await fetch("/api/github/config");
+  const body = await readJson(res);
+  if (!res.ok) {
+    throw new Error(detailOf(body) || `config ${res.status}`);
+  }
+  return body as GithubOauthConfig;
+}
+
+export async function saveGithubConfig(input: {
+  clientId?: string;
+  clientSecret?: string;
+  mock?: boolean;
+}): Promise<GithubOauthConfig> {
+  const res = await fetch("/api/github/config", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      clientId: input.clientId,
+      clientSecret: input.clientSecret,
+      mock: input.mock ?? false,
+    }),
+  });
+  const body = await readJson(res);
+  if (!res.ok) {
+    throw new Error(detailOf(body) || `save config ${res.status}`);
+  }
+  return body as GithubOauthConfig;
+}
+
+export function needsOauthSetup(
+  session: GithubSession | null,
+  oauthError: string | null,
+): boolean {
+  if (session && session.oauth_configured === false) return true;
+  if (!oauthError) return false;
+  return /oauth is not configured/i.test(oauthError);
 }
 
 export async function fetchGithubRepos(q: string): Promise<GithubRepo[]> {
