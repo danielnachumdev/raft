@@ -135,7 +135,7 @@ class GithubDeployRunner:
             self._deploy_local(job, local, data, app_name)
         else:
             self._deploy_git(job, session, repo, app_name)
-        self._fill_next_steps(job)
+        self._fill_next_steps(job, data)
 
     def _deploy_local(
         self, job: DeployJob, tree: Path, data: dict, app_name: str
@@ -195,18 +195,19 @@ class GithubDeployRunner:
             }
         ]
 
-    def _fill_next_steps(self, job: DeployJob) -> None:
+    def _fill_next_steps(self, job: DeployJob, data: dict) -> None:
         if not job.app_name:
             return
-        stack = load_stack(self._stack.root)
-        app = stack.app(job.app_name)
-        path = stack.root / "state" / "apps" / f"{job.app_name}.yaml"
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-        _, spec = AppDocument.parse(data, path=path)
+        path = self._stack.root / "state" / "apps" / f"{job.app_name}.yaml"
+        if path.is_file():
+            data = yaml.safe_load(path.read_text(encoding="utf-8")) or data
+        app, spec = AppDocument.parse(data, path=path if path.is_file() else Path("."))
         fp = self._fingerprint(job.deploy_pubkey) if job.deploy_pubkey else None
-        url = None
-        if "/" in job.full_name:
-            url = f"https://github.com/{job.full_name}/settings/keys/new"
+        url = (
+            f"https://github.com/{job.full_name}/settings/keys/new"
+            if "/" in job.full_name
+            else None
+        )
         job.next_steps = self._next.build(
             app,
             spec,

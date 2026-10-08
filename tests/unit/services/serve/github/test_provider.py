@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from io import BytesIO
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -29,10 +30,12 @@ class TestMockGithubProvider(RaftTestCase):
             p.fetch_manifest("tok", "demo/no-manifest", "main")
         with pytest.raises(OperatorError, match="unknown mock"):
             p.fetch_manifest("tok", "other/x", "main")
+        assert p.resolve_local_tree("demo/nope") is None
+        assert p.resolve_local_tree("bad") is None
 
 
 class TestRealGithubProvider(RaftTestCase):
-    def test_parse_and_404(self) -> None:
+    def test_parse_repo(self) -> None:
         item = {
             "full_name": "o/r",
             "name": "r",
@@ -44,40 +47,59 @@ class TestRealGithubProvider(RaftTestCase):
             "html_url": "https://github.com/o/r",
         }
         repo = RealGithubProvider._parse_repo(item)
-        assert repo.full_name == "o/r"
-        assert repo.private is True
+        assert repo.full_name == "o/r" and repo.private is True
         assert RealGithubProvider().resolve_local_tree("o/r") is None
 
-    def test_list_repos_uses_api(self) -> None:
+    def test_list_and_search(self) -> None:
         provider = RealGithubProvider()
         payload = (
             '[{"full_name":"a/b","name":"b","private":false,'
             '"default_branch":"main","clone_url":"c","ssh_url":"s","html_url":"h"}]'
         )
         with patch.object(provider, "_request_page", return_value=(payload, None)):
-            repos = provider.list_repos("tok")
-        assert len(repos) == 1
-        assert repos[0].full_name == "a/b"
-
-    def test_search_and_manifest_404(self) -> None:
-        provider = RealGithubProvider()
-        search = '{"items":[{"full_name":"a/b","name":"b","private":false,'
-        search += '"default_branch":"main","clone_url":"c","ssh_url":"s","html_url":"h"}]}'
+            assert provider.list_repos("tok")[0].full_name == "a/b"
+        search = (
+            '{"items":[{"full_name":"a/b","name":"b","private":false,'
+            '"default_branch":"main","clone_url":"c","ssh_url":"s","html_url":"h"}]}'
+        )
         with patch.object(provider, "_request", return_value=search):
-            repos = provider.list_repos("tok", query="b")
-        assert repos[0].name == "b"
-        err = MagicMock()
-        err.code = 404
-        err.read.return_value = b"missing"
-        with patch.object(provider, "_request", side_effect=self._http_404()):
-            with pytest.raises(OperatorError, match="no .raft/app.yaml"):
+            assert provider.list_repos("tok", query="b")[0].name == "b"
+
+    def test_manifest_ok_and_empty(self) -> None:
+        provider = RealGithubProvider()
+        with patch.object(provider, "_request", return_value="apiVersion: raft/v1\n"):
+            assert "raft/v1" in provider.fetch_manifest("tok", "a/b", "main")
+        with patch.object(provider, "_request", return_value="  \n"):
+            with pytest.raises(OperatorError, match="empty"):
                 provider.fetch_manifest("tok", "a/b", "main")
 
-    @staticmethod
-    def _http_404():
+    def test_request_ok_and_404(self) -> None:
+        provider = RealGithubProvider()
+        assert RealGithubProvider._next_link(None) is None
+        link = '<https://api.github.com/x?page=2>; rel="next", <u>; rel="prev"'
+        assert "page=2" in (RealGithubProvider._next_link(link) or "")
+        resp = MagicMock()
+        resp.read.return_value = b"ok"
+        resp.__enter__.return_value = resp
+        resp.__exit__.return_value = False
+        with patch("urllib.request.urlopen", return_value=resp):
+            assert provider._request("tok", "https://example.com") == "ok"
         import urllib.error
 
-        def _raise(*_a, **_k):
-            raise urllib.error.HTTPError("u", 404, "x", hdrs=None, fp=MagicMock(read=lambda: b""))
+        err = urllib.error.HTTPError("u", 404, "x", hdrs=None, fp=BytesIO(b'{"message":"no"}'))
+        with patch("urllib.request.urlopen", side_effect=err):
+            with pytest.raises(OperatorError, match="no .raft/app.yaml"):
+                provider._request("tok", "https://example.com")
 
-        return _raise
+    def test_request_500_and_empty_lists(self) -> None:
+        provider = RealGithubProvider()
+        import urllib.error
+
+        err = urllib.error.HTTPError("u", 500, "x", hdrs=None, fp=BytesIO(b"boom"))
+        with patch("urllib.request.urlopen", side_effect=err):
+            with pytest.raises(OperatorError, match="GitHub API error"):
+                provider._request("tok", "https://example.com")
+        with patch.object(provider, "_request_page", return_value=("{}", None)):
+            assert provider.list_repos("tok") == []
+        with patch.object(provider, "_request", return_value='{"items":null}'):
+            assert provider.list_repos("tok", query="x") == []

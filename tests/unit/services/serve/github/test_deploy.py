@@ -93,8 +93,19 @@ class TestGithubDeployRunner(RaftTestCase):
 
     def test_fill_next_steps_from_registry(self) -> None:
         stack = make_stack(self.tmp_path)
+        manifest = self._write_registry_manifest()
+        runner = GithubDeployRunner(
+            stack, MockGithubProvider(ServePaths.mock_github_dir()), DeployJobStore()
+        )
+        job = DeployJob(
+            id="x", full_name="demo/http-only-site", ref="main", app_name="http-only-site"
+        )
+        runner._fill_next_steps(job, manifest)
+        assert any(s["title"] == "DNS" for s in job.next_steps)
+
+    def _write_registry_manifest(self) -> dict:
         apps = self.tmp_path / "state" / "apps"
-        apps.mkdir(parents=True)
+        apps.mkdir(parents=True, exist_ok=True)
         manifest = {
             "apiVersion": "raft/v1",
             "kind": "App",
@@ -108,12 +119,5 @@ class TestGithubDeployRunner(RaftTestCase):
             },
         }
         (apps / "http-only-site.yaml").write_text(yaml.safe_dump(manifest), encoding="utf-8")
-        (self.tmp_path / "apps" / "http-only-site").mkdir(parents=True)
-        runner = GithubDeployRunner(
-            stack, MockGithubProvider(ServePaths.mock_github_dir()), DeployJobStore()
-        )
-        job = DeployJob(
-            id="x", full_name="demo/http-only-site", ref="main", app_name="http-only-site"
-        )
-        runner._fill_next_steps(job)
-        assert any(s["title"] == "DNS" for s in job.next_steps)
+        (self.tmp_path / "apps" / "http-only-site").mkdir(parents=True, exist_ok=True)
+        return manifest

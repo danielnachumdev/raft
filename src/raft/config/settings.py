@@ -295,6 +295,5 @@ class SettingsLoader:
             )
         return value
 
-
 def load_config(data_home: Path, *, path: Optional[Path] = None) -> RaftConfig:
     return SettingsLoader().load(data_home, path=path)

@@ -67,18 +67,16 @@ class TestServeGithubApi(RaftTestCase):
             id="abc", full_name="demo/http-only-site", ref="main", status="running"
         )
         jobs._jobs[job.id] = job
+        c = self._authed_client(jobs)
+        assert c.get("/api/github/deploy/abc").json()["status"] == "running"
+        assert c.get("/api/github/deploy/missing").status_code == 404
+
+    def _authed_client(self, jobs: DeployJobStore) -> TestClient:
         stack = make_stack(self.tmp_path)
         (self.tmp_path / "settings.yaml").write_text(
             "github: {mock: true}\n", encoding="utf-8"
         )
-        GithubSessionStore(self.tmp_path).save(
-            GithubSession(
-                access_token="mock",
-                login="mock-operator",
-                mock=True,
-                expires_at=time.time() + 60,
-            )
-        )
+        self._save_mock_session()
         api = ServeGithubApi(
             stack,
             provider=MockGithubProvider(ServePaths.mock_github_dir()),
@@ -88,6 +86,14 @@ class TestServeGithubApi(RaftTestCase):
         status.collect.return_value = StatusSnapshot(
             host=StatusFixtures.empty_host_status(), containers=()
         )
-        c = TestClient(ServeAppFactory(stack, status=status, github=api).create())
-        assert c.get("/api/github/deploy/abc").json()["status"] == "running"
-        assert c.get("/api/github/deploy/missing").status_code == 404
+        return TestClient(ServeAppFactory(stack, status=status, github=api).create())
+
+    def _save_mock_session(self) -> None:
+        GithubSessionStore(self.tmp_path).save(
+            GithubSession(
+                access_token="mock",
+                login="mock-operator",
+                mock=True,
+                expires_at=time.time() + 60,
+            )
+        )
