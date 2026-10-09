@@ -87,6 +87,13 @@ export function Dashboard() {
         </div>
         <div className="header-actions">
           <ThemeToggle />
+          <Link
+            className="refresh"
+            to="/settings/notifications"
+            id="nav-notifications"
+          >
+            Notifications
+          </Link>
           <button
             type="button"
             className={busy ? "refresh is-loading" : "refresh"}

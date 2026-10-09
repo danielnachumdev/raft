@@ -1,0 +1,48 @@
+.channel-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  border: 1px solid var(--line);
+}
+
+.channel-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding: 0.75rem 0.85rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.channel-row:last-child {
+  border-bottom: 0;
+}
+
+.channel-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 12rem;
+  flex: 1 1 14rem;
+}
+
+.channel-id {
+  font-size: 0.98rem;
+}
+
+.channel-meta code {
+  font-size: 0.85em;
+}
+
+.channel-settings-preview {
+  font-size: 0.82rem;
+  word-break: break-word;
+}
+
+.channel-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
