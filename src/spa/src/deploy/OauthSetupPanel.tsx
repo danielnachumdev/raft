@@ -100,17 +100,6 @@ export function OauthSetupPanel(props: {
           Client Secret below.
         </li>
       </ol>
-      <p className="oauth-setup-links">
-        <a
-          className="refresh deploy-cta"
-          href={hints.docs_url}
-          target="_blank"
-          rel="noreferrer"
-          id="oauth-setup-docs-link"
-        >
-          Setup guide
-        </a>
-      </p>
       <form className="oauth-setup-form" onSubmit={(e) => void onSubmit(e)}>
         <label className="deploy-label">
           Client ID

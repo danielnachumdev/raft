@@ -77,7 +77,6 @@ describe("oauthSetupHints", () => {
         application_name: DEFAULT_APPLICATION_NAME,
         description: "Localhost raft serve ops UI — temporary GitHub login.",
         oauth_app_url: "https://github.com/settings/applications/new?x=1",
-        docs_url: "https://example.test/docs",
         settings_path: "/tmp/settings.yaml",
         enable_device_flow: false,
         expire_user_access_tokens: false,

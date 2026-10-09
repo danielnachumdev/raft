@@ -18,8 +18,8 @@ This is **not** a public multi-user console and **not** a full App lifecycle UI.
 3. Unauthenticated visits **auto-redirect** to `/api/github/login` (real OAuth
    authorize page when configured; mock callback only when `github.mock` /
    `RAFT_GITHUB_MOCK=1`).
-4. If OAuth is **not configured**, `/deploy` shows setup instructions, links to
-   create a GitHub OAuth App + this guide, and paste-in controls for
+4. If OAuth is **not configured**, `/deploy` shows an ordered checklist (create
+   OAuth App link + copyable field values) and paste-in controls for
    `clientId` / `clientSecret`. Saving writes `github:` into
    `~/.raft/settings.yaml` and reloads serve’s in-process config (no restart).
 5. **Other OAuth failures** redirect to `/deploy?oauth_error=…` with a clear

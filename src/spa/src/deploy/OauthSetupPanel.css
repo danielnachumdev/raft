@@ -41,15 +41,8 @@
   border-color: var(--text);
 }
 
-.oauth-setup-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-  margin: 0.75rem 0 1rem;
-}
-
 .oauth-setup-form {
-  margin-top: 0.25rem;
+  margin-top: 0.75rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--line);
 }

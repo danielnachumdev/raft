@@ -1,7 +1,5 @@
 import type { GithubOauthConfig, GithubSession } from "./githubApi";
 
-const FALLBACK_DOCS =
-  "https://github.com/danielnachumdev/raft/blob/main/docs/serve-github-deploy.md";
 const OAUTH_APP_NEW = "https://github.com/settings/applications/new";
 
 export const DEFAULT_APPLICATION_NAME = "raft serve";
@@ -17,7 +15,6 @@ export type OauthSetupHints = {
   enable_device_flow: boolean;
   expire_user_access_tokens: boolean;
   oauth_app_url: string;
-  docs_url: string;
   settings_path: string;
   scopes: string;
 };
@@ -72,7 +69,6 @@ export function resolveOauthSetupHints(
         description,
         callback_url: callback,
       }),
-    docs_url: config?.docs_url || session?.docs_url || FALLBACK_DOCS,
     settings_path:
       config?.settings_path || session?.settings_path || "~/.raft/settings.yaml",
     scopes: config?.scopes || session?.scopes || "read:user repo workflow",
