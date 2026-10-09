@@ -189,6 +189,13 @@ export function accountCount(session: GithubSession | null): number {
   return session?.accounts?.length ?? 0;
 }
 
+/** Non-expired connected accounts available for repo browse / deploy. */
+export function usableAccounts(
+  session: GithubSession | null,
+): GithubAccountPublic[] {
+  return (session?.accounts ?? []).filter((account) => !account.expired);
+}
+
 export async function fetchGithubRepos(q: string): Promise<GithubRepo[]> {
   const params = new URLSearchParams();
   if (q.trim()) params.set("q", q.trim());
