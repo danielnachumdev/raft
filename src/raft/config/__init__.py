@@ -26,6 +26,8 @@ from .settings_types import (
     HealingConfig,
     LoggingConfig,
     MetricsConfig,
+    NotificationChannelConfig,
+    NotificationsConfig,
     RaftConfig,
     default_config,
 )
@@ -45,6 +47,8 @@ __all__ = [
     "LOGS_DIRNAME",
     "LoggingConfig",
     "MetricsConfig",
+    "NotificationChannelConfig",
+    "NotificationsConfig",
     "RaftConfig",
     "SETTINGS_FILENAME",
     "STATE_DIR",

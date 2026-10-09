@@ -1,4 +1,4 @@
-"""Minimal channel descriptor for dispatcher input (config lands in a later issue)."""
+"""Runtime channel descriptor for dispatcher input (from settings via adapter)."""
 
 from __future__ import annotations
 

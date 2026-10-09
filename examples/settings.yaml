@@ -138,3 +138,25 @@ edge:
 # Env: RAFT_GITHUB_MOCK, RAFT_GITHUB_CLIENT_ID, RAFT_GITHUB_CLIENT_SECRET,
 #      RAFT_GITHUB_SESSION_TTL_SECONDS
 # Scopes: read:user repo workflow (listing + CI workflow PR; deploy keys manual)
+
+# ---------------------------------------------------------------------------
+# notifications — durable outbound alert channels (settings.yaml, not state/).
+# Framework: services/notify/ (strategy ABC + dispatcher). Concrete backends
+# (webhook / email / …) register later; unknown type values may be persisted
+# and are validated when a matching strategy is registered for dispatch.
+# Secret-like settings keys are redacted in serve API responses (never log
+# tokens/passwords in cleartext).
+# ---------------------------------------------------------------------------
+# notifications:
+#   enabled: true
+#   channels:
+#     - id: ops-primary
+#       enabled: true
+#       type: webhook          # strategy type_id once registered
+#       settings:
+#         url: https://hooks.example.invalid/raft
+#     - id: oncall-email
+#       enabled: false
+#       type: email
+#       settings:
+#         to: ops@example.com
