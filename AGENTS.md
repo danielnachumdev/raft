@@ -281,7 +281,7 @@ Localhost dashboard for operators (`raft serve`). **Hard rules:** bind `127.0.0.
 | `POST` | `/api/github/logout` | Logout active account (`state/serve/github-accounts.json`) |
 | `POST` | `/api/github/accounts/select` | `{account_id}` set active connected account |
 | `POST` | `/api/github/accounts/{id}/logout` | Logout one connected account |
-| `GET` | `/api/github/repos` | List/search repos for the **active** account |
+| `GET` | `/api/github/repos` | List active account’s owned/member repos (`q` filters locally) |
 | `POST` / `GET` | `/api/github/deploy` / `/api/github/deploy/{id}` | Trigger + poll apply/deploy + CI PR + next steps |
 
 GitHub add-service assist (v1): dashboard Apps **`+`** → `/add-service` → `/deploy` (auto OAuth when zero accounts); one OAuth App in settings, many connected accounts; settings `github:` / `RAFT_GITHUB_*` scopes `read:user repo workflow`; CI PR adds `.github/workflows/raft-apply.yml`; see [`docs/serve-github-deploy.md`](docs/serve-github-deploy.md).

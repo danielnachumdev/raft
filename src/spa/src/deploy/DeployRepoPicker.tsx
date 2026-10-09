@@ -32,6 +32,9 @@ export function DeployRepoPicker(props: {
   return (
     <section className="deploy-panel" id="repo-picker">
       <h2>Pick a repository</h2>
+      <p className="muted">
+        Repos you own or belong to (org / collaborator). Filter as you type.
+      </p>
       <label className="deploy-label" htmlFor="github-view-as">
         View repos as
         <select
@@ -51,17 +54,17 @@ export function DeployRepoPicker(props: {
       </label>
       {!accountReady ? (
         <p className="muted" id="repo-account-required">
-          Choose which connected account to list repos from, then search and
+          Choose which connected account to list repos from, then filter and
           pick a repository.
         </p>
       ) : null}
       <label className="deploy-label">
-        Search
+        Filter
         <input
           type="search"
           value={query}
           onChange={(e) => onQuery(e.target.value)}
-          placeholder="Filter repos"
+          placeholder="Filter by owner/name"
           id="repo-search"
           disabled={!accountReady || busy}
         />
