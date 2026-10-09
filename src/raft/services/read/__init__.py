@@ -35,7 +35,9 @@ Serve ``GET /api/metrics`` returns historical series from
 plus ``events`` from ``state/events/graph.jsonl``. Payload includes ``bounds``
 from metrics retention (``retentionMaxAgeDays`` / earliest sample).
 Live updates use HTTP polling — simpler and durable for one FastAPI process
-than WebSockets.
+than WebSockets. Serve status endpoints reload ``state/apps/`` on each call so
+out-of-band apply/delete is visible on the next SPA poll (~2s when the tab is
+visible).
 
 Doctor JSON is deferred for a full dashboard health view; see
 ``DoctorRead.intended_payload_shape`` and ``DoctorRead.from_results``.

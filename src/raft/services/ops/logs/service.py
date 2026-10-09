@@ -22,6 +22,12 @@ class Logs:
         self.docker = DockerStack(stack, self.sh)
         self._targets = LogsTargets(stack)
 
+    def bind_stack(self, stack: Stack) -> None:
+        """Point at a reloaded Stack after serve registry refresh."""
+        self.stack = stack
+        self.docker.stack = stack
+        self._targets.stack = stack
+
     def show(
         self,
         *services: str,

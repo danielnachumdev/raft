@@ -58,14 +58,25 @@ class ServePage:
 
     def api_status(self) -> Dict[str, Any]:
         """Expensive snapshot for the SPA (and future consumers)."""
-        return self._read.api_payload()
+        payload = self._read.api_payload(refresh_apps=True)
+        self._adopt_stack(self._read.stack)
+        return payload
 
     def api_service(self, name: str) -> Dict[str, Any]:
         """Full status for one Compose service id."""
-        detail = self._read.service_detail(name)
+        detail = self._read.service_detail(name, refresh_apps=True)
+        self._adopt_stack(self._read.stack)
         if detail is None:
             raise HTTPException(status_code=404, detail=f"service '{name}' not found")
         return detail
+
+    def _adopt_stack(self, stack: Stack) -> None:
+        """Keep page + mutative collaborators on the reloaded registry."""
+        if stack is self.stack:
+            return
+        self.stack = stack
+        self._actions.bind_stack(stack)
+        self._logs.bind_stack(stack)
 
     def api_service_logs(self, name: str, tail: int = DEFAULT_LOG_TAIL) -> Dict[str, Any]:
         """Recent container logs for one service (CLI ``raft logs`` snapshot)."""
