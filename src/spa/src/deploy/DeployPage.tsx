@@ -4,13 +4,16 @@ import { DeployProgress } from "./DeployProgress";
 import { DeployRepoPicker } from "./DeployRepoPicker";
 import { DeploySession } from "./DeploySession";
 import {
+  accountCount,
   fetchDeployJob,
   fetchGithubConfig,
   fetchGithubRepos,
   fetchGithubSession,
   logoutGithub,
+  logoutGithubAccount,
   needsOauthSetup,
   oauthErrorFromSearch,
+  selectGithubAccount,
   startGithubDeploy,
   type DeployJob,
   type GithubOauthConfig,
@@ -38,6 +41,7 @@ export function DeployPage() {
   const [busy, setBusy] = useState(false);
   const redirecting = useRef(false);
   const needsSetup = needsOauthSetup(session, oauthError);
+  const activeId = session?.active_account_id ?? null;
 
   const refreshSession = useCallback(async () => {
     setError(null);
@@ -53,16 +57,24 @@ export function DeployPage() {
     }
   }, []);
 
+  const clearRepoSelection = useCallback(() => {
+    setSelected(null);
+    setJob(null);
+    setRepos([]);
+    setQuery("");
+  }, []);
+
   useEffect(() => {
     void refreshSession();
   }, [refreshSession]);
 
   useEffect(() => {
+    // Auto-login only when zero connected accounts (not when expired rows exist).
     if (
       oauthError ||
       needsSetup ||
       !session ||
-      session.authenticated ||
+      accountCount(session) > 0 ||
       redirecting.current
     ) {
       return;
@@ -90,7 +102,7 @@ export function DeployPage() {
     return () => {
       cancelled = true;
     };
-  }, [session?.authenticated, query]);
+  }, [session?.authenticated, activeId, query]);
 
   useEffect(() => {
     if (!job || job.status === "succeeded" || job.status === "failed") return;
@@ -126,13 +138,37 @@ export function DeployPage() {
   const onLogout = async () => {
     setBusy(true);
     try {
-      await logoutGithub();
-      await refreshSession();
-      setSelected(null);
-      setJob(null);
+      setSession(await logoutGithub());
+      clearRepoSelection();
       redirecting.current = false;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Logout failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onLogoutOne = async (accountId: string) => {
+    setBusy(true);
+    try {
+      setSession(await logoutGithubAccount(accountId));
+      clearRepoSelection();
+      redirecting.current = false;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Logout failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onSelectAccount = async (accountId: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      clearRepoSelection();
+      setSession(await selectGithubAccount(accountId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Select account failed");
     } finally {
       setBusy(false);
     }
@@ -144,6 +180,10 @@ export function DeployPage() {
     await refreshSession();
     window.location.assign("/api/github/login");
   };
+
+  const showRepos = Boolean(
+    session?.authenticated && !oauthError && !needsSetup,
+  );
 
   return (
     <div className="page deploy-page">
@@ -179,12 +219,14 @@ export function DeployPage() {
         needsSetup={needsSetup}
         busy={busy}
         onLogout={() => void onLogout()}
+        onLogoutOne={(id) => void onLogoutOne(id)}
+        onSelectAccount={(id) => void onSelectAccount(id)}
         onBusy={setBusy}
         onSaved={() => void onOauthSaved()}
         onError={(message) => setError(message || null)}
       />
 
-      {session?.authenticated && !oauthError && !needsSetup ? (
+      {showRepos ? (
         <>
           <DeployRepoPicker
             query={query}

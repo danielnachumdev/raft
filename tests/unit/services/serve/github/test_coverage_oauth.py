@@ -15,7 +15,7 @@ from raft.services.serve.github.deploy_job import DeployJob, DeployJobStore, Git
 from raft.services.serve.github.next_steps import DeployNextSteps
 from raft.services.serve.github.oauth import GithubOauth
 from raft.services.serve.github.provider import RealGithubProvider
-from raft.services.serve.github.session import GithubSessionStore
+from raft.services.serve.github.accounts import GithubAccountStore
 
 from ....base import RaftTestCase, make_stack
 
@@ -37,7 +37,7 @@ class TestCoverageOauth(RaftTestCase):
     def test_oauth_token_request_http_error(self) -> None:
         oauth = GithubOauth(
             GithubServeConfig(mock=False, client_id="id", client_secret="sec"),
-            GithubSessionStore(self.tmp_path),
+            GithubAccountStore(self.tmp_path),
         )
         import urllib.error
 
@@ -51,7 +51,7 @@ class TestCoverageOauth(RaftTestCase):
     def test_oauth_exchange_ok_and_fetch(self) -> None:
         oauth = GithubOauth(
             GithubServeConfig(mock=False, client_id="id", client_secret="sec"),
-            GithubSessionStore(self.tmp_path),
+            GithubAccountStore(self.tmp_path),
         )
         assert oauth._token_request("code").full_url.endswith("access_token")
         ok = MagicMock()
@@ -65,35 +65,35 @@ class TestCoverageOauth(RaftTestCase):
         user.__enter__.return_value = user
         user.__exit__.return_value = False
         with patch("urllib.request.urlopen", return_value=user):
-            assert oauth._fetch_login("tok") == "bob"
+            assert oauth._fetch_user("tok") == ("bob", None)
 
-    def test_oauth_fetch_login_missing(self) -> None:
+    def test_oauth_fetch_user_missing(self) -> None:
         oauth = GithubOauth(
             GithubServeConfig(mock=False, client_id="id", client_secret="sec"),
-            GithubSessionStore(self.tmp_path),
+            GithubAccountStore(self.tmp_path),
         )
         with pytest.raises(OperatorError, match="disabled"):
-            GithubOauth(GithubServeConfig(mock=False), GithubSessionStore(self.tmp_path)).complete_mock()
+            GithubOauth(GithubServeConfig(mock=False), GithubAccountStore(self.tmp_path)).complete_mock()
         user = MagicMock()
         user.read.return_value = b"{}"
         user.__enter__.return_value = user
         user.__exit__.return_value = False
         with patch("urllib.request.urlopen", return_value=user):
             with pytest.raises(OperatorError, match="login"):
-                oauth._fetch_login("tok")
+                oauth._fetch_user("tok")
 
     def test_session_bad_raw_and_next_steps_key(self) -> None:
-        store = GithubSessionStore(self.tmp_path)
-        path = self.tmp_path / "state" / "serve" / "github-session.json"
+        store = GithubAccountStore(self.tmp_path)
+        path = self.tmp_path / "state" / "serve" / "github-accounts.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(["not", "a", "dict"]), encoding="utf-8")
-        assert store.load() is None
-        path.write_text(json.dumps({"access_token": 1}), encoding="utf-8")
-        assert store.load() is None
+        assert store.public_snapshot()["accounts"] == []
+        path.write_text(json.dumps({"version": 1, "accounts": [{"access_token": 1}]}), encoding="utf-8")
+        assert store.public_snapshot()["accounts"] == []
         steps = DeployNextSteps()._deploy_key(None, "https://x", "SHA256:abc")
         assert steps and "Fingerprint" in steps[0]["body"]
         assert DeployNextSteps()._deploy_key("ssh-ed25519 AAAA", None, None)
-        store.clear()
+        assert GithubOauth._user_from_payload({"login": "x", "id": 7}) == ("x", "7")
 
     def test_deploy_parse_errors(self) -> None:
         runner = GithubDeployRunner(make_stack(self.tmp_path), MagicMock(), DeployJobStore())

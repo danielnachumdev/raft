@@ -7,12 +7,14 @@ import secrets
 import time
 import urllib.error
 import urllib.request
+from typing import Optional, Tuple
 from urllib.parse import urlencode
 
 from raft.config.settings_types import GithubServeConfig
 from raft.errors.cta import OperatorError
 
-from .session import GithubSession, GithubSessionStore
+from .account import GithubAccount
+from .accounts import GithubAccountStore
 
 # Least privilege for private listing + Contents/PRs that add Actions workflows.
 # Deploy keys stay manual (no admin:public_key). ``workflow`` is required to
@@ -25,9 +27,9 @@ _UA = "raft-serve-github-v1"
 
 
 class GithubOauth:
-    """Build authorize URLs and exchange codes (or mint a mock session)."""
+    """Build authorize URLs and exchange codes (or mint a mock account)."""
 
-    def __init__(self, cfg: GithubServeConfig, store: GithubSessionStore) -> None:
+    def __init__(self, cfg: GithubServeConfig, store: GithubAccountStore) -> None:
         self._cfg = cfg
         self._store = store
 
@@ -40,14 +42,7 @@ class GithubOauth:
             return f"http://127.0.0.1:{port}/api/github/callback?mock=1"
         self._require_oauth_creds()
         state = self._store.mint_oauth_state()
-        pending = GithubSession(
-            access_token="",
-            login="",
-            mock=False,
-            expires_at=time.time() + 600,
-            state=state,
-        )
-        self._store.save(pending)
+        self._store.set_pending(state)
         params = {
             "client_id": self._cfg.client_id,
             "redirect_uri": f"http://127.0.0.1:{port}{redirect_path}",
@@ -56,41 +51,58 @@ class GithubOauth:
         }
         return f"{_AUTHORIZE}?{urlencode(params)}"
 
-    def complete_mock(self) -> GithubSession:
+    def complete_mock(self) -> GithubAccount:
         if not self._cfg.mock:
             raise OperatorError(
                 "mock GitHub login is disabled.\n"
                 "Fix: set github.mock: true in settings.yaml or RAFT_GITHUB_MOCK=1",
                 has_fix=False,
             )
-        session = GithubSession(
-            access_token=f"mock-{secrets.token_hex(8)}",
-            login="mock-operator",
-            mock=True,
-            expires_at=time.time() + self._cfg.session_ttl_seconds,
+        return self._store.upsert_account(
+            self._new_account(
+                "mock-operator",
+                f"mock-{secrets.token_hex(8)}",
+                mock=True,
+            )
         )
-        self._store.save(session)
-        return session
 
-    def complete_oauth(self, *, code: str, state: str) -> GithubSession:
+    def complete_oauth(self, *, code: str, state: str) -> GithubAccount:
         self._require_oauth_creds()
-        pending = self._store.load()
-        if pending is None or not pending.state or pending.state != state:
+        self._require_pending_state(state)
+        token = self._exchange_code(code)
+        login, github_user_id = self._fetch_user(token)
+        return self._store.upsert_account(
+            self._new_account(login, token, github_user_id=github_user_id)
+        )
+
+    def _require_pending_state(self, state: str) -> None:
+        pending = self._store.get_pending()
+        if pending is None or pending.state != state:
             raise OperatorError(
                 "OAuth state mismatch or expired.\n"
                 "Fix: start login again from raft serve → Add new service",
                 has_fix=False,
             )
-        token = self._exchange_code(code)
-        login = self._fetch_login(token)
-        session = GithubSession(
-            access_token=token,
+
+    def _new_account(
+        self,
+        login: str,
+        token: str,
+        *,
+        github_user_id: Optional[str] = None,
+        mock: bool = False,
+    ) -> GithubAccount:
+        now = time.time()
+        return GithubAccount(
+            id=self._store.new_account_id(),
             login=login,
-            mock=False,
-            expires_at=time.time() + self._cfg.session_ttl_seconds,
+            access_token=token,
+            mock=mock,
+            expires_at=now + self._cfg.session_ttl_seconds,
+            github_user_id=github_user_id,
+            created_at=now,
+            last_used_at=now,
         )
-        self._store.save(session)
-        return session
 
     def _exchange_code(self, code: str) -> str:
         req = self._token_request(code)
@@ -136,7 +148,7 @@ class GithubOauth:
             )
         return str(token)
 
-    def _fetch_login(self, token: str) -> str:
+    def _fetch_user(self, token: str) -> Tuple[str, Optional[str]]:
         req = urllib.request.Request(
             _USER,
             headers={
@@ -147,13 +159,23 @@ class GithubOauth:
         )
         with urllib.request.urlopen(req, timeout=30) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-        login = data.get("login") if isinstance(data, dict) else None
+        return self._user_from_payload(data)
+
+    @staticmethod
+    def _user_from_payload(data: object) -> Tuple[str, Optional[str]]:
+        if not isinstance(data, dict):
+            raise OperatorError(
+                "GitHub /user did not return login.\nFix: re-login from raft serve",
+                has_fix=False,
+            )
+        login = data.get("login")
         if not login:
             raise OperatorError(
                 "GitHub /user did not return login.\nFix: re-login from raft serve",
                 has_fix=False,
             )
-        return str(login)
+        uid = data.get("id")
+        return str(login), str(uid) if uid is not None else None
 
     def _require_oauth_creds(self) -> None:
         if self._cfg.client_id and self._cfg.client_secret:

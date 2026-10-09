@@ -1,4 +1,6 @@
 import type { GithubOauthConfig, GithubSession } from "./githubApi";
+import { accountCount } from "./githubApi";
+import { GithubAccountSwitcher } from "./GithubAccountSwitcher";
 import { OauthSetupPanel } from "./OauthSetupPanel";
 
 export function DeploySession(props: {
@@ -8,6 +10,8 @@ export function DeploySession(props: {
   needsSetup: boolean;
   busy: boolean;
   onLogout: () => void;
+  onLogoutOne: (accountId: string) => void;
+  onSelectAccount: (accountId: string) => void;
   onBusy: (busy: boolean) => void;
   onSaved: () => void;
   onError: (message: string) => void;
@@ -19,6 +23,8 @@ export function DeploySession(props: {
     needsSetup,
     busy,
     onLogout,
+    onLogoutOne,
+    onSelectAccount,
     onBusy,
     onSaved,
     onError,
@@ -62,36 +68,27 @@ export function DeploySession(props: {
   if (!session) {
     return <p className="muted">Loading session…</p>;
   }
-  if (!session.authenticated) {
+  if (accountCount(session) > 0) {
     return (
-      <section className="deploy-panel" id="github-login">
-        <h2>Connecting to GitHub…</h2>
-        <p className="muted">{session.hint}</p>
-        <p className="muted">
-          Scopes: <code>{session.scopes || "read:user repo workflow"}</code>
-        </p>
-        <a className="refresh deploy-cta" href="/api/github/login">
-          Continue to GitHub
-        </a>
-      </section>
+      <GithubAccountSwitcher
+        session={session}
+        busy={busy}
+        onSelect={onSelectAccount}
+        onLogoutOne={onLogoutOne}
+        onLogoutActive={onLogout}
+      />
     );
   }
   return (
-    <section className="deploy-panel" id="github-session">
-      <h2>Signed in</h2>
-      <p>
-        GitHub user <strong>{session.login}</strong>
-      </p>
+    <section className="deploy-panel" id="github-login">
+      <h2>Connecting to GitHub…</h2>
       <p className="muted">{session.hint}</p>
-      <button
-        type="button"
-        className="refresh"
-        onClick={onLogout}
-        disabled={busy}
-        id="github-logout"
-      >
-        Log out
-      </button>
+      <p className="muted">
+        Scopes: <code>{session.scopes || "read:user repo workflow"}</code>
+      </p>
+      <a className="refresh deploy-cta" href="/api/github/login">
+        Continue to GitHub
+      </a>
     </section>
   );
 }

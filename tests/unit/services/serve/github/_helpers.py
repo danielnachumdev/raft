@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import time
 
+from raft.services.serve.github.account import GithubAccount
 from raft.services.serve.github.provider import GithubRepo
-from raft.services.serve.github.session import GithubSession
 
 
 def sample_repo() -> GithubRepo:
@@ -21,10 +21,20 @@ def sample_repo() -> GithubRepo:
     )
 
 
-def sample_session(**kwargs) -> GithubSession:
-    base = dict(access_token="t", login="u", mock=True, expires_at=time.time() + 60)
+def sample_account(**kwargs) -> GithubAccount:
+    base = dict(
+        id="acct-1",
+        access_token="t",
+        login="u",
+        mock=True,
+        expires_at=time.time() + 60,
+    )
     base.update(kwargs)
-    return GithubSession(**base)
+    return GithubAccount(**base)
+
+
+# Compat alias used by older deploy tests.
+sample_session = sample_account
 
 
 def stub_auth(auth_cls) -> None:

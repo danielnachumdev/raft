@@ -9,8 +9,9 @@ import pytest
 from raft.config.settings_github import GithubSettingsParser
 from raft.config.settings_types import GithubServeConfig
 from raft.errors.cta import OperatorError
+from raft.services.serve.github.account import GithubAccount
+from raft.services.serve.github.accounts import GithubAccountStore
 from raft.services.serve.github.oauth import GithubOauth
-from raft.services.serve.github.session import GithubSessionStore
 
 from ....base import RaftTestCase
 
@@ -52,33 +53,57 @@ class TestGithubSettingsParser(RaftTestCase):
 
 class TestGithubOauth(RaftTestCase):
     def test_mock_login_and_url(self) -> None:
-        store = GithubSessionStore(self.tmp_path)
+        store = GithubAccountStore(self.tmp_path)
         oauth = GithubOauth(GithubServeConfig(mock=True), store)
         assert "callback?mock=1" in oauth.login_url(port=8787)
-        session = oauth.complete_mock()
-        assert session.login == "mock-operator" and session.mock is True
+        account = oauth.complete_mock()
+        assert account.login == "mock-operator" and account.mock is True
 
-    def test_oauth_requires_creds_and_state(self) -> None:
-        store = GithubSessionStore(self.tmp_path)
+    def test_oauth_requires_creds(self) -> None:
+        store = self._store_with_kept()
         bare = GithubOauth(GithubServeConfig(mock=False), store)
         with pytest.raises(OperatorError, match="not configured"):
             bare.login_url(port=8787)
+
+    def test_oauth_preserves_accounts_on_add(self) -> None:
+        store = self._store_with_kept()
         oauth = GithubOauth(
             GithubServeConfig(mock=False, client_id="id", client_secret="sec"),
             store,
         )
         assert "github.com/login/oauth/authorize" in oauth.login_url(port=8787)
+        assert store.public_snapshot()["login"] == "kept"
         with pytest.raises(OperatorError, match="state mismatch"):
             oauth.complete_oauth(code="c", state="wrong")
-        pending = store.load()
-        assert pending is not None and pending.state
-        with patch.object(oauth, "_exchange_code", return_value="tok"), patch.object(
-            oauth, "_fetch_login", return_value="alice"
-        ):
-            done = oauth.complete_oauth(code="c", state=pending.state)
-        assert done.login == "alice" and done.access_token == "tok"
+        done = self._complete(oauth, store.get_pending().state)
+        snap = store.public_snapshot()
+        assert {a["login"] for a in snap["accounts"]} == {"kept", "alice"}
+        assert snap["active_account_id"] == done.id
 
     def test_token_from_payload(self) -> None:
         with pytest.raises(OperatorError, match="access_token"):
             GithubOauth._token_from_payload({})
         assert GithubOauth._token_from_payload({"access_token": "x"}) == "x"
+
+    def _store_with_kept(self) -> GithubAccountStore:
+        store = GithubAccountStore(self.tmp_path)
+        store.upsert_account(
+            GithubAccount(
+                id="keep",
+                login="kept",
+                access_token="keep-tok",
+                mock=False,
+                expires_at=9_999_999_999,
+                github_user_id="9",
+            )
+        )
+        return store
+
+    @staticmethod
+    def _complete(oauth: GithubOauth, state: str):
+        with patch.object(oauth, "_exchange_code", return_value="tok"), patch.object(
+            oauth, "_fetch_user", return_value=("alice", "42")
+        ):
+            done = oauth.complete_oauth(code="c", state=state)
+        assert done.login == "alice" and done.access_token == "tok"
+        return done

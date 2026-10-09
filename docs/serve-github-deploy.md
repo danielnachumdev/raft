@@ -15,9 +15,11 @@ This is **not** a public multi-user console and **not** a full App lifecycle UI.
 
 1. Stack status → **Apps** → **`+`** → `/add-service`.
 2. Choose **Add from GitHub** (GitHub icon) → `/deploy`.
-3. Unauthenticated visits **auto-redirect** to `/api/github/login` (real OAuth
-   authorize page when configured; mock callback only when `github.mock` /
-   `RAFT_GITHUB_MOCK=1`).
+3. Visits with **zero** connected accounts **auto-redirect** to
+   `/api/github/login` (real OAuth authorize page when configured; mock callback
+   only when `github.mock` / `RAFT_GITHUB_MOCK=1`). If expired account rows
+   remain, the UI shows an account switcher + re-auth CTA instead of wiping
+   them.
 4. If OAuth is **not configured**, `/deploy` shows an ordered checklist (create
    OAuth App link + copyable field values) and paste-in controls for
    `clientId` / `clientSecret`. Saving writes `github:` into
@@ -119,27 +121,39 @@ After merge, set repository secrets: `RAFT_SSH_HOST`, `RAFT_SSH_USER`,
 skips creating a PR and notes that in next steps. CI PR failures do **not**
 fail the deploy job; they appear as a failed step + next-step guidance.
 
+## Connected accounts (multi-account)
+
+One OAuth App in settings (`github.clientId` / `clientSecret`). Many GitHub user
+identities can be connected; the UI selects the **active** account for repo list
+and deploy. Pending OAuth CSRF state is stored separately and must not wipe
+existing accounts. Mock mode stays settings/env only (at most one mock account).
+Token refresh is not shipped in this version.
+
 ## Token storage and retention
 
 | Item | Location | Mode |
 |------|----------|------|
-| OAuth / mock access token | `~/.raft/state/serve/github-session.json` | `0600` |
+| Connected accounts + pending OAuth | `~/.raft/state/serve/github-accounts.json` | `0600` |
 
+- Legacy `github-session.json` migrates to one account on first load, then is deleted.
+- Public session JSON never includes `access_token` or client secrets.
 - Not written into `generated/`, git, or world-readable dumps.
-- Cleared on **Log out**, process expiry (`sessionTtlSeconds`), or corrupt file.
+- Per-account logout removes that row; active falls back to another account when present.
 - Serve binds `127.0.0.1` only; treat tunnel access like host admin access.
 
 ## API (serve)
 
 | Method | Path | Role |
 |--------|------|------|
-| `GET` | `/api/github/session` | Auth status + hint + `oauth_configured` / setup URLs |
+| `GET` | `/api/github/session` | Multi-account public snapshot + active `authenticated`/`login` + hint |
 | `GET` | `/api/github/config` | OAuth setup status (no secrets) + callback / docs links |
 | `POST` | `/api/github/config` | `{clientId, clientSecret}` → write settings + reload |
-| `GET` | `/api/github/login` | Start OAuth or mock callback (errors → `/deploy?oauth_error=`) |
-| `GET` | `/api/github/callback` | Finish login → `/deploy` or `?oauth_error=` |
-| `POST` | `/api/github/logout` | Clear session file |
-| `GET` | `/api/github/repos?q=` | List / search repos |
+| `GET` | `/api/github/login` | Start OAuth or mock callback (add account; preserves others) |
+| `GET` | `/api/github/callback` | Finish login → upsert account, set active → `/deploy` |
+| `POST` | `/api/github/logout` | Logout **active** account (compat) |
+| `POST` | `/api/github/accounts/select` | `{account_id}` → set active |
+| `POST` | `/api/github/accounts/{id}/logout` | Logout one account |
+| `GET` | `/api/github/repos?q=` | List / search repos (active token) |
 | `POST` | `/api/github/deploy` | `{full_name, ref}` → job (apply + CI PR step) |
 | `GET` | `/api/github/deploy/{id}` | Poll progress / `ci_pr` / next steps |
 
