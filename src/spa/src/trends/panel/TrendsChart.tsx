@@ -25,9 +25,12 @@ import {
   type RuntimeUnit,
 } from "../runtimeMetrics";
 import { timeScaleXAxis } from "../chart/TimeScaleXAxis";
+import { tooltipItemSortKey } from "../chart/tooltipItemSort";
 import { trendPlotLines } from "../chart/trendPlotLines";
 import { useChartHover } from "../chart/useChartHover";
 import "./TrendsChart.css";
+
+export { tooltipItemSortKey } from "../chart/tooltipItemSort";
 const HOST_AXIS = "host";
 const SERVICE_AXIS = "service";
 
@@ -156,18 +159,6 @@ export function TrendsChart(props: {
       </ResponsiveContainer>
     </div>
   );
-}
-
-/** Lodash sortBy key: abs(value) desc, then label asc. */
-export function tooltipItemSortKey(item: {
-  value?: number | string | Array<number | string>;
-  name?: number | string;
-}): string {
-  const raw = Array.isArray(item.value) ? item.value[0] : item.value;
-  const n = Math.abs(Number(raw));
-  const mag = Number.isFinite(n) ? n : -1;
-  const rank = String(1_000_000_000 - Math.round(mag * 1000)).padStart(12, "0");
-  return `${rank}\0${String(item.name ?? "")}`;
 }
 
 function toPlotSeries(series: MetricsSeries[]): PlotSeries[] {
