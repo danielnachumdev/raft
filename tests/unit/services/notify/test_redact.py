@@ -36,3 +36,15 @@ class TestSettingsRedactor(RaftTestCase):
     def test_empty_secret_unchanged(self) -> None:
         assert SettingsRedactor().redact({"token": ""})["token"] == ""
         assert SettingsRedactor().redact({"token": None})["token"] is None
+
+    def test_merge_preserving_secrets(self) -> None:
+        redactor = SettingsRedactor()
+        merged = redactor.merge_preserving_secrets(
+            {"token": "keep", "label": "old", "nested": {"password": "p1"}},
+            {"token": "***", "label": "new", "nested": {"password": "***", "x": 1}},
+        )
+        assert merged == {
+            "token": "keep",
+            "label": "new",
+            "nested": {"password": "p1", "x": 1},
+        }

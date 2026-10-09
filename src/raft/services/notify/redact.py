@@ -25,6 +25,24 @@ class SettingsRedactor:
     def redact(self, settings: Mapping[str, Any]) -> dict[str, Any]:
         return {key: self._value(key, value) for key, value in settings.items()}
 
+    def merge_preserving_secrets(
+        self,
+        existing: Mapping[str, Any],
+        incoming: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Apply ``incoming``; keep existing secrets when client sends the mask."""
+        out: dict[str, Any] = {}
+        for key, value in incoming.items():
+            out[key] = self._merge_one(key, value, existing.get(key))
+        return out
+
+    def _merge_one(self, key: str, value: Any, prior: Any) -> Any:
+        if value == self._MASK and self._key_is_secret(key) and prior not in (None, ""):
+            return prior
+        if isinstance(value, Mapping) and isinstance(prior, Mapping):
+            return self.merge_preserving_secrets(prior, value)
+        return value
+
     def _value(self, key: str, value: Any) -> Any:
         if self._key_is_secret(key):
             return self._present(value)

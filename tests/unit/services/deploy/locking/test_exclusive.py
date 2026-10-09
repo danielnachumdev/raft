@@ -17,6 +17,8 @@ from raft.services.deploy.locking import (
     app_lock_path,
     apps_and_stack_locks,
     exclusive_lock,
+    notifications_lock,
+    notifications_lock_path,
     stack_lock,
     stack_lock_path,
 )
@@ -100,6 +102,11 @@ class TestExclusiveLock(RaftTestCase):
 
     def test_app_lock_sanitizes_name(self) -> None:
         assert app_lock_path(self.root, "a/b\\c").name == "app-a_b_c.lock"
+
+    def test_notifications_lock_helper(self) -> None:
+        with notifications_lock(self.root, timeout=1):
+            assert notifications_lock_path(self.root).name == "notifications.lock"
+            assert notifications_lock_path(self.root).is_file()
 
     def test_close_errors_during_busy_and_release_are_swallowed(
         self, monkeypatch: pytest.MonkeyPatch
