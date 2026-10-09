@@ -18,7 +18,7 @@ User-facing samples live under **[`examples/`](examples/)**: operator settings (
 
 **Shipped:** Per-app scale-to-zero via `spec.scaling` (`idleSeconds` + `minUpSeconds` required; `wakeTimeoutSeconds` defaults to **60**; omit the block = off). HTTP + `publicHost` only. Gate holding page + wake; controller idle-stop (co-stops `dependsOn` with `scaleWithParent` default true); healer skips intentional `scaledToZero`. Healing stays separate (`healing:` in settings). After the wake budget, the product timeout page shows an admin CTA plus a server-minted diagnostic id (same `id=` on controller wake/timeout logs).
 
-**Shipped:** `raft serve` localhost ops UI — packaged React SPA (`share/serve/spa/`) + FastAPI JSON/actions/logs APIs; shared `StatusRead` / `MetricsRead` with CLI; trends from controller `resources.jsonl`. Source in `src/spa/`; not an edge listener.
+**Shipped:** `raft serve` localhost ops UI — packaged React SPA (`share/serve/spa/`) + FastAPI JSON/actions/logs APIs; shared `StatusRead` / `MetricsRead` / `HttpMetricsRead` with CLI; Trends from controller `resources.jsonl` + HTTP edge `http.jsonl`. Source in `src/spa/`; not an edge listener.
 
 ---
 
@@ -79,7 +79,7 @@ Background / worker Apps that only run a long-lived process may **omit `spec.por
 | `~/.raft/state/locks/` | `flock` files serializing apply/redeploy/render (`app-<name>.lock`, `stack.lock`) |
 | `~/.raft/state/serve/` | Per-port `raft serve` flock + pid (`port-<port>.lock`); used by start / `--stop` |
 | `~/.raft/state/scaling/` | Per-app scale-to-zero JSON + gate marker files (when `spec.scaling` is set) |
-| `~/.raft/state/metrics/` | Controller resource samples (`resources.jsonl`); batched append; daily + size-split rotation like logs (`resources.jsonl.YYYY-MM-DD[.N]`); `metrics.retentionMaxAgeDays` / `retentionMaxBytes` |
+| `~/.raft/state/metrics/` | Controller samples: `resources.jsonl` (host/container) + `http.jsonl` (HTTP edge); `gate-http/` access log for scrape; batched append; daily + size-split rotation (`*.jsonl.YYYY-MM-DD[.N]`); `metrics.retentionMaxAgeDays` / `retentionMaxBytes` |
 | `~/.raft/state/acme/` | ACME account + HTTP-01 webroot + per-app state JSON (when using `tls: acme`) |
 | `~/.raft/certs/` | Origin PEMs (`origin.*` for `tls: origin`) and ACME live material (`acme.*` for `tls: acme`) |
 | `~/.raft/logs/` | Structured log file (default); daily + size-split rotation via `logging.retentionMaxAgeDays` / `retentionMaxBytes` (at CLI `setup_logging`) |
@@ -99,7 +99,7 @@ Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 5. `--no-deploy` only when you intentionally register desired state without bringing the app live (e.g. apply several manifests, then one `raft up`; or register before Origin PEMs exist). After that, deploy with `raft apply …` again (deploy on) or `raft up` / `raft redeploy` as appropriate.
 6. Manual cold start when apps are already applied: `raft up` (refuses if stack already up; `down` first).
 7. `raft doctor` before trusting the site (certs for `tls: origin` / `tls: acme`; gate drift → `raft gate recreate`). Doctor is group-first: built-in **`raft`** (edge services; healthy docker/compose/generated/stack/port probes stay hidden), then App `spec.group` (at most one); ungrouped apps appear without a heading. Member labels drop the `{group}-` prefix under a group heading (Compose ids stay `raft-gate` / `raft-router` / `GROUP-NAME` for Docker; doctor shows `gate` / `router` under `raft`). Healthy OK lines append ports in use (gate: published host ports; apps/router: contract / listen ports). File log records per-suite start/done with `elapsed_ms` plus a compose-call summary (`total` / `ps`) for diagnosing slow doctor runs.
-8. `raft status` (optional `--json`, or `--live` to refresh the human table until Ctrl+C) for a point-in-time host + container CPU/memory/uptime/started snapshot — declared Compose limits vs live usage via `ContainerRuntimeGateway`. Human NAME column drops `{group}-` (edge: `gate` / `router` with GROUP `raft`); JSON keeps Compose service ids. The always-on **controller** also samples the same plane on a metrics job interval (default 60s; settings `metrics:`) and **batch-appends** JSONL under `~/.raft/state/metrics/resources.jsonl` (flush every 10 samples or 60s; seals on day change / `retentionMaxBytes` like `raft.log`; defaults 30 days / 100 MiB). `raft serve` Trends + service Runtime charts read that history via `/api/metrics`.
+8. `raft status` (optional `--json`, or `--live` to refresh the human table until Ctrl+C) for a point-in-time host + container CPU/memory/uptime/started snapshot — declared Compose limits vs live usage via `ContainerRuntimeGateway`. Human NAME column drops `{group}-` (edge: `gate` / `router` with GROUP `raft`); JSON keeps Compose service ids. The always-on **controller** also samples on a metrics job interval (default 60s; settings `metrics:`) and **batch-appends** JSONL under `~/.raft/state/metrics/` — `resources.jsonl` (Docker/host) and sibling `http.jsonl` (gate HTTP request plane); flush every 10 samples or 60s; seals on day change / `retentionMaxBytes` like `raft.log`; defaults 30 days / 100 MiB. `raft serve` Trends reads resources via `/api/metrics` and HTTP edge via `/api/metrics/http`.
 9. `raft serve` (optional `--port`, default **8787**) — localhost-only ops UI (`127.0.0.1`) for applied apps + gate/router/controller. One FastAPI process: packaged SPA + status/metrics/service/actions/logs APIs. Prints bind URL + a generic SSH port-forward example on start; Ctrl+C or `raft serve --stop` stops. A second start on the same port fails fast with an already-running CTA. **Not** an edge listener. See **Serve / ops UI** below.
 10. `raft logs [name…]` for container stdout/stderr (not `~/.raft/logs/raft.log`). Snapshot by default (`--tail N`, default 100); `-f` / `--follow` streams until Ctrl+C. Names: applied app, `gate` / `router` / `controller`, or Compose ids (`raft-gate`, `GROUP-NAME`); omit names for all core services. Unknown / missing containers → OperatorError with Fix CTA. Serve detail reuses the same `Logs` path (snapshot + SSE follow).
 11. Updates: prefer `raft apply … --ref …` again (handles first-boot and cutover). Use `raft redeploy <app>` only when the app Compose service is **already running** and you want cutover without re-writing the registry (optional `--ref` / `--force-sync`). `raft redeploy router` for the inner nginx. New edge listeners: `raft gate recreate`.
@@ -282,6 +282,7 @@ Localhost dashboard for operators (`raft serve`). **Hard rules:** bind `127.0.0.
 |--------|------|---------|
 | `GET` | `/api/status` | `StatusRead` snapshot + `control_plane` / `apps` presentation (labels, started, external_urls); reloads registry each call |
 | `GET` | `/api/metrics` | `MetricsRead` over `state/metrics/resources.jsonl` (`window`, optional `since`, optional `services`) |
+| `GET` | `/api/metrics/http` | `HttpMetricsRead` over `state/metrics/http.jsonl` (edge RPS / latency / status classes; same window query shape) |
 | `GET` | `/api/service/{name}` | one container + presentation row (404 if unknown); reloads registry each call |
 | `GET` | `/api/service/{name}/logs` | log snapshot (`tail`) |
 | `GET` | `/api/service/{name}/logs/follow` | SSE live follow |
@@ -313,7 +314,7 @@ Feature folders under `src/spa/src/` (`main.tsx` + lean `styles.css` for tokens/
 | Live chrome | `chrome/LiveIndicator.tsx` (+ `Modal` / `ConfirmPopup` / toasts) | auto-refresh while tab visible; **no** native `alert`/`confirm` |
 | Service detail | `service/` (`ServicePage`, detail, actions) | lifecycle buttons; Runtime charts live under `trends/runtime/` |
 | Logs | `logs/` (`ServiceLogs`, `LogLines`, `logParse`) | follow / expand / severity filter; catalog download |
-| Trends | `trends/panel/`, `trends/chart/`, `trends/runtime/` (+ root `runtimeMetrics`, range controls) | historical series; sidebar filters; poll `/api/metrics`; catalog download; per-service Runtime charts |
+| Trends | `trends/panel/`, `trends/chart/`, `trends/runtime/` (+ root `runtimeMetrics`, range controls) | historical series; Resources + HTTP edge metric groups; poll `/api/metrics` or `/api/metrics/http`; catalog download; per-service Runtime (resources) |
 | Export | `export/` (`DownloadMenu`, catalog/urls) | generic download links from `/api/exports` |
 
 Develop: `cd src/spa && npm ci && npm run dev` (Vite `:5173`, proxies `/api` → `raft serve :8787`). Release FE: `npm run build` → updates `share/serve/spa/`. See [`src/spa/README.md`](src/spa/README.md).
@@ -325,10 +326,18 @@ ContainerRuntimeGateway / Status.collect
   → raft status (point-in-time)
   → raft serve /api/status (live tables)
   → controller metrics job → batch-append resources.jsonl
-       → MetricsRead → /api/metrics → Trends + service Runtime charts
+       → MetricsRead → /api/metrics → Trends (Resources) + service Runtime
+
+Gate access_log + stub_status (internal :8081)
+  → controller scrape on same metrics interval → batch-append http.jsonl
+       → HttpMetricsRead → /api/metrics/http → Trends (HTTP edge)
 ```
 
-Retention: settings `metrics.retentionMaxAgeDays` / `retentionMaxBytes` (seal active segment like `raft.log`; age-delete sealed archives — no full-file rewrite). Host CPU in charts: load average ÷ CPU count; containers: sampled `cpu_percent` / memory percent.
+**HTTP edge contract (`http.jsonl`):** one sample per metrics interval. Fields include `requests`, `rps`, `in_flight` (nginx `stub_status` **Writing** — documented concurrency proxy; also `active_connections`), `duration_ms.{avg,p50,p95,p99}` over the sample window, `status_class` counts (2xx–5xx), plus `by_host` / `by_service` (Host → Compose id via `publicHost` / `extraHosts`). Aggregate series id `edge`; per-app series use Compose service ids. No app secrets in the access log (time / status / host only).
+
+**Deferred:** stream/host/none request metrics; TLS handshake failures; holding-vs-proxied share; charting upstream vs total time; Prometheus remote_write; autoscaling from RPS.
+
+Retention: settings `metrics.retentionMaxAgeDays` / `retentionMaxBytes` (seal each active segment like `raft.log`; age-delete sealed archives — no full-file rewrite). Host CPU in charts: load average ÷ CPU count; containers: sampled `cpu_percent` / memory percent. HTTP percentiles use the scrape window (`metrics.intervalSeconds`), not the Trends lookback.
 
 ---
 
@@ -377,7 +386,7 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | `src/raft/services/export/` | Open-closed download encoders (`ExportRegistry` + `Exporter` subclasses); serve catalogs/attachments |
 | `src/raft/ui/` | Operator terminal output (`say`) + shared TTY `TerminalProgress` spinner (doctor, update; `current()` / `set_text` for inner frames; entered at CLI entry before stack/logging init) |
 | `src/raft/services/serve/` | `raft serve`: FastAPI factory, `ServePage`, `ServeActions`, SSE log bridge, SPA paths/instructions |
-| `src/raft/controller/` | Always-on Compose `raft-controller` (job orchestrator for heal + metrics + per-app `acme:<name>` when `tls: acme`; idle-stop + wake via side_ticks when `spec.scaling`; healer skips `scaledToZero`; metrics batch → `resources.jsonl`) |
+| `src/raft/controller/` | Always-on Compose `raft-controller` (job orchestrator for heal + metrics + per-app `acme:<name>` when `tls: acme`; idle-stop + wake via side_ticks when `spec.scaling`; healer skips `scaledToZero`; metrics batch → `resources.jsonl` + `http.jsonl`) |
 | `src/raft/errors/` | Operator errors + CTAs (`cta`, `domain`, `docker_msgs`, …). Import from owning modules — package `__init__` is not a re-export barrel. |
 | `src/raft/share/` | Product Compose + nginx templates (synced into data home); `share/serve/spa/` = packaged dashboard assets |
 | `src/spa/` | Dashboard SPA source (React + Vite + TypeScript); build output → `share/serve/spa/`; see **Serve / ops UI** |

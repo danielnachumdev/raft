@@ -101,7 +101,6 @@ class _ServeFixtures:
             extra={"ports": [], "readiness": {"type": "none"}},
         )
 
-
 class TestServeAppFactory(RaftTestCase):
     def test_index_serves_spa_shell_without_collect(self) -> None:
         client, status = _ServeFixtures.client_and_status(

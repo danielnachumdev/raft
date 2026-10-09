@@ -74,6 +74,7 @@ class ServeAppFactory:
     @staticmethod
     def _register_read_api(app: FastAPI, page: ServePage) -> None:
         app.get("/api/status")(page.api_status)
+        app.get("/api/metrics/http")(page.api_metrics_http)
         app.get("/api/metrics")(page.api_metrics)
         app.get("/api/service/{name}")(page.api_service)
         app.get("/api/service/{name}/logs/follow")(page.api_service_logs_follow)

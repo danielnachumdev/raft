@@ -12,7 +12,7 @@ import { eventsForSeries } from "../chart/graphEvents";
 import { chartEndMs } from "../chart/chartTimeScale";
 import { useLiveNow } from "../chart/useLiveNow";
 import {
-  RUNTIME_METRICS,
+  RESOURCE_METRICS,
   type RuntimeMetricId,
 } from "../runtimeMetrics";
 import { TrendsRangeControls } from "../TrendsRangeControls";
@@ -46,7 +46,7 @@ export function ServiceRuntimeTrends(props: { service: string }) {
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const metric =
-    RUNTIME_METRICS.find((m) => m.id === metricId) ?? RUNTIME_METRICS[0];
+    RESOURCE_METRICS.find((m) => m.id === metricId) ?? RESOURCE_METRICS[0];
 
   useEffect(() => {
     let cancelled = false;
@@ -139,7 +139,7 @@ export function ServiceRuntimeTrends(props: { service: string }) {
             aria-label="Runtime metric"
             disabled={busy && series === null}
           >
-            {RUNTIME_METRICS.map((m) => (
+            {RESOURCE_METRICS.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.label}
               </option>

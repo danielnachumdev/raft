@@ -17,6 +17,7 @@ from .acme_jobs import AcmeJobSync
 from .heal import Healer
 from .job import JobIds, JobRequest, JobSpec, QueuePolicy
 from .logging import setup_controller_logging
+from .http_metrics import HttpMetricsRecorder
 from .metrics import MetricsRecorder
 from .orchestrator import ClockFn, JobOrchestrator, SleepFn
 from .scale import WAKE_HTTP_PORT, Scaler
@@ -64,10 +65,12 @@ def _run_forever(
     orchestrator: Optional[JobOrchestrator] = None,
 ) -> None:
     orch = orchestrator or JobOrchestrator()
-    healer, metrics, acme_sync = _build_jobs(home, config, docker, orch)
+    healer, metrics, http_metrics, acme_sync = _build_jobs(home, config, docker, orch)
     orch.append_side_tick(_safe_tick(scaler.tick, "scale"))
     orch.append_side_tick(_safe_tick(acme_sync.tick, "acme-sync"))
-    _register_jobs(orch, config.healing, config.metrics, healer, metrics)
+    _register_jobs(
+        orch, config.healing, config.metrics, healer, metrics, http_metrics
+    )
     acme_sync.tick()
     _log_startup(config.healing, config.metrics)
     kwargs = {}
@@ -83,15 +86,31 @@ def _build_jobs(home, config: RaftConfig, docker: DockerStack, orch: JobOrchestr
         orch.enqueue(JobRequest(job_id=JobIds.METRICS))
 
     healer = Healer(home=home, config=config.healing, docker=docker, on_needs_heal=nudge)
-    metrics = MetricsRecorder(
-        home,
-        batch_size=config.metrics.batch_size,
-        flush_seconds=config.metrics.flush_seconds,
-        retention_max_age_days=config.metrics.retention_max_age_days,
-        retention_max_bytes=config.metrics.retention_max_bytes,
-    )
+    metrics = _resource_recorder(home, config.metrics)
+    http_metrics = _http_recorder(home, config.metrics)
     acme_sync = AcmeJobSync(home, docker, orch)
-    return healer, metrics, acme_sync
+    return healer, metrics, http_metrics, acme_sync
+
+
+def _resource_recorder(home, metrics_cfg: MetricsConfig) -> MetricsRecorder:
+    return MetricsRecorder(
+        home,
+        batch_size=metrics_cfg.batch_size,
+        flush_seconds=metrics_cfg.flush_seconds,
+        retention_max_age_days=metrics_cfg.retention_max_age_days,
+        retention_max_bytes=metrics_cfg.retention_max_bytes,
+    )
+
+
+def _http_recorder(home, metrics_cfg: MetricsConfig) -> HttpMetricsRecorder:
+    return HttpMetricsRecorder(
+        home,
+        interval_seconds=metrics_cfg.interval_seconds,
+        batch_size=metrics_cfg.batch_size,
+        flush_seconds=metrics_cfg.flush_seconds,
+        retention_max_age_days=metrics_cfg.retention_max_age_days,
+        retention_max_bytes=metrics_cfg.retention_max_bytes,
+    )
 
 
 def _register_jobs(
@@ -100,6 +119,7 @@ def _register_jobs(
     metrics_cfg: MetricsConfig,
     healer: Healer,
     metrics: MetricsRecorder,
+    http_metrics: HttpMetricsRecorder,
 ) -> None:
     orch.register(
         JobSpec(
@@ -116,9 +136,19 @@ def _register_jobs(
             schedule=IntervalSchedule(metrics_cfg.interval_seconds),
             timeout_seconds=metrics_cfg.timeout_seconds,
             queue_policy=QueuePolicy.SKIP_IF_RUNNING,
-            run=metrics.tick,
+            run=_metrics_tick(metrics, http_metrics),
         )
     )
+
+
+def _metrics_tick(
+    metrics: MetricsRecorder, http_metrics: HttpMetricsRecorder
+) -> Callable[[], None]:
+    def run() -> None:
+        metrics.tick()
+        http_metrics.tick()
+
+    return run
 
 
 def _safe_tick(fn: Callable[[], None], label: str) -> SafeTick:
@@ -143,7 +173,8 @@ def _log_startup(healing: HealingConfig, metrics_cfg: MetricsConfig) -> None:
         logger.info("healing disabled; scale + idle wake loop active")
     logger.info("scale-to-zero enabled for apps with spec.scaling")
     logger.info(
-        "metrics enabled interval=%ss timeout=%ss path=state/metrics/resources.jsonl",
+        "metrics enabled interval=%ss timeout=%ss "
+        "path=state/metrics/resources.jsonl+http.jsonl",
         metrics_cfg.interval_seconds,
         metrics_cfg.timeout_seconds,
     )

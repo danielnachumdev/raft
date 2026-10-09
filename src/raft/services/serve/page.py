@@ -13,12 +13,14 @@ from ...models.stack import Stack
 from ..ops.logs import DEFAULT_LOG_TAIL, Logs
 from ..ops.status import Status
 from ..read import MetricsRead, StatusRead
+from ..read.http_metrics import HttpMetricsRead
 from .actions import ServeActions
 from .log_stream import LogSseStream
 from .paths import ServePaths
 
 # GET /api/status — shared read contract (see raft.services.read).
-# GET /api/metrics — historical series + GraphEvents (poll + since).
+# GET /api/metrics — historical resource series + GraphEvents (poll + since).
+# GET /api/metrics/http — HTTP edge request series from http.jsonl.
 # GET /api/service/{name} — one Compose service from the status snapshot.
 # GET /api/service/{name}/logs — container stdout/stderr tail (Logs.snapshot).
 # GET /api/service/{name}/logs/follow — SSE follow (Logs.follow; CLI ``-f``).
@@ -47,6 +49,7 @@ class ServePage:
         self.stack = stack
         self._read = StatusRead(stack, status=status)
         self._metrics = MetricsRead(stack.root)
+        self._http_metrics = HttpMetricsRead(stack.root)
         self._actions = actions or ServeActions(stack)
         self._logs = logs or Logs(stack)
 
@@ -119,9 +122,29 @@ class ServePage:
         end: Optional[str] = None,
         services: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Historical series; ``start``/``end`` pin a range, ``since`` polls."""
+        """Historical resource series; ``start``/``end`` pin a range, ``since`` polls."""
         try:
             return self._metrics.history(
+                window_seconds=window,
+                since=since,
+                start=start,
+                end=end,
+                services=self._split_services(services),
+            )
+        except OperatorError as exc:
+            raise self._http_for_operator(exc) from exc
+
+    def api_metrics_http(
+        self,
+        window: int = 3600,
+        since: Optional[str] = None,
+        start: Optional[str] = None,
+        end: Optional[str] = None,
+        services: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """HTTP edge request series (RPS / latency / status classes)."""
+        try:
+            return self._http_metrics.history(
                 window_seconds=window,
                 since=since,
                 start=start,

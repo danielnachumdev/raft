@@ -22,10 +22,14 @@ export function TrendsBody(props: {
     );
   }
   if (props.series.length === 0) {
+    const file =
+      props.metric.plane === "http"
+        ? "state/metrics/http.jsonl"
+        : "state/metrics/resources.jsonl";
     return (
       <p className="muted">
-        No metrics samples yet. The controller writes{" "}
-        <code>state/metrics/resources.jsonl</code> on its metrics interval.
+        No metrics samples yet. The controller writes <code>{file}</code> on its
+        metrics interval.
       </p>
     );
   }

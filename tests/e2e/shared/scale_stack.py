@@ -191,6 +191,7 @@ def _gate_volumes() -> list:
         "./certs:/etc/nginx/certs:ro",
         "./state/acme/http-01:/etc/nginx/acme-www:ro",
         "./state/scaling/markers:/etc/nginx/scaling/markers:ro",
+        "./state/metrics/gate-http:/var/log/nginx/raft-http",
     ]
 
 
