@@ -13,7 +13,7 @@ from raft.errors.cta import OperatorError
 from raft.services.serve.github.api import ServeGithubApi
 from raft.services.serve.github.deploy_job import DeployJob, DeployJobStore, GithubDeployRunner
 from raft.services.serve.github.provider import GithubRepo, RealGithubProvider
-from raft.services.serve.github.session import GithubSessionStore
+from raft.services.serve.github.accounts import GithubAccountStore
 
 from ._helpers import sample_repo, sample_session, stub_auth
 from ....base import RaftTestCase, make_stack
@@ -50,9 +50,7 @@ class TestCoverageDeploy(RaftTestCase):
         )
         api = ServeGithubApi(make_stack(self.tmp_path), provider=MagicMock(), port=9999)
         assert api._default_provider().__class__.__name__ == "RealGithubProvider"
-        GithubSessionStore(self.tmp_path).save(
-            sample_session(access_token="", login="", state="good", mock=False)
-        )
+        GithubAccountStore(self.tmp_path).set_pending("good")
         with patch.object(api._oauth, "complete_oauth", return_value=sample_session(mock=False)):
             assert api.api_callback(MagicMock(), code="c", state="good").status_code == 302
         bad = api.api_callback(MagicMock(), code=None, state=None, mock=None)
@@ -66,7 +64,7 @@ class TestCoverageDeploy(RaftTestCase):
         (self.tmp_path / "settings.yaml").write_text("github: {mock: true}\n", encoding="utf-8")
         provider = MagicMock()
         api = ServeGithubApi(make_stack(self.tmp_path), provider=provider, jobs=DeployJobStore())
-        GithubSessionStore(self.tmp_path).save(sample_session())
+        GithubAccountStore(self.tmp_path).upsert_account(sample_session())
         req = MagicMock()
         req.headers = {"host": "127.0.0.1:8888"}
         assert api._request_port(req) == 8888

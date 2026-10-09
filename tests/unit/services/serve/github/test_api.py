@@ -11,10 +11,11 @@ from fastapi.testclient import TestClient
 
 from raft.services.ops.status.models import StatusSnapshot
 from raft.services.serve.app import ServeAppFactory
+from raft.services.serve.github.account import GithubAccount
+from raft.services.serve.github.accounts import GithubAccountStore
 from raft.services.serve.github.api import ServeGithubApi
 from raft.services.serve.github.deploy_job import DeployJob, DeployJobStore
 from raft.services.serve.github.provider import MockGithubProvider
-from raft.services.serve.github.session import GithubSession, GithubSessionStore
 from raft.services.serve.paths import ServePaths
 
 from ....base import RaftTestCase, make_stack
@@ -44,16 +45,41 @@ class TestServeGithubApi(RaftTestCase):
         bare = client.get("/api/github/session").json()
         assert bare["authenticated"] is False and bare["mock"] is True
         assert bare["oauth_configured"] is True
+        assert bare["accounts"] == []
         assert client.get("/api/github/login", follow_redirects=False).status_code == 302
         cb = client.get("/api/github/callback?mock=1", follow_redirects=False)
         assert cb.status_code == 302 and cb.headers["location"] == "/deploy"
         session = client.get("/api/github/session").json()
         assert session["authenticated"] is True
         assert session["login"] == "mock-operator"
+        assert len(session["accounts"]) == 1
+        assert "access_token" not in session
+        assert "access_token" not in session["accounts"][0]
         assert "workflow" in session["scopes"]
         repos = client.get("/api/github/repos").json()["repos"]
         assert any(r["full_name"] == "demo/http-only-site" for r in repos)
-        assert client.post("/api/github/logout").json()["authenticated"] is False
+        out = client.post("/api/github/logout").json()
+        assert out["authenticated"] is False
+
+    def test_add_account_preserves_first_and_select(self) -> None:
+        client = self._client()
+        store = GithubAccountStore(self.tmp_path)
+        first = store.upsert_account(self._alice())
+        client.get("/api/github/callback?mock=1")
+        session = client.get("/api/github/session").json()
+        assert {a["login"] for a in session["accounts"]} == {
+            "alice",
+            "mock-operator",
+        }
+        selected = client.post(
+            "/api/github/accounts/select",
+            json={"account_id": first.id},
+        ).json()
+        assert selected["login"] == "alice"
+        assert store.active_usable().access_token == "tok-a"
+        gone = client.post(f"/api/github/accounts/{first.id}/logout").json()
+        assert gone["login"] == "mock-operator"
+        assert len(gone["accounts"]) == 1
 
     def test_config_save_reloads_oauth(
         self, monkeypatch: pytest.MonkeyPatch
@@ -61,13 +87,7 @@ class TestServeGithubApi(RaftTestCase):
         self._clear_github_env(monkeypatch)
         client = self._client(settings="edge: {http: 80}\n")
         bare = client.get("/api/github/config").json()
-        assert bare["oauth_configured"] is False
-        assert "applications/new" in bare["oauth_app_url"]
-        assert bare["homepage_url"] == "http://127.0.0.1:8787/"
-        assert bare["callback_url"].endswith("/api/github/callback")
-        assert bare["application_name"] == "raft serve"
-        assert bare["enable_device_flow"] is False
-        assert bare["expire_user_access_tokens"] is False
+        self._assert_setup_urls(bare)
         login = client.get("/api/github/login", follow_redirects=False)
         assert login.status_code == 302 and "oauth_error=" in login.headers["location"]
         saved = client.post(
@@ -76,8 +96,29 @@ class TestServeGithubApi(RaftTestCase):
         ).json()
         assert saved["ok"] and saved["reloaded"] and saved["oauth_configured"]
         again = client.get("/api/github/login", follow_redirects=False)
-        assert again.status_code == 302
         assert "github.com/login/oauth/authorize" in again.headers["location"]
+        assert client.get("/api/github/session").json()["accounts"] == []
+
+    @staticmethod
+    def _assert_setup_urls(bare: dict) -> None:
+        assert bare["oauth_configured"] is False
+        assert "applications/new" in bare["oauth_app_url"]
+        assert bare["homepage_url"] == "http://127.0.0.1:8787/"
+        assert bare["callback_url"].endswith("/api/github/callback")
+        assert bare["application_name"] == "raft serve"
+        assert bare["enable_device_flow"] is False
+        assert bare["expire_user_access_tokens"] is False
+
+    @staticmethod
+    def _alice() -> GithubAccount:
+        return GithubAccount(
+            id="first",
+            login="alice",
+            access_token="tok-a",
+            mock=False,
+            expires_at=time.time() + 60,
+            github_user_id="1",
+        )
 
     def test_config_errors_and_hints(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._clear_github_env(monkeypatch)
@@ -119,7 +160,7 @@ class TestServeGithubApi(RaftTestCase):
         (self.tmp_path / "settings.yaml").write_text(
             "github: {mock: true}\n", encoding="utf-8"
         )
-        self._save_mock_session()
+        self._save_mock_account()
         api = ServeGithubApi(
             stack,
             provider=MockGithubProvider(ServePaths.mock_github_dir()),
@@ -131,9 +172,10 @@ class TestServeGithubApi(RaftTestCase):
         )
         return TestClient(ServeAppFactory(stack, status=status, github=api).create())
 
-    def _save_mock_session(self) -> None:
-        GithubSessionStore(self.tmp_path).save(
-            GithubSession(
+    def _save_mock_account(self) -> None:
+        GithubAccountStore(self.tmp_path).upsert_account(
+            GithubAccount(
+                id="mock",
                 access_token="mock",
                 login="mock-operator",
                 mock=True,

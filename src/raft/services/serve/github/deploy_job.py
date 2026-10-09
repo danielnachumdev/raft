@@ -22,7 +22,7 @@ from .ci_pr import GithubCiPrSetup
 from .deploy_models import DeployJob, DeployJobStore, DeployStep
 from .next_steps import DeployNextSteps
 from .provider import GithubProvider, GithubRepo
-from .session import GithubSession
+from .account import GithubAccount
 
 logger = logging.getLogger(__name__)
 
@@ -46,24 +46,24 @@ class GithubDeployRunner:
         self._next = DeployNextSteps()
         self._ci = ci or GithubCiPrSetup()
 
-    def start(self, session: GithubSession, repo: GithubRepo, ref: str) -> DeployJob:
+    def start(self, account: GithubAccount, repo: GithubRepo, ref: str) -> DeployJob:
         job = self._store.create(repo.full_name, ref or repo.default_branch)
         thread = threading.Thread(
             target=self._run,
-            args=(job.id, session, repo),
+            args=(job.id, account, repo),
             name=f"github-deploy-{job.id}",
             daemon=True,
         )
         thread.start()
         return job
 
-    def _run(self, job_id: str, session: GithubSession, repo: GithubRepo) -> None:
+    def _run(self, job_id: str, account: GithubAccount, repo: GithubRepo) -> None:
         job = self._store.get(job_id)
         if job is None:
             return
         job.status = "running"
         try:
-            self._execute(job, session, repo)
+            self._execute(job, account, repo)
             job.status = "succeeded"
         except OperatorError as exc:
             job.status = "failed"
@@ -74,9 +74,9 @@ class GithubDeployRunner:
             job.error = f"unexpected deploy error: {exc}"
             logger.exception("github deploy %s crashed", job.id)
 
-    def _execute(self, job: DeployJob, session: GithubSession, repo: GithubRepo) -> None:
+    def _execute(self, job: DeployJob, account: GithubAccount, repo: GithubRepo) -> None:
         self._step(job, "Fetch App manifest", "running")
-        text = self._provider.fetch_manifest(session.access_token, repo.full_name, job.ref)
+        text = self._provider.fetch_manifest(account.access_token, repo.full_name, job.ref)
         self._step(job, "Fetch App manifest", "ok", "found .raft/app.yaml")
         data = self._parse_yaml(text, repo.full_name)
         app_name = self._manifest_name(data)
@@ -85,16 +85,16 @@ class GithubDeployRunner:
         if local is not None:
             self._deploy_local(job, local, data, app_name)
         else:
-            self._deploy_git(job, session, repo, app_name)
-        self._setup_ci_pr(job, session, repo)
+            self._deploy_git(job, account, repo, app_name)
+        self._setup_ci_pr(job, account, repo)
         self._fill_next_steps(job, data)
 
     def _setup_ci_pr(
-        self, job: DeployJob, session: GithubSession, repo: GithubRepo
+        self, job: DeployJob, account: GithubAccount, repo: GithubRepo
     ) -> None:
         self._step(job, "CI workflow PR", "running")
         try:
-            result = self._ci.ensure(session.access_token, repo, mock=session.mock)
+            result = self._ci.ensure(account.access_token, repo, mock=account.mock)
             job.ci_pr = result.to_dict()
             self._step(job, "CI workflow PR", "ok", result.detail)
         except OperatorError as exc:
@@ -117,9 +117,9 @@ class GithubDeployRunner:
         self._step(job, "Apply + deploy", "ok", f"applied {app_name}")
 
     def _deploy_git(
-        self, job: DeployJob, session: GithubSession, repo: GithubRepo, app_name: str
+        self, job: DeployJob, account: GithubAccount, repo: GithubRepo, app_name: str
     ) -> None:
-        del session
+        del account
         fp = self._prepare_deploy_key(job, repo, app_name)
         self._step(job, "Apply + deploy", "running")
         try:

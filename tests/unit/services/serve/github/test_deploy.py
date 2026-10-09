@@ -13,7 +13,7 @@ from raft.models.ports import PortSpec
 from raft.services.serve.github.deploy_job import DeployJob, DeployJobStore, GithubDeployRunner
 from raft.services.serve.github.next_steps import DeployNextSteps
 from raft.services.serve.github.provider import MockGithubProvider
-from raft.services.serve.github.session import GithubSession
+from raft.services.serve.github.account import GithubAccount
 from raft.services.serve.paths import ServePaths
 
 from ....base import RaftTestCase, make_stack
@@ -43,8 +43,9 @@ class TestDeployNextSteps(RaftTestCase):
 
 
 class TestGithubDeployRunner(RaftTestCase):
-    def _session(self) -> GithubSession:
-        return GithubSession(
+    def _session(self) -> GithubAccount:
+        return GithubAccount(
+            id="mock",
             access_token="mock",
             login="mock-operator",
             mock=True,

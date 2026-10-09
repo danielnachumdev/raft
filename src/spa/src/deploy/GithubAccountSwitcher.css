@@ -1,0 +1,69 @@
+.gh-account-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  border: 1px solid var(--line);
+}
+
+.gh-account-item {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.gh-account-item:last-child {
+  border-bottom: 0;
+}
+
+.gh-account-item.is-active {
+  background: var(--muted-bg);
+}
+
+.gh-account-select {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.65rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gh-account-select:disabled {
+  cursor: default;
+}
+
+.gh-account-login {
+  font-weight: 600;
+}
+
+.gh-account-tag {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.gh-account-tag.is-active-tag {
+  color: var(--text);
+}
+
+.gh-account-tag.is-expired {
+  color: var(--danger, #b42318);
+}
+
+.gh-account-logout {
+  margin: 0.35rem 0.45rem 0.35rem 0;
+  align-self: center;
+}
+
+.gh-account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+}

@@ -16,11 +16,21 @@ export type GithubOauthConfig = {
   reloaded?: boolean;
 };
 
+export type GithubAccountPublic = {
+  id: string;
+  login: string;
+  mock: boolean;
+  expires_at: number;
+  expired?: boolean;
+};
+
 export type GithubSession = {
   authenticated: boolean;
   login?: string;
   mock?: boolean;
   expires_at?: number;
+  accounts?: GithubAccountPublic[];
+  active_account_id?: string | null;
   scopes?: string;
   hint?: string;
   oauth_configured?: boolean;
@@ -100,12 +110,42 @@ export async function fetchGithubSession(): Promise<GithubSession> {
   return body as GithubSession;
 }
 
-export async function logoutGithub(): Promise<void> {
+export async function logoutGithub(): Promise<GithubSession> {
   const res = await fetch("/api/github/logout", { method: "POST" });
+  const body = await readJson(res);
   if (!res.ok) {
-    const body = await readJson(res);
     throw new Error(detailOf(body) || `logout ${res.status}`);
   }
+  return body as GithubSession;
+}
+
+export async function logoutGithubAccount(
+  accountId: string,
+): Promise<GithubSession> {
+  const res = await fetch(
+    `/api/github/accounts/${encodeURIComponent(accountId)}/logout`,
+    { method: "POST" },
+  );
+  const body = await readJson(res);
+  if (!res.ok) {
+    throw new Error(detailOf(body) || `logout account ${res.status}`);
+  }
+  return body as GithubSession;
+}
+
+export async function selectGithubAccount(
+  accountId: string,
+): Promise<GithubSession> {
+  const res = await fetch("/api/github/accounts/select", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ account_id: accountId }),
+  });
+  const body = await readJson(res);
+  if (!res.ok) {
+    throw new Error(detailOf(body) || `select account ${res.status}`);
+  }
+  return body as GithubSession;
 }
 
 export async function fetchGithubConfig(): Promise<GithubOauthConfig> {
@@ -143,6 +183,10 @@ export function needsOauthSetup(
   if (session && session.oauth_configured === false) return true;
   if (!oauthError) return false;
   return /oauth is not configured/i.test(oauthError);
+}
+
+export function accountCount(session: GithubSession | null): number {
+  return session?.accounts?.length ?? 0;
 }
 
 export async function fetchGithubRepos(q: string): Promise<GithubRepo[]> {

@@ -276,13 +276,15 @@ Localhost dashboard for operators (`raft serve`). **Hard rules:** bind `127.0.0.
 | `GET` | `/api/service/{name}/logs/download` | log snapshot file (`format`, `tail`) via export registry |
 | `GET` | `/api/metrics/download` | metrics table file (`format`, `window`, optional `services`) |
 | `POST` | `/api/service/{name}/start\|stop\|redeploy` | `ServeActions` |
-| `GET` | `/api/github/session\|login\|callback` | Temporary GitHub OAuth / mock login |
+| `GET` | `/api/github/session\|login\|callback` | Temporary GitHub OAuth / mock login (multi-account) |
 | `GET` / `POST` | `/api/github/config` | OAuth setup status; paste client id/secret → settings.yaml + reload |
-| `POST` | `/api/github/logout` | Clear short-lived session (`state/serve/github-session.json`) |
-| `GET` | `/api/github/repos` | List/search repos for the session |
+| `POST` | `/api/github/logout` | Logout active account (`state/serve/github-accounts.json`) |
+| `POST` | `/api/github/accounts/select` | `{account_id}` set active connected account |
+| `POST` | `/api/github/accounts/{id}/logout` | Logout one connected account |
+| `GET` | `/api/github/repos` | List/search repos for the **active** account |
 | `POST` / `GET` | `/api/github/deploy` / `/api/github/deploy/{id}` | Trigger + poll apply/deploy + CI PR + next steps |
 
-GitHub add-service assist (v1): dashboard Apps **`+`** → `/add-service` → `/deploy` (auto OAuth); settings `github:` / `RAFT_GITHUB_*` scopes `read:user repo workflow`; CI PR adds `.github/workflows/raft-apply.yml`; see [`docs/serve-github-deploy.md`](docs/serve-github-deploy.md).
+GitHub add-service assist (v1): dashboard Apps **`+`** → `/add-service` → `/deploy` (auto OAuth when zero accounts); one OAuth App in settings, many connected accounts; settings `github:` / `RAFT_GITHUB_*` scopes `read:user repo workflow`; CI PR adds `.github/workflows/raft-apply.yml`; see [`docs/serve-github-deploy.md`](docs/serve-github-deploy.md).
 
 Doctor JSON for the SPA is deferred (`DoctorRead.intended_payload_shape`).
 

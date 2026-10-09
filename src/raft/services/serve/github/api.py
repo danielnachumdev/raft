@@ -12,15 +12,16 @@ from raft.config.settings import load_config
 from raft.errors.cta import OperatorError
 
 from ....models.stack import Stack
+from .accounts import GithubAccountStore
+from .active import GithubActiveResolver
 from .deploy_job import DeployJobStore, GithubDeployRunner
 from .oauth import GITHUB_OAUTH_SCOPES, GithubOauth
 from .provider import GithubProvider, MockGithubProvider, RealGithubProvider
-from .session import GithubSessionStore
 from .settings_write import GithubSettingsWriter
 
 
 class ServeGithubApi:
-    """GitHub OAuth + repo picker + deploy trigger for ``raft serve``."""
+    """GitHub OAuth + multi-account repo picker + deploy for ``raft serve``."""
 
     def __init__(
         self,
@@ -33,11 +34,12 @@ class ServeGithubApi:
         self.stack = stack
         self._port = port
         self._settings = GithubSettingsWriter(stack.root)
-        self._sessions = GithubSessionStore(stack.root)
+        self._accounts = GithubAccountStore(stack.root)
+        self._active = GithubActiveResolver(self._accounts)
         self._provider_override = provider
         self._jobs = jobs or DeployJobStore()
         self._cfg = load_config(stack.root).github
-        self._oauth = GithubOauth(self._cfg, self._sessions)
+        self._oauth = GithubOauth(self._cfg, self._accounts)
         self._provider = provider or self._default_provider()
         self._runner = GithubDeployRunner(stack, self._provider, self._jobs)
 
@@ -48,21 +50,18 @@ class ServeGithubApi:
         app.get("/api/github/login")(self.api_login)
         app.get("/api/github/callback")(self.api_callback)
         app.post("/api/github/logout")(self.api_logout)
+        app.post("/api/github/accounts/select")(self.api_select_account)
+        app.post("/api/github/accounts/{account_id}/logout")(self.api_logout_account)
         app.get("/api/github/repos")(self.api_repos)
         app.post("/api/github/deploy")(self.api_deploy)
         app.get("/api/github/deploy/{job_id}")(self.api_deploy_status)
 
     def api_session(self) -> Dict[str, Any]:
-        session = self._sessions.load()
         base = self._settings.public_status(port=self._port)
         base["scopes"] = GITHUB_OAUTH_SCOPES
         base["hint"] = self._login_hint()
-        if session is None or not session.access_token:
-            base["authenticated"] = False
-            return base
-        out = session.to_public()
-        out.update(base)
-        return out
+        base.update(self._accounts.public_snapshot())
+        return base
 
     def api_config(self, request: Request) -> Dict[str, Any]:
         port = self._request_port(request)
@@ -133,13 +132,34 @@ class ServeGithubApi:
         self._oauth.complete_oauth(code=code, state=state)
 
     def api_logout(self) -> Dict[str, Any]:
-        self._sessions.clear()
-        return {"ok": True, "authenticated": False}
+        self._accounts.logout_active()
+        return self.api_session()
+
+    def api_select_account(self, body: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
+        account_id = str(body.get("account_id") or "").strip()
+        if not account_id:
+            raise HTTPException(status_code=400, detail="account_id is required")
+        try:
+            self._accounts.select(account_id)
+        except KeyError as exc:
+            raise HTTPException(
+                status_code=404, detail=f"GitHub account '{account_id}' not found"
+            ) from exc
+        return self.api_session()
+
+    def api_logout_account(self, account_id: str) -> Dict[str, Any]:
+        try:
+            self._accounts.logout(account_id)
+        except KeyError as exc:
+            raise HTTPException(
+                status_code=404, detail=f"GitHub account '{account_id}' not found"
+            ) from exc
+        return self.api_session()
 
     def api_repos(self, q: str = "") -> Dict[str, Any]:
-        session = self._require_session()
+        account = self._active.require()
         try:
-            repos = self._provider.list_repos(session.access_token, query=q)
+            repos = self._provider.list_repos(account.access_token, query=q)
         except OperatorError as exc:
             raise self._http(exc) from exc
         return {
@@ -157,11 +177,11 @@ class ServeGithubApi:
         }
 
     def api_deploy(self, body: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
-        session = self._require_session()
+        account = self._active.require()
         full_name, ref = self._parse_deploy_body(body)
         try:
-            repo = self._resolve_repo(session.access_token, full_name)
-            job = self._runner.start(session, repo, ref or repo.default_branch)
+            repo = self._resolve_repo(account.access_token, full_name)
+            job = self._runner.start(account, repo, ref or repo.default_branch)
         except OperatorError as exc:
             raise self._http(exc) from exc
         return job.to_dict()
@@ -192,20 +212,11 @@ class ServeGithubApi:
         return repo
 
     def api_deploy_status(self, job_id: str) -> Dict[str, Any]:
-        self._require_session()
+        self._active.require()
         job = self._jobs.get(job_id)
         if job is None:
             raise HTTPException(status_code=404, detail=f"deploy job '{job_id}' not found")
         return job.to_dict()
-
-    def _require_session(self):
-        session = self._sessions.load()
-        if session is None or not session.access_token:
-            raise HTTPException(
-                status_code=401,
-                detail="GitHub session required. Open Add new service and sign in.",
-            )
-        return session
 
     def _default_provider(self) -> GithubProvider:
         if self._cfg.mock:
@@ -214,7 +225,7 @@ class ServeGithubApi:
 
     def _reload_github(self, cfg) -> None:
         self._cfg = cfg
-        self._oauth = GithubOauth(cfg, self._sessions)
+        self._oauth = GithubOauth(cfg, self._accounts)
         self._provider = self._provider_override or self._default_provider()
         self._runner = GithubDeployRunner(self.stack, self._provider, self._jobs)
 
