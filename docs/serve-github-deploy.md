@@ -20,7 +20,7 @@ This is **not** a public multi-user console and **not** a full App lifecycle UI.
    `RAFT_GITHUB_MOCK=1`).
 4. If OAuth is **not configured**, `/deploy` shows setup instructions, links to
    create a GitHub OAuth App + this guide, and paste-in controls for
-   `clientId` / `clientSecret` (or mock mode). Saving writes `github:` into
+   `clientId` / `clientSecret`. Saving writes `github:` into
    `~/.raft/settings.yaml` and reloads serve’s in-process config (no restart).
 5. **Other OAuth failures** redirect to `/deploy?oauth_error=…` with a clear
    error and retry control (not a bare API error page).
@@ -31,9 +31,9 @@ This is **not** a public multi-user console and **not** a full App lifecycle UI.
 
 Deep link `/deploy` still works.
 
-## Mock mode (local / CI)
+## Developer mock (settings / env only)
 
-No GitHub App registration required:
+Fixture login is **not** offered in the serve UI. For local/CI only:
 
 ```yaml
 # ~/.raft/settings.yaml
@@ -41,16 +41,8 @@ github:
   mock: true
 ```
 
-Or:
-
-```bash
-export RAFT_GITHUB_MOCK=1
-raft serve
-```
-
-Mock login creates a short-lived session as `mock-operator` and lists fixture
-repos under `share/serve/mock-github/`. CI PR setup returns a mock PR URL
-(no GitHub write).
+Or `RAFT_GITHUB_MOCK=1`. That mints `mock-operator` and lists
+`share/serve/mock-github/` fixtures (no GitHub write).
 
 ## Real GitHub OAuth App
 
@@ -143,7 +135,7 @@ fail the deploy job; they appear as a failed step + next-step guidance.
 |--------|------|------|
 | `GET` | `/api/github/session` | Auth status + hint + `oauth_configured` / setup URLs |
 | `GET` | `/api/github/config` | OAuth setup status (no secrets) + callback / docs links |
-| `POST` | `/api/github/config` | `{clientId, clientSecret}` or `{mock: true}` → write settings + reload |
+| `POST` | `/api/github/config` | `{clientId, clientSecret}` → write settings + reload |
 | `GET` | `/api/github/login` | Start OAuth or mock callback (errors → `/deploy?oauth_error=`) |
 | `GET` | `/api/github/callback` | Finish login → `/deploy` or `?oauth_error=` |
 | `POST` | `/api/github/logout` | Clear session file |

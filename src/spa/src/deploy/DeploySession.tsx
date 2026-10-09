@@ -81,7 +81,6 @@ export function DeploySession(props: {
       <h2>Signed in</h2>
       <p>
         GitHub user <strong>{session.login}</strong>
-        {session.mock ? " (mock)" : ""}
       </p>
       <p className="muted">{session.hint}</p>
       <button

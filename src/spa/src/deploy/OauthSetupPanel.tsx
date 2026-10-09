@@ -20,7 +20,6 @@ export function OauthSetupPanel(props: {
   const { session, config, busy, onBusy, onSaved, onError } = props;
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
-  const [mock, setMock] = useState(false);
   const hints = resolveOauthSetupHints(config, session);
 
   const onSubmit = async (event: FormEvent) => {
@@ -28,11 +27,7 @@ export function OauthSetupPanel(props: {
     onBusy(true);
     onError("");
     try {
-      await saveGithubConfig({
-        clientId: mock ? undefined : clientId,
-        clientSecret: mock ? undefined : clientSecret,
-        mock,
-      });
+      await saveGithubConfig({ clientId, clientSecret });
       onSaved();
     } catch (err) {
       onError(err instanceof Error ? err.message : "Failed to save OAuth settings");
@@ -102,7 +97,7 @@ export function OauthSetupPanel(props: {
         </li>
         <li>
           Click <strong>Register application</strong>, then paste Client ID and
-          Client Secret below (or use mock mode).
+          Client Secret below.
         </li>
       </ol>
       <p className="oauth-setup-links">
@@ -117,47 +112,31 @@ export function OauthSetupPanel(props: {
         </a>
       </p>
       <form className="oauth-setup-form" onSubmit={(e) => void onSubmit(e)}>
-        <label className="deploy-label oauth-mock-toggle">
-          <span>
-            <input
-              type="checkbox"
-              checked={mock}
-              disabled={busy}
-              onChange={(e) => setMock(e.target.checked)}
-              id="oauth-mock"
-            />{" "}
-            Use mock mode (local fixture repos; no OAuth App)
-          </span>
+        <label className="deploy-label">
+          Client ID
+          <input
+            id="oauth-client-id"
+            autoComplete="off"
+            value={clientId}
+            disabled={busy}
+            onChange={(e) => setClientId(e.target.value)}
+            placeholder="Iv1.…"
+            required
+          />
         </label>
-        {!mock ? (
-          <>
-            <label className="deploy-label">
-              Client ID
-              <input
-                id="oauth-client-id"
-                autoComplete="off"
-                value={clientId}
-                disabled={busy}
-                onChange={(e) => setClientId(e.target.value)}
-                placeholder="Iv1.…"
-                required
-              />
-            </label>
-            <label className="deploy-label">
-              Client secret
-              <input
-                id="oauth-client-secret"
-                type="password"
-                autoComplete="off"
-                value={clientSecret}
-                disabled={busy}
-                onChange={(e) => setClientSecret(e.target.value)}
-                placeholder="Paste client secret"
-                required
-              />
-            </label>
-          </>
-        ) : null}
+        <label className="deploy-label">
+          Client secret
+          <input
+            id="oauth-client-secret"
+            type="password"
+            autoComplete="off"
+            value={clientSecret}
+            disabled={busy}
+            onChange={(e) => setClientSecret(e.target.value)}
+            placeholder="Paste client secret"
+            required
+          />
+        </label>
         <button
           type="submit"
           className="refresh"

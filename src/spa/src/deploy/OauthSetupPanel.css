@@ -53,8 +53,3 @@
   padding-top: 0.75rem;
   border-top: 1px solid var(--line);
 }
-
-.oauth-mock-toggle input {
-  margin-right: 0.35rem;
-  vertical-align: middle;
-}

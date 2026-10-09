@@ -42,11 +42,8 @@ class GithubSettingsWriter:
         *,
         client_id: Optional[str] = None,
         client_secret: Optional[str] = None,
-        mock: Optional[bool] = None,
     ) -> GithubServeConfig:
-        patch = self._validated_patch(
-            client_id=client_id, client_secret=client_secret, mock=mock
-        )
+        patch = self._validated_patch(client_id=client_id, client_secret=client_secret)
         self._merge_github(patch)
         return load_config(self._home).github
 
@@ -59,17 +56,12 @@ class GithubSettingsWriter:
         *,
         client_id: Optional[str],
         client_secret: Optional[str],
-        mock: Optional[bool],
     ) -> Dict[str, Any]:
         cid = self._opt(client_id)
         secret = self._opt(client_secret)
-        use_mock = bool(mock) if mock is not None else False
-        if use_mock:
-            return {"mock": True}
         if not cid or not secret:
             raise OperatorError(
-                "GitHub OAuth needs clientId and clientSecret "
-                "(or enable mock mode).\n"
+                "GitHub OAuth needs clientId and clientSecret.\n"
                 "Fix: paste both values from your GitHub OAuth App, "
                 f"or see {SETUP_DOCS_URL}",
                 has_fix=False,

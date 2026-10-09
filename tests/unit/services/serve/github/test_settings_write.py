@@ -43,13 +43,11 @@ class TestGithubSettingsWriter(RaftTestCase):
         assert status["enable_device_flow"] is False
         assert status["expire_user_access_tokens"] is False
 
-    def test_save_mock_and_reject_empty(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_reject_empty(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._clear_env(monkeypatch)
         writer = GithubSettingsWriter(self.tmp_path)
         with pytest.raises(OperatorError, match="clientId"):
             writer.save(client_id="", client_secret="")
-        cfg = writer.save(mock=True)
-        assert cfg.mock is True and writer.oauth_ready(cfg)
 
     def test_load_root_errors(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._clear_env(monkeypatch)

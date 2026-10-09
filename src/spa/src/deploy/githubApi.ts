@@ -118,9 +118,8 @@ export async function fetchGithubConfig(): Promise<GithubOauthConfig> {
 }
 
 export async function saveGithubConfig(input: {
-  clientId?: string;
-  clientSecret?: string;
-  mock?: boolean;
+  clientId: string;
+  clientSecret: string;
 }): Promise<GithubOauthConfig> {
   const res = await fetch("/api/github/config", {
     method: "POST",
@@ -128,7 +127,6 @@ export async function saveGithubConfig(input: {
     body: JSON.stringify({
       clientId: input.clientId,
       clientSecret: input.clientSecret,
-      mock: input.mock ?? false,
     }),
   });
   const body = await readJson(res);
