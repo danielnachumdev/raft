@@ -11,9 +11,12 @@ from ...config.settings_types import EdgeConfig
 from ...models.app import App
 from ...models.manifest import AppSpec
 from .edge.fragments import EdgeFragments
+from .scaling_holding import ScalingHoldingPages
 
 CONTROLLER_WAKE_UPSTREAM = "http://raft-controller:8090"
 MARKERS_DIR = "/etc/nginx/scaling/markers"
+DEFAULT_HOLDING_ALIAS = "/usr/share/nginx/errors/holding.html"
+DEFAULT_TIMEOUT_ALIAS = "/usr/share/nginx/errors/holding-timeout.html"
 
 
 class ScalingGate:
@@ -51,7 +54,7 @@ class ScalingGate:
             f"{certs}"
             "    resolver 127.0.0.11 valid=10s ipv6=off;\n"
             "\n"
-            f"{self._locations(app)}"
+            f"{self._locations(app, spec)}"
             "}\n"
         )
 
@@ -70,14 +73,14 @@ class ScalingGate:
             "\n"
         )
 
-    def _locations(self, app: App) -> str:
+    def _locations(self, app: App, spec: AppSpec) -> str:
         zero = f"{MARKERS_DIR}/{app.name}.zero"
         timeout = f"{MARKERS_DIR}/{app.name}.timeout"
         return (
             self._acme_challenge_include()
             + self._proxy_location(app, zero, timeout)
             + self._internal_mirrors(app)
-            + self._holding_locations(app)
+            + self._holding_locations(app, spec)
         )
 
     @staticmethod
@@ -119,22 +122,30 @@ class ScalingGate:
         )
 
     @staticmethod
-    def _holding_locations(app: App) -> str:
+    def _holding_locations(app: App, spec: AppSpec) -> str:
         hold = f"/_raft_hold_{app.name}"
         timed = f"/_raft_timeout_{app.name}"
         wake = f"/_raft_wake_{app.name}"
         return (
-            ScalingGate._static_mirror_page(hold, wake, "holding.html")
+            ScalingGate._static_mirror_page(
+                hold, wake, ScalingGate._holding_alias(app, spec)
+            )
             + ScalingGate._static_mirror_page(
-                timed, wake, "holding-timeout.html", ssi=True
+                timed, wake, DEFAULT_TIMEOUT_ALIAS, ssi=True
             )
             + ScalingGate._timeout_diag_location(app)
             + ScalingGate._offline_location()
         )
 
     @staticmethod
+    def _holding_alias(app: App, spec: AppSpec) -> str:
+        if spec.scaling is not None and spec.scaling.holding_page:
+            return ScalingHoldingPages.container_alias(app.name)
+        return DEFAULT_HOLDING_ALIAS
+
+    @staticmethod
     def _static_mirror_page(
-        location: str, wake: str, page: str, *, ssi: bool = False
+        location: str, wake: str, alias: str, *, ssi: bool = False
     ) -> str:
         # Mirror wake on holding and timeout so refresh / Try again never dead-ends.
         extras = ""
@@ -146,7 +157,7 @@ class ScalingGate:
             "        mirror_request_body off;\n"
             f"{extras}"
             "        default_type text/html;\n"
-            f"        alias /usr/share/nginx/errors/{page};\n"
+            f"        alias {alias};\n"
             "    }\n"
             "\n"
         )

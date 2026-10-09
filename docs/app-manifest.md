@@ -127,4 +127,26 @@ Same command for first boot and later cutovers. Depth and edge cases: [`AGENTS.m
 
 Omit the whole `scaling` mapping → the App is not scaled. When present, `idleSeconds` and `minUpSeconds` are required. **`wakeTimeoutSeconds` may be omitted and defaults to 60**; set it on the App to override.
 
-After the wake budget, the product `holding-timeout.html` page asks visitors to contact the administrator and shows a **server-minted** diagnostic id (not a browser UUID). The same id is on controller log lines (`id=`). Successful wakes within budget never show the timeout page. The holding page stays “Just a moment” + auto-refresh.
+After the wake budget, the product `holding-timeout.html` page asks visitors to contact the administrator and shows a **server-minted** diagnostic id (not a browser UUID). The same id is on controller log lines (`id=`). Successful wakes within budget never show the timeout page. The holding page stays “Just a moment” + auto-refresh unless you set `holdingPage`.
+
+### Custom holding page
+
+Optional `spec.scaling.holdingPage`: path to an HTML file **relative to the app root** (shipped in the app checkout / image source tree — not pasted under `~/.raft/`).
+
+```yaml
+spec:
+  scaling:
+    idleSeconds: 300
+    minUpSeconds: 60
+    holdingPage: .raft/holding.html
+```
+
+| Rule | Detail |
+|------|--------|
+| Opt-in | Omit `holdingPage` → product default holding page |
+| Location | Relative to app root; no absolute paths or `..` |
+| Auto-refresh | Include a meta-refresh (or equivalent); raft does not inject it |
+| Timeout page | Always product-default (diagnostic SSI id) — not overridable |
+| Delivery | `raft render` copies into `generated/nginx/gate-http/holding/<name>.html` for the gate Host (reload path; no `gate recreate`) |
+
+Depth: [`AGENTS.md`](../AGENTS.md) (`spec.scaling` + custom holding page).

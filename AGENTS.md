@@ -184,6 +184,7 @@ spec:
   #   idleSeconds: 300          # stop after this much idle (HTTP activity via gate)
   #   wakeTimeoutSeconds: 60    # holding page → timeout page if wake exceeds this (default 60)
   #   minUpSeconds: 60          # do not idle-stop until this long after wake/start
+  #   holdingPage: .raft/holding.html  # optional; HTML relative to app root (omit = product default)
   # Requires at least one expose: http + publicHost (not stream/host/none alone).
   # Idle stop + gate holding/wake ship together. Holding hits do not count as
   # activity. After wakeTimeoutSeconds the product timeout page includes an
@@ -223,10 +224,20 @@ Omit `spec.scaling` → no scaling. When present, **`idleSeconds` and `minUpSeco
 | `idleSeconds` | Stop the Compose service after this much idle (activity recorded via gate on real proxied traffic) |
 | `wakeTimeoutSeconds` | Holding page → timeout page if wake exceeds this (default **60**) |
 | `minUpSeconds` | Do not idle-stop until this long after wake/start |
+| `holdingPage` | Optional path (relative to app root) to a custom wake holding HTML file shipped with the app; omit → product default. Timeout page stays product-default. |
 
 Eligible only with ≥1 `expose: http` port and `publicHost`. Not for stream/host/none-only apps. Controller idle-stops and wakes; gate serves a holding page (meta-refresh) and calls an internal wake API; holding-page reloads do not reset the idle timer. On wake, the controller starts the app’s full transitive `spec.dependsOn` chain (names only — ignore `scaleWithParent`), waits until each service is Compose `running` within `wakeTimeoutSeconds`, then marks the scaled app awake. On idle-stop, the controller also stops the **co-stop set**: transitive deps of the parent reached only via edges whose effective `scaleWithParent` is true (default; string form ≡ true). Stop order is deps-before-parent; co-stopped deps are marked intentional `scaledToZero` for healer skip even without their own `spec.scaling` (cleared when wake starts them). Opt out per dep with `scaleWithParent: false`. Activity is still recorded only on the edge app’s Host. State under `~/.raft/state/scaling/`. Independent of `healing:` in settings — healer skips apps marked `scaledToZero`. Before restart/escalate, healer starts transitive `spec.dependsOn` (same graph as Compose); defers if a dep is intentionally scaled to zero.
 
-Wake requests mint an opaque diagnostic id (scaling JSON + `{app}.id` marker). Successful wakes within budget never show it. After the wake budget, the product timeout page shows “contact the administrator” plus that id (SSI). The same id is on controller log lines (`scale wake request` / `scale wake` / `scale wake timeout` … `id=`). Incomplete/timeout lines also include the last wake **stage** (`wait_running` / `wait_fetch` / `wait_host`, plus `service=` / `detail=` when known) so an operator can see where the chain stopped. Grep controller logs for `id=<code-from-page>`. The holding page stays “Just a moment” + auto-refresh (no admin CTA).
+Wake requests mint an opaque diagnostic id (scaling JSON + `{app}.id` marker). Successful wakes within budget never show it. After the wake budget, the product timeout page shows “contact the administrator” plus that id (SSI). The same id is on controller log lines (`scale wake request` / `scale wake` / `scale wake timeout` … `id=`). Incomplete/timeout lines also include the last wake **stage** (`wait_running` / `wait_fetch` / `wait_host`, plus `service=` / `detail=` when known) so an operator can see where the chain stopped. Grep controller logs for `id=<code-from-page>`. The holding page stays “Just a moment” + auto-refresh (no admin CTA) unless the App sets `holdingPage`.
+
+#### Custom holding page (`spec.scaling.holdingPage`)
+
+One optional string: a path **relative to the app root** (same checkout as `.raft/app.yaml` for git/local; docker Apps still need that checkout so apply/sync can read the file). Example: `holdingPage: .raft/holding.html`.
+
+- Omit the field → product default holding + timeout pages.
+- Ship the HTML in the app tree (not under `~/.raft/` by hand). On `render`, raft copies it into `generated/nginx/gate-http/holding/<app>.html` (already bind-mounted into the gate) and points the Host holding location at it — **reload/render only**, no `gate recreate`.
+- The HTML should auto-refresh (e.g. `<meta http-equiv="refresh" content="2">`) so wake keeps retrying; raft does not inject refresh or SSI into custom holding pages.
+- The wake-timeout page stays the product `holding-timeout.html` (SSI diagnostic id). Only the in-progress holding page is overridable.
 
 ### `spec.resources` → Compose
 
@@ -359,7 +370,7 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | `src/raft/services/acme/` | `AcmePaths`, `AcmeEnsure` (HTTP-01 via official PyPI `acme`), `AcmeGateInstall` (render + nginx reload), `AcmeHttpRedirect` |
 | `src/raft/services/auth/` | `GitAuthManager` + ssh/urls helpers |
 | `src/raft/services/sync/` | `SourceSync` |
-| `src/raft/services/render/` | `StackRenderer`, `FragmentCollector`, `compose_apps`, `gate_nginx`, `edge/` nginx fragments (http/stream/tls), `scaling_gate` (holding/wake snippets). Distinct from `adapters/docker/edge.py` (Compose edge service ops). |
+| `src/raft/services/render/` | `StackRenderer`, `FragmentCollector`, `compose_apps`, `gate_nginx`, `edge/` nginx fragments (http/stream/tls), `scaling_gate` (holding/wake snippets), `scaling_holding` (app-owned holding HTML → generated gate-http). Distinct from `adapters/docker/edge.py` (Compose edge service ops). |
 | `src/raft/services/deploy/` | orchestrator, cutover, wait, locking, readiness |
 | `src/raft/services/ops/` | doctor, **status collect/format** (Started + allocated limits), logs, uninstall, update, certs |
 | `src/raft/services/read/` | Shared **CLI+serve contracts/presentation** over ops collectors (`StatusRead`, `MetricsRead`, `DoctorRead`, `ServeSnapshotView`, `ExternalUrlBuilder`) — not a second status collector |

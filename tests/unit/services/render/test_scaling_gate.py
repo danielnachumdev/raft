@@ -6,11 +6,13 @@ import pytest
 
 from raft.config.paths import find_package_root
 from raft.config.settings_types import EdgeConfig
+from raft.errors.cta import OperatorError
 from raft.models.app import App
 from raft.models.manifest import AppSpec
 from raft.models.ports import PortSpec
 from raft.models.scaling_spec import ScalingSpec
 from raft.services.render.scaling_gate import ScalingGate
+from raft.services.render.scaling_holding import ScalingHoldingPages
 from tests.shared.files import FileText
 
 from ...base import RaftTestCase, write_applied_app
@@ -21,6 +23,10 @@ _SCALING = {
     "minUpSeconds": 30,
 }
 _EDGE = EdgeConfig(http=80, https=443, streams=())
+_CUSTOM_HOLDING = (
+    '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="2"></head>'
+    "<body>demo-api waking</body></html>"
+)
 
 
 class TestScalingRender(RaftTestCase):
@@ -30,7 +36,7 @@ class TestScalingRender(RaftTestCase):
         FileText.contains(
             gen / "nginx/gate-http/listeners.conf",
             "scaling:web",
-            "holding.html",
+            "/usr/share/nginx/errors/holding.html",
             "/wake/web",
             "/activity/web",
             "server_name web.test",
@@ -39,6 +45,28 @@ class TestScalingRender(RaftTestCase):
         conf = (gen / "nginx/gate-http/listeners.conf").read_text(encoding="utf-8")
         assert conf.index("web.zero") < conf.index("web.timeout")
         assert conf.count("/_raft_wake_web") >= 2
+        assert "http-generated/holding" not in conf
+
+    def test_custom_holding_page_copied_and_aliased(self) -> None:
+        scaling = {**_SCALING, "holdingPage": ".raft/holding.html"}
+        write_applied_app(self.tmp_path, "web", public_host="web.test", extra={"scaling": scaling})
+        page = self.tmp_path / "apps" / "web" / ".raft" / "holding.html"
+        page.parent.mkdir(parents=True)
+        page.write_text(_CUSTOM_HOLDING, encoding="utf-8")
+        gen = self.render_applied(edge=_EDGE)
+        dest = gen / "nginx/gate-http/holding/web.html"
+        assert dest.is_file()
+        assert "demo-api waking" in dest.read_text(encoding="utf-8")
+        conf = (gen / "nginx/gate-http/listeners.conf").read_text(encoding="utf-8")
+        assert ScalingHoldingPages.container_alias("web") in conf
+        assert "/usr/share/nginx/errors/holding.html" not in conf
+        assert "holding-timeout.html" in conf
+
+    def test_custom_holding_page_missing_file_errors(self) -> None:
+        scaling = {**_SCALING, "holdingPage": ".raft/holding.html"}
+        write_applied_app(self.tmp_path, "web", public_host="web.test", extra={"scaling": scaling})
+        with pytest.raises(OperatorError, match="holdingPage"):
+            self.render_applied(edge=_EDGE)
 
     def test_timeout_location_enables_ssi_and_diag_alias(self) -> None:
         write_applied_app(self.tmp_path, "web", public_host="web.test", extra={"scaling": _SCALING})
@@ -77,7 +105,11 @@ class TestScalingRender(RaftTestCase):
         )
         (self.tmp_path / "certs" / "web").mkdir(parents=True)
         gen = self.render_applied(edge=_EDGE)
-        FileText.contains(gen / "nginx/gate-tls/web.conf", "holding.html", "listen 443 ssl")
+        FileText.contains(
+            gen / "nginx/gate-tls/web.conf",
+            "/usr/share/nginx/errors/holding.html",
+            "listen 443 ssl",
+        )
 
     def test_contribute_http_skips(self) -> None:
         gate = ScalingGate()

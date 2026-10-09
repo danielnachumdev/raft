@@ -14,6 +14,7 @@ _FIELD_KEYS = (
     ("idleSeconds", "idle_seconds"),
     ("wakeTimeoutSeconds", "wake_timeout_seconds"),
     ("minUpSeconds", "min_up_seconds"),
+    ("holdingPage", "holding_page"),
 )
 
 
@@ -24,6 +25,7 @@ class ScalingSpec:
     idle_seconds: float
     wake_timeout_seconds: float
     min_up_seconds: float
+    holding_page: Optional[str] = None
 
 
 class ScalingSpecParser:
@@ -42,6 +44,11 @@ class ScalingSpecParser:
         if not isinstance(raw, dict):
             raise ValueError(f"{path}: spec.scaling must be an object")
         cls._require_http_eligible(ports, path)
+        cls._reject_unknown(raw, path)
+        return cls._build(raw, path)
+
+    @classmethod
+    def _build(cls, raw: dict[str, Any], path: Path) -> ScalingSpec:
         return ScalingSpec(
             idle_seconds=cls._positive(raw, "idleSeconds", path),
             wake_timeout_seconds=cls._positive(
@@ -51,6 +58,7 @@ class ScalingSpecParser:
                 default=DEFAULT_WAKE_TIMEOUT_SECONDS,
             ),
             min_up_seconds=cls._positive(raw, "minUpSeconds", path),
+            holding_page=cls._holding_page(raw, path),
         )
 
     @staticmethod
@@ -60,6 +68,47 @@ class ScalingSpecParser:
         raise ValueError(
             f"{path}: spec.scaling requires at least one port with expose: http "
             f"(and publicHost). Non-HTTP expose modes are not scale-to-zero eligible."
+        )
+
+    @classmethod
+    def _holding_page(cls, raw: dict[str, Any], path: Path) -> Optional[str]:
+        if "holdingPage" not in raw and "holding_page" not in raw:
+            return None
+        value = raw.get("holdingPage", raw.get("holding_page"))
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(
+                f"{path}: spec.scaling.holdingPage must be a non-empty string "
+                f"(path relative to the app root)"
+            )
+        return cls._relative_app_path(value.strip(), path)
+
+    @staticmethod
+    def _relative_app_path(rel: str, path: Path) -> str:
+        normalized = rel.replace("\\", "/")
+        if normalized.startswith("/") or normalized.startswith("~"):
+            raise ValueError(
+                f"{path}: spec.scaling.holdingPage must be relative to the app root, "
+                f"got {rel!r}"
+            )
+        parts = Path(normalized).parts
+        if not parts or ".." in parts:
+            raise ValueError(
+                f"{path}: spec.scaling.holdingPage must be a relative path with no "
+                f"'..' segments, got {rel!r}"
+            )
+        return normalized
+
+    @classmethod
+    def _reject_unknown(cls, raw: dict[str, Any], path: Path) -> None:
+        known = {cam for cam, snake in _FIELD_KEYS} | {snake for cam, snake in _FIELD_KEYS}
+        unknown = sorted(set(raw) - known)
+        if not unknown:
+            return
+        keys = ", ".join(unknown)
+        raise ValueError(
+            f"{path}: spec.scaling unknown keys: {keys}. "
+            f"Fix: remove unknown keys from scaling "
+            f"(idleSeconds, wakeTimeoutSeconds, minUpSeconds, holdingPage)"
         )
 
     @classmethod

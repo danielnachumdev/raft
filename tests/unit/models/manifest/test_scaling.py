@@ -139,3 +139,62 @@ class TestScalingSpec(ManifestTestCase):
         )
         with pytest.raises(ValueError, match="wakeTimeoutSeconds"):
             AppDocument.load_contract(checkout)
+
+    def test_holding_page_relative_path(self) -> None:
+        checkout = self.tmp_path / "app"
+        checkout.mkdir()
+        self.write_manifest(checkout)
+        path = checkout / ".raft" / "app.yaml"
+        text = path.read_text(encoding="utf-8")
+        path.write_text(
+            text
+            + "\n  scaling:\n    idleSeconds: 30\n    minUpSeconds: 15\n"
+            + "    holdingPage: .raft/holding.html\n",
+            encoding="utf-8",
+        )
+        spec = AppDocument.load_contract(checkout)
+        assert spec.scaling == ScalingSpec(30.0, 60.0, 15.0, ".raft/holding.html")
+
+    def test_holding_page_rejects_absolute_and_parent(self) -> None:
+        checkout = self.tmp_path / "app"
+        checkout.mkdir()
+        self.write_manifest(checkout)
+        path = checkout / ".raft" / "app.yaml"
+        text = path.read_text(encoding="utf-8")
+        base = text + "\n  scaling:\n    idleSeconds: 30\n    minUpSeconds: 15\n"
+        path.write_text(base + "    holdingPage: /etc/passwd\n", encoding="utf-8")
+        with pytest.raises(ValueError, match="relative"):
+            AppDocument.load_contract(checkout)
+        path.write_text(base + "    holdingPage: ../escape.html\n", encoding="utf-8")
+        with pytest.raises(ValueError, match="\\.\\."):
+            AppDocument.load_contract(checkout)
+
+    def test_rejects_unknown_scaling_keys(self) -> None:
+        checkout = self.tmp_path / "app"
+        checkout.mkdir()
+        self.write_manifest(checkout)
+        path = checkout / ".raft" / "app.yaml"
+        text = path.read_text(encoding="utf-8")
+        path.write_text(
+            text
+            + "\n  scaling:\n    idleSeconds: 30\n    minUpSeconds: 15\n"
+            + "    brandColor: blue\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match="unknown keys"):
+            AppDocument.load_contract(checkout)
+
+    def test_holding_page_rejects_empty(self) -> None:
+        checkout = self.tmp_path / "app"
+        checkout.mkdir()
+        self.write_manifest(checkout)
+        path = checkout / ".raft" / "app.yaml"
+        text = path.read_text(encoding="utf-8")
+        path.write_text(
+            text
+            + "\n  scaling:\n    idleSeconds: 30\n    minUpSeconds: 15\n"
+            + "    holdingPage: '  '\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match="non-empty"):
+            AppDocument.load_contract(checkout)
