@@ -189,7 +189,14 @@ export function accountCount(session: GithubSession | null): number {
   return session?.accounts?.length ?? 0;
 }
 
-/** Local filter over the signed-in user's repos (never global GH search). */
+/** Non-expired connected accounts available for repo browse / deploy. */
+export function usableAccounts(
+  session: GithubSession | null,
+): GithubAccountPublic[] {
+  return (session?.accounts ?? []).filter((account) => !account.expired);
+}
+
+/** Local filter over the selected account’s repos (never global GH search). */
 export function filterGithubRepos(
   repos: GithubRepo[],
   query: string,
@@ -199,7 +206,7 @@ export function filterGithubRepos(
   return repos.filter((r) => r.full_name.toLowerCase().includes(q));
 }
 
-/** Fetch the authenticated user's owned/member repos (affiliation-scoped). */
+/** Fetch the selected account’s owned/member repos (affiliation-scoped). */
 export async function fetchGithubRepos(): Promise<GithubRepo[]> {
   const res = await fetch("/api/github/repos");
   const body = await readJson(res);
