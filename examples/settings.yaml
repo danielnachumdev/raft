@@ -160,6 +160,13 @@ edge:
 #         # allowInsecureHttp: true   # lab http:// only; default requires https
 #     - id: oncall-email
 #       enabled: false
-#       type: email              # follow-on strategy
+#       type: email              # shipped strategy (plain-text SMTP)
 #       settings:
 #         to: ops@example.com
+#         from: raft@example.com
+#         smtpHost: smtp.example.com
+#         # smtpPort: 587
+#         # username: raft@example.com
+#         # password: …              # redacted in serve API
+#         # useStartTls: true
+#         # timeoutSeconds: 10

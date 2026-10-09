@@ -79,10 +79,22 @@ class TestNotificationsSettingsWriter(RaftTestCase):
     def test_hard_delete(self) -> None:
         writer = NotificationsSettingsWriter(self.tmp_path)
         writer.create(self._channel("a"))
-        writer.create({"id": "b", "type": "email"})
+        writer.create(self._email_channel("b"))
         writer.delete("a")
         ids = [c.id for c in load_config(self.tmp_path).notifications.channels]
         assert ids == ["b"]
+
+    @staticmethod
+    def _email_channel(channel_id: str = "oncall") -> dict:
+        return {
+            "id": channel_id,
+            "type": "email",
+            "settings": {
+                "to": "ops@example.com",
+                "from": "raft@example.com",
+                "smtpHost": "smtp.example.com",
+            },
+        }
 
     def test_duplicate_and_missing(self) -> None:
         writer = NotificationsSettingsWriter(self.tmp_path)
