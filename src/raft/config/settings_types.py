@@ -5,7 +5,8 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from types import MappingProxyType
+from typing import Any, Mapping, Optional
 
 from .paths import LOGS_DIRNAME, SETTINGS_FILENAME
 
@@ -124,6 +125,27 @@ class GithubServeConfig:
 
 
 @dataclass(frozen=True)
+class NotificationChannelConfig:
+    """One durable notification channel in ``settings.yaml`` ``notifications:``."""
+
+    id: str
+    type: str
+    enabled: bool = True
+    settings: Mapping[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "settings", MappingProxyType(dict(self.settings)))
+
+
+@dataclass(frozen=True)
+class NotificationsConfig:
+    """Outbound notification channels (framework in ``services/notify/``)."""
+
+    enabled: bool = True
+    channels: tuple[NotificationChannelConfig, ...] = ()
+
+
+@dataclass(frozen=True)
 class RaftConfig:
     logging: LoggingConfig = LoggingConfig()
     edge: EdgeConfig = field(default_factory=EdgeConfig)
@@ -131,6 +153,7 @@ class RaftConfig:
     metrics: MetricsConfig = field(default_factory=MetricsConfig)
     acme: AcmeConfig = field(default_factory=AcmeConfig)
     github: GithubServeConfig = field(default_factory=GithubServeConfig)
+    notifications: NotificationsConfig = field(default_factory=NotificationsConfig)
 
 
 def default_config() -> RaftConfig:
