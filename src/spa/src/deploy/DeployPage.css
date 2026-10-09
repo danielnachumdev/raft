@@ -23,12 +23,19 @@
   font-size: 0.9rem;
 }
 
-.deploy-label input {
+.deploy-label input,
+.deploy-label select {
   padding: 0.45rem 0.55rem;
   border: 1px solid var(--line);
   background: var(--input);
   color: var(--text);
   font: inherit;
+}
+
+.deploy-label select:disabled,
+.deploy-label input:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .deploy-cta {

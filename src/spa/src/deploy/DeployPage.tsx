@@ -9,12 +9,12 @@ import {
   fetchGithubConfig,
   fetchGithubRepos,
   fetchGithubSession,
-  logoutGithub,
   logoutGithubAccount,
   needsOauthSetup,
   oauthErrorFromSearch,
   selectGithubAccount,
   startGithubDeploy,
+  usableAccounts,
   type DeployJob,
   type GithubOauthConfig,
   type GithubRepo,
@@ -25,7 +25,7 @@ import "./AddServicePage.css";
 
 const POLL_MS = 1000;
 
-/** GitHub OAuth → pick one repo → auto-deploy + CI PR + logs. */
+/** GitHub OAuth → pick account → pick repo → auto-deploy + CI PR + logs. */
 export function DeployPage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -39,9 +39,11 @@ export function DeployPage() {
   const [ref, setRef] = useState("main");
   const [job, setJob] = useState<DeployJob | null>(null);
   const [busy, setBusy] = useState(false);
+  const [viewAsId, setViewAsId] = useState("");
   const redirecting = useRef(false);
   const needsSetup = needsOauthSetup(session, oauthError);
-  const activeId = session?.active_account_id ?? null;
+  const browseAccounts = usableAccounts(session);
+  const browseIdsKey = browseAccounts.map((a) => a.id).join(",");
 
   const refreshSession = useCallback(async () => {
     setError(null);
@@ -84,7 +86,19 @@ export function DeployPage() {
   }, [session, oauthError, needsSetup]);
 
   useEffect(() => {
-    if (!session?.authenticated) {
+    const ids = new Set(browseIdsKey ? browseIdsKey.split(",") : []);
+    if (viewAsId && !ids.has(viewAsId)) {
+      setViewAsId("");
+      clearRepoSelection();
+    }
+  }, [browseIdsKey, viewAsId, clearRepoSelection]);
+
+  useEffect(() => {
+    if (!viewAsId || !session?.authenticated) {
+      setRepos([]);
+      return;
+    }
+    if (session.active_account_id !== viewAsId) {
       setRepos([]);
       return;
     }
@@ -102,7 +116,7 @@ export function DeployPage() {
     return () => {
       cancelled = true;
     };
-  }, [session?.authenticated, activeId, query]);
+  }, [session?.authenticated, session?.active_account_id, viewAsId, query]);
 
   useEffect(() => {
     if (!job || job.status === "succeeded" || job.status === "failed") return;
@@ -135,23 +149,14 @@ export function DeployPage() {
     }
   };
 
-  const onLogout = async () => {
-    setBusy(true);
-    try {
-      setSession(await logoutGithub());
-      clearRepoSelection();
-      redirecting.current = false;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Logout failed");
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const onLogoutOne = async (accountId: string) => {
     setBusy(true);
     try {
-      setSession(await logoutGithubAccount(accountId));
+      const next = await logoutGithubAccount(accountId);
+      setSession(next);
+      if (viewAsId === accountId) {
+        setViewAsId("");
+      }
       clearRepoSelection();
       redirecting.current = false;
     } catch (err) {
@@ -161,13 +166,16 @@ export function DeployPage() {
     }
   };
 
-  const onSelectAccount = async (accountId: string) => {
+  const onViewAs = async (accountId: string) => {
+    clearRepoSelection();
+    setViewAsId(accountId);
+    if (!accountId) return;
     setBusy(true);
     setError(null);
     try {
-      clearRepoSelection();
       setSession(await selectGithubAccount(accountId));
     } catch (err) {
+      setViewAsId("");
       setError(err instanceof Error ? err.message : "Select account failed");
     } finally {
       setBusy(false);
@@ -182,7 +190,7 @@ export function DeployPage() {
   };
 
   const showRepos = Boolean(
-    session?.authenticated && !oauthError && !needsSetup,
+    accountCount(session) > 0 && !oauthError && !needsSetup,
   );
 
   return (
@@ -218,9 +226,7 @@ export function DeployPage() {
         oauthError={oauthError}
         needsSetup={needsSetup}
         busy={busy}
-        onLogout={() => void onLogout()}
         onLogoutOne={(id) => void onLogoutOne(id)}
-        onSelectAccount={(id) => void onSelectAccount(id)}
         onBusy={setBusy}
         onSaved={() => void onOauthSaved()}
         onError={(message) => setError(message || null)}
@@ -229,6 +235,9 @@ export function DeployPage() {
       {showRepos ? (
         <>
           <DeployRepoPicker
+            accounts={browseAccounts}
+            accountId={viewAsId}
+            onAccount={(id) => void onViewAs(id)}
             query={query}
             onQuery={setQuery}
             repos={repos}

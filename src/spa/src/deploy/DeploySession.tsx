@@ -9,9 +9,7 @@ export function DeploySession(props: {
   oauthError: string | null;
   needsSetup: boolean;
   busy: boolean;
-  onLogout: () => void;
   onLogoutOne: (accountId: string) => void;
-  onSelectAccount: (accountId: string) => void;
   onBusy: (busy: boolean) => void;
   onSaved: () => void;
   onError: (message: string) => void;
@@ -22,9 +20,7 @@ export function DeploySession(props: {
     oauthError,
     needsSetup,
     busy,
-    onLogout,
     onLogoutOne,
-    onSelectAccount,
     onBusy,
     onSaved,
     onError,
@@ -73,9 +69,7 @@ export function DeploySession(props: {
       <GithubAccountSwitcher
         session={session}
         busy={busy}
-        onSelect={onSelectAccount}
         onLogoutOne={onLogoutOne}
-        onLogoutActive={onLogout}
       />
     );
   }
