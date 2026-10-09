@@ -1,0 +1,28 @@
+.channel-form {
+  margin: 0;
+}
+
+.channel-enabled {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.75rem 0;
+  font-size: 0.9rem;
+}
+
+.channel-settings {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  padding: 0.5rem 0.55rem;
+  border: 1px solid var(--line);
+  background: var(--input);
+  color: var(--text);
+  resize: vertical;
+  min-height: 8rem;
+}
+
+.channel-form-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+}

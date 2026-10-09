@@ -1,0 +1,20 @@
+.notifications-page .notifications-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+.notifications-global {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+}
+
+.notifications-empty-catalog {
+  border-style: dashed;
+}
+
+.notifications-empty-catalog h2 {
+  margin-bottom: 0.35rem;
+}
