@@ -189,10 +189,19 @@ export function accountCount(session: GithubSession | null): number {
   return session?.accounts?.length ?? 0;
 }
 
-export async function fetchGithubRepos(q: string): Promise<GithubRepo[]> {
-  const params = new URLSearchParams();
-  if (q.trim()) params.set("q", q.trim());
-  const res = await fetch(`/api/github/repos?${params.toString()}`);
+/** Local filter over the signed-in user's repos (never global GH search). */
+export function filterGithubRepos(
+  repos: GithubRepo[],
+  query: string,
+): GithubRepo[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return repos;
+  return repos.filter((r) => r.full_name.toLowerCase().includes(q));
+}
+
+/** Fetch the authenticated user's owned/member repos (affiliation-scoped). */
+export async function fetchGithubRepos(): Promise<GithubRepo[]> {
+  const res = await fetch("/api/github/repos");
   const body = await readJson(res);
   if (!res.ok) {
     throw new Error(detailOf(body) || `repos ${res.status}`);

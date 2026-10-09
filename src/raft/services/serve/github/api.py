@@ -241,7 +241,8 @@ class ServeGithubApi:
                 "Serve stays on localhost/tunnel; this login is only for repo pick/deploy."
             )
         return (
-            "Temporary GitHub login lists repos you can access, then raft drives apply "
+            "Temporary GitHub login lists repos you own or belong to "
+            "(collaborator / org member), then raft drives apply "
             "and opens a CI workflow PR when needed. "
             "Serve remains localhost/tunnel admin — not a public multi-user console. "
             f"OAuth scopes: {GITHUB_OAUTH_SCOPES}."

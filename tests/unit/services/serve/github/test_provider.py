@@ -50,20 +50,23 @@ class TestRealGithubProvider(RaftTestCase):
         assert repo.full_name == "o/r" and repo.private is True
         assert RealGithubProvider().resolve_local_tree("o/r") is None
 
-    def test_list_and_search(self) -> None:
+    def test_list_filters_user_repos_only(self) -> None:
         provider = RealGithubProvider()
         payload = (
-            '[{"full_name":"a/b","name":"b","private":false,'
+            '[{"full_name":"demo-org/demo-api","name":"demo-api","private":false,'
+            '"default_branch":"main","clone_url":"c","ssh_url":"s","html_url":"h"},'
+            '{"full_name":"demo-org/other","name":"other","private":true,'
             '"default_branch":"main","clone_url":"c","ssh_url":"s","html_url":"h"}]'
         )
-        with patch.object(provider, "_request_page", return_value=(payload, None)):
-            assert provider.list_repos("tok")[0].full_name == "a/b"
-        search = (
-            '{"items":[{"full_name":"a/b","name":"b","private":false,'
-            '"default_branch":"main","clone_url":"c","ssh_url":"s","html_url":"h"}]}'
-        )
-        with patch.object(provider, "_request", return_value=search):
-            assert provider.list_repos("tok", query="b")[0].name == "b"
+        with patch.object(provider, "_request_page", return_value=(payload, None)) as page:
+            assert provider.list_repos("tok")[0].full_name == "demo-org/demo-api"
+            url = page.call_args.args[1]
+            assert "/user/repos" in url
+            assert "affiliation=owner%2Ccollaborator%2Corganization_member" in url
+            assert "search/repositories" not in url
+            filtered = provider.list_repos("tok", query="demo-api")
+            assert [r.full_name for r in filtered] == ["demo-org/demo-api"]
+            assert provider.list_repos("tok", query="nope") == []
 
     def test_manifest_ok_and_empty(self) -> None:
         provider = RealGithubProvider()
@@ -101,5 +104,5 @@ class TestRealGithubProvider(RaftTestCase):
                 provider._request("tok", "https://example.com")
         with patch.object(provider, "_request_page", return_value=("{}", None)):
             assert provider.list_repos("tok") == []
-        with patch.object(provider, "_request", return_value='{"items":null}'):
+        with patch.object(provider, "_request_page", return_value=("[]", None)):
             assert provider.list_repos("tok", query="x") == []

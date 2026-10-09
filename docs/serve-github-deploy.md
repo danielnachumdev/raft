@@ -26,9 +26,9 @@ This is **not** a public multi-user console and **not** a full App lifecycle UI.
    `~/.raft/settings.yaml` and reloads serve’s in-process config (no restart).
 5. **Other OAuth failures** redirect to `/deploy?oauth_error=…` with a clear
    error and retry control (not a bare API error page).
-6. Search, select one repo, optional ref → confirm → progress steps poll until
-   succeeded/failed; **deployment logs** reuse the service logs UI when an app
-   name is known.
+6. Filter the signed-in account’s owned/member repos as you type, select one,
+   optional ref → confirm → progress steps poll until succeeded/failed;
+   **deployment logs** reuse the service logs UI when an app name is known.
 7. Read **Additional steps** (DNS, TLS, env, volumes, deploy key, merge CI PR).
 
 Deep link `/deploy` still works.
@@ -153,7 +153,7 @@ Token refresh is not shipped in this version.
 | `POST` | `/api/github/logout` | Logout **active** account (compat) |
 | `POST` | `/api/github/accounts/select` | `{account_id}` → set active |
 | `POST` | `/api/github/accounts/{id}/logout` | Logout one account |
-| `GET` | `/api/github/repos?q=` | List / search repos (active token) |
+| `GET` | `/api/github/repos?q=` | List the active account’s repos (`/user/repos` affiliation=owner,collaborator,organization_member); optional `q` filters that set locally (never global GitHub search) |
 | `POST` | `/api/github/deploy` | `{full_name, ref}` → job (apply + CI PR step) |
 | `GET` | `/api/github/deploy/{id}` | Poll progress / `ci_pr` / next steps |
 

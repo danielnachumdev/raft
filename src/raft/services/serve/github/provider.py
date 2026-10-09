@@ -17,6 +17,15 @@ from ..paths import ServePaths
 
 _API = "https://api.github.com"
 _UA = "raft-serve-github-v1"
+# Owner + collaborator + org-member only (never global public search).
+_USER_REPOS_AFFILIATION = "owner,collaborator,organization_member"
+
+
+def _filter_repos(repos: List["GithubRepo"], query: str) -> List["GithubRepo"]:
+    q = query.strip().lower()
+    if not q:
+        return repos
+    return [r for r in repos if q in r.full_name.lower()]
 
 
 @dataclass(frozen=True)
@@ -51,10 +60,7 @@ class MockGithubProvider:
     def list_repos(self, token: str, *, query: str = "") -> List[GithubRepo]:
         del token
         repos = [self._repo("demo", "http-only-site"), self._repo("demo", "no-manifest")]
-        q = query.strip().lower()
-        if not q:
-            return repos
-        return [r for r in repos if q in r.full_name.lower()]
+        return _filter_repos(repos, query)
 
     def fetch_manifest(self, token: str, full_name: str, ref: str) -> str:
         del token, ref
@@ -98,12 +104,10 @@ class MockGithubProvider:
 
 
 class RealGithubProvider:
-    """GitHub REST API (OAuth token). Scope: ``repo`` for private listing."""
+    """GitHub REST API (OAuth token). Lists only the signed-in user's repos."""
 
     def list_repos(self, token: str, *, query: str = "") -> List[GithubRepo]:
-        if query.strip():
-            return self._search(token, query.strip())
-        return self._paginate(token, f"{_API}/user/repos?per_page=100&sort=updated")
+        return _filter_repos(self._list_user_repos(token), query)
 
     def fetch_manifest(self, token: str, full_name: str, ref: str) -> str:
         enc = urllib.parse.quote(CONTRACT_REL_PATH.as_posix())
@@ -121,14 +125,15 @@ class RealGithubProvider:
         del full_name
         return None
 
-    def _search(self, token: str, query: str) -> List[GithubRepo]:
-        q = urllib.parse.quote(f"{query} in:name fork:true")
-        url = f"{_API}/search/repositories?q={q}&per_page=30"
-        data = json.loads(self._request(token, url))
-        items = data.get("items") if isinstance(data, dict) else None
-        if not isinstance(items, list):
-            return []
-        return [self._parse_repo(item) for item in items if isinstance(item, dict)]
+    def _list_user_repos(self, token: str) -> List[GithubRepo]:
+        params = urllib.parse.urlencode(
+            {
+                "per_page": "100",
+                "sort": "updated",
+                "affiliation": _USER_REPOS_AFFILIATION,
+            }
+        )
+        return self._paginate(token, f"{_API}/user/repos?{params}")
 
     def _paginate(self, token: str, url: str) -> List[GithubRepo]:
         out: List[GithubRepo] = []

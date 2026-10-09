@@ -9,6 +9,7 @@ import {
   fetchGithubConfig,
   fetchGithubRepos,
   fetchGithubSession,
+  filterGithubRepos,
   logoutGithub,
   logoutGithubAccount,
   needsOauthSetup,
@@ -34,7 +35,7 @@ export function DeployPage() {
   const [config, setConfig] = useState<GithubOauthConfig | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [repos, setRepos] = useState<GithubRepo[]>([]);
+  const [allRepos, setAllRepos] = useState<GithubRepo[]>([]);
   const [selected, setSelected] = useState<GithubRepo | null>(null);
   const [ref, setRef] = useState("main");
   const [job, setJob] = useState<DeployJob | null>(null);
@@ -60,7 +61,7 @@ export function DeployPage() {
   const clearRepoSelection = useCallback(() => {
     setSelected(null);
     setJob(null);
-    setRepos([]);
+    setAllRepos([]);
     setQuery("");
   }, []);
 
@@ -85,14 +86,14 @@ export function DeployPage() {
 
   useEffect(() => {
     if (!session?.authenticated) {
-      setRepos([]);
+      setAllRepos([]);
       return;
     }
     let cancelled = false;
     void (async () => {
       try {
-        const list = await fetchGithubRepos(query);
-        if (!cancelled) setRepos(list);
+        const list = await fetchGithubRepos();
+        if (!cancelled) setAllRepos(list);
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Failed to list repos");
@@ -102,7 +103,9 @@ export function DeployPage() {
     return () => {
       cancelled = true;
     };
-  }, [session?.authenticated, activeId, query]);
+  }, [session?.authenticated, activeId]);
+
+  const repos = filterGithubRepos(allRepos, query);
 
   useEffect(() => {
     if (!job || job.status === "succeeded" || job.status === "failed") return;
