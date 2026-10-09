@@ -10,6 +10,8 @@ from raft.config.settings import load_config
 from raft.config.settings_types import AcmeConfig
 from raft.models.app import App
 from raft.models.stack import Stack
+from raft.services.notify.control_events import ControlPlaneEvents
+from raft.services.notify.notifier import Notifier
 
 from .account import AcmeAccountStore
 from .app_store import AcmeAppStore
@@ -34,6 +36,7 @@ class AcmeEnsure:
         store: Optional[AcmeAppStore] = None,
         config: Optional[AcmeConfig] = None,
         now: Optional[Callable[[], datetime]] = None,
+        notifier: Optional[Notifier] = None,
     ) -> None:
         self.stack = stack
         self._paths = AcmePaths(stack.root)
@@ -43,6 +46,7 @@ class AcmeEnsure:
         self._now = now or (lambda: datetime.now(timezone.utc))
         self._installer = installer
         self._order_runner = order_runner
+        self._notifier = notifier if notifier is not None else Notifier(stack.root)
 
     def run(self, app_names: Optional[Sequence[str]] = None) -> None:
         """Ensure one or all ``tls: acme`` apps; install/reload if material changed."""
@@ -53,7 +57,7 @@ class AcmeEnsure:
                     changed = True
             except Exception as exc:  # noqa: BLE001 — best-effort
                 logger.warning("ACME ensure failed for %s: %s", app.name, exc)
-                self._store.record_error(app.name, str(exc))
+                self._record_error(app.name, str(exc))
         if changed:
             self._install_after_change()
 
@@ -64,7 +68,7 @@ class AcmeEnsure:
             return False
         email = (self._config.email or "").strip()
         if not email:
-            self._store.record_error(app.name, "acme.email is not set in settings.yaml")
+            self._record_error(app.name, "acme.email is not set in settings.yaml")
             return False
         names = list(spec.server_names(app.public_host))
         if self._should_skip(app.name, names):
@@ -124,3 +128,9 @@ class AcmeEnsure:
         if installer is None:
             return
         installer.apply()
+
+    def _record_error(self, app_name: str, message: str) -> None:
+        self._store.record_error(app_name, message)
+        self._notifier.notify(
+            ControlPlaneEvents.acme_last_error(app_name, error=message)
+        )

@@ -16,6 +16,8 @@ from raft.models.state.scaling_store import ScalingStore
 from raft.models.stack import Stack
 from raft.services.deploy.locking import app_and_stack_locks
 from raft.services.deploy.orchestrator import Orchestrator
+from raft.services.notify.control_events import ControlPlaneEvents
+from raft.services.notify.notifier import Notifier
 
 __all__ = ["Healer", "needs_heal", "run_heal_forever"]
 
@@ -41,6 +43,7 @@ class Healer:
     docker: DockerStack
     deploy: Optional[DeployFn] = None
     on_needs_heal: Optional[NeedsHealFn] = None
+    notifier: Optional[Notifier] = None
     fail_counts: Dict[str, int] = field(default_factory=dict)
     restart_counts: Dict[str, int] = field(default_factory=dict)
     escalate_counts: Dict[str, int] = field(default_factory=dict)
@@ -48,6 +51,8 @@ class Healer:
 
     def __post_init__(self) -> None:
         self._deps = HealDepends(self.home, self.docker)
+        if self.notifier is None:
+            self.notifier = Notifier(self.home)
 
     def tick(self, *, now: Optional[float] = None) -> None:
         if not self.config.enabled:
@@ -178,6 +183,7 @@ class Healer:
             compose_id,
             restarts,
         )
+        self._notify_escalate(name, compose_id, restarts)
         logger.info("heal redeploy app=%s", name)
         if not self._do_escalate(name):
             return
@@ -185,6 +191,14 @@ class Healer:
         self.escalate_counts[name] = self.escalate_counts.get(name, 0) + 1
         self.last_act_at[name] = when
         logger.info("heal redeploy ok app=%s", name)
+
+    def _notify_escalate(self, name: str, compose_id: str, restarts: int) -> None:
+        assert self.notifier is not None
+        self.notifier.notify(
+            ControlPlaneEvents.heal_escalate(
+                name, compose_id=compose_id, restarts=restarts
+            )
+        )
 
     def _do_escalate(self, name: str) -> bool:
         if not self._deps.ensure_deps_running(name):
