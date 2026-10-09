@@ -249,6 +249,8 @@ Private remotes stay as `git@github.com:…` in the manifest; auth rewrites clon
 
 Localhost dashboard for operators (`raft serve`). **Hard rules:** bind `127.0.0.1` only; one process (FastAPI + static SPA); no WebSocket — status/metrics use HTTP poll; FE changes must rebuild into `src/raft/share/serve/spa/` before commit/release; mutative actions take the same `flock` locks as CLI deploy; gate start/stop/redeploy still refused where CLI refuses.
 
+**Freshness:** `GET /api/status` and `GET /api/service/{name}` re-read `state/apps/` on every call (`refresh_apps=True`) and adopt the reloaded Stack into serve actions/logs. The SPA polls status every **2s** while the tab is visible (pauses when hidden; refetches on focus). Expected lag after out-of-band apply/delete is about one poll interval (≤ ~2s), not minutes; no serve restart or hard reload required. No-port / worker Apps are listed like any other App (status path does not filter on ports). Applied-but-not-up shows as `not running`.
+
 ### Backend map
 
 | Piece | Path / type | Role |
@@ -267,9 +269,9 @@ Localhost dashboard for operators (`raft serve`). **Hard rules:** bind `127.0.0.
 
 | Method | Path | Backing |
 |--------|------|---------|
-| `GET` | `/api/status` | `StatusRead` snapshot + `control_plane` / `apps` presentation (labels, started, external_urls) |
+| `GET` | `/api/status` | `StatusRead` snapshot + `control_plane` / `apps` presentation (labels, started, external_urls); reloads registry each call |
 | `GET` | `/api/metrics` | `MetricsRead` over `state/metrics/resources.jsonl` (`window`, optional `since`, optional `services`) |
-| `GET` | `/api/service/{name}` | one container + presentation row (404 if unknown) |
+| `GET` | `/api/service/{name}` | one container + presentation row (404 if unknown); reloads registry each call |
 | `GET` | `/api/service/{name}/logs` | log snapshot (`tail`) |
 | `GET` | `/api/service/{name}/logs/follow` | SSE live follow |
 | `GET` | `/api/exports` | download format catalog (`logs` / `metrics` exporter ids) |

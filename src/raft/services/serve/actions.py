@@ -39,6 +39,14 @@ class ServeActions:
         self._docker = docker
         self._targets = LogsTargets(stack)
 
+    def bind_stack(self, stack: Stack) -> None:
+        """Point at a reloaded Stack after serve registry refresh."""
+        self.stack = stack
+        self._targets.stack = stack
+        self._orch = None
+        if self._docker is not None:
+            self._docker.stack = stack
+
     def start(self, name: str) -> Dict[str, Any]:
         compose_id, app = self._resolve(name)
         with self._locks(app):

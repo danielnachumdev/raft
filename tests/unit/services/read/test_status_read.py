@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from raft.models.app import EDGE_GROUP
+from raft.models.stack import Stack
 from raft.services.ops.doctor.models import CheckResult
+from raft.services.ops.status import Status
 from raft.services.ops.status.models import StatusSnapshot
 from raft.services.read import DoctorRead, StatusRead
 
-from ...base import RaftTestCase, make_stack
+from ...base import RaftTestCase, make_app, make_stack, write_applied_app
 from ...services.ops.status.fixtures import StatusFixtures
 
 
@@ -85,8 +87,6 @@ class TestStatusRead(RaftTestCase):
         assert status.collect.call_count == 2
 
     def test_api_payload_includes_app_external_urls(self) -> None:
-        from ...base import make_app, write_applied_app
-
         write_applied_app(
             self.tmp_path, "site", public_host="site.test", tls="origin"
         )
@@ -101,6 +101,39 @@ class TestStatusRead(RaftTestCase):
         stack = make_stack(self.tmp_path, (make_app("site", public_host="site.test"),))
         payload = StatusRead(stack, status=status).api_payload()
         assert payload["apps"][0]["external_urls"] == ["https://site.test/"]
+
+    def test_refresh_apps_adopts_registry_including_worker(self) -> None:
+        reader = self._reader_with_site()
+        self._write_out_of_band_apps()
+        with patch(
+            "raft.services.ops.status.service.HostGateway.resources",
+            return_value=StatusFixtures.host(),
+        ):
+            payload = reader.api_payload(refresh_apps=True)
+        names = {row["service"] for row in payload["apps"]}
+        assert names == {"site", "demo-api", "demo-worker"}
+        assert isinstance(reader.stack, Stack)
+        assert {app.name for app in reader.stack.apps} == names
+        worker = next(c for c in payload["containers"] if c["service"] == "demo-worker")
+        assert worker["status"] == "not running" and worker["app"] == "demo-worker"
+
+    def _reader_with_site(self) -> StatusRead:
+        write_applied_app(self.tmp_path, "site")
+        status = Status(make_stack(self.tmp_path, (make_app("site"),)))
+        StatusFixtures.mock_docker_idle(status)
+        return StatusRead(status.stack, status=status)
+
+    def _write_out_of_band_apps(self) -> None:
+        write_applied_app(self.tmp_path, "demo-api")
+        write_applied_app(
+            self.tmp_path,
+            "demo-worker",
+            source="docker",
+            image="ghcr.io/example/worker",
+            public_host="",
+            build_context=None,
+            extra={"ports": [], "readiness": {"type": "none"}},
+        )
 
 
 class TestDoctorRead(RaftTestCase):

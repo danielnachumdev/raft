@@ -164,3 +164,14 @@ class TestServeActions(RaftTestCase):
                         actions.redeploy("site")
         docker_cls.assert_called()
         orch_cls.assert_called_once_with(stack)
+
+    def test_bind_stack_updates_targets_and_docker(self) -> None:
+        actions, docker, orch = self._actions(apps=(make_app("site"),))
+        actions._orch = orch
+        refreshed = make_stack(self.tmp_path, (make_app("site"), make_app("demo-api")))
+        actions.bind_stack(refreshed)
+        assert actions.stack is refreshed
+        assert actions._targets.stack is refreshed
+        assert actions._orch is None
+        assert docker.stack is refreshed
+        assert actions._resolve("demo-api")[0] == "demo-api"

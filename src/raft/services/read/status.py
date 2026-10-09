@@ -33,7 +33,10 @@ class StatusRead:
         return self._status
 
     def collect(self, *, refresh_apps: bool = False) -> StatusSnapshot:
-        return self._status.collect(refresh_apps=refresh_apps)
+        snap = self._status.collect(refresh_apps=refresh_apps)
+        if refresh_apps:
+            self._sync_stack_from_status()
+        return snap
 
     def snapshot_dict(self, *, refresh_apps: bool = False) -> Dict[str, Any]:
         """Machine contract — identical to ``raft status --json`` body."""
@@ -54,6 +57,12 @@ class StatusRead:
     def service_detail(self, name: str, *, refresh_apps: bool = False) -> Optional[Dict[str, Any]]:
         """One service's container + presentation row, or None if unknown."""
         return self._view(self.collect(refresh_apps=refresh_apps)).service_detail(name)
+
+    def _sync_stack_from_status(self) -> None:
+        """Adopt registry reload from Status (serve out-of-band apply)."""
+        reloaded = getattr(self._status, "stack", None)
+        if isinstance(reloaded, Stack):
+            self.stack = reloaded
 
     def _view(self, snapshot: StatusSnapshot) -> ServeSnapshotView:
         return ServeSnapshotView(

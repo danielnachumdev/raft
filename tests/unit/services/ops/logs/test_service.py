@@ -92,3 +92,12 @@ class TestLogsShow(RaftTestCase):
         with patch.object(logs.docker, "try_service_container_id", return_value="cid"):
             with patch.object(logs.docker, "compose_logs", return_value=""):
                 assert logs.snapshot("app") == ""
+
+    def test_bind_stack_updates_docker_and_targets(self) -> None:
+        logs = self._logs()
+        refreshed = make_stack(self.tmp_path, (make_app("app"), make_app("demo-api")))
+        logs.bind_stack(refreshed)
+        assert logs.stack is refreshed
+        assert logs.docker.stack is refreshed
+        assert logs._targets.stack is refreshed
+        assert logs._targets.resolve("demo-api") == ("demo-api",)

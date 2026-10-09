@@ -141,7 +141,8 @@ export type MetricsPayload = {
 export const METRICS_POLL_MS = 5000;
 
 /** Poll /api/status while the dashboard is mounted (pause when tab hidden). */
-export const STATUS_POLL_MS = 30_000;
+/** Dashboard status poll while the tab is visible (tight bound for out-of-band apply). */
+export const STATUS_POLL_MS = 2000;
 
 export async function fetchStatus(): Promise<StatusPayload> {
   const res = await fetch("/api/status");

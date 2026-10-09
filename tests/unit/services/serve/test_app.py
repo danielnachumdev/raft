@@ -10,11 +10,15 @@ from fastapi.testclient import TestClient
 
 from raft.controller.metrics import METRICS_DIR, METRICS_FILENAME
 from raft.models.app import EDGE_GROUP
+from raft.models.stack import Stack
+from raft.services.ops.logs import Logs
+from raft.services.ops.status import Status
 from raft.services.ops.status.models import StatusSnapshot
+from raft.services.serve.actions import ServeActions
 from raft.services.serve.app import ServeAppFactory
 from raft.services.serve.service import DEFAULT_SERVE_PORT, Serve
 
-from ...base import RaftTestCase, make_app, make_stack
+from ...base import RaftTestCase, make_app, make_stack, write_applied_app
 from ...services.ops.status.fixtures import StatusFixtures
 
 
@@ -69,6 +73,34 @@ class _ServeFixtures:
         }
         path.write_text(json.dumps(row) + "\n", encoding="utf-8")
 
+    @staticmethod
+    def live_registry_client(root):
+        write_applied_app(root, "site")
+        stack = Stack.load_apps(root)
+        status = Status(stack)
+        StatusFixtures.mock_docker_idle(status)
+        actions = ServeActions(stack)
+        logs = Logs(stack)
+        client = TestClient(
+            ServeAppFactory(
+                stack, status=status, actions=actions, logs=logs
+            ).create()
+        )
+        return client, actions, logs
+
+    @staticmethod
+    def write_out_of_band_apps(root) -> None:
+        write_applied_app(root, "demo-api")
+        write_applied_app(
+            root,
+            "demo-worker",
+            source="docker",
+            image="ghcr.io/example/worker",
+            public_host="",
+            build_context=None,
+            extra={"ports": [], "readiness": {"type": "none"}},
+        )
+
 
 class TestServeAppFactory(RaftTestCase):
     def test_index_serves_spa_shell_without_collect(self) -> None:
@@ -89,7 +121,7 @@ class TestServeAppFactory(RaftTestCase):
         )
         response = client.get("/api/status")
         assert response.status_code == 200
-        status.collect.assert_called_once()
+        status.collect.assert_called_once_with(refresh_apps=True)
         data = response.json()
         assert "host" in data and "containers" in data
         names = [r["name"] for r in data["control_plane"]]
@@ -104,7 +136,7 @@ class TestServeAppFactory(RaftTestCase):
         )
         response = client.get("/api/service/raft-gate")
         assert response.status_code == 200
-        status.collect.assert_called_once()
+        status.collect.assert_called_once_with(refresh_apps=True)
         data = response.json()
         assert data["container"]["service"] == "raft-gate"
         assert data["presentation"]["name"] == "gate"
@@ -197,6 +229,19 @@ class TestServeAppFactory(RaftTestCase):
         )
         data = client.get("/api/status").json()
         assert data["control_plane"] == [] and data["apps"] == []
+
+    def test_api_status_reloads_registry_including_worker(self) -> None:
+        client, actions, logs = _ServeFixtures.live_registry_client(self.tmp_path)
+        _ServeFixtures.write_out_of_band_apps(self.tmp_path)
+        with patch(
+            "raft.services.ops.status.service.HostGateway.resources",
+            return_value=StatusFixtures.host(),
+        ):
+            data = client.get("/api/status").json()
+        names = {row["service"] for row in data["apps"]}
+        assert names == {"site", "demo-api", "demo-worker"}
+        assert {app.name for app in actions.stack.apps} == names
+        assert {app.name for app in logs.stack.apps} == names
 
     def test_api_metrics_reads_jsonl(self) -> None:
         stack = make_stack(self.tmp_path)
