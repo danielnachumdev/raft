@@ -152,11 +152,14 @@ edge:
 #   channels:
 #     - id: ops-primary
 #       enabled: true
-#       type: webhook          # strategy type_id once registered
+#       type: webhook          # shipped strategy (HTTPS POST JSON)
 #       settings:
 #         url: https://hooks.example.invalid/raft
+#         # timeoutSeconds: 10
+#         # headers: { Authorization: Bearer … }  # redacted in serve API
+#         # allowInsecureHttp: true   # lab http:// only; default requires https
 #     - id: oncall-email
 #       enabled: false
-#       type: email
+#       type: email              # follow-on strategy
 #       settings:
 #         to: ops@example.com

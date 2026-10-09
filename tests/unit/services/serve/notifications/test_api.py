@@ -43,6 +43,34 @@ class TestServeNotificationsApi(RaftTestCase):
             "channels": [],
         }
 
+    def test_default_catalog_lists_webhook(self) -> None:
+        client = self._default_catalog_client()
+        types = [
+            row["type_id"]
+            for row in client.get("/api/notifications/strategies").json()["strategies"]
+        ]
+        assert types == ["webhook"]
+        bad = client.post(
+            "/api/notifications/channels",
+            json={"id": "ops", "type": "webhook", "settings": {}},
+        )
+        assert bad.status_code == 400 and "url is required" in bad.json()["detail"]
+
+    def _default_catalog_client(self) -> TestClient:
+        stack = make_stack(self.tmp_path)
+        (self.tmp_path / "settings.yaml").write_text(
+            "edge: {http: 80, https: null}\n", encoding="utf-8"
+        )
+        status = MagicMock()
+        status.collect.return_value = StatusSnapshot(
+            host=StatusFixtures.empty_host_status(), containers=()
+        )
+        return TestClient(
+            ServeAppFactory(
+                stack, status=status, notifications=ServeNotificationsApi(stack)
+            ).create()
+        )
+
     def test_create_get_redacts_secrets(self) -> None:
         client = self._client()
         created = client.post(
