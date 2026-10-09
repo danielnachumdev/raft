@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  fetchMetrics,
   METRICS_POLL_MS,
   type GraphEvent,
   type MetricsAvailable,
@@ -21,6 +20,7 @@ import {
 import {
   applyFull,
   applyPayloadMeta,
+  metricsFetcher,
   pollIncremental,
   toggleId,
 } from "./trendsPoll";
@@ -69,11 +69,13 @@ export function TrendsPanel() {
   const [error, setError] = useState<string | null>(null);
   const metric =
     RUNTIME_METRICS.find((m) => m.id === metricId) ?? RUNTIME_METRICS[0];
+  const plane = metric.plane;
+  const planeCacheKey = `${plane}:${cacheKey}`;
   const groupMode = usesGroupPicker(viewMode);
 
   useEffect(() => {
     let cancelled = false;
-    const cached = peekMetrics(cacheKey);
+    const cached = peekMetrics(planeCacheKey);
     if (cached) {
       applyFull(cached, setSeries, setAvailable, setCursor, setEvents);
       applyPayloadMeta(
@@ -89,9 +91,9 @@ export function TrendsPanel() {
     setError(null);
     void (async () => {
       try {
-        const payload = await fetchMetrics(query);
+        const payload = await metricsFetcher(plane)(query);
         if (cancelled) return;
-        putMetrics(cacheKey, payload);
+        putMetrics(planeCacheKey, payload);
         applyFull(payload, setSeries, setAvailable, setCursor, setEvents);
         applyPayloadMeta(
           payload, setBounds, setClampMessage, setRangeTo, setWindowSec,
@@ -105,17 +107,17 @@ export function TrendsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [cacheKey, query]);
+  }, [planeCacheKey, plane, query]);
 
   useEffect(() => {
     if (busy || !isLiveQuery(query)) return;
     const id = window.setInterval(() => {
       void pollIncremental(
-        query, cursor, setSeries, setAvailable, setCursor, setEvents,
+        query, cursor, setSeries, setAvailable, setCursor, setEvents, plane,
       );
     }, METRICS_POLL_MS);
     return () => window.clearInterval(id);
-  }, [query, cursor, busy]);
+  }, [query, cursor, busy, plane]);
 
   const groups = useMemo(() => groupOptions(available), [available]);
   const pickerIds = groupMode
@@ -171,7 +173,10 @@ export function TrendsPanel() {
           showingAll={showingAll}
           busy={busy}
           onRange={setRange}
-          onMetric={setMetricId}
+          onMetric={(next) => {
+            setMetricId(next);
+            setSelected(null);
+          }}
           onViewMode={(next) => {
             setViewMode(next);
             setSelected(null);

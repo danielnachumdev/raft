@@ -142,10 +142,21 @@ class TestControllerPrereq(ControllerTestCase):
 
         home = self.raft_home(tmp_path)
         orch = MagicMock()
-        healer, _metrics, _acme = _build_jobs(home, default_config(), MagicMock(), orch)
+        healer, _metrics, _http, _acme = _build_jobs(
+            home, default_config(), MagicMock(), orch
+        )
         healer.on_needs_heal()
         orch.enqueue.assert_called_once()
         assert orch.enqueue.call_args.args[0].job_id == JobIds.METRICS
+
+    def test_metrics_tick_runs_resource_and_http(self, tmp_path: Path) -> None:
+        from raft.controller.run import _metrics_tick
+
+        metrics = MagicMock()
+        http_metrics = MagicMock()
+        _metrics_tick(metrics, http_metrics)()
+        metrics.tick.assert_called_once()
+        http_metrics.tick.assert_called_once()
 
     def test_safe_tick_swallows(self) -> None:
         from raft.controller.run import _safe_tick

@@ -50,21 +50,30 @@ logging:
 #                                 # maxRestarts), raft cutover/redeploy (default: 1)
 
 # ---------------------------------------------------------------------------
-# metrics — raft-controller resource sampling (JSONL under state/metrics/).
+# metrics — raft-controller sampling (JSONL under state/metrics/).
 # Independent cadence from healing. Defaults: 1 sample/min, soft timeout 30s,
 # flush every 10 samples or 60s. Rotation matches host CLI logs: seal the active
-# resources.jsonl on day change or when the active segment hits retentionMaxBytes
-# (resources.jsonl.YYYY-MM-DD[.N]); drop sealed archives by age and total bytes.
+# file on day change or when the active segment hits retentionMaxBytes
+# (*.jsonl.YYYY-MM-DD[.N]); drop sealed archives by age and total bytes.
+#
+# Two planes share this interval / retention:
+#   resources.jsonl — host + container CPU/memory/IO (Docker stats)
+#   http.jsonl      — HTTP edge RPS / in-flight / latency percentiles / status
+#                     classes (gate access_log + stub_status scrape)
+# Percentiles are over the metrics sample window (intervalSeconds), not the
+# Trends UI lookback. Enabling HTTP metrics is reload-friendly after the
+# product compose volume for gate access logs is attached (one-time recreate
+# on upgrade that adds the volume; day-to-day = render/reload only).
 # ---------------------------------------------------------------------------
 # metrics:
-#   intervalSeconds: 60           # periodic metrics job
+#   intervalSeconds: 60           # resource + HTTP metrics job (shared)
 #   timeoutSeconds: 30            # soft timeout: forget stuck metrics worker
 #                                 # so sampling resumes (Engine probes also
 #                                 # use a 25s subprocess timeout)
 #   batchSize: 10                 # buffer before append
 #   flushSeconds: 60              # time-based flush even if batch not full
 #   retentionMaxAgeDays: 30       # delete sealed archives older than this
-#   retentionMaxBytes: 104857600  # 100 MiB; max size of the active segment
+#   retentionMaxBytes: 104857600  # 100 MiB; max size of each active segment
 
 # ---------------------------------------------------------------------------
 # edge — public listeners published by the gate container.

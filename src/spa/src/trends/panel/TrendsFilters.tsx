@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import type { MetricsAvailable, MetricsBounds } from "../../shared/api";
 import {
-  RUNTIME_METRICS,
+  HTTP_METRICS,
+  RESOURCE_METRICS,
   type RuntimeMetricDef,
   type RuntimeMetricId,
 } from "../runtimeMetrics";
@@ -47,11 +48,20 @@ export function TrendsFilters(props: {
           aria-label="Metric type"
           disabled={props.busy}
         >
-          {RUNTIME_METRICS.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.label}
-            </option>
-          ))}
+          <optgroup label="Resources">
+            {RESOURCE_METRICS.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="HTTP edge">
+            {HTTP_METRICS.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label}
+              </option>
+            ))}
+          </optgroup>
         </select>
       </label>
       <label className="trends-field">

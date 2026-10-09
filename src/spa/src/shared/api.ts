@@ -76,9 +76,9 @@ export function serviceLogsPath(service: string): string {
 
 export type MetricsPoint = {
   t: string;
-  cpu_percent: number | null;
-  memory_used_percent: number | null;
-  memory_used_bytes: number | null;
+  cpu_percent?: number | null;
+  memory_used_percent?: number | null;
+  memory_used_bytes?: number | null;
   memory_limit_bytes?: number | null;
   uptime_seconds?: number | null;
   pids?: number | null;
@@ -86,6 +86,18 @@ export type MetricsPoint = {
   network_tx_bytes?: number | null;
   block_read_bytes?: number | null;
   block_write_bytes?: number | null;
+  rps?: number | null;
+  in_flight?: number | null;
+  active_connections?: number | null;
+  requests?: number | null;
+  duration_avg_ms?: number | null;
+  duration_p50_ms?: number | null;
+  duration_p95_ms?: number | null;
+  duration_p99_ms?: number | null;
+  status_2xx?: number | null;
+  status_3xx?: number | null;
+  status_4xx?: number | null;
+  status_5xx?: number | null;
 };
 
 export type MetricsSeries = {
@@ -287,13 +299,29 @@ function detailFromBody(body: unknown): string | null {
   return null;
 }
 
-export async function fetchMetrics(opts: {
+export type MetricsQuery = {
   window: number;
   since?: string | null;
   start?: string;
   end?: string;
   services?: string[];
-}): Promise<MetricsPayload> {
+};
+
+export async function fetchMetrics(opts: MetricsQuery): Promise<MetricsPayload> {
+  return fetchMetricsPath("/api/metrics", opts);
+}
+
+/** HTTP edge request series (sibling of resource ``/api/metrics``). */
+export async function fetchHttpMetrics(
+  opts: MetricsQuery,
+): Promise<MetricsPayload> {
+  return fetchMetricsPath("/api/metrics/http", opts);
+}
+
+async function fetchMetricsPath(
+  path: string,
+  opts: MetricsQuery,
+): Promise<MetricsPayload> {
   const params = new URLSearchParams();
   params.set("window", String(opts.window));
   if (opts.since) params.set("since", opts.since);
@@ -302,7 +330,7 @@ export async function fetchMetrics(opts: {
   if (opts.services && opts.services.length > 0) {
     params.set("services", opts.services.join(","));
   }
-  const res = await fetch(`/api/metrics?${params.toString()}`);
+  const res = await fetch(`${path}?${params.toString()}`);
   const body = await readJsonBody(res);
   if (!res.ok) {
     throw new Error(detailFromBody(body) || `metrics ${res.status}`);

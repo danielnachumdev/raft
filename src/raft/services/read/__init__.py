@@ -29,15 +29,19 @@ Serve ``GET /api/service/{name}`` returns ``host`` + one ``container`` object
 plus a ``presentation`` row (including ``external_urls``) for that Compose
 service id (404 if unknown).
 
-Serve ``GET /api/metrics`` returns historical series from
+Serve ``GET /api/metrics`` returns historical **resource** series from
 ``state/metrics/resources.jsonl`` via ``MetricsRead`` (window, optional
 ``start``/``end`` absolute range, optional ``since`` cursor for SPA polling),
 plus ``events`` from ``state/events/graph.jsonl``. Payload includes ``bounds``
 from metrics retention (``retentionMaxAgeDays`` / earliest sample).
-Live updates use HTTP polling — simpler and durable for one FastAPI process
-than WebSockets. Serve status endpoints reload ``state/apps/`` on each call so
-out-of-band apply/delete is visible on the next SPA poll (~2s when the tab is
-visible).
+
+Serve ``GET /api/metrics/http`` returns historical **HTTP edge** series from
+sibling ``state/metrics/http.jsonl`` via ``HttpMetricsRead`` (same window /
+``since`` shape; ``kind: http``). Percentiles are over the controller sample
+window (``metrics.intervalSeconds``). Live updates use HTTP polling — simpler
+and durable for one FastAPI process than WebSockets. Serve status endpoints
+reload ``state/apps/`` on each call so out-of-band apply/delete is visible on
+the next SPA poll (~2s when the tab is visible).
 
 Doctor JSON is deferred for a full dashboard health view; see
 ``DoctorRead.intended_payload_shape`` and ``DoctorRead.from_results``.

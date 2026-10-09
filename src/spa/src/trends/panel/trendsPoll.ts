@@ -1,13 +1,20 @@
 import type { Dispatch, SetStateAction } from "react";
 import {
+  fetchHttpMetrics,
   fetchMetrics,
   type GraphEvent,
   type MetricsAvailable,
   type MetricsBounds,
   type MetricsPayload,
+  type MetricsQuery,
   type MetricsSeries,
 } from "../../shared/api";
+import type { MetricPlane } from "../runtimeMetrics";
 import type { MetricsQueryOpts } from "../trendsRange";
+
+export function metricsFetcher(plane: MetricPlane) {
+  return plane === "http" ? fetchHttpMetrics : fetchMetrics;
+}
 
 export function applyFull(
   payload: MetricsPayload,
@@ -42,12 +49,14 @@ export async function pollIncremental(
   setAvailable: (a: MetricsAvailable[]) => void,
   setCursor: (c: string | null) => void,
   setEvents: (e: GraphEvent[]) => void,
+  plane: MetricPlane = "resources",
 ) {
   try {
-    const payload = await fetchMetrics({
+    const fetchHistory = metricsFetcher(plane);
+    const payload = await fetchHistory({
       ...query,
       since: cursor ?? undefined,
-    });
+    } as MetricsQuery);
     if (payload.available.length) setAvailable(payload.available);
     setEvents(payload.events ?? []);
     if (!payload.series.length) return;

@@ -33,6 +33,7 @@ _DATA_DIR_RELS = (
     "state/scaling",
     "state/scaling/markers",
     "state/metrics",
+    "state/metrics/gate-http",
     "state/events",
     "state/serve",
     "state/acme",
