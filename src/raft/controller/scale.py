@@ -15,6 +15,8 @@ from raft.models.manifest import AppSpec
 from raft.models.scaling_spec import ScalingSpec
 from raft.models.state.scaling_store import ScalingStore
 from raft.models.stack import Stack
+from raft.services.notify.control_events import ControlPlaneEvents
+from raft.services.notify.notifier import Notifier
 
 __all__ = ["Scaler", "WAKE_HTTP_PORT"]
 
@@ -35,11 +37,13 @@ class Scaler:
         *,
         clock: Callable[[], float] = time.time,
         sleep: SleepFn = time.sleep,
+        notifier: Optional[Notifier] = None,
     ) -> None:
         self.home = home
         self.docker = docker
         self._clock = clock
         self._sleep = sleep
+        self._notifier = notifier if notifier is not None else Notifier(home)
         self.store = ScalingStore(home)
         self._bind_collaborators()
         self._wake_lock = threading.Lock()
@@ -140,14 +144,16 @@ class Scaler:
             return
         elapsed = when - state.wake_requested_at
         if elapsed >= scaling.wake_timeout_seconds and not state.wake_timed_out:
+            detail = self.store.wake_progress_log(name)
             logger.warning(
                 "scale wake timeout app=%s id=%s after %.0fs %s",
                 name,
                 state.wake_id or "-",
                 scaling.wake_timeout_seconds,
-                self.store.wake_progress_log(name),
+                detail,
             )
             self.store.mark_wake_timeout(name)
+            self._notify_wake_timeout(name, state.wake_id or "", scaling, detail)
             return
         if state.wake_timed_out:
             return
@@ -188,6 +194,22 @@ class Scaler:
         finally:
             with self._wake_lock:
                 self._waking.discard(name)
+
+    def _notify_wake_timeout(
+        self,
+        name: str,
+        wake_id: str,
+        scaling: ScalingSpec,
+        detail: str,
+    ) -> None:
+        self._notifier.notify(
+            ControlPlaneEvents.scale_wake_timeout(
+                name,
+                wake_id=wake_id,
+                timeout_seconds=scaling.wake_timeout_seconds,
+                detail=detail,
+            )
+        )
 
     def _load_spec(self, name: str) -> Optional[AppSpec]:
         return self._deps.load_spec(name)

@@ -13,6 +13,8 @@ from typing import Optional
 import yaml
 
 from raft.errors.cta import OperatorError
+from raft.services.notify.control_events import ControlPlaneEvents
+from raft.services.notify.notifier import Notifier
 
 from ....models.app_document import AppDocument
 from ....models.stack import Stack, load_stack
@@ -39,12 +41,14 @@ class GithubDeployRunner:
         store: DeployJobStore,
         *,
         ci: Optional[GithubCiPrSetup] = None,
+        notifier: Optional[Notifier] = None,
     ) -> None:
         self._stack = stack
         self._provider = provider
         self._store = store
         self._next = DeployNextSteps()
         self._ci = ci or GithubCiPrSetup()
+        self._notifier = notifier if notifier is not None else Notifier(stack.root)
 
     def start(self, account: GithubAccount, repo: GithubRepo, ref: str) -> DeployJob:
         job = self._store.create(repo.full_name, ref or repo.default_branch)
@@ -66,13 +70,20 @@ class GithubDeployRunner:
             self._execute(job, account, repo)
             job.status = "succeeded"
         except OperatorError as exc:
-            job.status = "failed"
-            job.error = str(exc)
+            self._fail(job, str(exc))
             logger.warning("github deploy %s failed: %s", job.id, exc)
         except Exception as exc:
-            job.status = "failed"
-            job.error = f"unexpected deploy error: {exc}"
+            self._fail(job, f"unexpected deploy error: {exc}")
             logger.exception("github deploy %s crashed", job.id)
+
+    def _fail(self, job: DeployJob, error: str) -> None:
+        job.status = "failed"
+        job.error = error
+        self._notifier.notify(
+            ControlPlaneEvents.serve_deploy_failed(
+                job_id=job.id, full_name=job.full_name, error=error
+            )
+        )
 
     def _execute(self, job: DeployJob, account: GithubAccount, repo: GithubRepo) -> None:
         self._step(job, "Fetch App manifest", "running")
