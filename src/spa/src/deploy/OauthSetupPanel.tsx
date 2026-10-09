@@ -4,11 +4,9 @@ import {
   type GithubOauthConfig,
   type GithubSession,
 } from "./githubApi";
+import { CopyableValue } from "./OauthSetupCopy";
+import { resolveOauthSetupHints } from "./oauthSetupHints";
 import "./OauthSetupPanel.css";
-
-const FALLBACK_OAUTH_APP = "https://github.com/settings/applications/new";
-const FALLBACK_DOCS =
-  "https://github.com/danielnachumdev/raft/blob/main/docs/serve-github-deploy.md";
 
 /** Instructions + paste-in controls when GitHub OAuth is missing. */
 export function OauthSetupPanel(props: {
@@ -22,26 +20,14 @@ export function OauthSetupPanel(props: {
   const { session, config, busy, onBusy, onSaved, onError } = props;
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
-  const [mock, setMock] = useState(false);
-  const docsUrl = config?.docs_url || session?.docs_url || FALLBACK_DOCS;
-  const appUrl =
-    config?.oauth_app_url || session?.oauth_app_url || FALLBACK_OAUTH_APP;
-  const callback =
-    config?.callback_url ||
-    session?.callback_url ||
-    "http://127.0.0.1:8787/api/github/callback";
-  const scopes = config?.scopes || session?.scopes || "read:user repo workflow";
+  const hints = resolveOauthSetupHints(config, session);
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
     onBusy(true);
     onError("");
     try {
-      await saveGithubConfig({
-        clientId: mock ? undefined : clientId,
-        clientSecret: mock ? undefined : clientSecret,
-        mock,
-      });
+      await saveGithubConfig({ clientId, clientSecret });
       onSaved();
     } catch (err) {
       onError(err instanceof Error ? err.message : "Failed to save OAuth settings");
@@ -54,86 +40,92 @@ export function OauthSetupPanel(props: {
     <section className="deploy-panel oauth-setup" id="github-oauth-setup">
       <h2>Set up GitHub OAuth</h2>
       <p className="muted">
-        Serve needs a GitHub OAuth App (localhost callback) before Add from
-        GitHub can sign you in. Values are written to{" "}
-        <code>{config?.settings_path || "~/.raft/settings.yaml"}</code> and
-        reloaded in this process — no CLI-only dance.
+        Create a GitHub OAuth App for this localhost serve bind, then paste the
+        Client ID and Client Secret below. Values are written to{" "}
+        <code>{hints.settings_path}</code> and reloaded here — no CLI-only dance.
+        Login later requests scopes <code>{hints.scopes}</code>.
       </p>
       <ol className="oauth-setup-steps">
         <li>
-          Create an OAuth App on GitHub (Developer settings).
+          Open{" "}
+          <a
+            className="oauth-inline-link"
+            href={hints.oauth_app_url}
+            target="_blank"
+            rel="noreferrer"
+            id="oauth-app-create-link"
+          >
+            Create GitHub OAuth App
+          </a>
+          . Text fields may be prefilled; if empty, use the values below.
+        </li>
+        <FieldStep
+          label="Application name"
+          value={hints.application_name}
+          id="oauth-application-name"
+        />
+        <FieldStep
+          label="Homepage URL"
+          value={hints.homepage_url}
+          id="oauth-homepage-url"
+        />
+        <FieldStep
+          label="Application description"
+          value={hints.description}
+          id="oauth-description"
+        />
+        <FieldStep
+          label="Authorization callback URL"
+          value={hints.callback_url}
+          id="oauth-callback-url"
+        />
+        <li>
+          Leave <strong>Enable Device Flow</strong>{" "}
+          <em>{hints.enable_device_flow ? "on" : "off (unset)"}</em> — raft uses
+          the browser redirect flow, not device codes.
         </li>
         <li>
-          Set <strong>Authorization callback URL</strong> to{" "}
-          <code id="oauth-callback-url">{callback}</code>
+          Leave{" "}
+          <strong>Expire user access tokens</strong>{" "}
+          <em>
+            {hints.expire_user_access_tokens ? "on" : "off (unset)"}
+          </em>{" "}
+          (GitHub may label this{" "}
+          <strong>Expire user authorization tokens</strong>). Raft stores a
+          short-lived serve session and does not refresh expiring GitHub tokens
+          yet.
         </li>
         <li>
-          Request scopes: <code>{scopes}</code>
+          Click <strong>Register application</strong>, then paste Client ID and
+          Client Secret below.
         </li>
-        <li>Paste the Client ID and Client Secret below, then save.</li>
       </ol>
-      <p className="oauth-setup-links">
-        <a
-          className="refresh deploy-cta"
-          href={appUrl}
-          target="_blank"
-          rel="noreferrer"
-          id="oauth-app-create-link"
-        >
-          Create GitHub OAuth App
-        </a>
-        <a
-          className="refresh deploy-cta"
-          href={docsUrl}
-          target="_blank"
-          rel="noreferrer"
-          id="oauth-setup-docs-link"
-        >
-          Setup guide
-        </a>
-      </p>
       <form className="oauth-setup-form" onSubmit={(e) => void onSubmit(e)}>
-        <label className="deploy-label oauth-mock-toggle">
-          <span>
-            <input
-              type="checkbox"
-              checked={mock}
-              disabled={busy}
-              onChange={(e) => setMock(e.target.checked)}
-              id="oauth-mock"
-            />{" "}
-            Use mock mode (local fixture repos; no OAuth App)
-          </span>
+        <label className="deploy-label">
+          Client ID
+          <input
+            id="oauth-client-id"
+            autoComplete="off"
+            value={clientId}
+            disabled={busy}
+            onChange={(e) => setClientId(e.target.value)}
+            placeholder="Iv1.…"
+            required
+          />
         </label>
-        {!mock ? (
-          <>
-            <label className="deploy-label">
-              Client ID
-              <input
-                id="oauth-client-id"
-                autoComplete="off"
-                value={clientId}
-                disabled={busy}
-                onChange={(e) => setClientId(e.target.value)}
-                placeholder="Iv1.…"
-                required
-              />
-            </label>
-            <label className="deploy-label">
-              Client secret
-              <input
-                id="oauth-client-secret"
-                type="password"
-                autoComplete="off"
-                value={clientSecret}
-                disabled={busy}
-                onChange={(e) => setClientSecret(e.target.value)}
-                placeholder="Paste client secret"
-                required
-              />
-            </label>
-          </>
-        ) : null}
+        <label className="deploy-label">
+          Client secret
+          <input
+            id="oauth-client-secret"
+            type="password"
+            autoComplete="off"
+            value={clientSecret}
+            disabled={busy}
+            onChange={(e) => setClientSecret(e.target.value)}
+            placeholder="Paste client secret"
+            required
+          />
+        </label>
         <button
           type="submit"
           className="refresh"
@@ -144,5 +136,14 @@ export function OauthSetupPanel(props: {
         </button>
       </form>
     </section>
+  );
+}
+
+function FieldStep(props: { label: string; value: string; id: string }) {
+  return (
+    <li>
+      Fill in <strong>{props.label}</strong> ={" "}
+      <CopyableValue value={props.value} id={props.id} />
+    </li>
   );
 }

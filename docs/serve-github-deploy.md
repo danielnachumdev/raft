@@ -18,9 +18,9 @@ This is **not** a public multi-user console and **not** a full App lifecycle UI.
 3. Unauthenticated visits **auto-redirect** to `/api/github/login` (real OAuth
    authorize page when configured; mock callback only when `github.mock` /
    `RAFT_GITHUB_MOCK=1`).
-4. If OAuth is **not configured**, `/deploy` shows setup instructions, links to
-   create a GitHub OAuth App + this guide, and paste-in controls for
-   `clientId` / `clientSecret` (or mock mode). Saving writes `github:` into
+4. If OAuth is **not configured**, `/deploy` shows an ordered checklist (create
+   OAuth App link + copyable field values) and paste-in controls for
+   `clientId` / `clientSecret`. Saving writes `github:` into
    `~/.raft/settings.yaml` and reloads serve’s in-process config (no restart).
 5. **Other OAuth failures** redirect to `/deploy?oauth_error=…` with a clear
    error and retry control (not a bare API error page).
@@ -31,9 +31,9 @@ This is **not** a public multi-user console and **not** a full App lifecycle UI.
 
 Deep link `/deploy` still works.
 
-## Mock mode (local / CI)
+## Developer mock (settings / env only)
 
-No GitHub App registration required:
+Fixture login is **not** offered in the serve UI. For local/CI only:
 
 ```yaml
 # ~/.raft/settings.yaml
@@ -41,27 +41,37 @@ github:
   mock: true
 ```
 
-Or:
-
-```bash
-export RAFT_GITHUB_MOCK=1
-raft serve
-```
-
-Mock login creates a short-lived session as `mock-operator` and lists fixture
-repos under `share/serve/mock-github/`. CI PR setup returns a mock PR URL
-(no GitHub write).
+Or `RAFT_GITHUB_MOCK=1`. That mints `mock-operator` and lists
+`share/serve/mock-github/` fixtures (no GitHub write).
 
 ## Real GitHub OAuth App
 
-1. Create an OAuth App:
-   [github.com/settings/applications/new](https://github.com/settings/applications/new).
-2. **Authorization callback URL:** `http://127.0.0.1:<port>/api/github/callback`
-   (default port **8787**).
-3. Configure via **either**:
+Do these steps **in order** (default port **8787**; replace `<port>` if you
+passed `--port`). The serve UI checklist on `/deploy` shows the same concrete
+values for your bind.
+
+1. Open the create form:
+   [github.com/settings/applications/new](https://github.com/settings/applications/new)
+   (serve builds this link with best-effort `oauth_application[…]` query params;
+   GitHub documents URL prefills for **GitHub Apps** only — if fields are empty,
+   copy from the steps below).
+2. **Application name** = `raft serve`
+3. **Homepage URL** = `http://127.0.0.1:<port>/`
+4. **Application description** = `Localhost raft serve ops UI — temporary GitHub login to pick a repo and deploy.`
+5. **Authorization callback URL** = `http://127.0.0.1:<port>/api/github/callback`
+6. **Enable Device Flow** = **off (unset)** — raft uses the browser redirect
+   flow, not device codes.
+7. **Expire user access tokens** = **off (unset)** (GitHub may label this
+   **Expire user authorization tokens**). GitHub enables expiry by default;
+   raft keeps a short-lived serve session file and does **not** refresh expiring
+   GitHub user tokens yet, so leave this unchecked.
+8. Click **Register application**, then configure credentials via **either**:
    - **Serve UI** (recommended when you hit the not-configured state): paste
      Client ID + Client Secret on `/deploy` → Save (writes `github:` and reloads).
    - **settings.yaml / env** as below.
+
+Authorize later requests scopes `read:user repo workflow` (not set on the
+create-app form).
 
 ```yaml
 github:
@@ -125,7 +135,7 @@ fail the deploy job; they appear as a failed step + next-step guidance.
 |--------|------|------|
 | `GET` | `/api/github/session` | Auth status + hint + `oauth_configured` / setup URLs |
 | `GET` | `/api/github/config` | OAuth setup status (no secrets) + callback / docs links |
-| `POST` | `/api/github/config` | `{clientId, clientSecret}` or `{mock: true}` → write settings + reload |
+| `POST` | `/api/github/config` | `{clientId, clientSecret}` → write settings + reload |
 | `GET` | `/api/github/login` | Start OAuth or mock callback (errors → `/deploy?oauth_error=`) |
 | `GET` | `/api/github/callback` | Finish login → `/deploy` or `?oauth_error=` |
 | `POST` | `/api/github/logout` | Clear session file |

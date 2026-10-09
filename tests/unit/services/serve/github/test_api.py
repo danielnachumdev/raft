@@ -63,11 +63,16 @@ class TestServeGithubApi(RaftTestCase):
         bare = client.get("/api/github/config").json()
         assert bare["oauth_configured"] is False
         assert "applications/new" in bare["oauth_app_url"]
+        assert bare["homepage_url"] == "http://127.0.0.1:8787/"
+        assert bare["callback_url"].endswith("/api/github/callback")
+        assert bare["application_name"] == "raft serve"
+        assert bare["enable_device_flow"] is False
+        assert bare["expire_user_access_tokens"] is False
         login = client.get("/api/github/login", follow_redirects=False)
         assert login.status_code == 302 and "oauth_error=" in login.headers["location"]
         saved = client.post(
             "/api/github/config",
-            json={"clientId": "cid", "clientSecret": "csec", "mock": False},
+            json={"clientId": "cid", "clientSecret": "csec"},
         ).json()
         assert saved["ok"] and saved["reloaded"] and saved["oauth_configured"]
         again = client.get("/api/github/login", follow_redirects=False)
@@ -78,9 +83,7 @@ class TestServeGithubApi(RaftTestCase):
         self._clear_github_env(monkeypatch)
         client = self._client(settings="edge: {http: 80}\n")
         assert "not configured" in client.get("/api/github/session").json()["hint"]
-        assert client.post("/api/github/config", json={"mock": False}).status_code == 400
-        assert ServeGithubApi._optional_bool(None) is None
-        assert ServeGithubApi._optional_bool("yes") is True
+        assert client.post("/api/github/config", json={}).status_code == 400
 
     @staticmethod
     def _clear_github_env(monkeypatch: pytest.MonkeyPatch) -> None:

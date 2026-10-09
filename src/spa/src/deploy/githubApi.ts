@@ -6,6 +6,11 @@ export type GithubOauthConfig = {
   oauth_app_url: string;
   docs_url: string;
   settings_path: string;
+  application_name?: string;
+  homepage_url?: string;
+  description?: string;
+  enable_device_flow?: boolean;
+  expire_user_access_tokens?: boolean;
   scopes?: string;
   ok?: boolean;
   reloaded?: boolean;
@@ -24,6 +29,11 @@ export type GithubSession = {
   oauth_app_url?: string;
   docs_url?: string;
   settings_path?: string;
+  application_name?: string;
+  homepage_url?: string;
+  description?: string;
+  enable_device_flow?: boolean;
+  expire_user_access_tokens?: boolean;
 };
 
 export type GithubRepo = {
@@ -108,9 +118,8 @@ export async function fetchGithubConfig(): Promise<GithubOauthConfig> {
 }
 
 export async function saveGithubConfig(input: {
-  clientId?: string;
-  clientSecret?: string;
-  mock?: boolean;
+  clientId: string;
+  clientSecret: string;
 }): Promise<GithubOauthConfig> {
   const res = await fetch("/api/github/config", {
     method: "POST",
@@ -118,7 +127,6 @@ export async function saveGithubConfig(input: {
     body: JSON.stringify({
       clientId: input.clientId,
       clientSecret: input.clientSecret,
-      mock: input.mock ?? false,
     }),
   });
   const body = await readJson(res);

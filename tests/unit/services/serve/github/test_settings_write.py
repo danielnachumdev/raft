@@ -28,15 +28,26 @@ class TestGithubSettingsWriter(RaftTestCase):
         assert data["edge"]["http"] == 80
         assert data["github"]["clientId"] == "id2"
         assert load_config(self.tmp_path).github.client_secret == "sec2"
-        assert writer.public_status(port=9)["callback_url"].endswith(":9/api/github/callback")
+        assert writer.public_status(port=9)["callback_url"].endswith(
+            ":9/api/github/callback"
+        )
 
-    def test_save_mock_and_reject_empty(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_public_status_checklist_fields(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._clear_env(monkeypatch)
+        status = GithubSettingsWriter(self.tmp_path).public_status(port=9)
+        assert status["homepage_url"] == "http://127.0.0.1:9/"
+        assert status["application_name"] == "raft serve"
+        assert "oauth_application" in status["oauth_app_url"]
+        assert status["enable_device_flow"] is False
+        assert status["expire_user_access_tokens"] is False
+
+    def test_reject_empty(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._clear_env(monkeypatch)
         writer = GithubSettingsWriter(self.tmp_path)
         with pytest.raises(OperatorError, match="clientId"):
             writer.save(client_id="", client_secret="")
-        cfg = writer.save(mock=True)
-        assert cfg.mock is True and writer.oauth_ready(cfg)
 
     def test_load_root_errors(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._clear_env(monkeypatch)

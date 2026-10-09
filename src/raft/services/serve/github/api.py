@@ -78,7 +78,6 @@ class ServeGithubApi:
             cfg = self._settings.save(
                 client_id=body.get("clientId") or body.get("client_id"),
                 client_secret=body.get("clientSecret") or body.get("client_secret"),
-                mock=self._optional_bool(body.get("mock")),
             )
         except OperatorError as exc:
             raise self._http(exc) from exc
@@ -218,14 +217,6 @@ class ServeGithubApi:
         self._oauth = GithubOauth(cfg, self._sessions)
         self._provider = self._provider_override or self._default_provider()
         self._runner = GithubDeployRunner(self.stack, self._provider, self._jobs)
-
-    @staticmethod
-    def _optional_bool(raw: Any) -> Optional[bool]:
-        if raw is None:
-            return None
-        if isinstance(raw, bool):
-            return raw
-        return str(raw).strip().lower() in {"1", "true", "yes", "on"}
 
     def _login_hint(self) -> str:
         if not GithubSettingsWriter.oauth_ready(self._cfg):
