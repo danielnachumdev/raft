@@ -19,6 +19,7 @@ from ...models.stack import Stack
 from .compose_apps import ComposeAppsYaml
 from .edge import EdgeFragments
 from .fragment_collector import FragmentCollector
+from .scaling_holding import ScalingHoldingPages
 
 logger = logging.getLogger(__name__)
 
@@ -71,10 +72,12 @@ class StackRenderer:
     def render(self, specs: Optional[dict[str, AppSpec]] = None) -> None:
         resolved = specs if specs is not None else self.load_all_specs()
         self._validate_all(resolved)
+        apps = list(self.stack.apps)
         fragments = FragmentCollector(root=self.stack.root, edge=self.edge).collect(
-            list(self.stack.apps), resolved
+            apps, resolved
         )
         self._ensure_dirs()
+        ScalingHoldingPages().install(self.stack.root, apps, resolved)
         self._write_all(resolved, fragments)
         logger.info(
             "rendered %s apps → %s",

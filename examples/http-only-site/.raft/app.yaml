@@ -122,5 +122,6 @@ spec:
   #   idleSeconds: 300
   #   wakeTimeoutSeconds: 60
   #   minUpSeconds: 60
+  #   holdingPage: .raft/holding.html   # optional; relative to app root
   #
   # Optional keys via ${{ if }}: see AGENTS.md / optional-block.snippet.yaml.
