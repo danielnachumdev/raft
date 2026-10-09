@@ -13,6 +13,7 @@ from ..ops.status import Status
 from .actions import ServeActions
 from .downloads import ServeDownloads
 from .github import ServeGithubApi
+from .notifications import ServeNotificationsApi
 from .page import ServePage
 from .paths import ServePaths
 
@@ -30,6 +31,7 @@ class ServeAppFactory:
         logs: Optional[Logs] = None,
         downloads: Optional[ServeDownloads] = None,
         github: Optional[ServeGithubApi] = None,
+        notifications: Optional[ServeNotificationsApi] = None,
         port: int = _DEFAULT_PORT,
     ) -> None:
         self.stack = stack
@@ -38,6 +40,7 @@ class ServeAppFactory:
         self._logs = logs
         self._downloads = downloads
         self._github = github
+        self._notifications = notifications
         self._port = port
 
     def create(self) -> FastAPI:
@@ -50,7 +53,8 @@ class ServeAppFactory:
         )
         downloads = self._downloads or ServeDownloads(self.stack, logs=self._logs)
         github = self._github or ServeGithubApi(self.stack, port=self._port)
-        self._register_api(app, page, downloads, github)
+        notifications = self._notifications or ServeNotificationsApi(self.stack)
+        self._register_api(app, page, downloads, github, notifications)
         app.mount(
             "/assets",
             StaticFiles(directory=str(ServePaths.spa_assets_dir())),
@@ -65,11 +69,13 @@ class ServeAppFactory:
         page: ServePage,
         downloads: ServeDownloads,
         github: ServeGithubApi,
+        notifications: ServeNotificationsApi,
     ) -> None:
         ServeAppFactory._register_read_api(app, page)
         ServeAppFactory._register_action_api(app, page)
         ServeAppFactory._register_download_api(app, downloads)
         github.register(app)
+        notifications.register(app)
 
     @staticmethod
     def _register_read_api(app: FastAPI, page: ServePage) -> None:

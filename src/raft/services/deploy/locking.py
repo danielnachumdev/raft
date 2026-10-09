@@ -9,6 +9,7 @@ Locks live under ``~/.raft/state/locks/`` (``RAFT_DATA_HOME``):
 
 * ``app-<name>.lock`` — one mutative deploy/apply for that app at a time
 * ``stack.lock`` — render, nginx reload, cutover, compose up/recreate, gate
+* ``notifications.lock`` — serve API rewrites of ``settings.yaml`` ``notifications:``
 
 Wait (with timeout) so a later-started deploy still runs after an earlier one
 and becomes the final live state. Contended waiters log ``waiting for … lock``
@@ -33,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 LOCKS_REL = Path("state") / "locks"
 STACK_LOCK_NAME = "stack.lock"
+NOTIFICATIONS_LOCK_NAME = "notifications.lock"
 ENV_LOCK_TIMEOUT = "RAFT_LOCK_TIMEOUT_SECONDS"
 DEFAULT_LOCK_TIMEOUT_SECONDS = 300.0
 _POLL_INTERVAL_SECONDS = 0.05
@@ -64,6 +66,10 @@ def locks_dir(root: Path) -> Path:
 
 def stack_lock_path(root: Path) -> Path:
     return locks_dir(root) / STACK_LOCK_NAME
+
+
+def notifications_lock_path(root: Path) -> Path:
+    return locks_dir(root) / NOTIFICATIONS_LOCK_NAME
 
 
 def app_lock_path(root: Path, name: str) -> Path:
@@ -204,6 +210,19 @@ def stack_lock(root: Path, *, timeout: Optional[float] = None) -> Iterator[None]
     with exclusive_lock(
         stack_lock_path(root),
         kind="stack",
+        timeout=timeout,
+    ):
+        yield
+
+
+@contextmanager
+def notifications_lock(
+    root: Path, *, timeout: Optional[float] = None
+) -> Iterator[None]:
+    """Serialize serve notification channel writes to ``settings.yaml``."""
+    with exclusive_lock(
+        notifications_lock_path(root),
+        kind="notifications",
         timeout=timeout,
     ):
         yield
