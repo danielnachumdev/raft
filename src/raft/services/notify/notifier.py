@@ -8,6 +8,7 @@ from typing import List, Optional, Sequence
 
 from raft.config.settings import load_config
 
+from .catalogs import NotificationCatalogs
 from .channel import ChannelDescriptor
 from .config_adapt import NotifyConfigAdapter
 from .dispatcher import NotificationDispatcher
@@ -28,7 +29,9 @@ class Notifier:
         dispatcher: Optional[NotificationDispatcher] = None,
     ) -> None:
         self._home = home
-        self._registry = registry if registry is not None else NotificationRegistry()
+        self._registry = (
+            registry if registry is not None else NotificationCatalogs.default()
+        )
         self._dispatcher = (
             dispatcher
             if dispatcher is not None

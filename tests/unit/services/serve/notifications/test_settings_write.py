@@ -38,6 +38,14 @@ class TestNotificationsSettingsWriter(RaftTestCase):
         assert loaded.settings["token"] == "super-secret"
 
     @staticmethod
+    def _channel(channel_id: str = "ops") -> dict:
+        return {
+            "id": channel_id,
+            "type": "webhook",
+            "settings": {"url": "https://hooks.example.invalid/raft"},
+        }
+
+    @staticmethod
     def _secret_channel() -> dict:
         return {
             "id": "ops-primary",
@@ -70,7 +78,7 @@ class TestNotificationsSettingsWriter(RaftTestCase):
 
     def test_hard_delete(self) -> None:
         writer = NotificationsSettingsWriter(self.tmp_path)
-        writer.create({"id": "a", "type": "webhook"})
+        writer.create(self._channel("a"))
         writer.create({"id": "b", "type": "email"})
         writer.delete("a")
         ids = [c.id for c in load_config(self.tmp_path).notifications.channels]
@@ -78,7 +86,7 @@ class TestNotificationsSettingsWriter(RaftTestCase):
 
     def test_duplicate_and_missing(self) -> None:
         writer = NotificationsSettingsWriter(self.tmp_path)
-        writer.create({"id": "ops", "type": "webhook"})
+        writer.create(self._channel("ops"))
         with pytest.raises(OperatorError, match="already exists"):
             writer.create({"id": "ops", "type": "email"})
         with pytest.raises(KeyError):
@@ -103,7 +111,7 @@ class TestNotificationsSettingsWriter(RaftTestCase):
         ) as lock:
             lock.return_value.__enter__ = lambda s: None
             lock.return_value.__exit__ = lambda s, *a: None
-            writer.create({"id": "ops", "type": "webhook"})
+            writer.create(self._channel("ops"))
             writer.update("ops", {"enabled": False})
             writer.delete("ops")
         assert lock.call_count == 3
@@ -111,16 +119,14 @@ class TestNotificationsSettingsWriter(RaftTestCase):
     def test_preserves_other_settings_keys(self) -> None:
         path = self.tmp_path / "settings.yaml"
         path.write_text("edge: {http: 80}\n", encoding="utf-8")
-        NotificationsSettingsWriter(self.tmp_path).create(
-            {"id": "ops", "type": "webhook"}
-        )
+        NotificationsSettingsWriter(self.tmp_path).create(self._channel("ops"))
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
         assert data["edge"]["http"] == 80
         assert data["notifications"]["channels"][0]["id"] == "ops"
 
     def test_reject_id_change(self) -> None:
         writer = NotificationsSettingsWriter(self.tmp_path)
-        writer.create({"id": "ops", "type": "webhook"})
+        writer.create(self._channel("ops"))
         with pytest.raises(OperatorError, match="cannot be changed"):
             writer.update("ops", {"id": "other"})
         writer.update("ops", {"id": "ops"})
@@ -128,7 +134,7 @@ class TestNotificationsSettingsWriter(RaftTestCase):
 
     def test_reject_non_object_bodies(self) -> None:
         writer = NotificationsSettingsWriter(self.tmp_path)
-        writer.create({"id": "ops", "type": "webhook"})
+        writer.create(self._channel("ops"))
         with pytest.raises(OperatorError, match="JSON object"):
             writer.create("nope")  # type: ignore[arg-type]
         with pytest.raises(OperatorError, match="JSON object"):

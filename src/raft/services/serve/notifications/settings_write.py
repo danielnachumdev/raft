@@ -14,6 +14,7 @@ from raft.config.settings_notifications import NotificationsSettingsParser
 from raft.config.settings_types import NotificationChannelConfig, NotificationsConfig
 from raft.errors.cta import OperatorError
 from raft.services.deploy.locking import notifications_lock
+from raft.services.notify.catalogs import NotificationCatalogs
 from raft.services.notify.redact import SettingsRedactor
 from raft.services.notify.registry import NotificationRegistry
 
@@ -31,7 +32,7 @@ class NotificationsSettingsWriter:
         self._path = settings_path(data_home)
         self._parser = NotificationsSettingsParser()
         self._redactor = SettingsRedactor()
-        self._registry = registry or NotificationRegistry()
+        self._registry = registry or NotificationCatalogs.default()
 
     def list_public(self) -> Dict[str, Any]:
         cfg = self._load()

@@ -17,11 +17,9 @@ class TestNotifier(RaftTestCase):
     def test_noop_when_disabled_or_unknown_types(self) -> None:
         home = Path(self.tmp_path)
         self._write_channels(home, enabled=False)
-        n = Notifier(home)
-        n.notify(self._event())
-        self._write_channels(home, enabled=True, type_id="webhook")
-        empty = Notifier(home)
-        empty.notify(self._event())
+        Notifier(home, registry=NotificationRegistry()).notify(self._event())
+        self._write_channels(home, enabled=True, type_id="future-backend")
+        Notifier(home).notify(self._event())
 
     def test_dispatches_registered_enabled_channel(self) -> None:
         home = Path(self.tmp_path)

@@ -8,6 +8,7 @@ from fastapi import Body, HTTPException
 
 from raft.errors.cta import OperatorError
 from raft.models.stack import Stack
+from raft.services.notify.catalogs import NotificationCatalogs
 from raft.services.notify.registry import NotificationRegistry
 
 from .settings_write import NotificationsSettingsWriter
@@ -23,7 +24,7 @@ class ServeNotificationsApi:
         registry: Optional[NotificationRegistry] = None,
     ) -> None:
         self.stack = stack
-        self._registry = registry or NotificationRegistry()
+        self._registry = registry or NotificationCatalogs.default()
         self._settings = NotificationsSettingsWriter(
             stack.root, registry=self._registry
         )
