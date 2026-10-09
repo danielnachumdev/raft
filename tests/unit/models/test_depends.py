@@ -77,8 +77,43 @@ class TestAppDependsGraph:
         g = AppDependsGraph({"a": ("b",), "b": ("a",)})
         with pytest.raises(DependsOnError, match="cycle"):
             g.before("a")
+        with pytest.raises(DependsOnError, match="cycle"):
+            g.assert_acyclic()
 
     def test_self_cycle(self) -> None:
         g = AppDependsGraph({"a": ("a",)})
         with pytest.raises(DependsOnError, match="cycle"):
             g.wake_chain("a")
+        with pytest.raises(DependsOnError, match="cycle"):
+            g.assert_acyclic()
+
+    def test_longer_cycle_assert_acyclic(self) -> None:
+        g = AppDependsGraph(
+            {"front": ("api",), "api": ("db",), "db": ("front",)}
+        )
+        with pytest.raises(DependsOnError, match="cycle"):
+            g.assert_acyclic()
+
+    def test_assert_acyclic_ok(self) -> None:
+        g = AppDependsGraph(
+            {
+                "front": (
+                    DependsOnSpec("api", scale_with_parent=True),
+                    DependsOnSpec("sidecar", scale_with_parent=False),
+                ),
+                "api": (DependsOnSpec("db", scale_with_parent=True),),
+                "sidecar": (),
+                "db": (),
+            }
+        )
+        g.assert_acyclic()
+
+    def test_object_form_cycle_assert_acyclic(self) -> None:
+        g = AppDependsGraph(
+            {
+                "a": (DependsOnSpec("b", scale_with_parent=False),),
+                "b": (DependsOnSpec("a", scale_with_parent=True),),
+            }
+        )
+        with pytest.raises(DependsOnError, match="cycle"):
+            g.assert_acyclic()

@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import yaml
 
+from raft.errors.cta import OperatorError
 from raft.models.stack import load_stack
 from raft.services.apply import AppApply
 
@@ -24,6 +25,22 @@ class TestApplyFile(ApplyTestCase):
         assert name == "web"
         assert (self.tmp_path / "state" / "apps" / "web.yaml").is_file()
         assert "applied web" in capsys.readouterr().out
+
+    def test_apply_file_rejects_depends_on_cycle(self) -> None:
+        write_applied_app(
+            self.tmp_path,
+            "alpha",
+            public_host="alpha.test",
+            extra={"dependsOn": ["beta"]},
+        )
+        path = self.tmp_path / "beta.yaml"
+        path.write_text(
+            yaml.safe_dump(self.manifest("beta", public_host="beta.test", dependsOn=["alpha"])),
+            encoding="utf-8",
+        )
+        with pytest.raises(OperatorError, match="dependsOn cycle"):
+            AppApply(load_stack(self.tmp_path)).apply_file(path, deploy=False)
+        assert not (self.tmp_path / "state" / "apps" / "beta.yaml").is_file()
 
     def test_apply_file_rejects_non_mapping(self) -> None:
         path = self.tmp_path / "bad.yaml"
