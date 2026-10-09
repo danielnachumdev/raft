@@ -28,7 +28,15 @@ class TestGithubSettingsWriter(RaftTestCase):
         assert data["edge"]["http"] == 80
         assert data["github"]["clientId"] == "id2"
         assert load_config(self.tmp_path).github.client_secret == "sec2"
-        assert writer.public_status(port=9)["callback_url"].endswith(":9/api/github/callback")
+        status = writer.public_status(port=9)
+        assert status["callback_url"].endswith(":9/api/github/callback")
+        assert status["homepage_url"] == "http://127.0.0.1:9/"
+        assert status["application_name"] == "raft serve"
+        assert "oauth_application%5Bname%5D=" in status["oauth_app_url"] or (
+            "oauth_application[name]=" in status["oauth_app_url"]
+        )
+        assert status["enable_device_flow"] is False
+        assert status["expire_user_access_tokens"] is False
 
     def test_save_mock_and_reject_empty(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._clear_env(monkeypatch)

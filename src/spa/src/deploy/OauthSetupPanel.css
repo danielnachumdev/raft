@@ -6,7 +6,39 @@
 }
 
 .oauth-setup-steps li {
-  margin: 0.35rem 0;
+  margin: 0.45rem 0;
+}
+
+.oauth-inline-link {
+  font-weight: 600;
+}
+
+.oauth-setup-value {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.oauth-setup-value code {
+  word-break: break-all;
+}
+
+.oauth-copy {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.1rem 0.4rem;
+  cursor: pointer;
+}
+
+.oauth-copy:hover {
+  border-color: var(--text);
 }
 
 .oauth-setup-links {

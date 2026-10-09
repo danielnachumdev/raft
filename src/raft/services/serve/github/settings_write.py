@@ -13,10 +13,7 @@ from raft.config.settings import load_config
 from raft.config.settings_types import GithubServeConfig
 from raft.errors.cta import OperatorError
 
-GITHUB_OAUTH_APP_URL = "https://github.com/settings/applications/new"
-SETUP_DOCS_URL = (
-    "https://github.com/danielnachumdev/raft/blob/main/docs/serve-github-deploy.md"
-)
+from .oauth_setup import SETUP_DOCS_URL, GithubOauthAppSetup
 
 
 class GithubSettingsWriter:
@@ -25,18 +22,20 @@ class GithubSettingsWriter:
     def __init__(self, data_home: Path) -> None:
         self._home = data_home
         self._path = settings_path(data_home)
+        self._setup = GithubOauthAppSetup()
 
     def public_status(self, *, port: int) -> Dict[str, Any]:
         cfg = load_config(self._home).github
-        return {
-            "oauth_configured": self.oauth_ready(cfg),
-            "mock": cfg.mock,
-            "client_id_set": bool(cfg.client_id),
-            "callback_url": f"http://127.0.0.1:{port}/api/github/callback",
-            "oauth_app_url": GITHUB_OAUTH_APP_URL,
-            "docs_url": SETUP_DOCS_URL,
-            "settings_path": str(self._path),
-        }
+        out = self._setup.public_fields(port=port)
+        out.update(
+            {
+                "oauth_configured": self.oauth_ready(cfg),
+                "mock": cfg.mock,
+                "client_id_set": bool(cfg.client_id),
+                "settings_path": str(self._path),
+            }
+        )
+        return out
 
     def save(
         self,

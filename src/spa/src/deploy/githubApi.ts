@@ -6,6 +6,11 @@ export type GithubOauthConfig = {
   oauth_app_url: string;
   docs_url: string;
   settings_path: string;
+  application_name?: string;
+  homepage_url?: string;
+  description?: string;
+  enable_device_flow?: boolean;
+  expire_user_access_tokens?: boolean;
   scopes?: string;
   ok?: boolean;
   reloaded?: boolean;
@@ -24,6 +29,11 @@ export type GithubSession = {
   oauth_app_url?: string;
   docs_url?: string;
   settings_path?: string;
+  application_name?: string;
+  homepage_url?: string;
+  description?: string;
+  enable_device_flow?: boolean;
+  expire_user_access_tokens?: boolean;
 };
 
 export type GithubRepo = {

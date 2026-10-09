@@ -54,14 +54,32 @@ repos under `share/serve/mock-github/`. CI PR setup returns a mock PR URL
 
 ## Real GitHub OAuth App
 
-1. Create an OAuth App:
-   [github.com/settings/applications/new](https://github.com/settings/applications/new).
-2. **Authorization callback URL:** `http://127.0.0.1:<port>/api/github/callback`
-   (default port **8787**).
-3. Configure via **either**:
+Do these steps **in order** (default port **8787**; replace `<port>` if you
+passed `--port`). The serve UI checklist on `/deploy` shows the same concrete
+values for your bind.
+
+1. Open the create form:
+   [github.com/settings/applications/new](https://github.com/settings/applications/new)
+   (serve builds this link with best-effort `oauth_application[…]` query params;
+   GitHub documents URL prefills for **GitHub Apps** only — if fields are empty,
+   copy from the steps below).
+2. **Application name** = `raft serve`
+3. **Homepage URL** = `http://127.0.0.1:<port>/`
+4. **Application description** = `Localhost raft serve ops UI — temporary GitHub login to pick a repo and deploy.`
+5. **Authorization callback URL** = `http://127.0.0.1:<port>/api/github/callback`
+6. **Enable Device Flow** = **off (unset)** — raft uses the browser redirect
+   flow, not device codes.
+7. **Expire user access tokens** = **off (unset)** (GitHub may label this
+   **Expire user authorization tokens**). GitHub enables expiry by default;
+   raft keeps a short-lived serve session file and does **not** refresh expiring
+   GitHub user tokens yet, so leave this unchecked.
+8. Click **Register application**, then configure credentials via **either**:
    - **Serve UI** (recommended when you hit the not-configured state): paste
      Client ID + Client Secret on `/deploy` → Save (writes `github:` and reloads).
    - **settings.yaml / env** as below.
+
+Authorize later requests scopes `read:user repo workflow` (not set on the
+create-app form).
 
 ```yaml
 github:

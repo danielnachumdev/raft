@@ -63,6 +63,11 @@ class TestServeGithubApi(RaftTestCase):
         bare = client.get("/api/github/config").json()
         assert bare["oauth_configured"] is False
         assert "applications/new" in bare["oauth_app_url"]
+        assert bare["homepage_url"] == "http://127.0.0.1:8787/"
+        assert bare["callback_url"].endswith("/api/github/callback")
+        assert bare["application_name"] == "raft serve"
+        assert bare["enable_device_flow"] is False
+        assert bare["expire_user_access_tokens"] is False
         login = client.get("/api/github/login", follow_redirects=False)
         assert login.status_code == 302 and "oauth_error=" in login.headers["location"]
         saved = client.post(
