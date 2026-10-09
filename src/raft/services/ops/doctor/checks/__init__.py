@@ -6,6 +6,7 @@ from .apps import AppChecks, auth_deploy_key_fix
 from .base import CheckSuite
 from .certs import CertChecks
 from .edge import EdgeChecks
+from .env_file import EnvFileChecks
 from .host import HostChecks
 from .ports_summary import PortSummaryChecks
 from .public_host import PublicHostChecks
@@ -16,6 +17,7 @@ from .upstreams import UpstreamChecks
 CHECK_SUITES: tuple[CheckSuite, ...] = (
     HostChecks(),
     AppChecks(),
+    EnvFileChecks(),
     UpstreamChecks(),
     CertChecks(),
     RuntimeChecks(),
@@ -30,6 +32,7 @@ __all__ = [
     "AppChecks",
     "CertChecks",
     "EdgeChecks",
+    "EnvFileChecks",
     "HostChecks",
     "PortSummaryChecks",
     "PublicHostChecks",

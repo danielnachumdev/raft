@@ -11,6 +11,7 @@ from typing import Any, Mapping, Optional
 
 import yaml
 
+from raft.config.app_secrets import AppSecretsLayout
 from raft.errors.checked import raise_for_git_failure
 from raft.errors.cta import OperatorError
 from raft.errors.domain import (
@@ -109,6 +110,7 @@ class AppApply:
         DependsOnCycleGuard(self.stack.root).reject(app.name, app_spec.depends_on)
         with app_deploy_lock(self.stack.root, app.name):
             dest = AppRegistry(self.stack.root).write(data)
+            AppSecretsLayout(self.stack.root).ensure_app_dir(app.name)
             self._announce_applied(app.name, dest, from_label)
             if deploy:
                 self._deploy(app.name, ref_override=ref_override, force_sync=force_sync)

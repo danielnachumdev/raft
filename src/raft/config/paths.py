@@ -9,6 +9,7 @@ from importlib.metadata import requires as distribution_requires
 from pathlib import Path
 from typing import Optional
 
+from raft.config.app_secrets import SECRETS_DIRNAME, AppSecretsLayout
 from raft.config.dir_tree_sync import DirTreeSync
 from raft.errors.cta import OperatorError
 
@@ -28,6 +29,7 @@ _DATA_DIR_RELS = (
     APPS_DIRNAME,
     CERTS_DIRNAME,
     LOGS_DIRNAME,
+    SECRETS_DIRNAME,
     str(STATE_DIR),
     str(LOCKS_DIR),
     "state/scaling",
@@ -45,7 +47,6 @@ _DATA_DIR_RELS = (
     f"{GENERATED_DIRNAME}/nginx/router",
     f"{GENERATED_DIRNAME}/nginx/upstreams",
 )
-
 _TEMPLATE_FILES = ("compose.yaml",)
 _TEMPLATE_DIRS = ("nginx", "controller")
 # Synced into ~/.raft/controller/raft so Compose can build raft-controller.
@@ -113,6 +114,7 @@ def ensure_raft_home(
 def _ensure_data_dirs(root: Path) -> None:
     for rel in _DATA_DIR_RELS:
         (root / rel).mkdir(parents=True, exist_ok=True)
+    AppSecretsLayout(root).ensure_root()
 
 
 def _ensure_compose_stubs(root: Path) -> None:
