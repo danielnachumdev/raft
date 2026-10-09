@@ -82,6 +82,7 @@ Background / worker Apps that only run a long-lived process may **omit `spec.por
 | `~/.raft/state/metrics/` | Controller samples: `resources.jsonl` (host/container) + `http.jsonl` (HTTP edge); `gate-http/` access log for scrape; batched append; daily + size-split rotation (`*.jsonl.YYYY-MM-DD[.N]`); `metrics.retentionMaxAgeDays` / `retentionMaxBytes` |
 | `~/.raft/state/acme/` | ACME account + HTTP-01 webroot + per-app state JSON (when using `tls: acme`) |
 | `~/.raft/certs/` | Origin PEMs (`origin.*` for `tls: origin`) and ACME live material (`acme.*` for `tls: acme`) |
+| `~/.raft/secrets/<app>/` | Recommended per-App secret dir (`0700`); operator-written `env` file (`0600`) for `spec.envFile` — see [`docs/secrets.md`](docs/secrets.md) |
 | `~/.raft/logs/` | Structured log file (default); daily + size-split rotation via `logging.retentionMaxAgeDays` / `retentionMaxBytes` (at CLI `setup_logging`) |
 
 Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
@@ -144,8 +145,8 @@ spec:
     - other-app                   # ≡ { name: other-app, scaleWithParent: true }
     - name: some-sidecar
       scaleWithParent: false      # stay up when parent idle-stops
-  envFile: /home/raft/.raft/demo.env
-  env: { KEY: value }           # overrides envFile on clash
+  envFile: /home/raft/.raft/secrets/demo-api/env  # per-App secrets; mode 0600
+  env: { KEY: value }           # non-secret overrides; never bake DB passwords here
   volumes:
     - hostPath: /mnt/data/x
       containerPath: /data
@@ -412,6 +413,8 @@ Gate is never auto-recreated by service CI.
 ## Secrets on a VPS
 
 If the host is rooted, container-readable secrets are burned. Prefer external store → inject on redeploy into **tmpfs** mounted only by the app. Avoid `.env` next to Compose, secrets in git/images. Gate/router must not receive DB secrets.
+
+**Baseline layout:** `~/.raft/secrets/<app>/env` (dir `0700`, file `0600`) via `spec.envFile`. Do not put secret values in git, `spec.env`, `state/apps`, or `generated/`. Apply `--env*` is for non-secret preprocess/CI strings. Doctor warns on missing or group/world-readable envFile paths. Full guidance + migration from a flat shared `.env`: [`docs/secrets.md`](docs/secrets.md).
 
 ---
 

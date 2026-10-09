@@ -24,6 +24,9 @@ class TestApplyFile(ApplyTestCase):
         name = AppApply(stack).apply_file(path, deploy=False)
         assert name == "web"
         assert (self.tmp_path / "state" / "apps" / "web.yaml").is_file()
+        secrets_dir = self.tmp_path / "secrets" / "web"
+        assert secrets_dir.is_dir()
+        assert secrets_dir.stat().st_mode & 0o777 == 0o700
         assert "applied web" in capsys.readouterr().out
 
     def test_apply_file_rejects_depends_on_cycle(self) -> None:

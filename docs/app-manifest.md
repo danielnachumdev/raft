@@ -99,21 +99,18 @@ In `expr`: quoted strings or `${VAR}` / `${VAR:-default}` only; `==` / `!=`; `&&
 
 | Mechanism | When it runs | What it is for |
 |-----------|--------------|----------------|
-| `--env` / `--env-file` on `apply` | Preprocess (manifest text) | Stage flags, optional blocks, filling placeholders in the YAML itself |
-| `spec.env` / `spec.envFile` | Rendered into Compose for the container | Runtime config inside the app |
+| `--env` / `--env-file` on `apply` | Preprocess (manifest text) | Non-secret stage flags, optional blocks, filling placeholders in the YAML itself |
+| `spec.envFile` | Compose `env_file` for the App container | **Runtime secrets/config** — prefer `~/.raft/secrets/<app>/env` (mode `0600`) |
+| `spec.env` | Compose `environment` | Non-secret overrides; do **not** bake DB passwords into registry YAML |
 
-Bridge CI/host values into the container with placeholders in `spec.env`:
+Recommended host path (see [`secrets.md`](secrets.md)):
 
 ```yaml
 spec:
-  env:
-    DATABASE_URL: ${CI_DATABASE_URL}
+  envFile: /home/raft/.raft/secrets/demo-api/env
 ```
 
-```bash
-raft apply --file .raft/app.yaml --ref "$SHA" \
-  --env CI_DATABASE_URL="$DATABASE_URL"
-```
+Bridge non-secret CI flags into the manifest with apply `--env`. Materialize real secrets into the per-App env file on the host (not into `state/apps` / `generated/`). Gate/router must never mount App secret files.
 
 ## Ship path
 

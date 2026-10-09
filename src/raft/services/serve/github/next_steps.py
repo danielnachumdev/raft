@@ -119,8 +119,11 @@ class DeployNextSteps:
             {
                 "title": "Env file",
                 "body": (
-                    f"Create the host env file at {spec.env_file} with the secrets "
-                    "your App expects. Raft does not write secrets into that file."
+                    f"Create the host env file at {spec.env_file} "
+                    "(prefer ~/.raft/secrets/<app>/env, mode 0600; dir 0700) "
+                    "with the secrets your App expects. Raft does not write "
+                    "secret values into that file, the registry, or generated/. "
+                    "Never mount App secrets into gate/router."
                 ),
             }
         ]
