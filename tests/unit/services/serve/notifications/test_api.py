@@ -43,18 +43,18 @@ class TestServeNotificationsApi(RaftTestCase):
             "channels": [],
         }
 
-    def test_default_catalog_lists_webhook(self) -> None:
+    def test_default_catalog_lists_shipped_types(self) -> None:
         client = self._default_catalog_client()
         types = [
             row["type_id"]
             for row in client.get("/api/notifications/strategies").json()["strategies"]
         ]
-        assert types == ["webhook"]
+        assert types == ["webhook", "email"]
         bad = client.post(
             "/api/notifications/channels",
-            json={"id": "ops", "type": "webhook", "settings": {}},
+            json={"id": "ops", "type": "email", "settings": {}},
         )
-        assert bad.status_code == 400 and "url is required" in bad.json()["detail"]
+        assert bad.status_code == 400 and "settings.to" in bad.json()["detail"]
 
     def _default_catalog_client(self) -> TestClient:
         stack = make_stack(self.tmp_path)
