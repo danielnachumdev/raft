@@ -40,6 +40,16 @@ class AppDependsGraph:
         """``before(name)`` then ``name`` — start order for wake / heal."""
         return self.before(name) + (name,)
 
+    def assert_acyclic(self) -> None:
+        """Raise ``DependsOnError`` if any directed cycle exists among known nodes."""
+        done: Set[str] = set()
+        for name in sorted(self._edges):
+            if name in done:
+                continue
+            visiting: Set[str] = set()
+            order: list[str] = []
+            self._visit(name, visiting, done, order, scale_only=False)
+
     def _walk(self, name: str, *, scale_only: bool) -> Tuple[str, ...]:
         self._require_known(name)
         order: list[str] = []

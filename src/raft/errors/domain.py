@@ -122,6 +122,15 @@ def missing_manifest(path: Path) -> OperatorError:
     )
 
 
+def depends_on_cycle(name: str, detail: str) -> OperatorError:
+    return OperatorError(
+        f"dependsOn cycle while applying {name!r}: {detail}\n"
+        f"Fix: raft get apps\n"
+        f"     # edit manifests so dependsOn is a DAG (no A→B→A / self-loops)\n"
+        f"     raft apply --file path/to/app.yaml   # or --git …"
+    )
+
+
 def invalid_yaml(path: Union[Path, str], exc: BaseException) -> OperatorError:
     return OperatorError(f"invalid YAML in {path}: {exc}\n" f"Fix: repair the YAML file")
 
@@ -194,6 +203,7 @@ __all__ = [
     "app_not_applied",
     "apply_requires_source",
     "auth_requires_service",
+    "depends_on_cycle",
     "deploy_lock_busy",
     "filesystem_error",
     "invalid_lock_timeout",

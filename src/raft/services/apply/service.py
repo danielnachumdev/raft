@@ -20,6 +20,7 @@ from raft.errors.domain import (
 
 from ...adapters.shell import Shell
 from ...models.app_document import AppDocument
+from ...models.depends_cycle import DependsOnCycleGuard
 from ...models.manifest import CONTRACT_REL_PATH
 from ...models.registry import AppRegistry
 from ...models.stack import Stack, load_stack
@@ -105,6 +106,7 @@ class AppApply:
     ) -> str:
         app, app_spec = AppDocument.parse(data, path=path)
         self._warn_missing_deps(app.name, app_spec.depend_names())
+        DependsOnCycleGuard(self.stack.root).reject(app.name, app_spec.depends_on)
         with app_deploy_lock(self.stack.root, app.name):
             dest = AppRegistry(self.stack.root).write(data)
             self._announce_applied(app.name, dest, from_label)
