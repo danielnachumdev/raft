@@ -8,7 +8,8 @@ tmp containers so a slower older deploy finishes last and wins live traffic.
 Locks live under ``~/.raft/state/locks/`` (``RAFT_DATA_HOME``):
 
 * ``app-<name>.lock`` — one mutative deploy/apply for that app at a time
-* ``stack.lock`` — render, nginx reload, cutover, compose up/recreate, gate
+* ``stack.lock`` — render, nginx reload, cutover, compose up/recreate, gate,
+  ``raft purge`` (Docker image/build-cache prune)
 * ``notifications.lock`` — serve API rewrites of ``settings.yaml`` ``notifications:``
 
 Wait (with timeout) so a later-started deploy still runs after an earlier one

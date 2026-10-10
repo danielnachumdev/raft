@@ -45,7 +45,7 @@ nginx reload and `docker compose up` alone are **not** enough for correctness. O
 | Lock | Held by | Guarantees |
 |------|---------|------------|
 | `app-<name>.lock` | `apply` (registry + deploy), `redeploy` / `ensure_app_deployed`, `delete app` | One mutative pipeline per app; later-started waits then runs → newer deploy wins |
-| `stack.lock` | render, sync, cutover, compose up/recreate, gate recreate, up/down | No torn `generated/` or mid-cutover upstream reset across apps |
+| `stack.lock` | render, sync, cutover, compose up/recreate, gate recreate, up/down, purge | No torn `generated/` or mid-cutover upstream reset across apps; purge does not race cutover |
 
 Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**), then `OperatorError` with a Fix CTA. Contended waiters log `waiting for … lock`, then `acquired … lock`. Same-process nesting (redeploy → sync → render) re-enters safely. `doctor` / `status` do not take these locks.
 
@@ -269,9 +269,9 @@ Localhost dashboard for operators (`raft serve`). **Hard rules:** bind `127.0.0.
 |-------|-------------|------|
 | CLI entry | `raft serve` → `services/serve/service.py` | uvicorn on `--port` (default **8787**); prints tunnel CTAs; flock lease under `state/serve/`; `--stop` |
 | App factory | `ServeAppFactory` | mounts `/assets`, SPA catch-all, registers `/api/*` |
-| Page / routes | `ServePage` | status, metrics, service detail, logs, start/stop/redeploy |
+| Page / routes | `ServePage` | status, metrics, service detail, logs, start/stop/redeploy, purge |
 | Downloads | `ServeDownloads` + `services/export/` | catalog-driven log/metrics file export (register an `Exporter`) |
-| Actions | `ServeActions` | Compose start/stop; redeploy via `Orchestrator`; scaling mark/clear on stop/start |
+| Actions | `ServeActions` | Compose start/stop; redeploy via `Orchestrator`; scaling mark/clear on stop/start; purge unused images |
 | Logs bridge | `LogSseStream` + `ops/logs.Logs` | snapshot JSON + SSE follow (same follow path as CLI `-f`) |
 | Read contracts | `services/read/` | `StatusRead`, `MetricsRead`, `ServeSnapshotView`, `ExternalUrlBuilder` |
 | Runtime gather | `ContainerRuntimeGateway` (`adapters/docker/runtime.py`) | batched Engine `ps`/`inspect`/`stats` for status + controller metrics (not `compose ps`) |
@@ -291,6 +291,7 @@ Localhost dashboard for operators (`raft serve`). **Hard rules:** bind `127.0.0.
 | `GET` | `/api/service/{name}/logs/download` | log snapshot file (`format`, `tail`) via export registry |
 | `GET` | `/api/metrics/download` | metrics table file (`format`, `window`, optional `services`) |
 | `POST` | `/api/service/{name}/start\|stop\|redeploy` | `ServeActions` |
+| `POST` | `/api/purge` | `ServeActions.purge` → unused images + build cache; reclaim summary (no volumes) |
 | `GET` | `/api/github/session\|login\|callback` | Temporary GitHub OAuth / mock login (multi-account) |
 | `GET` / `POST` | `/api/github/config` | OAuth setup status; paste client id/secret → settings.yaml + reload |
 | `POST` | `/api/github/logout` | Logout active account (`state/serve/github-accounts.json`) |
@@ -309,7 +310,7 @@ Feature folders under `src/spa/src/` (`main.tsx` + lean `styles.css` for tokens/
 
 | Area | Path | Notes |
 |------|------|-------|
-| Shell / routes | `shell/App.tsx`, `shell/Dashboard.tsx`, `main.tsx` | client routes; FastAPI serves `index.html` for non-`/api` paths |
+| Shell / routes | `shell/App.tsx`, `shell/Dashboard.tsx`, `shell/PurgeButton.tsx`, `main.tsx` | client routes; FastAPI serves `index.html` for non-`/api` paths; dashboard Purge confirm → `/api/purge` |
 | Shared | `shared/api.ts`, `shared/dashboardCache.ts`, `shared/ExternalUrlLinks.tsx` | typed `/api` client + status/metrics cache |
 | Status tables | `status/` (`StatusTable`, column menus/filters, tones, `ServiceQuickActions`) | compact-only; Started column; row quick actions |
 | Live chrome | `chrome/LiveIndicator.tsx` (+ `Modal` / `ConfirmPopup` / toasts) | auto-refresh while tab visible; **no** native `alert`/`confirm` |
@@ -359,6 +360,7 @@ Top-level **commands** (not nested groups, except `auth` and `gate`):
 | `status` | Host + container resource usage (point-in-time; `--json` or `--live`; Started column beside Uptime) |
 | `serve` | Localhost ops UI (`127.0.0.1`, default **8787**; optional `--port` / `--stop`); SPA + status/metrics/service/actions/logs APIs; SSH tunnel; Ctrl+C or `--stop` |
 | `logs` | Container stdout/stderr (`--tail N` snapshot; `-f` / `--follow` until Ctrl+C). Names: app, `gate`/`router`/`controller`, or Compose ids; omit = all |
+| `purge` | Remove Docker images unused by any container + unused build cache; print reclaimed space. Holds `stack.lock`. Does **not** prune volumes |
 | `update` | Re-install CLI from GitHub (`install.sh`) |
 | `uninstall` | Full removal (`--yes`; optional `--uv` to remove uv too) |
 | `auth` | `setup` / `list` / `show` / `test` / `remove` |
@@ -375,14 +377,14 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | `src/raft/config/` | `~/.raft` paths, `settings.yaml` (logging + edge + healing + metrics + notifications), logging setup |
 | `src/raft/models/` | Types + parse/registry: `App`, `AppSpec`, `AppDocument` / fields, `AppRegistry`, `AppDependsGraph`, `PortSpec`, `Stack`, `ScalingSpec`. Import from owning modules — package `__init__` is not a re-export barrel. |
 | `src/raft/models/state/` | Runtime JSON stores (`ScalingStore`, `GraphEventStore` + kinds/records) under `~/.raft/state/` |
-| `src/raft/adapters/` | `shell`; `docker/` (`DockerStack`, `ContainerRuntimeGateway`, edge/images/inspect); nginx upstreams; HTTP probe; host |
+| `src/raft/adapters/` | `shell`; `docker/` (`DockerStack`, `ContainerRuntimeGateway`, edge/images/inspect/prune); nginx upstreams; HTTP probe; host |
 | `src/raft/services/apply/` | `AppApply`, `manifest_preprocess` (`ManifestPreprocessor`), `manifest_env` (apply env + `${VAR}`), `manifest_expr` (directive predicates), `manifest_comments` (full-line `#` skip) |
 | `src/raft/services/acme/` | `AcmePaths`, `AcmeEnsure` (HTTP-01 via official PyPI `acme`), `AcmeGateInstall` (render + nginx reload), `AcmeHttpRedirect` |
 | `src/raft/services/auth/` | `GitAuthManager` + ssh/urls helpers |
 | `src/raft/services/sync/` | `SourceSync` |
 | `src/raft/services/render/` | `StackRenderer`, `FragmentCollector`, `compose_apps`, `gate_nginx`, `edge/` nginx fragments (http/stream/tls), `scaling_gate` (holding/wake snippets), `scaling_holding` (app-owned holding HTML → generated gate-http). Distinct from `adapters/docker/edge.py` (Compose edge service ops). |
 | `src/raft/services/deploy/` | orchestrator, cutover, wait, locking, readiness |
-| `src/raft/services/ops/` | doctor, **status collect/format** (Started + allocated limits), logs, uninstall, update, certs |
+| `src/raft/services/ops/` | doctor, **status collect/format** (Started + allocated limits), logs, purge, uninstall, update, certs |
 | `src/raft/services/read/` | Shared **CLI+serve contracts/presentation** over ops collectors (`StatusRead`, `MetricsRead`, `DoctorRead`, `ServeSnapshotView`, `ExternalUrlBuilder`) — not a second status collector |
 | `src/raft/services/export/` | Open-closed download encoders (`ExportRegistry` + `Exporter` subclasses); serve catalogs/attachments |
 | `src/raft/services/notify/` | Open-closed notification framework (`NotificationStrategy` + registry + dispatcher); shipped `webhook` + `email` strategies via `NotificationCatalogs`; channel config in settings `notifications:`; `Notifier` used by heal escalate / wake timeout / ACME lastError / serve deploy failure |

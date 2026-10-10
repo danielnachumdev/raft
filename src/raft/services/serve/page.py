@@ -25,6 +25,7 @@ from .paths import ServePaths
 # GET /api/service/{name}/logs — container stdout/stderr tail (Logs.snapshot).
 # GET /api/service/{name}/logs/follow — SSE follow (Logs.follow; CLI ``-f``).
 # POST /api/service/{name}/start|stop|redeploy — mutative lifecycle actions.
+# POST /api/purge — unused Docker images + build cache (same as ``raft purge``).
 # GET /api/exports + */download — ServeDownloads (export registry).
 # GET / and non-API paths — compiled React SPA (deep-link fallback).
 
@@ -113,6 +114,13 @@ class ServePage:
 
     def api_service_redeploy(self, name: str) -> Dict[str, Any]:
         return self._run_action(self._actions.redeploy, name)
+
+    def api_purge(self) -> Dict[str, Any]:
+        """Purge unused Docker images/build cache; return reclaim summary."""
+        try:
+            return self._actions.purge()
+        except OperatorError as exc:
+            raise self._http_for_operator(exc) from exc
 
     def api_metrics(
         self,

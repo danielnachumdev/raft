@@ -173,5 +173,37 @@ class TestServeActions(RaftTestCase):
         assert actions.stack is refreshed
         assert actions._targets.stack is refreshed
         assert actions._orch is None
+        assert actions._purge is None
         assert docker.stack is refreshed
         assert actions._resolve("demo-api")[0] == "demo-api"
+
+    def test_purge_returns_reclaim_api(self) -> None:
+        stack = make_stack(self.tmp_path, (make_app("site"),))
+        purge = MagicMock()
+        purge.execute.return_value = MagicMock(
+            as_api=MagicMock(
+                return_value={
+                    "ok": True,
+                    "action": "purge",
+                    "reclaimed_bytes": 1024,
+                    "reclaimed_human": "1.0KiB",
+                    "images_bytes": 1024,
+                    "builder_bytes": 0,
+                }
+            )
+        )
+        actions = ServeActions(stack, purge=purge)
+        assert actions.purge()["reclaimed_bytes"] == 1024
+        purge.execute.assert_called_once()
+
+    def test_purge_builds_default_service(self) -> None:
+        stack = make_stack(self.tmp_path, (make_app("site"),))
+        actions = ServeActions(stack)
+        with patch("raft.services.serve.actions.Purge") as purge_cls:
+            instance = MagicMock()
+            instance.execute.return_value = MagicMock(
+                as_api=MagicMock(return_value={"ok": True, "action": "purge"})
+            )
+            purge_cls.return_value = instance
+            assert actions.purge()["ok"] is True
+        purge_cls.assert_called_once_with(stack)

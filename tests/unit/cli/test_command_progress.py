@@ -57,6 +57,12 @@ class TestCommandProgress:
             assert progress._prefix == "raft update"
             assert progress._default_label == "updating"
 
+    def test_enters_spinner_for_purge(self) -> None:
+        with CommandProgress(["purge"]) as progress:
+            assert progress is not None
+            assert progress._prefix == "raft purge"
+            assert progress._default_label == "purging"
+
     def test_main_starts_spinner_before_raftcli_init(self) -> None:
         order = _SpinnerProbeCLI.order
         with patch("raft.cli.entry.run_fire", side_effect=_recording_fire(order)):

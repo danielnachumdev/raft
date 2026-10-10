@@ -186,6 +186,14 @@ class RaftCLI:
         """
         deps.Logs(self._stack).show(*services, tail=tail, follow=follow)
 
+    def purge(self) -> None:
+        """Remove Docker images unused by any container, plus build cache.
+
+        Holds ``stack.lock``. Does not prune volumes (App data). Prints how
+        much space Docker reclaimed.
+        """
+        deps.Purge(self._stack).run()
+
     def update(self) -> None:
         """Re-install raft from GitHub (re-run install.sh / uv tool install)."""
         deps.SelfUpdate(self._stack).run()

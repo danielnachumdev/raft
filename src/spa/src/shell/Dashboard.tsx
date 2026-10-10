@@ -11,6 +11,7 @@ import { LiveIndicator } from "../chrome/LiveIndicator";
 import { ThemeToggle } from "../chrome/ThemeToggle";
 import { StatusTable } from "../status/StatusTable";
 import { TrendsPanel } from "../trends/panel/TrendsPanel";
+import { PurgeButton } from "./PurgeButton";
 
 /** Main dashboard: cached paint, quiet poll while visible, then background refresh. */
 export function Dashboard() {
@@ -94,6 +95,7 @@ export function Dashboard() {
           >
             Notifications
           </Link>
+          <PurgeButton />
           <button
             type="button"
             className={busy ? "refresh is-loading" : "refresh"}

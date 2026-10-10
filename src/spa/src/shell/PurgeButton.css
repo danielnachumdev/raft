@@ -1,0 +1,4 @@
+/* Purge reuses .refresh chrome; reserved for purge-specific tweaks. */
+#stack-purge {
+  min-width: 4.5rem;
+}

@@ -284,6 +284,24 @@ export async function postServiceAction(
   return body as ServiceActionResult;
 }
 
+export type PurgeResult = {
+  ok: boolean;
+  action: "purge";
+  reclaimed_bytes: number;
+  reclaimed_human: string;
+  images_bytes: number;
+  builder_bytes: number;
+};
+
+export async function postPurge(): Promise<PurgeResult> {
+  const res = await fetch("/api/purge", { method: "POST" });
+  const body = await readJsonBody(res);
+  if (!res.ok) {
+    throw new Error(detailFromBody(body) || `purge failed (${res.status})`);
+  }
+  return body as PurgeResult;
+}
+
 async function readJsonBody(res: Response): Promise<unknown> {
   try {
     return await res.json();

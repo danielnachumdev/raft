@@ -15,6 +15,7 @@ from ...models.state.scaling_store import ScalingStore
 from ..deploy.locking import app_and_stack_locks, stack_lock
 from ..deploy.orchestrator import Orchestrator
 from ..ops.logs.targets import LogsTargets
+from ..ops.purge import Purge
 
 
 class ServeActions:
@@ -24,7 +25,7 @@ class ServeActions:
     flock locks as apply/redeploy. For apps with ``spec.scaling``, stop marks
     ``scaledToZero`` (healer skips; gate holding page) and start clears it.
     Redeploy mirrors ``raft redeploy``: apps cutover (must be running), router
-    recreates, gate is refused.
+    recreates, gate is refused. ``purge`` removes unused Docker images/cache.
     """
 
     def __init__(
@@ -33,10 +34,12 @@ class ServeActions:
         *,
         orchestrator: Optional[Orchestrator] = None,
         docker: Optional[DockerStack] = None,
+        purge: Optional[Purge] = None,
     ) -> None:
         self.stack = stack
         self._orch = orchestrator
         self._docker = docker
+        self._purge = purge
         self._targets = LogsTargets(stack)
 
     def bind_stack(self, stack: Stack) -> None:
@@ -44,8 +47,13 @@ class ServeActions:
         self.stack = stack
         self._targets.stack = stack
         self._orch = None
+        self._purge = None
         if self._docker is not None:
             self._docker.stack = stack
+
+    def purge(self) -> Dict[str, Any]:
+        """Purge unused Docker images/build cache; same path as ``raft purge``."""
+        return self._purge_svc().execute().as_api()
 
     def start(self, name: str) -> Dict[str, Any]:
         compose_id, app = self._resolve(name)
@@ -104,6 +112,11 @@ class ServeActions:
         if self._orch is not None:
             return self._orch
         return Orchestrator(self.stack)
+
+    def _purge_svc(self) -> Purge:
+        if self._purge is not None:
+            return self._purge
+        return Purge(self.stack)
 
     def _clear_scaled_to_zero(self, app: App) -> None:
         store = ScalingStore(self.stack.root)
