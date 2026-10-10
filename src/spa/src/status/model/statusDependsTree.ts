@@ -1,6 +1,6 @@
 /** Nest status rows by App ``depends_on`` (Compose service ids). */
 
-import type { StatusRow } from "../shared/api";
+import type { StatusRow } from "../../shared/api";
 
 export type StatusTreeRow = StatusRow & { treeDepth: number };
 

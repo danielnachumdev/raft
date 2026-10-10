@@ -11,9 +11,9 @@ import {
   clipRowsToDomain,
   formatTooltipTime,
   windowDomain,
-} from "../chart/chartTimeScale";
-import { graphEventMarkers } from "../chart/GraphEventMarkers";
-import { eventsForSeries, seriesForEventFilter } from "../chart/graphEvents";
+} from "./chartTimeScale";
+import { graphEventMarkers } from "./GraphEventMarkers";
+import { eventsForSeries, seriesForEventFilter } from "./graphEvents";
 import {
   formatMetricTick,
   formatMetricValue,
@@ -21,10 +21,10 @@ import {
   type MetricTypeId,
 } from "../metricTypes";
 import type { RuntimeMetricDef } from "../runtimeMetrics";
-import { timeScaleXAxis } from "../chart/TimeScaleXAxis";
-import { tooltipItemSortKey } from "../chart/tooltipItemSort";
-import { trendPlotLines } from "../chart/trendPlotLines";
-import { useChartHover } from "../chart/useChartHover";
+import { timeScaleXAxis } from "./TimeScaleXAxis";
+import { tooltipItemSortKey } from "./tooltipItemSort";
+import { trendPlotLines } from "./trendPlotLines";
+import { useChartHover } from "./useChartHover";
 import {
   aggregatePlots,
   buildAggregateRows,
@@ -38,7 +38,7 @@ import {
 } from "./trendsChartRows";
 import "./TrendsChart.css";
 
-export { tooltipItemSortKey } from "../chart/tooltipItemSort";
+export { tooltipItemSortKey } from "./tooltipItemSort";
 export {
   buildPerServiceRows,
   pointValue,

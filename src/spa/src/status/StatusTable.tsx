@@ -6,8 +6,8 @@ import { ColumnHeaderMenu } from "./ColumnHeaderMenu";
 import { ExternalUrlLinks } from "../shared/ExternalUrlLinks";
 import { ServiceQuickActions } from "./ServiceQuickActions";
 import { StatusPanelControls } from "./StatusPanelControls";
-import { COLUMN_LABELS, type SortKey } from "./statusColumnFilter";
-import { useStatusPanelView, type StatusTreeRow } from "./statusPanelView";
+import { COLUMN_LABELS, type SortKey } from "./model/statusColumnFilter";
+import { useStatusPanelView, type StatusTreeRow } from "./model/statusPanelView";
 import {
   parseMemoryRatioPercent,
   parsePercent,
@@ -15,7 +15,7 @@ import {
   utilTone,
   type StatusTone,
   type UtilTone,
-} from "./statusTone";
+} from "./model/statusTone";
 import "./StatusTable.css";
 const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "name", label: COLUMN_LABELS.name },

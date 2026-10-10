@@ -3,7 +3,7 @@ import {
   filterOpLabel,
   type ColumnFilter,
   type SortKey,
-} from "./statusColumnFilter";
+} from "./model/statusColumnFilter";
 import "./StatusPanelControls.css";
 export function StatusPanelControls(props: {
   filtersActive: boolean;
