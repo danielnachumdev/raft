@@ -1,12 +1,9 @@
 import { useMemo, useState } from "react";
 import type { MetricsAvailable, MetricsBounds } from "../../shared/api";
-import {
-  HTTP_METRICS,
-  RESOURCE_METRICS,
-  type RuntimeMetricId,
-} from "../runtimeMetrics";
+import type { RuntimeMetricId } from "../runtimeMetrics";
 import { TrendsRangeControls } from "../TrendsRangeControls";
 import type { TrendsRangeState } from "../trendsRange";
+import { metricFilterSections } from "./metricSelection";
 import type { GroupOption, SeriesViewMode } from "./trendsView";
 import "./TrendsFilters.css";
 
@@ -121,27 +118,25 @@ function MetricFilter(props: {
         role="group"
         aria-label="Metrics"
       >
-        <p className="trends-metric-plane">Resources</p>
-        {RESOURCE_METRICS.map((m) => (
-          <MetricChip
-            key={m.id}
-            id={m.id}
-            label={m.label}
-            checked={props.activeIds.includes(m.id)}
-            busy={props.busy}
-            onToggle={props.onToggle}
-          />
-        ))}
-        <p className="trends-metric-plane">HTTP</p>
-        {HTTP_METRICS.map((m) => (
-          <MetricChip
-            key={m.id}
-            id={m.id}
-            label={m.label}
-            checked={props.activeIds.includes(m.id)}
-            busy={props.busy}
-            onToggle={props.onToggle}
-          />
+        {metricFilterSections().map((section) => (
+          <div key={section.plane} className="trends-metric-plane-block">
+            <p className="trends-metric-plane">{section.planeLabel}</p>
+            {section.types.map(({ type, metrics }) => (
+              <div key={type.id} className="trends-metric-type-block">
+                <p className="trends-metric-type">{type.label}</p>
+                {metrics.map((m) => (
+                  <MetricChip
+                    key={m.id}
+                    id={m.id}
+                    label={m.label}
+                    checked={props.activeIds.includes(m.id)}
+                    busy={props.busy}
+                    onToggle={props.onToggle}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
         ))}
       </div>
     </div>

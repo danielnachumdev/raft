@@ -5,10 +5,13 @@ import {
   type TimedValue,
 } from "../chart/chartTimeScale.ts";
 import {
+  uniqueTypeIds,
+  type MetricTypeId,
+} from "../metricTypes.ts";
+import {
   runtimePointValue,
   type RuntimeMetricDef,
   type RuntimeMetricId,
-  type RuntimeUnit,
 } from "../runtimeMetrics.ts";
 
 export const LEFT_AXIS = "left";
@@ -26,7 +29,7 @@ export type PlotSeries = {
   seriesId: string;
   metricId: RuntimeMetricId;
   label: string;
-  unit: RuntimeUnit;
+  typeId: MetricTypeId;
   axis: typeof LEFT_AXIS | typeof RIGHT_AXIS;
 };
 
@@ -35,7 +38,7 @@ export function toPlotSeries(
   series: MetricsSeries[],
   metrics: RuntimeMetricDef[],
 ): PlotSeries[] {
-  const units = uniqueUnits(metrics);
+  const types = typeIdsForMetrics(metrics);
   const multi = metrics.length > 1;
   const sorted = [...series].sort(
     (a, b) => a.label.localeCompare(b.label) || a.id.localeCompare(b.id),
@@ -49,8 +52,8 @@ export function toPlotSeries(
         seriesId: s.id,
         metricId: m.id,
         label: multi ? `${s.label} · ${m.label}` : s.label,
-        unit: m.unit,
-        axis: axisForUnit(m.unit, units, s),
+        typeId: m.typeId,
+        axis: axisForType(m.typeId, types),
       });
     }
   }
@@ -58,15 +61,15 @@ export function toPlotSeries(
 }
 
 export function aggregatePlots(metrics: RuntimeMetricDef[]): PlotSeries[] {
-  const units = uniqueUnits(metrics);
+  const types = typeIdsForMetrics(metrics);
   const multi = metrics.length > 1;
   return metrics.map((m, i) => ({
     chartKey: `agg${i}`,
     seriesId: "aggregate",
     metricId: m.id,
     label: multi ? `Average · ${m.label}` : "Average",
-    unit: m.unit,
-    axis: units.indexOf(m.unit) === 1 ? RIGHT_AXIS : LEFT_AXIS,
+    typeId: m.typeId,
+    axis: axisForType(m.typeId, types),
   }));
 }
 
@@ -103,6 +106,32 @@ export function pointValue(
   return runtimePointValue(point, metric);
 }
 
+/** Axis type ids for selected metrics (registry order; max two axes). */
+export function typeIdsForMetrics(
+  metrics: RuntimeMetricDef[],
+): MetricTypeId[] {
+  return uniqueTypeIds(metrics.map((m) => m.typeId));
+}
+
+/**
+ * Assign left/right by metric type (stable registry order).
+ * Same-type (incl. host + services) → shared left axis. Cross-type → type[0]
+ * left, type[1] right; further types share left (two-axis cap).
+ */
+export function axisForType(
+  typeId: MetricTypeId,
+  types: MetricTypeId[],
+): typeof LEFT_AXIS | typeof RIGHT_AXIS {
+  return types.indexOf(typeId) === 1 ? RIGHT_AXIS : LEFT_AXIS;
+}
+
+export function needsSplitAxes(
+  _series: MetricsSeries[],
+  metrics: RuntimeMetricDef[],
+): boolean {
+  return typeIdsForMetrics(metrics).length > 1;
+}
+
 function aggregateTimedPoints(
   series: MetricsSeries[],
   metric: RuntimeMetricId,
@@ -136,35 +165,4 @@ function timedPointsForSeries(
     out.push({ ts, t: p.t, value: pointValue(p, metric) });
   }
   return out;
-}
-
-function uniqueUnits(metrics: RuntimeMetricDef[]): RuntimeUnit[] {
-  const out: RuntimeUnit[] = [];
-  for (const m of metrics) {
-    if (!out.includes(m.unit)) out.push(m.unit);
-  }
-  return out;
-}
-
-function axisForUnit(
-  unit: RuntimeUnit,
-  units: RuntimeUnit[],
-  series: MetricsSeries,
-): typeof LEFT_AXIS | typeof RIGHT_AXIS {
-  if (units.length > 1) {
-    return units.indexOf(unit) === 1 ? RIGHT_AXIS : LEFT_AXIS;
-  }
-  return series.kind === "host" || series.id === "host"
-    ? RIGHT_AXIS
-    : LEFT_AXIS;
-}
-
-export function needsSplitAxes(
-  series: MetricsSeries[],
-  metrics: RuntimeMetricDef[],
-): boolean {
-  if (uniqueUnits(metrics).length > 1) return true;
-  const hasHost = series.some((s) => s.kind === "host" || s.id === "host");
-  const hasService = series.some((s) => s.kind !== "host" && s.id !== "host");
-  return hasHost && hasService;
 }

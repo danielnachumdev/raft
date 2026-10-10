@@ -105,6 +105,10 @@
   max-height: 12rem;
 }
 
+.trends-metric-plane-block + .trends-metric-plane-block {
+  margin-top: 0.45rem;
+}
+
 .trends-metric-plane {
   margin: 0.35rem 0 0.15rem;
   font-size: 0.72rem;
@@ -113,6 +117,22 @@
   color: var(--muted);
 }
 
-.trends-metric-plane:first-child {
+.trends-metric-plane-block:first-child .trends-metric-plane {
   margin-top: 0;
+}
+
+.trends-metric-type-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0.2rem 0 0.35rem 0.35rem;
+}
+
+.trends-metric-type {
+  margin: 0;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  opacity: 0.9;
 }

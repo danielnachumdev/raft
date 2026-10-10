@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   DEFAULT_METRIC_IDS,
+  metricFilterSections,
   metricsFromIds,
   planesForMetrics,
   toggleMetricId,
@@ -35,5 +36,22 @@ describe("planesForMetrics", () => {
 
   it("is empty when nothing selected", () => {
     assert.deepEqual(planesForMetrics([]), []);
+  });
+});
+
+describe("metricFilterSections", () => {
+  it("groups Resources then HTTP with type headings inside", () => {
+    const sections = metricFilterSections();
+    assert.deepEqual(
+      sections.map((s) => s.plane),
+      ["resources", "http"],
+    );
+    const resourceTypes = sections[0].types.map((t) => t.type.id);
+    assert.ok(resourceTypes.includes("percent"));
+    assert.ok(resourceTypes.includes("bytes"));
+    assert.ok(resourceTypes.includes("count"));
+    assert.ok(resourceTypes.includes("uptime"));
+    const httpTypes = sections[1].types.map((t) => t.type.id);
+    assert.deepEqual(httpTypes, ["count", "duration", "rate"]);
   });
 });
