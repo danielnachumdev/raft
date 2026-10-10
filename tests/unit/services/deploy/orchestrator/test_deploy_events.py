@@ -56,19 +56,19 @@ class TestDeployGraphEvents(OrchestratorTestCase):
         step.key = "boom"
         step.run.side_effect = RuntimeError("cutover failed")
         with patch(
-            "raft.services.deploy.orchestrator_deploy.DEPLOY_CUTOVER", new=(step,)
+            "raft.services.deploy.methods.seamless.DEPLOY_CUTOVER", new=(step,)
         ):
             with patch.object(self.orch, "sync"):
-                with patch("raft.services.deploy.orchestrator_deploy.CutoverSession"):
+                with patch("raft.services.deploy.methods.seamless.CutoverSession"):
                     with pytest.raises(RuntimeError, match="cutover failed"):
                         self.orch.redeploy_app("app")
         assert self._events() == []
 
     def _redeploy_ok(self) -> None:
         self.set_edge_running("app")
-        with patch("raft.services.deploy.orchestrator_deploy.CutoverSession"):
+        with patch("raft.services.deploy.methods.seamless.CutoverSession"):
             with patch(
-                "raft.services.deploy.orchestrator_deploy.DEPLOY_CUTOVER", new=()
+                "raft.services.deploy.methods.seamless.DEPLOY_CUTOVER", new=()
             ):
                 with patch.object(self.orch, "sync"):
                     self.orch.redeploy_app("app")

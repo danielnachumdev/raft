@@ -133,10 +133,10 @@ class TestOrchRedeploy(OrchestratorTestCase):
 
     def test_redeploy_app_runs_cutover(self) -> None:
         self.set_edge_running("app")
-        with patch("raft.services.deploy.orchestrator_deploy.CutoverSession") as Session:
+        with patch("raft.services.deploy.methods.seamless.CutoverSession") as Session:
             session = MagicMock()
             Session.return_value = session
-            with patch("raft.services.deploy.orchestrator_deploy.DEPLOY_CUTOVER", new=()):
+            with patch("raft.services.deploy.methods.seamless.DEPLOY_CUTOVER", new=()):
                 with patch.object(self.orch, "sync"):
                     self.orch.redeploy_app("app", ref_override="sha", force_sync=True)
             Session.assert_called_once()
@@ -146,9 +146,9 @@ class TestOrchRedeploy(OrchestratorTestCase):
         step = MagicMock()
         step.key = "boom"
         step.run.side_effect = RuntimeError("cutover failed")
-        with patch("raft.services.deploy.orchestrator_deploy.DEPLOY_CUTOVER", new=(step,)):
+        with patch("raft.services.deploy.methods.seamless.DEPLOY_CUTOVER", new=(step,)):
             with patch.object(self.orch, "sync"):
-                with patch("raft.services.deploy.orchestrator_deploy.CutoverSession") as Session:
+                with patch("raft.services.deploy.methods.seamless.CutoverSession") as Session:
                     session = MagicMock()
                     Session.return_value = session
                     with pytest.raises(RuntimeError, match="cutover failed"):
@@ -160,9 +160,9 @@ class TestOrchRedeploy(OrchestratorTestCase):
         step = MagicMock()
         step.key = "boom"
         step.run.side_effect = RuntimeError("cutover failed")
-        with patch("raft.services.deploy.orchestrator_deploy.DEPLOY_CUTOVER", new=(step,)):
+        with patch("raft.services.deploy.methods.seamless.DEPLOY_CUTOVER", new=(step,)):
             with patch.object(self.orch, "sync"):
-                with patch("raft.services.deploy.orchestrator_deploy.CutoverSession") as Session:
+                with patch("raft.services.deploy.methods.seamless.CutoverSession") as Session:
                     session = MagicMock()
                     session.abort_cleanup.side_effect = RuntimeError("cleanup boom")
                     Session.return_value = session
@@ -170,11 +170,16 @@ class TestOrchRedeploy(OrchestratorTestCase):
                         self.orch.redeploy_app("app")
                     session.abort_cleanup.assert_called_once()
 
-    def test_ensure_app_deployed_redeploys_when_running(self) -> None:
+    def test_ensure_app_deployed_cutover_when_running(self) -> None:
         self.set_edge_running("app")
-        with patch.object(self.orch, "redeploy_app") as redeploy:
-            self.orch.ensure_app_deployed("app", ref_override="sha", force_sync=True)
-        redeploy.assert_called_once_with("app", ref_override="sha", force_sync=True)
+        with patch("raft.services.deploy.methods.seamless.CutoverSession") as Session:
+            with patch("raft.services.deploy.methods.seamless.DEPLOY_CUTOVER", new=()):
+                with patch.object(self.orch, "sync") as sync:
+                    self.orch.ensure_app_deployed(
+                        "app", ref_override="sha", force_sync=True
+                    )
+        sync.assert_called_once_with(["app"], ref_override="sha", force=True)
+        Session.assert_called_once()
 
     def test_ensure_app_deployed_starts_app_when_edge_up(self) -> None:
         self.set_edge_only()

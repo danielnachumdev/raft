@@ -30,7 +30,7 @@ class TestIdleSingleStart(OrchestratorTestCase):
     def test_redeploy_skips_tmp_when_not_running(self) -> None:
         self.set_edge_only()
         self.stub_http_ready(self.orch.http)
-        with patch("raft.services.deploy.orchestrator_deploy.CutoverSession") as Session:
+        with patch("raft.services.deploy.methods.seamless.CutoverSession") as Session:
             with patch.object(self.orch, "sync") as sync:
                 self.orch.redeploy_app("app", ref_override="sha", force_sync=True)
         Session.assert_not_called()
@@ -42,7 +42,7 @@ class TestIdleSingleStart(OrchestratorTestCase):
         self.set_edge_running("app")
         ScalingStore(self.tmp_path).mark_scaled_to_zero("app")
         self.stub_http_ready(self.orch.http)
-        with patch("raft.services.deploy.orchestrator_deploy.CutoverSession") as Session:
+        with patch("raft.services.deploy.methods.seamless.CutoverSession") as Session:
             with patch.object(self.orch, "sync"):
                 self.orch.redeploy_app("app")
         Session.assert_not_called()

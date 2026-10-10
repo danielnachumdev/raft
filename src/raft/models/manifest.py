@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Optional
 
 from .depends import DependsOnSpec
+from .deployment_spec import DeploymentSpec
 from .ports import PortSpec
 from .readiness_spec import ReadinessSpec
 from .scaling_spec import ScalingSpec
@@ -48,6 +49,7 @@ class AppSpec:
     env: tuple[tuple[str, str], ...] = ()
     volumes: tuple[VolumeSpec, ...] = ()
     scaling: Optional[ScalingSpec] = None
+    deployment: DeploymentSpec = DeploymentSpec()
 
     def depend_names(self) -> tuple[str, ...]:
         """Compose / wake / heal order — names only (ignore ``scaleWithParent``)."""

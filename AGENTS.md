@@ -18,6 +18,8 @@ User-facing samples live under **[`examples/`](examples/)**: operator settings (
 
 **Shipped:** Per-app scale-to-zero via `spec.scaling` (`idleSeconds` + `minUpSeconds` required; `wakeTimeoutSeconds` defaults to **60**; omit the block = off). HTTP + `publicHost` only. Gate holding page + wake; controller idle-stop (co-stops `dependsOn` with `scaleWithParent` default true); healer skips intentional `scaledToZero`. Healing stays separate (`healing:` in settings). After the wake budget, the product timeout page shows an admin CTA plus a server-minted diagnostic id (same `id=` on controller wake/timeout logs).
 
+**Shipped:** Per-app `spec.deployment.method` (`seamless` default dual-run cutover; `inplace` stop-then-start for small hosts).
+
 **Shipped:** `raft serve` localhost ops UI — packaged React SPA (`share/serve/spa/`) + FastAPI JSON/actions/logs APIs; shared `StatusRead` / `MetricsRead` / `HttpMetricsRead` with CLI; Trends from controller `resources.jsonl` + HTTP edge `http.jsonl`. Source in `src/spa/`; not an edge listener.
 
 ---
@@ -179,6 +181,9 @@ spec:
     reservations:               # floor / alias: requests
       cpu: "0.10"               # → deploy.resources.reservations.cpus
       memory: 32M               # → deploy.resources.reservations.memory
+  # Optional deploy transition (omit = seamless dual-run when live).
+  # deployment:
+  #   method: seamless   # seamless | inplace (default seamless)
   # Optional scale-to-zero (omit = no scaling). When present, idleSeconds and
   # minUpSeconds are required; wakeTimeoutSeconds defaults to 60 if omitted.
   # scaling:
@@ -215,6 +220,17 @@ ${{ endif }}
 ```
 
 `apply --git` clones briefly, reads `.raft/app.yaml`, copies into `~/.raft/state/apps/`. `sync` refreshes sources then `render` regenerates `~/.raft/generated/`.
+
+### `spec.deployment` (deploy transition)
+
+Omit `spec.deployment` → **`method: seamless`** (backwards compatible). When present, `method` selects a pluggable `DeploymentMethod`:
+
+| `method` | When the app is **up** (live replica) | When **down** / idle / not running |
+|----------|----------------------------------------|-------------------------------------|
+| `seamless` (default) | Dual-run `*_tmp` cutover (current behavior) | Single-generation start (no `*_tmp`; same as #187 idle skip) |
+| `inplace` | Stop old generation, rebuild/start on the steady Compose name (brief downtime OK; never holds two generations) | Same single-generation start |
+
+Invalid `method` values raise `OperatorError` with a Fix CTA. Same locks as today (`app-<name>.lock`, `stack.lock`).
 
 ### `spec.scaling` (scale-to-zero)
 
@@ -375,7 +391,7 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 |------|-------|
 | `src/raft/cli/` | Fire root + auth + gate; `deps.py` patched in tests |
 | `src/raft/config/` | `~/.raft` paths, `settings.yaml` (logging + edge + healing + metrics + notifications), logging setup |
-| `src/raft/models/` | Types + parse/registry: `App`, `AppSpec`, `AppDocument` / fields, `AppRegistry`, `AppDependsGraph`, `PortSpec`, `Stack`, `ScalingSpec`. Import from owning modules — package `__init__` is not a re-export barrel. |
+| `src/raft/models/` | Types + parse/registry: `App`, `AppSpec`, `AppDocument` / fields, `AppRegistry`, `AppDependsGraph`, `PortSpec`, `Stack`, `ScalingSpec`, `DeploymentSpec`. Import from owning modules — package `__init__` is not a re-export barrel. |
 | `src/raft/models/state/` | Runtime JSON stores (`ScalingStore`, `GraphEventStore` + kinds/records) under `~/.raft/state/` |
 | `src/raft/adapters/` | `shell`; `docker/` (`DockerStack`, `ContainerRuntimeGateway`, edge/images/inspect/prune); nginx upstreams; HTTP probe; host |
 | `src/raft/services/apply/` | `AppApply`, `manifest_preprocess` (`ManifestPreprocessor`), `manifest_env` (apply env + `${VAR}`), `manifest_expr` (directive predicates), `manifest_comments` (full-line `#` skip) |
@@ -383,7 +399,7 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | `src/raft/services/auth/` | `GitAuthManager` + ssh/urls helpers |
 | `src/raft/services/sync/` | `SourceSync` |
 | `src/raft/services/render/` | `StackRenderer`, `FragmentCollector`, `compose_apps`, `gate_nginx`, `edge/` nginx fragments (http/stream/tls), `scaling_gate` (holding/wake snippets), `scaling_holding` (app-owned holding HTML → generated gate-http). Distinct from `adapters/docker/edge.py` (Compose edge service ops). |
-| `src/raft/services/deploy/` | orchestrator, cutover, wait, locking, readiness |
+| `src/raft/services/deploy/` | orchestrator, cutover, dual_run, wait, locking, readiness, `methods/` (DeploymentMethod ABC + seamless/inplace) |
 | `src/raft/services/ops/` | doctor, **status collect/format** (Started + allocated limits), logs, purge, uninstall, update, certs |
 | `src/raft/services/read/` | Shared **CLI+serve contracts/presentation** over ops collectors (`StatusRead`, `MetricsRead`, `DoctorRead`, `ServeSnapshotView`, `ExternalUrlBuilder`) — not a second status collector |
 | `src/raft/services/export/` | Open-closed download encoders (`ExportRegistry` + `Exporter` subclasses); serve catalogs/attachments |
