@@ -115,8 +115,8 @@ export function typeIdsForMetrics(
 
 /**
  * Assign left/right by metric type (stable registry order).
- * Same-type (incl. host + services) → shared left axis. Cross-type → type[0]
- * left, type[1] right; further types share left (two-axis cap).
+ * Same-type → shared left axis. Two types → type[0] left, type[1] right.
+ * Selection UI caps at two types (see ``MAX_METRIC_TYPES``).
  */
 export function axisForType(
   typeId: MetricTypeId,

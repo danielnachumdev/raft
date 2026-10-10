@@ -45,7 +45,6 @@ const mem = RUNTIME_METRICS.find((m) => m.id === "memory_used_percent")!;
 const s2xx = RUNTIME_METRICS.find((m) => m.id === "status_2xx")!;
 const s5xx = RUNTIME_METRICS.find((m) => m.id === "status_5xx")!;
 const p95 = RUNTIME_METRICS.find((m) => m.id === "duration_p95_ms")!;
-const rx = RUNTIME_METRICS.find((m) => m.id === "network_rx_bytes")!;
 
 describe("toPlotSeries", () => {
   it("emits one plot per service when a single metric is selected", () => {
@@ -80,10 +79,10 @@ describe("toPlotSeries", () => {
     assert.equal(plots.find((p) => p.metricId === "status_2xx")?.axis, RIGHT_AXIS);
   });
 
-  it("puts a third type on the left axis (two-axis cap)", () => {
-    const types = typeIdsForMetrics([cpu, s2xx, rx]);
-    assert.deepEqual(types, ["percent", "count", "bytes"]);
-    assert.equal(axisForType("bytes", types), LEFT_AXIS);
+  it("maps two types to left and right axes", () => {
+    const types = typeIdsForMetrics([cpu, s2xx]);
+    assert.deepEqual(types, ["percent", "count"]);
+    assert.equal(axisForType("percent", types), LEFT_AXIS);
     assert.equal(axisForType("count", types), RIGHT_AXIS);
   });
 });

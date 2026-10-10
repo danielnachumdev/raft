@@ -1,4 +1,9 @@
-import { METRIC_TYPES, type MetricTypeDef } from "../metricTypes.ts";
+import {
+  METRIC_TYPES,
+  uniqueTypeIds,
+  type MetricTypeDef,
+  type MetricTypeId,
+} from "../metricTypes.ts";
 import {
   HTTP_METRICS,
   RESOURCE_METRICS,
@@ -11,6 +16,12 @@ import {
 /** Default Trends metric selection: CPU % only. */
 export const DEFAULT_METRIC_IDS: RuntimeMetricId[] = ["cpu_percent"];
 
+/** Hard max distinct metric types on one Trends chart (dual Y-axis). */
+export const MAX_METRIC_TYPES = 2;
+
+export const THIRD_TYPE_BLOCK_REASON =
+  "At most 2 metric types can be charted together. Clear a type first.";
+
 export type MetricFilterSection = {
   plane: MetricPlane;
   planeLabel: string;
@@ -22,11 +33,39 @@ const PLANE_LABEL: Record<MetricPlane, string> = {
   http: "HTTP",
 };
 
+/** Distinct type ids in the current selection (registry order). */
+export function selectedTypeIds(
+  active: RuntimeMetricId[],
+): MetricTypeId[] {
+  return uniqueTypeIds(
+    metricsFromIds(active).map((m) => m.typeId),
+  );
+}
+
+/**
+ * True when checking ``id`` would introduce a third type.
+ * Already-selected metrics and same-type siblings stay allowed.
+ */
+export function isMetricTypeBlocked(
+  active: RuntimeMetricId[],
+  id: RuntimeMetricId,
+): boolean {
+  if (active.includes(id)) return false;
+  const def = RUNTIME_METRICS.find((m) => m.id === id);
+  if (!def) return true;
+  const types = selectedTypeIds(active);
+  if (types.length < MAX_METRIC_TYPES) return false;
+  return !types.includes(def.typeId);
+}
+
 /** Toggle a metric id; order follows ``RUNTIME_METRICS``. */
 export function toggleMetricId(
   active: RuntimeMetricId[],
   id: RuntimeMetricId,
 ): RuntimeMetricId[] {
+  if (!active.includes(id) && isMetricTypeBlocked(active, id)) {
+    return active;
+  }
   const next = active.includes(id)
     ? active.filter((x) => x !== id)
     : [...active, id];

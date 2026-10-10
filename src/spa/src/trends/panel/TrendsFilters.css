@@ -92,6 +92,15 @@
   cursor: wait;
 }
 
+.trends-chip-type-blocked {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.trends-chip-type-blocked input:disabled {
+  cursor: not-allowed;
+}
+
 .trends-chip-label {
   min-width: 0;
   word-break: break-word;
