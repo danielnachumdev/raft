@@ -381,7 +381,7 @@ Top-level **commands** (not nested groups, except `auth` and `gate`):
 | `uninstall` | Full removal (`--yes`; optional `--uv` to remove uv too) |
 | `auth` | `setup` / `list` / `show` / `test` / `remove` |
 
-Entry: `raft` console script → `raft.cli:CliEntry.run`. Prefer `install.sh` / `uv tool install` so `raft` is on `PATH`; in a bare checkout `uv run raft …` still works.
+Entry: `raft` console script → `raft.__main__:main` (`RaftCLI().run()`). Prefer `install.sh` / `uv tool install` so `raft` is on `PATH`; in a bare checkout `uv run raft …` still works.
 
 ---
 
@@ -389,7 +389,7 @@ Entry: `raft` console script → `raft.cli:CliEntry.run`. Prefer `install.sh` / 
 
 | Path | Notes |
 |------|-------|
-| `src/raft/cli/` | `RaftCLI` (`cli.py`); `CliEntry` (`cli_wrapper.py`); `commands/` auth/gate/get + argv/deps helpers |
+| `src/raft/cli/` | `RaftCLI` (`cli.py` entry); `RaftCLICommands` (`cli_commands.py`); `commands/` auth/gate/get; `utils/` argv/deps/Fire helpers |
 | `src/raft/config/` | `~/.raft` paths, `settings.yaml` (logging + edge + healing + metrics + notifications), logging setup |
 | `src/raft/models/` | Types + parse/registry: `App`, `AppSpec`, `AppDocument` / fields, `AppRegistry`, `AppDependsGraph`, `PortSpec`, `Stack`, `ScalingSpec`, `DeploymentSpec`. Import from owning modules — package `__init__` is not a re-export barrel. |
 | `src/raft/models/state/` | Runtime JSON stores (`ScalingStore`, `GraphEventStore` + kinds/records) under `~/.raft/state/` |

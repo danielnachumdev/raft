@@ -1,5 +1,5 @@
 """CLI package for raft (Google Fire)."""
 
-from .cli_wrapper import CliEntry
+from .cli import RaftCLI
 
-__all__ = ["CliEntry"]
+__all__ = ["RaftCLI"]

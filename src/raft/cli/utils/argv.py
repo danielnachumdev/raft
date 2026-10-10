@@ -94,7 +94,7 @@ class ApplyEnvOverrides:
 
 
 class ApplyEnvArgvBridge:
-    """Peel repeatable ``--env`` and bind them for ``RaftCLI.apply`` to read."""
+    """Peel repeatable ``--env`` and bind them for ``RaftCLICommands.apply`` to read."""
 
     FLAG = "--env"
 

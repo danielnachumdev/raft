@@ -1,4 +1,9 @@
-from .cli import CliEntry
+from .cli import RaftCLI
+
+
+def main() -> None:
+    RaftCLI().run()
+
 
 if __name__ == "__main__":
-    CliEntry.run()
+    main()

@@ -8,24 +8,24 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from raft import cli
+from raft.cli import RaftCLI
 
 from ..base import RaftTestCase, make_app, make_stack, write_demo_inventory
 
-# Where CLI modules bind names imported from ``raft.cli.commands.deps``.
+# Where CLI modules bind names imported from ``raft.cli.utils.deps``.
 _DEP_TARGETS = {
-    "load_stack": ("raft.cli.cli",),
-    "load_config": ("raft.cli.cli",),
-    "setup_logging": ("raft.cli.cli",),
-    "AppApply": ("raft.cli.cli",),
-    "Orchestrator": ("raft.cli.cli", "raft.cli.commands.gate"),
-    "Doctor": ("raft.cli.cli",),
-    "Status": ("raft.cli.cli",),
-    "Serve": ("raft.cli.cli",),
-    "Logs": ("raft.cli.cli",),
-    "Purge": ("raft.cli.cli",),
-    "SelfUpdate": ("raft.cli.cli",),
-    "Uninstall": ("raft.cli.cli",),
+    "load_stack": ("raft.cli.cli_commands",),
+    "load_config": ("raft.cli.cli_commands",),
+    "setup_logging": ("raft.cli.cli_commands",),
+    "AppApply": ("raft.cli.cli_commands",),
+    "Orchestrator": ("raft.cli.cli_commands", "raft.cli.commands.gate"),
+    "Doctor": ("raft.cli.cli_commands",),
+    "Status": ("raft.cli.cli_commands",),
+    "Serve": ("raft.cli.cli_commands",),
+    "Logs": ("raft.cli.cli_commands",),
+    "Purge": ("raft.cli.cli_commands",),
+    "SelfUpdate": ("raft.cli.cli_commands",),
+    "Uninstall": ("raft.cli.cli_commands",),
     "GitAuthManager": ("raft.cli.commands.auth",),
 }
 
@@ -45,11 +45,11 @@ class CliTestCase(RaftTestCase):
 
     def run_main(self, argv: list[str]) -> int:
         with self.patched_deps(Orchestrator=self.orch):
-            return cli.CliEntry._main(argv)
+            return RaftCLI()._main(argv)
 
     def run_cli(self, argv: list[str]) -> None:
         with self.patched_deps(Orchestrator=self.orch):
-            cli.CliEntry.run(argv)
+            RaftCLI().run(argv)
 
     @contextmanager
     def patched_deps(

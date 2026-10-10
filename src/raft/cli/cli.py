@@ -1,242 +1,146 @@
-"""Fire root component (`raft` top-level commands)."""
+"""Process entry: Fire dispatch, logging bootstrap, error → exit mapping."""
 
 from __future__ import annotations
 
 import logging
-from pathlib import Path
-from typing import Optional, Sequence, Union
+import os
+import subprocess
+import sys
+from typing import Optional
 
+import yaml
+
+from raft.config.trace_context import TraceContext
+from raft.errors.classify import (
+    SubprocessCtx,
+    classify_subprocess,
+    generic_command_failed,
+)
 from raft.errors.cta import OperatorError
 from raft.errors.domain import (
-    apply_requires_source,
-    redeploy_requires_app,
-    unknown_app,
+    filesystem_error,
+    invalid_yaml,
 )
-from raft.apply.manifest_env import ApplyEnvSources
+from raft.models.stack import load_stack
+from raft.ops.certs import missing_origin_certs
+from raft.ui import say_err
 
-from .commands.argv import ApplyEnvOverrides
-from .commands.auth import AuthCLI
-from .commands.deps import (
-    AppApply,
-    Doctor,
-    Logs,
-    Orchestrator,
-    Purge,
-    SelfUpdate,
-    Serve,
-    Status,
-    Uninstall,
-    load_config,
-    load_stack,
-    setup_logging,
-)
-from .commands.gate import GateCLI
-from .commands.get import get_app, get_apps
-
-logger = logging.getLogger(__name__)
+from .utils.argv import ApplyEnvArgvBridge
+from .utils.command_progress import CommandProgress
+from .utils.fire_run import run_fire
+from .utils.logs_argv import LogsArgvNormalizer
+from .cli_commands import RaftCLICommands
 
 
 class RaftCLI:
-    """raft — low-budget single-VPS orchestrator (apply App manifests, sync, redeploy)."""
+    """Process entry: Fire dispatch, logging bootstrap, error → exit mapping."""
 
-    def __init__(self) -> None:
-        self._stack = load_stack()
-        config = load_config(self._stack.root)
-        log_file = setup_logging(self._stack.root, config)
-        logger.debug("config loaded; log_file=%s", log_file)
-        self.auth = AuthCLI(self._stack)
-        self.gate = GateCLI(self._stack)
+    def run(self, argv: Optional[list[str]] = None) -> None:
+        self.ensure_logging_bootstrap()
+        with TraceContext():
+            self._run_inside_trace(argv)
 
-    @property
-    def _app_names(self) -> list[str]:
-        return [a.name for a in self._stack.apps]
+    def _main(self, argv: Optional[list[str]] = None) -> int:
+        os.environ["PAGER"] = "cat"
+        raw = list(argv) if argv is not None else sys.argv[1:]
+        bridge = ApplyEnvArgvBridge()
+        command, token = bridge.bind(raw)
+        command = LogsArgvNormalizer().normalize(command)
+        try:
+            with CommandProgress(command):
+                run_fire(RaftCLICommands, command=command, name="raft")
+        finally:
+            bridge.reset(token)
+        return 0
 
-    @property
-    def _known(self) -> str:
-        names = self._app_names
-        return ", ".join(names) if names else "(none applied — use raft apply)"
+    def ensure_logging_bootstrap(self) -> None:
+        root = logging.getLogger("raft")
+        if root.handlers:
+            return
+        root.addHandler(logging.NullHandler())
+        root.setLevel(logging.INFO)
+        root.propagate = False
 
-    def apply(
+    def suggest_doctor(
         self,
-        file: Optional[str] = None,
-        git: Optional[str] = None,
-        ref: Optional[str] = None,
-        no_deploy: bool = False,
-        force_sync: bool = False,
-        env_file: Optional[str] = None,
-        env: Optional[Union[str, Sequence[str]]] = None,
-    ) -> None:
-        """Register an App from ``--file`` or ``--git``; preprocess, then deploy.
-
-        ``--env-file`` / ``--env`` feed preprocess only (process → file → ``--env``).
-        """
-        applier = AppApply(self._stack)
-        apply_env = self._build_apply_env(env_file=env_file, env=env)
-        deploy = not no_deploy
-        if file is not None:
-            applier.apply_file(
-                Path(file), ref_override=ref, deploy=deploy, force_sync=force_sync, env=apply_env
-            )
-            return
-        if git:
-            applier.apply_git(
-                git, ref=ref or "main", deploy=deploy, force_sync=force_sync, env=apply_env
-            )
-            return
-        raise apply_requires_source()
-
-    def get(
-        self,
-        resource: str,
-        name: Optional[str] = None,
-        group: Optional[str] = None,
-    ) -> None:
-        """Show applied resources (e.g. get apps, get app NAME, get apps --group=demo)."""
-        if resource == "apps":
-            get_apps(self._stack, group=group)
-            return
-        if resource == "app":
-            if not name:
-                raise SystemExit("get app requires a name")
-            get_app(self._stack, name)
-            return
-        raise SystemExit(f"unknown resource {resource!r} (try: apps, app)")
-
-    def delete(self, resource: str, name: Optional[str] = None) -> None:
-        """Remove applied resources (e.g. delete app NAME)."""
-        if resource == "app":
-            if not name:
-                raise SystemExit("delete app requires a name")
-            AppApply(self._stack).delete(name)
-            return
-        raise SystemExit(f"unknown resource {resource!r} (try: app)")
-
-    def up(self) -> None:
-        """Sync applied apps, then bring the stack up."""
-        Orchestrator(self._stack).start()
-
-    def down(self) -> None:
-        """Stop and remove the stack."""
-        Orchestrator(self._stack).stop()
-
-    def render(self) -> None:
-        """Generate Compose/nginx from ~/.raft/state/apps/*.yaml."""
-        Orchestrator(self._stack).render()
-
-    def doctor(self, name: Optional[str] = None) -> None:
-        """Check docker, auth, sync, upstreams, and stack status; print fixes.
-
-        Optional ``name`` filters to one applied App (CI: ``raft doctor shop``).
-        Exit status then reflects that App's checks only.
-        """
-        code = Doctor(self._stack).report(app_name=name)
-        if code:
-            raise SystemExit(code)
-
-    def status(self, json: bool = False, live: bool = False) -> None:
-        """Show host and container resource usage (point-in-time snapshot).
-
-        Pass ``--json`` for a machine-readable snapshot (basis for future scaling).
-        Pass ``--live`` to clear and refresh the human table until Ctrl+C
-        (not combinable with ``--json``).
-        """
-        Status(self._stack).report(as_json=json, live=live)
-
-    def serve(self, port: int = 8787, stop: bool = False) -> None:
-        """Start a localhost-only SSR UI for stack and control-plane visibility.
-
-        Binds ``127.0.0.1`` (default port 8787). Prints connection /
-        port-forward instructions on start. Stop with Ctrl+C or
-        ``raft serve --stop``. Not published via gate/edge.
-        Pass ``--stop`` to terminate an already-running serve on this port.
-        """
-        serve = Serve(self._stack)
-        if stop:
-            serve.stop(port=port)
-            return
-        serve.run(port=port)
-
-    def logs(
-        self,
-        *services: str,
-        tail: int = 100,
-        follow: bool = False,
-    ) -> None:
-        """Show container stdout/stderr for apps or edge services.
-
-        Snapshot (default): recent lines, like ``docker compose logs --tail``.
-        Pass ``-f`` / ``--follow`` to stream until Ctrl+C (like ``tail -f``).
-        Names: app registry name, ``gate`` / ``router`` / ``controller``, or
-        Compose ids (``raft-gate``, ``GROUP-NAME``). Omit names for all services.
-        """
-        Logs(self._stack).show(*services, tail=tail, follow=follow)
-
-    def purge(self) -> None:
-        """Remove Docker images unused by any container, plus build cache.
-
-        Holds ``stack.lock``. Does not prune volumes (App data). Prints how
-        much space Docker reclaimed.
-        """
-        Purge(self._stack).run()
-
-    def update(self) -> None:
-        """Re-install raft from GitHub (re-run install.sh / uv tool install)."""
-        SelfUpdate(self._stack).run()
-
-    def uninstall(self, yes: bool = False, uv: bool = False) -> None:
-        """Remove raft from this machine (stack, ~/.raft, deploy keys, uv tool).
-
-        Requires ``--yes``. Pass ``--uv`` to also remove the ``uv`` installer
-        (left installed by default — other tools may need it). Does not revoke
-        git-host deploy keys or CDN certs.
-        """
-        Uninstall(self._stack).run(yes=yes, uv=uv)
-
-    def sync(
-        self,
-        *services: str,
-        ref: Optional[str] = None,
-        force: bool = False,
-    ) -> None:
-        """Clone/update sources for applied apps."""
-        names = list(services) if services else None
-        if names:
-            unknown = [n for n in names if n not in self._app_names]
-            if unknown:
-                raise OperatorError(
-                    f"unknown service(s): {', '.join(unknown)} (known: {self._known}).\n"
-                    f"Fix: raft get apps"
-                )
-        Orchestrator(self._stack).sync(names, ref_override=ref, force=force)
-
-    def redeploy(
-        self,
-        app: Optional[str] = None,
-        ref: Optional[str] = None,
-        force_sync: bool = False,
-    ) -> None:
-        """Redeploy one running app, or recreate inner router."""
-        name = (app or "").strip()
-        if not name:
-            raise redeploy_requires_app()
-        orch = Orchestrator(self._stack)
-        if name == "router":
-            orch.redeploy_router()
-            return
-        if name not in self._app_names:
-            raise unknown_app(name, self._known)
-        orch.redeploy_app(name, ref_override=ref, force_sync=force_sync)
-
-    @staticmethod
-    def _build_apply_env(
+        argv: Optional[list[str]] = None,
         *,
-        env_file: Optional[str],
-        env: Optional[Union[str, Sequence[str]]],
-    ) -> dict[str, str]:
-        """Merge process → ``--env-file`` → peeled/Fire ``--env`` once for apply."""
-        peeled = ApplyEnvOverrides.get()
-        overrides: Union[None, str, Sequence[str]] = list(peeled) if peeled else env
-        return ApplyEnvSources.from_apply(
-            env_file=Path(env_file) if env_file else None,
-            env_overrides=overrides,
-        ).build()
+        message: str = "",
+        err: Optional[BaseException] = None,
+    ) -> None:
+        if self._should_skip_doctor_hint(argv, message=message, err=err):
+            return
+        say_err("")
+        say_err("Hint: run `raft doctor` to check setup and see fixes.", style="warn")
+
+    def _should_skip_doctor_hint(
+        self,
+        argv: Optional[list[str]],
+        *,
+        message: str,
+        err: Optional[BaseException],
+    ) -> bool:
+        if argv and argv[0] == "doctor":
+            return True
+        if isinstance(err, OperatorError) and err.has_fix:
+            return True
+        lowered = message.lower()
+        return "fix:" in lowered or "fix (" in lowered
+
+    def _run_inside_trace(self, argv: Optional[list[str]]) -> None:
+        try:
+            raise SystemExit(self._main(argv))
+        except subprocess.CalledProcessError as exc:
+            self._exit_called_process(argv, exc)
+        except Exception as exc:
+            self._exit_mapped(argv, exc)
+
+    def _exit_mapped(self, argv: Optional[list[str]], exc: BaseException) -> None:
+        mapped = self._map_operator_exc(exc)
+        if mapped is None:
+            raise exc
+        self._exit_operator(argv, mapped, 1)
+
+    def _map_operator_exc(self, exc: BaseException) -> Optional[BaseException]:
+        if isinstance(exc, yaml.YAMLError):
+            return invalid_yaml("~/.raft/settings.yaml or an App manifest", exc)
+        if isinstance(exc, OSError):
+            return filesystem_error(exc)
+        if isinstance(exc, OperatorError):
+            return exc
+        if isinstance(exc, (RuntimeError, TimeoutError, ValueError, FileNotFoundError)):
+            return exc
+        return None
+
+    def _exit_called_process(
+        self,
+        argv: Optional[list[str]],
+        exc: subprocess.CalledProcessError,
+    ) -> None:
+        shown = self._format_called_process_error(exc)
+        self.suggest_doctor(argv, message=shown)
+        raise SystemExit(exc.returncode) from exc
+
+    def _exit_operator(
+        self,
+        argv: Optional[list[str]],
+        err: BaseException,
+        code: int,
+    ) -> None:
+        say_err(str(err))
+        self.suggest_doctor(argv, message=str(err), err=err)
+        raise SystemExit(code) from err
+
+    def _format_called_process_error(self, exc: subprocess.CalledProcessError) -> str:
+        missing = self._missing_certs_best_effort()
+        ctx = SubprocessCtx(missing_certs=missing)
+        err = classify_subprocess(exc, ctx) or generic_command_failed(exc)
+        text = str(err)
+        say_err(text)
+        return text
+
+    def _missing_certs_best_effort(self):
+        try:
+            return missing_origin_certs(load_stack())
+        except Exception:  # noqa: BLE001 — best-effort enrichment only
+            return None

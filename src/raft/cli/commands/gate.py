@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from raft.models.stack import Stack
-from .deps import Orchestrator
+from ..utils.deps import Orchestrator
 
 
 class GateCLI:

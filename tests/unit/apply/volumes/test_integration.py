@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import yaml
 
-from raft.cli.commands import get as get_cmd
+from raft.cli.commands.get import GetCLI
 from raft.models.stack import load_stack
 from raft.apply import AppApply
 from raft.ops.doctor import INFRA, CheckResult, Doctor
@@ -23,10 +23,11 @@ class TestVolumesIntegration(VolumesTestCase):
         write_applied_app(self.tmp_path, "a", extra={"group": "demo"})
         write_applied_app(self.tmp_path, "b")
         stack = load_stack(self.tmp_path)
-        get_cmd.get_apps(stack, group="demo")
-        get_cmd.get_apps(stack, group="missing")
-        get_cmd.get_app(stack, "a")
-        get_cmd.get_apps(stack)
+        getter = GetCLI(stack)
+        getter.apps(group="demo")
+        getter.apps(group="missing")
+        getter.app("a")
+        getter.apps()
 
     def test_apply_warns_missing_depends_on(self) -> None:
         path = self.tmp_path / "app.yaml"

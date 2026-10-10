@@ -1,1 +1,1 @@
-"""Fire command modules and CLI infrastructure."""
+"""Fire subcommand helpers (auth, gate, get)."""

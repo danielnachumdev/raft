@@ -5,7 +5,7 @@ from typing import Optional
 from raft.errors.domain import auth_requires_service
 
 from raft.ui import say
-from .deps import GitAuthManager
+from ..utils.deps import GitAuthManager
 
 
 def _require_service(service: Optional[str], cmd: str) -> str:

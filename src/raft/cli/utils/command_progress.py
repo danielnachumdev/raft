@@ -1,4 +1,4 @@
-"""Enter TerminalProgress for long-running commands before RaftCLI init."""
+"""Enter TerminalProgress for long-running commands before RaftCLICommands init."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from raft.ui.progress import TerminalProgress
 class CommandProgress:
     """Context manager: start the doctor/update spinner before stack/logging setup.
 
-    ``RaftCLI.__init__`` may spend seconds on log retention prune. Entering the
+    ``RaftCLICommands.__init__`` may spend seconds on log retention prune. Entering the
     spinner here means the TTY shows activity during that work. Doctor/update
     reuse ``TerminalProgress.current()`` instead of nesting a second spinner.
     """
