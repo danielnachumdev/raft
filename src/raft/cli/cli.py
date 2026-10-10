@@ -68,49 +68,22 @@ class RaftCLI:
     ) -> None:
         """Register an App from ``--file`` or ``--git``; preprocess, then deploy.
 
-        ``--env-file`` / ``--env`` feed ``ManifestPreprocessor`` (placeholder
-        values and ``${{ }}`` directive identifiers — not Compose inject).
-        Precedence: process → ``--env-file`` → ``--env``.
+        ``--env-file`` / ``--env`` feed preprocess only (process → file → ``--env``).
         """
-        self._dispatch_apply(
-            file=file,
-            git=git,
-            ref=ref,
-            deploy=not no_deploy,
-            force_sync=force_sync,
-            env_file=env_file,
-            env=env,
-        )
-
-    def _dispatch_apply(
-        self,
-        *,
-        file: Optional[str],
-        git: Optional[str],
-        ref: Optional[str],
-        deploy: bool,
-        force_sync: bool,
-        env_file: Optional[str],
-        env: Optional[Union[str, Sequence[str]]],
-    ) -> None:
         applier = AppApply(self._stack)
         apply_env = self._build_apply_env(env_file=env_file, env=env)
-        opts = dict(ref=ref, deploy=deploy, force_sync=force_sync, env=apply_env)
+        deploy = not no_deploy
         if file is not None:
-            self._apply_from_file(applier, Path(file), **opts)
+            applier.apply_file(
+                Path(file), ref_override=ref, deploy=deploy, force_sync=force_sync, env=apply_env
+            )
             return
         if git:
-            self._apply_from_git(applier, git, **opts)
+            applier.apply_git(
+                git, ref=ref or "main", deploy=deploy, force_sync=force_sync, env=apply_env
+            )
             return
         raise apply_requires_source()
-
-    @staticmethod
-    def _apply_from_file(applier, path, *, ref, deploy, force_sync, env) -> None:
-        applier.apply_file(path, ref_override=ref, deploy=deploy, force_sync=force_sync, env=env)
-
-    @staticmethod
-    def _apply_from_git(applier, git, *, ref, deploy, force_sync, env) -> None:
-        applier.apply_git(git, ref=ref or "main", deploy=deploy, force_sync=force_sync, env=env)
 
     def get(
         self,
