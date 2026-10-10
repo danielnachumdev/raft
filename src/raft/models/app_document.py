@@ -13,6 +13,7 @@ from .app import App
 from .app_mount_fields import AppMountFields
 from .app_spec_fields import AppSpecFields
 from .depends_fields import DependsOnFields
+from .deployment_spec import DeploymentSpecParser
 from .manifest import (
     CONTRACT_API_VERSION,
     CONTRACT_KIND,
@@ -201,6 +202,7 @@ class AppDocument:
             "metadata_name": name,
             "group": group,
             "scaling": ScalingSpecParser.parse(spec, ports, path),
+            "deployment": DeploymentSpecParser.parse(spec, path),
         }
 
     @staticmethod

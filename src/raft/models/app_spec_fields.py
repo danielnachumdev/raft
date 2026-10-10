@@ -33,6 +33,7 @@ _KNOWN_SPEC_KEYS = frozenset(
         "extra_hosts",
         "build",
         "scaling",
+        "deployment",
         "resources",
         "dependsOn",
         "depends_on",

@@ -16,6 +16,7 @@ Typical `spec` concerns (omit what you do not need):
 | TLS | `tls: off` (default), `origin` (operator PEMs), or `acme` (public Let's Encrypt on the gate) — see **TLS modes** below |
 | Runtime | `env` / `envFile`, `volumes`, `group`, `dependsOn`, `resources`, `readiness` |
 | Scaling | `scaling` (`idleSeconds`/`minUpSeconds` required; `wakeTimeoutSeconds` defaults to 60; HTTP + `publicHost` only) |
+| Deployment | `deployment.method`: `seamless` (default dual-run) or `inplace` (stop-then-start; brief downtime OK) |
 
 ## Worker Apps (no listeners)
 
@@ -119,6 +120,23 @@ raft apply --file .raft/app.yaml --ref "$SHA" --env KEY=value
 ```
 
 Same command for first boot and later cutovers. Depth and edge cases: [`AGENTS.md`](../AGENTS.md) (App manifest model + ManifestPreprocessor).
+
+## Deploy transition (`spec.deployment`)
+
+How apply / redeploy replaces a running App generation. Omit the block for the default.
+
+```yaml
+spec:
+  deployment:
+    method: seamless   # seamless | inplace — default seamless when omitted
+```
+
+| `method` | Live replica (**up**) | Idle / not running (**down**) |
+|----------|------------------------|-------------------------------|
+| `seamless` | Dual-run `*_tmp` cutover (zero-ish downtime) | Single Compose start — no second generation |
+| `inplace` | Stop the old service, then rebuild/start on the steady name (saves RAM; brief downtime) | Same single Compose start |
+
+Use `inplace` on small hosts that cannot hold two images/containers during cutover. Unknown `method` values fail apply with a Fix CTA.
 
 ## Scale-to-zero (`spec.scaling`)
 
