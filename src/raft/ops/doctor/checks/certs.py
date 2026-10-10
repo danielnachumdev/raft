@@ -7,7 +7,7 @@ from typing import Optional
 from raft.errors.cta import OperatorError
 from raft.ops.acme_health import AcmeCertHealth
 
-from raft.ops.certs import missing_acme_certs, missing_origin_certs
+from raft.ops.certs import CertProbe
 from ..context import DoctorContext
 from ..models import CheckResult
 
@@ -16,8 +16,9 @@ class CertChecks:
     name = "certs"
 
     def run(self, ctx: DoctorContext) -> list[CheckResult]:
-        origin_missing = {m.app_name: m for m in missing_origin_certs(ctx.stack)}
-        acme_missing = {m.app_name: m for m in missing_acme_certs(ctx.stack)}
+        probe = CertProbe(ctx.stack)
+        origin_missing = {m.app_name: m for m in probe.missing_origin()}
+        acme_missing = {m.app_name: m for m in probe.missing_acme()}
         health = AcmeCertHealth(ctx.stack)
         results: list[CheckResult] = []
         for app in ctx.stack.apps:

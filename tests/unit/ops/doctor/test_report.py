@@ -5,7 +5,7 @@ from __future__ import annotations
 from raft.models.app import GATE_COMPOSE_ID, ROUTER_COMPOSE_ID
 from raft.models.stack import load_stack
 from raft.ops.doctor import INFRA, CheckResult, Doctor
-from raft.ops.doctor.checks.apps import auth_deploy_key_fix
+from raft.ops.doctor.checks.apps import AppChecks
 
 from tests.unit.base import make_stack, write_applied_app
 from .base import DoctorTestCase
@@ -133,10 +133,10 @@ class TestDoctorReport(DoctorTestCase):
         self._assert_auth_fix_urls()
 
     def _assert_auth_fix_urls(self) -> None:
-        gh = auth_deploy_key_fix("svc", "git@github.com:acme/site.git")
+        gh = AppChecks.auth_deploy_key_fix("svc", "git@github.com:acme/site.git")
         assert "github.com/acme/site/settings/keys/new" in gh
-        assert "gitlab.com" in auth_deploy_key_fix("svc", "git@gitlab.com:acme/site.git")
-        assert auth_deploy_key_fix("svc", "not-a-url")
+        assert "gitlab.com" in AppChecks.auth_deploy_key_fix("svc", "git@gitlab.com:acme/site.git")
+        assert AppChecks.auth_deploy_key_fix("svc", "not-a-url")
 
     def test_report_blank_lines_between_ok_and_issues(self, capsys) -> None:
         d = self.doctor()

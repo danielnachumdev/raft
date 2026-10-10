@@ -20,27 +20,6 @@ class Step:
     run: Callable[["CutoverSession"], None]
 
 
-def wait_until(
-    description: str,
-    predicate: Callable[[], bool],
-    *,
-    timeout: float,
-    interval: float = 1.0,
-    fix: str = "",
-    diagnostics: Optional[Callable[[], str]] = None,
-    progress_every: float = 15.0,
-) -> None:
-    WaitUntil(
-        description,
-        predicate,
-        timeout=timeout,
-        interval=interval,
-        fix=fix,
-        diagnostics=diagnostics,
-        progress_every=progress_every,
-    ).run()
-
-
 class WaitUntil:
     """Poll ``predicate`` until true or raise a timed-out OperatorError."""
 

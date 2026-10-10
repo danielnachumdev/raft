@@ -9,8 +9,8 @@ import pytest
 
 from raft.cli import RaftCLI
 
-from ..base import make_git_app, make_stack, write_demo_inventory
-from .base import CliTestCase
+from ...base import make_git_app, make_stack, write_demo_inventory
+from ..base import CliTestCase
 
 
 class TestCliAuth(CliTestCase):
@@ -28,7 +28,7 @@ class TestCliAuth(CliTestCase):
 
     def auth_main(self, argv: list[str]) -> int:
         with self.patched_deps(Orchestrator=MagicMock(), GitAuthManager=self.auth):
-            return RaftCLI()._main(argv)
+            return RaftCLI()._invoke_fire(argv)
 
     def test_auth_setup_list_show_test_remove(self, capsys) -> None:
         self._test_auth_setup_list_show_test_remove_p1()
@@ -63,13 +63,13 @@ class TestCliAuth(CliTestCase):
     def test_auth_requires_service(self) -> None:
         with self.patched_deps(Orchestrator=MagicMock(), GitAuthManager=self.auth):
             with pytest.raises(RuntimeError, match="auth setup requires SERVICE"):
-                RaftCLI()._main(["auth", "setup"])
+                RaftCLI()._invoke_fire(["auth", "setup"])
             with pytest.raises(RuntimeError, match="auth show requires SERVICE"):
-                RaftCLI()._main(["auth", "show"])
+                RaftCLI()._invoke_fire(["auth", "show"])
             with pytest.raises(RuntimeError, match="auth test requires SERVICE"):
-                RaftCLI()._main(["auth", "test"])
+                RaftCLI()._invoke_fire(["auth", "test"])
             with pytest.raises(RuntimeError, match="auth remove requires SERVICE"):
-                RaftCLI()._main(["auth", "remove"])
+                RaftCLI()._invoke_fire(["auth", "remove"])
 
     def test_auth_list_empty(self, capsys) -> None:
         self.auth.list_services.return_value = []

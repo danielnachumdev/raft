@@ -111,10 +111,8 @@ class TestDockerNginxReload(DockerTestCase):
             stderr='cannot load certificate "/etc/nginx/certs/web/acme.pem"',
         )
         missing = [MissingAcmeCerts("web", ("acme.pem",))]
-        with patch(
-            "raft.adapters.docker.edge.missing_acme_certs",
-            return_value=missing,
-        ):
+        with patch("raft.adapters.docker.edge.CertProbe") as probe_cls:
+            probe_cls.return_value.missing_acme.return_value = missing
             with pytest.raises(RuntimeError, match="ACME TLS certificates missing"):
                 self.docker.reload_gate_nginx()
 
@@ -124,10 +122,8 @@ class TestDockerNginxReload(DockerTestCase):
             stderr='cannot load certificate "/etc/nginx/certs/web/origin.pem"',
         )
         missing = [MissingOriginCerts("web", ("origin.pem",))]
-        with patch(
-            "raft.adapters.docker.edge.missing_origin_certs",
-            return_value=missing,
-        ):
+        with patch("raft.adapters.docker.edge.CertProbe") as probe_cls:
+            probe_cls.return_value.missing_origin.return_value = missing
             with pytest.raises(RuntimeError, match="Origin certs missing"):
                 self.docker.reload_gate_nginx()
 

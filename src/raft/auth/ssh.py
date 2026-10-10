@@ -9,7 +9,7 @@ from pathlib import Path
 from raft.errors.cta import OperatorError
 
 from raft.adapters.shell import Shell
-from .urls import default_ssh_dir
+from .urls import SshGitUrls
 
 _BEGIN = "# BEGIN raft:{name}"
 _END = "# END raft:{name}"
@@ -20,7 +20,7 @@ class SshDeployKeys:
 
     def __init__(self, shell: Shell) -> None:
         self.sh = shell
-        self.ssh_dir = default_ssh_dir()
+        self.ssh_dir = SshGitUrls().default_ssh_dir()
         self.keys_dir = self.ssh_dir / "raft"
         self.config_path = self.ssh_dir / "config"
 

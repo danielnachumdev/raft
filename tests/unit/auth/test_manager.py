@@ -6,37 +6,38 @@ import pytest
 
 from raft.models.stack import Stack
 from raft.auth import GitAuthManager
-from raft.auth.urls import (
-    default_ssh_dir,
-    host_alias,
-    parse_ssh_git_url,
-    real_git_host,
-)
+from raft.auth.urls import SshGitUrls
 
 from tests.unit.services_case import ServicesTestCase
 
 
 class TestParseSshGitUrl:
+    def setup_method(self) -> None:
+        self.urls = SshGitUrls()
+
     def test_variants(self) -> None:
-        assert parse_ssh_git_url("git@github.com:org/repo.git").path == "org/repo"
-        assert parse_ssh_git_url("ssh://git@gitlab.com/org/repo.git").host == "gitlab.com"
-        assert parse_ssh_git_url("git@github.com:org/repo").canonical.endswith(".git")
+        assert self.urls.parse("git@github.com:org/repo.git").path == "org/repo"
+        assert self.urls.parse("ssh://git@gitlab.com/org/repo.git").host == "gitlab.com"
+        assert self.urls.parse("git@github.com:org/repo").canonical.endswith(".git")
 
     def test_rejects_https_and_bad(self) -> None:
         with pytest.raises(ValueError, match="HTTPS"):
-            parse_ssh_git_url("https://github.com/org/repo.git")
+            self.urls.parse("https://github.com/org/repo.git")
         with pytest.raises(ValueError, match="cannot parse"):
-            parse_ssh_git_url("not-a-url")
+            self.urls.parse("not-a-url")
         with pytest.raises(ValueError, match="owner/repo"):
-            parse_ssh_git_url("git@github.com:noreply")
+            self.urls.parse("git@github.com:noreply")
 
 
 class TestHostAliasHelpers:
+    def setup_method(self) -> None:
+        self.urls = SshGitUrls()
+
     def test_alias_and_real_host(self) -> None:
-        assert host_alias("svc", "github.com") == "github.com-raft-svc"
-        assert host_alias("svc", "github.com-raft-svc") == "github.com-raft-svc"
-        assert real_git_host("svc", "github.com-raft-svc") == "github.com"
-        assert real_git_host("svc", "github.com") == "github.com"
+        assert self.urls.host_alias("svc", "github.com") == "github.com-raft-svc"
+        assert self.urls.host_alias("svc", "github.com-raft-svc") == "github.com-raft-svc"
+        assert self.urls.real_git_host("svc", "github.com-raft-svc") == "github.com"
+        assert self.urls.real_git_host("svc", "github.com") == "github.com"
 
 
 class TestDefaultSshDir(ServicesTestCase):
@@ -44,12 +45,12 @@ class TestDefaultSshDir(ServicesTestCase):
         target = self.tmp_path / "custom-ssh"
         target.mkdir()
         monkeypatch.setenv("RAFT_SSH_DIR", str(target))
-        assert default_ssh_dir() == target.resolve()
+        assert SshGitUrls().default_ssh_dir() == target.resolve()
 
     def test_home_fallback(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("RAFT_SSH_DIR", raising=False)
         monkeypatch.setattr("raft.auth.urls.Path.home", lambda: self.tmp_path)
-        assert default_ssh_dir() == (self.tmp_path / ".ssh").resolve()
+        assert SshGitUrls().default_ssh_dir() == (self.tmp_path / ".ssh").resolve()
 
 
 class TestGitAuthManager(ServicesTestCase):

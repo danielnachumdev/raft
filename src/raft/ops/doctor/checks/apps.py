@@ -8,32 +8,9 @@ from raft.errors.cta import OperatorError
 from raft.errors.registry_msgs import missing_image_doctor_fix
 
 from raft.models.registry import AppRegistry
-from raft.auth.urls import parse_ssh_git_url, real_git_host
+from raft.auth.urls import SshGitUrls
 from ..context import DoctorContext
 from ..models import CheckResult
-
-
-def auth_deploy_key_fix(service: str, repo_url: str) -> str:
-    try:
-        parsed = parse_ssh_git_url(repo_url)
-        host = real_git_host(service, parsed.host)
-    except ValueError:
-        return (
-            f"run `raft auth show {service}` and paste Title + Key "
-            f"as a read-only deploy key on the git host, "
-            f"then `raft auth test {service}`"
-        )
-    if host == "github.com":
-        url = f"https://github.com/{parsed.path}/settings/keys/new"
-        return (
-            f"run `raft auth show {service}` and paste Title + Key at {url} "
-            f"(Allow read-only access), then `raft auth test {service}`"
-        )
-    return (
-        f"run `raft auth show {service}` and paste Title + Key as a "
-        f"read-only deploy key for {parsed.path} on {host}, "
-        f"then `raft auth test {service}`"
-    )
 
 
 class AppChecks:
@@ -44,6 +21,39 @@ class AppChecks:
         for app in ctx.stack.apps:
             results.extend(self._check_app(ctx, app))
         return results
+
+    @staticmethod
+    def auth_deploy_key_fix(service: str, repo_url: str) -> str:
+        """Operator Fix CTA when a deploy key cannot ``git ls-remote``."""
+        urls = SshGitUrls()
+        try:
+            parsed = urls.parse(repo_url)
+            host = urls.real_git_host(service, parsed.host)
+        except ValueError:
+            return AppChecks._auth_fix_generic(service)
+        return AppChecks._auth_fix_for_host(service, host, parsed.path)
+
+    @staticmethod
+    def _auth_fix_generic(service: str) -> str:
+        return (
+            f"run `raft auth show {service}` and paste Title + Key "
+            f"as a read-only deploy key on the git host, "
+            f"then `raft auth test {service}`"
+        )
+
+    @staticmethod
+    def _auth_fix_for_host(service: str, host: str, repo_path: str) -> str:
+        if host == "github.com":
+            url = f"https://github.com/{repo_path}/settings/keys/new"
+            return (
+                f"run `raft auth show {service}` and paste Title + Key at {url} "
+                f"(Allow read-only access), then `raft auth test {service}`"
+            )
+        return (
+            f"run `raft auth show {service}` and paste Title + Key as a "
+            f"read-only deploy key for {repo_path} on {host}, "
+            f"then `raft auth test {service}`"
+        )
 
     def _check_app(self, ctx: DoctorContext, app) -> list[CheckResult]:
         dest = app.abs_path(ctx.stack.root)
@@ -131,7 +141,7 @@ class AppChecks:
                 "auth",
                 "fail",
                 str(exc).splitlines()[0],
-                fix=auth_deploy_key_fix(app.name, app.repo or ""),
+                fix=self.auth_deploy_key_fix(app.name, app.repo or ""),
             )
 
     def _git_sync_results(self, ctx: DoctorContext, app, dest) -> list[CheckResult]:

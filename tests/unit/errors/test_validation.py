@@ -20,7 +20,7 @@ from raft.errors.domain import (
     require_mapping,
 )
 from raft.models.ports import parse_ports
-from raft.deploy.wait import wait_until
+from raft.deploy.wait import WaitUntil
 from raft.ops.update import SelfUpdate
 
 from ..base import RaftTestCase, make_stack
@@ -76,7 +76,7 @@ class TestValidationCTAs(RaftTestCase):
 
     def test_wait_until_fix_cta(self) -> None:
         with pytest.raises(OperatorError) as caught:
-            wait_until("never", lambda: False, timeout=0.05, interval=0.01, fix="retry")
+            WaitUntil("never", lambda: False, timeout=0.05, interval=0.01, fix="retry").run()
         assert_operator(caught.value, contains=("never",), fix_label="Fix: retry")
 
     def test_update_failure_cta(self) -> None:

@@ -63,7 +63,7 @@ class TestCutoverWait(CutoverTestCase):
             http=MagicMock(),
         )
         s.http.public_host_ok.return_value = False
-        with patch("raft.deploy.cutover.wait_until") as wait:
+        with patch("raft.deploy.cutover.WaitUntil") as wait:
             s._wait_ready("slow ready")
         assert wait.call_args.kwargs["timeout"] == 90.0
         assert "timeoutSeconds=90s" in wait.call_args.kwargs["fix"]
@@ -78,18 +78,18 @@ class TestCutoverWait(CutoverTestCase):
             clock["t"] += step
 
         return (
-            patch("raft.deploy.cutover.time.sleep", side_effect=sleep),
-            patch("raft.deploy.cutover.time.monotonic", side_effect=mono),
+            patch("raft.deploy.wait.time.sleep", side_effect=sleep),
+            patch("raft.deploy.wait.time.monotonic", side_effect=mono),
         )
 
     def test_wait_until_reports_budget_and_diagnostics(self, caplog) -> None:
         from raft.errors.cta import OperatorError
-        from raft.deploy.wait import wait_until
+        from raft.deploy.wait import WaitUntil
 
         sleep_p, mono_p = self._clock_patches(0.02)
         with caplog.at_level("ERROR"), sleep_p, mono_p:
             with pytest.raises(OperatorError) as exc:
-                self._wait_until_budget(wait_until)
+                self._wait_until_budget()
         assert_operator(
             exc.value,
             contains=("demo ready", "running/starting"),
@@ -98,8 +98,10 @@ class TestCutoverWait(CutoverTestCase):
         assert_logged(caplog, level="ERROR", contains=("demo ready",))
 
     @staticmethod
-    def _wait_until_budget(wait_until) -> None:
-        wait_until(
+    def _wait_until_budget() -> None:
+        from raft.deploy.wait import WaitUntil
+
+        WaitUntil(
             "demo ready",
             lambda: False,
             timeout=0.01,
@@ -107,22 +109,22 @@ class TestCutoverWait(CutoverTestCase):
             progress_every=0,
             fix="raise readiness.timeoutSeconds",
             diagnostics=lambda: "--- svc (running/starting) ---",
-        )
+        ).run()
 
     def test_wait_until_logs_progress(self, caplog) -> None:
         from raft.errors.cta import OperatorError
-        from raft.deploy.wait import wait_until
+        from raft.deploy.wait import WaitUntil
 
         sleep_p, mono_p = self._clock_patches(0.1)
         with caplog.at_level("INFO"), sleep_p, mono_p:
             with pytest.raises(OperatorError) as caught:
-                wait_until(
+                WaitUntil(
                     "slow ready",
                     lambda: False,
                     timeout=0.25,
                     interval=0.05,
                     progress_every=0.1,
-                )
+                ).run()
         assert_operator(caught.value, has_fix=False, contains=("slow ready",))
         assert_logged(caplog, level="INFO", contains=("slow ready",))
 
@@ -156,7 +158,7 @@ class TestCutoverWait(CutoverTestCase):
 
     def test_wait_ready_skips_when_readiness_none(self) -> None:
         write_applied_app(self.tmp_path, "app", extra={"readiness": {"type": "none"}})
-        with patch("raft.deploy.cutover.wait_until") as wait:
+        with patch("raft.deploy.cutover.WaitUntil") as wait:
             self.session._wait_ready("noop")
         wait.assert_not_called()
 

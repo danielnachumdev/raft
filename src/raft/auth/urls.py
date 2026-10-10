@@ -23,39 +23,43 @@ class SshGitUrl:
         return f"git@{alias}:{self.path}.git"
 
 
-def parse_ssh_git_url(url: str) -> SshGitUrl:
-    raw = url.strip()
-    if raw.startswith("https://") or raw.startswith("http://"):
-        raise ValueError(
-            f"HTTPS remotes are not managed by raft auth ({url!r}); "
-            "use an SSH URL like git@github.com:owner/repo.git"
-        )
-    match = _SSH_GIT_RE.match(raw)
-    if not match:
-        raise ValueError(f"cannot parse SSH git URL: {url!r}")
-    host = match.group("host")
-    path = match.group("path").strip("/")
-    if not path or "/" not in path:
-        raise ValueError(f"SSH git URL must include owner/repo: {url!r}")
-    return SshGitUrl(host=host, path=path)
+class SshGitUrls:
+    """Parse SSH remotes and map Host aliases used by raft deploy keys."""
 
+    def parse(self, url: str) -> SshGitUrl:
+        """Parse an SSH git URL into host + owner/repo path."""
+        raw = url.strip()
+        if raw.startswith("https://") or raw.startswith("http://"):
+            raise ValueError(
+                f"HTTPS remotes are not managed by raft auth ({url!r}); "
+                "use an SSH URL like git@github.com:owner/repo.git"
+            )
+        match = _SSH_GIT_RE.match(raw)
+        if not match:
+            raise ValueError(f"cannot parse SSH git URL: {url!r}")
+        host = match.group("host")
+        path = match.group("path").strip("/")
+        if not path or "/" not in path:
+            raise ValueError(f"SSH git URL must include owner/repo: {url!r}")
+        return SshGitUrl(host=host, path=path)
 
-def default_ssh_dir() -> Path:
-    override = os.environ.get("RAFT_SSH_DIR")
-    if override:
-        return Path(override).expanduser().resolve()
-    return (Path.home() / ".ssh").resolve()
+    def default_ssh_dir(self) -> Path:
+        """Operator SSH dir (``RAFT_SSH_DIR`` or ``~/.ssh``)."""
+        override = os.environ.get("RAFT_SSH_DIR")
+        if override:
+            return Path(override).expanduser().resolve()
+        return (Path.home() / ".ssh").resolve()
 
+    def host_alias(self, service: str, git_host: str) -> str:
+        """SSH ``Host`` alias for a service deploy key (idempotent)."""
+        marker = f"-raft-{service}"
+        if git_host.endswith(marker):
+            return git_host
+        return f"{git_host}-raft-{service}"
 
-def host_alias(service: str, git_host: str) -> str:
-    marker = f"-raft-{service}"
-    if git_host.endswith(marker):
+    def real_git_host(self, service: str, git_host: str) -> str:
+        """Strip a raft Host alias back to the real git hostname."""
+        marker = f"-raft-{service}"
+        if git_host.endswith(marker):
+            return git_host[: -len(marker)] or git_host
         return git_host
-    return f"{git_host}-raft-{service}"
-
-
-def real_git_host(service: str, git_host: str) -> str:
-    marker = f"-raft-{service}"
-    if git_host.endswith(marker):
-        return git_host[: -len(marker)] or git_host
-    return git_host

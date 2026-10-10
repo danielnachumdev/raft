@@ -1,4 +1,4 @@
-"""CLI bootstrap, doctor-hint, and CPE coverage."""
+"""RaftCLI entry: bootstrap, doctor-hint, and CPE coverage."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from raft.cli import RaftCLI
+from raft.cli.cli import CliExitMapper
 from raft.config.trace_context import TraceContext
 
 from .base import CliTestCase
@@ -34,7 +35,7 @@ class TestCliBootstrap(CliTestCase):
             seen.append(TraceContext.current())
             return 0
 
-        with patch("raft.cli.cli.RaftCLI._main", side_effect=capture_main):
+        with patch("raft.cli.cli.RaftCLI._invoke_fire", side_effect=capture_main):
             with pytest.raises(SystemExit) as exc:
                 RaftCLI().run(["status"])
         assert exc.value.code == 0
@@ -43,7 +44,7 @@ class TestCliBootstrap(CliTestCase):
         assert TraceContext.current() is None
 
     def test_suggest_doctor_skips_when_already_running_doctor(self, capsys) -> None:
-        RaftCLI().suggest_doctor(["doctor"])
+        CliExitMapper()._suggest_doctor(["doctor"])
         assert capsys.readouterr().err == ""
 
     def test_run_skips_bootstrap_when_handlers_exist(self) -> None:
@@ -54,7 +55,7 @@ class TestCliBootstrap(CliTestCase):
         root.setLevel(logging.INFO)
         try:
             before = list(root.handlers)
-            RaftCLI().ensure_logging_bootstrap()
+            RaftCLI()._ensure_logging_bootstrap()
             assert root.handlers == before
             self.orch.start.side_effect = RuntimeError("already running")
             with pytest.raises(SystemExit) as exc:
@@ -67,7 +68,7 @@ class TestCliBootstrap(CliTestCase):
         root = logging.getLogger("raft")
         root.handlers.clear()
         try:
-            RaftCLI().ensure_logging_bootstrap()
+            RaftCLI()._ensure_logging_bootstrap()
             assert root.handlers
             assert root.propagate is False
         finally:

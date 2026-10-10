@@ -6,7 +6,7 @@ import logging
 import os
 import subprocess
 import sys
-from typing import Optional
+from typing import Callable, Optional
 
 import yaml
 
@@ -22,46 +22,33 @@ from raft.errors.domain import (
     invalid_yaml,
 )
 from raft.models.stack import load_stack
-from raft.ops.certs import missing_origin_certs
+from raft.ops.certs import CertProbe
 from raft.ui import say_err
 
 from .utils.argv import ApplyEnvArgvBridge
 from .utils.command_progress import CommandProgress
-from .utils.fire_run import run_fire
+from .utils.fire_run import FireRunner
 from .utils.logs_argv import LogsArgvNormalizer
 from .cli_commands import RaftCLICommands
 
 
-class RaftCLI:
-    """Process entry: Fire dispatch, logging bootstrap, error → exit mapping."""
+class CliExitMapper:
+    """Map CLI failures to operator messages and ``SystemExit``."""
 
-    def run(self, argv: Optional[list[str]] = None) -> None:
-        self.ensure_logging_bootstrap()
-        with TraceContext():
-            self._run_inside_trace(argv)
-
-    def _main(self, argv: Optional[list[str]] = None) -> int:
-        os.environ["PAGER"] = "cat"
-        raw = list(argv) if argv is not None else sys.argv[1:]
-        bridge = ApplyEnvArgvBridge()
-        command, token = bridge.bind(raw)
-        command = LogsArgvNormalizer().normalize(command)
+    def run_guarded(
+        self,
+        invoke: Callable[[Optional[list[str]]], int],
+        argv: Optional[list[str]],
+    ) -> None:
+        """Invoke ``invoke``; map operator/subprocess failures to ``SystemExit``."""
         try:
-            with CommandProgress(command):
-                run_fire(RaftCLICommands, command=command, name="raft")
-        finally:
-            bridge.reset(token)
-        return 0
+            raise SystemExit(invoke(argv))
+        except subprocess.CalledProcessError as exc:
+            self._handle(argv, exc)
+        except Exception as exc:
+            self._fallback_handle(argv, exc)
 
-    def ensure_logging_bootstrap(self) -> None:
-        root = logging.getLogger("raft")
-        if root.handlers:
-            return
-        root.addHandler(logging.NullHandler())
-        root.setLevel(logging.INFO)
-        root.propagate = False
-
-    def suggest_doctor(
+    def _suggest_doctor(
         self,
         argv: Optional[list[str]] = None,
         *,
@@ -87,15 +74,7 @@ class RaftCLI:
         lowered = message.lower()
         return "fix:" in lowered or "fix (" in lowered
 
-    def _run_inside_trace(self, argv: Optional[list[str]]) -> None:
-        try:
-            raise SystemExit(self._main(argv))
-        except subprocess.CalledProcessError as exc:
-            self._exit_called_process(argv, exc)
-        except Exception as exc:
-            self._exit_mapped(argv, exc)
-
-    def _exit_mapped(self, argv: Optional[list[str]], exc: BaseException) -> None:
+    def _fallback_handle(self, argv: Optional[list[str]], exc: BaseException) -> None:
         mapped = self._map_operator_exc(exc)
         if mapped is None:
             raise exc
@@ -112,13 +91,13 @@ class RaftCLI:
             return exc
         return None
 
-    def _exit_called_process(
+    def _handle(
         self,
         argv: Optional[list[str]],
         exc: subprocess.CalledProcessError,
     ) -> None:
         shown = self._format_called_process_error(exc)
-        self.suggest_doctor(argv, message=shown)
+        self._suggest_doctor(argv, message=shown)
         raise SystemExit(exc.returncode) from exc
 
     def _exit_operator(
@@ -128,7 +107,7 @@ class RaftCLI:
         code: int,
     ) -> None:
         say_err(str(err))
-        self.suggest_doctor(argv, message=str(err), err=err)
+        self._suggest_doctor(argv, message=str(err), err=err)
         raise SystemExit(code) from err
 
     def _format_called_process_error(self, exc: subprocess.CalledProcessError) -> str:
@@ -141,6 +120,42 @@ class RaftCLI:
 
     def _missing_certs_best_effort(self):
         try:
-            return missing_origin_certs(load_stack())
+            return CertProbe(load_stack()).missing_origin()
         except Exception:  # noqa: BLE001 — best-effort enrichment only
             return None
+
+
+class RaftCLI:
+    """Process entry: logging bootstrap, trace context, Fire dispatch."""
+
+    def __init__(self) -> None:
+        self._exits = CliExitMapper()
+        self._fire = FireRunner()
+
+    def run(self, argv: Optional[list[str]] = None) -> None:
+        """Bootstrap logging, open a request trace, then run one CLI invocation."""
+        self._ensure_logging_bootstrap()
+        with TraceContext():
+            self._exits.run_guarded(self._invoke_fire, argv)
+
+    def _invoke_fire(self, argv: Optional[list[str]] = None) -> int:
+        """Normalize argv and dispatch to ``RaftCLICommands`` via Fire."""
+        os.environ["PAGER"] = "cat"
+        raw = list(argv) if argv is not None else sys.argv[1:]
+        bridge = ApplyEnvArgvBridge()
+        command, token = bridge.bind(raw)
+        command = LogsArgvNormalizer().normalize(command)
+        try:
+            with CommandProgress(command):
+                self._fire.run(RaftCLICommands, command=command, name="raft")
+        finally:
+            bridge.reset(token)
+        return 0
+
+    def _ensure_logging_bootstrap(self) -> None:
+        root = logging.getLogger("raft")
+        if root.handlers:
+            return
+        root.addHandler(logging.NullHandler())
+        root.setLevel(logging.INFO)
+        root.propagate = False

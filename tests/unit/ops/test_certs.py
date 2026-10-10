@@ -2,11 +2,8 @@
 
 import pytest
 
-from raft.ops.certs import (
-    looks_like_missing_origin_cert,
-    missing_origin_certs,
-    require_origin_certs,
-)
+from raft.errors.certs_msgs import looks_like_missing_origin_cert
+from raft.ops.certs import CertProbe
 
 from tests.unit.base import RaftTestCase, write_applied_app
 
@@ -17,36 +14,35 @@ class TestOriginCerts(RaftTestCase):
         from raft.models.stack import load_stack
 
         stack = load_stack(self.tmp_path)
-        missing = missing_origin_certs(stack)
+        missing = CertProbe(stack).missing_origin()
         assert len(missing) == 1
         assert missing[0].app_name == "web"
         assert "origin.pem" in missing[0].missing
         with pytest.raises(RuntimeError, match="Origin certs missing"):
-            require_origin_certs(stack)
+            CertProbe(stack).require_origin()
 
         d = self.tmp_path / "certs" / "web"
         d.mkdir(parents=True)
         (d / "origin.pem").write_text("pem\n", encoding="utf-8")
         (d / "origin.key").write_text("key\n", encoding="utf-8")
-        assert missing_origin_certs(load_stack(self.tmp_path)) == []
-        require_origin_certs(load_stack(self.tmp_path))
+        assert CertProbe(load_stack(self.tmp_path)).missing_origin() == []
+        CertProbe(load_stack(self.tmp_path)).require_origin()
 
     def test_tls_off_ignored(self) -> None:
         write_applied_app(self.tmp_path, "web", public_host="web.test", tls="off")
         from raft.models.stack import load_stack
 
-        assert missing_origin_certs(load_stack(self.tmp_path)) == []
+        assert CertProbe(load_stack(self.tmp_path)).missing_origin() == []
 
     def test_tls_acme_ignored_by_origin_require(self) -> None:
         write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
         from raft.models.stack import load_stack
 
         stack = load_stack(self.tmp_path)
-        assert missing_origin_certs(stack) == []
-        require_origin_certs(stack)
-        from raft.ops.certs import missing_acme_certs
-
-        missing = missing_acme_certs(stack)
+        probe = CertProbe(stack)
+        assert probe.missing_origin() == []
+        probe.require_origin()
+        missing = probe.missing_acme()
         assert len(missing) == 1
         assert "acme.pem" in missing[0].missing
         assert "DNS" in missing[0].fix

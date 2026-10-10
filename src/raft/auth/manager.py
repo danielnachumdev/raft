@@ -15,7 +15,7 @@ from raft.models.app import App
 from raft.models.stack import Stack
 from raft.ui import say
 from .ssh import SshDeployKeys
-from .urls import host_alias, parse_ssh_git_url, real_git_host
+from .urls import SshGitUrls
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +24,7 @@ class GitAuthManager:
     def __init__(self, stack: Stack) -> None:
         self.stack = stack
         self.keys = SshDeployKeys(Shell(stack.root))
+        self.urls = SshGitUrls()
 
     @property
     def sh(self) -> Shell:
@@ -71,9 +72,9 @@ class GitAuthManager:
             raise ValueError(f"service {app.name!r} has no repo URL")
         if not self.is_configured(app.name):
             return app.repo
-        parsed = parse_ssh_git_url(app.repo)
-        base_host = real_git_host(app.name, parsed.host)
-        alias = host_alias(app.name, base_host)
+        parsed = self.urls.parse(app.repo)
+        base_host = self.urls.real_git_host(app.name, parsed.host)
+        alias = self.urls.host_alias(app.name, base_host)
         return parsed.with_host_alias(alias)
 
     def resolve_repo_url(self, service: str, repo: Optional[str] = None) -> str:
@@ -106,9 +107,9 @@ class GitAuthManager:
         repo: Optional[str] = None,
     ) -> None:
         repo_url = self.resolve_repo_url(service, repo)
-        parsed = parse_ssh_git_url(repo_url)
-        base_host = real_git_host(service, parsed.host)
-        alias = host_alias(service, base_host)
+        parsed = self.urls.parse(repo_url)
+        base_host = self.urls.real_git_host(service, parsed.host)
+        alias = self.urls.host_alias(service, base_host)
         self.keys.ensure_layout()
         self._prepare_key(service, force=force)
         self.keys.upsert_ssh_config(service, alias=alias, hostname=base_host)
@@ -165,8 +166,8 @@ class GitAuthManager:
     def show(self, service: str, *, repo: Optional[str] = None) -> None:
         repo_url = self.resolve_repo_url(service, repo)
         pubkey = self.show_pubkey(service)
-        parsed = parse_ssh_git_url(repo_url)
-        host = real_git_host(service, parsed.host)
+        parsed = self.urls.parse(repo_url)
+        host = self.urls.real_git_host(service, parsed.host)
         self._print_deploy_key_for_copy(
             service,
             host=host,
@@ -179,9 +180,9 @@ class GitAuthManager:
         """Map a canonical SSH URL onto this service's Host alias when configured."""
         if not self.is_configured(service):
             return repo
-        parsed = parse_ssh_git_url(repo)
-        base_host = real_git_host(service, parsed.host)
-        alias = host_alias(service, base_host)
+        parsed = self.urls.parse(repo)
+        base_host = self.urls.real_git_host(service, parsed.host)
+        alias = self.urls.host_alias(service, base_host)
         return parsed.with_host_alias(alias)
 
     def clone_urls_for_repo(self, repo: str) -> tuple[str, ...]:
@@ -191,13 +192,13 @@ class GitAuthManager:
         (publickey)`` on the default identity when a deploy key is already set up.
         """
         try:
-            parsed = parse_ssh_git_url(repo)
+            parsed = self.urls.parse(repo)
         except ValueError:
             return (repo,)
         urls: list[str] = []
         for service in self.list_services():
-            base_host = real_git_host(service, parsed.host)
-            alias = host_alias(service, base_host)
+            base_host = self.urls.real_git_host(service, parsed.host)
+            alias = self.urls.host_alias(service, base_host)
             urls.append(parsed.with_host_alias(alias))
         urls.append(repo)
         return tuple(dict.fromkeys(urls))

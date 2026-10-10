@@ -18,7 +18,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
         orch = self.orchestrator()
         orch.docker.service_is_ready.return_value = True
         app = orch.stack.app("app")
-        with patch("raft.deploy.orchestrator.wait_until") as wait:
+        with patch("raft.deploy.orchestrator.WaitUntil") as wait:
             orch._wait_app_ready(app, timeout=5)
         self._assert_compose_ready_wait(orch, app, wait)
 
@@ -54,7 +54,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
         )
         orch = self.orchestrator()
         app = orch.stack.app("app")
-        with patch("raft.deploy.orchestrator.wait_until") as wait:
+        with patch("raft.deploy.orchestrator.WaitUntil") as wait:
             orch._wait_app_ready(app, timeout=5)
         wait.assert_not_called()
 
@@ -70,7 +70,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
         orch = self.orchestrator()
         ScalingStore(self.tmp_path).mark_scaled_to_zero("app")
         app = orch.stack.app("app")
-        with patch("raft.deploy.orchestrator.wait_until") as wait:
+        with patch("raft.deploy.orchestrator.WaitUntil") as wait:
             orch._wait_app_ready(app, timeout=5)
         wait.assert_not_called()
 
@@ -91,7 +91,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
         orch = self.orchestrator()
         self.stub_http_ready(orch.http)
         app = orch.stack.app("app")
-        with patch("raft.deploy.orchestrator.wait_until") as wait:
+        with patch("raft.deploy.orchestrator.WaitUntil") as wait:
             orch._wait_app_ready(app, timeout=5)
         assert wait.call_args.args[0] == "Host app.test/health"
 
@@ -125,7 +125,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
         orch.http.tcp_port_ok.return_value = True
         app = orch.stack.app("app")
 
-        with patch("raft.deploy.orchestrator.wait_until") as wait:
+        with patch("raft.deploy.orchestrator.WaitUntil") as wait:
             orch._wait_app_ready(app, timeout=5)
 
         label = wait.call_args.args[0]

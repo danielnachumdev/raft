@@ -23,9 +23,11 @@ class _SpinnerProbeCLI:
 
 
 def _recording_fire(order: List[str]):
-    def fire(component, command=None, name=None):
+    def fire(*_args, component=None, **_kwargs):
         order.append("fire")
-        component()
+        # Bound method mock: (self, component, ...); function mock: (component, ...).
+        target = component if component is not None else _args[-1]
+        target()
         return None
 
     return fire
@@ -65,10 +67,13 @@ class TestCommandProgress:
 
     def test_main_starts_spinner_before_raftcli_init(self) -> None:
         order = _SpinnerProbeCLI.order
-        with patch("raft.cli.cli.run_fire", side_effect=_recording_fire(order)):
+        with patch(
+            "raft.cli.utils.fire_run.FireRunner.run",
+            side_effect=_recording_fire(order),
+        ):
             with patch("raft.cli.cli.RaftCLICommands", _SpinnerProbeCLI):
                 from raft.cli import RaftCLI
 
-                assert RaftCLI()._main(["doctor"]) == 0
+                assert RaftCLI()._invoke_fire(["doctor"]) == 0
         assert order == ["fire", "cli_init"]
         assert TerminalProgress.active() is None

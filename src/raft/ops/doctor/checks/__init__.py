@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .apps import AppChecks, auth_deploy_key_fix
+from .apps import AppChecks
 from .base import CheckSuite
 from .certs import CertChecks
 from .edge import EdgeChecks
@@ -38,5 +38,4 @@ __all__ = [
     "PublicHostChecks",
     "RuntimeChecks",
     "UpstreamChecks",
-    "auth_deploy_key_fix",
 ]

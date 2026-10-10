@@ -5,7 +5,7 @@ from __future__ import annotations
 import fire
 from fire import core as fire_core
 
-from raft.cli.utils.fire_run import _ORIGINAL_CALL, run_fire
+from raft.cli.utils.fire_run import FireRunner
 
 
 class _Leaf:
@@ -16,22 +16,27 @@ class _Leaf:
         return "called"
 
 
+def _stock_call():
+    return fire_core._CallAndUpdateTrace
+
+
 def test_run_fire_rejects_unknown_flag_before_routine() -> None:
     calls: list[str] = []
+    before = _stock_call()
 
     class CLI:
         def status(self, live: bool = False) -> None:
             calls.append("status")
 
     try:
-        run_fire(CLI, command=["status", "--leiv"], name="raft")
+        FireRunner().run(CLI, command=["status", "--leiv"], name="raft")
     except SystemExit as exc:
         assert exc.code == 2
     else:
         raise AssertionError("expected SystemExit")
 
     assert calls == []
-    assert fire_core._CallAndUpdateTrace is _ORIGINAL_CALL
+    assert fire_core._CallAndUpdateTrace is before
 
 
 def test_run_fire_allows_valid_flags() -> None:
@@ -41,7 +46,7 @@ def test_run_fire_allows_valid_flags() -> None:
         def status(self, live: bool = False) -> None:
             calls.append(live)
 
-    assert run_fire(CLI, command=["status", "--live"], name="raft") is None
+    assert FireRunner().run(CLI, command=["status", "--live"], name="raft") is None
     assert calls == [True]
 
 
@@ -49,7 +54,7 @@ def test_run_fire_rejects_unused_on_callable_object() -> None:
     """Callable treatment path (not used by RaftCLI, but covered for fail-fast)."""
     leaf = _Leaf()
     try:
-        run_fire({"go": leaf}, command=["go", "--leiv"], name="raft")
+        FireRunner().run({"go": leaf}, command=["go", "--leiv"], name="raft")
     except SystemExit as exc:
         assert exc.code == 2
     else:
@@ -57,11 +62,12 @@ def test_run_fire_rejects_unused_on_callable_object() -> None:
 
 
 def test_run_fire_restores_hook_after_success() -> None:
-    run_fire(_Leaf, command=["status"], name="raft")
-    assert fire_core._CallAndUpdateTrace is _ORIGINAL_CALL
+    before = _stock_call()
+    FireRunner().run(_Leaf, command=["status"], name="raft")
+    assert fire_core._CallAndUpdateTrace is before
     # Stock Fire still runs-then-rejects without our hook.
     try:
         fire.Fire(_Leaf, command=["status", "--leiv"], name="raft")
     except SystemExit:
         pass
-    assert fire_core._CallAndUpdateTrace is _ORIGINAL_CALL
+    assert fire_core._CallAndUpdateTrace is before

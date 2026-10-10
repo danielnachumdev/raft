@@ -10,11 +10,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from raft.config.settings_types import HealingConfig, MetricsConfig, RaftConfig, default_config
-from raft.controller import main, run_prereq_smoke
+from raft.controller import PrereqSmoke, main
 from raft.controller.job import JobIds, QueuePolicy
 from raft.controller.logging import setup_controller_logging
 from raft.controller.run import main as main_impl
-from raft.controller.smoke import run_prereq_smoke as smoke_impl
+from raft.controller.smoke import PrereqSmoke as smoke_impl
 from raft.errors.cta import OperatorError
 
 from .base import ControllerTestCase
@@ -23,7 +23,7 @@ from .base import ControllerTestCase
 class TestControllerPrereq(ControllerTestCase):
     def test_public_exports(self) -> None:
         assert main is main_impl
-        assert run_prereq_smoke is smoke_impl
+        assert PrereqSmoke is smoke_impl
 
     def test_setup_controller_logging_stdout_only(self) -> None:
         setup_controller_logging(default_config())
@@ -40,7 +40,7 @@ class TestControllerPrereq(ControllerTestCase):
         sh.compose.return_value = compose
         with patch("raft.controller.smoke.Stack.load_apps") as load_apps:
             load_apps.return_value = MagicMock(apps=(), core_services=("raft-gate",))
-            run_prereq_smoke(home, sh)
+            PrereqSmoke(home, sh).run()
         sh.docker.assert_called_once_with(
             "version", "--format", "{{.Server.Version}}", capture=True
         )
@@ -51,7 +51,7 @@ class TestControllerPrereq(ControllerTestCase):
         sh = MagicMock()
         sh.docker.return_value = MagicMock(returncode=0, stdout="  \n")
         sh.compose.return_value = MagicMock(returncode=0, stdout="ok")
-        run_prereq_smoke(home, sh)
+        PrereqSmoke(home, sh).run()
 
     def test_run_prereq_smoke_compose_missing(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
@@ -59,18 +59,19 @@ class TestControllerPrereq(ControllerTestCase):
         sh.docker.return_value = MagicMock(returncode=0, stdout="27.0.0\n")
         sh.compose.return_value = MagicMock(returncode=1, stdout="", stderr="missing")
         with pytest.raises(RuntimeError, match="docker compose plugin"):
-            run_prereq_smoke(home, sh)
+            PrereqSmoke(home, sh).run()
 
     def test_main_smokes_then_loops(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         home = tmp_path / "home"
         home.mkdir()
         monkeypatch.setenv("RAFT_DATA_HOME", str(home))
-        with patch("raft.controller.run.run_prereq_smoke") as smoke:
+        with patch("raft.controller.run.PrereqSmoke") as smoke_cls:
             with patch("raft.controller.run.start_wake_http"):
                 with patch("raft.controller.run._run_forever", side_effect=StopIteration):
                     with pytest.raises(StopIteration):
                         main()
-        smoke.assert_called_once()
+        smoke_cls.assert_called_once()
+        smoke_cls.return_value.run.assert_called_once()
 
     def test_run_forever_registers_jobs(self, tmp_path: Path) -> None:
         from raft.controller.run import _run_forever

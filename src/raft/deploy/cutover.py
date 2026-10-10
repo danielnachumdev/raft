@@ -14,7 +14,7 @@ from raft.models.app import COMPOSE_PROJECT, App
 from raft.models.stack import Stack
 from raft.render.env_file_path import ComposeEnvFilePath
 from .readiness import ReadinessStrategy
-from .wait import Step, wait_until
+from .wait import Step, WaitUntil
 
 logger = logging.getLogger(__name__)
 
@@ -56,14 +56,14 @@ class CutoverSession:
         if predicate is None:
             return
         wait_budget = timeout if timeout is not None else strategy.timeout_seconds
-        wait_until(
+        WaitUntil(
             label,
             predicate,
             timeout=wait_budget,
             interval=0.5,
             fix=self._ready_fix(strategy),
             diagnostics=self._app_diagnostics,
-        )
+        ).run()
 
     def _ready_fix(self, strategy: ReadinessStrategy) -> str:
         return (
@@ -126,13 +126,13 @@ class CutoverSession:
         if strategy.kind != "http":
             return
         fetch_port = strategy.port.container_port if strategy.port is not None else 80
-        wait_until(
+        WaitUntil(
             f"{hostname} reachable from router",
             lambda: self.docker.router_can_fetch(hostname, port=fetch_port, path=strategy.path),
             timeout=strategy.timeout_seconds,
             fix=f"{fix} [{strategy.timing_summary()}]",
             diagnostics=diagnostics,
-        )
+        ).run()
 
     def shift_traffic_to_tmp(self) -> None:
         self._shift_traffic(

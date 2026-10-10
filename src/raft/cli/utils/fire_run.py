@@ -15,48 +15,58 @@ import fire
 from fire import core as fire_core
 from fire import decorators
 
-_ORIGINAL_CALL = fire_core._CallAndUpdateTrace
+
+class _RejectingFireCall:
+    """Fire ``_CallAndUpdateTrace`` hook that rejects leftover args first."""
+
+    def __init__(self, stock, reject) -> None:
+        self._stock = stock
+        self._reject = reject
+
+    def __call__(
+        self,
+        component,
+        args,
+        component_trace,
+        treatment: str = "class",
+        target=None,
+    ):
+        self._reject(component, args, treatment)
+        return self._stock(
+            component, args, component_trace, treatment=treatment, target=target
+        )
 
 
-def _call_rejecting_unused(
-    component,
-    args,
-    component_trace,
-    treatment: str = "class",
-    target=None,
-):
-    """Like Fire's ``_CallAndUpdateTrace``, but reject leftovers before routines."""
-    if treatment in ("routine", "callable"):
+class FireRunner:
+    """Run ``fire.Fire`` with unused-arg rejection before command routines."""
+
+    def run(
+        self,
+        component,
+        *,
+        command: Optional[Union[str, Sequence[str]]] = None,
+        name: Optional[str] = None,
+    ):
+        with self._fail_fast_unused_args():
+            return fire.Fire(component, command=command, name=name)
+
+    @contextmanager
+    def _fail_fast_unused_args(self) -> Iterator[None]:
+        stock = fire_core._CallAndUpdateTrace
+        fire_core._CallAndUpdateTrace = _RejectingFireCall(
+            stock, self._reject_unused_routine_args
+        )
+        try:
+            yield
+        finally:
+            fire_core._CallAndUpdateTrace = stock
+
+    def _reject_unused_routine_args(self, component, args, treatment: str) -> None:
+        if treatment not in ("routine", "callable"):
+            return
         metadata = decorators.GetMetadata(component)
         fn = component.__call__ if treatment == "callable" else component
         parse = fire_core._MakeParseFn(fn, metadata)
         _parsed, _consumed, remaining_args, _capacity = parse(args)
         if remaining_args:
             raise fire_core.FireError("Could not consume arg:", remaining_args[0])
-    return _ORIGINAL_CALL(
-        component,
-        args,
-        component_trace,
-        treatment=treatment,
-        target=target,
-    )
-
-
-@contextmanager
-def _fail_fast_unused_args() -> Iterator[None]:
-    fire_core._CallAndUpdateTrace = _call_rejecting_unused
-    try:
-        yield
-    finally:
-        fire_core._CallAndUpdateTrace = _ORIGINAL_CALL
-
-
-def run_fire(
-    component,
-    *,
-    command: Optional[Union[str, Sequence[str]]] = None,
-    name: Optional[str] = None,
-):
-    """``fire.Fire`` with unused-arg rejection before command routines run."""
-    with _fail_fast_unused_args():
-        return fire.Fire(component, command=command, name=name)

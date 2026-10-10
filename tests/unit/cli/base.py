@@ -45,7 +45,7 @@ class CliTestCase(RaftTestCase):
 
     def run_main(self, argv: list[str]) -> int:
         with self.patched_deps(Orchestrator=self.orch):
-            return RaftCLI()._main(argv)
+            return RaftCLI()._invoke_fire(argv)
 
     def run_cli(self, argv: list[str]) -> None:
         with self.patched_deps(Orchestrator=self.orch):

@@ -14,7 +14,7 @@ from raft.models.state.scaling_store import ScalingStore
 from raft.ui import say
 from raft.acme.ensure import AcmeEnsure
 from raft.acme.install import AcmeGateInstall
-from raft.ops.certs import require_origin_certs
+from raft.ops.certs import CertProbe
 from .dual_run import DualRunCutover
 from raft.locking.locking import app_and_stack_locks
 from .methods.catalogs import DeploymentMethodCatalogs
@@ -164,7 +164,7 @@ class OrchestratorDeploy:
             self._refuse_full_rebuild(running)
         logger.info("stack not up; full start to deploy %s", app_name)
         self._sync_cold_start(app_name, ref_override=ref_override, force_sync=force_sync)
-        require_origin_certs(self.stack)
+        CertProbe(self.stack).require_origin()
         self._bring_stack_up()
         GraphEventStore(self.stack.root).record_stack_up()
         self._record_deploy_event(self.stack.app(app_name))

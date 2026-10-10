@@ -13,7 +13,7 @@ from raft.errors.cta import OperatorError
 from raft.adapters.shell import Shell
 from raft.models.stack import Stack
 from raft.ui import say
-from raft.auth.urls import default_ssh_dir
+from raft.auth.urls import SshGitUrls
 
 _RAFT_SSH_BLOCKS = re.compile(
     r"# BEGIN raft:[^\n]*\n.*?# END raft:[^\n]*\n?",
@@ -30,7 +30,7 @@ class Uninstall:
 
     def run(self, *, yes: bool = False, uv: bool = False) -> None:
         home = self.stack.root
-        ssh_dir = default_ssh_dir()
+        ssh_dir = SshGitUrls().default_ssh_dir()
         keys_dir = ssh_dir / "raft"
         config_path = ssh_dir / "config"
         keep_checkout = Path(os.environ.get("RAFT_HOME", str(Path.home() / "raft"))).expanduser()

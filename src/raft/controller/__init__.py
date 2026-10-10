@@ -3,13 +3,13 @@
 from .heal import Healer, needs_heal, run_heal_forever
 from .run import main
 from .scale import Scaler
-from .smoke import run_prereq_smoke
+from .smoke import PrereqSmoke
 
 __all__ = [
     "Healer",
+    "PrereqSmoke",
     "Scaler",
     "main",
     "needs_heal",
     "run_heal_forever",
-    "run_prereq_smoke",
 ]

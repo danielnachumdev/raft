@@ -21,14 +21,14 @@ from raft.models.state.graph_event_store import GraphEventStore
 from raft.models.state.scaling_store import ScalingStore
 from raft.models.stack import Stack
 from raft.ui import say
-from raft.ops.certs import require_origin_certs
+from raft.ops.certs import CertProbe
 from raft.render import StackRenderer
 from raft.render.gate_nginx import GateNginxStamp
 from raft.sync import SourceSync
 from raft.locking.locking import stack_lock
 from .orchestrator_deploy import OrchestratorDeploy
 from .readiness import ReadinessStrategy
-from .wait import wait_until
+from .wait import WaitUntil
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ class Orchestrator(OrchestratorDeploy):
             if self.stack.gate in self.docker.running_services():
                 if stamp.read() != disk:
                     # Fail before nginx -t so operators see doctor-style PEM guidance.
-                    require_origin_certs(self.stack)
+                    CertProbe(self.stack).require_origin()
                     self.docker.reload_gate_nginx()
                     stamp.write(disk)
                     say("reloaded gate nginx (edge TLS/http/stream config)", style="info")
@@ -87,14 +87,14 @@ class Orchestrator(OrchestratorDeploy):
         )
         if predicate is None:
             return
-        wait_until(
+        WaitUntil(
             self._readiness_label(app, strategy),
             predicate,
             timeout=timeout if timeout is not None else strategy.timeout_seconds,
             interval=1.0,
             fix=self._ready_fix(app, strategy),
             diagnostics=lambda: self.docker.diagnostics_for(app.compose_id),
-        )
+        ).run()
 
     def _skip_scaled_host_wait(self, app) -> bool:
         """Gate holds scaled apps; doctor skips Host too — don't fail `raft up` on 404."""
@@ -135,7 +135,7 @@ class Orchestrator(OrchestratorDeploy):
                 self._refuse_full_rebuild(running)
             logger.info("syncing service sources from inventory")
             self.sync()
-            require_origin_certs(self.stack)
+            CertProbe(self.stack).require_origin()
             self._bring_stack_up()
             GraphEventStore(self.stack.root).record_stack_up()
             say("stack is up", style="ok")
@@ -215,7 +215,7 @@ class Orchestrator(OrchestratorDeploy):
                     "gate is not running — bring the stack up first",
                     has_fix=False,
                 )
-            require_origin_certs(self.stack)
+            CertProbe(self.stack).require_origin()
             self.render()
             say(
                 "recreating gate to pick up published edge ports "
@@ -231,12 +231,12 @@ class Orchestrator(OrchestratorDeploy):
     def _wait_edge_listeners(self) -> None:
         edge = load_config(self.stack.root).edge
         for port, _protocol in edge.published_ports():
-            wait_until(
+            WaitUntil(
                 f"edge listener :{port}",
                 lambda p=port: self.http.tcp_port_ok(p),
                 timeout=30,
                 interval=0.5,
-            )
+            ).run()
 
     def redeploy_router(self) -> None:
         with stack_lock(self.stack.root):

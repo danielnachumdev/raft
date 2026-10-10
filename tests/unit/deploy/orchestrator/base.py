@@ -47,7 +47,7 @@ class OrchestratorTestCase(ServicesTestCase):
     def _render_patches(self, patch_certs: bool) -> Iterator[None]:
         with patch("raft.deploy.orchestrator.StackRenderer"):
             if patch_certs:
-                with patch("raft.deploy.orchestrator.require_origin_certs"):
+                with patch("raft.deploy.orchestrator.CertProbe"):
                     yield
             else:
                 yield

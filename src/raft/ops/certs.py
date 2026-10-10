@@ -3,16 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Iterator
 
-from raft.errors.certs_msgs import (
-    format_missing_acme_certs,
-    format_missing_origin_certs,
-    looks_like_missing_acme_cert,
-    looks_like_missing_origin_cert,
-)
-from raft.errors.cta import OperatorError
 from raft.acme.paths import AcmePaths
-
+from raft.errors.certs_msgs import format_missing_origin_certs
+from raft.errors.cta import OperatorError
+from raft.models.app import App
 from raft.models.stack import Stack
 
 
@@ -56,44 +53,51 @@ class MissingAcmeCerts:
         )
 
 
-def missing_origin_certs(stack: Stack) -> list[MissingOriginCerts]:
-    """Return missing PEM/key pairs for every applied app with ``tls: origin``."""
-    results: list[MissingOriginCerts] = []
-    for app in stack.apps:
-        try:
-            app_spec = stack.spec_for(app)
-        except (ValueError, FileNotFoundError, OperatorError):
-            continue
-        if app_spec.tls != "origin":
-            continue
-        pem, key = stack.cert_files(app)
-        missing = tuple(p.name for p in (pem, key) if not p.is_file())
-        if missing:
-            results.append(MissingOriginCerts(app.name, missing))
-    return results
+class CertProbe:
+    """Probe applied apps for missing ``tls: origin`` / ``tls: acme`` PEMs."""
 
+    def __init__(self, stack: Stack) -> None:
+        self._stack = stack
+        self._acme_paths = AcmePaths(stack.root)
 
-def missing_acme_certs(stack: Stack) -> list[MissingAcmeCerts]:
-    """Return missing ACME live pairs for ``tls: acme`` apps (doctor only; not deploy-blocking)."""
-    paths = AcmePaths(stack.root)
-    results: list[MissingAcmeCerts] = []
-    for app in stack.apps:
-        try:
-            app_spec = stack.spec_for(app)
-        except (ValueError, FileNotFoundError, OperatorError):
-            continue
-        if app_spec.tls != "acme":
-            continue
-        pem, key = paths.cert_files(app.name)
-        missing = tuple(p.name for p in (pem, key) if not p.is_file())
-        if missing:
-            results.append(MissingAcmeCerts(app.name, missing))
-    return results
+    def missing_origin(self) -> list[MissingOriginCerts]:
+        """Return missing PEM/key pairs for every applied app with ``tls: origin``."""
+        results: list[MissingOriginCerts] = []
+        for app in self._apps_with_tls("origin"):
+            pem, key = self._stack.cert_files(app)
+            missing = self._absent_names(pem, key)
+            if missing:
+                results.append(MissingOriginCerts(app.name, missing))
+        return results
 
+    def missing_acme(self) -> list[MissingAcmeCerts]:
+        """Return missing ACME live pairs for ``tls: acme`` apps (doctor only)."""
+        results: list[MissingAcmeCerts] = []
+        for app in self._apps_with_tls("acme"):
+            pem, key = self._acme_paths.cert_files(app.name)
+            missing = self._absent_names(pem, key)
+            if missing:
+                results.append(MissingAcmeCerts(app.name, missing))
+        return results
 
-def require_origin_certs(stack: Stack) -> None:
-    """Raise if any ``tls: origin`` app is missing PEMs (before gate nginx load)."""
-    missing = missing_origin_certs(stack)
-    if not missing:
-        return
-    raise OperatorError(format_missing_origin_certs(missing, include_doctor_footer=True))
+    def require_origin(self) -> None:
+        """Raise if any ``tls: origin`` app is missing PEMs (before gate nginx load)."""
+        missing = self.missing_origin()
+        if not missing:
+            return
+        raise OperatorError(
+            format_missing_origin_certs(missing, include_doctor_footer=True)
+        )
+
+    def _apps_with_tls(self, tls: str) -> Iterator[App]:
+        for app in self._stack.apps:
+            try:
+                app_spec = self._stack.spec_for(app)
+            except (ValueError, FileNotFoundError, OperatorError):
+                continue
+            if app_spec.tls == tls:
+                yield app
+
+    @staticmethod
+    def _absent_names(pem: Path, key: Path) -> tuple[str, ...]:
+        return tuple(p.name for p in (pem, key) if not p.is_file())

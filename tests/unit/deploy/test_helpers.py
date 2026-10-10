@@ -6,7 +6,7 @@ import pytest
 
 from raft.errors.cta import OperatorError
 from raft.deploy.cutover import DEPLOY_CUTOVER
-from raft.deploy.wait import wait_until
+from raft.deploy.wait import WaitUntil
 from tests.shared.compose_ids import RunningServices
 from tests.shared.nginx import NginxEmerg
 
@@ -22,24 +22,24 @@ class TestWaitUntil:
             calls["n"] += 1
             return calls["n"] >= 2
 
-        wait_until("ready", pred, timeout=2, interval=0.01)
+        WaitUntil("ready", pred, timeout=2, interval=0.01).run()
         assert calls["n"] == 2
 
     def test_times_out(self) -> None:
         with pytest.raises(OperatorError) as caught:
-            wait_until("never", lambda: False, timeout=0.05, interval=0.01)
+            WaitUntil("never", lambda: False, timeout=0.05, interval=0.01).run()
         assert_operator(caught.value, has_fix=False, contains=("never",))
 
     def test_times_out_includes_diagnostics(self) -> None:
         with pytest.raises(OperatorError) as caught:
-            wait_until(
+            WaitUntil(
                 "app_tmp reachable from router",
                 lambda: False,
                 timeout=0.05,
                 interval=0.01,
                 fix="raft doctor",
                 diagnostics=lambda: ("--- raft-app_tmp ---\n" + NginxEmerg.host_not_found("old")),
-            )
+            ).run()
         assert_operator(
             caught.value,
             contains=("app_tmp", "host not found"),
@@ -51,13 +51,13 @@ class TestWaitUntil:
             raise RuntimeError("diag failed")
 
         with pytest.raises(OperatorError) as caught:
-            wait_until(
+            WaitUntil(
                 "never",
                 lambda: False,
                 timeout=0.05,
                 interval=0.01,
                 diagnostics=boom,
-            )
+            ).run()
         assert_operator(caught.value, has_fix=False, contains=("never",))
 
 
