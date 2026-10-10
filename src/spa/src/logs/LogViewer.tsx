@@ -3,9 +3,9 @@ import {
   defaultLogFilter,
   filterLogLines,
   isLogFilterActive,
-} from "./logFilter";
+} from "./model/logFilter";
 import { LogViewerBody, LogViewerShell } from "./LogViewerLayout";
-import { parseLogText } from "./logParse";
+import { parseLogText } from "./model/logParse";
 import "./LogViewer.css";
 
 /** Shared log panel: filter + lines + expand. Parents supply the text stream. */

@@ -1,5 +1,5 @@
 import type { GraphEvent, MetricsSeries } from "../../shared/api";
-import { TrendsChart } from "./TrendsChart";
+import { TrendsChart } from "../chart/TrendsChart";
 import type { RuntimeMetricDef } from "../runtimeMetrics";
 import { isSingleLineAvg, type SeriesViewMode } from "./trendsView";
 

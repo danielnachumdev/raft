@@ -3,7 +3,7 @@ import {
   saveGithubConfig,
   type GithubOauthConfig,
   type GithubSession,
-} from "./githubApi";
+} from "../github/githubApi";
 import { CopyableValue } from "./OauthSetupCopy";
 import { resolveOauthSetupHints } from "./oauthSetupHints";
 import "./OauthSetupPanel.css";

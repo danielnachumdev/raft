@@ -3,8 +3,8 @@ import { describe, it } from "node:test";
 import {
   filterLogLines,
   type LogFilter,
-} from "../../src/logs/logFilter.ts";
-import { parseLogLine } from "../../src/logs/logParse.ts";
+} from "../../src/logs/model/logFilter.ts";
+import { parseLogLine } from "../../src/logs/model/logParse.ts";
 
 const lines = [
   parseLogLine("app | 2024-01-01 ERROR database timeout"),
