@@ -9,7 +9,7 @@ from importlib.metadata import requires as distribution_requires
 from pathlib import Path
 from typing import Optional
 
-from raft.config.app_secrets import SECRETS_DIRNAME, AppSecretsLayout
+from raft.secrets.app_secrets import SECRETS_DIRNAME, AppSecretsLayout
 from raft.config.dir_tree_sync import DirTreeSync
 from raft.errors.cta import OperatorError
 

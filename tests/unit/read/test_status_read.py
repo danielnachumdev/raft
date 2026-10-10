@@ -1,0 +1,161 @@
+"""Shared StatusRead / DoctorRead contract tests."""
+
+from __future__ import annotations
+
+from unittest.mock import MagicMock, patch
+
+from raft.models.app import EDGE_GROUP
+from raft.models.stack import Stack
+from raft.ops.doctor.models import CheckResult
+from raft.ops.status import Status
+from raft.ops.status.models import StatusSnapshot
+from raft.read import DoctorRead, StatusRead
+
+from tests.unit.base import RaftTestCase, make_app, make_stack, write_applied_app
+from tests.unit.ops.status.fixtures import StatusFixtures
+
+
+class TestStatusRead(RaftTestCase):
+    def test_snapshot_dict_matches_status_to_dict(self) -> None:
+        snap = StatusSnapshot(
+            host=StatusFixtures.empty_host_status(),
+            containers=(
+                StatusFixtures.container("raft-gate", role="gate", group=EDGE_GROUP),
+            ),
+        )
+        status = MagicMock()
+        status.collect.return_value = snap
+        reader = StatusRead(make_stack(self.tmp_path), status=status)
+        assert reader.status is status
+        assert reader.snapshot_dict() == snap.to_dict()
+        status.collect.assert_called_once()
+
+    def test_api_payload_shares_collector_and_adds_rows(self) -> None:
+        snap = StatusSnapshot(
+            host=StatusFixtures.empty_host_status(),
+            containers=(
+                StatusFixtures.container("raft-gate", role="gate", group=EDGE_GROUP),
+                StatusFixtures.container("site", role="app", app="site"),
+            ),
+        )
+        status = MagicMock()
+        status.collect.return_value = snap
+        payload = StatusRead(make_stack(self.tmp_path), status=status).api_payload()
+        assert payload["host"] == snap.to_dict()["host"]
+        assert payload["containers"] == snap.to_dict()["containers"]
+        assert payload["control_plane"][0]["name"] == "gate"
+        assert payload["control_plane"][0]["external_urls"] == []
+        assert payload["apps"][0]["name"] == "site"
+        assert payload["apps"][0]["external_urls"] == []
+        assert payload["registry_issues"] == []
+        status.collect.assert_called_once()
+
+    def test_api_payload_includes_registry_issues(self) -> None:
+        from raft.models.registry import RegistryIssue
+
+        snap = StatusSnapshot(host=StatusFixtures.empty_host_status(), containers=())
+        status = MagicMock()
+        status.collect.return_value = snap
+        stack = make_stack(
+            self.tmp_path,
+            (),
+            registry_issues=(
+                RegistryIssue(file="broken.yaml", error="invalid YAML"),
+            ),
+        )
+        payload = StatusRead(stack, status=status).api_payload()
+        assert payload["registry_issues"] == [
+            {"file": "broken.yaml", "error": "invalid YAML"}
+        ]
+
+    def test_service_detail_known_and_unknown(self) -> None:
+        snap = StatusSnapshot(
+            host=StatusFixtures.empty_host_status(),
+            containers=(
+                StatusFixtures.container("raft-gate", role="gate", group=EDGE_GROUP),
+            ),
+        )
+        status = MagicMock()
+        status.collect.return_value = snap
+        reader = StatusRead(make_stack(self.tmp_path), status=status)
+        detail = reader.service_detail("raft-gate")
+        assert detail is not None
+        assert detail["container"]["service"] == "raft-gate"
+        assert detail["presentation"]["name"] == "gate"
+        assert detail["presentation"]["external_urls"] == []
+        assert reader.service_detail("missing") is None
+        assert status.collect.call_count == 2
+
+    def test_api_payload_includes_app_external_urls(self) -> None:
+        write_applied_app(
+            self.tmp_path, "site", public_host="site.test", tls="origin"
+        )
+        snap = StatusSnapshot(
+            host=StatusFixtures.empty_host_status(),
+            containers=(
+                StatusFixtures.container("site", role="app", app="site"),
+            ),
+        )
+        status = MagicMock()
+        status.collect.return_value = snap
+        stack = make_stack(self.tmp_path, (make_app("site", public_host="site.test"),))
+        payload = StatusRead(stack, status=status).api_payload()
+        assert payload["apps"][0]["external_urls"] == ["https://site.test/"]
+
+    def test_refresh_apps_adopts_registry_including_worker(self) -> None:
+        reader = self._reader_with_site()
+        self._write_out_of_band_apps()
+        with patch(
+            "raft.ops.status.service.HostGateway.resources",
+            return_value=StatusFixtures.host(),
+        ):
+            payload = reader.api_payload(refresh_apps=True)
+        names = {row["service"] for row in payload["apps"]}
+        assert names == {"site", "demo-api", "demo-worker"}
+        assert isinstance(reader.stack, Stack)
+        assert {app.name for app in reader.stack.apps} == names
+        worker = next(c for c in payload["containers"] if c["service"] == "demo-worker")
+        assert worker["status"] == "not running" and worker["app"] == "demo-worker"
+
+    def _reader_with_site(self) -> StatusRead:
+        write_applied_app(self.tmp_path, "site")
+        status = Status(make_stack(self.tmp_path, (make_app("site"),)))
+        StatusFixtures.mock_docker_idle(status)
+        return StatusRead(status.stack, status=status)
+
+    def _write_out_of_band_apps(self) -> None:
+        write_applied_app(self.tmp_path, "demo-api")
+        write_applied_app(
+            self.tmp_path,
+            "demo-worker",
+            source="docker",
+            image="ghcr.io/example/worker",
+            public_host="",
+            build_context=None,
+            extra={"ports": [], "readiness": {"type": "none"}},
+        )
+
+
+class TestDoctorRead(RaftTestCase):
+    def test_from_results_and_shape(self) -> None:
+        payload = DoctorRead.from_results(
+            [
+                CheckResult("raft-gate", "running", "ok", "up", ""),
+                CheckResult("site", "upstream", "fail", "missing", "raft render"),
+            ]
+        )
+        DoctorRead.assert_shape(payload)
+        assert payload["results"][1]["fix"] == "raft render"
+    def test_assert_shape_rejects_bad_payload(self) -> None:
+        try:
+            DoctorRead.assert_shape({})
+        except AssertionError as exc:
+            assert "results" in str(exc)
+        try:
+            DoctorRead.assert_shape({"results": [1]})
+        except AssertionError as exc:
+            assert "object" in str(exc)
+        try:
+            DoctorRead.assert_shape({"results": [{"service": "x"}]})
+        except AssertionError as exc:
+            assert "missing" in str(exc)

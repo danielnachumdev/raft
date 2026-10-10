@@ -2,16 +2,16 @@
 
 from ..config import load_config, setup_logging
 from ..models.stack import load_stack
-from ..services.apply import AppApply
-from ..services.auth import GitAuthManager
-from ..services.deploy.orchestrator import Orchestrator
-from ..services.ops.doctor import Doctor
-from ..services.ops.logs import Logs
-from ..services.ops.purge import Purge
-from ..services.ops.status import Status
-from ..services.ops.uninstall import Uninstall
-from ..services.ops.update import SelfUpdate
-from ..services.serve import Serve
+from ..apply import AppApply
+from ..auth import GitAuthManager
+from ..deploy.orchestrator import Orchestrator
+from ..ops.doctor import Doctor
+from ..ops.logs import Logs
+from ..ops.purge import Purge
+from ..ops.status import Status
+from ..ops.uninstall import Uninstall
+from ..ops.update import SelfUpdate
+from ..serve import Serve
 
 __all__ = [
     "AppApply",

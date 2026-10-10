@@ -12,7 +12,7 @@ from raft.errors.domain import (
     redeploy_requires_app,
     unknown_app,
 )
-from raft.services.apply.manifest_env import ApplyEnvSources
+from raft.apply.manifest_env import ApplyEnvSources
 
 from . import delete as delete_cmd
 from . import deps

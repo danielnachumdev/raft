@@ -23,7 +23,7 @@ from raft.errors.domain import (
 
 from ..config.trace_context import TraceContext
 from ..models.stack import load_stack
-from ..services.ops.certs import missing_origin_certs
+from ..ops.certs import missing_origin_certs
 from ..ui import say_err
 from .argv import ApplyEnvArgvBridge
 from .command_progress import CommandProgress

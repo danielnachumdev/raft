@@ -14,10 +14,10 @@ from raft.controller.heal_deps import HealDepends
 from raft.errors.cta import OperatorError
 from raft.models.state.scaling_store import ScalingStore
 from raft.models.stack import Stack
-from raft.services.deploy.locking import app_and_stack_locks
-from raft.services.deploy.orchestrator import Orchestrator
-from raft.services.notify.control_events import ControlPlaneEvents
-from raft.services.notify.notifier import Notifier
+from raft.locking.locking import app_and_stack_locks
+from raft.deploy.orchestrator import Orchestrator
+from raft.notify.control_events import ControlPlaneEvents
+from raft.notify.notifier import Notifier
 
 __all__ = ["Healer", "needs_heal", "run_heal_forever"]
 

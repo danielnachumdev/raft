@@ -13,7 +13,7 @@ from raft.models.depends import AppDependsGraph, DependsOnError
 from raft.models.registry import AppRegistry
 from raft.models.state.scaling_store import ScalingStore
 from raft.models.stack import Stack
-from raft.services.deploy.locking import app_and_stack_locks
+from raft.locking.locking import app_and_stack_locks
 
 __all__ = ["HealDepends"]
 

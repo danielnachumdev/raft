@@ -9,8 +9,8 @@ from typing import Set
 from raft.adapters.docker import DockerStack
 from raft.config.settings import load_config
 from raft.models.stack import Stack
-from raft.services.acme.ensure import AcmeEnsure
-from raft.services.acme.install import AcmeGateInstall
+from raft.acme.ensure import AcmeEnsure
+from raft.acme.install import AcmeGateInstall
 
 from .job import JobIds, JobSpec, JobType, QueuePolicy
 from .orchestrator import JobOrchestrator

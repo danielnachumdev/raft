@@ -21,7 +21,7 @@ from raft.errors.docker_msgs import (
 from ...models.app import App
 from ...models.ports import PortSpec
 from ...models.stack import Stack
-from ...services.ops.certs import missing_acme_certs, missing_origin_certs
+from ...ops.certs import missing_acme_certs, missing_origin_certs
 from ..shell import Shell
 
 logger = logging.getLogger(__name__)

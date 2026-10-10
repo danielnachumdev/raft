@@ -10,9 +10,9 @@ from unittest.mock import MagicMock, patch
 
 from raft.controller.metrics import MetricsRecorder
 from raft.controller.metrics_rotation import MetricsRotation
-from raft.services.ops.status.models import StatusSnapshot
+from raft.ops.status.models import StatusSnapshot
 
-from ..services.ops.status.fixtures import StatusFixtures
+from ..ops.status.fixtures import StatusFixtures
 from .base import ControllerTestCase
 
 

@@ -12,7 +12,7 @@ import pytest
 from raft.config import load_config, reset_logging_for_tests, setup_logging
 from raft.config.trace_context import TraceContext
 from raft.models.stack import load_stack
-from raft.services.ops.doctor import Doctor
+from raft.ops.doctor import Doctor
 from tests.shared.raft_home import RaftHomeFixtures
 from tests.shared.yaml_doc import YamlDoc
 

@@ -283,13 +283,13 @@ Localhost dashboard for operators (`raft serve`). **Hard rules:** bind `127.0.0.
 
 | Piece | Path / type | Role |
 |-------|-------------|------|
-| CLI entry | `raft serve` → `services/serve/service.py` | uvicorn on `--port` (default **8787**); prints tunnel CTAs; flock lease under `state/serve/`; `--stop` |
+| CLI entry | `raft serve` → `serve/service.py` | uvicorn on `--port` (default **8787**); prints tunnel CTAs; flock lease under `state/serve/`; `--stop` |
 | App factory | `ServeAppFactory` | mounts `/assets`, SPA catch-all, registers `/api/*` |
 | Page / routes | `ServePage` | status, metrics, service detail, logs, start/stop/redeploy, purge |
-| Downloads | `ServeDownloads` + `services/export/` | catalog-driven log/metrics file export (register an `Exporter`) |
+| Downloads | `ServeDownloads` + `export/` | catalog-driven log/metrics file export (register an `Exporter`) |
 | Actions | `ServeActions` | Compose start/stop; redeploy via `Orchestrator`; scaling mark/clear on stop/start; purge unused images |
 | Logs bridge | `LogSseStream` + `ops/logs.Logs` | snapshot JSON + SSE follow (same follow path as CLI `-f`) |
-| Read contracts | `services/read/` | `StatusRead`, `MetricsRead`, `ServeSnapshotView`, `ExternalUrlBuilder` |
+| Read contracts | `read/` | `StatusRead`, `MetricsRead`, `ServeSnapshotView`, `ExternalUrlBuilder` |
 | Runtime gather | `ContainerRuntimeGateway` (`adapters/docker/runtime.py`) | batched Engine `ps`/`inspect`/`stats` for status + controller metrics (not `compose ps`) |
 | Packaged SPA | `src/raft/share/serve/spa/` | Vite build output shipped with the Python package |
 
@@ -394,18 +394,18 @@ Entry: `raft` console script → `raft.cli:run`. Prefer `install.sh` / `uv tool 
 | `src/raft/models/` | Types + parse/registry: `App`, `AppSpec`, `AppDocument` / fields, `AppRegistry`, `AppDependsGraph`, `PortSpec`, `Stack`, `ScalingSpec`, `DeploymentSpec`. Import from owning modules — package `__init__` is not a re-export barrel. |
 | `src/raft/models/state/` | Runtime JSON stores (`ScalingStore`, `GraphEventStore` + kinds/records) under `~/.raft/state/` |
 | `src/raft/adapters/` | `shell`; `docker/` (`DockerStack`, `ContainerRuntimeGateway`, edge/images/inspect/prune); nginx upstreams; HTTP probe; host |
-| `src/raft/services/apply/` | `AppApply`, `manifest_preprocess` (`ManifestPreprocessor`), `manifest_env` (apply env + `${VAR}`), `manifest_expr` (directive predicates), `manifest_comments` (full-line `#` skip) |
-| `src/raft/services/acme/` | `AcmePaths`, `AcmeEnsure` (HTTP-01 via official PyPI `acme`), `AcmeGateInstall` (render + nginx reload), `AcmeHttpRedirect` |
-| `src/raft/services/auth/` | `GitAuthManager` + ssh/urls helpers |
-| `src/raft/services/sync/` | `SourceSync` |
-| `src/raft/services/render/` | `StackRenderer`, `FragmentCollector`, `compose_apps`, `gate_nginx`, `edge/` nginx fragments (http/stream/tls), `scaling_gate` (holding/wake snippets), `scaling_holding` (app-owned holding HTML → generated gate-http). Distinct from `adapters/docker/edge.py` (Compose edge service ops). |
-| `src/raft/services/deploy/` | orchestrator, cutover, dual_run, wait, locking, readiness, `methods/` (DeploymentMethod ABC + seamless/inplace) |
-| `src/raft/services/ops/` | doctor, **status collect/format** (Started + allocated limits), logs, purge, uninstall, update, certs |
-| `src/raft/services/read/` | Shared **CLI+serve contracts/presentation** over ops collectors (`StatusRead`, `MetricsRead`, `DoctorRead`, `ServeSnapshotView`, `ExternalUrlBuilder`) — not a second status collector |
-| `src/raft/services/export/` | Open-closed download encoders (`ExportRegistry` + `Exporter` subclasses); serve catalogs/attachments |
-| `src/raft/services/notify/` | Open-closed notification framework (`NotificationStrategy` + registry + dispatcher); shipped `webhook` + `email` strategies via `NotificationCatalogs`; channel config in settings `notifications:`; `Notifier` used by heal escalate / wake timeout / ACME lastError / serve deploy failure |
+| `src/raft/apply/` | `AppApply`, `manifest_preprocess` (`ManifestPreprocessor`), `manifest_env` (apply env + `${VAR}`), `manifest_expr` (directive predicates), `manifest_comments` (full-line `#` skip) |
+| `src/raft/acme/` | `AcmePaths`, `AcmeEnsure` (HTTP-01 via official PyPI `acme`), `AcmeGateInstall` (render + nginx reload), `AcmeHttpRedirect` |
+| `src/raft/auth/` | `GitAuthManager` + ssh/urls helpers |
+| `src/raft/sync/` | `SourceSync` |
+| `src/raft/render/` | `StackRenderer`, `FragmentCollector`, `compose_apps`, `gate_nginx`, `edge/` nginx fragments (http/stream/tls), `scaling_gate` (holding/wake snippets), `scaling_holding` (app-owned holding HTML → generated gate-http). Distinct from `adapters/docker/edge.py` (Compose edge service ops). |
+| `src/raft/deploy/` | orchestrator, cutover, dual_run, wait, readiness; `methods/` (DeploymentMethod ABC + registry/catalogs) + `methods/strategies/` (seamless/inplace) |
+| `src/raft/ops/` | doctor, **status collect/format** (Started + allocated limits), logs, purge, uninstall, update, certs |
+| `src/raft/read/` | Shared **CLI+serve contracts/presentation** over ops collectors (`StatusRead`, `MetricsRead`, `DoctorRead`, `ServeSnapshotView`, `ExternalUrlBuilder`) — not a second status collector |
+| `src/raft/export/` | Open-closed download encoders (`ExportRegistry` + `Exporter` ABC); concrete formats in `export/strategies/`; serve catalogs/attachments |
+| `src/raft/notify/` | Open-closed notification framework (`NotificationStrategy` ABC + registry + dispatcher); concrete channels in `notify/strategies/` (webhook/email) via `NotificationCatalogs`; channel config in settings `notifications:`; `Notifier` used by heal escalate / wake timeout / ACME lastError / serve deploy failure |
 | `src/raft/ui/` | Operator terminal output (`say`) + shared TTY `TerminalProgress` spinner (doctor, update; `current()` / `set_text` for inner frames; entered at CLI entry before stack/logging init) |
-| `src/raft/services/serve/` | `raft serve`: FastAPI factory, `ServePage`, `ServeActions`, SSE log bridge, SPA paths/instructions |
+| `src/raft/serve/` | `raft serve`: FastAPI factory, `ServePage`, `ServeActions`, SSE log bridge, SPA paths/instructions; `serve/github/` OAuth + deploy assist (`github/strategies/` mock/real providers) |
 | `src/raft/controller/` | Always-on Compose `raft-controller` (job orchestrator for heal + metrics + per-app `acme:<name>` when `tls: acme`; idle-stop + wake via side_ticks when `spec.scaling`; healer skips `scaledToZero`; metrics batch → `resources.jsonl` + `http.jsonl`) |
 | `src/raft/errors/` | Operator errors + CTAs (`cta`, `domain`, `docker_msgs`, …). Import from owning modules — package `__init__` is not a re-export barrel. |
 | `src/raft/share/` | Product Compose + nginx templates (synced into data home); `share/serve/spa/` = packaged dashboard assets |

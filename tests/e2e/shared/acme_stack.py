@@ -16,10 +16,10 @@ from raft.adapters.docker import DockerStack
 from raft.adapters.shell import Shell
 from raft.models.stack import load_stack
 from raft.models.state.scaling_store import ScalingStore
-from raft.services.acme.ensure import AcmeEnsure
-from raft.services.acme.install import AcmeGateInstall
-from raft.services.acme.paths import AcmePaths
-from raft.services.render import StackRenderer
+from raft.acme.ensure import AcmeEnsure
+from raft.acme.install import AcmeGateInstall
+from raft.acme.paths import AcmePaths
+from raft.render import StackRenderer
 from tests.e2e.shared.compose import new_project_name
 from tests.e2e.shared.pebble_side import PebbleSide, pebble_services
 from tests.e2e.shared.runtime import ServiceRuntimeWait

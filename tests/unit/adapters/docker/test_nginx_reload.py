@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from raft.models.ports import PortSpec
-from raft.services.ops.certs import MissingOriginCerts
+from raft.ops.certs import MissingOriginCerts
 
 from ...base import make_app
 from .base import DockerTestCase
@@ -104,7 +104,7 @@ class TestDockerNginxReload(DockerTestCase):
             self.docker.reload_gate_nginx()
 
     def test_reload_gate_nginx_lists_missing_acme_certs(self) -> None:
-        from raft.services.ops.certs import MissingAcmeCerts
+        from raft.ops.certs import MissingAcmeCerts
 
         self.shell.compose.return_value = self.ok(
             returncode=1,

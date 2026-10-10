@@ -1,0 +1,111 @@
+"""Unit tests for ``raft serve`` snapshot view + instructions."""
+
+from __future__ import annotations
+
+from io import StringIO
+
+from raft.models.app import EDGE_GROUP
+from raft.ops.status.models import StatusSnapshot
+from raft.serve.instructions import ServeInstructions
+from raft.serve.paths import ServePaths
+from raft.read import ServeSnapshotView
+
+from tests.unit.ops.status.fixtures import StatusFixtures
+
+
+class TestServeInstructions:
+    def test_render_includes_url_and_tunnel_examples(self) -> None:
+        text = ServeInstructions(8787).render()
+        assert "http://127.0.0.1:8787/" in text
+        assert "ssh -L 8787:127.0.0.1:8787 USER@HOST" in text
+        assert "gcloud" not in text
+        assert "laptop" not in text
+        assert "Ctrl+C" in text
+
+    def test_print_writes_render(self) -> None:
+        buf = StringIO()
+        ServeInstructions(9000).print(out=buf)
+        assert "http://127.0.0.1:9000/" in buf.getvalue()
+
+
+class TestServePaths:
+    def test_spa_build_exists(self) -> None:
+        assert ServePaths.spa_index().is_file()
+        assert ServePaths.spa_assets_dir().is_dir()
+        assert any(ServePaths.spa_assets_dir().iterdir())
+
+
+class TestServeSnapshotView:
+    def _snapshot(self) -> StatusSnapshot:
+        fx = StatusFixtures
+        return StatusSnapshot(
+            host=fx.empty_host_status(),
+            containers=(
+                fx.container("raft-gate", role="gate", group=EDGE_GROUP),
+                fx.container("raft-router", role="router", group=EDGE_GROUP),
+                fx.container("raft-controller", role="controller", group=EDGE_GROUP),
+                fx.container("demo-web", role="app", app="web", group="demo"),
+            ),
+        )
+
+    def test_splits_control_plane_and_apps(self) -> None:
+        view = ServeSnapshotView(self._snapshot())
+        plane, apps = view.control_plane(), view.apps()
+        assert [r.name for r in plane] == ["gate", "router", "controller"]
+        assert [r.group for r in plane] == [EDGE_GROUP] * 3
+        assert len(apps) == 1 and apps[0].name == "web" and apps[0].group == "demo"
+        assert "%" in apps[0].cpu or apps[0].cpu == "-"
+
+    def test_to_payload_includes_host_and_rows(self) -> None:
+        payload = ServeSnapshotView(self._snapshot()).to_payload()
+        assert "cpus" in payload["host"]
+        assert "hostname" in payload["host"]
+        assert [r["name"] for r in payload["control_plane"]] == [
+            "gate",
+            "router",
+            "controller",
+        ]
+        assert payload["apps"][0]["name"] == "web"
+        assert payload["apps"][0]["service"] == "demo-web"
+        self._assert_row_keys(payload["apps"][0])
+
+    def _assert_row_keys(self, row: dict) -> None:
+        assert set(row) == {
+            "service",
+            "name",
+            "role",
+            "group",
+            "status",
+            "cpu",
+            "memory",
+            "started",
+            "uptime",
+            "external_urls",
+            "depends_on",
+        }
+        assert row["external_urls"] == []
+        assert row["depends_on"] == []
+        assert "UTC" in row["started"]
+
+    def test_service_detail_returns_container_and_presentation(self) -> None:
+        detail = ServeSnapshotView(self._snapshot()).service_detail("demo-web")
+        assert detail is not None
+        assert detail["container"]["service"] == "demo-web"
+        assert detail["presentation"]["name"] == "web"
+        assert detail["presentation"]["service"] == "demo-web"
+        assert "hostname" in detail["host"]
+
+    def test_service_detail_unknown_returns_none(self) -> None:
+        assert ServeSnapshotView(self._snapshot()).service_detail("missing") is None
+
+    def test_started_dash_when_uptime_missing(self) -> None:
+        snap = StatusSnapshot(
+            host=StatusFixtures.empty_host_status(),
+            containers=(
+                StatusFixtures.container(
+                    "demo-web", role="app", app="web", group="demo", uptime=None
+                ),
+            ),
+        )
+        row = ServeSnapshotView(snap).apps()[0]
+        assert row.uptime == "-" and row.started == "-"
