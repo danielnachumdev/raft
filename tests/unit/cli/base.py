@@ -12,21 +12,21 @@ from raft import cli
 
 from ..base import RaftTestCase, make_app, make_stack, write_demo_inventory
 
-# Where CLI modules bind names imported from ``raft.cli.deps``.
+# Where CLI modules bind names imported from ``raft.cli.commands.deps``.
 _DEP_TARGETS = {
-    "load_stack": ("raft.cli.root",),
-    "load_config": ("raft.cli.root",),
-    "setup_logging": ("raft.cli.root",),
-    "AppApply": ("raft.cli.root",),
-    "Orchestrator": ("raft.cli.root", "raft.cli.gate"),
-    "Doctor": ("raft.cli.root",),
-    "Status": ("raft.cli.root",),
-    "Serve": ("raft.cli.root",),
-    "Logs": ("raft.cli.root",),
-    "Purge": ("raft.cli.root",),
-    "SelfUpdate": ("raft.cli.root",),
-    "Uninstall": ("raft.cli.root",),
-    "GitAuthManager": ("raft.cli.auth",),
+    "load_stack": ("raft.cli.cli",),
+    "load_config": ("raft.cli.cli",),
+    "setup_logging": ("raft.cli.cli",),
+    "AppApply": ("raft.cli.cli",),
+    "Orchestrator": ("raft.cli.cli", "raft.cli.commands.gate"),
+    "Doctor": ("raft.cli.cli",),
+    "Status": ("raft.cli.cli",),
+    "Serve": ("raft.cli.cli",),
+    "Logs": ("raft.cli.cli",),
+    "Purge": ("raft.cli.cli",),
+    "SelfUpdate": ("raft.cli.cli",),
+    "Uninstall": ("raft.cli.cli",),
+    "GitAuthManager": ("raft.cli.commands.auth",),
 }
 
 
@@ -45,11 +45,11 @@ class CliTestCase(RaftTestCase):
 
     def run_main(self, argv: list[str]) -> int:
         with self.patched_deps(Orchestrator=self.orch):
-            return cli.main(argv)
+            return cli.CliEntry._main(argv)
 
     def run_cli(self, argv: list[str]) -> None:
         with self.patched_deps(Orchestrator=self.orch):
-            cli.run(argv)
+            cli.CliEntry.run(argv)
 
     @contextmanager
     def patched_deps(

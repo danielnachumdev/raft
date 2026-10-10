@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import yaml
 
-from raft.cli import get as get_cmd
+from raft.cli.commands import get as get_cmd
 from raft.models.stack import load_stack
 from raft.apply import AppApply
 from raft.ops.doctor import INFRA, CheckResult, Doctor

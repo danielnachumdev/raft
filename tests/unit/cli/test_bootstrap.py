@@ -20,10 +20,10 @@ class TestCliBootstrap(CliTestCase):
     def test_doctor_failure_does_not_suggest_doctor(self, capsys) -> None:
         doctor = MagicMock()
         doctor.report.return_value = 1
-        with patch("raft.cli.root.load_stack", return_value=self.stack):
-            with patch("raft.cli.root.Doctor", return_value=doctor):
+        with patch("raft.cli.cli_wrapper.load_stack", return_value=self.stack):
+            with patch("raft.cli.cli.Doctor", return_value=doctor):
                 with pytest.raises(SystemExit) as exc:
-                    cli.run(["doctor"])
+                    cli.CliEntry.run(["doctor"])
         assert exc.value.code == 1
         assert "Hint:" not in capsys.readouterr().err
 
@@ -34,16 +34,16 @@ class TestCliBootstrap(CliTestCase):
             seen.append(TraceContext.current())
             return 0
 
-        with patch("raft.cli.entry.main", side_effect=capture_main):
+        with patch("raft.cli.cli_wrapper.CliEntry._main", side_effect=capture_main):
             with pytest.raises(SystemExit) as exc:
-                cli.run(["status"])
+                cli.CliEntry.run(["status"])
         assert exc.value.code == 0
         assert len(seen) == 1
         assert seen[0] is not None
         assert TraceContext.current() is None
 
     def test_suggest_doctor_skips_when_already_running_doctor(self, capsys) -> None:
-        cli._suggest_doctor(["doctor"])
+        cli.CliEntry().suggest_doctor(["doctor"])
         assert capsys.readouterr().err == ""
 
     def test_run_skips_bootstrap_when_handlers_exist(self) -> None:
@@ -54,7 +54,7 @@ class TestCliBootstrap(CliTestCase):
         root.setLevel(logging.INFO)
         try:
             before = list(root.handlers)
-            cli._ensure_logging_bootstrap()
+            cli.CliEntry().ensure_logging_bootstrap()
             assert root.handlers == before
             self.orch.start.side_effect = RuntimeError("already running")
             with pytest.raises(SystemExit) as exc:
@@ -67,19 +67,19 @@ class TestCliBootstrap(CliTestCase):
         root = logging.getLogger("raft")
         root.handlers.clear()
         try:
-            cli._ensure_logging_bootstrap()
+            cli.CliEntry().ensure_logging_bootstrap()
             assert root.handlers
             assert root.propagate is False
         finally:
             root.handlers.clear()
 
     def test_main_module_entry(self) -> None:
-        with patch("raft.cli.run") as run:
+        with patch("raft.cli.cli_wrapper.CliEntry.run") as run:
             runpy.run_module("raft.__main__", run_name="__main__")
         run.assert_called_once_with()
 
         main_mod = importlib.import_module("raft.__main__")
-        assert main_mod.run is cli.run
+        assert main_mod.CliEntry is cli.CliEntry
 
     def test_run_maps_called_process_error(self) -> None:
         err = subprocess.CalledProcessError(9, ["docker", "compose"], stderr="boom\n")

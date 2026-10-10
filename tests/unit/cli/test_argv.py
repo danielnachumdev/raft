@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from raft.cli.argv import ApplyEnvOverrides, RepeatableFlagPeeler
-from raft.cli.logs_argv import LogsArgvNormalizer
+from raft.cli.commands.argv import ApplyEnvOverrides, RepeatableFlagPeeler
+from raft.cli.commands.logs_argv import LogsArgvNormalizer
 
 APPLY_ENV_ARGV = [
     "apply",

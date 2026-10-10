@@ -15,23 +15,23 @@ class TestCliDispatch(CliTestCase):
     def test_help_exits_zero(self) -> None:
         with self.patched_deps():
             with pytest.raises(SystemExit) as exc:
-                cli.main(["--help"])
+                cli.CliEntry._main(["--help"])
         assert exc.value.code == 0
 
     def test_doctor_dispatches(self) -> None:
         doctor = MagicMock()
         doctor.report.return_value = 0
         with self.patched_deps(Doctor=doctor):
-            assert cli.main(["doctor"]) == 0
+            assert cli.CliEntry._main(["doctor"]) == 0
         doctor.report.assert_called_once()
 
     def test_status_dispatches(self) -> None:
         status = MagicMock()
         status.report.return_value = 0
         with self.patched_deps(Status=status) as deps:
-            assert cli.main(["status"]) == 0
-            assert cli.main(["status", "--json"]) == 0
-            assert cli.main(["status", "--live"]) == 0
+            assert cli.CliEntry._main(["status"]) == 0
+            assert cli.CliEntry._main(["status", "--json"]) == 0
+            assert cli.CliEntry._main(["status", "--live"]) == 0
         deps["Status"].assert_called_with(self.stack)
         assert status.report.call_args_list[0].kwargs == {
             "as_json": False,
@@ -49,8 +49,8 @@ class TestCliDispatch(CliTestCase):
     def test_serve_dispatches_default_and_port(self) -> None:
         serve = MagicMock()
         with self.patched_deps(Serve=serve) as deps:
-            assert cli.main(["serve"]) == 0
-            assert cli.main(["serve", "--port", "9001"]) == 0
+            assert cli.CliEntry._main(["serve"]) == 0
+            assert cli.CliEntry._main(["serve", "--port", "9001"]) == 0
         deps["Serve"].assert_called_with(self.stack)
         assert serve.run.call_args_list[0].kwargs == {"port": 8787}
         assert serve.run.call_args_list[1].kwargs == {"port": 9001}
@@ -58,8 +58,8 @@ class TestCliDispatch(CliTestCase):
     def test_serve_dispatches_stop(self) -> None:
         serve = MagicMock()
         with self.patched_deps(Serve=serve) as deps:
-            assert cli.main(["serve", "--stop"]) == 0
-            assert cli.main(["serve", "--stop", "--port", "9001"]) == 0
+            assert cli.CliEntry._main(["serve", "--stop"]) == 0
+            assert cli.CliEntry._main(["serve", "--stop", "--port", "9001"]) == 0
         deps["Serve"].assert_called_with(self.stack)
         serve.run.assert_not_called()
         assert serve.stop.call_args_list[0].kwargs == {"port": 8787}
@@ -68,9 +68,9 @@ class TestCliDispatch(CliTestCase):
     def test_logs_dispatches_snapshot_and_follow(self) -> None:
         logs = MagicMock()
         with self.patched_deps(Logs=logs) as deps:
-            assert cli.main(["logs", "app", "--tail", "20"]) == 0
-            assert cli.main(["logs", "gate", "--follow"]) == 0
-            assert cli.main(["logs", "-f", "router"]) == 0
+            assert cli.CliEntry._main(["logs", "app", "--tail", "20"]) == 0
+            assert cli.CliEntry._main(["logs", "gate", "--follow"]) == 0
+            assert cli.CliEntry._main(["logs", "-f", "router"]) == 0
         deps["Logs"].assert_called_with(self.stack)
         assert logs.show.call_args_list[0].args == ("app",)
         assert logs.show.call_args_list[0].kwargs == {"tail": 20, "follow": False}
@@ -83,7 +83,7 @@ class TestCliDispatch(CliTestCase):
         status = MagicMock()
         with self.patched_deps(Status=status):
             with pytest.raises(SystemExit) as exc:
-                cli.main(["status", "--leiv"])
+                cli.CliEntry._main(["status", "--leiv"])
         assert exc.value.code == 2
         status.report.assert_not_called()
         assert "Could not consume arg: --leiv" in capsys.readouterr().err
@@ -91,7 +91,7 @@ class TestCliDispatch(CliTestCase):
     def test_up_unknown_flag_fails_before_start(self, capsys) -> None:
         with self.patched_deps(Orchestrator=self.orch):
             with pytest.raises(SystemExit) as exc:
-                cli.main(["up", "--bogus"])
+                cli.CliEntry._main(["up", "--bogus"])
         assert exc.value.code == 2
         self.orch.start.assert_not_called()
         assert "Could not consume arg: --bogus" in capsys.readouterr().err
@@ -99,28 +99,28 @@ class TestCliDispatch(CliTestCase):
     def test_purge_dispatches(self) -> None:
         purger = MagicMock()
         with self.patched_deps(Purge=purger) as deps:
-            assert cli.main(["purge"]) == 0
+            assert cli.CliEntry._main(["purge"]) == 0
         deps["Purge"].assert_called_once_with(self.stack)
         purger.run.assert_called_once()
 
     def test_update_dispatches(self) -> None:
         updater = MagicMock()
         with self.patched_deps(SelfUpdate=updater) as deps:
-            assert cli.main(["update"]) == 0
+            assert cli.CliEntry._main(["update"]) == 0
         deps["SelfUpdate"].assert_called_once_with(self.stack)
         updater.run.assert_called_once()
 
     def test_uninstall_dispatches(self) -> None:
         uninstaller = MagicMock()
         with self.patched_deps(Uninstall=uninstaller) as deps:
-            assert cli.main(["uninstall", "--yes"]) == 0
+            assert cli.CliEntry._main(["uninstall", "--yes"]) == 0
         deps["Uninstall"].assert_called_once_with(self.stack)
         uninstaller.run.assert_called_once_with(yes=True, uv=False)
 
     def test_uninstall_dispatches_with_uv(self) -> None:
         uninstaller = MagicMock()
         with self.patched_deps(Uninstall=uninstaller) as deps:
-            assert cli.main(["uninstall", "--yes", "--uv"]) == 0
+            assert cli.CliEntry._main(["uninstall", "--yes", "--uv"]) == 0
         deps["Uninstall"].assert_called_once_with(self.stack)
         uninstaller.run.assert_called_once_with(yes=True, uv=True)
 
@@ -135,7 +135,7 @@ class TestCliDispatch(CliTestCase):
     def test_sync_unknown_service(self) -> None:
         with self.patched_deps():
             with pytest.raises(RuntimeError, match="unknown service"):
-                cli.main(["sync", "nope"])
+                cli.CliEntry._main(["sync", "nope"])
 
     def test_up_down_dispatch(self) -> None:
         assert self.run_main(["up"]) == 0
@@ -158,12 +158,12 @@ class TestCliDispatch(CliTestCase):
     def test_redeploy_gate_not_in_choices(self) -> None:
         with self.patched_deps():
             with pytest.raises(RuntimeError, match="unknown app"):
-                cli.main(["redeploy", "gate"])
+                cli.CliEntry._main(["redeploy", "gate"])
 
     def test_redeploy_requires_app(self) -> None:
         with self.patched_deps():
             with pytest.raises(RuntimeError, match="redeploy requires APP"):
-                cli.main(["redeploy"])
+                cli.CliEntry._main(["redeploy"])
 
     def test_gate_recreate_dispatch(self) -> None:
         assert self.run_main(["gate", "recreate"]) == 0

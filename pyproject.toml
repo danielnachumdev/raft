@@ -27,7 +27,7 @@ dev = [
 ]
 
 [project.scripts]
-raft = "raft.cli:run"
+raft = "raft.cli:CliEntry.run"
 
 [tool.setuptools.packages.find]
 where = ["src"]

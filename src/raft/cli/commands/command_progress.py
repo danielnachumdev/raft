@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Optional, Sequence
 
-from ..ui.progress import TerminalProgress
+from raft.ui.progress import TerminalProgress
 
 
 class CommandProgress:

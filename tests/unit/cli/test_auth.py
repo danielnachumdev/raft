@@ -28,7 +28,7 @@ class TestCliAuth(CliTestCase):
 
     def auth_main(self, argv: list[str]) -> int:
         with self.patched_deps(Orchestrator=MagicMock(), GitAuthManager=self.auth):
-            return cli.main(argv)
+            return cli.CliEntry._main(argv)
 
     def test_auth_setup_list_show_test_remove(self, capsys) -> None:
         self._test_auth_setup_list_show_test_remove_p1()
@@ -63,13 +63,13 @@ class TestCliAuth(CliTestCase):
     def test_auth_requires_service(self) -> None:
         with self.patched_deps(Orchestrator=MagicMock(), GitAuthManager=self.auth):
             with pytest.raises(RuntimeError, match="auth setup requires SERVICE"):
-                cli.main(["auth", "setup"])
+                cli.CliEntry._main(["auth", "setup"])
             with pytest.raises(RuntimeError, match="auth show requires SERVICE"):
-                cli.main(["auth", "show"])
+                cli.CliEntry._main(["auth", "show"])
             with pytest.raises(RuntimeError, match="auth test requires SERVICE"):
-                cli.main(["auth", "test"])
+                cli.CliEntry._main(["auth", "test"])
             with pytest.raises(RuntimeError, match="auth remove requires SERVICE"):
-                cli.main(["auth", "remove"])
+                cli.CliEntry._main(["auth", "remove"])
 
     def test_auth_list_empty(self, capsys) -> None:
         self.auth.list_services.return_value = []

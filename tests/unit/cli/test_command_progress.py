@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import ClassVar, List
 from unittest.mock import patch
 
-from raft.cli.command_progress import CommandProgress
+from raft.cli.commands.command_progress import CommandProgress
 from raft.ui.progress import TerminalProgress
 
 
@@ -65,10 +65,10 @@ class TestCommandProgress:
 
     def test_main_starts_spinner_before_raftcli_init(self) -> None:
         order = _SpinnerProbeCLI.order
-        with patch("raft.cli.entry.run_fire", side_effect=_recording_fire(order)):
-            with patch("raft.cli.entry.RaftCLI", _SpinnerProbeCLI):
-                from raft.cli.entry import main
+        with patch("raft.cli.cli_wrapper.run_fire", side_effect=_recording_fire(order)):
+            with patch("raft.cli.cli_wrapper.RaftCLI", _SpinnerProbeCLI):
+                from raft.cli.cli_wrapper import CliEntry
 
-                assert main(["doctor"]) == 0
+                assert CliEntry._main(["doctor"]) == 0
         assert order == ["fire", "cli_init"]
         assert TerminalProgress.active() is None

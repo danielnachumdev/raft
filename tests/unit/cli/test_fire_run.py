@@ -5,7 +5,7 @@ from __future__ import annotations
 import fire
 from fire import core as fire_core
 
-from raft.cli.fire_run import _ORIGINAL_CALL, run_fire
+from raft.cli.commands.fire_run import _ORIGINAL_CALL, run_fire
 
 
 class _Leaf:

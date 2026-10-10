@@ -14,9 +14,9 @@ from raft.errors.domain import (
 )
 from raft.apply.manifest_env import ApplyEnvSources
 
-from .argv import ApplyEnvOverrides
-from .auth import AuthCLI
-from .deps import (
+from .commands.argv import ApplyEnvOverrides
+from .commands.auth import AuthCLI
+from .commands.deps import (
     AppApply,
     Doctor,
     Logs,
@@ -30,8 +30,8 @@ from .deps import (
     load_stack,
     setup_logging,
 )
-from .gate import GateCLI
-from .get import get_app, get_apps
+from .commands.gate import GateCLI
+from .commands.get import get_app, get_apps
 
 logger = logging.getLogger(__name__)
 

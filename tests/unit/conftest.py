@@ -32,8 +32,8 @@ def isolated_logging(isolated_raft_env: IsolatedRaftEnv) -> Path:
 
 @pytest.fixture(autouse=True)
 def stub_cli_logging_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("raft.cli.root.load_config", lambda *_a, **_k: default_config())
+    monkeypatch.setattr("raft.cli.cli.load_config", lambda *_a, **_k: default_config())
     monkeypatch.setattr(
-        "raft.cli.root.setup_logging",
+        "raft.cli.cli.setup_logging",
         lambda *_a, **_k: tmp_path / "test-logs" / "raft.log",
     )
