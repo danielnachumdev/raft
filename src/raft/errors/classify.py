@@ -31,6 +31,14 @@ from .registry_msgs import (
     looks_like_registry_unauthorized,
     registry_unauthorized_message,
 )
+from .resource_msgs import (
+    host_oom_message,
+    looks_like_disk_full,
+    looks_like_host_oom,
+    looks_like_host_oom_exc,
+    resource_error_from_exc,
+    resource_error_from_text,
+)
 
 
 @dataclass(frozen=True)
@@ -77,6 +85,45 @@ def _build_origin_cert(
         return OperatorError(format_missing_origin_certs(missing, include_doctor_footer=False))
     return OperatorError(missing_origin_certs_fallback(detail=detail))
 
+
+def _match_host_oom(exc: subprocess.CalledProcessError, ctx: SubprocessCtx, detail: str) -> bool:
+    return looks_like_host_oom_exc(exc) or looks_like_host_oom(detail)
+
+
+def _build_host_oom(
+    exc: subprocess.CalledProcessError, ctx: SubprocessCtx, detail: str
+) -> OperatorError:
+    return _build_resource(exc, ctx, detail)
+
+
+def _match_disk_full(exc: subprocess.CalledProcessError, ctx: SubprocessCtx, detail: str) -> bool:
+    return looks_like_disk_full(_blob(exc, detail))
+
+
+def _build_disk_full(
+    exc: subprocess.CalledProcessError, ctx: SubprocessCtx, detail: str
+) -> OperatorError:
+    return _build_resource(exc, ctx, detail)
+
+
+def _build_resource(
+    exc: subprocess.CalledProcessError, ctx: SubprocessCtx, detail: str
+) -> OperatorError:
+    image = _pull_image(exc)
+    action = ctx.action or ("pull image" if image else "")
+    err = resource_error_from_text(detail, app=ctx.app, image=image, action=action)
+    if err is not None:
+        return err
+    return resource_error_from_exc(
+        exc, app=ctx.app, image=image, action=action
+    ) or OperatorError(host_oom_message(detail=detail, app=ctx.app, image=image, action=action))
+
+
+def _pull_image(exc: subprocess.CalledProcessError) -> Optional[str]:
+    parts = _cmd_parts(exc)
+    if parts and "docker" in parts and "pull" in parts:
+        return parts[-1]
+    return None
 
 def _match_registry_pull(
     exc: subprocess.CalledProcessError, ctx: SubprocessCtx, detail: str
@@ -164,6 +211,8 @@ def _build_docker_pull(
 
 SUBPROCESS_RULES: tuple[Rule, ...] = (
     Rule("origin_cert", _match_origin_cert, _build_origin_cert),
+    Rule("host_oom", _match_host_oom, _build_host_oom),
+    Rule("disk_full", _match_disk_full, _build_disk_full),
     Rule("registry_pull", _match_registry_pull, _build_registry_pull),
     Rule("docker_daemon", _match_daemon, _build_daemon),
     Rule("port_in_use", _match_port, _build_port),

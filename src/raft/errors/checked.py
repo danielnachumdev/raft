@@ -27,6 +27,7 @@ from .registry_msgs import (
     looks_like_registry_unauthorized,
     registry_unauthorized_message,
 )
+from .resource_msgs import resource_error_from_exc, resource_error_from_text
 
 
 def raise_for_compose_failure(
@@ -34,8 +35,13 @@ def raise_for_compose_failure(
     *,
     action: str,
     hint: str = "",
+    app: Optional[str] = None,
+    image: Optional[str] = None,
 ) -> None:
     detail = subprocess_detail(exc) if isinstance(exc, subprocess.CalledProcessError) else str(exc)
+    resource = resource_error_from_exc(exc, app=app, image=image, action=action)
+    if resource is not None:
+        raise resource from exc
     if looks_like_docker_daemon_down(exc):
         raise OperatorError(docker_daemon_message(detail=detail)) from exc
     if looks_like_port_in_use(exc):
@@ -51,6 +57,9 @@ def raise_for_docker_pull_failure(
     repo: Optional[str] = None,
 ) -> None:
     """Always raise OperatorError for a failed ``docker pull``."""
+    resource = resource_error_from_text(detail, app=app, image=image, action="pull image")
+    if resource is not None:
+        raise resource
     if looks_like_registry_unauthorized(detail):
         raise OperatorError(registry_unauthorized_message(image, detail=detail, app=app, repo=repo))
     blob = detail.lower()
@@ -62,7 +71,6 @@ def raise_for_docker_pull_failure(
     ):
         raise OperatorError(docker_daemon_message(detail=detail))
     raise OperatorError(docker_pull_failure_message(image, detail=detail, app=app))
-
 
 def raise_for_git_failure(
     exc: BaseException,
@@ -148,6 +156,10 @@ def run_docker_checked(
     )
     if looks_like_docker_daemon_down(exc):
         raise OperatorError(docker_daemon_message(detail=detail)) from exc
+    image = str(args[-1]) if args else None
+    resource = resource_error_from_exc(exc, image=image, action=action)
+    if resource is not None:
+        raise resource from exc
     raise OperatorError(docker_failure_message(action, detail=detail, hint=hint)) from exc
 
 

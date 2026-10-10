@@ -15,6 +15,7 @@ from raft.errors.diagnostics import (
     prefer_errorish_lines,
     summarize_health_inspect,
 )
+from raft.errors.resource_msgs import resource_error_from_text
 
 from ...models.stack import Stack
 from ..shell import Shell
@@ -114,15 +115,26 @@ class ComposeDiagnostics:
         """Append recent logs for unhealthy/exited services to a compose CTA."""
         blob = str(exc)
         ordered = self._failure_targets(blob, detail=detail, services=services)
-        if not ordered:
-            return exc
-        diagnostics = self._docker.diagnostics_for(*ordered)
+        diagnostics = self._docker.diagnostics_for(*ordered) if ordered else ""
+        resource = self._resource_from_failure(blob, detail=detail, diagnostics=diagnostics)
+        if resource is not None:
+            return resource
         if not diagnostics:
             return exc
         return OperatorError(
             append_diagnostics(blob, diagnostics),
             has_fix=exc.has_fix,
         )
+
+    @staticmethod
+    def _resource_from_failure(
+        blob: str,
+        *,
+        detail: str,
+        diagnostics: str,
+    ) -> Optional[OperatorError]:
+        combined = "\n".join(part for part in (blob, detail, diagnostics) if part)
+        return resource_error_from_text(combined, action="start or pull")
 
     def _inspect_state(self, container_id: str) -> Optional[dict[str, Any]]:
         result = self.sh.docker(
