@@ -1,5 +1,5 @@
 import { ServiceLogs } from "../logs/ServiceLogs";
-import type { DeployJob } from "./githubApi";
+import type { DeployJob } from "./github/githubApi";
 
 export function DeployProgress(props: { job: DeployJob }) {
   const { job } = props;

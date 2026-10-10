@@ -3,7 +3,7 @@ import {
   mergeTimedRows,
   toEpochMs,
   type TimedValue,
-} from "../chart/chartTimeScale.ts";
+} from "./chartTimeScale.ts";
 import {
   uniqueTypeIds,
   type MetricTypeId,

@@ -4,7 +4,7 @@ import {
   accountCount,
   usableAccounts,
   type GithubSession,
-} from "../../src/deploy/githubApi.ts";
+} from "../../src/deploy/github/githubApi.ts";
 
 function sessionWith(
   accounts: GithubSession["accounts"],

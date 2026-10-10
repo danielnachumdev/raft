@@ -328,11 +328,13 @@ Feature folders under `src/spa/src/` (`main.tsx` + lean `styles.css` for tokens/
 |------|------|-------|
 | Shell / routes | `shell/App.tsx`, `shell/Dashboard.tsx`, `shell/PurgeButton.tsx`, `main.tsx` | client routes; FastAPI serves `index.html` for non-`/api` paths; dashboard Purge confirm → `/api/purge` |
 | Shared | `shared/api.ts`, `shared/dashboardCache.ts`, `shared/ExternalUrlLinks.tsx` | typed `/api` client + status/metrics cache |
-| Status tables | `status/` (`StatusTable`, column menus/filters, tones, `ServiceQuickActions`) | compact-only; Started column; row quick actions |
+| Status tables | `status/` UI + `status/model/` (filters, tree, tones, panel view) | compact-only; Started column; row quick actions |
 | Live chrome | `chrome/LiveIndicator.tsx` (+ `Modal` / `ConfirmPopup` / toasts) | auto-refresh while tab visible; **no** native `alert`/`confirm` |
 | Service detail | `service/` (`ServicePage`, detail, actions) | lifecycle buttons; Runtime charts live under `trends/runtime/` |
-| Logs | `logs/` (`ServiceLogs`, `LogLines`, `logParse`) | follow / expand / severity filter; catalog download |
-| Trends | `trends/panel/`, `trends/chart/`, `trends/runtime/` (+ root `runtimeMetrics`, range controls) | historical series; Resources + HTTP edge metric groups; poll `/api/metrics` or `/api/metrics/http`; catalog download; per-service Runtime (resources) |
+| Logs | `logs/` UI + `logs/model/` (`logFilter`, `logParse`) | follow / expand / severity filter; catalog download |
+| Deploy | `deploy/` pages + `deploy/github/` + `deploy/oauth/` | GitHub add-service assist |
+| Notifications | `notifications/` | channel settings UI (strategy catalog from API) |
+| Trends | `trends/panel/`, `trends/chart/`, `trends/runtime/`, `trends/strategies/` (+ root `metricTypes` / `runtimeMetrics` registries, range controls) | historical series; concretes under `strategies/`; poll `/api/metrics` or `/api/metrics/http`; per-service Runtime (resources) |
 | Export | `export/` (`DownloadMenu`, catalog/urls) | generic download links from `/api/exports` |
 
 Develop: `cd src/spa && npm ci && npm run dev` (Vite `:5173`, proxies `/api` → `raft serve :8787`). Release FE: `npm run build` → updates `share/serve/spa/`. See [`src/spa/README.md`](src/spa/README.md).

@@ -1,4 +1,4 @@
-import type { GithubAccountPublic, GithubRepo } from "./githubApi";
+import type { GithubAccountPublic, GithubRepo } from "./github/githubApi";
 
 export function DeployRepoPicker(props: {
   accounts: GithubAccountPublic[];

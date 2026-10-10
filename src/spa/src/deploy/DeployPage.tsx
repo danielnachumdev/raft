@@ -20,7 +20,7 @@ import {
   type GithubOauthConfig,
   type GithubRepo,
   type GithubSession,
-} from "./githubApi";
+} from "./github/githubApi";
 import "./DeployPage.css";
 import "./AddServicePage.css";
 

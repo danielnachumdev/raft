@@ -12,7 +12,7 @@ import {
   RIGHT_AXIS,
   toPlotSeries,
   typeIdsForMetrics,
-} from "../../src/trends/panel/trendsChartRows.ts";
+} from "../../src/trends/chart/trendsChartRows.ts";
 
 function series(
   id: string,

@@ -4,6 +4,8 @@ import {
   yAxisSuffix,
   type MetricTypeId,
 } from "./metricTypes.ts";
+import { HTTP_METRICS } from "./strategies/httpMetrics.ts";
+import { RESOURCE_METRICS } from "./strategies/resourceMetrics.ts";
 
 /** Graphable Runtime / HTTP fields from metrics series points. */
 export type RuntimeMetricId =
@@ -48,96 +50,7 @@ export const RUNTIME_WINDOWS: { seconds: number; label: string }[] = [
 
 export const DEFAULT_RUNTIME_WINDOW = 3600;
 
-export const RESOURCE_METRICS: RuntimeMetricDef[] = [
-  { id: "cpu_percent", label: "CPU %", typeId: "percent", plane: "resources" },
-  {
-    id: "memory_used_percent",
-    label: "Memory used %",
-    typeId: "percent",
-    plane: "resources",
-  },
-  {
-    id: "memory_used_bytes",
-    label: "Memory used bytes",
-    typeId: "bytes",
-    plane: "resources",
-  },
-  {
-    id: "memory_limit_bytes",
-    label: "Memory limit bytes",
-    typeId: "bytes",
-    plane: "resources",
-  },
-  {
-    id: "uptime_seconds",
-    label: "Uptime seconds",
-    typeId: "uptime",
-    plane: "resources",
-  },
-  { id: "pids", label: "PIDs", typeId: "count", plane: "resources" },
-  {
-    id: "network_rx_bytes",
-    label: "Network RX",
-    typeId: "bytes",
-    plane: "resources",
-  },
-  {
-    id: "network_tx_bytes",
-    label: "Network TX",
-    typeId: "bytes",
-    plane: "resources",
-  },
-  {
-    id: "block_read_bytes",
-    label: "Block read",
-    typeId: "bytes",
-    plane: "resources",
-  },
-  {
-    id: "block_write_bytes",
-    label: "Block write",
-    typeId: "bytes",
-    plane: "resources",
-  },
-];
-
-export const HTTP_METRICS: RuntimeMetricDef[] = [
-  { id: "rps", label: "Requests / sec", typeId: "rate", plane: "http" },
-  {
-    id: "in_flight",
-    label: "In-flight (Writing)",
-    typeId: "count",
-    plane: "http",
-  },
-  {
-    id: "duration_avg_ms",
-    label: "Latency avg (ms)",
-    typeId: "duration",
-    plane: "http",
-  },
-  {
-    id: "duration_p50_ms",
-    label: "Latency p50 (ms)",
-    typeId: "duration",
-    plane: "http",
-  },
-  {
-    id: "duration_p95_ms",
-    label: "Latency p95 (ms)",
-    typeId: "duration",
-    plane: "http",
-  },
-  {
-    id: "duration_p99_ms",
-    label: "Latency p99 (ms)",
-    typeId: "duration",
-    plane: "http",
-  },
-  { id: "status_2xx", label: "2xx count", typeId: "count", plane: "http" },
-  { id: "status_3xx", label: "3xx count", typeId: "count", plane: "http" },
-  { id: "status_4xx", label: "4xx count", typeId: "count", plane: "http" },
-  { id: "status_5xx", label: "5xx count", typeId: "count", plane: "http" },
-];
+export { RESOURCE_METRICS, HTTP_METRICS };
 
 export const RUNTIME_METRICS: RuntimeMetricDef[] = [
   ...RESOURCE_METRICS,

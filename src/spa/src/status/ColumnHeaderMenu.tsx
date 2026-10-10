@@ -8,8 +8,8 @@ import {
   type ColumnFilter,
   type FilterOp,
   type SortKey,
-} from "./statusColumnFilter";
-import type { SortDir } from "./statusPanelView";
+} from "./model/statusColumnFilter";
+import type { SortDir } from "./model/statusPanelView";
 import "./ColumnHeaderMenu.css";
 export function ColumnHeaderMenu(props: {
   label: string;

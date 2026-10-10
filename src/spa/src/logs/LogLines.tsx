@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { trimFilterValues } from "./logFilter";
-import type { ParsedLogLine } from "./logParse";
+import { trimFilterValues } from "./model/logFilter";
+import type { ParsedLogLine } from "./model/logParse";
 import "./LogLines.css";
 
 /** Render parsed log lines with severity tint and optional search highlight. */
