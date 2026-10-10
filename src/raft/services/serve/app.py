@@ -91,6 +91,7 @@ class ServeAppFactory:
         app.post("/api/service/{name}/start")(page.api_service_start)
         app.post("/api/service/{name}/stop")(page.api_service_stop)
         app.post("/api/service/{name}/redeploy")(page.api_service_redeploy)
+        app.post("/api/purge")(page.api_purge)
 
     @staticmethod
     def _register_download_api(app: FastAPI, downloads: ServeDownloads) -> None:

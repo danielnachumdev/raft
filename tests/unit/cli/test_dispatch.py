@@ -96,6 +96,13 @@ class TestCliDispatch(CliTestCase):
         self.orch.start.assert_not_called()
         assert "Could not consume arg: --bogus" in capsys.readouterr().err
 
+    def test_purge_dispatches(self) -> None:
+        purger = MagicMock()
+        with self.patched_deps(Purge=purger) as deps:
+            assert cli.main(["purge"]) == 0
+        deps["Purge"].assert_called_once_with(self.stack)
+        purger.run.assert_called_once()
+
     def test_update_dispatches(self) -> None:
         updater = MagicMock()
         with self.patched_deps(SelfUpdate=updater) as deps:

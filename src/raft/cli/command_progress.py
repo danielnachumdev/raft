@@ -17,6 +17,7 @@ class CommandProgress:
 
     _SPECS = {
         "doctor": ("raft doctor", "checking"),
+        "purge": ("raft purge", "purging"),
         "update": ("raft update", "updating"),
     }
 
