@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from raft.adapters.shell import Shell
-from raft.models.stack import Stack
+from ..adapters.shell import Shell
+from ..models.stack import Stack
 
 __all__ = ["PrereqSmoke"]
 

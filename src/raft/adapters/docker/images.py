@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import logging
 
-from raft.errors.checked import run_docker_checked
-from raft.errors.cta import OperatorError
+from ...errors.checked import run_docker_checked
+from ...errors.cta import OperatorError
 
 from ...models.app import COMPOSE_PROJECT
 from ...models.stack import Stack

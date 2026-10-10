@@ -5,9 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from raft.secrets.app_secrets import ENV_FILE_MODE, AppSecretsLayout
-from raft.errors.cta import OperatorError
-from raft.render.env_file_path import ComposeEnvFilePath
+from ....secrets.app_secrets import ENV_FILE_MODE, AppSecretsLayout
+from ....errors.cta import OperatorError
+from ....render.env_file_path import ComposeEnvFilePath
 
 from ..context import DoctorContext
 from ..models import CheckResult

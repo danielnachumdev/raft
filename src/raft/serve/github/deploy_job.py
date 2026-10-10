@@ -12,14 +12,14 @@ from typing import Optional
 
 import yaml
 
-from raft.errors.cta import OperatorError
-from raft.notify.control_events import ControlPlaneEvents
-from raft.notify.notifier import Notifier
+from ...errors.cta import OperatorError
+from ...notify.control_events import ControlPlaneEvents
+from ...notify.notifier import Notifier
 
-from raft.models.app_document import AppDocument
-from raft.models.stack import Stack, load_stack
-from raft.apply.service import AppApply
-from raft.auth.manager import GitAuthManager
+from ...models.app_document import AppDocument
+from ...models.stack import Stack, load_stack
+from ...apply.service import AppApply
+from ...auth.manager import GitAuthManager
 from .ci_pr import GithubCiPrSetup
 from .deploy_models import DeployJob, DeployJobStore, DeployStep
 from .next_steps import DeployNextSteps

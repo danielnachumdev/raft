@@ -7,7 +7,7 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-from raft.adapters.host import HostGateway, HostMemory
+from ....adapters.host import HostGateway, HostMemory
 
 from ..context import DoctorContext
 from ..models import INFRA, CheckResult

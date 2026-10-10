@@ -5,11 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Optional
 
-from raft.adapters.http import HttpProbe
-from raft.models.app import App
-from raft.models.manifest import AppSpec
-from raft.models.ports import PortSpec
-from raft.models.readiness_spec import (
+from ..adapters.http import HttpProbe
+from ..models.app import App
+from ..models.manifest import AppSpec
+from ..models.ports import PortSpec
+from ..models.readiness_spec import (
     DEFAULT_INTERVAL_SECONDS,
     DEFAULT_PROBE_TIMEOUT_SECONDS,
     DEFAULT_RETRIES,
@@ -17,7 +17,7 @@ from raft.models.readiness_spec import (
     DEFAULT_TIMEOUT_SECONDS,
     format_duration_seconds,
 )
-from raft.models.stack import Stack
+from ..models.stack import Stack
 
 
 @dataclass(frozen=True)

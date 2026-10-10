@@ -6,13 +6,13 @@ import logging
 from pathlib import Path
 from typing import Optional, Sequence, Union
 
-from raft.errors.cta import OperatorError
-from raft.errors.domain import (
+from ..errors.cta import OperatorError
+from ..errors.domain import (
     apply_requires_source,
     redeploy_requires_app,
     unknown_app,
 )
-from raft.apply.manifest_env import ApplyEnvSources
+from ..apply.manifest_env import ApplyEnvSources
 
 from .utils.argv import ApplyEnvOverrides
 from .commands.auth import AuthCLI

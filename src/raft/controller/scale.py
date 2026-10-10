@@ -8,15 +8,15 @@ import time
 from pathlib import Path
 from typing import Callable, Optional
 
-from raft.adapters.docker import DockerStack
-from raft.controller.scale_depends import ScaleDepends
-from raft.controller.scale_wake import ScaleWake
-from raft.models.manifest import AppSpec
-from raft.models.scaling_spec import ScalingSpec
-from raft.models.state.scaling_store import ScalingStore
-from raft.models.stack import Stack
-from raft.notify.control_events import ControlPlaneEvents
-from raft.notify.notifier import Notifier
+from ..adapters.docker import DockerStack
+from .scale_depends import ScaleDepends
+from .scale_wake import ScaleWake
+from ..models.manifest import AppSpec
+from ..models.scaling_spec import ScalingSpec
+from ..models.state.scaling_store import ScalingStore
+from ..models.stack import Stack
+from ..notify.control_events import ControlPlaneEvents
+from ..notify.notifier import Notifier
 
 __all__ = ["Scaler", "WAKE_HTTP_PORT"]
 

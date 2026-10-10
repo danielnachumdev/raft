@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from raft.errors.cta import OperatorError, operator
+from ..errors.cta import OperatorError, operator
 
 DEFAULT_DEPLOYMENT_METHOD = "seamless"
 DEPLOYMENT_METHODS = frozenset({"seamless", "inplace"})

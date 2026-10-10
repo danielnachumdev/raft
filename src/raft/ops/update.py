@@ -7,13 +7,13 @@ import shutil
 from pathlib import Path
 from typing import Optional, TextIO
 
-from raft.errors.cta import OperatorError
+from ..errors.cta import OperatorError
 
-from raft.adapters.shell import Shell
-from raft.models.stack import Stack
-from raft.models.state.graph_event_store import GraphEventStore
-from raft.ui import say
-from raft.ui.progress import TerminalProgress
+from ..adapters.shell import Shell
+from ..models.stack import Stack
+from ..models.state.graph_event_store import GraphEventStore
+from ..ui import say
+from ..ui.progress import TerminalProgress
 
 DEFAULT_INSTALL_URL = "https://raw.githubusercontent.com/danielnachumdev/raft/main/install.sh"
 

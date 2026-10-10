@@ -5,11 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from raft.acme.paths import AcmePaths
+from ..acme.paths import AcmePaths
 
-from raft.config.settings_types import EdgeConfig
-from raft.models.app import App
-from raft.models.manifest import AppSpec
+from ..config.settings_types import EdgeConfig
+from ..models.app import App
+from ..models.manifest import AppSpec
 from .edge.fragments import EdgeFragments
 from .scaling_holding import ScalingHoldingPages
 

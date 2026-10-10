@@ -5,9 +5,9 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, Optional, Tuple
 
-from raft.models.app import display_service_label
-from raft.ops.status.formatters import StatusFormatters
-from raft.ops.status.models import ContainerStatus, StatusSnapshot
+from ..models.app import display_service_label
+from ..ops.status.formatters import StatusFormatters
+from ..ops.status.models import ContainerStatus, StatusSnapshot
 from .depends import ServeDependsMap
 from .external_urls import ExternalUrlBuilder
 

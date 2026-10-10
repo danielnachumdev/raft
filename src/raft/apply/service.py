@@ -11,24 +11,24 @@ from typing import Any, Mapping, Optional
 
 import yaml
 
-from raft.secrets.app_secrets import AppSecretsLayout
-from raft.errors.checked import raise_for_git_failure
-from raft.errors.cta import OperatorError
-from raft.errors.domain import (
+from ..secrets.app_secrets import AppSecretsLayout
+from ..errors.checked import raise_for_git_failure
+from ..errors.cta import OperatorError
+from ..errors.domain import (
     app_not_applied,
     missing_manifest,
 )
 
-from raft.adapters.shell import Shell
-from raft.models.app_document import AppDocument
-from raft.models.depends_cycle import DependsOnCycleGuard
-from raft.models.manifest import CONTRACT_REL_PATH
-from raft.models.registry import AppRegistry
-from raft.models.stack import Stack, load_stack
-from raft.ui import say
-from raft.auth import GitAuthManager
-from raft.locking.locking import app_and_stack_locks, app_deploy_lock
-from raft.deploy.orchestrator import Orchestrator
+from ..adapters.shell import Shell
+from ..models.app_document import AppDocument
+from ..models.depends_cycle import DependsOnCycleGuard
+from ..models.manifest import CONTRACT_REL_PATH
+from ..models.registry import AppRegistry
+from ..models.stack import Stack, load_stack
+from ..ui import say
+from ..auth import GitAuthManager
+from ..locking.locking import app_and_stack_locks, app_deploy_lock
+from ..deploy.orchestrator import Orchestrator
 from .manifest_preprocess import ManifestYamlLoader
 
 logger = logging.getLogger(__name__)

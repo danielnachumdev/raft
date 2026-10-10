@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from raft.models.app import App
+from ...models.app import App
 
 
 @dataclass

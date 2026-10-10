@@ -8,13 +8,13 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-from raft.errors.checked import raise_for_docker_pull_failure, raise_for_git_failure
-from raft.errors.cta import OperatorError
+from ..errors.checked import raise_for_docker_pull_failure, raise_for_git_failure
+from ..errors.cta import OperatorError
 
-from raft.adapters.shell import Shell
-from raft.models.app import App
-from raft.models.stack import Stack
-from raft.auth import GitAuthManager
+from ..adapters.shell import Shell
+from ..models.app import App
+from ..models.stack import Stack
+from ..auth import GitAuthManager
 
 logger = logging.getLogger(__name__)
 

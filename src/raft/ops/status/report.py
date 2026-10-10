@@ -8,8 +8,8 @@ import time
 from io import StringIO
 from typing import Callable, Optional, TextIO
 
-from raft.models.app import display_service_label
-from raft.ui import BOLD, CYAN, DIM, paint, want_color
+from ...models.app import display_service_label
+from ...ui import BOLD, CYAN, DIM, paint, want_color
 from .formatters import StatusFormatters
 from .models import (
     STATUS_CRASH_LOOPING,

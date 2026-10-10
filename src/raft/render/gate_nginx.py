@@ -6,7 +6,7 @@ import hashlib
 from pathlib import Path
 from typing import Optional
 
-from raft.config.paths import GENERATED_DIRNAME
+from ..config.paths import GENERATED_DIRNAME
 
 _GATE_NGINX_SUBDIRS = ("gate-tls", "gate-http", "gate-stream")
 GATE_NGINX_RELOAD_STAMP = Path("state") / "gate-nginx.fingerprint"

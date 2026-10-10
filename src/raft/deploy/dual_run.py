@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Sequence
 
-from raft.models.app import App
-from raft.models.state.scaling_store import ScalingStore
+from ..models.app import App
+from ..models.state.scaling_store import ScalingStore
 
 
 class DualRunCutover:

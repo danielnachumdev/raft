@@ -6,19 +6,19 @@ import logging
 from pathlib import Path
 from typing import Callable, Dict, Optional, Tuple
 
-from raft.adapters.docker import DockerStack
-from raft.adapters.nginx import NginxUpstreams
-from raft.errors.cta import OperatorError
-from raft.models.app import App
-from raft.models.app_document import AppDocument
-from raft.models.depends import AppDependsGraph, DependsOnError, DependsOnSpec
-from raft.models.state.graph_event_kinds import SCALING_ACTION_IDLE_STOP
-from raft.models.state.graph_event_store import GraphEventStore
-from raft.models.manifest import AppSpec
-from raft.models.registry import AppRegistry
-from raft.models.state.scaling_store import ScalingStore
-from raft.models.stack import Stack
-from raft.locking.locking import apps_and_stack_locks
+from ..adapters.docker import DockerStack
+from ..adapters.nginx import NginxUpstreams
+from ..errors.cta import OperatorError
+from ..models.app import App
+from ..models.app_document import AppDocument
+from ..models.depends import AppDependsGraph, DependsOnError, DependsOnSpec
+from ..models.state.graph_event_kinds import SCALING_ACTION_IDLE_STOP
+from ..models.state.graph_event_store import GraphEventStore
+from ..models.manifest import AppSpec
+from ..models.registry import AppRegistry
+from ..models.state.scaling_store import ScalingStore
+from ..models.stack import Stack
+from ..locking.locking import apps_and_stack_locks
 
 __all__ = ["ScaleDepends"]
 

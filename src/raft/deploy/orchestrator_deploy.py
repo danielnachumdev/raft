@@ -5,18 +5,18 @@ from __future__ import annotations
 import logging
 from typing import Optional, Sequence
 
-from raft.errors.cta import OperatorError
-from raft.errors.domain import service_not_running
-from raft.models.deployment_spec import DEFAULT_DEPLOYMENT_METHOD
+from ..errors.cta import OperatorError
+from ..errors.domain import service_not_running
+from ..models.deployment_spec import DEFAULT_DEPLOYMENT_METHOD
 
-from raft.models.state.graph_event_store import GraphEventStore
-from raft.models.state.scaling_store import ScalingStore
-from raft.ui import say
-from raft.acme.ensure import AcmeEnsure
-from raft.acme.install import AcmeGateInstall
-from raft.ops.certs import CertProbe
+from ..models.state.graph_event_store import GraphEventStore
+from ..models.state.scaling_store import ScalingStore
+from ..ui import say
+from ..acme.ensure import AcmeEnsure
+from ..acme.install import AcmeGateInstall
+from ..ops.certs import CertProbe
 from .dual_run import DualRunCutover
-from raft.locking.locking import app_and_stack_locks
+from ..locking.locking import app_and_stack_locks
 from .methods.catalogs import DeploymentMethodCatalogs
 from .methods.method import DeploymentContext, DeploymentMethod
 from .up_scale_plan import StackUpScalePlan

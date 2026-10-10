@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, Tuple
 
-from raft.errors.cta import OperatorError
-from raft.errors.domain import depends_on_cycle
+from ..errors.cta import OperatorError
+from ..errors.domain import depends_on_cycle
 
 from .app_document import AppDocument
 from .depends import AppDependsGraph, DependsOnError, DependsOnSpec

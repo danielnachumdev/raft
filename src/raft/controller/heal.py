@@ -8,16 +8,16 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Dict, Optional
 
-from raft.adapters.docker import DockerStack
-from raft.config.settings_types import HealingConfig
-from raft.controller.heal_deps import HealDepends
-from raft.errors.cta import OperatorError
-from raft.models.state.scaling_store import ScalingStore
-from raft.models.stack import Stack
-from raft.locking.locking import app_and_stack_locks
-from raft.deploy.orchestrator import Orchestrator
-from raft.notify.control_events import ControlPlaneEvents
-from raft.notify.notifier import Notifier
+from ..adapters.docker import DockerStack
+from ..config.settings_types import HealingConfig
+from .heal_deps import HealDepends
+from ..errors.cta import OperatorError
+from ..models.state.scaling_store import ScalingStore
+from ..models.stack import Stack
+from ..locking.locking import app_and_stack_locks
+from ..deploy.orchestrator import Orchestrator
+from ..notify.control_events import ControlPlaneEvents
+from ..notify.notifier import Notifier
 
 __all__ = ["Healer", "needs_heal", "run_heal_forever"]
 

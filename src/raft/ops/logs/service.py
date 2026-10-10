@@ -5,9 +5,9 @@ from __future__ import annotations
 import sys
 from typing import Iterator, Optional, TextIO
 
-from raft.adapters import DockerStack, Shell
-from raft.errors.domain import service_not_running
-from raft.models.stack import Stack
+from ...adapters import DockerStack, Shell
+from ...errors.domain import service_not_running
+from ...models.stack import Stack
 from .targets import LogsTargets
 
 DEFAULT_LOG_TAIL = 100

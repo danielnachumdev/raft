@@ -6,10 +6,10 @@ from typing import Any, Dict, Optional
 
 from fastapi import Body, HTTPException
 
-from raft.errors.cta import OperatorError
-from raft.models.stack import Stack
-from raft.notify.catalogs import NotificationCatalogs
-from raft.notify.registry import NotificationRegistry
+from ...errors.cta import OperatorError
+from ...models.stack import Stack
+from ...notify.catalogs import NotificationCatalogs
+from ...notify.registry import NotificationRegistry
 
 from .settings_write import NotificationsSettingsWriter
 

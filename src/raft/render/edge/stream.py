@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from raft.adapters.nginx import NginxUpstreamText
-from raft.errors.cta import OperatorError
+from ...adapters.nginx import NginxUpstreamText
+from ...errors.cta import OperatorError
 
-from raft.config.settings_types import EdgeConfig
-from raft.models.app import App
-from raft.models.manifest import AppSpec
-from raft.models.ports import PortSpec
+from ...config.settings_types import EdgeConfig
+from ...models.app import App
+from ...models.manifest import AppSpec
+from ...models.ports import PortSpec
 from .fragments import EdgeFragments
 
 

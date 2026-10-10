@@ -8,10 +8,10 @@ from typing import Any, Dict, Mapping, Optional
 
 import yaml
 
-from raft.config.paths import settings_path
-from raft.config.settings import load_config
-from raft.config.settings_types import GithubServeConfig
-from raft.errors.cta import OperatorError
+from ...config.paths import settings_path
+from ...config.settings import load_config
+from ...config.settings_types import GithubServeConfig
+from ...errors.cta import OperatorError
 
 from .oauth_setup import SETUP_DOCS_URL, GithubOauthAppSetup
 

@@ -5,14 +5,14 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Optional
 
-from raft.locking.locking import stack_lock
-from raft.render import StackRenderer
-from raft.render.gate_nginx import GateNginxStamp
+from ..locking.locking import stack_lock
+from ..render import StackRenderer
+from ..render.gate_nginx import GateNginxStamp
 
-from raft.models.stack import Stack
+from ..models.stack import Stack
 
 if TYPE_CHECKING:
-    from raft.adapters.docker import DockerStack
+    from ..adapters.docker import DockerStack
 
 logger = logging.getLogger(__name__)
 

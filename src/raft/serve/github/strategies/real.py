@@ -9,8 +9,8 @@ import urllib.request
 from pathlib import Path
 from typing import List, Optional
 
-from raft.errors.cta import OperatorError
-from raft.models.manifest import CONTRACT_REL_PATH
+from ....errors.cta import OperatorError
+from ....models.manifest import CONTRACT_REL_PATH
 
 from ..provider import GithubRepo, filter_repos
 

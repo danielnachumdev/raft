@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from raft.errors.cta import OperatorError
+from ..errors.cta import OperatorError
 
 from ..models.app import App
 from ..models.ports import PortSpec

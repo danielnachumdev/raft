@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Callable, Optional, TextIO
 
-from raft.adapters import DockerStack, Shell
-from raft.models.stack import Stack
-from raft.ui.progress import TerminalProgress
-from raft.auth import GitAuthManager
+from ...adapters import DockerStack, Shell
+from ...models.stack import Stack
+from ...ui.progress import TerminalProgress
+from ...auth import GitAuthManager
 from .checks import CHECK_SUITES
 from .checks.base import CheckSuite
 from .context import DoctorContext

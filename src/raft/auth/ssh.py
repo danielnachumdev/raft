@@ -6,9 +6,9 @@ import os
 import re
 from pathlib import Path
 
-from raft.errors.cta import OperatorError
+from ..errors.cta import OperatorError
 
-from raft.adapters.shell import Shell
+from ..adapters.shell import Shell
 from .urls import SshGitUrls
 
 _BEGIN = "# BEGIN raft:{name}"

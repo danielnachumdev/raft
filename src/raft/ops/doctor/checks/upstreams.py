@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from raft.errors.cta import OperatorError
+from ....errors.cta import OperatorError
 
 from ..context import DoctorContext
 from ..models import CheckResult

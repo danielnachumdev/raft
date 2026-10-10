@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from raft.models.app import App
-from raft.models.manifest import AppSpec
+from ...models.app import App
+from ...models.manifest import AppSpec
 
 
 class DeployNextSteps:

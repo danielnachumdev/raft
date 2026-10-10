@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Sequence
 
-from raft.errors.cta import OperatorError, operator
+from ...errors.cta import OperatorError, operator
 
 from .method import DeploymentMethod
 

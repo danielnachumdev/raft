@@ -10,8 +10,8 @@ import urllib.request
 from typing import Optional, Tuple
 from urllib.parse import urlencode
 
-from raft.config.settings_types import GithubServeConfig
-from raft.errors.cta import OperatorError
+from ...config.settings_types import GithubServeConfig
+from ...errors.cta import OperatorError
 
 from .account import GithubAccount
 from .accounts import GithubAccountStore

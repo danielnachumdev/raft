@@ -7,12 +7,12 @@ import time
 from dataclasses import dataclass
 from typing import Optional
 
-from raft.adapters.docker import DockerStack
-from raft.adapters.http import HttpProbe
-from raft.adapters.nginx import NginxUpstreams
-from raft.models.app import COMPOSE_PROJECT, App
-from raft.models.stack import Stack
-from raft.render.env_file_path import ComposeEnvFilePath
+from ..adapters.docker import DockerStack
+from ..adapters.http import HttpProbe
+from ..adapters.nginx import NginxUpstreams
+from ..models.app import COMPOSE_PROJECT, App
+from ..models.stack import Stack
+from ..render.env_file_path import ComposeEnvFilePath
 from .readiness import ReadinessStrategy
 from .wait import Step, WaitUntil
 

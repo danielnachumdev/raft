@@ -5,12 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable, Dict, Optional
 
-from raft.adapters import DockerStack, Shell
-from raft.adapters.docker.compose_status import ComposeStatusTable
-from raft.adapters.docker.runtime import ContainerRuntimeGateway, ContainerRuntimeRow
-from raft.models.stack import Stack
-from raft.ui.progress import TerminalProgress
-from raft.auth import GitAuthManager
+from ...adapters import DockerStack, Shell
+from ...adapters.docker.compose_status import ComposeStatusTable
+from ...adapters.docker.runtime import ContainerRuntimeGateway, ContainerRuntimeRow
+from ...models.stack import Stack
+from ...ui.progress import TerminalProgress
+from ...auth import GitAuthManager
 
 
 @dataclass(frozen=True)

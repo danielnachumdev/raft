@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Optional
 
-from raft.errors.cta import OperatorError
+from ....errors.cta import OperatorError
 
-from raft.models.ports import PortSpec
+from ....models.ports import PortSpec
 from ..context import DoctorContext
 from ..models import CheckResult
 

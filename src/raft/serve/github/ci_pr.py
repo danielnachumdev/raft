@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 from urllib.parse import quote
 
-from raft.errors.cta import OperatorError
+from ...errors.cta import OperatorError
 
 from .ci_workflow import BRANCH_NAME, WORKFLOW_REL, RaftApplyWorkflow
 from .provider import GithubRepo

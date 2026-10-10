@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from raft.config.settings_types import (
+from ..config.settings_types import (
     DEFAULT_METRICS_BATCH_SIZE,
     DEFAULT_METRICS_FLUSH_SECONDS,
     DEFAULT_METRICS_INTERVAL_SECONDS,

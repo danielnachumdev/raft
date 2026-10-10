@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import List
 
-from raft.config.settings_types import NotificationChannelConfig, NotificationsConfig
-from raft.errors.cta import OperatorError
+from ..config.settings_types import NotificationChannelConfig, NotificationsConfig
+from ..errors.cta import OperatorError
 
 from .channel import ChannelDescriptor
 from .registry import NotificationRegistry

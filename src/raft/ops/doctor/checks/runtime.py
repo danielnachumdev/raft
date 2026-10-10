@@ -5,8 +5,8 @@ from __future__ import annotations
 import shutil
 from typing import Optional, Tuple
 
-from raft.adapters.docker.crash_loop import CrashLoopDetector
-from raft.models.state.scaling_store import ScalingStore
+from ....adapters.docker.crash_loop import CrashLoopDetector
+from ....models.state.scaling_store import ScalingStore
 
 from ..context import DoctorContext
 from ..models import INFRA, CheckResult

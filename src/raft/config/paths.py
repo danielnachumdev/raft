@@ -9,9 +9,9 @@ from importlib.metadata import requires as distribution_requires
 from pathlib import Path
 from typing import Optional
 
-from raft.secrets.app_secrets import SECRETS_DIRNAME, AppSecretsLayout
-from raft.config.dir_tree_sync import DirTreeSync
-from raft.errors.cta import OperatorError
+from ..secrets.app_secrets import SECRETS_DIRNAME, AppSecretsLayout
+from .dir_tree_sync import DirTreeSync
+from ..errors.cta import OperatorError
 
 DATA_HOME_ENV = "RAFT_DATA_HOME"
 SETTINGS_FILENAME = "settings.yaml"

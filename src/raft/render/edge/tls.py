@@ -5,12 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from raft.errors.cta import OperatorError
-from raft.acme.paths import AcmePaths
+from ...errors.cta import OperatorError
+from ...acme.paths import AcmePaths
 
-from raft.config.settings_types import EdgeConfig
-from raft.models.app import App
-from raft.models.manifest import AppSpec
+from ...config.settings_types import EdgeConfig
+from ...models.app import App
+from ...models.manifest import AppSpec
 from .fragments import EdgeFragments
 
 

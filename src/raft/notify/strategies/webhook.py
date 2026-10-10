@@ -8,7 +8,7 @@ from typing import Any, Mapping, Optional
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from raft.errors.cta import OperatorError
+from ...errors.cta import OperatorError
 
 from ..event import DeliveryResult, NotificationEvent
 from ..strategy import NotificationStrategy

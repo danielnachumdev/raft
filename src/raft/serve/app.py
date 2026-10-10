@@ -7,9 +7,9 @@ from typing import Optional
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from raft.models.stack import Stack
-from raft.ops.logs import Logs
-from raft.ops.status import Status
+from ..models.stack import Stack
+from ..ops.logs import Logs
+from ..ops.status import Status
 from .actions import ServeActions
 from .downloads import ServeDownloads
 from .github import ServeGithubApi

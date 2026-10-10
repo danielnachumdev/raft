@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from raft.adapters.docker.crash_loop import CrashLoopDetector
+from ...adapters.docker.crash_loop import CrashLoopDetector
 from .models import STATUS_CRASH_LOOPING, STATUS_STARTING, STATUS_UNHEALTHY
 
 

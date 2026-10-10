@@ -7,9 +7,9 @@ import logging
 import subprocess
 from typing import Any, Optional
 
-from raft.errors.checked import raise_for_compose_failure
-from raft.errors.cta import OperatorError
-from raft.errors.domain import service_not_running
+from ...errors.checked import raise_for_compose_failure
+from ...errors.cta import OperatorError
+from ...errors.domain import service_not_running
 
 from ...models.stack import Stack
 from ..shell import Shell

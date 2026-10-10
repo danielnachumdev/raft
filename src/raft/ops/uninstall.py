@@ -8,12 +8,12 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-from raft.errors.cta import OperatorError
+from ..errors.cta import OperatorError
 
-from raft.adapters.shell import Shell
-from raft.models.stack import Stack
-from raft.ui import say
-from raft.auth.urls import SshGitUrls
+from ..adapters.shell import Shell
+from ..models.stack import Stack
+from ..ui import say
+from ..auth.urls import SshGitUrls
 
 _RAFT_SSH_BLOCKS = re.compile(
     r"# BEGIN raft:[^\n]*\n.*?# END raft:[^\n]*\n?",

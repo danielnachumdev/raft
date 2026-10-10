@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from raft.ui import say
+from ...ui import say
 
 
 class GetCLI:

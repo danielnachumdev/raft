@@ -10,20 +10,20 @@ from typing import Callable, Optional
 
 import yaml
 
-from raft.config.trace_context import TraceContext
-from raft.errors.classify import (
+from ..config.trace_context import TraceContext
+from ..errors.classify import (
     SubprocessCtx,
     classify_subprocess,
     generic_command_failed,
 )
-from raft.errors.cta import OperatorError
-from raft.errors.domain import (
+from ..errors.cta import OperatorError
+from ..errors.domain import (
     filesystem_error,
     invalid_yaml,
 )
-from raft.models.stack import load_stack
-from raft.ops.certs import CertProbe
-from raft.ui import say_err
+from ..models.stack import load_stack
+from ..ops.certs import CertProbe
+from ..ui import say_err
 
 from .utils.argv import ApplyEnvArgvBridge
 from .utils.command_progress import CommandProgress

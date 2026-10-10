@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from raft.config.settings_types import EdgeConfig
-from raft.models.app import App
-from raft.models.manifest import AppSpec
-from raft.acme.paths import AcmePaths
-from raft.render.edge.fragments import EdgeFragments
+from ..config.settings_types import EdgeConfig
+from ..models.app import App
+from ..models.manifest import AppSpec
+from .paths import AcmePaths
+from ..render.edge.fragments import EdgeFragments
 
 
 class AcmeHttpRedirect:

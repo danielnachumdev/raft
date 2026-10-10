@@ -8,10 +8,10 @@ from urllib.parse import quote
 from fastapi import Body, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
-from raft.config.settings import load_config
-from raft.errors.cta import OperatorError
+from ...config.settings import load_config
+from ...errors.cta import OperatorError
 
-from raft.models.stack import Stack
+from ...models.stack import Stack
 from .accounts import GithubAccountStore
 from .active import GithubActiveResolver
 from .deploy_job import DeployJobStore, GithubDeployRunner

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from raft.models.state.scaling_store import ScalingStore
+from ....models.state.scaling_store import ScalingStore
 
-from raft.adapters.http import HttpProbe
+from ....adapters.http import HttpProbe
 from ..context import DoctorContext
 from ..models import CheckResult
 

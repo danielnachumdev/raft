@@ -4,15 +4,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from raft.adapters.nginx import NginxUpstreamText
-from raft.config.settings_types import EdgeConfig
-from raft.errors.cta import OperatorError
-from raft.models.app import App
-from raft.models.manifest import AppSpec
-from raft.models.ports import PortSpec
-from raft.models.state.scaling_store import ScalingStore
-from raft.acme.http_redirect import AcmeHttpRedirect
-from raft.acme.paths import AcmePaths
+from ..adapters.nginx import NginxUpstreamText
+from ..config.settings_types import EdgeConfig
+from ..errors.cta import OperatorError
+from ..models.app import App
+from ..models.manifest import AppSpec
+from ..models.ports import PortSpec
+from ..models.state.scaling_store import ScalingStore
+from ..acme.http_redirect import AcmeHttpRedirect
+from ..acme.paths import AcmePaths
 
 from .edge import EDGE_HANDLERS, EdgeFragments, TlsEdge
 from .scaling_gate import ScalingGate

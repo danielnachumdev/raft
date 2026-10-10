@@ -7,7 +7,7 @@ import smtplib
 from email.message import EmailMessage
 from typing import Any, Callable, Mapping, Optional
 
-from raft.errors.cta import OperatorError
+from ...errors.cta import OperatorError
 
 from ..event import DeliveryResult, NotificationEvent
 from ..strategy import NotificationStrategy

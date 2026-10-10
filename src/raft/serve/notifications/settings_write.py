@@ -8,15 +8,15 @@ from typing import Any, Dict, List, Mapping, Optional
 
 import yaml
 
-from raft.config.paths import settings_path
-from raft.config.settings import load_config
-from raft.config.settings_notifications import NotificationsSettingsParser
-from raft.config.settings_types import NotificationChannelConfig, NotificationsConfig
-from raft.errors.cta import OperatorError
-from raft.locking.locking import notifications_lock
-from raft.notify.catalogs import NotificationCatalogs
-from raft.notify.redact import SettingsRedactor
-from raft.notify.registry import NotificationRegistry
+from ...config.paths import settings_path
+from ...config.settings import load_config
+from ...config.settings_notifications import NotificationsSettingsParser
+from ...config.settings_types import NotificationChannelConfig, NotificationsConfig
+from ...errors.cta import OperatorError
+from ...locking.locking import notifications_lock
+from ...notify.catalogs import NotificationCatalogs
+from ...notify.redact import SettingsRedactor
+from ...notify.registry import NotificationRegistry
 
 
 class NotificationsSettingsWriter:

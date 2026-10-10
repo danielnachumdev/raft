@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from raft.models.app import App
-from raft.models.manifest import AppSpec
-from raft.models.stack import Stack
-from raft.deploy.readiness import ReadinessStrategy
+from ..models.app import App
+from ..models.manifest import AppSpec
+from ..models.stack import Stack
+from ..deploy.readiness import ReadinessStrategy
 from .edge import EdgeFragments
 from .env_file_path import ComposeEnvFilePath
 

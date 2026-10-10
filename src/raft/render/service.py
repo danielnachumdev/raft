@@ -6,16 +6,16 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from raft.errors.cta import OperatorError
+from ..errors.cta import OperatorError
 
-from raft.config.paths import GENERATED_DIRNAME
-from raft.config.settings import load_config
-from raft.config.settings_types import EdgeConfig
-from raft.models.app import App
-from raft.models.app_document import AppDocument
-from raft.models.manifest import AppSpec
-from raft.models.registry import AppRegistry
-from raft.models.stack import Stack
+from ..config.paths import GENERATED_DIRNAME
+from ..config.settings import load_config
+from ..config.settings_types import EdgeConfig
+from ..models.app import App
+from ..models.app_document import AppDocument
+from ..models.manifest import AppSpec
+from ..models.registry import AppRegistry
+from ..models.stack import Stack
 from .compose_apps import ComposeAppsYaml
 from .edge import EdgeFragments
 from .fragment_collector import FragmentCollector

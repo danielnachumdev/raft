@@ -5,13 +5,13 @@ from __future__ import annotations
 import logging
 from typing import Callable, Optional
 
-from raft.adapters.docker import DockerStack
-from raft.adapters.shell import Shell
-from raft.config.paths import raft_home
-from raft.config.settings import load_config
-from raft.config.settings_types import HealingConfig, MetricsConfig, RaftConfig
-from raft.errors.cta import OperatorError
-from raft.models.stack import Stack
+from ..adapters.docker import DockerStack
+from ..adapters.shell import Shell
+from ..config.paths import raft_home
+from ..config.settings import load_config
+from ..config.settings_types import HealingConfig, MetricsConfig, RaftConfig
+from ..errors.cta import OperatorError
+from ..models.stack import Stack
 
 from .acme_jobs import AcmeJobSync
 from .heal import Healer

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import List, Optional, Tuple
 
-from raft.errors.cta import OperatorError
+from ..errors.cta import OperatorError
 
 from .metrics_jsonl import MetricsJsonlReader
 

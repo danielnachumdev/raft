@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from raft.errors.cta import OperatorError
-from raft.models.app import App
-from raft.models.stack import Stack
+from ...errors.cta import OperatorError
+from ...models.app import App
+from ...models.stack import Stack
 from .models import (
     CONTROLLER_CPUS_LIMIT,
     CONTROLLER_CPUS_RESERVATION,

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import re
 
-from raft.adapters.host.docker_stats import DockerStatsText
-from raft.adapters.shell import Shell
-from raft.errors.checked import run_docker_checked
+from ..host.docker_stats import DockerStatsText
+from ..shell import Shell
+from ...errors.checked import run_docker_checked
 
 
 class DockerPruneReclaim:

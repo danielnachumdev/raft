@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional
 
-from raft.config.log_rotation import LogRotationBootstrap
+from ..config.log_rotation import LogRotationBootstrap
 
 WallClock = Callable[[], datetime]
 

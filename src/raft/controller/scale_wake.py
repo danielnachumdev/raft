@@ -6,16 +6,16 @@ import logging
 from pathlib import Path
 from typing import Callable, Optional, Tuple
 
-from raft.adapters.docker import DockerStack
-from raft.controller.scale_depends import ScaleDepends
-from raft.errors.cta import OperatorError
-from raft.models.manifest import AppSpec
-from raft.models.scaling_spec import ScalingSpec
-from raft.models.state.graph_event_kinds import SCALING_ACTION_WAKE
-from raft.models.state.graph_event_store import GraphEventStore
-from raft.models.state.scaling_store import ScalingStore
-from raft.models.stack import Stack
-from raft.locking.locking import apps_and_stack_locks
+from ..adapters.docker import DockerStack
+from .scale_depends import ScaleDepends
+from ..errors.cta import OperatorError
+from ..models.manifest import AppSpec
+from ..models.scaling_spec import ScalingSpec
+from ..models.state.graph_event_kinds import SCALING_ACTION_WAKE
+from ..models.state.graph_event_store import GraphEventStore
+from ..models.state.scaling_store import ScalingStore
+from ..models.stack import Stack
+from ..locking.locking import apps_and_stack_locks
 
 __all__ = ["ScaleWake"]
 

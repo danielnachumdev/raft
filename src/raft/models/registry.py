@@ -9,7 +9,7 @@ from typing import Any, Optional
 
 import yaml
 
-from raft.errors.cta import OperatorError
+from ..errors.cta import OperatorError
 
 from .app import App
 from .app_document import AppDocument

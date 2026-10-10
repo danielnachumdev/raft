@@ -7,9 +7,9 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-from raft.errors.cta import OperatorError
-from raft.models.app import App
-from raft.models.manifest import AppSpec
+from ..errors.cta import OperatorError
+from ..models.app import App
+from ..models.manifest import AppSpec
 
 logger = logging.getLogger(__name__)
 

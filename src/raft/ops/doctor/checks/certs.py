@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Optional
 
-from raft.errors.cta import OperatorError
-from raft.ops.acme_health import AcmeCertHealth
+from ....errors.cta import OperatorError
+from ...acme_health import AcmeCertHealth
 
-from raft.ops.certs import CertProbe
+from ...certs import CertProbe
 from ..context import DoctorContext
 from ..models import CheckResult
 

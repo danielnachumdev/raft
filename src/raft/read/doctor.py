@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, Mapping
 
-from raft.ops.doctor.models import CheckResult
+from ..ops.doctor.models import CheckResult
 
 
 class DoctorRead:

@@ -5,14 +5,14 @@ from __future__ import annotations
 import logging
 from typing import AbstractSet, Dict, Optional, Tuple
 
-from raft.errors.cta import OperatorError
-from raft.models.app import App
-from raft.models.app_document import AppDocument
-from raft.models.depends import AppDependsGraph, DependsOnError, DependsOnSpec
-from raft.models.manifest import AppSpec
-from raft.models.registry import AppRegistry
-from raft.models.state.scaling_store import ScalingStore
-from raft.models.stack import Stack
+from ..errors.cta import OperatorError
+from ..models.app import App
+from ..models.app_document import AppDocument
+from ..models.depends import AppDependsGraph, DependsOnError, DependsOnSpec
+from ..models.manifest import AppSpec
+from ..models.registry import AppRegistry
+from ..models.state.scaling_store import ScalingStore
+from ..models.stack import Stack
 
 logger = logging.getLogger(__name__)
 

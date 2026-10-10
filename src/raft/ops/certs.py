@@ -6,11 +6,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator
 
-from raft.acme.paths import AcmePaths
-from raft.errors.certs_msgs import format_missing_origin_certs
-from raft.errors.cta import OperatorError
-from raft.models.app import App
-from raft.models.stack import Stack
+from ..acme.paths import AcmePaths
+from ..errors.certs_msgs import format_missing_origin_certs
+from ..errors.cta import OperatorError
+from ..models.app import App
+from ..models.stack import Stack
 
 
 @dataclass(frozen=True)

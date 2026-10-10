@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import List, Optional, Sequence
 
-from raft.config.settings import load_config
+from ..config.settings import load_config
 
 from .catalogs import NotificationCatalogs
 from .channel import ChannelDescriptor

@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Optional, Tuple
 
-from raft.config.settings_types import EdgeConfig
-from raft.models.app import App
-from raft.models.stack import Stack
-from raft.models.manifest import AppSpec
+from ..config.settings_types import EdgeConfig
+from ..models.app import App
+from ..models.stack import Stack
+from ..models.manifest import AppSpec
 
 
 class ExternalUrlBuilder:

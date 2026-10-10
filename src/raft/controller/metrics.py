@@ -9,14 +9,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from raft.config.settings_types import (
+from ..config.settings_types import (
     DEFAULT_METRICS_BATCH_SIZE,
     DEFAULT_METRICS_FLUSH_SECONDS,
     DEFAULT_METRICS_RETENTION_MAX_AGE_DAYS,
     DEFAULT_METRICS_RETENTION_MAX_BYTES,
 )
-from raft.models.stack import Stack
-from raft.ops.status import Status
+from ..models.stack import Stack
+from ..ops.status import Status
 
 from .metrics_rotation import MetricsRotation
 

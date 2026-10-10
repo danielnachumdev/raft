@@ -8,8 +8,8 @@ import urllib.request
 from pathlib import Path
 from typing import Callable, Dict, List, Mapping, Optional, Tuple
 
-from raft.models.app import App
-from raft.models.stack import Stack
+from ..models.app import App
+from ..models.stack import Stack
 
 from .http_metrics_agg import HttpMetricsAggregator
 from .metrics import METRICS_DIR

@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import Any, Optional
 
-from raft.errors.cta import OperatorError
+from ..errors.cta import OperatorError
 
 from .settings_types import DEFAULT_GITHUB_SESSION_TTL_SECONDS, GithubServeConfig
 

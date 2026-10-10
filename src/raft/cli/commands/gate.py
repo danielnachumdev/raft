@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from raft.models.stack import Stack
+from ...models.stack import Stack
 from ..utils.deps import Orchestrator
 
 

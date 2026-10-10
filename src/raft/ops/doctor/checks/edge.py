@@ -5,7 +5,7 @@ from __future__ import annotations
 import shutil
 import socket
 
-from raft.config.settings import load_config
+from ....config.settings import load_config
 from ..context import DoctorContext
 from ..models import INFRA, CheckResult
 

@@ -6,14 +6,14 @@ import logging
 import subprocess
 from typing import Optional
 
-from raft.errors.checked import raise_for_git_failure
-from raft.errors.cta import OperatorError
+from ..errors.checked import raise_for_git_failure
+from ..errors.cta import OperatorError
 
-from raft.adapters.host import HostGateway
-from raft.adapters.shell import Shell
-from raft.models.app import App
-from raft.models.stack import Stack
-from raft.ui import say
+from ..adapters.host import HostGateway
+from ..adapters.shell import Shell
+from ..models.app import App
+from ..models.stack import Stack
+from ..ui import say
 from .ssh import SshDeployKeys
 from .urls import SshGitUrls
 

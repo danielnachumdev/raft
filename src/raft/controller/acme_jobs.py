@@ -6,11 +6,11 @@ import logging
 from pathlib import Path
 from typing import Set
 
-from raft.adapters.docker import DockerStack
-from raft.config.settings import load_config
-from raft.models.stack import Stack
-from raft.acme.ensure import AcmeEnsure
-from raft.acme.install import AcmeGateInstall
+from ..adapters.docker import DockerStack
+from ..config.settings import load_config
+from ..models.stack import Stack
+from ..acme.ensure import AcmeEnsure
+from ..acme.install import AcmeGateInstall
 
 from .job import JobIds, JobSpec, JobType, QueuePolicy
 from .orchestrator import JobOrchestrator

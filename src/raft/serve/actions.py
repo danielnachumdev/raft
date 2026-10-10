@@ -4,18 +4,18 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from raft.errors.cta import OperatorError
+from ..errors.cta import OperatorError
 
-from raft.adapters.docker import DockerStack
-from raft.adapters.shell import Shell
-from raft.models.app import App
-from raft.models.stack import Stack
-from raft.models.state.graph_event_store import GraphEventStore
-from raft.models.state.scaling_store import ScalingStore
-from raft.locking.locking import app_and_stack_locks, stack_lock
-from raft.deploy.orchestrator import Orchestrator
-from raft.ops.logs.targets import LogsTargets
-from raft.ops.purge import Purge
+from ..adapters.docker import DockerStack
+from ..adapters.shell import Shell
+from ..models.app import App
+from ..models.stack import Stack
+from ..models.state.graph_event_store import GraphEventStore
+from ..models.state.scaling_store import ScalingStore
+from ..locking.locking import app_and_stack_locks, stack_lock
+from ..deploy.orchestrator import Orchestrator
+from ..ops.logs.targets import LogsTargets
+from ..ops.purge import Purge
 
 
 class ServeActions:

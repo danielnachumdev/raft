@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import List
 
-from raft.models.app import COMPOSE_PROJECT
+from ...models.app import COMPOSE_PROJECT
 
 from ..shell import Shell
 

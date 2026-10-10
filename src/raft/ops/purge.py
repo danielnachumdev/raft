@@ -5,12 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
-from raft.adapters.docker.prune import DockerPrune
-from raft.adapters.shell import Shell
-from raft.models.stack import Stack
-from raft.locking.locking import stack_lock
-from raft.ops.status.formatters import StatusFormatters
-from raft.ui import say
+from ..adapters.docker.prune import DockerPrune
+from ..adapters.shell import Shell
+from ..models.stack import Stack
+from ..locking.locking import stack_lock
+from .status.formatters import StatusFormatters
+from ..ui import say
 
 
 @dataclass(frozen=True)

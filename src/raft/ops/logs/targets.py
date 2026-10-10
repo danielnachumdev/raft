@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from raft.errors.domain import unknown_logs_target
-from raft.models.app import (
+from ...errors.domain import unknown_logs_target
+from ...models.app import (
     CONTROLLER_COMPOSE_ID,
     GATE_COMPOSE_ID,
     ROUTER_COMPOSE_ID,
 )
-from raft.models.stack import Stack
+from ...models.stack import Stack
 
 _EDGE_ALIASES = {
     "gate": GATE_COMPOSE_ID,

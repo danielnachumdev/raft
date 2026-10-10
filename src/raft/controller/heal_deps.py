@@ -6,14 +6,14 @@ import logging
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
-from raft.adapters.docker import DockerStack
-from raft.errors.cta import OperatorError
-from raft.models.app_document import AppDocument
-from raft.models.depends import AppDependsGraph, DependsOnError
-from raft.models.registry import AppRegistry
-from raft.models.state.scaling_store import ScalingStore
-from raft.models.stack import Stack
-from raft.locking.locking import app_and_stack_locks
+from ..adapters.docker import DockerStack
+from ..errors.cta import OperatorError
+from ..models.app_document import AppDocument
+from ..models.depends import AppDependsGraph, DependsOnError
+from ..models.registry import AppRegistry
+from ..models.state.scaling_store import ScalingStore
+from ..models.stack import Stack
+from ..locking.locking import app_and_stack_locks
 
 __all__ = ["HealDepends"]
 

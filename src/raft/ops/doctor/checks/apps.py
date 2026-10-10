@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import Optional
 
-from raft.errors.cta import OperatorError
-from raft.errors.registry_msgs import missing_image_doctor_fix
+from ....errors.cta import OperatorError
+from ....errors.registry_msgs import missing_image_doctor_fix
 
-from raft.models.registry import AppRegistry
-from raft.auth.urls import SshGitUrls
+from ....models.registry import AppRegistry
+from ....auth.urls import SshGitUrls
 from ..context import DoctorContext
 from ..models import CheckResult
 

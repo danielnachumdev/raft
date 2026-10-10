@@ -7,7 +7,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, BinaryIO, Dict, Iterator, List, Optional, Tuple
 
-from raft.config.log_rotation import LogArchiveNames
+from ..config.log_rotation import LogArchiveNames
 
 
 class MetricsJsonlReader:

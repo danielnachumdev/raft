@@ -6,10 +6,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
-from raft.config.settings import SettingsLoader
-from raft.config.settings_types import MetricsConfig
-from raft.controller.http_metrics import HTTP_METRICS_FILENAME
-from raft.controller.metrics import METRICS_DIR
+from ..config.settings import SettingsLoader
+from ..config.settings_types import MetricsConfig
+from ..controller.http_metrics import HTTP_METRICS_FILENAME
+from ..controller.metrics import METRICS_DIR
 
 from .http_metrics_series import HttpMetricsSeriesBuilder
 from .metrics import DEFAULT_MAX_POINTS
