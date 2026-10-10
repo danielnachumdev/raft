@@ -13,7 +13,7 @@ from ..config.settings import load_config
 from ..config.settings_types import RaftConfig
 from ..errors.cta import OperatorError
 from ..models.stack import Stack
-from ..utils import setup_controller_logging
+from ..utils import ControllerLogging
 from .jobs import (
     AcmeJobSync,
     ControllerJob,
@@ -38,7 +38,7 @@ class RaftController:
     def run(self) -> None:
         home = self._require_data_home()
         config = load_config(home)
-        setup_controller_logging(config)
+        ControllerLogging().configure(config)
         logger.info("raft-controller starting data_home=%s", home)
         sh = Shell(home)
         PrereqSmoke(home, sh).run()

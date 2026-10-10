@@ -1,10 +1,17 @@
-from __future__ import annotations
-
 """Controller job implementations (heal, metrics, acme, scale)."""
 
-from typing import Any
-
-from ...utils.package_exports import PackageExports
+from .acme import ACME_INTERVAL_SECONDS, ACME_TIMEOUT_SECONDS, AcmeJobSync
+from .controller_job import ControllerJob
+from .heal import HealJob, Healer, needs_heal, run_heal_forever
+from .metrics import (
+    HTTP_METRICS_FILENAME,
+    METRICS_DIR,
+    METRICS_FILENAME,
+    HttpMetricsRecorder,
+    MetricsJob,
+    MetricsRecorder,
+)
+from .scale import ScaleJob, Scaler, WAKE_HTTP_PORT
 
 __all__ = [
     "ACME_INTERVAL_SECONDS",
@@ -25,36 +32,3 @@ __all__ = [
     "needs_heal",
     "run_heal_forever",
 ]
-
-_EXPORTS = PackageExports(
-    __name__,
-    {
-        "ACME_INTERVAL_SECONDS": ".acme:ACME_INTERVAL_SECONDS",
-        "ACME_TIMEOUT_SECONDS": ".acme:ACME_TIMEOUT_SECONDS",
-        "AcmeJobSync": ".acme:AcmeJobSync",
-        "ControllerJob": ".controller_job:ControllerJob",
-        "HTTP_METRICS_FILENAME": ".metrics:HTTP_METRICS_FILENAME",
-        "HealJob": ".heal:HealJob",
-        "Healer": ".heal:Healer",
-        "HttpMetricsRecorder": ".metrics:HttpMetricsRecorder",
-        "METRICS_DIR": ".metrics:METRICS_DIR",
-        "METRICS_FILENAME": ".metrics:METRICS_FILENAME",
-        "MetricsJob": ".metrics:MetricsJob",
-        "MetricsRecorder": ".metrics:MetricsRecorder",
-        "ScaleJob": ".scale:ScaleJob",
-        "Scaler": ".scale:Scaler",
-        "WAKE_HTTP_PORT": ".scale:WAKE_HTTP_PORT",
-        "needs_heal": ".heal:needs_heal",
-        "run_heal_forever": ".heal:run_heal_forever",
-    },
-)
-
-
-def __getattr__(name: str) -> Any:
-    value = _EXPORTS.get(name)
-    globals()[name] = value
-    return value
-
-
-def __dir__() -> list[str]:
-    return sorted(set(globals()) | set(__all__))

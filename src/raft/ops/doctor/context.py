@@ -5,9 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable, Dict, Optional
 
-from ...adapters import DockerStack, Shell
 from ...adapters.docker.compose_status import ComposeStatusTable
 from ...adapters.docker.runtime import ContainerRuntimeGateway, ContainerRuntimeRow
+from ...adapters.docker.stack import DockerStack
+from ...adapters.shell import Shell
 from ...models.stack import Stack
 from ...ui.progress import TerminalProgress
 from ...auth import GitAuthManager

@@ -22,8 +22,8 @@ from ..models.state.scaling_store import ScalingStore
 from ..models.stack import Stack
 from ..ui import say
 from ..ops.certs import CertProbe
-from ..render import StackRenderer
 from ..render.gate_nginx import GateNginxStamp
+from ..render.service import StackRenderer
 from ..sync import SourceSync
 from ..locking.locking import stack_lock
 from .orchestrator_deploy import OrchestratorDeploy

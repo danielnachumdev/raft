@@ -55,4 +55,4 @@ class TestAcmeHttpRedirect(RaftTestCase):
         empty = AcmeHttpRedirect().contribute(
             app, spec, edge=EdgeConfig(http=None, https=443), data_home=self.tmp_path
         )
-        assert empty.gate_http == []
+        assert empty == []

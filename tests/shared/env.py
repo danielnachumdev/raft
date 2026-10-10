@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from raft.utils import reset_logging_for_tests
+from tests.shared.logging_reset import LoggingReset
 
 
 @dataclass(frozen=True)
@@ -29,8 +29,8 @@ class IsolatedRaftEnv:
         monkeypatch.setenv("RAFT_DATA_HOME", str(home))
         monkeypatch.setenv("RAFT_SSH_DIR", str(ssh_dir))
         monkeypatch.setenv("RAFT_LOG_DIR", str(log_dir))
-        reset_logging_for_tests()
+        LoggingReset().for_tests()
         return cls(home=home, ssh_dir=ssh_dir, log_dir=log_dir)
 
     def reset_logging(self) -> None:
-        reset_logging_for_tests()
+        LoggingReset().for_tests()

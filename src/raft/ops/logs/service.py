@@ -5,7 +5,8 @@ from __future__ import annotations
 import sys
 from typing import Iterator, Optional, TextIO
 
-from ...adapters import DockerStack, Shell
+from ...adapters.docker.stack import DockerStack
+from ...adapters.shell import Shell
 from ...errors.domain import service_not_running
 from ...models.stack import Stack
 from .targets import LogsTargets

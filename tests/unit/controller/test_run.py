@@ -16,7 +16,7 @@ from raft.controller.jobs import ControllerJob
 from raft.controller.jobs.heal import HealJob
 from raft.controller.jobs.metrics import MetricsJob
 from raft.controller.jobs.scale import ScaleJob
-from raft.utils import setup_controller_logging
+from raft.utils import ControllerLogging
 from raft.controller.run import ControllerLoop, RaftController, main as main_impl
 from raft.controller.smoke import PrereqSmoke as smoke_impl
 from raft.errors.cta import OperatorError
@@ -30,7 +30,7 @@ class TestControllerPrereq(ControllerTestCase):
         assert PrereqSmoke is smoke_impl
 
     def test_setup_controller_logging_stdout_only(self) -> None:
-        setup_controller_logging(default_config())
+        ControllerLogging().configure(default_config())
         root = logging.getLogger("raft")
         assert len(root.handlers) == 1
         assert isinstance(root.handlers[0], logging.StreamHandler)

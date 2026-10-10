@@ -26,9 +26,9 @@ from .utils.deps import (
     Serve,
     Status,
     Uninstall,
+    HostLogging,
     load_config,
     load_stack,
-    setup_logging,
 )
 from .commands.gate import GateCLI
 from .commands.get import GetCLI
@@ -42,7 +42,7 @@ class RaftCLICommands:
     def __init__(self) -> None:
         self._stack = load_stack()
         config = load_config(self._stack.root)
-        log_file = setup_logging(self._stack.root, config)
+        log_file = HostLogging().configure(self._stack.root, config)
         logger.debug("config loaded; log_file=%s", log_file)
         self.auth = AuthCLI(self._stack)
         self.gate = GateCLI(self._stack)

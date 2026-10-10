@@ -16,7 +16,7 @@ from ..base import RaftTestCase, make_app, make_stack, write_demo_inventory
 _DEP_TARGETS = {
     "load_stack": ("raft.cli.cli_commands",),
     "load_config": ("raft.cli.cli_commands",),
-    "setup_logging": ("raft.cli.cli_commands",),
+    "HostLogging": ("raft.cli.cli_commands",),
     "AppApply": ("raft.cli.cli_commands",),
     "Orchestrator": ("raft.cli.cli_commands", "raft.cli.commands.gate"),
     "Doctor": ("raft.cli.cli_commands",),

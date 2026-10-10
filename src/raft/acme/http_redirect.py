@@ -1,14 +1,14 @@
-"""HTTP→HTTPS redirect fragments for ``tls: acme`` when live PEMs exist."""
+"""HTTP→HTTPS redirect nginx snippets for ``tls: acme`` when live PEMs exist."""
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import List
 
 from ..config.settings_types import EdgeConfig
 from ..models.app import App
 from ..models.manifest import AppSpec
 from .paths import AcmePaths
-from ..render.edge.fragments import EdgeFragments
 
 
 class AcmeHttpRedirect:
@@ -21,14 +21,14 @@ class AcmeHttpRedirect:
         *,
         edge: EdgeConfig,
         data_home: Path,
-    ) -> EdgeFragments:
+    ) -> List[str]:
         if spec.tls != "acme" or not app.public_host:
-            return EdgeFragments()
+            return []
         if edge.http is None:
-            return EdgeFragments()
+            return []
         if not AcmePaths(data_home).live_material_present(app.name):
-            return EdgeFragments()
-        return EdgeFragments(gate_http=[self._server_block(app, spec, listen=edge.http)])
+            return []
+        return [self._server_block(app, spec, listen=edge.http)]
 
     @staticmethod
     def _server_block(app: App, spec: AppSpec, *, listen: int) -> str:

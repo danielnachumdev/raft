@@ -85,7 +85,7 @@ Background / worker Apps that only run a long-lived process may **omit `spec.por
 | `~/.raft/state/acme/` | ACME account + HTTP-01 webroot + per-app state JSON (when using `tls: acme`) |
 | `~/.raft/certs/` | Origin PEMs (`origin.*` for `tls: origin`) and ACME live material (`acme.*` for `tls: acme`) |
 | `~/.raft/secrets/<app>/` | Recommended per-App secret dir (`0700`); operator-written `env` file (`0600`) for `spec.envFile` — see [`docs/secrets.md`](docs/secrets.md) |
-| `~/.raft/logs/` | Structured log file (default); daily + size-split rotation via `logging.retentionMaxAgeDays` / `retentionMaxBytes` (at CLI `setup_logging`) |
+| `~/.raft/logs/` | Structured log file (default); daily + size-split rotation via `logging.retentionMaxAgeDays` / `retentionMaxBytes` (at CLI `HostLogging`) |
 
 Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
 
@@ -391,7 +391,7 @@ Entry: `raft` console script → `raft.__main__:main` (`RaftCLI().run()`). Prefe
 |------|-------|
 | `src/raft/cli/` | `RaftCLI` (`cli.py` entry); `RaftCLICommands` (`cli_commands.py`); `commands/` auth/gate/get; `utils/` argv/deps/Fire helpers |
 | `src/raft/config/` | `~/.raft` paths, `settings.yaml` (logging + edge + healing + metrics + notifications / acme / github) |
-| `src/raft/utils/` | Shared cross-cutting helpers: `TraceContext`, host `setup_logging` / controller `setup_controller_logging`, log rotation (`LogRotationBootstrap`, …). Services opt in via `raft.utils` |
+| `src/raft/utils/` | Shared cross-cutting helpers: `TraceContext`; `utils/logging/` (`HostLogging`, `ControllerLogging`, rotation helpers). Services opt in via `raft.utils` / `raft.utils.logging` |
 | `src/raft/models/` | Types + parse/registry: `App`, `AppSpec`, `AppDocument` / fields, `AppRegistry`, `AppDependsGraph`, `PortSpec`, `Stack`, `ScalingSpec`, `DeploymentSpec`. Package `__init__` lists public exports. |
 | `src/raft/models/state/` | Runtime JSON stores (`ScalingStore`, `GraphEventStore` + kinds/records) under `~/.raft/state/` |
 | `src/raft/adapters/` | `shell`; `docker/` (`DockerStack`, `ContainerRuntimeGateway`, edge/images/inspect/prune); nginx upstreams; HTTP probe; host |
@@ -445,7 +445,7 @@ Enforceable defaults when adding or reshaping code under `src/raft/`:
 - **Method size:** methods/functions **max ~20 lines**. Longer bodies **must delegate** to private helpers (`_…`) with **declarative names**.
 - **Class-first:** prefer **almost no module-level functions**. Behavior lives on classes with a small, declarative public surface; helpers are **private** methods or composed collaborators.
 - **SRP:** one class, one reason to change. Prefer inherit or **compose** over god-objects; extract when a module mixes parse/I/O/orchestration/diagnostics.
-- **Package exports:** each package `__init__.py` defines the public surface via `__all__`. Callers import public names from the package (`from raft.controller.jobs import HealJob`). Prefer eager re-exports for leaf packages; use lazy `__getattr__` via `raft.utils.package_exports.PackageExports` when eager imports would create cycles (e.g. `acme`, `deploy`, `ops`, `controller.jobs`). Do **not** add thin function stubs that only forward to a class method (inline the class call instead). Internal helpers stay unexported (import from owning modules only inside the package / tests).
+- **Package exports:** each package `__init__.py` defines the public surface via normal eager imports and `__all__`. Callers import public names from the package (`from raft.controller.jobs import HealJob`). Do **not** add lazy `__getattr__` export helpers or thin function stubs that only forward to a class method (inline the class call instead). Internal helpers stay unexported (import from owning modules only inside the package / tests). Fix import cycles in the DAG (owning-module imports, slimmer package surfaces, split modules) — never paper over them with lazy package exports.
 - **Imports:** all `import` / `from … import` at **module scope** (no function-local imports; fix cycles by restructuring).
 - **Renames:** `git mv` when the path is already in git.
 

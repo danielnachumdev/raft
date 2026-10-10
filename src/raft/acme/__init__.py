@@ -1,10 +1,15 @@
-from __future__ import annotations
+"""ACME TLS helpers.
 
-"""ACME TLS paths, issue/install, and HTTP→HTTPS redirect helpers."""
+Import public names from owning modules. Keep this ``__init__`` free of
+ensure/install/http_redirect (those pull render) so leaf imports stay acyclic.
+"""
 
-from typing import Any
-
-from ..utils.package_exports import PackageExports
+from .account import AcmeAccountStore
+from .app_store import AcmeAppState, AcmeAppStore
+from .material import AcmeCertMaterial, AcmeCertWriter
+from .order import AcmeOrderRunner
+from .paths import AcmePaths
+from .webroot import AcmeHttp01Webroot
 
 __all__ = [
     "AcmeAccountStore",
@@ -12,37 +17,7 @@ __all__ = [
     "AcmeAppStore",
     "AcmeCertMaterial",
     "AcmeCertWriter",
-    "AcmeEnsure",
-    "AcmeGateInstall",
     "AcmeHttp01Webroot",
-    "AcmeHttpRedirect",
     "AcmeOrderRunner",
     "AcmePaths",
 ]
-
-_EXPORTS = PackageExports(
-    __name__,
-    {
-        "AcmeAccountStore": ".account:AcmeAccountStore",
-        "AcmeAppState": ".app_store:AcmeAppState",
-        "AcmeAppStore": ".app_store:AcmeAppStore",
-        "AcmeCertMaterial": ".material:AcmeCertMaterial",
-        "AcmeCertWriter": ".material:AcmeCertWriter",
-        "AcmeEnsure": ".ensure:AcmeEnsure",
-        "AcmeGateInstall": ".install:AcmeGateInstall",
-        "AcmeHttp01Webroot": ".webroot:AcmeHttp01Webroot",
-        "AcmeHttpRedirect": ".http_redirect:AcmeHttpRedirect",
-        "AcmeOrderRunner": ".order:AcmeOrderRunner",
-        "AcmePaths": ".paths:AcmePaths",
-    },
-)
-
-
-def __getattr__(name: str) -> Any:
-    value = _EXPORTS.get(name)
-    globals()[name] = value
-    return value
-
-
-def __dir__() -> list[str]:
-    return sorted(set(globals()) | set(__all__))

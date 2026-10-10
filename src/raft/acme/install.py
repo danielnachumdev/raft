@@ -6,13 +6,12 @@ import logging
 from typing import TYPE_CHECKING, Optional
 
 from ..locking.locking import stack_lock
-from ..render import StackRenderer
-from ..render.gate_nginx import GateNginxStamp
-
 from ..models.stack import Stack
+from ..render.gate_nginx import GateNginxStamp
+from ..render.service import StackRenderer
 
 if TYPE_CHECKING:
-    from ..adapters.docker import DockerStack
+    from ..adapters.docker.stack import DockerStack
 
 logger = logging.getLogger(__name__)
 

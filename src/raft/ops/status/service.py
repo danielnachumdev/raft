@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Any, Optional, Tuple
 
-from ...adapters import Shell
 from ...adapters.docker.crash_loop import CrashLoopDetector
 from ...adapters.docker.runtime import ContainerRuntimeGateway, ContainerRuntimeRow
 from ...adapters.host import DockerStatsText, HostGateway, HostResources
+from ...adapters.shell import Shell
 from ...errors.cta import OperatorError
 from ...models.app import EDGE_GROUP
 from ...models.stack import Stack

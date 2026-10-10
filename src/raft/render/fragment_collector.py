@@ -46,8 +46,10 @@ class FragmentCollector:
             )
         )
         frag.merge(
-            self._redirect.contribute(
-                app, app_spec, edge=self._edge, data_home=self._root
+            EdgeFragments(
+                gate_http=self._redirect.contribute(
+                    app, app_spec, edge=self._edge, data_home=self._root
+                )
             )
         )
         return frag

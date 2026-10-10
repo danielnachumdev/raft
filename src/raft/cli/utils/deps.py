@@ -1,7 +1,7 @@
 """Injectable imports for the CLI (patch consumer bindings in tests)."""
 
 from ...config import load_config
-from ...utils import setup_logging
+from ...utils import HostLogging
 from ...models.stack import load_stack
 from ...apply import AppApply
 from ...auth import GitAuthManager
@@ -27,5 +27,5 @@ __all__ = [
     "Uninstall",
     "load_config",
     "load_stack",
-    "setup_logging",
+    "HostLogging",
 ]
