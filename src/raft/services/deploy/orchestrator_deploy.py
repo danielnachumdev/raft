@@ -5,12 +5,17 @@ from __future__ import annotations
 import logging
 from typing import Optional, Sequence
 
+from raft.errors.cta import OperatorError
+from raft.errors.domain import service_not_running
+
 from ...models.state.graph_event_store import GraphEventStore
+from ...models.state.scaling_store import ScalingStore
 from ...ui import say
 from ..acme.ensure import AcmeEnsure
 from ..acme.install import AcmeGateInstall
 from ..ops.certs import require_origin_certs
 from .cutover import DEPLOY_CUTOVER, CutoverSession
+from .dual_run import DualRunCutover
 from .locking import app_and_stack_locks
 from .up_scale_plan import StackUpScalePlan
 
@@ -29,20 +34,51 @@ class OrchestratorDeploy:
     ) -> None:
         with app_and_stack_locks(self.stack.root, app_name):
             app = self.stack.app(app_name)
-            logger.info("syncing %s before cutover", app.name)
-            self.sync([app.name], ref_override=ref_override, force=force_sync)
-            session = CutoverSession(
-                stack=self.stack,
-                app=app,
-                docker=self.docker,
-                nginx=self.nginx,
-                http=self.http,
-            )
-            logger.info("redeploy cutover for %s (%s)", app.name, app.public_host)
-            self._run_cutover(session, app.name)
-            self._record_deploy_event(app)
-            self._ensure_acme_best_effort([app.name])
-            say(f"redeployed {app.name}", style="ok")
+            running = self.docker.running_services()
+            if not DualRunCutover(self.stack.root).needed(app, running):
+                self._redeploy_single_generation(
+                    app, running, ref_override=ref_override, force_sync=force_sync
+                )
+                return
+            self._cutover_live_app(app, ref_override=ref_override, force_sync=force_sync)
+
+    def _redeploy_single_generation(
+        self,
+        app,
+        running: Sequence[str],
+        *,
+        ref_override: Optional[str],
+        force_sync: bool,
+    ) -> None:
+        """Idle / not running: one Compose start + readiness (no ``*_tmp`` dual-run)."""
+        if self.stack.gate not in running:
+            raise service_not_running(app.compose_id)
+        logger.info("no live replica for %s; skip *_tmp cutover", app.name)
+        self._start_app_on_running_edge(
+            app, ref_override=ref_override, force_sync=force_sync, done="redeployed"
+        )
+
+    def _cutover_live_app(
+        self,
+        app,
+        *,
+        ref_override: Optional[str],
+        force_sync: bool,
+    ) -> None:
+        logger.info("syncing %s before cutover", app.name)
+        self.sync([app.name], ref_override=ref_override, force=force_sync)
+        session = CutoverSession(
+            stack=self.stack,
+            app=app,
+            docker=self.docker,
+            nginx=self.nginx,
+            http=self.http,
+        )
+        logger.info("redeploy cutover for %s (%s)", app.name, app.public_host)
+        self._run_cutover(session, app.name)
+        self._record_deploy_event(app)
+        self._ensure_acme_best_effort([app.name])
+        say(f"redeployed {app.name}", style="ok")
 
     def _run_cutover(self, session: CutoverSession, app_name: str) -> None:
         try:
@@ -76,11 +112,11 @@ class OrchestratorDeploy:
         ref_override: Optional[str] = None,
         force_sync: bool = False,
     ) -> None:
-        """Deploy an applied app: cutover if running, start service if edge is up, else full up."""
+        """Deploy: dual-run cutover if live; else start service if edge up; else full up."""
         with app_and_stack_locks(self.stack.root, app_name):
             app = self.stack.app(app_name)
             running = self.docker.running_services()
-            if app.compose_id in running:
+            if DualRunCutover(self.stack.root).needed(app, running):
                 self.redeploy_app(app_name, ref_override=ref_override, force_sync=force_sync)
                 return
             if self.stack.gate in running:
@@ -96,8 +132,10 @@ class OrchestratorDeploy:
         *,
         ref_override: Optional[str],
         force_sync: bool,
+        done: str = "deployed",
     ) -> None:
         """Gate/router already up; sync, start this Compose service, reload router, wait ready."""
+        self._clear_scaled_before_start(app)
         logger.info("edge up; starting new app service %s", app.compose_id)
         self.sync([app.name], ref_override=ref_override, force=force_sync)
         self.docker.rebuild_service(app.compose_id)
@@ -105,7 +143,24 @@ class OrchestratorDeploy:
         self._wait_app_ready(app)
         self._record_deploy_event(app)
         self._ensure_acme_best_effort([app.name])
-        say(f"deployed {app.name}", style="ok")
+        say(f"{done} {app.name}", style="ok")
+
+    def _clear_scaled_before_start(self, app) -> None:
+        """Drop idle markers so render parks steady upstreams and readiness waits run."""
+        store = ScalingStore(self.stack.root)
+        if not store.is_scaled_to_zero(app.name):
+            return
+        store.mark_awake(app.name, min_up_seconds=self._min_up_seconds(app))
+        logger.info("cleared scaledToZero for %s before single-generation start", app.name)
+
+    def _min_up_seconds(self, app) -> float:
+        try:
+            scaling = self.stack.spec_for(app).scaling
+        except OperatorError:
+            return 60.0
+        if scaling is None:
+            return 60.0
+        return float(scaling.min_up_seconds)
 
     def _start_stack_for_app(
         self,

@@ -51,6 +51,7 @@ class TestDeployGraphEvents(OrchestratorTestCase):
         assert kinds == [KIND_UP, KIND_DEPLOYMENT]
 
     def test_failed_cutover_does_not_record(self) -> None:
+        self.set_edge_running("app")
         step = MagicMock()
         step.key = "boom"
         step.run.side_effect = RuntimeError("cutover failed")
@@ -64,6 +65,7 @@ class TestDeployGraphEvents(OrchestratorTestCase):
         assert self._events() == []
 
     def _redeploy_ok(self) -> None:
+        self.set_edge_running("app")
         with patch("raft.services.deploy.orchestrator_deploy.CutoverSession"):
             with patch(
                 "raft.services.deploy.orchestrator_deploy.DEPLOY_CUTOVER", new=()

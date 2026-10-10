@@ -132,6 +132,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
         assert label == "tcp readiness for app"
 
     def test_redeploy_app_runs_cutover(self) -> None:
+        self.set_edge_running("app")
         with patch("raft.services.deploy.orchestrator_deploy.CutoverSession") as Session:
             session = MagicMock()
             Session.return_value = session
@@ -141,6 +142,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
             Session.assert_called_once()
 
     def test_redeploy_app_prints_error_and_reraises(self) -> None:
+        self.set_edge_running("app")
         step = MagicMock()
         step.key = "boom"
         step.run.side_effect = RuntimeError("cutover failed")
@@ -154,6 +156,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
                     session.abort_cleanup.assert_called_once()
 
     def test_redeploy_app_abort_cleanup_failure_still_reraises(self) -> None:
+        self.set_edge_running("app")
         step = MagicMock()
         step.key = "boom"
         step.run.side_effect = RuntimeError("cutover failed")
