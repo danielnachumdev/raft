@@ -33,7 +33,6 @@ class AcmeAccountStore:
             return self._client_unlocked(directory_url=directory_url, email=email)
 
     def _client_unlocked(self, *, directory_url: str, email: str) -> client.ClientV2:
-        self._paths.ensure_dirs()
         key = self._load_or_create_key()
         net = client.ClientNetwork(key, user_agent=_USER_AGENT)
         directory = client.ClientV2.get_directory(directory_url, net)

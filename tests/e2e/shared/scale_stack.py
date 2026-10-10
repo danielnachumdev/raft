@@ -9,9 +9,9 @@ import yaml
 
 from raft.adapters.docker import DockerStack
 from raft.adapters.shell import Shell
-from raft.controller.scale import Scaler
+from raft.controller.jobs.scale import Scaler
 from raft.models.state.scaling_store import ScalingStore
-from raft.controller.wake_http import start_wake_http
+from raft.controller.wake_http import WakeHttpServer
 from raft.models.stack import load_stack
 from raft.render import StackRenderer
 from tests.e2e.shared.compose import new_project_name
@@ -61,7 +61,7 @@ class ScaleE2EStack:
         model = load_stack(home)
         docker = DockerStack(model, Shell(home))
         scaler = Scaler(home, docker)
-        wake = start_wake_http(scaler, host="0.0.0.0", port=0)
+        wake = WakeHttpServer.bind(scaler, host="0.0.0.0", port=0)
         assert wake._httpd is not None
         wake_port = int(wake._httpd.server_address[1])
         cls._rewrite_wake_port(home, wake_port)

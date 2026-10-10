@@ -7,7 +7,7 @@ from typing import Optional
 
 import pytest
 
-from raft.controller.metrics import METRICS_DIR, METRICS_FILENAME
+from raft.controller.jobs.metrics import METRICS_DIR, METRICS_FILENAME
 from raft.errors.cta import OperatorError
 from raft.read.metrics import MetricsRead
 from raft.read.metrics_jsonl import MetricsJsonlReader

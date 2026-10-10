@@ -7,7 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from raft.config import load_config, reset_logging_for_tests, setup_logging
+from raft.config import load_config
+from raft.utils import reset_logging_for_tests, setup_logging
 from tests.shared.raft_home import RaftHomeFixtures
 from tests.shared.yaml_doc import YamlDoc
 

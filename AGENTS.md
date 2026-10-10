@@ -390,8 +390,9 @@ Entry: `raft` console script → `raft.__main__:main` (`RaftCLI().run()`). Prefe
 | Path | Notes |
 |------|-------|
 | `src/raft/cli/` | `RaftCLI` (`cli.py` entry); `RaftCLICommands` (`cli_commands.py`); `commands/` auth/gate/get; `utils/` argv/deps/Fire helpers |
-| `src/raft/config/` | `~/.raft` paths, `settings.yaml` (logging + edge + healing + metrics + notifications), logging setup |
-| `src/raft/models/` | Types + parse/registry: `App`, `AppSpec`, `AppDocument` / fields, `AppRegistry`, `AppDependsGraph`, `PortSpec`, `Stack`, `ScalingSpec`, `DeploymentSpec`. Import from owning modules — package `__init__` is not a re-export barrel. |
+| `src/raft/config/` | `~/.raft` paths, `settings.yaml` (logging + edge + healing + metrics + notifications / acme / github) |
+| `src/raft/utils/` | Shared cross-cutting helpers: `TraceContext`, host `setup_logging` / controller `setup_controller_logging`, log rotation (`LogRotationBootstrap`, …). Services opt in via `raft.utils` |
+| `src/raft/models/` | Types + parse/registry: `App`, `AppSpec`, `AppDocument` / fields, `AppRegistry`, `AppDependsGraph`, `PortSpec`, `Stack`, `ScalingSpec`, `DeploymentSpec`. Package `__init__` lists public exports. |
 | `src/raft/models/state/` | Runtime JSON stores (`ScalingStore`, `GraphEventStore` + kinds/records) under `~/.raft/state/` |
 | `src/raft/adapters/` | `shell`; `docker/` (`DockerStack`, `ContainerRuntimeGateway`, edge/images/inspect/prune); nginx upstreams; HTTP probe; host |
 | `src/raft/apply/` | `AppApply`, `manifest_preprocess` (`ManifestPreprocessor`), `manifest_env` (apply env + `${VAR}`), `manifest_expr` (directive predicates), `manifest_comments` (full-line `#` skip) |
@@ -406,8 +407,8 @@ Entry: `raft` console script → `raft.__main__:main` (`RaftCLI().run()`). Prefe
 | `src/raft/notify/` | Open-closed notification framework (`NotificationStrategy` ABC + registry + dispatcher); concrete channels in `notify/strategies/` (webhook/email) via `NotificationCatalogs`; channel config in settings `notifications:`; `Notifier` used by heal escalate / wake timeout / ACME lastError / serve deploy failure |
 | `src/raft/ui/` | Operator terminal output (`say`) + shared TTY `TerminalProgress` spinner (doctor, update; `current()` / `set_text` for inner frames; entered at CLI entry before stack/logging init) |
 | `src/raft/serve/` | `raft serve`: FastAPI factory, `ServePage`, `ServeActions`, SSE log bridge, SPA paths/instructions; `serve/github/` OAuth + deploy assist (`github/strategies/` mock/real providers) |
-| `src/raft/controller/` | Always-on Compose `raft-controller` (job orchestrator for heal + metrics + per-app `acme:<name>` when `tls: acme`; idle-stop + wake via side_ticks when `spec.scaling`; healer skips `scaledToZero`; metrics batch → `resources.jsonl` + `http.jsonl`) |
-| `src/raft/errors/` | Operator errors + CTAs (`cta`, `domain`, `docker_msgs`, …). Import from owning modules — package `__init__` is not a re-export barrel. |
+| `src/raft/controller/` | Always-on Compose `raft-controller` (`run` entry + orchestrator; `ControllerJob` ABC + job packages under `controller/jobs/` — each subpackage `__init__` exports its public surface; per-app `acme:<name>` when `tls: acme`; idle-stop + wake via side_ticks when `spec.scaling`; healer skips `scaledToZero`; metrics batch → `resources.jsonl` + `http.jsonl`) |
+| `src/raft/errors/` | Operator errors + CTAs (`cta`, `domain`, `docker_msgs`, …). Package `__init__` lists public exports. |
 | `src/raft/share/` | Product Compose + nginx templates (synced into data home); `share/serve/spa/` = packaged dashboard assets |
 | `src/spa/` | Dashboard SPA source (React + Vite + TypeScript); build output → `share/serve/spa/`; see **Serve / ops UI** |
 | `tests/` | `unit/` mirrors `src/raft/` packages (100% cov), plus `integration/`, `meta/`, `e2e/`, shared helpers under `tests/shared/`. Minimal Compose fixtures under `tests/fixtures/` are **not** the operator samples in `examples/`. |
@@ -444,7 +445,7 @@ Enforceable defaults when adding or reshaping code under `src/raft/`:
 - **Method size:** methods/functions **max ~20 lines**. Longer bodies **must delegate** to private helpers (`_…`) with **declarative names**.
 - **Class-first:** prefer **almost no module-level functions**. Behavior lives on classes with a small, declarative public surface; helpers are **private** methods or composed collaborators.
 - **SRP:** one class, one reason to change. Prefer inherit or **compose** over god-objects; extract when a module mixes parse/I/O/orchestration/diagnostics.
-- **No re-export shims:** do not add functions that only forward to logic another module owns. Callers import the **owning** class/module directly (`AppDocument`, `AppRegistry`, …).
+- **Package exports:** each package `__init__.py` defines the public surface via `__all__`. Callers import public names from the package (`from raft.controller.jobs import HealJob`). Prefer eager re-exports for leaf packages; use lazy `__getattr__` via `raft.utils.package_exports.PackageExports` when eager imports would create cycles (e.g. `acme`, `deploy`, `ops`, `controller.jobs`). Do **not** add thin function stubs that only forward to a class method (inline the class call instead). Internal helpers stay unexported (import from owning modules only inside the package / tests).
 - **Imports:** all `import` / `from … import` at **module scope** (no function-local imports; fix cycles by restructuring).
 - **Renames:** `git mv` when the path is already in git.
 

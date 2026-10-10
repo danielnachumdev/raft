@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
-from raft.controller.metrics import METRICS_DIR, METRICS_FILENAME
+from raft.controller.jobs.metrics import METRICS_DIR, METRICS_FILENAME
 from raft.read.metrics import MetricsRead
 from raft.read.metrics_jsonl import MetricsJsonlReader
 

@@ -7,6 +7,23 @@ import os
 import sys
 from typing import Optional, TextIO
 
+from .progress import TerminalProgress
+
+__all__ = [
+    "BOLD",
+    "CYAN",
+    "DIM",
+    "GREEN",
+    "RED",
+    "RESET",
+    "TerminalProgress",
+    "YELLOW",
+    "paint",
+    "say",
+    "say_err",
+    "want_color",
+]
+
 _log = logging.getLogger("raft")
 
 RESET = "\033[0m"

@@ -12,7 +12,7 @@ import pytest
 
 from raft.cli import RaftCLI
 from raft.cli.cli import CliExitMapper
-from raft.config.trace_context import TraceContext
+from raft.utils import TraceContext
 
 from .base import CliTestCase
 

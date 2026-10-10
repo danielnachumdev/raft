@@ -8,8 +8,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from ..config.settings import SettingsLoader
 from ..config.settings_types import MetricsConfig
-from ..controller.http_metrics import HTTP_METRICS_FILENAME
-from ..controller.metrics import METRICS_DIR
+from ..controller.jobs.metrics import HTTP_METRICS_FILENAME, METRICS_DIR
 
 from .http_metrics_series import HttpMetricsSeriesBuilder
 from .metrics import DEFAULT_MAX_POINTS

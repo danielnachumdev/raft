@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from raft.config.settings_types import MetricsConfig
-from raft.controller.http_metrics import HTTP_METRICS_FILENAME
-from raft.controller.metrics import METRICS_DIR
+from raft.controller.jobs.metrics import HTTP_METRICS_FILENAME
+from raft.controller.jobs.metrics import METRICS_DIR
 from raft.read.http_metrics import HttpMetricsRead
 from raft.read.http_metrics_series import HttpMetricsSeriesBuilder
 

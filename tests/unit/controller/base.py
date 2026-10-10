@@ -9,13 +9,13 @@ from unittest.mock import MagicMock, patch
 
 from raft.config.paths import ensure_raft_home
 from raft.config.settings_types import HealingConfig
-from raft.controller.heal import Healer
+from raft.controller.jobs.heal import Healer
 
 from ..base import write_applied_app
 
-LOCKS_HEAL = "raft.controller.heal.app_and_stack_locks"
-LOCKS_SCALE_APPS = "raft.controller.scale_wake.apps_and_stack_locks"
-LOCKS_SCALE_DEPS = "raft.controller.scale_depends.apps_and_stack_locks"
+LOCKS_HEAL = "raft.controller.jobs.heal.heal.app_and_stack_locks"
+LOCKS_SCALE_APPS = "raft.controller.jobs.scale.wake.apps_and_stack_locks"
+LOCKS_SCALE_DEPS = "raft.controller.jobs.scale.depends.apps_and_stack_locks"
 
 
 class ControllerTestCase:

@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 
 from fastapi.testclient import TestClient
 
-from raft.controller.metrics import METRICS_DIR, METRICS_FILENAME
+from raft.controller.jobs.metrics import METRICS_DIR, METRICS_FILENAME
 from raft.errors.cta import OperatorError
 from raft.ops.status.models import StatusSnapshot
 from raft.serve.app import ServeAppFactory

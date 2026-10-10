@@ -10,14 +10,11 @@ import pytest
 
 import raft.config.paths as paths
 from raft.config import (
-    LoggingConfig,
     default_config,
     ensure_raft_home,
     find_package_root,
     load_config,
     raft_home,
-    reset_logging_for_tests,
-    setup_logging,
     sync_product_templates,
 )
 

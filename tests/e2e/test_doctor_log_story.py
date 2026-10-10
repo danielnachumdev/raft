@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from raft.config import load_config, reset_logging_for_tests, setup_logging
-from raft.config.trace_context import TraceContext
+from raft.config import load_config
+from raft.utils import TraceContext, reset_logging_for_tests, setup_logging
 from raft.models.stack import load_stack
 from raft.ops.doctor import Doctor
 from tests.shared.raft_home import RaftHomeFixtures

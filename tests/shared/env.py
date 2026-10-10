@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from raft.config import reset_logging_for_tests
+from raft.utils import reset_logging_for_tests
 
 
 @dataclass(frozen=True)

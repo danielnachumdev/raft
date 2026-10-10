@@ -10,7 +10,7 @@ from typing import Callable, Optional
 
 import yaml
 
-from ..config.trace_context import TraceContext
+from ..utils import TraceContext
 from ..errors.classify import (
     SubprocessCtx,
     classify_subprocess,

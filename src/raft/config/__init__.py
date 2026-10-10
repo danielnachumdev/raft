@@ -1,6 +1,5 @@
-"""Runtime settings, paths, and logging setup."""
+"""Runtime settings and paths under ``~/.raft``."""
 
-from .logging import reset_logging_for_tests, setup_logging
 from .paths import (
     APPS_DIRNAME,
     CERTS_DIRNAME,
@@ -57,8 +56,6 @@ __all__ = [
     "find_package_root",
     "load_config",
     "raft_home",
-    "reset_logging_for_tests",
     "settings_path",
-    "setup_logging",
     "sync_product_templates",
 ]

@@ -1,6 +1,7 @@
 """Injectable imports for the CLI (patch consumer bindings in tests)."""
 
-from ...config import load_config, setup_logging
+from ...config import load_config
+from ...utils import setup_logging
 from ...models.stack import load_stack
 from ...apply import AppApply
 from ...auth import GitAuthManager

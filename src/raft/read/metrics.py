@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from ..config.settings import SettingsLoader
 from ..config.settings_types import MetricsConfig
-from ..controller.metrics import METRICS_DIR, METRICS_FILENAME
+from ..controller.jobs.metrics import METRICS_DIR, METRICS_FILENAME
 from ..models.state.graph_event_store import GraphEventStore
 
 from .metrics_jsonl import MetricsJsonlReader

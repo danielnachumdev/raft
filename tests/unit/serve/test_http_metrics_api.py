@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from raft.controller.http_metrics import HTTP_METRICS_FILENAME
-from raft.controller.metrics import METRICS_DIR
+from raft.controller.jobs.metrics import HTTP_METRICS_FILENAME
+from raft.controller.jobs.metrics import METRICS_DIR
 
 from tests.unit.base import RaftTestCase, make_stack
 from .test_app import _ServeFixtures

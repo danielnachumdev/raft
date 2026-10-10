@@ -1,8 +1,7 @@
 """Always-on control plane package (heal / scale)."""
 
-from .heal import Healer, needs_heal, run_heal_forever
+from .jobs import Healer, Scaler, needs_heal, run_heal_forever
 from .run import main
-from .scale import Scaler
 from .smoke import PrereqSmoke
 
 __all__ = [
