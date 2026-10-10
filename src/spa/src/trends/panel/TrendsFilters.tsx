@@ -3,18 +3,18 @@ import type { MetricsAvailable, MetricsBounds } from "../../shared/api";
 import {
   HTTP_METRICS,
   RESOURCE_METRICS,
-  type RuntimeMetricDef,
   type RuntimeMetricId,
 } from "../runtimeMetrics";
 import { TrendsRangeControls } from "../TrendsRangeControls";
 import type { TrendsRangeState } from "../trendsRange";
 import type { GroupOption, SeriesViewMode } from "./trendsView";
 import "./TrendsFilters.css";
+
 export function TrendsFilters(props: {
   range: TrendsRangeState;
   bounds: MetricsBounds | null;
   clampMessage: string | null;
-  metric: RuntimeMetricDef;
+  metricIds: RuntimeMetricId[];
   viewMode: SeriesViewMode;
   groupMode: boolean;
   catalog: MetricsAvailable[];
@@ -23,7 +23,8 @@ export function TrendsFilters(props: {
   showingAll: boolean;
   busy: boolean;
   onRange: (next: TrendsRangeState) => void;
-  onMetric: (m: RuntimeMetricId) => void;
+  onToggleMetric: (id: RuntimeMetricId) => void;
+  onClearMetrics: () => void;
   onViewMode: (m: SeriesViewMode) => void;
   onToggle: (id: string) => void;
   onShowAll: () => void;
@@ -38,32 +39,12 @@ export function TrendsFilters(props: {
         busy={props.busy}
         onChange={props.onRange}
       />
-      <label className="trends-field">
-        <span>Metric</span>
-        <select
-          value={props.metric.id}
-          onChange={(e) =>
-            props.onMetric(e.target.value as RuntimeMetricId)
-          }
-          aria-label="Metric type"
-          disabled={props.busy}
-        >
-          <optgroup label="Resources">
-            {RESOURCE_METRICS.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.label}
-              </option>
-            ))}
-          </optgroup>
-          <optgroup label="HTTP edge">
-            {HTTP_METRICS.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.label}
-              </option>
-            ))}
-          </optgroup>
-        </select>
-      </label>
+      <MetricFilter
+        activeIds={props.metricIds}
+        busy={props.busy}
+        onToggle={props.onToggleMetric}
+        onClearAll={props.onClearMetrics}
+      />
       <label className="trends-field">
         <span>View</span>
         <select
@@ -110,6 +91,80 @@ export function TrendsFilters(props: {
         />
       )}
     </aside>
+  );
+}
+
+function MetricFilter(props: {
+  activeIds: RuntimeMetricId[];
+  busy: boolean;
+  onToggle: (id: RuntimeMetricId) => void;
+  onClearAll: () => void;
+}) {
+  const noneSelected = props.activeIds.length === 0;
+  return (
+    <div className="trends-services-block trends-metrics-block">
+      <div className="trends-services-head">
+        <span className="trends-services-title">Metrics</span>
+        <div className="trends-services-actions">
+          <button
+            type="button"
+            className="trends-clear-all"
+            onClick={props.onClearAll}
+            disabled={props.busy || noneSelected}
+          >
+            Clear all
+          </button>
+        </div>
+      </div>
+      <div
+        className="trends-services-list"
+        role="group"
+        aria-label="Metrics"
+      >
+        <p className="trends-metric-plane">Resources</p>
+        {RESOURCE_METRICS.map((m) => (
+          <MetricChip
+            key={m.id}
+            id={m.id}
+            label={m.label}
+            checked={props.activeIds.includes(m.id)}
+            busy={props.busy}
+            onToggle={props.onToggle}
+          />
+        ))}
+        <p className="trends-metric-plane">HTTP</p>
+        {HTTP_METRICS.map((m) => (
+          <MetricChip
+            key={m.id}
+            id={m.id}
+            label={m.label}
+            checked={props.activeIds.includes(m.id)}
+            busy={props.busy}
+            onToggle={props.onToggle}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MetricChip(props: {
+  id: RuntimeMetricId;
+  label: string;
+  checked: boolean;
+  busy: boolean;
+  onToggle: (id: RuntimeMetricId) => void;
+}) {
+  return (
+    <label className="trends-chip">
+      <input
+        type="checkbox"
+        checked={props.checked}
+        onChange={() => props.onToggle(props.id)}
+        disabled={props.busy}
+      />
+      <span className="trends-chip-label">{props.label}</span>
+    </label>
   );
 }
 

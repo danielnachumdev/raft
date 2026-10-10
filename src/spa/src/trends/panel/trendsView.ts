@@ -1,8 +1,5 @@
 import type { MetricsAvailable, MetricsPoint, MetricsSeries } from "../../shared/api.ts";
-import {
-  runtimePointValue,
-  type RuntimeMetricId,
-} from "../runtimeMetrics.ts";
+import { RUNTIME_METRICS, type RuntimeMetricId } from "../runtimeMetrics.ts";
 
 export type SeriesViewMode =
   | "per_service"
@@ -30,10 +27,9 @@ export function resolveVisibleSeries(args: {
   viewMode: SeriesViewMode;
   selected: string[] | null;
   activeIds: string[];
-  metricId: RuntimeMetricId;
 }): MetricsSeries[] {
   if (args.viewMode === "per_group" || args.viewMode === "avg_group") {
-    return buildPerGroupSeries(args.series, args.activeIds, args.metricId);
+    return buildPerGroupSeries(args.series, args.activeIds);
   }
   if (args.selected === null) return args.series;
   return args.series.filter((s) => args.selected!.includes(s.id));
@@ -76,7 +72,6 @@ export function seriesInGroups(
 export function buildPerGroupSeries(
   series: MetricsSeries[],
   groupIds: string[],
-  metric: RuntimeMetricId,
 ): MetricsSeries[] {
   const want = new Set(groupIds);
   const buckets = new Map<string, MetricsSeries[]>();
@@ -94,27 +89,24 @@ export function buildPerGroupSeries(
         groupLabel(b[0] === UNGROUPED_ID ? null : b[0]),
       ),
     )
-    .map(([gid, members]) => averageSeriesAsOne(members, gid, metric));
+    .map(([gid, members]) => averageSeriesAsOne(members, gid));
 }
 
 function averageSeriesAsOne(
   members: MetricsSeries[],
   groupId: string,
-  metric: RuntimeMetricId,
 ): MetricsSeries {
-  const byTime = new Map<string, number[]>();
+  const byTime = new Map<string, MetricsPoint[]>();
   for (const s of members) {
     for (const p of s.points) {
-      const v = runtimePointValue(p, metric);
-      if (v === null) continue;
       const list = byTime.get(p.t) ?? [];
-      list.push(v);
+      list.push(p);
       byTime.set(p.t, list);
     }
   }
   const points: MetricsPoint[] = [...byTime.entries()]
     .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([t, vals]) => blankPoint(t, metric, mean(vals)));
+    .map(([t, pts]) => meanPoint(t, pts));
   return {
     id: `group:${groupId}`,
     label: groupLabel(groupId === UNGROUPED_ID ? null : groupId),
@@ -125,21 +117,26 @@ function averageSeriesAsOne(
   };
 }
 
-function mean(vals: number[]): number {
-  return vals.reduce((a, b) => a + b, 0) / vals.length;
+function meanPoint(t: string, pts: MetricsPoint[]): MetricsPoint {
+  const out: MetricsPoint = { t };
+  for (const m of RUNTIME_METRICS) {
+    const vals = pts
+      .map((p) => numericField(p, m.id))
+      .filter((v): v is number => v !== null);
+    if (vals.length) out[m.id] = mean(vals);
+  }
+  return out;
 }
 
-function blankPoint(
-  t: string,
-  metric: RuntimeMetricId,
-  value: number,
-): MetricsPoint {
-  const point: MetricsPoint = {
-    t,
-    cpu_percent: null,
-    memory_used_percent: null,
-    memory_used_bytes: null,
-  };
-  point[metric] = value;
-  return point;
+function numericField(
+  point: MetricsPoint,
+  id: RuntimeMetricId,
+): number | null {
+  const raw: unknown = point[id];
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+  return null;
+}
+
+function mean(vals: number[]): number {
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
 }

@@ -9,11 +9,11 @@ import {
   UNGROUPED_ID,
 } from "../../src/trends/panel/trendsView.ts";
 
-function point(t: string, cpu: number | null) {
+function point(t: string, cpu: number | null, mem: number | null = null) {
   return {
     t,
     cpu_percent: cpu,
-    memory_used_percent: null,
+    memory_used_percent: mem,
     memory_used_bytes: null,
   };
 }
@@ -21,7 +21,7 @@ function point(t: string, cpu: number | null) {
 function series(
   id: string,
   group: string | null,
-  points: { t: string; cpu: number | null }[],
+  points: { t: string; cpu: number | null; mem?: number | null }[],
 ): MetricsSeries {
   return {
     id,
@@ -29,19 +29,19 @@ function series(
     kind: "container",
     role: "app",
     group,
-    points: points.map((p) => point(p.t, p.cpu)),
+    points: points.map((p) => point(p.t, p.cpu, p.mem ?? null)),
   };
 }
 
 const sample: MetricsSeries[] = [
   series("host", null, [{ t: "t1", cpu: 90 }]),
   series("demo-web", "demo", [
-    { t: "t1", cpu: 10 },
-    { t: "t2", cpu: 20 },
+    { t: "t1", cpu: 10, mem: 40 },
+    { t: "t2", cpu: 20, mem: 50 },
   ]),
   series("demo-api", "demo", [
-    { t: "t1", cpu: 30 },
-    { t: "t2", cpu: 40 },
+    { t: "t1", cpu: 30, mem: 60 },
+    { t: "t2", cpu: 40, mem: 70 },
   ]),
   series("solo", null, [{ t: "t1", cpu: 50 }]),
 ];
@@ -56,12 +56,8 @@ describe("isSingleLineAvg", () => {
 });
 
 describe("buildPerGroupSeries", () => {
-  it("emits one mean series per selected group", () => {
-    const got = buildPerGroupSeries(
-      sample,
-      ["demo", UNGROUPED_ID],
-      "cpu_percent",
-    );
+  it("emits one mean series per selected group with all metric fields", () => {
+    const got = buildPerGroupSeries(sample, ["demo", UNGROUPED_ID]);
     assert.deepEqual(
       got.map((s) => s.id),
       ["group:demo", `group:${UNGROUPED_ID}`],
@@ -70,7 +66,9 @@ describe("buildPerGroupSeries", () => {
     assert.equal(demo.label, "demo");
     assert.equal(demo.kind, "group");
     assert.equal(demo.points[0].cpu_percent, 20);
+    assert.equal(demo.points[0].memory_used_percent, 50);
     assert.equal(demo.points[1].cpu_percent, 30);
+    assert.equal(demo.points[1].memory_used_percent, 60);
     assert.equal(got[1].points[0].cpu_percent, 50);
   });
 });
@@ -82,7 +80,6 @@ describe("resolveVisibleSeries", () => {
       viewMode: "avg_group",
       selected: null,
       activeIds: ["demo", UNGROUPED_ID],
-      metricId: "cpu_percent",
     });
     assert.equal(got.length, 2);
     assert.deepEqual(
@@ -98,7 +95,6 @@ describe("resolveVisibleSeries", () => {
       viewMode: "avg_group",
       selected: ["demo"],
       activeIds: ["demo"],
-      metricId: "cpu_percent",
     });
     assert.equal(got.length, 1);
     assert.equal(got[0].id, "group:demo");
@@ -110,7 +106,6 @@ describe("resolveVisibleSeries", () => {
       viewMode: "per_service",
       selected: ["demo-web"],
       activeIds: ["demo-web"],
-      metricId: "cpu_percent",
     });
     assert.deepEqual(
       got.map((s) => s.id),

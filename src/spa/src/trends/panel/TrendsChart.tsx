@@ -10,81 +10,75 @@ import type { GraphEvent, MetricsSeries } from "../../shared/api";
 import {
   clipRowsToDomain,
   formatTooltipTime,
-  mergeTimedRows,
-  toEpochMs,
   windowDomain,
-  type TimedValue,
 } from "../chart/chartTimeScale";
 import { graphEventMarkers } from "../chart/GraphEventMarkers";
 import { eventsForSeries, seriesForEventFilter } from "../chart/graphEvents";
 import {
   formatRuntimeValue,
-  runtimePointValue,
   yAxisUnit,
-  type RuntimeMetricId,
+  type RuntimeMetricDef,
   type RuntimeUnit,
 } from "../runtimeMetrics";
 import { timeScaleXAxis } from "../chart/TimeScaleXAxis";
 import { tooltipItemSortKey } from "../chart/tooltipItemSort";
 import { trendPlotLines } from "../chart/trendPlotLines";
 import { useChartHover } from "../chart/useChartHover";
+import {
+  aggregatePlots,
+  buildAggregateRows,
+  buildPerServiceRows,
+  LEFT_AXIS,
+  needsSplitAxes,
+  RIGHT_AXIS,
+  toPlotSeries,
+  type ChartRow,
+} from "./trendsChartRows";
 import "./TrendsChart.css";
 
 export { tooltipItemSortKey } from "../chart/tooltipItemSort";
-const HOST_AXIS = "host";
-const SERVICE_AXIS = "service";
-
-type ChartRow = {
-  ts: number;
-  t: string;
-  label: string;
-  [key: string]: string | number | null;
-};
-
-type PlotSeries = {
-  chartKey: string;
-  id: string;
-  label: string;
-  axis: typeof HOST_AXIS | typeof SERVICE_AXIS;
-};
+export {
+  buildPerServiceRows,
+  pointValue,
+} from "./trendsChartRows";
 
 export function TrendsChart(props: {
   series: MetricsSeries[];
-  metric: RuntimeMetricId;
-  unit: RuntimeUnit;
+  metrics: RuntimeMetricDef[];
   windowSeconds: number;
   rangeEndMs?: number;
   aggregate: boolean;
-  aggregateLabel?: string;
   events?: GraphEvent[];
   /** Full window series — used to map group charts back to deploy services. */
   allSeries?: MetricsSeries[];
 }) {
   const hover = useChartHover();
-  const avgLabel = props.aggregateLabel ?? "Average";
+  const metrics = props.metrics;
+  if (!metrics.length) return null;
   const eventSeries = seriesForEventFilter(
     props.allSeries ?? props.series,
     props.series,
   );
   const markers = eventsForSeries(props.events, eventSeries);
-  const plots = props.aggregate ? [] : toPlotSeries(props.series);
+  const plots = props.aggregate
+    ? aggregatePlots(metrics)
+    : toPlotSeries(props.series, metrics);
   const endMs = props.rangeEndMs ?? Date.now();
   const domain = windowDomain(props.windowSeconds, endMs);
   const rows = clipRowsToDomain(
     props.aggregate
-      ? buildAggregateRows(props.series, props.metric)
-      : buildPerServiceRows(props.series, plots, props.metric),
+      ? buildAggregateRows(props.series, plots)
+      : buildPerServiceRows(props.series, plots),
     domain,
   );
-  const labels = props.aggregate
-    ? { aggregate: avgLabel }
-    : Object.fromEntries(plots.map((p) => [p.chartKey, p.label]));
-  const splitAxes = !props.aggregate && needsSplitAxes(props.series);
-  const axisUnit = yAxisUnit(props.unit);
+  const labels = Object.fromEntries(plots.map((p) => [p.chartKey, p.label]));
+  const units = Object.fromEntries(plots.map((p) => [p.chartKey, p.unit]));
+  const splitAxes = !props.aggregate && needsSplitAxes(props.series, metrics);
+  const leftUnit = metrics[0].unit;
+  const rightUnit =
+    metrics.find((m) => m.unit !== leftUnit)?.unit ?? leftUnit;
 
-  if (!rows.length) {
-    return null;
-  }
+  if (!rows.length) return null;
 
   return (
     <div
@@ -98,22 +92,22 @@ export function TrendsChart(props: {
           <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" />
           {timeScaleXAxis(props.windowSeconds, endMs)}
           <YAxis
-            yAxisId={SERVICE_AXIS}
+            yAxisId={LEFT_AXIS}
             tick={{ fill: "var(--muted)", fontSize: 11 }}
-            unit={axisUnit || undefined}
+            unit={yAxisUnit(leftUnit) || undefined}
             width={56}
             domain={[0, "auto"]}
-            tickFormatter={(v: number) => formatAxisTick(v, props.unit)}
+            tickFormatter={(v: number) => formatAxisTick(v, leftUnit)}
           />
           {splitAxes ? (
             <YAxis
-              yAxisId={HOST_AXIS}
+              yAxisId={RIGHT_AXIS}
               orientation="right"
               tick={{ fill: "var(--muted)", fontSize: 11 }}
-              unit={axisUnit || undefined}
+              unit={yAxisUnit(rightUnit) || undefined}
               width={56}
               domain={[0, "auto"]}
-              tickFormatter={(v: number) => formatAxisTick(v, props.unit)}
+              tickFormatter={(v: number) => formatAxisTick(v, rightUnit)}
             />
           ) : null}
           <Tooltip
@@ -127,7 +121,10 @@ export function TrendsChart(props: {
               return row?.t ? formatTooltipTime(row.t) : "";
             }}
             formatter={(value: number | string, name: string) => [
-              formatRuntimeValue(Number(value), props.unit),
+              formatRuntimeValue(
+                Number(value),
+                units[name] ?? leftUnit,
+              ),
               labels[name] ?? name,
             ]}
             itemSorter={tooltipItemSortKey}
@@ -141,17 +138,20 @@ export function TrendsChart(props: {
             }}
           />
           {trendPlotLines({
-            aggregate: props.aggregate,
-            avgLabel,
-            plots,
+            aggregate: false,
+            avgLabel: "",
+            plots: plots.map((p) => ({
+              chartKey: p.chartKey,
+              label: p.label,
+              axis: p.axis,
+            })),
             splitAxes,
-            serviceAxis: SERVICE_AXIS,
+            serviceAxis: LEFT_AXIS,
             highlight: hover.highlight,
             onHoverSeries: hover.hoverSeries,
           })}
-          {/* Direct children — Recharts ignores wrapper components for ReferenceLine. */}
           {graphEventMarkers(markers, {
-            yAxisId: SERVICE_AXIS,
+            yAxisId: LEFT_AXIS,
             highlight: hover.highlight,
             onHoverKind: hover.hoverEventKind,
           })}
@@ -159,82 +159,6 @@ export function TrendsChart(props: {
       </ResponsiveContainer>
     </div>
   );
-}
-
-function toPlotSeries(series: MetricsSeries[]): PlotSeries[] {
-  return [...series]
-    .sort((a, b) => a.label.localeCompare(b.label) || a.id.localeCompare(b.id))
-    .map((s, i) => ({
-      chartKey: `v${i}`,
-      id: s.id,
-      label: s.label,
-      axis: s.kind === "host" || s.id === "host" ? HOST_AXIS : SERVICE_AXIS,
-    }));
-}
-
-function needsSplitAxes(series: MetricsSeries[]): boolean {
-  const hasHost = series.some((s) => s.kind === "host" || s.id === "host");
-  const hasService = series.some((s) => s.kind !== "host" && s.id !== "host");
-  return hasHost && hasService;
-}
-
-/** Coerce JSON numbers so stringy samples still plot. */
-export function pointValue(
-  point: MetricsSeries["points"][0],
-  metric: RuntimeMetricId,
-): number | null {
-  return runtimePointValue(point, metric);
-}
-
-export function buildPerServiceRows(
-  series: MetricsSeries[],
-  plots: PlotSeries[],
-  metric: RuntimeMetricId,
-): ChartRow[] {
-  const keyed = plots.map((p) => ({
-    key: p.chartKey,
-    points: timedPointsForSeries(
-      series.find((s) => s.id === p.id),
-      metric,
-    ),
-  }));
-  return mergeTimedRows(keyed) as ChartRow[];
-}
-
-function buildAggregateRows(
-  series: MetricsSeries[],
-  metric: RuntimeMetricId,
-): ChartRow[] {
-  const byTime = new Map<string, number[]>();
-  for (const s of series) {
-    for (const p of s.points) {
-      const v = pointValue(p, metric);
-      if (v === null) continue;
-      const list = byTime.get(p.t) ?? [];
-      list.push(v);
-      byTime.set(p.t, list);
-    }
-  }
-  const points: TimedValue[] = [...byTime.entries()].map(([t, vals]) => ({
-    ts: toEpochMs(t) ?? 0,
-    t,
-    value: vals.reduce((a, b) => a + b, 0) / vals.length,
-  }));
-  return mergeTimedRows([{ key: "aggregate", points }]) as ChartRow[];
-}
-
-function timedPointsForSeries(
-  series: MetricsSeries | undefined,
-  metric: RuntimeMetricId,
-): TimedValue[] {
-  if (!series) return [];
-  const out: TimedValue[] = [];
-  for (const p of series.points) {
-    const ts = toEpochMs(p.t);
-    if (ts === null) continue;
-    out.push({ ts, t: p.t, value: pointValue(p, metric) });
-  }
-  return out;
 }
 
 function formatAxisTick(value: number, unit: RuntimeUnit): string {

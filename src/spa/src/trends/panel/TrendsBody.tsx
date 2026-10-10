@@ -7,7 +7,7 @@ export function TrendsBody(props: {
   error: string | null;
   series: MetricsSeries[];
   visible: MetricsSeries[];
-  metric: RuntimeMetricDef;
+  metrics: RuntimeMetricDef[];
   windowSec: number;
   rangeEndMs?: number;
   viewMode: SeriesViewMode;
@@ -21,15 +21,22 @@ export function TrendsBody(props: {
       </p>
     );
   }
+  if (props.metrics.length === 0) {
+    return (
+      <p className="muted">Select at least one metric to plot.</p>
+    );
+  }
   if (props.series.length === 0) {
-    const file =
-      props.metric.plane === "http"
-        ? "state/metrics/http.jsonl"
-        : "state/metrics/resources.jsonl";
+    const hasHttp = props.metrics.some((m) => m.plane === "http");
+    const hasRes = props.metrics.some((m) => m.plane === "resources");
+    const files = [
+      hasRes ? "state/metrics/resources.jsonl" : null,
+      hasHttp ? "state/metrics/http.jsonl" : null,
+    ].filter(Boolean);
     return (
       <p className="muted">
-        No metrics samples yet. The controller writes <code>{file}</code> on its
-        metrics interval.
+        No metrics samples yet. The controller writes{" "}
+        <code>{files.join(" / ")}</code> on its metrics interval.
       </p>
     );
   }
@@ -45,12 +52,10 @@ export function TrendsBody(props: {
   return (
     <TrendsChart
       series={props.visible}
-      metric={props.metric.id}
-      unit={props.metric.unit}
+      metrics={props.metrics}
       windowSeconds={props.windowSec}
       rangeEndMs={props.rangeEndMs}
       aggregate={isSingleLineAvg(props.viewMode)}
-      aggregateLabel="Average"
       events={props.events}
       allSeries={props.series}
     />

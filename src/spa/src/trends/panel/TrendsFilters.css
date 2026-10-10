@@ -96,3 +96,23 @@
   min-width: 0;
   word-break: break-word;
 }
+
+.trends-metrics-block {
+  flex: 0 0 auto;
+}
+
+.trends-metrics-block .trends-services-list {
+  max-height: 12rem;
+}
+
+.trends-metric-plane {
+  margin: 0.35rem 0 0.15rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.trends-metric-plane:first-child {
+  margin-top: 0;
+}
