@@ -16,7 +16,6 @@ from raft.apply.manifest_env import ApplyEnvSources
 
 from .argv import ApplyEnvOverrides
 from .auth import AuthCLI
-from .delete import delete_app
 from .deps import (
     AppApply,
     Doctor,
@@ -135,7 +134,7 @@ class RaftCLI:
         if resource == "app":
             if not name:
                 raise SystemExit("delete app requires a name")
-            delete_app(self._stack, name)
+            AppApply(self._stack).delete(name)
             return
         raise SystemExit(f"unknown resource {resource!r} (try: app)")
 

@@ -17,7 +17,7 @@ _DEP_TARGETS = {
     "load_stack": ("raft.cli.root",),
     "load_config": ("raft.cli.root",),
     "setup_logging": ("raft.cli.root",),
-    "AppApply": ("raft.cli.root", "raft.cli.delete"),
+    "AppApply": ("raft.cli.root",),
     "Orchestrator": ("raft.cli.root", "raft.cli.gate"),
     "Doctor": ("raft.cli.root",),
     "Status": ("raft.cli.root",),
