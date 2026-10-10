@@ -20,8 +20,8 @@ class TestCliBootstrap(CliTestCase):
     def test_doctor_failure_does_not_suggest_doctor(self, capsys) -> None:
         doctor = MagicMock()
         doctor.report.return_value = 1
-        with patch("raft.cli.deps.load_stack", return_value=self.stack):
-            with patch("raft.cli.deps.Doctor", return_value=doctor):
+        with patch("raft.cli.root.load_stack", return_value=self.stack):
+            with patch("raft.cli.root.Doctor", return_value=doctor):
                 with pytest.raises(SystemExit) as exc:
                     cli.run(["doctor"])
         assert exc.value.code == 1

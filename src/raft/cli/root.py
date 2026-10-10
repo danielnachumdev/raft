@@ -14,12 +14,25 @@ from raft.errors.domain import (
 )
 from raft.apply.manifest_env import ApplyEnvSources
 
-from . import delete as delete_cmd
-from . import deps
-from . import get as get_cmd
 from .argv import ApplyEnvOverrides
 from .auth import AuthCLI
+from .delete import delete_app
+from .deps import (
+    AppApply,
+    Doctor,
+    Logs,
+    Orchestrator,
+    Purge,
+    SelfUpdate,
+    Serve,
+    Status,
+    Uninstall,
+    load_config,
+    load_stack,
+    setup_logging,
+)
 from .gate import GateCLI
+from .get import get_app, get_apps
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +41,9 @@ class RaftCLI:
     """raft — low-budget single-VPS orchestrator (apply App manifests, sync, redeploy)."""
 
     def __init__(self) -> None:
-        self._stack = deps.load_stack()
-        config = deps.load_config(self._stack.root)
-        log_file = deps.setup_logging(self._stack.root, config)
+        self._stack = load_stack()
+        config = load_config(self._stack.root)
+        log_file = setup_logging(self._stack.root, config)
         logger.debug("config loaded; log_file=%s", log_file)
         self.auth = AuthCLI(self._stack)
         self.gate = GateCLI(self._stack)
@@ -81,7 +94,7 @@ class RaftCLI:
         env_file: Optional[str],
         env: Optional[Union[str, Sequence[str]]],
     ) -> None:
-        applier = deps.AppApply(self._stack)
+        applier = AppApply(self._stack)
         apply_env = self._build_apply_env(env_file=env_file, env=env)
         opts = dict(ref=ref, deploy=deploy, force_sync=force_sync, env=apply_env)
         if file is not None:
@@ -108,12 +121,12 @@ class RaftCLI:
     ) -> None:
         """Show applied resources (e.g. get apps, get app NAME, get apps --group=demo)."""
         if resource == "apps":
-            get_cmd.get_apps(self._stack, group=group)
+            get_apps(self._stack, group=group)
             return
         if resource == "app":
             if not name:
                 raise SystemExit("get app requires a name")
-            get_cmd.get_app(self._stack, name)
+            get_app(self._stack, name)
             return
         raise SystemExit(f"unknown resource {resource!r} (try: apps, app)")
 
@@ -122,21 +135,21 @@ class RaftCLI:
         if resource == "app":
             if not name:
                 raise SystemExit("delete app requires a name")
-            delete_cmd.delete_app(self._stack, name)
+            delete_app(self._stack, name)
             return
         raise SystemExit(f"unknown resource {resource!r} (try: app)")
 
     def up(self) -> None:
         """Sync applied apps, then bring the stack up."""
-        deps.Orchestrator(self._stack).start()
+        Orchestrator(self._stack).start()
 
     def down(self) -> None:
         """Stop and remove the stack."""
-        deps.Orchestrator(self._stack).stop()
+        Orchestrator(self._stack).stop()
 
     def render(self) -> None:
         """Generate Compose/nginx from ~/.raft/state/apps/*.yaml."""
-        deps.Orchestrator(self._stack).render()
+        Orchestrator(self._stack).render()
 
     def doctor(self, name: Optional[str] = None) -> None:
         """Check docker, auth, sync, upstreams, and stack status; print fixes.
@@ -144,7 +157,7 @@ class RaftCLI:
         Optional ``name`` filters to one applied App (CI: ``raft doctor shop``).
         Exit status then reflects that App's checks only.
         """
-        code = deps.Doctor(self._stack).report(app_name=name)
+        code = Doctor(self._stack).report(app_name=name)
         if code:
             raise SystemExit(code)
 
@@ -155,7 +168,7 @@ class RaftCLI:
         Pass ``--live`` to clear and refresh the human table until Ctrl+C
         (not combinable with ``--json``).
         """
-        deps.Status(self._stack).report(as_json=json, live=live)
+        Status(self._stack).report(as_json=json, live=live)
 
     def serve(self, port: int = 8787, stop: bool = False) -> None:
         """Start a localhost-only SSR UI for stack and control-plane visibility.
@@ -165,7 +178,7 @@ class RaftCLI:
         ``raft serve --stop``. Not published via gate/edge.
         Pass ``--stop`` to terminate an already-running serve on this port.
         """
-        serve = deps.Serve(self._stack)
+        serve = Serve(self._stack)
         if stop:
             serve.stop(port=port)
             return
@@ -184,7 +197,7 @@ class RaftCLI:
         Names: app registry name, ``gate`` / ``router`` / ``controller``, or
         Compose ids (``raft-gate``, ``GROUP-NAME``). Omit names for all services.
         """
-        deps.Logs(self._stack).show(*services, tail=tail, follow=follow)
+        Logs(self._stack).show(*services, tail=tail, follow=follow)
 
     def purge(self) -> None:
         """Remove Docker images unused by any container, plus build cache.
@@ -192,11 +205,11 @@ class RaftCLI:
         Holds ``stack.lock``. Does not prune volumes (App data). Prints how
         much space Docker reclaimed.
         """
-        deps.Purge(self._stack).run()
+        Purge(self._stack).run()
 
     def update(self) -> None:
         """Re-install raft from GitHub (re-run install.sh / uv tool install)."""
-        deps.SelfUpdate(self._stack).run()
+        SelfUpdate(self._stack).run()
 
     def uninstall(self, yes: bool = False, uv: bool = False) -> None:
         """Remove raft from this machine (stack, ~/.raft, deploy keys, uv tool).
@@ -205,7 +218,7 @@ class RaftCLI:
         (left installed by default — other tools may need it). Does not revoke
         git-host deploy keys or CDN certs.
         """
-        deps.Uninstall(self._stack).run(yes=yes, uv=uv)
+        Uninstall(self._stack).run(yes=yes, uv=uv)
 
     def sync(
         self,
@@ -222,7 +235,7 @@ class RaftCLI:
                     f"unknown service(s): {', '.join(unknown)} (known: {self._known}).\n"
                     f"Fix: raft get apps"
                 )
-        deps.Orchestrator(self._stack).sync(names, ref_override=ref, force=force)
+        Orchestrator(self._stack).sync(names, ref_override=ref, force=force)
 
     def redeploy(
         self,
@@ -234,7 +247,7 @@ class RaftCLI:
         name = (app or "").strip()
         if not name:
             raise redeploy_requires_app()
-        orch = deps.Orchestrator(self._stack)
+        orch = Orchestrator(self._stack)
         if name == "router":
             orch.redeploy_router()
             return

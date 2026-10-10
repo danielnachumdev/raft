@@ -12,6 +12,23 @@ from raft import cli
 
 from ..base import RaftTestCase, make_app, make_stack, write_demo_inventory
 
+# Where CLI modules bind names imported from ``raft.cli.deps``.
+_DEP_TARGETS = {
+    "load_stack": ("raft.cli.root",),
+    "load_config": ("raft.cli.root",),
+    "setup_logging": ("raft.cli.root",),
+    "AppApply": ("raft.cli.root", "raft.cli.delete"),
+    "Orchestrator": ("raft.cli.root", "raft.cli.gate"),
+    "Doctor": ("raft.cli.root",),
+    "Status": ("raft.cli.root",),
+    "Serve": ("raft.cli.root",),
+    "Logs": ("raft.cli.root",),
+    "Purge": ("raft.cli.root",),
+    "SelfUpdate": ("raft.cli.root",),
+    "Uninstall": ("raft.cli.root",),
+    "GitAuthManager": ("raft.cli.auth",),
+}
+
 
 class CliTestCase(RaftTestCase):
     @pytest.fixture(autouse=True)
@@ -44,9 +61,14 @@ class CliTestCase(RaftTestCase):
         stack = self.stack if stack is None else stack
         patches: dict = {}
         with ExitStack() as exited:
-            exited.enter_context(patch("raft.cli.deps.load_stack", return_value=stack))
+            for target in _DEP_TARGETS["load_stack"]:
+                exited.enter_context(patch(f"{target}.load_stack", return_value=stack))
             for name, value in dep_returns.items():
-                patches[name] = exited.enter_context(
-                    patch(f"raft.cli.deps.{name}", return_value=value)
-                )
+                mocks = [
+                    exited.enter_context(
+                        patch(f"{target}.{name}", return_value=value)
+                    )
+                    for target in _DEP_TARGETS[name]
+                ]
+                patches[name] = mocks[0]
             yield patches

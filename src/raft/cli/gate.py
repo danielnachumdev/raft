@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from ..models.stack import Stack
-from . import deps
+from .deps import Orchestrator
 
 
 class GateCLI:
@@ -14,4 +14,4 @@ class GateCLI:
 
     def recreate(self) -> None:
         """Recreate gate to pick up settings edge: ports (brief downtime)."""
-        deps.Orchestrator(self._stack).recreate_gate()
+        Orchestrator(self._stack).recreate_gate()

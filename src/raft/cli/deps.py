@@ -1,4 +1,4 @@
-"""Injectable imports for the CLI (patch `raft.cli.deps.*` in tests)."""
+"""Injectable imports for the CLI (patch consumer bindings in tests)."""
 
 from ..config import load_config, setup_logging
 from ..models.stack import load_stack
