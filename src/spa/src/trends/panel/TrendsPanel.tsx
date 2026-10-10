@@ -13,16 +13,21 @@ import { chartEndMs } from "../chart/chartTimeScale";
 import { useLiveNow } from "../chart/useLiveNow";
 import { TrendsBody } from "./TrendsBody";
 import { TrendsFilters } from "./TrendsFilters";
+import type { RuntimeMetricId } from "../runtimeMetrics";
 import {
-  RUNTIME_METRICS,
-  type RuntimeMetricId,
-} from "../runtimeMetrics";
+  DEFAULT_METRIC_IDS,
+  metricsFromIds,
+  planesForMetrics,
+  toggleMetricId,
+} from "./metricSelection";
 import {
   applyFull,
   applyPayloadMeta,
-  metricsFetcher,
-  pollIncremental,
+  fetchPlanes,
+  planesCacheKey,
+  pollPlanes,
   toggleId,
+  type PlaneCursors,
 } from "./trendsPoll";
 import {
   defaultRangeState,
@@ -39,6 +44,7 @@ import {
   type SeriesViewMode,
 } from "./trendsView";
 import "./TrendsPanel.css";
+
 const INITIAL = defaultRangeState();
 const INITIAL_KEY = metricsCacheKey(toQuery(INITIAL));
 
@@ -49,7 +55,8 @@ export function TrendsPanel() {
   const rolling = isRollingWindow(query);
   const nowMs = useLiveNow(rolling);
   const cacheKey = metricsCacheKey(query);
-  const [metricId, setMetricId] = useState<RuntimeMetricId>("cpu_percent");
+  const [metricIds, setMetricIds] =
+    useState<RuntimeMetricId[]>(DEFAULT_METRIC_IDS);
   const [viewMode, setViewMode] = useState<SeriesViewMode>("per_service");
   const [selected, setSelected] = useState<string[] | null>(null);
   const seed = peekMetrics(INITIAL_KEY);
@@ -57,7 +64,7 @@ export function TrendsPanel() {
   const [available, setAvailable] = useState<MetricsAvailable[]>(
     seed?.available ?? [],
   );
-  const [cursor, setCursor] = useState<string | null>(seed?.cursor ?? null);
+  const [cursors, setCursors] = useState<PlaneCursors>({});
   const [events, setEvents] = useState<GraphEvent[]>(seed?.events ?? []);
   const [bounds, setBounds] = useState<MetricsBounds | null>(
     seed?.bounds ?? null,
@@ -67,37 +74,40 @@ export function TrendsPanel() {
   const [windowSec, setWindowSec] = useState(query.window);
   const [busy, setBusy] = useState(seed === null);
   const [error, setError] = useState<string | null>(null);
-  const metric =
-    RUNTIME_METRICS.find((m) => m.id === metricId) ?? RUNTIME_METRICS[0];
-  const plane = metric.plane;
-  const planeCacheKey = `${plane}:${cacheKey}`;
+  const metrics = useMemo(() => metricsFromIds(metricIds), [metricIds]);
+  const planes = useMemo(() => {
+    const selectedPlanes = planesForMetrics(metrics);
+    return selectedPlanes.length ? selectedPlanes : (["resources"] as const);
+  }, [metrics]);
+  const planeCacheKey = planesCacheKey([...planes], cacheKey);
   const groupMode = usesGroupPicker(viewMode);
 
   useEffect(() => {
     let cancelled = false;
     const cached = peekMetrics(planeCacheKey);
     if (cached) {
-      applyFull(cached, setSeries, setAvailable, setCursor, setEvents);
+      applyFull(cached, setSeries, setAvailable, setEvents);
       applyPayloadMeta(
         cached, setBounds, setClampMessage, setRangeTo, setWindowSec,
       );
     } else {
       setSeries([]);
       setAvailable([]);
-      setCursor(null);
       setEvents([]);
     }
+    setCursors({});
     setBusy(true);
     setError(null);
     void (async () => {
       try {
-        const payload = await metricsFetcher(plane)(query);
+        const { payload, cursors: next } = await fetchPlanes([...planes], query);
         if (cancelled) return;
         putMetrics(planeCacheKey, payload);
-        applyFull(payload, setSeries, setAvailable, setCursor, setEvents);
+        applyFull(payload, setSeries, setAvailable, setEvents);
         applyPayloadMeta(
           payload, setBounds, setClampMessage, setRangeTo, setWindowSec,
         );
+        setCursors(next);
       } catch {
         if (!cancelled && !cached) setError("Failed to load metrics history.");
       } finally {
@@ -107,17 +117,23 @@ export function TrendsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [planeCacheKey, plane, query]);
+  }, [planeCacheKey, planes, query]);
 
   useEffect(() => {
     if (busy || !isLiveQuery(query)) return;
     const id = window.setInterval(() => {
-      void pollIncremental(
-        query, cursor, setSeries, setAvailable, setCursor, setEvents, plane,
+      void pollPlanes(
+        query,
+        [...planes],
+        cursors,
+        setSeries,
+        setAvailable,
+        setCursors,
+        setEvents,
       );
     }, METRICS_POLL_MS);
     return () => window.clearInterval(id);
-  }, [query, cursor, busy, plane]);
+  }, [query, cursors, busy, planes]);
 
   const groups = useMemo(() => groupOptions(available), [available]);
   const pickerIds = groupMode
@@ -128,11 +144,8 @@ export function TrendsPanel() {
     selected === null ||
     (pickerIds.length > 0 && activeIds.length === pickerIds.length);
   const visible = useMemo(
-    () =>
-      resolveVisibleSeries({
-        series, viewMode, selected, activeIds, metricId: metric.id,
-      }),
-    [series, viewMode, selected, activeIds, metric.id],
+    () => resolveVisibleSeries({ series, viewMode, selected, activeIds }),
+    [series, viewMode, selected, activeIds],
   );
   const showColdLoad = busy && series.length === 0;
 
@@ -164,7 +177,7 @@ export function TrendsPanel() {
           range={range}
           bounds={bounds}
           clampMessage={clampMessage}
-          metric={metric}
+          metricIds={metricIds}
           viewMode={viewMode}
           groupMode={groupMode}
           catalog={available}
@@ -173,10 +186,8 @@ export function TrendsPanel() {
           showingAll={showingAll}
           busy={busy}
           onRange={setRange}
-          onMetric={(next) => {
-            setMetricId(next);
-            setSelected(null);
-          }}
+          onToggleMetric={(id) => setMetricIds((cur) => toggleMetricId(cur, id))}
+          onClearMetrics={() => setMetricIds([])}
           onViewMode={(next) => {
             setViewMode(next);
             setSelected(null);
@@ -201,7 +212,7 @@ export function TrendsPanel() {
               error={error}
               series={series}
               visible={visible}
-              metric={metric}
+              metrics={metrics}
               windowSec={windowSec}
               rangeEndMs={chartEndMs({ rolling, nowMs, rangeEndIso: rangeTo })}
               viewMode={viewMode}
