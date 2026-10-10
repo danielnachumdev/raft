@@ -14,7 +14,7 @@ from raft.models.app_document import AppDocument
 from raft.models.app_spec_fields import AppSpecFields
 from raft.models.registry import AppRegistry
 from raft.models.stack import load_stack
-from raft.services.render import StackRenderer
+from raft.render import StackRenderer
 
 from ..base import RaftTestCase, write_applied_app
 
@@ -84,7 +84,7 @@ class TestMiscCoverage(RaftTestCase):
         )
         (self.tmp_path / "apps" / "web").mkdir(parents=True)
         stack = load_stack(self.tmp_path)
-        with patch("raft.services.render.service.logger") as log:
+        with patch("raft.render.service.logger") as log:
             StackRenderer(stack).render()
             assert log.debug.called
 

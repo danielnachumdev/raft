@@ -10,8 +10,8 @@ import yaml
 from raft.config.paths import ensure_raft_home
 from raft.config.settings_types import EdgeConfig, EdgeStream
 from raft.models.stack import load_stack
-from raft.services.apply import AppApply
-from raft.services.render import StackRenderer
+from raft.apply import AppApply
+from raft.render import StackRenderer
 
 FIXTURES_ROOT = Path(__file__).resolve().parent.parent / "fixtures"
 

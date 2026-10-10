@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 from raft.config.settings_types import HealingConfig
 from raft.controller.heal import Healer
 from raft.controller.scale import Scaler
-from raft.services.notify.control_events import (
+from raft.notify.control_events import (
     KIND_HEAL_ESCALATE,
     KIND_SCALE_WAKE_TIMEOUT,
 )

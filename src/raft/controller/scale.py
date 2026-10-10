@@ -15,8 +15,8 @@ from raft.models.manifest import AppSpec
 from raft.models.scaling_spec import ScalingSpec
 from raft.models.state.scaling_store import ScalingStore
 from raft.models.stack import Stack
-from raft.services.notify.control_events import ControlPlaneEvents
-from raft.services.notify.notifier import Notifier
+from raft.notify.control_events import ControlPlaneEvents
+from raft.notify.notifier import Notifier
 
 __all__ = ["Scaler", "WAKE_HTTP_PORT"]
 

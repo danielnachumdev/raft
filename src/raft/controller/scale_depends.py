@@ -18,7 +18,7 @@ from raft.models.manifest import AppSpec
 from raft.models.registry import AppRegistry
 from raft.models.state.scaling_store import ScalingStore
 from raft.models.stack import Stack
-from raft.services.deploy.locking import apps_and_stack_locks
+from raft.locking.locking import apps_and_stack_locks
 
 __all__ = ["ScaleDepends"]
 

@@ -21,7 +21,7 @@ from raft.errors.docker_msgs import (
 from ...models.app import App
 from ...models.ports import PortSpec
 from ...models.stack import Stack
-from ...services.ops.certs import missing_acme_certs, missing_origin_certs
+from ...ops.certs import CertProbe
 from ..shell import Shell
 
 logger = logging.getLogger(__name__)
@@ -118,15 +118,16 @@ class DockerEdge:
     def _raise_gate_nginx_test_failure(self, detail: str) -> None:
         detail = detail.strip()
         blob = f"nginx -t\n{detail}"
+        probe = CertProbe(self.stack)
         if looks_like_missing_acme_cert(blob):
-            missing = missing_acme_certs(self.stack)
+            missing = probe.missing_acme()
             if missing:
                 raise OperatorError(
                     format_missing_acme_certs(missing, include_doctor_footer=False)
                 )
             raise OperatorError(missing_acme_certs_fallback(detail=detail))
         if looks_like_missing_origin_cert(blob):
-            missing = missing_origin_certs(self.stack)
+            missing = probe.missing_origin()
             if missing:
                 raise OperatorError(
                     format_missing_origin_certs(missing, include_doctor_footer=False)

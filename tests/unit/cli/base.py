@@ -8,9 +8,26 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from raft import cli
+from raft.cli import RaftCLI
 
 from ..base import RaftTestCase, make_app, make_stack, write_demo_inventory
+
+# Where CLI modules bind names imported from ``raft.cli.utils.deps``.
+_DEP_TARGETS = {
+    "load_stack": ("raft.cli.cli_commands",),
+    "load_config": ("raft.cli.cli_commands",),
+    "setup_logging": ("raft.cli.cli_commands",),
+    "AppApply": ("raft.cli.cli_commands",),
+    "Orchestrator": ("raft.cli.cli_commands", "raft.cli.commands.gate"),
+    "Doctor": ("raft.cli.cli_commands",),
+    "Status": ("raft.cli.cli_commands",),
+    "Serve": ("raft.cli.cli_commands",),
+    "Logs": ("raft.cli.cli_commands",),
+    "Purge": ("raft.cli.cli_commands",),
+    "SelfUpdate": ("raft.cli.cli_commands",),
+    "Uninstall": ("raft.cli.cli_commands",),
+    "GitAuthManager": ("raft.cli.commands.auth",),
+}
 
 
 class CliTestCase(RaftTestCase):
@@ -28,11 +45,11 @@ class CliTestCase(RaftTestCase):
 
     def run_main(self, argv: list[str]) -> int:
         with self.patched_deps(Orchestrator=self.orch):
-            return cli.main(argv)
+            return RaftCLI()._invoke_fire(argv)
 
     def run_cli(self, argv: list[str]) -> None:
         with self.patched_deps(Orchestrator=self.orch):
-            cli.run(argv)
+            RaftCLI().run(argv)
 
     @contextmanager
     def patched_deps(
@@ -44,9 +61,14 @@ class CliTestCase(RaftTestCase):
         stack = self.stack if stack is None else stack
         patches: dict = {}
         with ExitStack() as exited:
-            exited.enter_context(patch("raft.cli.deps.load_stack", return_value=stack))
+            for target in _DEP_TARGETS["load_stack"]:
+                exited.enter_context(patch(f"{target}.load_stack", return_value=stack))
             for name, value in dep_returns.items():
-                patches[name] = exited.enter_context(
-                    patch(f"raft.cli.deps.{name}", return_value=value)
-                )
+                mocks = [
+                    exited.enter_context(
+                        patch(f"{target}.{name}", return_value=value)
+                    )
+                    for target in _DEP_TARGETS[name]
+                ]
+                patches[name] = mocks[0]
             yield patches

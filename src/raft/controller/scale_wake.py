@@ -15,7 +15,7 @@ from raft.models.state.graph_event_kinds import SCALING_ACTION_WAKE
 from raft.models.state.graph_event_store import GraphEventStore
 from raft.models.state.scaling_store import ScalingStore
 from raft.models.stack import Stack
-from raft.services.deploy.locking import apps_and_stack_locks
+from raft.locking.locking import apps_and_stack_locks
 
 __all__ = ["ScaleWake"]
 

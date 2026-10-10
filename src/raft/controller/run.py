@@ -22,7 +22,7 @@ from .metrics import MetricsRecorder
 from .orchestrator import ClockFn, JobOrchestrator, SleepFn
 from .scale import WAKE_HTTP_PORT, Scaler
 from .schedule import IntervalSchedule
-from .smoke import run_prereq_smoke
+from .smoke import PrereqSmoke
 from .wake_http import start_wake_http
 
 __all__ = ["main"]
@@ -45,7 +45,7 @@ def main() -> None:
     setup_controller_logging(config)
     logger.info("raft-controller starting data_home=%s", home)
     sh = Shell(home)
-    run_prereq_smoke(home, sh)
+    PrereqSmoke(home, sh).run()
     logger.info("prereq smoke ok; entering control loop")
     stack = Stack(root=home, apps=())
     docker = DockerStack(stack, sh)

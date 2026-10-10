@@ -16,7 +16,7 @@ from raft.config.settings_types import (
     DEFAULT_METRICS_RETENTION_MAX_BYTES,
 )
 from raft.models.stack import Stack
-from raft.services.ops.status import Status
+from raft.ops.status import Status
 
 from .metrics_rotation import MetricsRotation
 

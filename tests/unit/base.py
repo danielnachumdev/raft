@@ -12,7 +12,7 @@ import yaml
 from raft.models.app import App
 from raft.models.stack import Stack
 from raft.models.stack import load_stack
-from raft.services.render import StackRenderer
+from raft.render import StackRenderer
 
 
 def make_app(

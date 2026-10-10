@@ -143,7 +143,7 @@ class TestCliErrorRewrite(CliTestCase):
             ),
         )
         self.orch.stop.side_effect = err
-        with patch("raft.cli.entry.load_stack", return_value=stack):
+        with patch("raft.cli.cli.load_stack", return_value=stack):
             with pytest.raises(SystemExit) as exc:
                 self.run_cli(["down"])
         assert exc.value.code == 1
@@ -194,7 +194,7 @@ class TestCliErrorRewrite(CliTestCase):
             stderr='cannot load certificate "/etc/nginx/certs/web/origin.pem"\n',
         )
         self.orch.stop.side_effect = err
-        with patch("raft.cli.entry.load_stack", side_effect=RuntimeError("no home")):
+        with patch("raft.cli.cli.load_stack", side_effect=RuntimeError("no home")):
             with pytest.raises(SystemExit) as exc:
                 self.run_cli(["down"])
         assert exc.value.code == 1
@@ -208,8 +208,9 @@ class TestCliErrorRewrite(CliTestCase):
             stderr='cannot load certificate "/etc/nginx/certs/web/origin.pem"\n',
         )
         self.orch.stop.side_effect = err
-        with patch("raft.cli.entry.load_stack", return_value=self.stack):
-            with patch("raft.cli.entry.missing_origin_certs", return_value=[]):
+        with patch("raft.cli.cli.load_stack", return_value=self.stack):
+            with patch("raft.cli.cli.CertProbe") as probe_cls:
+                probe_cls.return_value.missing_origin.return_value = []
                 with pytest.raises(SystemExit) as exc:
                     self.run_cli(["down"])
         assert exc.value.code == 1
@@ -223,8 +224,9 @@ class TestCliErrorRewrite(CliTestCase):
             stderr="",
         )
         self.orch.stop.side_effect = err
-        with patch("raft.cli.entry.load_stack", return_value=self.stack):
-            with patch("raft.cli.entry.missing_origin_certs", return_value=[]):
+        with patch("raft.cli.cli.load_stack", return_value=self.stack):
+            with patch("raft.cli.cli.CertProbe") as probe_cls:
+                probe_cls.return_value.missing_origin.return_value = []
                 with pytest.raises(SystemExit) as exc:
                     self.run_cli(["down"])
         assert exc.value.code == 1
