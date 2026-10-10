@@ -15,11 +15,12 @@ import {
 import { graphEventMarkers } from "../chart/GraphEventMarkers";
 import { eventsForSeries, seriesForEventFilter } from "../chart/graphEvents";
 import {
-  formatRuntimeValue,
-  yAxisUnit,
-  type RuntimeMetricDef,
-  type RuntimeUnit,
-} from "../runtimeMetrics";
+  formatMetricTick,
+  formatMetricValue,
+  yAxisSuffix,
+  type MetricTypeId,
+} from "../metricTypes";
+import type { RuntimeMetricDef } from "../runtimeMetrics";
 import { timeScaleXAxis } from "../chart/TimeScaleXAxis";
 import { tooltipItemSortKey } from "../chart/tooltipItemSort";
 import { trendPlotLines } from "../chart/trendPlotLines";
@@ -32,6 +33,7 @@ import {
   needsSplitAxes,
   RIGHT_AXIS,
   toPlotSeries,
+  typeIdsForMetrics,
   type ChartRow,
 } from "./trendsChartRows";
 import "./TrendsChart.css";
@@ -72,11 +74,12 @@ export function TrendsChart(props: {
     domain,
   );
   const labels = Object.fromEntries(plots.map((p) => [p.chartKey, p.label]));
-  const units = Object.fromEntries(plots.map((p) => [p.chartKey, p.unit]));
-  const splitAxes = !props.aggregate && needsSplitAxes(props.series, metrics);
-  const leftUnit = metrics[0].unit;
-  const rightUnit =
-    metrics.find((m) => m.unit !== leftUnit)?.unit ?? leftUnit;
+  const types = Object.fromEntries(plots.map((p) => [p.chartKey, p.typeId]));
+  const axisTypes = typeIdsForMetrics(metrics);
+  // Same-type → one axis; cross-type → dual axes (also in avg views).
+  const splitAxes = needsSplitAxes(props.series, metrics);
+  const leftType = axisTypes[0];
+  const rightType = axisTypes[1] ?? leftType;
 
   if (!rows.length) return null;
 
@@ -94,20 +97,20 @@ export function TrendsChart(props: {
           <YAxis
             yAxisId={LEFT_AXIS}
             tick={{ fill: "var(--muted)", fontSize: 11 }}
-            unit={yAxisUnit(leftUnit) || undefined}
+            unit={yAxisSuffix(leftType) || undefined}
             width={56}
             domain={[0, "auto"]}
-            tickFormatter={(v: number) => formatAxisTick(v, leftUnit)}
+            tickFormatter={(v: number) => formatMetricTick(v, leftType)}
           />
           {splitAxes ? (
             <YAxis
               yAxisId={RIGHT_AXIS}
               orientation="right"
               tick={{ fill: "var(--muted)", fontSize: 11 }}
-              unit={yAxisUnit(rightUnit) || undefined}
+              unit={yAxisSuffix(rightType) || undefined}
               width={56}
               domain={[0, "auto"]}
-              tickFormatter={(v: number) => formatAxisTick(v, rightUnit)}
+              tickFormatter={(v: number) => formatMetricTick(v, rightType)}
             />
           ) : null}
           <Tooltip
@@ -121,9 +124,9 @@ export function TrendsChart(props: {
               return row?.t ? formatTooltipTime(row.t) : "";
             }}
             formatter={(value: number | string, name: string) => [
-              formatRuntimeValue(
+              formatMetricValue(
                 Number(value),
-                units[name] ?? leftUnit,
+                (types[name] ?? leftType) as MetricTypeId,
               ),
               labels[name] ?? name,
             ]}
@@ -159,10 +162,4 @@ export function TrendsChart(props: {
       </ResponsiveContainer>
     </div>
   );
-}
-
-function formatAxisTick(value: number, unit: RuntimeUnit): string {
-  if (unit === "bytes") return formatRuntimeValue(value, "bytes");
-  if (unit === "seconds") return formatRuntimeValue(value, "seconds");
-  return String(value);
 }

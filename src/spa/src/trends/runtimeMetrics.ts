@@ -1,4 +1,9 @@
 import type { MetricsPoint } from "../shared/api.ts";
+import {
+  formatMetricValue,
+  yAxisSuffix,
+  type MetricTypeId,
+} from "./metricTypes.ts";
 
 /** Graphable Runtime / HTTP fields from metrics series points. */
 export type RuntimeMetricId =
@@ -23,14 +28,12 @@ export type RuntimeMetricId =
   | "status_4xx"
   | "status_5xx";
 
-export type RuntimeUnit = "percent" | "bytes" | "seconds" | "count" | "ms" | "rps";
-
 export type MetricPlane = "resources" | "http";
 
 export type RuntimeMetricDef = {
   id: RuntimeMetricId;
   label: string;
-  unit: RuntimeUnit;
+  typeId: MetricTypeId;
   plane: MetricPlane;
 };
 
@@ -46,94 +49,94 @@ export const RUNTIME_WINDOWS: { seconds: number; label: string }[] = [
 export const DEFAULT_RUNTIME_WINDOW = 3600;
 
 export const RESOURCE_METRICS: RuntimeMetricDef[] = [
-  { id: "cpu_percent", label: "CPU %", unit: "percent", plane: "resources" },
+  { id: "cpu_percent", label: "CPU %", typeId: "percent", plane: "resources" },
   {
     id: "memory_used_percent",
     label: "Memory used %",
-    unit: "percent",
+    typeId: "percent",
     plane: "resources",
   },
   {
     id: "memory_used_bytes",
     label: "Memory used bytes",
-    unit: "bytes",
+    typeId: "bytes",
     plane: "resources",
   },
   {
     id: "memory_limit_bytes",
     label: "Memory limit bytes",
-    unit: "bytes",
+    typeId: "bytes",
     plane: "resources",
   },
   {
     id: "uptime_seconds",
     label: "Uptime seconds",
-    unit: "seconds",
+    typeId: "uptime",
     plane: "resources",
   },
-  { id: "pids", label: "PIDs", unit: "count", plane: "resources" },
+  { id: "pids", label: "PIDs", typeId: "count", plane: "resources" },
   {
     id: "network_rx_bytes",
     label: "Network RX",
-    unit: "bytes",
+    typeId: "bytes",
     plane: "resources",
   },
   {
     id: "network_tx_bytes",
     label: "Network TX",
-    unit: "bytes",
+    typeId: "bytes",
     plane: "resources",
   },
   {
     id: "block_read_bytes",
     label: "Block read",
-    unit: "bytes",
+    typeId: "bytes",
     plane: "resources",
   },
   {
     id: "block_write_bytes",
     label: "Block write",
-    unit: "bytes",
+    typeId: "bytes",
     plane: "resources",
   },
 ];
 
 export const HTTP_METRICS: RuntimeMetricDef[] = [
-  { id: "rps", label: "Requests / sec", unit: "rps", plane: "http" },
+  { id: "rps", label: "Requests / sec", typeId: "rate", plane: "http" },
   {
     id: "in_flight",
     label: "In-flight (Writing)",
-    unit: "count",
+    typeId: "count",
     plane: "http",
   },
   {
     id: "duration_avg_ms",
     label: "Latency avg (ms)",
-    unit: "ms",
+    typeId: "duration",
     plane: "http",
   },
   {
     id: "duration_p50_ms",
     label: "Latency p50 (ms)",
-    unit: "ms",
+    typeId: "duration",
     plane: "http",
   },
   {
     id: "duration_p95_ms",
     label: "Latency p95 (ms)",
-    unit: "ms",
+    typeId: "duration",
     plane: "http",
   },
   {
     id: "duration_p99_ms",
     label: "Latency p99 (ms)",
-    unit: "ms",
+    typeId: "duration",
     plane: "http",
   },
-  { id: "status_2xx", label: "2xx count", unit: "count", plane: "http" },
-  { id: "status_3xx", label: "3xx count", unit: "count", plane: "http" },
-  { id: "status_4xx", label: "4xx count", unit: "count", plane: "http" },
-  { id: "status_5xx", label: "5xx count", unit: "count", plane: "http" },
+  { id: "status_2xx", label: "2xx count", typeId: "count", plane: "http" },
+  { id: "status_3xx", label: "3xx count", typeId: "count", plane: "http" },
+  { id: "status_4xx", label: "4xx count", typeId: "count", plane: "http" },
+  { id: "status_5xx", label: "5xx count", typeId: "count", plane: "http" },
 ];
 
 export const RUNTIME_METRICS: RuntimeMetricDef[] = [
@@ -154,34 +157,13 @@ export function runtimePointValue(
   return null;
 }
 
-export function formatRuntimeValue(value: number, unit: RuntimeUnit): string {
-  if (unit === "percent") return `${value.toFixed(1)}%`;
-  if (unit === "bytes") return formatBytes(value);
-  if (unit === "seconds") return formatSeconds(value);
-  if (unit === "ms") return `${value.toFixed(1)} ms`;
-  if (unit === "rps") return `${value.toFixed(2)}/s`;
-  return String(Math.round(value));
+export function formatRuntimeValue(
+  value: number,
+  typeId: MetricTypeId,
+): string {
+  return formatMetricValue(value, typeId);
 }
 
-export function yAxisUnit(unit: RuntimeUnit): string {
-  if (unit === "percent") return "%";
-  if (unit === "bytes") return "";
-  if (unit === "seconds") return "s";
-  if (unit === "ms") return "ms";
-  if (unit === "rps") return "/s";
-  return "";
-}
-
-function formatBytes(n: number): string {
-  const abs = Math.abs(n);
-  if (abs < 1024) return `${Math.round(n)} B`;
-  if (abs < 1024 ** 2) return `${(n / 1024).toFixed(1)} KiB`;
-  if (abs < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)} MiB`;
-  return `${(n / 1024 ** 3).toFixed(2)} GiB`;
-}
-
-function formatSeconds(n: number): string {
-  if (n < 60) return `${n.toFixed(0)}s`;
-  if (n < 3600) return `${(n / 60).toFixed(1)}m`;
-  return `${(n / 3600).toFixed(1)}h`;
+export function yAxisUnit(typeId: MetricTypeId): string {
+  return yAxisSuffix(typeId);
 }

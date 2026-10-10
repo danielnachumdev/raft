@@ -28,8 +28,8 @@ describe("HTTP trend metrics catalog", () => {
     assert.equal(runtimePointValue(point, "cpu_percent" as RuntimeMetricId), null);
   });
 
-  it("formats ms and rps units", () => {
-    assert.equal(formatRuntimeValue(12.34, "ms"), "12.3 ms");
-    assert.equal(formatRuntimeValue(2.5, "rps"), "2.50/s");
+  it("formats duration and rate types", () => {
+    assert.equal(formatRuntimeValue(12.34, "duration"), "12.3 ms");
+    assert.equal(formatRuntimeValue(2.5, "rate"), "2.50/s");
   });
 });

@@ -7,10 +7,11 @@ import {
 } from "../chart/chartTimeScale";
 import { graphEventMarkers } from "../chart/GraphEventMarkers";
 import {
-  formatRuntimeValue,
-  type RuntimeMetricDef,
-  yAxisUnit,
-} from "../runtimeMetrics";
+  formatMetricTick,
+  formatMetricValue,
+  yAxisSuffix,
+} from "../metricTypes";
+import type { RuntimeMetricDef } from "../runtimeMetrics";
 import { timeScaleXAxis } from "../chart/TimeScaleXAxis";
 import { useChartHover } from "../chart/useChartHover";
 import type { ChartRow } from "./runtimeTrendsPoll";
@@ -25,7 +26,7 @@ export function ServiceRuntimeChart(props: {
   events: GraphEvent[];
 }) {
   const hover = useChartHover();
-  const unit = yAxisUnit(props.metric.unit);
+  const suffix = yAxisSuffix(props.metric.typeId);
   const endMs = props.rangeEndMs ?? Date.now();
   const rows = clipRowsToDomain(
     props.rows,
@@ -47,13 +48,11 @@ export function ServiceRuntimeChart(props: {
           {timeScaleXAxis(props.windowSec, endMs)}
           <YAxis
             tick={{ fill: "var(--muted)", fontSize: 11 }}
-            unit={unit || undefined}
+            unit={suffix || undefined}
             width={56}
             domain={[0, "auto"]}
             tickFormatter={(v: number) =>
-              props.metric.unit === "bytes"
-                ? formatRuntimeValue(v, "bytes")
-                : String(v)
+              formatMetricTick(v, props.metric.typeId)
             }
           />
           <Tooltip
@@ -67,7 +66,7 @@ export function ServiceRuntimeChart(props: {
               return row?.t ? formatTooltipTime(row.t) : "";
             }}
             formatter={(value: number | string) => [
-              formatRuntimeValue(Number(value), props.metric.unit),
+              formatMetricValue(Number(value), props.metric.typeId),
               props.metric.label,
             ]}
           />
