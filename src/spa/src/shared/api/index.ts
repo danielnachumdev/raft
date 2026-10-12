@@ -43,3 +43,10 @@ export {
   type MetricsQuery,
   type MetricsSeries,
 } from "./metrics.ts";
+export {
+  DEFAULT_HTTP_REQUESTS_LIMIT,
+  HTTP_REQUESTS_POLL_MS,
+  fetchServiceHttpRequests,
+  type HttpRequestRow,
+  type HttpRequestsPayload,
+} from "./httpRequests.ts";

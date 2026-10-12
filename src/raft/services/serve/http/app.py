@@ -82,6 +82,7 @@ class ServeAppFactory:
         app.get("/api/metrics/http")(page.api_metrics_http)
         app.get("/api/metrics")(page.api_metrics)
         app.get("/api/service/{name}")(page.api_service)
+        app.get("/api/service/{name}/http-requests")(page.api_service_http_requests)
         app.get("/api/service/{name}/logs/follow")(page.api_service_logs_follow)
         app.get("/api/service/{name}/logs")(page.api_service_logs)
 

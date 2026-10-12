@@ -3,6 +3,7 @@ import { ExternalUrlLinks } from "../shared/ExternalUrlLinks";
 import { ServiceActions } from "./ServiceActions";
 import { ServiceLogs } from "../logs/ServiceLogs";
 import { ServiceRuntimeTrends } from "../trends/runtime/ServiceRuntimeTrends";
+import { ServiceHttpRequests } from "./httpRequests/ServiceHttpRequests";
 import "./ServiceDetail.css";
 /** Render full status contract fields for one Compose service. */
 export function ServiceDetail(props: {
@@ -68,6 +69,7 @@ export function ServiceDetail(props: {
       </section>
 
       <ServiceRuntimeTrends service={c.service} />
+      <ServiceHttpRequests service={c.service} containerStatus={c.status} />
 
       <section className="panel">
         <h2>Host context</h2>

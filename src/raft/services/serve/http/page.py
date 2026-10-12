@@ -11,7 +11,14 @@ from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.stack import Stack
 from raft.core.observe.ops.logs import DEFAULT_LOG_TAIL, Logs
 from raft.core.observe.ops.status import Status
-from raft.core.observe.read import HttpMetricsRead, MetricsRead, StatusRead
+from raft.core.observe.read import (
+    HttpMetricsRead,
+    HttpRequestsRead,
+    MetricsRead,
+    StatusRead,
+)
+from raft.core.observe.read.http_requests import DEFAULT_LIMIT as _HTTP_REQ_DEFAULT
+from raft.core.observe.read.http_requests import MAX_LIMIT as _HTTP_REQ_MAX
 from ..actions import ServeActions
 from .log_stream import LogSseStream
 from .paths import ServePaths
@@ -20,6 +27,7 @@ from .paths import ServePaths
 # GET /api/metrics — historical resource series + GraphEvents (poll + since).
 # GET /api/metrics/http — HTTP edge request series from http.jsonl.
 # GET /api/service/{name} — one Compose service from the status snapshot.
+# GET /api/service/{name}/http-requests — recent per-request HTTP rows (Host apps).
 # GET /api/service/{name}/logs — container stdout/stderr tail (Logs.snapshot).
 # GET /api/service/{name}/logs/follow — SSE follow (Logs.follow; CLI ``-f``).
 # POST /api/service/{name}/start|stop|redeploy — mutative lifecycle actions.
@@ -49,6 +57,7 @@ class ServePage:
         self._read = StatusRead(stack, status=status)
         self._metrics = MetricsRead(stack.root)
         self._http_metrics = HttpMetricsRead(stack.root)
+        self._http_requests = HttpRequestsRead(stack)
         self._actions = actions or ServeActions(stack)
         self._logs = logs or Logs(stack)
 
@@ -79,6 +88,20 @@ class ServePage:
         self.stack = stack
         self._actions.bind_stack(stack)
         self._logs.bind_stack(stack)
+        self._http_requests.bind_stack(stack)
+
+    def api_service_http_requests(
+        self, name: str, limit: int = _HTTP_REQ_DEFAULT
+    ) -> Dict[str, Any]:
+        """Recent per-request HTTP rows for a Host-routed App (access.log tail)."""
+        self._read.collect(refresh_apps=True)
+        self._adopt_stack(self._read.stack)
+        payload = self._http_requests.for_service(
+            name, limit=self._clamp_http_limit(limit)
+        )
+        if payload.get("unknown"):
+            raise HTTPException(status_code=404, detail=f"service '{name}' not found")
+        return payload
 
     def api_service_logs(self, name: str, tail: int = DEFAULT_LOG_TAIL) -> Dict[str, Any]:
         """Recent container logs for one service (CLI ``raft logs`` snapshot)."""
@@ -173,6 +196,14 @@ class ServePage:
         if tail > _MAX_LOG_TAIL:
             return _MAX_LOG_TAIL
         return tail
+
+    @staticmethod
+    def _clamp_http_limit(limit: int) -> int:
+        if limit < 1:
+            return 1
+        if limit > _HTTP_REQ_MAX:
+            return _HTTP_REQ_MAX
+        return limit
 
     @staticmethod
     def _http_for_operator(exc: OperatorError) -> HTTPException:
