@@ -1,20 +1,19 @@
 """Collect edge + scaling + ACME redirect fragments for one render pass."""
 
-from __future__ import annotations
-
 from pathlib import Path
 
+from ..acme.http_redirect import AcmeHttpRedirect
+from ..acme.paths import AcmePaths
 from ..adapters.nginx import NginxUpstreamText
-from ..config.settings_types import EdgeConfig
+from ..config.settings.types import EdgeConfig
 from ..errors.cta import OperatorError
 from ..models.app import App
 from ..models.manifest import AppSpec
 from ..models.ports import PortSpec
 from ..models.state.scaling_store import ScalingStore
-from ..acme.http_redirect import AcmeHttpRedirect
-from ..acme.paths import AcmePaths
-
-from .edge import EDGE_HANDLERS, EdgeFragments, TlsEdge
+from .edge.fragments import EdgeFragments
+from .edge.handlers import EDGE_HANDLERS
+from .edge.tls import TlsEdge
 from .scaling_gate import ScalingGate
 
 
@@ -54,7 +53,9 @@ class FragmentCollector:
         )
         return frag
 
-    def _port_fragments(self, app: App, app_spec: AppSpec, *, absent: bool) -> EdgeFragments:
+    def _port_fragments(
+        self, app: App, app_spec: AppSpec, *, absent: bool
+    ) -> EdgeFragments:
         frag = EdgeFragments()
         for port in app_spec.ports:
             port_frag = EDGE_HANDLERS[port.expose].contribute(

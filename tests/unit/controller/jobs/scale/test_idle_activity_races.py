@@ -9,8 +9,6 @@ Patching ``record_activity`` (#84) does not stop in-flight ``store.touch_activit
 from the wake HTTP thread, nor a torn/empty load window.
 """
 
-from __future__ import annotations
-
 import threading
 import time
 from pathlib import Path

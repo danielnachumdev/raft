@@ -1,7 +1,5 @@
 """Inject the active TraceContext id onto log records."""
 
-from __future__ import annotations
-
 import logging
 
 from ..trace import TraceContext

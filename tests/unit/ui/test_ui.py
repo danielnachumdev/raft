@@ -3,7 +3,7 @@
 import logging
 import sys
 
-from raft.ui import GREEN, RED, RESET, paint, say, say_err, want_color
+from raft.ui import GREEN, RED, RESET, OperatorSay, TerminalColor
 
 
 class _Tty:
@@ -18,8 +18,8 @@ class _NoTty:
 
 def test_say_prints_and_logs(capsys, caplog) -> None:
     with caplog.at_level(logging.INFO, logger="raft"):
-        say("hello operator")
-        say("")
+        OperatorSay.say("hello operator")
+        OperatorSay.say("")
     out = capsys.readouterr().out
     assert "hello operator" in out
     assert "hello operator" in caplog.text
@@ -27,7 +27,7 @@ def test_say_prints_and_logs(capsys, caplog) -> None:
 
 def test_say_err_prints_stderr_and_logs(capsys, caplog) -> None:
     with caplog.at_level(logging.ERROR, logger="raft"):
-        say_err("boom")
+        OperatorSay.say_err("boom")
     err = capsys.readouterr().err
     assert "boom" in err
     assert "boom" in caplog.text
@@ -36,31 +36,31 @@ def test_say_err_prints_stderr_and_logs(capsys, caplog) -> None:
 def test_want_color_respects_no_color_force_and_tty(monkeypatch) -> None:
     monkeypatch.delenv("NO_COLOR", raising=False)
     monkeypatch.delenv("FORCE_COLOR", raising=False)
-    assert want_color(_Tty()) is True
-    assert want_color(_NoTty()) is False
+    assert TerminalColor.want(_Tty()) is True
+    assert TerminalColor.want(_NoTty()) is False
     monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
-    assert want_color() is True
-    assert want_color(object()) is False
+    assert TerminalColor.want() is True
+    assert TerminalColor.want(object()) is False
     monkeypatch.setenv("NO_COLOR", "1")
     monkeypatch.setenv("FORCE_COLOR", "1")
-    assert want_color(_Tty()) is False
+    assert TerminalColor.want(_Tty()) is False
     monkeypatch.delenv("NO_COLOR", raising=False)
-    assert want_color(_NoTty()) is True
-    assert want_color(_NoTty(), explicit=True) is True
-    assert want_color(_Tty(), explicit=False) is False
+    assert TerminalColor.want(_NoTty()) is True
+    assert TerminalColor.want(_NoTty(), explicit=True) is True
+    assert TerminalColor.want(_Tty(), explicit=False) is False
 
 
 def test_paint_and_styled_say(monkeypatch, capsys, caplog) -> None:
     monkeypatch.delenv("NO_COLOR", raising=False)
     monkeypatch.setenv("FORCE_COLOR", "1")
-    assert paint("x", GREEN) == f"{GREEN}x{RESET}"
-    assert paint("x", GREEN, color=False) == "x"
-    assert paint("x") == "x"
+    assert TerminalColor.paint("x", GREEN) == f"{GREEN}x{RESET}"
+    assert TerminalColor.paint("x", GREEN, color=False) == "x"
+    assert TerminalColor.paint("x") == "x"
     with caplog.at_level(logging.INFO, logger="raft"):
-        say("ok-msg", style="ok")
-        say("plain-unknown", style="nope")
-        say_err("err-msg")
-        say_err("")
+        OperatorSay.say("ok-msg", style="ok")
+        OperatorSay.say("plain-unknown", style="nope")
+        OperatorSay.say_err("err-msg")
+        OperatorSay.say_err("")
     captured = capsys.readouterr()
     assert captured.out.splitlines() == [f"{GREEN}ok-msg{RESET}", "plain-unknown"]
     assert f"{RED}" in captured.err and "err-msg" in captured.err

@@ -1,6 +1,5 @@
 """Serve download endpoints over the export registry (catalog + attachments)."""
 
-from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
@@ -12,9 +11,10 @@ from ..errors.cta import OperatorError
 from ..models.stack import Stack
 from ..export.attachment import ExportAttachment
 from ..export.catalogs import ExportCatalogs
-from ..export.registry import ExportRegistry, UnknownExportFormat
+from ..export.registry import ExportRegistry
+from ..export.unknown_format import UnknownExportFormat
 from ..ops.logs import DEFAULT_LOG_TAIL, Logs
-from ..read.metrics import MetricsRead
+from ..read import MetricsRead
 
 _MAX_LOG_TAIL = 5000
 _EXPORT_MAX_POINTS = 50_000

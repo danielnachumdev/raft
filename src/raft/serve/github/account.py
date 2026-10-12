@@ -1,7 +1,5 @@
 """GitHub connected-account model for ``raft serve`` (public-safe views)."""
 
-from __future__ import annotations
-
 import time
 from dataclasses import dataclass
 from typing import Any, Optional
@@ -56,30 +54,6 @@ class GithubAccount:
                 github_user_id=_opt_str(raw.get("github_user_id")),
                 created_at=_opt_float(raw.get("created_at")),
                 last_used_at=_opt_float(raw.get("last_used_at")),
-            )
-        except (KeyError, TypeError, ValueError):
-            return None
-
-
-@dataclass
-class GithubPendingOauth:
-    state: str
-    expires_at: float
-
-    def is_expired(self, *, now: Optional[float] = None) -> bool:
-        return (now if now is not None else time.time()) >= self.expires_at
-
-    def to_storage(self) -> dict[str, Any]:
-        return {"state": self.state, "expires_at": self.expires_at}
-
-    @staticmethod
-    def from_raw(raw: Any) -> Optional["GithubPendingOauth"]:
-        if not isinstance(raw, dict):
-            return None
-        try:
-            return GithubPendingOauth(
-                state=str(raw["state"]),
-                expires_at=float(raw["expires_at"]),
             )
         except (KeyError, TypeError, ValueError):
             return None

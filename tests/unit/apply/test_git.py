@@ -1,7 +1,5 @@
 """Apply from git coverage."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -124,7 +122,7 @@ class TestApplyGit(ApplyTestCase):
         stack = load_stack(self.tmp_path)
         shell, mgr, calls = self._alias_shell_and_manager()
         shell.git.side_effect = self._alias_clone(calls)
-        with patch("raft.apply.service.GitAuthManager", return_value=mgr):
+        with patch("raft.apply.git_checkout.GitAuthManager", return_value=mgr):
             name = self.applier(stack, shell).apply_git(
                 "git@github.com:example/site.git", deploy=False
             )

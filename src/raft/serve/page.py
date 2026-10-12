@@ -1,6 +1,5 @@
 """Serve SPA shell (static) and JSON status / metrics / action APIs."""
 
-from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
@@ -12,8 +11,7 @@ from ..errors.cta import OperatorError
 from ..models.stack import Stack
 from ..ops.logs import DEFAULT_LOG_TAIL, Logs
 from ..ops.status import Status
-from ..read import MetricsRead, StatusRead
-from ..read.http_metrics import HttpMetricsRead
+from ..read import HttpMetricsRead, MetricsRead, StatusRead
 from .actions import ServeActions
 from .log_stream import LogSseStream
 from .paths import ServePaths

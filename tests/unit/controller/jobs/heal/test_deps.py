@@ -1,11 +1,9 @@
 """Healer dependsOn chain coverage."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from raft.config.settings_types import HealingConfig
+from raft.config.settings.types import HealingConfig
 from raft.controller.jobs.heal import Healer
 from raft.errors.cta import OperatorError
 from raft.models.state.scaling_store import ScalingStore

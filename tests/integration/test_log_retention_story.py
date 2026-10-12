@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from raft.config import load_config
+from raft.config import SettingsLoader
 from raft.utils import HostLogging
 from tests.shared.logging_reset import LoggingReset
 from tests.shared.raft_home import RaftHomeFixtures
@@ -42,7 +42,7 @@ class TestLogRetentionFromSettings:
         log_file = self._write_oversized(home)
         payload = log_file.read_text(encoding="utf-8")
         LoggingReset().for_tests()
-        HostLogging().configure(home, load_config(home))
+        HostLogging().configure(home, SettingsLoader().load(home))
         day = datetime.now().strftime("%Y-%m-%d")
         sealed = home / "logs" / f"raft.log.{day}"
         assert sealed.read_text(encoding="utf-8") == payload

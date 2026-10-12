@@ -1,7 +1,5 @@
 """WebhookStrategy validation + deliver with HTTP fakes (no network)."""
 
-from __future__ import annotations
-
 from io import BytesIO
 from typing import Any
 from unittest.mock import MagicMock
@@ -11,12 +9,10 @@ import pytest
 
 from raft.errors.cta import OperatorError
 from raft.notify.catalogs import NotificationCatalogs
-from raft.notify.event import (
-    DeliveryStatus,
-    NotificationEvent,
-    NotificationSeverity,
-)
-from raft.notify.strategies.webhook import TYPE_ID, WebhookStrategy
+from raft.notify.delivery_status import DeliveryStatus
+from raft.notify.event import NotificationEvent
+from raft.notify.severity import NotificationSeverity
+from raft.notify.strategies.webhook import TYPE_ID, WebhookHttpGateway, WebhookStrategy
 
 from tests.unit.base import RaftTestCase
 
@@ -57,7 +53,7 @@ class TestWebhookStrategy(RaftTestCase):
 
     def test_deliver_success_posts_json(self) -> None:
         opener = MagicMock(return_value=_FakeResponse(204))
-        strategy = WebhookStrategy(opener=opener)
+        strategy = WebhookStrategy(gateway=WebhookHttpGateway(opener=opener))
         settings = {**self._settings(), "timeoutSeconds": 5, "headers": {"X-A": "1"}}
         result = strategy.deliver(self._event(), settings)
         assert result.status == DeliveryStatus.SUCCESS
@@ -68,7 +64,7 @@ class TestWebhookStrategy(RaftTestCase):
 
     def test_deliver_http_status_failures(self) -> None:
         opener = MagicMock(return_value=_FakeResponse(404))
-        strategy = WebhookStrategy(opener=opener)
+        strategy = WebhookStrategy(gateway=WebhookHttpGateway(opener=opener))
         assert strategy.deliver(self._event(), self._settings()).error == "HTTP 404"
         opener.side_effect = HTTPError(
             "https://hooks.example.invalid/x", 500, "err", hdrs=None, fp=None
@@ -77,7 +73,7 @@ class TestWebhookStrategy(RaftTestCase):
 
     def test_deliver_transport_failures(self) -> None:
         opener = MagicMock()
-        strategy = WebhookStrategy(opener=opener)
+        strategy = WebhookStrategy(gateway=WebhookHttpGateway(opener=opener))
         opener.side_effect = URLError("down")
         assert "URLError" in strategy.deliver(self._event(), self._settings()).error
         opener.side_effect = TimeoutError()
@@ -86,7 +82,7 @@ class TestWebhookStrategy(RaftTestCase):
         assert "OSError" in strategy.deliver(self._event(), self._settings()).error
 
     def test_deliver_invalid_settings_failed_safe(self) -> None:
-        result = WebhookStrategy(opener=MagicMock()).deliver(self._event(), {})
+        result = WebhookStrategy(gateway=WebhookHttpGateway(opener=MagicMock())).deliver(self._event(), {})
         assert result.status == DeliveryStatus.FAILED
         assert "url is required" in result.error
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from raft.config.settings_types import EdgeConfig
+from raft.config.settings.types import EdgeConfig
 from raft.models.app import App
 from raft.models.stack import Stack
 from raft.read import ExternalUrlBuilder

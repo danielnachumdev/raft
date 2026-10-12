@@ -1,7 +1,5 @@
 """Scrape gate access.log + stub_status for HTTP request metrics."""
 
-from __future__ import annotations
-
 import logging
 import urllib.error
 import urllib.request

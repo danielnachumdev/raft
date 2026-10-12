@@ -1,7 +1,5 @@
 """Install app-owned scale-to-zero holding pages into generated gate-http."""
 
-from __future__ import annotations
-
 import logging
 import shutil
 from pathlib import Path

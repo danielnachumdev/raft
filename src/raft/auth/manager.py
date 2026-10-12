@@ -1,20 +1,22 @@
 """Per-service read-only SSH deploy keys for private git sources."""
 
-from __future__ import annotations
-
 import logging
 import subprocess
+from pathlib import Path
 from typing import Optional
-
-from ..errors.checked import raise_for_git_failure
-from ..errors.cta import OperatorError
 
 from ..adapters.host import HostGateway
 from ..adapters.shell import Shell
+from ..errors.checked import CheckedCommands
+from ..errors.cta import OperatorError
 from ..models.app import App
 from ..models.stack import Stack
-from ..ui import say
-from .ssh import SshDeployKeys
+from ..ui import OperatorSay
+from .clone_urls import CloneUrlMapper
+from .instructions import DeployKeyInstructions
+from .keys import SshDeployKeys
+from .repo import RepoUrlResolver
+from .url import SshGitUrl
 from .urls import SshGitUrls
 
 logger = logging.getLogger(__name__)
@@ -25,6 +27,9 @@ class GitAuthManager:
         self.stack = stack
         self.keys = SshDeployKeys(Shell(stack.root))
         self.urls = SshGitUrls()
+        self._repos = RepoUrlResolver(stack)
+        self._clones = CloneUrlMapper(self.urls, self.keys)
+        self._instructions = DeployKeyInstructions()
 
     @property
     def sh(self) -> Shell:
@@ -35,69 +40,43 @@ class GitAuthManager:
         self.keys.sh = value
 
     @property
-    def ssh_dir(self):
+    def ssh_dir(self) -> Path:
         return self.keys.ssh_dir
 
     @ssh_dir.setter
-    def ssh_dir(self, value) -> None:
+    def ssh_dir(self, value: Path) -> None:
         self.keys.ssh_dir = value
 
     @property
-    def keys_dir(self):
+    def keys_dir(self) -> Path:
         return self.keys.keys_dir
 
     @keys_dir.setter
-    def keys_dir(self, value) -> None:
+    def keys_dir(self, value: Path) -> None:
         self.keys.keys_dir = value
 
     @property
-    def config_path(self):
+    def config_path(self) -> Path:
         return self.keys.config_path
 
     @config_path.setter
-    def config_path(self, value) -> None:
+    def config_path(self, value: Path) -> None:
         self.keys.config_path = value
 
-    def key_path(self, service: str):
+    def key_path(self, service: str) -> Path:
         return self.keys.key_path(service)
 
-    def pub_path(self, service: str):
+    def pub_path(self, service: str) -> Path:
         return self.keys.pub_path(service)
 
     def is_configured(self, service: str) -> bool:
         return self.keys.is_configured(service)
 
     def effective_clone_url(self, app: App) -> str:
-        if not app.repo:
-            raise ValueError(f"service {app.name!r} has no repo URL")
-        if not self.is_configured(app.name):
-            return app.repo
-        parsed = self.urls.parse(app.repo)
-        base_host = self.urls.real_git_host(app.name, parsed.host)
-        alias = self.urls.host_alias(app.name, base_host)
-        return parsed.with_host_alias(alias)
+        return self._clones.effective(app)
 
     def resolve_repo_url(self, service: str, repo: Optional[str] = None) -> str:
-        """Repo URL from ``--repo`` or an already-applied App (no chicken-and-egg)."""
-        if repo is not None and str(repo).strip():
-            return str(repo).strip()
-        try:
-            app = self.stack.app(service)
-        except RuntimeError as exc:
-            known = ", ".join(a.name for a in self.stack.apps) or "(none applied)"
-            raise OperatorError(
-                f"unknown app {service!r} (known: {known}). "
-                f"Pass --repo git@host:owner/repo.git to set up auth before apply, "
-                f"or register a manifest first: raft apply --file PATH --no-deploy",
-                has_fix=False,
-            ) from exc
-        if not app.repo:
-            raise OperatorError(
-                f"{service!r} needs a repo URL: pass --repo, or set spec.repo on the "
-                f"applied App (git source, or docker with repo for checkout)",
-                has_fix=False,
-            )
-        return app.repo
+        return self._repos.resolve(service, repo)
 
     def setup(
         self,
@@ -116,7 +95,8 @@ class GitAuthManager:
         logger.info("auth %s: SSH Host %s → %s", service, alias, base_host)
         self._announce_key(service, base_host, parsed)
         logger.info("auth %s: clone URL will be %s", service, parsed.with_host_alias(alias))
-        self._say_auth_next_steps(service, repo_url)
+        applied = any(a.name == service for a in self.stack.apps)
+        self._instructions.say_next_steps(service, repo_url, applied=applied)
 
     def _prepare_key(self, service: str, *, force: bool) -> None:
         existed = self.is_configured(service)
@@ -128,25 +108,14 @@ class GitAuthManager:
         if not existed or force:
             logger.info("auth %s: created %s", service, self.key_path(service))
 
-    def _announce_key(self, service: str, base_host: str, parsed) -> None:
-        self._print_deploy_key_for_copy(
+    def _announce_key(self, service: str, base_host: str, parsed: SshGitUrl) -> None:
+        self._instructions.announce(
             service,
             host=base_host,
-            repo_path=parsed.path,
+            parsed=parsed,
             pubkey=self.pub_path(service).read_text(encoding="utf-8").strip(),
             title=self.key_title(service),
         )
-
-    def _say_auth_next_steps(self, service: str, repo_url: str) -> None:
-        applied = any(a.name == service for a in self.stack.apps)
-        if applied:
-            say(f"next: raft auth test {service} && raft sync {service}", style="info")
-        else:
-            say(
-                f"next: raft auth test {service} --repo {repo_url} "
-                f"&& raft apply --git {repo_url}",
-                style="info",
-            )
 
     def list_services(self) -> list[str]:
         return self.keys.list_services()
@@ -168,7 +137,7 @@ class GitAuthManager:
         pubkey = self.show_pubkey(service)
         parsed = self.urls.parse(repo_url)
         host = self.urls.real_git_host(service, parsed.host)
-        self._print_deploy_key_for_copy(
+        self._instructions.print_for_copy(
             service,
             host=host,
             repo_path=parsed.path,
@@ -177,31 +146,10 @@ class GitAuthManager:
         )
 
     def rewrite_clone_url(self, service: str, repo: str) -> str:
-        """Map a canonical SSH URL onto this service's Host alias when configured."""
-        if not self.is_configured(service):
-            return repo
-        parsed = self.urls.parse(repo)
-        base_host = self.urls.real_git_host(service, parsed.host)
-        alias = self.urls.host_alias(service, base_host)
-        return parsed.with_host_alias(alias)
+        return self._clones.rewrite(service, repo)
 
     def clone_urls_for_repo(self, repo: str) -> tuple[str, ...]:
-        """Candidate clone URLs: configured Host aliases first, then the raw repo.
-
-        Trying aliases before ``git@github.com:…`` avoids noisy ``Permission denied
-        (publickey)`` on the default identity when a deploy key is already set up.
-        """
-        try:
-            parsed = self.urls.parse(repo)
-        except ValueError:
-            return (repo,)
-        urls: list[str] = []
-        for service in self.list_services():
-            base_host = self.urls.real_git_host(service, parsed.host)
-            alias = self.urls.host_alias(service, base_host)
-            urls.append(parsed.with_host_alias(alias))
-        urls.append(repo)
-        return tuple(dict.fromkeys(urls))
+        return self._clones.candidates(repo)
 
     def test(
         self,
@@ -220,7 +168,7 @@ class GitAuthManager:
         logger.info("auth test %s: git ls-remote %s", service, url)
         self._assert_ls_remote(service, repo_url, url)
         if not quiet:
-            say(f"auth test {service}: ok", style="ok")
+            OperatorSay.say(f"auth test {service}: ok", style="ok")
         else:
             logger.info("auth test %s: ok", service)
 
@@ -234,15 +182,15 @@ class GitAuthManager:
             ["git", "ls-remote", url, "HEAD"],
             stderr=detail,
         )
-        raise_for_git_failure(exc, repo_url, app=service, always=True)
+        CheckedCommands.raise_for_git_failure(exc, repo_url, app=service, always=True)
 
     def remove(self, service: str, *, remove_files: bool = True) -> None:
         self.keys.remove_ssh_config(service)
         if remove_files:
             self.keys.remove_key_files(service)
         suffix = " and key files" if remove_files else ""
-        say(f"auth {service}: removed local SSH config{suffix}", style="ok")
-        say(
+        OperatorSay.say(f"auth {service}: removed local SSH config{suffix}", style="ok")
+        OperatorSay.say(
             "if a deploy key was added on the git host, delete it there manually "
             "(GitHub → repo Settings → Deploy keys).",
             style="info",
@@ -250,28 +198,4 @@ class GitAuthManager:
 
     @staticmethod
     def _pubkey_for_paste(pubkey: str) -> str:
-        parts = pubkey.split()
-        if len(parts) >= 2:
-            return f"{parts[0]} {parts[1]}"
-        return pubkey
-
-    def _print_deploy_key_for_copy(
-        self,
-        service: str,
-        *,
-        host: str,
-        repo_path: str,
-        pubkey: str,
-        title: str,
-    ) -> None:
-        say(f"Add a read-only deploy key for {service}:", style="info")
-        say("")
-        say(f"  Title:  {title}")
-        say(f"  Key:    {self._pubkey_for_paste(pubkey)}")
-        say("")
-        if host == "github.com":
-            say(f"  Open:   https://github.com/{repo_path}/settings/keys/new")
-            say("          (paste Title + Key, enable Allow read-only access)")
-        else:
-            say(f"  Open:   {host} → {repo_path} → Deploy keys → Add")
-            say("          (paste Title + Key as read-only)")
+        return DeployKeyInstructions.pubkey_for_paste(pubkey)

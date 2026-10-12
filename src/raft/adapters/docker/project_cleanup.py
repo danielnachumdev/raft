@@ -1,7 +1,5 @@
 """Remove leftover Compose-project containers that block ``raft down`` / network."""
 
-from __future__ import annotations
-
 import logging
 from typing import List
 

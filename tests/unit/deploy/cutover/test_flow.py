@@ -17,7 +17,7 @@ from .base import CutoverTestCase
 class TestCutoverFlow(CutoverTestCase):
     def test_full_cutover_happy_path(self) -> None:
         s = self._wired_session()
-        with patch("raft.deploy.cutover.time.sleep"):
+        with patch("raft.deploy.cutover.session.time.sleep"):
             self._run_snapshot_and_tmp(s)
             self._run_shift_rebuild_cleanup(s)
 
@@ -68,7 +68,7 @@ class TestCutoverFlow(CutoverTestCase):
             },
         )
         s = self._tmp_session_ready()
-        with patch("raft.deploy.cutover.time.sleep"):
+        with patch("raft.deploy.cutover.session.time.sleep"):
             s.start_tmp_from_previous()
         self._assert_tmp_env_and_path(s, str(env_file.resolve()))
 
@@ -81,7 +81,7 @@ class TestCutoverFlow(CutoverTestCase):
             extra={"envFile": "/home/raft/.raft/app.env"},
         )
         s = self._tmp_session_ready()
-        with patch("raft.deploy.cutover.time.sleep"):
+        with patch("raft.deploy.cutover.session.time.sleep"):
             s.start_tmp_from_previous()
         s.docker.run_tmp.assert_called_once_with(
             name=s.app.tmp_container,
@@ -145,7 +145,7 @@ class TestCutoverFlow(CutoverTestCase):
         s.docker.diagnostics_for.return_value = (
             "--- raft-app_tmp (container) ---\nError: OAUTH_CLIENT_ID is required"
         )
-        with patch("raft.deploy.cutover.time.sleep"):
+        with patch("raft.deploy.cutover.session.time.sleep"):
             with pytest.raises(OperatorError) as caught:
                 s.start_tmp_from_previous()
 
@@ -163,7 +163,7 @@ class TestCutoverFlow(CutoverTestCase):
         s.docker.diagnostics_for.return_value = (
             "--- app (running/unhealthy) ---\n" + NginxEmerg.host_not_found("old")
         )
-        with patch("raft.deploy.cutover.time.sleep"):
+        with patch("raft.deploy.cutover.session.time.sleep"):
             with pytest.raises(RuntimeError, match="host not found"):
                 s.rebuild_stable_service()
         s.docker.diagnostics_for.assert_called_with(s.app.compose_id)

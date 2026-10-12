@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from raft.config.settings import load_config
+from raft.config.settings import SettingsLoader
 from raft.errors.cta import OperatorError
 from raft.serve.github.settings_write import GithubSettingsWriter
 
@@ -27,7 +27,7 @@ class TestGithubSettingsWriter(RaftTestCase):
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
         assert data["edge"]["http"] == 80
         assert data["github"]["clientId"] == "id2"
-        assert load_config(self.tmp_path).github.client_secret == "sec2"
+        assert SettingsLoader().load(self.tmp_path).github.client_secret == "sec2"
         assert writer.public_status(port=9)["callback_url"].endswith(
             ":9/api/github/callback"
         )

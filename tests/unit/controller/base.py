@@ -1,21 +1,19 @@
 """Shared controller test helpers (locks, applied home, scaling extras)."""
 
-from __future__ import annotations
-
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator, Optional
 from unittest.mock import MagicMock, patch
 
-from raft.config.paths import ensure_raft_home
-from raft.config.settings_types import HealingConfig
+from raft.config.paths import RaftHomeBootstrap
+from raft.config.settings.types import HealingConfig
 from raft.controller.jobs.heal import Healer
 
 from ..base import write_applied_app
 
-LOCKS_HEAL = "raft.controller.jobs.heal.heal.app_and_stack_locks"
-LOCKS_SCALE_APPS = "raft.controller.jobs.scale.wake.apps_and_stack_locks"
-LOCKS_SCALE_DEPS = "raft.controller.jobs.scale.depends.apps_and_stack_locks"
+LOCKS_HEAL = "raft.controller.jobs.heal.heal.AppAndStackLocks"
+LOCKS_SCALE_APPS = "raft.controller.jobs.scale.wake.AppsAndStackLocks"
+LOCKS_SCALE_DEPS = "raft.controller.jobs.scale.depends.AppsAndStackLocks"
 
 
 class ControllerTestCase:
@@ -24,7 +22,7 @@ class ControllerTestCase:
     APP = "web"
 
     def raft_home(self, tmp_path: Path) -> Path:
-        return ensure_raft_home(tmp_path / "home")
+        return RaftHomeBootstrap().ensure(tmp_path / "home")
 
     def applied_home(self, tmp_path: Path, **write_kwargs: Any) -> Path:
         home = self.raft_home(tmp_path)

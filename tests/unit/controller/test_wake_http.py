@@ -1,7 +1,5 @@
 """Wake HTTP API for gate activity/wake callbacks."""
 
-from __future__ import annotations
-
 from unittest.mock import MagicMock
 
 from raft.controller.wake_http import WakeHttpPath, WakeHttpServer

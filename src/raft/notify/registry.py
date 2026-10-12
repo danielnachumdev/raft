@@ -1,7 +1,5 @@
 """Type-id lookup for notification strategies (open for new classes)."""
 
-from __future__ import annotations
-
 from typing import Dict, List, Sequence
 
 from ..errors.cta import OperatorError, operator

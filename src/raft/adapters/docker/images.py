@@ -1,10 +1,8 @@
 """Image snapshot/pin helpers and Compose network discovery."""
 
-from __future__ import annotations
-
 import logging
 
-from ...errors.checked import run_docker_checked
+from ...errors.checked import CheckedCommands
 from ...errors.cta import OperatorError
 
 from ...models.app import COMPOSE_PROJECT
@@ -26,7 +24,7 @@ class DockerImages:
             return named
         tag = f"{COMPOSE_PROJECT}-snapshot:{container_id[:12]}"
         logger.info("committing container %s as %s", container_id[:12], tag)
-        run_docker_checked(
+        CheckedCommands.run_docker(
             self.sh,
             ("commit", container_id, tag),
             action="snapshot running container for cutover",
@@ -36,7 +34,7 @@ class DockerImages:
 
     def _named_image_if_present(self, container_id: str) -> str:
         try:
-            named = run_docker_checked(
+            named = CheckedCommands.run_docker(
                 self.sh,
                 ("inspect", "-f", "{{.Config.Image}}", container_id),
                 action="inspect container image",
@@ -54,7 +52,7 @@ class DockerImages:
 
     def container_image_id(self, container_id: str) -> str:
         ref = self.container_image_ref(container_id)
-        result = run_docker_checked(
+        result = CheckedCommands.run_docker(
             self.sh,
             ("image", "inspect", "-f", "{{.Id}}", ref),
             action="inspect image id",
@@ -63,7 +61,7 @@ class DockerImages:
 
     def router_network(self) -> str:
         router_id = self.service_container_id(self.stack.router)
-        result = run_docker_checked(
+        result = CheckedCommands.run_docker(
             self.sh,
             (
                 "inspect",

@@ -14,18 +14,18 @@ from ..base import RaftTestCase, make_app, make_stack, write_demo_inventory
 
 # Where CLI modules bind names imported from ``raft.cli.utils.deps``.
 _DEP_TARGETS = {
-    "load_stack": ("raft.cli.cli_commands",),
-    "load_config": ("raft.cli.cli_commands",),
-    "HostLogging": ("raft.cli.cli_commands",),
-    "AppApply": ("raft.cli.cli_commands",),
-    "Orchestrator": ("raft.cli.cli_commands", "raft.cli.commands.gate"),
-    "Doctor": ("raft.cli.cli_commands",),
-    "Status": ("raft.cli.cli_commands",),
-    "Serve": ("raft.cli.cli_commands",),
-    "Logs": ("raft.cli.cli_commands",),
-    "Purge": ("raft.cli.cli_commands",),
-    "SelfUpdate": ("raft.cli.cli_commands",),
-    "Uninstall": ("raft.cli.cli_commands",),
+    "load_stack": ("raft.cli.commands.raft_commands",),
+    "SettingsLoader": ("raft.cli.commands.raft_commands",),
+    "HostLogging": ("raft.cli.commands.raft_commands",),
+    "AppApply": ("raft.cli.commands.raft_commands",),
+    "Orchestrator": ("raft.cli.commands.raft_commands", "raft.cli.commands.gate"),
+    "Doctor": ("raft.cli.commands.raft_commands",),
+    "Status": ("raft.cli.commands.raft_commands",),
+    "Serve": ("raft.cli.commands.raft_commands",),
+    "Logs": ("raft.cli.commands.raft_commands",),
+    "Purge": ("raft.cli.commands.raft_commands",),
+    "SelfUpdate": ("raft.cli.commands.raft_commands",),
+    "Uninstall": ("raft.cli.commands.raft_commands",),
     "GitAuthManager": ("raft.cli.commands.auth",),
 }
 

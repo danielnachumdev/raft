@@ -1,10 +1,6 @@
 """Metrics delimited table encoder (CSV shipped; TSV via same class)."""
 
-from __future__ import annotations
-
-from raft.export.strategies.metrics_delimited import DelimitedMetricsExporter
-
-from tests.unit.base import RaftTestCase
+from raft.export import DelimitedMetricsExporter
 
 _PAYLOAD = {
     "series": [
@@ -28,7 +24,7 @@ _PAYLOAD = {
 }
 
 
-class TestDelimitedMetricsExporter(RaftTestCase):
+class TestDelimitedMetricsExporter:
     def test_csv_header_and_row(self) -> None:
         text = DelimitedMetricsExporter.csv().encode(_PAYLOAD).decode("utf-8")
         lines = text.strip().split("\n")

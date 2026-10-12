@@ -1,7 +1,5 @@
 """Scaler wake: Host-through-nginx gate before mark_awake."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from unittest.mock import patch
 

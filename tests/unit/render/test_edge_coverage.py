@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from raft.config.settings_types import EdgeConfig, EdgeStream
+from raft.config.settings.types import EdgeConfig, EdgeStream
 from raft.models.manifest import AppSpec
 from raft.models.ports import PortSpec
 from raft.models.stack import load_stack

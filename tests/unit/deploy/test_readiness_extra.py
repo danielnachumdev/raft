@@ -9,7 +9,7 @@ import pytest
 
 from raft.adapters.docker import DockerStack
 from raft.models.ports import PortSpec
-from raft.models.readiness_parser import parse_readiness
+from raft.models.readiness_parser import ReadinessParser
 from raft.models.readiness_spec import ReadinessSpec
 from raft.deploy.readiness import ReadinessStrategy
 
@@ -20,14 +20,14 @@ class TestReadinessExtraCoverage(RaftTestCase):
     def test_readiness_empty_port_name_and_defaults(self) -> None:
         path = Path("app.yaml")
         ports = (PortSpec(name="http", container_port=80, expose="http"),)
-        r = parse_readiness(
+        r = ReadinessParser().parse(
             {"readiness": {"type": "http", "port": "  ", "path": ""}},
             ports,
             path,
         )
         assert r.port == "http"
         with pytest.raises(ValueError, match="requires a named port"):
-            parse_readiness(
+            ReadinessParser().parse(
                 {"readiness": {"type": "tcp"}},
                 (),
                 path,

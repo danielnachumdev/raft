@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 
 from raft.serve.github.account import GithubAccount
-from raft.serve.github.provider import GithubRepo
+from raft.serve.github.repo import GithubRepo
 
 
 def sample_repo() -> GithubRepo:

@@ -1,11 +1,10 @@
 """Logs download as JSON (service, tail, lines) — not raw secrets dumps."""
 
-from __future__ import annotations
-
 import json
-from typing import Any, Dict
+from typing import Any
 
-from ..format import Exporter, ExportSpec
+from ..exporter import Exporter
+from ..spec import ExportSpec
 
 
 class LogsJsonExporter(Exporter):
@@ -28,7 +27,7 @@ class LogsJsonExporter(Exporter):
         return (body + "\n").encode("utf-8")
 
     @staticmethod
-    def _document(payload: Any) -> Dict[str, Any]:
+    def _document(payload: Any) -> dict[str, Any]:
         if not isinstance(payload, dict):
             return {"service": "", "tail": 0, "lines": []}
         text = payload.get("text") if isinstance(payload.get("text"), str) else ""

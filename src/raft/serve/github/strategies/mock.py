@@ -1,18 +1,16 @@
 """MockGithubProvider — local fixture repos (no network)."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import List, Optional
 
 from ....errors.cta import OperatorError
 from ....models.manifest import CONTRACT_REL_PATH
-
 from ...paths import ServePaths
-from ..provider import GithubRepo, filter_repos
+from ..provider import GithubProvider
+from ..repo import GithubRepo, filter_repos
 
 
-class MockGithubProvider:
+class MockGithubProvider(GithubProvider):
     """Local fixture repos under ``share/serve/mock-github/`` (no network)."""
 
     def __init__(self, fixture_root: Optional[Path] = None) -> None:

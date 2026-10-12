@@ -4,8 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from raft.config.dir_tree_sync import DirTreeSync
-from raft.config.paths import ensure_raft_home, find_package_root, sync_product_templates
+from raft.config.paths import (
+    DirTreeSync,
+    ensure_raft_home,
+    find_package_root,
+    sync_product_templates,
+)
 
 from ..base import RaftTestCase
 

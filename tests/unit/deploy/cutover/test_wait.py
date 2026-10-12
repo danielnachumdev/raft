@@ -28,7 +28,7 @@ class TestCutoverWait(CutoverTestCase):
         docker = MagicMock()
         docker.service_is_ready.return_value = True
         session = self._cutover_session(app, docker)
-        with patch("raft.deploy.cutover.time.sleep"):
+        with patch("raft.deploy.cutover.session.time.sleep"):
             session._wait_ready("compose ready")
         docker.service_is_ready.assert_called_with(app.compose_id)
 
@@ -63,7 +63,7 @@ class TestCutoverWait(CutoverTestCase):
             http=MagicMock(),
         )
         s.http.public_host_ok.return_value = False
-        with patch("raft.deploy.cutover.WaitUntil") as wait:
+        with patch("raft.deploy.cutover.session.WaitUntil") as wait:
             s._wait_ready("slow ready")
         assert wait.call_args.kwargs["timeout"] == 90.0
         assert "timeoutSeconds=90s" in wait.call_args.kwargs["fix"]
@@ -158,7 +158,7 @@ class TestCutoverWait(CutoverTestCase):
 
     def test_wait_ready_skips_when_readiness_none(self) -> None:
         write_applied_app(self.tmp_path, "app", extra={"readiness": {"type": "none"}})
-        with patch("raft.deploy.cutover.WaitUntil") as wait:
+        with patch("raft.deploy.cutover.session.WaitUntil") as wait:
             self.session._wait_ready("noop")
         wait.assert_not_called()
 

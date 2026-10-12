@@ -1,7 +1,5 @@
 """Cross-process ownership of one ``raft serve`` port (flock + pid file)."""
 
-from __future__ import annotations
-
 import fcntl
 import os
 import signal
@@ -9,31 +7,12 @@ import time
 from pathlib import Path
 from typing import Optional, Tuple
 
-from ..errors.domain import serve_already_running, serve_stop_failed
+from ..errors.domain import DomainErrors
+from .lease import ServeLease
 
 SERVE_STATE_DIR = Path("state") / "serve"
 _POLL_SECONDS = 0.05
 _STOP_WAIT_SECONDS = 5.0
-
-
-class ServeLease:
-    """Exclusive flock held for the lifetime of a foreground ``raft serve``."""
-
-    def __init__(self, path: Path, fd: int) -> None:
-        self.path = path
-        self.fd = fd
-        self._released = False
-
-    def release(self) -> None:
-        if self._released:
-            return
-        self._released = True
-        try:
-            os.ftruncate(self.fd, 0)
-            fcntl.flock(self.fd, fcntl.LOCK_UN)
-        finally:
-            os.close(self.fd)
-            _unlink_quiet(self.path)
 
 
 class ServeRuntime:
@@ -51,7 +30,7 @@ class ServeRuntime:
         fd = os.open(str(path), os.O_RDWR | os.O_CREAT, 0o644)
         if not self._try_lock(fd):
             os.close(fd)
-            raise serve_already_running(port)
+            raise DomainErrors.serve_already_running(port)
         self._write_pid(fd, os.getpid())
         return ServeLease(path, fd)
 
@@ -61,7 +40,7 @@ class ServeRuntime:
         if not held:
             return False
         if pid is None:
-            raise serve_stop_failed(port, 0, "lock held but pid file is empty")
+            raise DomainErrors.serve_stop_failed(port, 0, "lock held but pid file is empty")
         self._terminate(pid, port)
         self._wait_until_released(port, pid)
         return True
@@ -110,7 +89,7 @@ class ServeRuntime:
     def _clear_stale(self, path: Path, fd: int) -> None:
         os.ftruncate(fd, 0)
         fcntl.flock(fd, fcntl.LOCK_UN)
-        _unlink_quiet(path)
+        ServeLease._unlink_quiet(path)
 
     def _terminate(self, pid: int, port: int) -> None:
         try:
@@ -118,7 +97,7 @@ class ServeRuntime:
         except ProcessLookupError:
             return
         except PermissionError as exc:
-            raise serve_stop_failed(port, pid, str(exc)) from exc
+            raise DomainErrors.serve_stop_failed(port, pid, str(exc)) from exc
 
     def _wait_until_released(self, port: int, pid: int) -> None:
         """Wait until the flock is free (not until the pid vanishes — zombies linger)."""
@@ -135,17 +114,10 @@ class ServeRuntime:
         except ProcessLookupError:
             return
         except PermissionError as exc:
-            raise serve_stop_failed(port, pid, str(exc)) from exc
+            raise DomainErrors.serve_stop_failed(port, pid, str(exc)) from exc
         deadline = time.monotonic() + 1.0
         while time.monotonic() < deadline:
             if not self._probe(port)[0]:
                 return
             time.sleep(_POLL_SECONDS)
-        raise serve_stop_failed(port, pid, "process did not exit")
-
-
-def _unlink_quiet(path: Path) -> None:
-    try:
-        path.unlink()
-    except OSError:
-        pass
+        raise DomainErrors.serve_stop_failed(port, pid, "process did not exit")

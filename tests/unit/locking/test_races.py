@@ -1,25 +1,19 @@
 """Upstream race and serialized deploy coverage."""
 
-from __future__ import annotations
-
-import os
 import threading
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
+from raft.errors.cta import OperatorError
 from raft.models.ports import PortSpec
-from raft.locking.locking import (
-    ENV_LOCK_TIMEOUT,
-    app_and_stack_locks,
-    stack_lock,
-)
-from raft.deploy.orchestrator import Orchestrator
+from raft.locking import AppAndStackLocks, LockPaths, StackLock
 from raft.render import StackRenderer
 
 from tests.unit.base import RaftTestCase, make_local_stack, write_applied_app
 from tests.unit.cta_asserts import assert_operator
+from .hold import LockHoldThread
 
 
 class TestUpstreamRaceWithoutLock(RaftTestCase):
@@ -63,14 +57,14 @@ class TestUpstreamRaceWithoutLock(RaftTestCase):
 
     def _run_locked_cutover_and_render(self, nginx, saw_tmp, release_cutover, done_render):
         def cutover_holder() -> None:
-            with stack_lock(self.stack.root, timeout=5):
+            with StackLock(self.stack.root, timeout=5):
                 nginx.point_at(self.alpha, self.alpha.tmp_alias, port=self.port, reload=False)
                 saw_tmp.set()
                 release_cutover.wait(timeout=5)
 
         def concurrent_render() -> None:
             assert saw_tmp.wait(timeout=2)
-            with stack_lock(self.stack.root, timeout=5):
+            with StackLock(self.stack.root, timeout=5):
                 StackRenderer(self.stack).render()
             done_render.set()
 
@@ -104,7 +98,7 @@ class TestSameAppLastFinisher(RaftTestCase):
         a_holds = threading.Event()
 
         def deploy_a() -> None:
-            with app_and_stack_locks(self.stack.root, "app", timeout=5):
+            with AppAndStackLocks(self.stack.root, "app", timeout=5):
                 a_holds.set()
                 assert started_b.wait(timeout=2)
                 time.sleep(0.05)
@@ -113,7 +107,7 @@ class TestSameAppLastFinisher(RaftTestCase):
         def deploy_b() -> None:
             assert a_holds.wait(timeout=2)
             started_b.set()
-            with app_and_stack_locks(self.stack.root, "app", timeout=5):
+            with AppAndStackLocks(self.stack.root, "app", timeout=5):
                 self.live.append("image-B-new")
 
         self._join_pair(deploy_a, deploy_b, timeout=3)
@@ -148,44 +142,22 @@ class TestSameAppLastFinisher(RaftTestCase):
         assert self.live == ["image-A-old"]
 
 
-class TestOrchestratorUsesLocks(RaftTestCase):
+class TestStackLockContention(RaftTestCase):
+    """Busy stack lock times out so a later mutative step can surface OperatorError."""
+
     @pytest.fixture(autouse=True)
-    def _orch(self, _raft_base) -> None:
-        write_applied_app(self.tmp_path, "app")
-        self.stack = make_local_stack(self.tmp_path, drain_seconds=0.0)
-        self.orch = Orchestrator(self.stack)
-        self.orch.docker = MagicMock()
-        self.orch.nginx = MagicMock()
-        self.orch.http = MagicMock()
-        self.orch.syncer = MagicMock()
+    def _home(self, _raft_base) -> None:
+        self.root = self.tmp_path
 
-    def test_render_waits_on_held_stack_lock(self) -> None:
-        held = threading.Event()
-        release = threading.Event()
-        errors: list[BaseException] = []
-        self._start_holder_and_renderer(held, release, errors)
-        assert errors
-
-        assert_operator(errors[0], contains=("stack", "RAFT_LOCK_TIMEOUT_SECONDS"))
-
-    def _start_holder_and_renderer(self, held, release, errors) -> None:
-        def holder() -> None:
-            with stack_lock(self.stack.root, timeout=5):
-                held.set()
-                release.wait(timeout=5)
-
-        def renderer() -> None:
-            try:
-                assert held.wait(timeout=2)
-                with patch.dict(os.environ, {ENV_LOCK_TIMEOUT: "0.2"}):
-                    self.orch.render()
-            except BaseException as exc:  # noqa: BLE001
-                errors.append(exc)
-
-        t1 = threading.Thread(target=holder)
-        t2 = threading.Thread(target=renderer)
-        t1.start()
-        t2.start()
-        t2.join(timeout=3)
-        release.set()
-        t1.join(timeout=2)
+    def test_second_holder_times_out_while_first_holds(self) -> None:
+        holder = LockHoldThread(LockPaths(self.root).stack()).start()
+        try:
+            with pytest.raises(OperatorError) as caught:
+                with StackLock(self.root, timeout=0.15):
+                    pass
+            assert_operator(
+                caught.value,
+                contains=("stack", "RAFT_LOCK_TIMEOUT_SECONDS"),
+            )
+        finally:
+            holder.stop()

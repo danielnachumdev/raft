@@ -7,11 +7,12 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
-from raft.config.settings_types import MetricsConfig
+from raft.config.settings.types import MetricsConfig
 from raft.controller.jobs.metrics import HTTP_METRICS_FILENAME
 from raft.controller.jobs.metrics import METRICS_DIR
-from raft.read.http_metrics import HttpMetricsRead
-from raft.read.http_metrics_series import HttpMetricsSeriesBuilder
+from raft.read import HttpMetricsRead
+from raft.read.metrics import HttpMetricsSeriesBuilder
+from raft.read.metrics.series import MetricsSeriesStrategy
 
 from tests.unit.base import RaftTestCase
 
@@ -93,7 +94,7 @@ class TestHttpMetricsRead(RaftTestCase):
             ]
         )
         assert any(a["id"] == "a" for a in avail)
-        assert builder._as_float([]) is None
+        assert MetricsSeriesStrategy.as_float([]) is None
         assert builder.downsample({"points": [1, 2, 3]}, max_points=0)["points"] == [1, 2, 3]
 
     def test_history_includes_clamp_message(self) -> None:

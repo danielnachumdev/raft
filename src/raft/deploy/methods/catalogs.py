@@ -1,7 +1,5 @@
 """Shipped deployment method catalogs (composition root)."""
 
-from __future__ import annotations
-
 from .registry import DeploymentMethodRegistry
 from .strategies.inplace import InPlaceDeployment
 from .strategies.seamless import SeamlessDeployment

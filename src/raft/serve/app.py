@@ -1,6 +1,5 @@
 """FastAPI application factory for ``raft serve``."""
 
-from __future__ import annotations
 
 from typing import Optional
 

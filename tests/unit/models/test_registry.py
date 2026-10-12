@@ -1,29 +1,24 @@
 """Registry unauthorized messaging."""
 
-from raft.errors.registry_msgs import (
-    ghcr_pat_create_url,
-    looks_like_registry_unauthorized,
-    missing_image_doctor_fix,
-    registry_unauthorized_message,
-)
+from raft.errors.registry_msgs import RegistryMessages
 
 
 def test_looks_like_registry_unauthorized() -> None:
-    assert looks_like_registry_unauthorized("unauthorized")
-    assert looks_like_registry_unauthorized("Error: authentication required")
-    assert looks_like_registry_unauthorized("denied: denied\npull access denied")
-    assert not looks_like_registry_unauthorized("connection refused")
+    assert RegistryMessages.looks_like_registry_unauthorized("unauthorized")
+    assert RegistryMessages.looks_like_registry_unauthorized("Error: authentication required")
+    assert RegistryMessages.looks_like_registry_unauthorized("denied: denied\npull access denied")
+    assert not RegistryMessages.looks_like_registry_unauthorized("connection refused")
 
 
 def test_ghcr_pat_create_url() -> None:
-    url = ghcr_pat_create_url(description="raft-ghcr-app")
+    url = RegistryMessages.ghcr_pat_create_url(description="raft-ghcr-app")
     assert url.startswith("https://github.com/settings/tokens/new?")
     assert "scopes=read:packages" in url
     assert "description=raft-ghcr-app" in url
 
 
 def test_registry_unauthorized_message() -> None:
-    msg = registry_unauthorized_message(
+    msg = RegistryMessages.registry_unauthorized_message(
         "ghcr.io/org/hub:main",
         detail="Error response from daemon: unauthorized\nunauthorized",
         app="hub",
@@ -39,19 +34,19 @@ def test_registry_unauthorized_message() -> None:
 
 
 def test_registry_unauthorized_message_without_detail() -> None:
-    msg = registry_unauthorized_message("ghcr.io/org/hub:main")
+    msg = RegistryMessages.registry_unauthorized_message("ghcr.io/org/hub:main")
     assert "cannot pull ghcr.io/org/hub:main" in msg
     assert "(docker:" not in msg
     assert "https://github.com/settings/tokens/new?scopes=read:packages" in msg
 
 
 def test_registry_unauthorized_message_blank_detail_line() -> None:
-    msg = registry_unauthorized_message("ghcr.io/org/hub:main", detail="\n\n")
+    msg = RegistryMessages.registry_unauthorized_message("ghcr.io/org/hub:main", detail="\n\n")
     assert "(docker:" not in msg
 
 
 def test_missing_image_doctor_fix() -> None:
-    fix = missing_image_doctor_fix(
+    fix = RegistryMessages.missing_image_doctor_fix(
         "ghcr.io/org/hub:main",
         app="hub",
         repo="git@github.com:org/hub.git",
@@ -65,7 +60,8 @@ def test_missing_image_doctor_fix() -> None:
 
 
 def test_missing_image_doctor_fix_non_ghcr() -> None:
-    fix = missing_image_doctor_fix("docker.io/library/nginx:latest")
+    fix = RegistryMessages.missing_image_doctor_fix("docker.io/library/nginx:latest")
     assert "docker login <registry>" in fix
     assert "docker pull docker.io/library/nginx:latest" in fix
     assert "github.com/settings/tokens" not in fix
+

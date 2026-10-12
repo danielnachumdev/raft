@@ -6,8 +6,6 @@ arg``. Raft never chains Fire on command return values, so leftover tokens after
 parsing a routine are always invalid — reject them *before* calling.
 """
 
-from __future__ import annotations
-
 from contextlib import contextmanager
 from typing import Iterator, Optional, Sequence, Union
 

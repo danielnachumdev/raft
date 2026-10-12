@@ -1,19 +1,13 @@
 """Logs txt/json encoders."""
 
-from __future__ import annotations
-
 import json
 
-from raft.export.attachment import ExportAttachment
-from raft.export.strategies.logs_json import LogsJsonExporter
-from raft.export.strategies.logs_txt import LogsTxtExporter
-
-from tests.unit.base import RaftTestCase
+from raft.export import ExportAttachment, LogsJsonExporter, LogsTxtExporter
 
 _PAYLOAD = {"service": "site", "tail": 20, "text": "line1\nline2\n"}
 
 
-class TestLogsTxtExporter(RaftTestCase):
+class TestLogsTxtExporter:
     def test_encodes_utf8_text_with_trailing_newline(self) -> None:
         body = LogsTxtExporter().encode(_PAYLOAD)
         assert body == b"line1\nline2\n"
@@ -27,7 +21,7 @@ class TestLogsTxtExporter(RaftTestCase):
         assert body == b"only\n"
 
 
-class TestLogsJsonExporter(RaftTestCase):
+class TestLogsJsonExporter:
     def test_encodes_lines_array(self) -> None:
         data = json.loads(LogsJsonExporter().encode(_PAYLOAD))
         assert data == {"service": "site", "tail": 20, "lines": ["line1", "line2"]}
@@ -37,7 +31,7 @@ class TestLogsJsonExporter(RaftTestCase):
         assert data == {"service": "", "tail": 0, "lines": []}
 
 
-class TestExportAttachment(RaftTestCase):
+class TestExportAttachment:
     def test_filename_sanitizes_service_stem(self) -> None:
         name = ExportAttachment.filename("raft-logs-demo/web", "txt")
         assert name == "raft-logs-demo-web.txt"

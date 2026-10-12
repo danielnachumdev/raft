@@ -1,13 +1,11 @@
 """Sync per-app ``acme:<name>`` controller jobs from applied ``tls: acme`` Apps."""
 
-from __future__ import annotations
-
 import logging
 from pathlib import Path
 from typing import Set
 
 from ....adapters.docker import DockerStack
-from ....config.settings import load_config
+from ....config.settings import SettingsLoader
 from ....models.stack import Stack
 from ....acme.ensure import AcmeEnsure
 from ....acme.install import AcmeGateInstall
@@ -108,7 +106,7 @@ class AcmeJobSync(ControllerJob):
         if stack.spec_for(app).tls != "acme":
             logger.info("ACME job skip: app %r left tls: acme", name)
             return
-        config = load_config(self._home).acme
+        config = SettingsLoader().load(self._home).acme
         AcmeEnsure(
             stack,
             installer=AcmeGateInstall(stack, self._docker),

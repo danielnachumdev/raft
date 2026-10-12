@@ -8,10 +8,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from raft.config.settings_github import GithubSettingsParser
-from raft.config.settings_types import GithubServeConfig
+from raft.config.settings.strategies.github import GithubSettingsParser
+from raft.config.settings.types import GithubServeConfig
 from raft.errors.cta import OperatorError
-from raft.serve.github.deploy_job import DeployJob, DeployJobStore, GithubDeployRunner
+from raft.serve.github.deploy_job import GithubDeployRunner
+from raft.serve.github.deploy_models import DeployJob, DeployJobStore
 from raft.serve.github.next_steps import DeployNextSteps
 from raft.serve.github.oauth import GithubOauth
 from raft.serve.github.strategies.real import RealGithubProvider
@@ -42,7 +43,7 @@ class TestCoverageOauth(RaftTestCase):
         import urllib.error
 
         with patch(
-            "urllib.request.urlopen",
+            "raft.serve.github.gateway.urlopen",
             side_effect=urllib.error.HTTPError("u", 400, "x", hdrs=None, fp=BytesIO(b"bad")),
         ):
             with pytest.raises(OperatorError, match="token exchange"):
@@ -53,18 +54,21 @@ class TestCoverageOauth(RaftTestCase):
             GithubServeConfig(mock=False, client_id="id", client_secret="sec"),
             GithubAccountStore(self.tmp_path),
         )
-        assert oauth._token_request("code").full_url.endswith("access_token")
         ok = MagicMock()
         ok.read.return_value = b'{"access_token":"tok"}'
+        ok.status = 200
+        ok.headers = {}
         ok.__enter__.return_value = ok
         ok.__exit__.return_value = False
-        with patch("urllib.request.urlopen", return_value=ok):
+        with patch("raft.serve.github.gateway.urlopen", return_value=ok):
             assert oauth._exchange_code("c") == "tok"
         user = MagicMock()
         user.read.return_value = b'{"login":"bob"}'
+        user.status = 200
+        user.headers = {}
         user.__enter__.return_value = user
         user.__exit__.return_value = False
-        with patch("urllib.request.urlopen", return_value=user):
+        with patch("raft.serve.github.gateway.urlopen", return_value=user):
             assert oauth._fetch_user("tok") == ("bob", None)
 
     def test_oauth_fetch_user_missing(self) -> None:
@@ -76,12 +80,13 @@ class TestCoverageOauth(RaftTestCase):
             GithubOauth(GithubServeConfig(mock=False), GithubAccountStore(self.tmp_path)).complete_mock()
         user = MagicMock()
         user.read.return_value = b"{}"
+        user.status = 200
+        user.headers = {}
         user.__enter__.return_value = user
         user.__exit__.return_value = False
-        with patch("urllib.request.urlopen", return_value=user):
+        with patch("raft.serve.github.gateway.urlopen", return_value=user):
             with pytest.raises(OperatorError, match="login"):
                 oauth._fetch_user("tok")
-
     def test_session_bad_raw_and_next_steps_key(self) -> None:
         store = GithubAccountStore(self.tmp_path)
         path = self.tmp_path / "state" / "serve" / "github-accounts.json"

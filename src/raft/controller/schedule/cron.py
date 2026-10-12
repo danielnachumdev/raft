@@ -1,7 +1,5 @@
 """5-field cron schedule (minute resolution)."""
 
-from __future__ import annotations
-
 from datetime import datetime, timedelta
 
 from .cron_field import CronField

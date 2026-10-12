@@ -1,11 +1,9 @@
 """Scaler idle co-stop via dependsOn.scaleWithParent."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from raft.config.settings_types import HealingConfig
+from raft.config.settings.types import HealingConfig
 from raft.controller.jobs.heal import Healer
 from raft.controller.jobs.scale import Scaler
 from raft.models.scaling_spec import ScalingSpec

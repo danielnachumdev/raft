@@ -5,8 +5,13 @@ from .paths import (
     CERTS_DIRNAME,
     DATA_HOME_ENV,
     DEPLOY_DIRNAME,
+    DirTreeSync,
     GENERATED_DIRNAME,
     LOGS_DIRNAME,
+    PackageRootFinder,
+    ProductTemplateSync,
+    RaftHome,
+    RaftHomeBootstrap,
     SETTINGS_FILENAME,
     STATE_DIR,
     ensure_raft_home,
@@ -15,8 +20,7 @@ from .paths import (
     settings_path,
     sync_product_templates,
 )
-from .settings import load_config
-from .settings_types import (
+from .settings import (
     CONFIG_FILENAME,
     AcmeConfig,
     EdgeConfig,
@@ -28,7 +32,9 @@ from .settings_types import (
     NotificationChannelConfig,
     NotificationsConfig,
     RaftConfig,
+    SettingsLoader,
     default_config,
+    load_config,
 )
 
 __all__ = [
@@ -38,6 +44,7 @@ __all__ = [
     "CONFIG_FILENAME",
     "DATA_HOME_ENV",
     "DEPLOY_DIRNAME",
+    "DirTreeSync",
     "EdgeConfig",
     "EdgeStream",
     "GENERATED_DIRNAME",
@@ -48,9 +55,14 @@ __all__ = [
     "MetricsConfig",
     "NotificationChannelConfig",
     "NotificationsConfig",
+    "PackageRootFinder",
+    "ProductTemplateSync",
     "RaftConfig",
+    "RaftHome",
+    "RaftHomeBootstrap",
     "SETTINGS_FILENAME",
     "STATE_DIR",
+    "SettingsLoader",
     "default_config",
     "ensure_raft_home",
     "find_package_root",

@@ -1,12 +1,10 @@
 """Hold an exclusive flock on a background thread for contention tests."""
 
-from __future__ import annotations
-
 import threading
 from pathlib import Path
 from typing import Optional
 
-from raft.locking.locking import exclusive_lock
+from raft.locking import ExclusiveLock
 
 
 class LockHoldThread:
@@ -32,6 +30,6 @@ class LockHoldThread:
             self._thread.join(timeout=2)
 
     def _run(self) -> None:
-        with exclusive_lock(self.path, kind=self.kind, timeout=self.timeout):
+        with ExclusiveLock(self.path, kind=self.kind, timeout=self.timeout):
             self.held.set()
             self.release.wait(timeout=self.timeout)

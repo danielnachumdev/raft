@@ -1,7 +1,5 @@
 """NotificationRegistry: register, get, catalog, unknown type CTA."""
 
-from __future__ import annotations
-
 import pytest
 
 from raft.errors.cta import OperatorError

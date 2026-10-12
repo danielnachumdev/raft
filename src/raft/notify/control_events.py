@@ -1,8 +1,8 @@
 """Typed control-plane notification events (producers build these only)."""
 
-from __future__ import annotations
 
-from .event import NotificationEvent, NotificationSeverity
+from .event import NotificationEvent
+from .severity import NotificationSeverity
 
 KIND_HEAL_ESCALATE = "heal.escalate"
 KIND_SCALE_WAKE_TIMEOUT = "scale.wake_timeout"

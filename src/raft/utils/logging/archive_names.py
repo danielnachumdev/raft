@@ -1,7 +1,5 @@
 """Active ``raft.log`` plus dated sealed archive path helpers."""
 
-from __future__ import annotations
-
 import re
 from datetime import date
 from pathlib import Path

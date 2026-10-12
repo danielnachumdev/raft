@@ -1,7 +1,5 @@
 """Parsed single cron field covering ``*``, ``N``, ``N-M``, ``*/N``, comma lists."""
 
-from __future__ import annotations
-
 from typing import List, Set
 
 

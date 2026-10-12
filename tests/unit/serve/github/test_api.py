@@ -14,7 +14,7 @@ from raft.serve.app import ServeAppFactory
 from raft.serve.github.account import GithubAccount
 from raft.serve.github.accounts import GithubAccountStore
 from raft.serve.github.api import ServeGithubApi
-from raft.serve.github.deploy_job import DeployJob, DeployJobStore
+from raft.serve.github.deploy_models import DeployJob, DeployJobStore
 from raft.serve.github.strategies.mock import MockGithubProvider
 from raft.serve.paths import ServePaths
 

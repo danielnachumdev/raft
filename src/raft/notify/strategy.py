@@ -1,11 +1,10 @@
 """NotificationStrategy ABC — subclass + register to add a channel type."""
 
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
 from typing import Any, Mapping
 
-from .event import DeliveryResult, NotificationEvent
+from .delivery_result import DeliveryResult
+from .event import NotificationEvent
 
 
 class NotificationStrategy(ABC):

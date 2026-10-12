@@ -1,42 +1,25 @@
 """Open a PR that adds a GitHub Actions workflow for ``raft apply`` (v1)."""
 
-from __future__ import annotations
-
 import base64
 import json
-import urllib.error
-import urllib.request
-from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Optional
 from urllib.parse import quote
 
 from ...errors.cta import OperatorError
-
+from .ci_pr_result import CiPrResult
 from .ci_workflow import BRANCH_NAME, WORKFLOW_REL, RaftApplyWorkflow
-from .provider import GithubRepo
+from .gateway import GithubApiGateway, GithubHttpError
+from .repo import GithubRepo
 
 _API = "https://api.github.com"
-_UA = "raft-serve-github-v1"
-
-
-@dataclass(frozen=True)
-class CiPrResult:
-    status: str
-    detail: str
-    pr_url: Optional[str] = None
-
-    def to_dict(self) -> Dict[str, Any]:
-        out: Dict[str, Any] = {"status": self.status, "detail": self.detail}
-        if self.pr_url:
-            out["pr_url"] = self.pr_url
-        return out
 
 
 class GithubCiPrSetup:
     """Ensure a raft-apply Actions workflow via Contents + Pulls API."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, gateway: Optional[GithubApiGateway] = None) -> None:
         self._workflow = RaftApplyWorkflow()
+        self._http = gateway or GithubApiGateway()
 
     def ensure(self, token: str, repo: GithubRepo, *, mock: bool = False) -> CiPrResult:
         if mock:
@@ -158,30 +141,23 @@ class GithubCiPrSetup:
         method: str = "GET",
         payload: Optional[dict] = None,
     ) -> str:
-        data = None if payload is None else json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(
-            url,
-            data=data,
-            method=method,
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Accept": "application/vnd.github+json",
-                "User-Agent": _UA,
-                "X-GitHub-Api-Version": "2022-11-28",
-                "Content-Type": "application/json",
-            },
-        )
-        return self._read(req)
-
-    @staticmethod
-    def _read(req: urllib.request.Request) -> str:
+        headers = self._http.bearer_headers(token)
+        headers["Content-Type"] = "application/json"
+        body = None if payload is None else json.dumps(payload).encode("utf-8")
         try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                return resp.read().decode("utf-8")
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")[:240]
+            if method == "GET":
+                return self._http.get(url, headers=headers).body
+            if method == "POST":
+                return self._http.post(url, headers=headers, body=body).body
+            if method == "PUT":
+                return self._http.put(url, headers=headers, body=body).body
             raise OperatorError(
-                f"GitHub API error HTTP {exc.code}: {detail}\n"
+                f"unsupported GitHub HTTP method {method!r}\nFix: report a raft bug",
+                has_fix=False,
+            )
+        except GithubHttpError as exc:
+            raise OperatorError(
+                f"GitHub API error HTTP {exc.code}: {exc.body}\n"
                 f"Fix: re-login with scopes read:user repo workflow",
                 has_fix=False,
             ) from exc

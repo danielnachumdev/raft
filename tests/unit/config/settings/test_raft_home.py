@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-import raft.config.paths as paths
 from raft.config import (
     default_config,
     ensure_raft_home,
@@ -17,6 +16,12 @@ from raft.config import (
     raft_home,
     sync_product_templates,
 )
+from raft.config.paths.controller_deps import ControllerDepsPyproject
+from raft.config.paths.package_root import PackageRootFinder
+from raft.config.paths.templates import ProductTemplateSync
+from raft.errors.operator_error import OperatorError
+import raft.config.paths.controller_deps as controller_deps_mod
+
 
 from ...base import RaftTestCase
 
@@ -84,13 +89,11 @@ class TestRaftHome(RaftTestCase):
         assert "acme_challenge.inc" in compose
 
     def test_sync_replaces_existing_controller_package(self) -> None:
-        from raft.config import paths as paths_mod
-
         home = self.tmp_path / "home"
         ensure_raft_home(home)
         marker = home / "controller" / "raft" / "stale-marker"
         marker.write_text("old\n", encoding="utf-8")
-        paths_mod._sync_controller_package(home, find_package_root())
+        ProductTemplateSync()._sync_controller_package(home, find_package_root())
         assert not marker.is_file()
         assert (home / "controller" / "raft" / "__init__.py").is_file()
 
@@ -186,14 +189,14 @@ edge:
         def boom(_name: str):
             raise PackageNotFoundError("raft")
 
-        monkeypatch.setattr(paths, "distribution_requires", boom)
+        monkeypatch.setattr(controller_deps_mod, "distribution_requires", boom)
         with pytest.raises(FileNotFoundError, match="pyproject.toml"):
-            paths._write_controller_pyproject_from_installed(dest)
+            ControllerDepsPyproject().write_from_installed(dest)
 
     def test_write_controller_pyproject_skips_extras(self, monkeypatch: pytest.MonkeyPatch) -> None:
         dest = self.tmp_path / "pyproject.toml"
         monkeypatch.setattr(
-            paths,
+            controller_deps_mod,
             "distribution_requires",
             lambda _name: [
                 "fire>=0.7.1",
@@ -201,7 +204,7 @@ edge:
                 'PyYAML>=6.0; python_version >= "3.9"',
             ],
         )
-        paths._write_controller_pyproject_from_installed(dest)
+        ControllerDepsPyproject().write_from_installed(dest)
         text = dest.read_text(encoding="utf-8")
         assert "fire>=0.7.1" in text
         assert "PyYAML>=6.0" in text
@@ -211,19 +214,19 @@ edge:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         dest = self.tmp_path / "pyproject.toml"
-        monkeypatch.setattr(paths, "distribution_requires", lambda _name: [])
+        monkeypatch.setattr(controller_deps_mod, "distribution_requires", lambda _name: [])
         with pytest.raises(FileNotFoundError, match="no requires"):
-            paths._write_controller_pyproject_from_installed(dest)
+            ControllerDepsPyproject().write_from_installed(dest)
 
     def test_write_controller_pyproject_only_extras(self, monkeypatch: pytest.MonkeyPatch) -> None:
         dest = self.tmp_path / "pyproject.toml"
         monkeypatch.setattr(
-            paths,
+            controller_deps_mod,
             "distribution_requires",
             lambda _name: ['pytest>=7.0; extra == "dev"'],
         )
         with pytest.raises(FileNotFoundError, match="no main dependencies"):
-            paths._write_controller_pyproject_from_installed(dest)
+            ControllerDepsPyproject().write_from_installed(dest)
 
     def test_find_raft_pyproject_skips_unrelated_toml(self) -> None:
         other = self.tmp_path / "other"
@@ -231,7 +234,7 @@ edge:
         (other / "pyproject.toml").write_text('name = "something-else"\n', encoding="utf-8")
         nested = other / "share"
         nested.mkdir()
-        assert paths._find_raft_pyproject(nested) is None
+        assert ControllerDepsPyproject().find_raft_pyproject(nested) is None
 
     def test_sync_controller_pyproject_keeps_existing_when_no_source(
         self, monkeypatch: pytest.MonkeyPatch
@@ -240,44 +243,49 @@ edge:
         dest = home / "controller" / "pyproject.toml"
         dest.parent.mkdir(parents=True)
         dest.write_text('name = "kept"\n', encoding="utf-8")
-        monkeypatch.setattr(paths, "_find_raft_pyproject", lambda _p: None)
+        syncer = ProductTemplateSync()
+        monkeypatch.setattr(syncer._deps, "find_raft_pyproject", lambda _p: None)
 
         def boom(_dest: Path) -> None:
             raise FileNotFoundError("no dist")
 
-        monkeypatch.setattr(paths, "_write_controller_pyproject_from_installed", boom)
-        paths._sync_controller_pyproject(home, self.tmp_path / "share")
+        monkeypatch.setattr(syncer._deps, "write_from_installed", boom)
+        syncer._sync_controller_pyproject(home, self.tmp_path / "share")
         assert dest.read_text(encoding="utf-8") == 'name = "kept"\n'
 
     def test_sync_controller_pyproject_raises_when_nothing_to_keep(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         home = self.tmp_path / "home"
-        monkeypatch.setattr(paths, "_find_raft_pyproject", lambda _p: None)
+        syncer = ProductTemplateSync()
+        monkeypatch.setattr(syncer._deps, "find_raft_pyproject", lambda _p: None)
 
         def boom(_dest: Path) -> None:
             raise FileNotFoundError("no dist")
 
-        monkeypatch.setattr(paths, "_write_controller_pyproject_from_installed", boom)
+        monkeypatch.setattr(syncer._deps, "write_from_installed", boom)
         with pytest.raises(FileNotFoundError, match="no dist"):
-            paths._sync_controller_pyproject(home, self.tmp_path / "share")
+            syncer._sync_controller_pyproject(home, self.tmp_path / "share")
 
     def test_find_package_root_via_module_parents(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Third search walks from ``paths.py`` when bundled + cwd miss."""
-        monkeypatch.setattr(paths, "_bundled_share", lambda: self.tmp_path / "nope")
+        """Third search walks from package_root.py when bundled + cwd miss."""
+        finder = PackageRootFinder()
+        monkeypatch.setattr(finder, "_bundled_share", lambda: self.tmp_path / "nope")
         orphan = self.tmp_path / "orphan"
         orphan.mkdir()
-        pkg = Path(paths.__file__).resolve().parent
+        import raft.config.paths.package_root as package_root_mod
+        pkg = Path(package_root_mod.__file__).resolve().parent
 
         def only_module_pkg(candidate: Path) -> bool:
             return candidate == pkg
 
-        monkeypatch.setattr(paths, "_is_package_root", only_module_pkg)
-        assert find_package_root(orphan) == pkg
+        monkeypatch.setattr(finder, "_is_package_root", only_module_pkg)
+        assert finder.find(orphan) == pkg
 
     def test_find_package_root_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(paths, "_bundled_share", lambda: self.tmp_path / "nope")
+        finder = PackageRootFinder()
+        monkeypatch.setattr(finder, "_bundled_share", lambda: self.tmp_path / "nope")
         orphan = self.tmp_path / "orphan"
         orphan.mkdir()
-        with pytest.raises(RuntimeError, match="package templates"):
-            find_package_root(orphan)
+        with pytest.raises(OperatorError, match="package templates"):
+            finder.find(orphan)

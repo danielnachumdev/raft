@@ -1,26 +1,20 @@
 """Exclusive flock coverage."""
 
-from __future__ import annotations
-
 import os
 import threading
 import time
-from unittest.mock import patch
 
 import pytest
 
 from raft.errors.cta import OperatorError
-from raft.locking.locking import (
-    ENV_LOCK_TIMEOUT,
-    app_and_stack_locks,
-    app_deploy_lock,
-    app_lock_path,
-    apps_and_stack_locks,
-    exclusive_lock,
-    notifications_lock,
-    notifications_lock_path,
-    stack_lock,
-    stack_lock_path,
+from raft.locking import (
+    AppAndStackLocks,
+    AppDeployLock,
+    AppsAndStackLocks,
+    ExclusiveLock,
+    LockPaths,
+    NotificationsLock,
+    StackLock,
 )
 
 from tests.unit.base import RaftTestCase
@@ -32,19 +26,20 @@ class TestExclusiveLock(RaftTestCase):
     @pytest.fixture(autouse=True)
     def _lock_home(self, _raft_base) -> None:
         self.root = self.tmp_path
+        self.paths = LockPaths(self.root)
 
     def test_reentrant_same_process(self) -> None:
-        path = stack_lock_path(self.root)
-        with exclusive_lock(path, kind="stack", timeout=1):
-            with exclusive_lock(path, kind="stack", timeout=1):
+        path = self.paths.stack()
+        with ExclusiveLock(path, kind="stack", timeout=1):
+            with ExclusiveLock(path, kind="stack", timeout=1):
                 assert path.is_file()
 
     def test_busy_times_out(self, caplog: pytest.LogCaptureFixture) -> None:
-        path = stack_lock_path(self.root)
+        path = self.paths.stack()
         holder = LockHoldThread(path).start()
         try:
             with caplog.at_level("INFO"), pytest.raises(OperatorError) as caught:
-                with exclusive_lock(path, kind="stack", timeout=0.15):
+                with ExclusiveLock(path, kind="stack", timeout=0.15):
                     pass
             assert_operator(
                 caught.value,
@@ -56,7 +51,7 @@ class TestExclusiveLock(RaftTestCase):
             holder.stop()
 
     def test_waiter_runs_after_holder(self, caplog: pytest.LogCaptureFixture) -> None:
-        path = stack_lock_path(self.root)
+        path = self.paths.stack()
         order: list[str] = []
         held = threading.Event()
         release = threading.Event()
@@ -75,7 +70,7 @@ class TestExclusiveLock(RaftTestCase):
         assert_logged(caplog, level="INFO", contains=("acquired", "stack"))
 
     def _slow(self, path, order, held, release) -> None:
-        with exclusive_lock(path, kind="stack", timeout=5):
+        with ExclusiveLock(path, kind="stack", timeout=5):
             order.append("A-start")
             held.set()
             release.wait(timeout=5)
@@ -83,35 +78,35 @@ class TestExclusiveLock(RaftTestCase):
 
     def _later(self, path, order, held) -> None:
         assert held.wait(timeout=2)
-        with exclusive_lock(path, kind="stack", timeout=5):
+        with ExclusiveLock(path, kind="stack", timeout=5):
             order.append("B")
 
     def test_app_and_stack_helpers(self) -> None:
-        with app_and_stack_locks(self.root, "web", timeout=1):
-            assert app_lock_path(self.root, "web").is_file()
-            assert stack_lock_path(self.root).is_file()
-        with app_deploy_lock(self.root, "web", timeout=1):
-            with stack_lock(self.root, timeout=1):
+        with AppAndStackLocks(self.root, "web", timeout=1):
+            assert self.paths.app("web").is_file()
+            assert self.paths.stack().is_file()
+        with AppDeployLock(self.root, "web", timeout=1):
+            with StackLock(self.root, timeout=1):
                 pass
 
     def test_apps_and_stack_locks_sorted(self) -> None:
-        with apps_and_stack_locks(self.root, ("web", "api", ""), timeout=1):
-            assert app_lock_path(self.root, "api").is_file()
-            assert app_lock_path(self.root, "web").is_file()
-            assert stack_lock_path(self.root).is_file()
+        with AppsAndStackLocks(self.root, ("web", "api", ""), timeout=1):
+            assert self.paths.app("api").is_file()
+            assert self.paths.app("web").is_file()
+            assert self.paths.stack().is_file()
 
     def test_app_lock_sanitizes_name(self) -> None:
-        assert app_lock_path(self.root, "a/b\\c").name == "app-a_b_c.lock"
+        assert self.paths.app("a/b\\c").name == "app-a_b_c.lock"
 
     def test_notifications_lock_helper(self) -> None:
-        with notifications_lock(self.root, timeout=1):
-            assert notifications_lock_path(self.root).name == "notifications.lock"
-            assert notifications_lock_path(self.root).is_file()
+        with NotificationsLock(self.root, timeout=1):
+            assert self.paths.notifications().name == "notifications.lock"
+            assert self.paths.notifications().is_file()
 
     def test_close_errors_during_busy_and_release_are_swallowed(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        path = stack_lock_path(self.root)
+        path = self.paths.stack()
         holder = LockHoldThread(path).start()
         try:
             self._flaky_close_timeout(path, monkeypatch)
@@ -131,7 +126,7 @@ class TestExclusiveLock(RaftTestCase):
 
         monkeypatch.setattr(os, "close", flaky_close)
         with pytest.raises(OperatorError) as caught:
-            with exclusive_lock(path, kind="stack", timeout=0.15):
+            with ExclusiveLock(path, kind="stack", timeout=0.15):
                 pass
 
         assert_operator(caught.value, contains=("stack", "RAFT_LOCK_TIMEOUT_SECONDS"))
@@ -148,6 +143,6 @@ class TestExclusiveLock(RaftTestCase):
 
         monkeypatch.setattr(os, "close", flaky_close)
         closes["n"] = 0
-        with exclusive_lock(path, kind="stack", timeout=1):
+        with ExclusiveLock(path, kind="stack", timeout=1):
             pass
         assert closes["n"] >= 1

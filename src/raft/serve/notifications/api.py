@@ -1,6 +1,5 @@
 """FastAPI handlers for notification channel CRUD + strategy catalog."""
 
-from __future__ import annotations
 
 from typing import Any, Dict, Optional
 

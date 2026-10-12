@@ -1,7 +1,5 @@
 """Parse ``spec.dependsOn`` string / object entries into ``DependsOnSpec``."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any, Optional
 

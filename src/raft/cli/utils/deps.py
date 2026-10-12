@@ -1,6 +1,6 @@
 """Injectable imports for the CLI (patch consumer bindings in tests)."""
 
-from ...config import load_config
+from ...config import SettingsLoader
 from ...utils import HostLogging
 from ...models.stack import load_stack
 from ...apply import AppApply
@@ -25,7 +25,7 @@ __all__ = [
     "Serve",
     "Status",
     "Uninstall",
-    "load_config",
+    "SettingsLoader",
     "load_stack",
     "HostLogging",
 ]

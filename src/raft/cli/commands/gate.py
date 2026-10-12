@@ -1,7 +1,5 @@
 """CLI for deliberate gate container recreate (published edge ports)."""
 
-from __future__ import annotations
-
 from ...models.stack import Stack
 from ..utils.deps import Orchestrator
 

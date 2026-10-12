@@ -1,7 +1,5 @@
 """Resolve App ``spec.dependsOn`` into Compose service ids for serve tables."""
 
-from __future__ import annotations
-
 from typing import Dict, Tuple
 
 from ..errors.cta import OperatorError

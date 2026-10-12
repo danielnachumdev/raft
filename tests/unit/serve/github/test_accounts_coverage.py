@@ -13,7 +13,8 @@ from fastapi.testclient import TestClient
 from raft.errors.cta import OperatorError
 from raft.ops.status.models import StatusSnapshot
 from raft.serve.app import ServeAppFactory
-from raft.serve.github.account import GithubAccount, GithubPendingOauth
+from raft.serve.github.account import GithubAccount
+from raft.serve.github.pending import GithubPendingOauth
 from raft.serve.github.accounts import GithubAccountStore
 from raft.serve.github.api import ServeGithubApi
 from raft.serve.github.oauth import GithubOauth

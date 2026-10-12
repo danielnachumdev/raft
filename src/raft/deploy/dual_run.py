@@ -1,7 +1,5 @@
 """Decide whether app deploy needs tmp dual-run cutover."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Sequence
 

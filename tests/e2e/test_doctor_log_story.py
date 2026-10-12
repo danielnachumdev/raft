@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from raft.config import load_config
+from raft.config import SettingsLoader
 from raft.utils import HostLogging, TraceContext
 from raft.models.stack import load_stack
 from raft.ops.doctor import Doctor
@@ -42,12 +42,12 @@ class TestDoctorLogObservability:
         RaftHomeFixtures.apply_and_render(home, RaftHomeFixtures.fixture_app_yamls("http_only"))
         log_file = self._seed_oversized_log(home, monkeypatch)
         LoggingReset().for_tests()
-        HostLogging().configure(home, load_config(home))
+        HostLogging().configure(home, SettingsLoader().load(home))
         self._assert_oversized_sealed(log_file)
         # Tiny maxBytes is only for the seal step; doctor must fit in one active file.
         self._raise_retention_bytes(home, max_bytes=1_000_000)
         LoggingReset().for_tests()
-        HostLogging().configure(home, load_config(home))
+        HostLogging().configure(home, SettingsLoader().load(home))
         with TraceContext() as tid:
             Doctor(load_stack(home)).report(out=StringIO(), color=False)
         self._assert_observability(log_file.read_text(encoding="utf-8"), tid)

@@ -1,7 +1,5 @@
 """Cheap log setup: seal stale/oversized active file; purge old archives."""
 
-from __future__ import annotations
-
 import logging
 from datetime import date, datetime
 from pathlib import Path

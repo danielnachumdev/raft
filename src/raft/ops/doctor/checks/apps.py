@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Optional
 
 from ....errors.cta import OperatorError
-from ....errors.registry_msgs import missing_image_doctor_fix
+from ....errors.registry_msgs import RegistryMessages
 
 from ....models.registry import AppRegistry
 from ....auth.urls import SshGitUrls
@@ -98,7 +98,7 @@ class AppChecks:
             "sync",
             "fail",
             f"docker image missing locally: {pin}",
-            fix=missing_image_doctor_fix(pin, app=app.name, repo=app.repo),
+            fix=RegistryMessages.missing_image_doctor_fix(pin, app=app.name, repo=app.repo),
         )
 
     @staticmethod

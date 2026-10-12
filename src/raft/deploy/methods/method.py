@@ -1,7 +1,5 @@
 """DeploymentMethod ABC — subclass + register to add a transition strategy."""
 
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Optional

@@ -1,7 +1,5 @@
 """Unit tests for GateHttpScraper (access log + stub_status)."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Dict
 from unittest.mock import MagicMock

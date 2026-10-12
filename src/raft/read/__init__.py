@@ -50,13 +50,15 @@ Doctor JSON is deferred for a full dashboard health view; see
 from .depends import ServeDependsMap
 from .doctor import DoctorRead
 from .external_urls import ExternalUrlBuilder
-from .metrics import MetricsRead
+from .metrics import HttpMetricsRead, MetricsRead
+from .serve_row import ServeRow
+from .snapshot_view import ServeSnapshotView
 from .status import StatusRead
-from .view import ServeRow, ServeSnapshotView
 
 __all__ = [
     "DoctorRead",
     "ExternalUrlBuilder",
+    "HttpMetricsRead",
     "MetricsRead",
     "ServeDependsMap",
     "ServeRow",

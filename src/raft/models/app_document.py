@@ -1,28 +1,33 @@
 """Parse and load Kubernetes-shaped App manifest documents."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any, Optional
 
 import yaml
 
 from ..errors.cta import OperatorError
-
 from .app import App
 from .app_mount_fields import AppMountFields
-from .app_spec_fields import AppSpecFields
+from .app_spec_fields import (
+    AppBuildFields,
+    AppGroupFields,
+    AppResourceFields,
+    AppSourceFields,
+    AppSpecKnownKeys,
+    AppTlsFields,
+)
 from .depends_fields import DependsOnFields
-from .deployment_spec import DeploymentSpecParser
+from .deployment_spec_parser import DeploymentSpecParser
 from .manifest import (
     CONTRACT_API_VERSION,
     CONTRACT_KIND,
     CONTRACT_REL_PATH,
     AppSpec,
 )
-from .ports import PortSpec, parse_ports
-from .readiness_parser import parse_readiness
-from .scaling_spec import ScalingSpecParser
+from .port_list_parser import PortListParser
+from .ports import PortSpec
+from .readiness_parser import ReadinessParser
+from .scaling_spec_parser import ScalingSpecParser
 
 _KNOWN_METADATA_KEYS = frozenset({"name"})
 
@@ -45,8 +50,8 @@ class AppDocument:
         cls._require_api_kind(data, path)
         name = cls._metadata_name(data, path, expect_name=expect_name)
         spec = cls._spec_mapping(data, path)
-        AppSpecFields._reject_unknown(spec, path)
-        ports = parse_ports(spec, path)
+        AppSpecKnownKeys.reject_unknown(spec, path)
+        ports = PortListParser().parse(spec, path)
         public_host = cls._require_public_host(spec, ports, path)
         return cls._assemble(name, public_host, spec, ports, path)
 
@@ -139,7 +144,9 @@ class AppDocument:
     ) -> str:
         public_host = str(spec.get("publicHost", spec.get("public_host", ""))).strip()
         if any(p.expose == "http" for p in ports) and not public_host:
-            raise ValueError(f"{path}: spec.publicHost is required when any port uses expose=http")
+            raise ValueError(
+                f"{path}: spec.publicHost is required when any port uses expose=http"
+            )
         return public_host
 
     @classmethod
@@ -151,8 +158,8 @@ class AppDocument:
         ports: tuple[PortSpec, ...],
         path: Path,
     ) -> tuple[App, AppSpec]:
-        source, repo, image, ref, rel_path = AppSpecFields._parse_source(spec, path, name=name)
-        group = AppSpecFields._parse_group(spec, path)
+        source, repo, image, ref, rel_path = AppSourceFields.parse(spec, path, name=name)
+        group = AppGroupFields.parse_group(spec, path)
         app = App(
             name=name,
             public_host=public_host,
@@ -190,13 +197,12 @@ class AppDocument:
         path: Path,
         group: Optional[str],
     ) -> dict[str, Any]:
-        fields = AppSpecFields
-        context, dockerfile = fields._parse_build(spec, path)
+        context, dockerfile = AppBuildFields.parse(spec, path)
         return {
             "ports": ports,
-            "tls": fields._parse_tls(spec, path, public_host=public_host, ports=ports),
-            "readiness": parse_readiness(spec, ports, path),
-            "extra_hosts": fields._extra_hosts(spec, path),
+            "tls": AppTlsFields.parse(spec, path, public_host=public_host, ports=ports),
+            "readiness": ReadinessParser().parse(spec, ports, path),
+            "extra_hosts": AppGroupFields.extra_hosts(spec, path),
             "build_context": context,
             "dockerfile": dockerfile,
             "metadata_name": name,
@@ -207,7 +213,7 @@ class AppDocument:
 
     @staticmethod
     def _resource_kwargs(spec: dict[str, Any], path: Path) -> dict[str, Any]:
-        cpus_l, mem_l, cpus_r, mem_r = AppSpecFields._resources(spec, path)
+        cpus_l, mem_l, cpus_r, mem_r = AppResourceFields.parse(spec, path)
         return {
             "cpus_limit": cpus_l,
             "memory_limit": mem_l,

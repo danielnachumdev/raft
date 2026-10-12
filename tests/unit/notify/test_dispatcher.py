@@ -1,7 +1,5 @@
 """NotificationDispatcher: fan-out, skip disabled, isolate failures."""
 
-from __future__ import annotations
-
 from datetime import datetime, timezone
 
 import pytest
@@ -9,12 +7,10 @@ import pytest
 from raft.errors.cta import OperatorError
 from raft.notify.channel import ChannelDescriptor
 from raft.notify.dispatcher import NotificationDispatcher
-from raft.notify.event import (
-    DeliveryResult,
-    DeliveryStatus,
-    NotificationEvent,
-    NotificationSeverity,
-)
+from raft.notify.delivery_result import DeliveryResult
+from raft.notify.delivery_status import DeliveryStatus
+from raft.notify.event import NotificationEvent
+from raft.notify.severity import NotificationSeverity
 from raft.notify.registry import NotificationRegistry
 
 from .fakes import FakeStrategy

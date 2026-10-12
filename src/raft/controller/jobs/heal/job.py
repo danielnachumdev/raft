@@ -1,11 +1,9 @@
 """Heal ``ControllerJob`` — registers the periodic heal ``JobSpec``."""
 
-from __future__ import annotations
-
 from pathlib import Path
 
 from ....adapters.docker import DockerStack
-from ....config.settings_types import HealingConfig
+from ....config.settings.types import HealingConfig
 from ...job import JobIds, JobRequest, JobSpec, QueuePolicy
 from ...orchestrator import JobOrchestrator
 from ...schedule import IntervalSchedule

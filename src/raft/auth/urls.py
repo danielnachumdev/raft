@@ -1,26 +1,14 @@
 """SSH git URL parsing and Host-alias helpers for raft auth."""
 
-from __future__ import annotations
-
 import os
 import re
-from dataclasses import dataclass
 from pathlib import Path
 
-_SSH_GIT_RE = re.compile(r"^(?:ssh://)?(?:git@)?(?P<host>[^/:]+)[:/](?P<path>.+?)(?:\.git)?/?$")
+from .url import SshGitUrl
 
-
-@dataclass(frozen=True)
-class SshGitUrl:
-    host: str
-    path: str
-
-    @property
-    def canonical(self) -> str:
-        return f"git@{self.host}:{self.path}.git"
-
-    def with_host_alias(self, alias: str) -> str:
-        return f"git@{alias}:{self.path}.git"
+_SSH_GIT_RE = re.compile(
+    r"^(?:ssh://)?(?:git@)?(?P<host>[^/:]+)[:/](?P<path>.+?)(?:\.git)?/?$"
+)
 
 
 class SshGitUrls:

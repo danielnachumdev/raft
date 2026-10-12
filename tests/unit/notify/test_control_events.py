@@ -1,7 +1,5 @@
 """ControlPlaneEvents kind/severity/context contract."""
 
-from __future__ import annotations
-
 from raft.notify.control_events import (
     KIND_ACME_ERROR,
     KIND_HEAL_ESCALATE,
@@ -9,7 +7,7 @@ from raft.notify.control_events import (
     KIND_SERVE_DEPLOY_FAILED,
     ControlPlaneEvents,
 )
-from raft.notify.event import NotificationSeverity
+from raft.notify.severity import NotificationSeverity
 
 from tests.unit.base import RaftTestCase
 

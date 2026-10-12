@@ -20,7 +20,7 @@ class TestPurge(ServicesTestCase):
     @staticmethod
     @contextmanager
     def _lock():
-        with patch("raft.ops.purge.stack_lock") as lock:
+        with patch("raft.ops.purge.service.StackLock") as lock:
             lock.return_value.__enter__ = MagicMock()
             lock.return_value.__exit__ = MagicMock(return_value=False)
             yield lock
@@ -60,8 +60,8 @@ class TestPurge(ServicesTestCase):
         assert payload["builder_bytes"] == 2048
 
     def test_default_shell_and_prune(self) -> None:
-        with patch("raft.ops.purge.Shell") as shell_cls:
-            with patch("raft.ops.purge.DockerPrune") as prune_cls:
+        with patch("raft.ops.purge.service.Shell") as shell_cls:
+            with patch("raft.ops.purge.service.DockerPrune") as prune_cls:
                 shell = MagicMock()
                 prune = MagicMock()
                 prune.unused_images.return_value = 0

@@ -1,7 +1,5 @@
 """InPlaceDeployment — stop then rebuild on the steady name (brief downtime OK)."""
 
-from __future__ import annotations
-
 import logging
 
 from ..method import DeploymentContext, DeploymentMethod

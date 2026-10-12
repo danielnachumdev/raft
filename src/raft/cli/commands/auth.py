@@ -2,17 +2,9 @@
 
 from typing import Optional
 
-from ...errors.domain import auth_requires_service
-
-from ...ui import say
+from ...errors.domain import DomainErrors
+from ...ui import OperatorSay
 from ..utils.deps import GitAuthManager
-
-
-def _require_service(service: Optional[str], cmd: str) -> str:
-    name = (service or "").strip()
-    if not name:
-        raise auth_requires_service(cmd)
-    return name
 
 
 class AuthCLI:
@@ -32,7 +24,7 @@ class AuthCLI:
         Pass ``--repo git@host:owner/name.git`` when the App is not applied yet
         (bootstrap before ``raft apply --git``).
         """
-        name = _require_service(service, "setup")
+        name = self._require_service(service, "setup")
         GitAuthManager(self._stack).setup(name, force=force, repo=repo)
 
     def list(self) -> None:
@@ -40,24 +32,31 @@ class AuthCLI:
         auth = GitAuthManager(self._stack)
         names = auth.list_services()
         if not names:
-            say("No local raft deploy keys.", style="warn")
+            OperatorSay.say("No local raft deploy keys.", style="warn")
             return
         applied = {a.name for a in self._stack.apps}
         for name in names:
             mark = "" if name in applied else " (not applied)"
-            say(f"{name}\t{auth.key_path(name)}{mark}")
+            OperatorSay.say(f"{name}\t{auth.key_path(name)}{mark}")
 
     def show(self, service: Optional[str] = None, repo: Optional[str] = None) -> None:
         """Print Title + Key (and paste URL) for a service deploy key."""
-        name = _require_service(service, "show")
+        name = self._require_service(service, "show")
         GitAuthManager(self._stack).show(name, repo=repo)
 
     def test(self, service: Optional[str] = None, repo: Optional[str] = None) -> None:
         """git ls-remote using the service deploy key."""
-        name = _require_service(service, "test")
+        name = self._require_service(service, "test")
         GitAuthManager(self._stack).test(name, repo=repo)
 
     def remove(self, service: Optional[str] = None, keep_key: bool = False) -> None:
         """Remove local key + SSH config stanza for a service."""
-        name = _require_service(service, "remove")
+        name = self._require_service(service, "remove")
         GitAuthManager(self._stack).remove(name, remove_files=not keep_key)
+
+    @staticmethod
+    def _require_service(service: Optional[str], cmd: str) -> str:
+        name = (service or "").strip()
+        if not name:
+            raise DomainErrors.auth_requires_service(cmd)
+        return name

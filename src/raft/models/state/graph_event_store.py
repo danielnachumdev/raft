@@ -5,8 +5,6 @@ so Trends / Runtime charts can draw markers without inferring history from
 current deploy pins (pins only hold the live ref).
 """
 
-from __future__ import annotations
-
 import json
 import threading
 import uuid
@@ -14,8 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator, List, Optional, Sequence, Set
 
-from ..graph_event import GraphEvent
-from .graph_event_kinds import is_raft_level as raft_level_event
+from .graph_event import GraphEvent
+from .graph_event_kinds import RaftLevelEvent
 from .graph_event_records import GraphEventRecords
 
 EVENTS_STATE_DIR = Path("state") / "events"
@@ -105,14 +103,9 @@ class GraphEventStore(GraphEventRecords):
     ) -> bool:
         if wanted is None:
             return True
-        if GraphEventStore.is_raft_level(event):
+        if RaftLevelEvent.matches(event):
             return True
         return event.service in wanted
-
-    @staticmethod
-    def is_raft_level(event: GraphEvent) -> bool:
-        """Stack-wide / edge events — always relevant on Trends (and Runtime)."""
-        return raft_level_event(event)
 
     @staticmethod
     def _parse_ts(value: str) -> Optional[datetime]:

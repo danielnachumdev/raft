@@ -1,20 +1,16 @@
 """GitHub OAuth App helpers + mock login (localhost callback)."""
 
-from __future__ import annotations
-
 import json
 import secrets
 import time
-import urllib.error
-import urllib.request
 from typing import Optional, Tuple
 from urllib.parse import urlencode
 
-from ...config.settings_types import GithubServeConfig
+from ...config.settings.types import GithubServeConfig
 from ...errors.cta import OperatorError
-
 from .account import GithubAccount
 from .accounts import GithubAccountStore
+from .gateway import GithubApiGateway, GithubHttpError
 
 # Least privilege for private listing + Contents/PRs that add Actions workflows.
 # Deploy keys stay manual (no admin:public_key). ``workflow`` is required to
@@ -23,15 +19,21 @@ GITHUB_OAUTH_SCOPES = "read:user repo workflow"
 _AUTHORIZE = "https://github.com/login/oauth/authorize"
 _TOKEN = "https://github.com/login/oauth/access_token"
 _USER = "https://api.github.com/user"
-_UA = "raft-serve-github-v1"
 
 
 class GithubOauth:
     """Build authorize URLs and exchange codes (or mint a mock account)."""
 
-    def __init__(self, cfg: GithubServeConfig, store: GithubAccountStore) -> None:
+    def __init__(
+        self,
+        cfg: GithubServeConfig,
+        store: GithubAccountStore,
+        *,
+        gateway: Optional[GithubApiGateway] = None,
+    ) -> None:
         self._cfg = cfg
         self._store = store
+        self._http = gateway or GithubApiGateway()
 
     @property
     def mock_enabled(self) -> bool:
@@ -105,19 +107,6 @@ class GithubOauth:
         )
 
     def _exchange_code(self, code: str) -> str:
-        req = self._token_request(code)
-        try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:
-            raise OperatorError(
-                f"GitHub token exchange failed HTTP {exc.code}.\n"
-                f"Fix: check clientId/clientSecret and callback URL",
-                has_fix=False,
-            ) from exc
-        return self._token_from_payload(data)
-
-    def _token_request(self, code: str) -> urllib.request.Request:
         body = urlencode(
             {
                 "client_id": self._cfg.client_id,
@@ -125,16 +114,17 @@ class GithubOauth:
                 "code": code,
             }
         ).encode("utf-8")
-        return urllib.request.Request(
-            _TOKEN,
-            data=body,
-            headers={
-                "Accept": "application/json",
-                "User-Agent": _UA,
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-            method="POST",
-        )
+        try:
+            resp = self._http.post(
+                _TOKEN, headers=self._http.json_headers(), body=body
+            )
+        except GithubHttpError as exc:
+            raise OperatorError(
+                f"GitHub token exchange failed HTTP {exc.code}.\n"
+                f"Fix: check clientId/clientSecret and callback URL",
+                has_fix=False,
+            ) from exc
+        return self._token_from_payload(json.loads(resp.body))
 
     @staticmethod
     def _token_from_payload(data: object) -> str:
@@ -149,17 +139,8 @@ class GithubOauth:
         return str(token)
 
     def _fetch_user(self, token: str) -> Tuple[str, Optional[str]]:
-        req = urllib.request.Request(
-            _USER,
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Accept": "application/vnd.github+json",
-                "User-Agent": _UA,
-            },
-        )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-        return self._user_from_payload(data)
+        resp = self._http.get(_USER, headers=self._http.bearer_headers(token))
+        return self._user_from_payload(json.loads(resp.body))
 
     @staticmethod
     def _user_from_payload(data: object) -> Tuple[str, Optional[str]]:

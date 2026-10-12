@@ -1,17 +1,13 @@
 """NotificationEvent and DeliveryResult contracts."""
 
-from __future__ import annotations
-
 from datetime import datetime, timezone
 
 import pytest
 
-from raft.notify.event import (
-    DeliveryResult,
-    DeliveryStatus,
-    NotificationEvent,
-    NotificationSeverity,
-)
+from raft.notify.delivery_result import DeliveryResult
+from raft.notify.delivery_status import DeliveryStatus
+from raft.notify.event import NotificationEvent
+from raft.notify.severity import NotificationSeverity
 
 from tests.unit.base import RaftTestCase
 

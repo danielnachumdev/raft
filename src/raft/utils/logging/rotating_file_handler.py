@@ -1,7 +1,5 @@
 """File handler that rolls on local day change or ``max_bytes``."""
 
-from __future__ import annotations
-
 import logging
 from datetime import date, datetime
 from pathlib import Path

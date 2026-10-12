@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from raft.secrets.app_secrets import AppSecretsLayout
+from raft.secrets import AppSecretsLayout
 from raft.ops.doctor.checks.env_file import EnvFileChecks
 
 from tests.unit.base import make_app, make_stack, write_applied_app

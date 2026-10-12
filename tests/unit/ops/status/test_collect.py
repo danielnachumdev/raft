@@ -113,7 +113,7 @@ class TestStatusCollect(RaftTestCase):
                 return_value=reloaded,
             ) as load_apps:
                 with patch("raft.models.stack.load_stack") as load_stack_fn:
-                    with patch("raft.models.stack.ensure_raft_home") as ensure:
+                    with patch("raft.models.stack.RaftHomeBootstrap") as ensure:
                         status.collect(refresh_apps=True)
         load_apps.assert_called_once_with(self.tmp_path)
         load_stack_fn.assert_not_called()

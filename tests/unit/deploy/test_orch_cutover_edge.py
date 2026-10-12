@@ -39,7 +39,7 @@ class TestOrchCutoverEdgeCoverage(RaftTestCase):
         session.previous_image = "img:old"
         session.start_tmp_from_previous()
         session.docker.router_can_fetch.assert_not_called()
-        with patch("raft.deploy.cutover.time.sleep"):
+        with patch("raft.deploy.cutover.session.time.sleep"):
             session.shift_traffic_to_tmp()
             session.rebuild_stable_service()
 

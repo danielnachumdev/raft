@@ -1,6 +1,4 @@
-"""AcmeOrderRunner with a fake ClientV2."""
-
-from __future__ import annotations
+"""AcmeOrderRunner with a fake AcmeClientGateway."""
 
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -29,11 +27,11 @@ def _http01_order(token_byte: bytes = b"t") -> tuple[MagicMock, MagicMock, str]:
 
 
 def _client_for(order: MagicMock, *, fullchain: object = "CERT") -> MagicMock:
-    client = MagicMock()
-    client.net.key = MagicMock()
-    client.new_order.return_value = order
-    client.poll_and_finalize.return_value = MagicMock(fullchain_pem=fullchain)
-    return client
+    gateway = MagicMock()
+    gateway.key = MagicMock()
+    gateway.new_order.return_value = order
+    gateway.poll_and_finalize.return_value = MagicMock(fullchain_pem=fullchain)
+    return gateway
 
 
 class TestAcmeOrderRunner(RaftTestCase):

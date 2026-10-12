@@ -1,7 +1,5 @@
 """EmailStrategy validation + deliver with SMTP fakes (no network)."""
 
-from __future__ import annotations
-
 from typing import Any, List
 from unittest.mock import MagicMock, patch
 
@@ -10,13 +8,11 @@ import smtplib
 
 from raft.errors.cta import OperatorError
 from raft.notify.catalogs import NotificationCatalogs
-from raft.notify.strategies.email import TYPE_ID, EmailStrategy
-from raft.notify.event import (
-    DeliveryStatus,
-    NotificationEvent,
-    NotificationSeverity,
-)
-from raft.notify.redact import SettingsRedactor
+from raft.notify.strategies.email import TYPE_ID, EmailStrategy, SmtpGateway
+from raft.notify.delivery_status import DeliveryStatus
+from raft.notify.event import NotificationEvent
+from raft.notify.severity import NotificationSeverity
+from raft.notify.settings_redactor import SettingsRedactor
 
 from tests.unit.base import RaftTestCase
 
@@ -78,7 +74,7 @@ class TestEmailStrategy(RaftTestCase):
 
     def test_deliver_success_plain_text(self) -> None:
         smtp = _FakeSmtp()
-        strategy = EmailStrategy(smtp_factory=lambda h, p, t: smtp)
+        strategy = EmailStrategy(gateway=SmtpGateway(factory=lambda h, p, t: smtp))
         settings = {
             **self._settings(),
             "username": "raft@example.com",
@@ -97,7 +93,7 @@ class TestEmailStrategy(RaftTestCase):
 
     def test_deliver_skips_tls_and_login_when_unset(self) -> None:
         smtp = _FakeSmtp()
-        strategy = EmailStrategy(smtp_factory=lambda h, p, t: smtp)
+        strategy = EmailStrategy(gateway=SmtpGateway(factory=lambda h, p, t: smtp))
         event = NotificationEvent(
             kind="demo.kind",
             severity=NotificationSeverity.ERROR,
@@ -112,20 +108,20 @@ class TestEmailStrategy(RaftTestCase):
         assert smtp.logins == []
         assert "context:" not in smtp.sent[0].get_content()
         smtp2 = _FakeSmtp()
-        EmailStrategy(smtp_factory=lambda h, p, t: smtp2).deliver(
+        EmailStrategy(gateway=SmtpGateway(factory=lambda h, p, t: smtp2)).deliver(
             event, {**self._settings(), "useStartTls": "true"}
         )
         assert smtp2.started_tls is True
     def test_deliver_transport_failures(self) -> None:
-        strategy = EmailStrategy(smtp_factory=self._raising(smtplib.SMTPException()))
+        strategy = EmailStrategy(gateway=SmtpGateway(factory=self._raising(smtplib.SMTPException())))
         assert "SMTPException" in strategy.deliver(self._event(), self._settings()).error
-        strategy = EmailStrategy(smtp_factory=self._raising(TimeoutError()))
+        strategy = EmailStrategy(gateway=SmtpGateway(factory=self._raising(TimeoutError())))
         assert "TimeoutError" in strategy.deliver(self._event(), self._settings()).error
-        strategy = EmailStrategy(smtp_factory=self._raising(OSError("down")))
+        strategy = EmailStrategy(gateway=SmtpGateway(factory=self._raising(OSError("down"))))
         assert "OSError" in strategy.deliver(self._event(), self._settings()).error
 
     def test_deliver_invalid_settings_failed_safe(self) -> None:
-        result = EmailStrategy(smtp_factory=MagicMock()).deliver(self._event(), {})
+        result = EmailStrategy(gateway=SmtpGateway(factory=MagicMock())).deliver(self._event(), {})
         assert result.status == DeliveryStatus.FAILED
         assert "settings.to" in result.error
 
@@ -136,7 +132,7 @@ class TestEmailStrategy(RaftTestCase):
 
     def test_default_smtp_factory(self) -> None:
         smtp = _FakeSmtp()
-        with patch("raft.notify.strategies.email.smtplib.SMTP", return_value=smtp):
+        with patch("raft.notify.strategies.email.gateway.smtplib.SMTP", return_value=smtp):
             result = EmailStrategy().deliver(self._event(), self._settings())
         assert result.status == DeliveryStatus.SUCCESS
         assert smtp.sent

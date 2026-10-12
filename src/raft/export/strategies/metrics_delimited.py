@@ -1,12 +1,11 @@
 """Metrics series as a delimited table (CSV shipped; TSV is the same class)."""
 
-from __future__ import annotations
-
 import csv
 import io
-from typing import Any, List
+from typing import Any
 
-from ..format import Exporter, ExportSpec
+from ..exporter import Exporter
+from ..spec import ExportSpec
 
 _POINT_KEYS = (
     "cpu_percent",
@@ -63,17 +62,17 @@ class DelimitedMetricsExporter(Exporter):
         writer.writerows(self._rows(payload))
         return buf.getvalue().encode("utf-8")
 
-    def _rows(self, payload: Any) -> List[List[str]]:
+    def _rows(self, payload: Any) -> list[list[str]]:
         series_list = payload.get("series") if isinstance(payload, dict) else None
         if not isinstance(series_list, list):
             return []
-        rows: List[List[str]] = []
+        rows: list[list[str]] = []
         for series in series_list:
             if isinstance(series, dict):
                 rows.extend(self._series_rows(series))
         return rows
 
-    def _series_rows(self, series: dict) -> List[List[str]]:
+    def _series_rows(self, series: dict) -> list[list[str]]:
         points = series.get("points")
         if not isinstance(points, list):
             return []
@@ -83,7 +82,7 @@ class DelimitedMetricsExporter(Exporter):
         ]
 
     @staticmethod
-    def _row(meta: List[str], point: dict) -> List[str]:
+    def _row(meta: list[str], point: dict) -> list[str]:
         cells = [DelimitedMetricsExporter._cell(point.get("t"))]
         cells.extend(meta)
         cells.extend(
@@ -92,7 +91,7 @@ class DelimitedMetricsExporter(Exporter):
         return cells
 
     @staticmethod
-    def _meta(series: dict) -> List[str]:
+    def _meta(series: dict) -> list[str]:
         return [
             DelimitedMetricsExporter._cell(series.get("id")),
             DelimitedMetricsExporter._cell(series.get("label")),

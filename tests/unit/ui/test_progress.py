@@ -1,7 +1,5 @@
 """Shared TTY spinner used by doctor, update, and other long ops."""
 
-from __future__ import annotations
-
 import io
 import time
 

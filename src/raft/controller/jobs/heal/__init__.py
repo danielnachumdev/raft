@@ -1,6 +1,7 @@
 """Heal job: scheduled healer + ControllerJob adapter."""
 
-from .heal import Healer, needs_heal, run_heal_forever
+from .forever import HealForever
+from .heal import Healer
 from .job import HealJob
 
-__all__ = ["HealJob", "Healer", "needs_heal", "run_heal_forever"]
+__all__ = ["HealForever", "HealJob", "Healer"]

@@ -1,15 +1,15 @@
 """Export registry: lookup, catalog, open-closed register."""
 
-from __future__ import annotations
-
 from typing import Any
 
-from raft.export.catalogs import ExportCatalogs
-from raft.export.format import Exporter, ExportSpec
-from raft.export.strategies.metrics_delimited import DelimitedMetricsExporter
-from raft.export.registry import ExportRegistry, UnknownExportFormat
-
-from tests.unit.base import RaftTestCase
+from raft.export import (
+    DelimitedMetricsExporter,
+    ExportCatalogs,
+    Exporter,
+    ExportRegistry,
+    ExportSpec,
+    UnknownExportFormat,
+)
 
 
 class _StubExporter(Exporter):
@@ -22,7 +22,7 @@ class _StubExporter(Exporter):
         return b"stub"
 
 
-class TestExportRegistry(RaftTestCase):
+class TestExportRegistry:
     def test_catalog_lists_registered_order(self) -> None:
         registry = ExportRegistry()
         registry.register(_StubExporter("a"))
@@ -59,7 +59,7 @@ class TestExportRegistry(RaftTestCase):
         assert registry.get("tsv").spec.suffix == "tsv"
 
 
-class TestShippedCatalogs(RaftTestCase):
+class TestShippedCatalogs:
     def test_logs_ship_txt_and_json(self) -> None:
         ids = [row["id"] for row in ExportCatalogs.logs().catalog()]
         assert ids == ["txt", "json"]

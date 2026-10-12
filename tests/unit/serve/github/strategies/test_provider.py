@@ -1,18 +1,19 @@
 """Mock + real GitHub provider unit tests."""
 
-from __future__ import annotations
-
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from raft.errors.cta import OperatorError
+from raft.serve.github.gateway import GithubApiGateway
 from raft.serve.github.strategies.mock import MockGithubProvider
 from raft.serve.github.strategies.real import RealGithubProvider
 from raft.serve.paths import ServePaths
 
 from tests.unit.base import RaftTestCase
+
+_GATEWAY_URLOPEN = "raft.serve.github.gateway.urlopen"
 
 
 class TestMockGithubProvider(RaftTestCase):
@@ -70,12 +71,14 @@ class TestRealGithubProvider(RaftTestCase):
             assert provider.list_repos("tok", query="nope") == []
 
     def test_manifest_ok_and_empty(self) -> None:
-        provider = RealGithubProvider()
-        with patch.object(provider, "_request", return_value="apiVersion: raft/v1\n"):
-            assert "raft/v1" in provider.fetch_manifest("tok", "a/b", "main")
-        with patch.object(provider, "_request", return_value="  \n"):
-            with pytest.raises(OperatorError, match="empty"):
-                provider.fetch_manifest("tok", "a/b", "main")
+        gateway = MagicMock(spec=GithubApiGateway)
+        gateway.bearer_headers = GithubApiGateway.bearer_headers
+        gateway.get.return_value = MagicMock(body="apiVersion: raft/v1\n")
+        provider = RealGithubProvider(gateway=gateway)
+        assert "raft/v1" in provider.fetch_manifest("tok", "a/b", "main")
+        gateway.get.return_value = MagicMock(body="  \n")
+        with pytest.raises(OperatorError, match="empty"):
+            provider.fetch_manifest("tok", "a/b", "main")
 
     def test_request_ok_and_404(self) -> None:
         provider = RealGithubProvider()
@@ -84,25 +87,42 @@ class TestRealGithubProvider(RaftTestCase):
         assert "page=2" in (RealGithubProvider._next_link(link) or "")
         resp = MagicMock()
         resp.read.return_value = b"ok"
+        resp.status = 200
+        resp.headers = {"Link": ""}
         resp.__enter__.return_value = resp
         resp.__exit__.return_value = False
-        with patch("urllib.request.urlopen", return_value=resp):
-            assert provider._request("tok", "https://example.com") == "ok"
+        with patch(_GATEWAY_URLOPEN, return_value=resp):
+            out = provider._http.get(
+                "https://example.com",
+                headers=provider._http.bearer_headers("tok"),
+            )
+            assert out.body == "ok"
         import urllib.error
+
+        from raft.serve.github.gateway import GithubHttpError
 
         err = urllib.error.HTTPError("u", 404, "x", hdrs=None, fp=BytesIO(b'{"message":"no"}'))
-        with patch("urllib.request.urlopen", side_effect=err):
+        with patch(_GATEWAY_URLOPEN, side_effect=err):
+            with pytest.raises(GithubHttpError) as raised:
+                provider._http.get("https://example.com", headers={})
+            assert raised.value.code == 404
+        with patch.object(
+            provider._http,
+            "get",
+            side_effect=GithubHttpError(404, '{"message":"no"}'),
+        ):
             with pytest.raises(OperatorError, match="no .raft/app.yaml"):
-                provider._request("tok", "https://example.com")
+                provider.fetch_manifest("tok", "a/b", "main")
 
     def test_request_500_and_empty_lists(self) -> None:
-        provider = RealGithubProvider()
-        import urllib.error
+        from raft.serve.github.gateway import GithubHttpError
 
-        err = urllib.error.HTTPError("u", 500, "x", hdrs=None, fp=BytesIO(b"boom"))
-        with patch("urllib.request.urlopen", side_effect=err):
+        provider = RealGithubProvider()
+        with patch.object(
+            provider._http, "get", side_effect=GithubHttpError(500, "boom")
+        ):
             with pytest.raises(OperatorError, match="GitHub API error"):
-                provider._request("tok", "https://example.com")
+                provider._request_page("tok", "https://example.com")
         with patch.object(provider, "_request_page", return_value=("{}", None)):
             assert provider.list_repos("tok") == []
         with patch.object(provider, "_request_page", return_value=("[]", None)):

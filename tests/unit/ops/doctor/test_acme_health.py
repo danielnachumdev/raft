@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from raft.config.settings_types import AcmeConfig, EdgeConfig, RaftConfig
+from raft.config.settings.types import AcmeConfig, EdgeConfig, RaftConfig
 from raft.acme.app_store import AcmeAppStore
 from raft.ops.acme_health import AcmeCertHealth
 from raft.models.stack import load_stack

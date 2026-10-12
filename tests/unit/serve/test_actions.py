@@ -36,10 +36,10 @@ class TestServeActions(RaftTestCase):
         return ServeActions(stack, orchestrator=orch, docker=docker), docker, orch
 
     def _with_app_locks(self):
-        return patch("raft.serve.actions.app_and_stack_locks")
+        return patch("raft.serve.actions.AppAndStackLocks")
 
     def _with_stack_lock(self):
-        return patch("raft.serve.actions.stack_lock")
+        return patch("raft.serve.actions.StackLock")
 
     @staticmethod
     def _enter(mock_cm) -> None:

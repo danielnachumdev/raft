@@ -1,17 +1,15 @@
 """Canonical status snapshot for CLI JSON and serve/FE consumers."""
 
-from __future__ import annotations
-
 from typing import Any, Dict, Optional
 
-from ..config.settings import load_config
-from ..config.settings_types import EdgeConfig
+from ..config.settings import SettingsLoader
+from ..config.settings.types import EdgeConfig
 from ..models.stack import Stack
 from ..ops.status import Status
 from ..ops.status.models import StatusSnapshot
 from .depends import ServeDependsMap
 from .external_urls import ExternalUrlBuilder
-from .view import ServeSnapshotView
+from .snapshot_view import ServeSnapshotView
 
 
 class StatusRead:
@@ -72,5 +70,5 @@ class StatusRead:
         )
 
     def _url_builder(self) -> ExternalUrlBuilder:
-        edge = self._edge if self._edge is not None else load_config(self.stack.root).edge
+        edge = self._edge if self._edge is not None else SettingsLoader().load(self.stack.root).edge
         return ExternalUrlBuilder(self.stack, edge)

@@ -5,7 +5,7 @@ from __future__ import annotations
 import shutil
 import socket
 
-from ....config.settings import load_config
+from ....config.settings import SettingsLoader
 from ..context import DoctorContext
 from ..models import INFRA, CheckResult
 
@@ -19,7 +19,7 @@ class EdgeChecks:
         return results
 
     def _listeners(self, ctx: DoctorContext) -> list[CheckResult]:
-        edge = load_config(ctx.stack.root).edge
+        edge = SettingsLoader().load(ctx.stack.root).edge
         published = edge.published_ports()
         if not published:
             return [
@@ -96,7 +96,7 @@ class EdgeChecks:
         return self._compare_gate_ports(ctx)
 
     def _compare_gate_ports(self, ctx: DoctorContext) -> list[CheckResult]:
-        edge = load_config(ctx.stack.root).edge
+        edge = SettingsLoader().load(ctx.stack.root).edge
         declared = sorted({p for p, _ in edge.published_ports()})
         actual = ctx.docker.gate_published_ports()
         return self._gate_port_results(ctx.stack.gate, declared, actual)

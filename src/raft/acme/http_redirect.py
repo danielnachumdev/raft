@@ -1,11 +1,9 @@
 """HTTP→HTTPS redirect nginx snippets for ``tls: acme`` when live PEMs exist."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import List
 
-from ..config.settings_types import EdgeConfig
+from ..config.settings.types import EdgeConfig
 from ..models.app import App
 from ..models.manifest import AppSpec
 from .paths import AcmePaths

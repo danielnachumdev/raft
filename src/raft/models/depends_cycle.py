@@ -1,12 +1,10 @@
 """Fail closed on cyclic ``spec.dependsOn`` at apply (before registry write)."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Dict, Tuple
 
 from ..errors.cta import OperatorError
-from ..errors.domain import depends_on_cycle
+from ..errors.domain import DomainErrors
 
 from .app_document import AppDocument
 from .depends import AppDependsGraph, DependsOnError, DependsOnSpec
@@ -26,7 +24,7 @@ class DependsOnCycleGuard:
         try:
             AppDependsGraph(edges).assert_acyclic()
         except DependsOnError as exc:
-            raise depends_on_cycle(name, str(exc)) from exc
+            raise DomainErrors.depends_on_cycle(name, str(exc)) from exc
 
     def _prospective_edges(
         self, name: str, depends_on: tuple[DependsOnSpec, ...]

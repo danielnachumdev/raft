@@ -1,29 +1,38 @@
-"""Clone/update git-backed apps; pull images for docker sources; no-op for local."""
+"""SourceSync — refresh App sources under the data home."""
 
-from __future__ import annotations
-
-import logging
-import os
-import shutil
-from pathlib import Path
 from typing import Optional
 
-from ..errors.checked import raise_for_docker_pull_failure, raise_for_git_failure
-from ..errors.cta import OperatorError
-
 from ..adapters.shell import Shell
+from ..auth import GitAuthManager
 from ..models.app import App
 from ..models.stack import Stack
-from ..auth import GitAuthManager
 
-logger = logging.getLogger(__name__)
+from .catalogs import SourceSyncCatalogs
+from .context import SyncContext
+from .docker_gateway import DockerGateway
+from .git_checkout import GitCheckoutService
+from .git_gateway import GitGateway
+from .ref_state import RefStateWriter
+from .registry import SourceSyncRegistry
 
 
 class SourceSync:
-    def __init__(self, stack: Stack, shell: Shell) -> None:
+    """Orchestrate per-App sync via ``spec.source`` strategies."""
+
+    def __init__(
+        self,
+        stack: Stack,
+        shell: Shell,
+        registry: Optional[SourceSyncRegistry] = None,
+    ) -> None:
         self.stack = stack
         self.sh = shell
         self.auth = GitAuthManager(stack)
+        self._git = GitGateway(shell)
+        self._docker = DockerGateway(shell)
+        self._checkout = GitCheckoutService(self._git)
+        self._refs = RefStateWriter(stack)
+        self._registry = registry or SourceSyncCatalogs.default()
 
     def sync(
         self,
@@ -43,174 +52,14 @@ class SourceSync:
         ref_override: Optional[str],
         force: bool,
     ) -> None:
-        dest = app.abs_path(self.stack.root)
-        if app.source == "local":
-            self._sync_local(app, dest)
-            return
-        if app.source == "docker":
-            self._sync_docker(app, dest, ref_override=ref_override, force=force)
-            return
-        assert app.repo
-        self._sync_git(app, dest, ref_override=ref_override, force=force)
-
-    def _sync_local(self, app: App, dest: Path) -> None:
-        if not dest.is_dir():
-            raise OperatorError(
-                f"local app path missing: {dest}\n"
-                f"Fix: create/copy the tree under {app.path}, or change "
-                f"spec.source / re-apply the App"
-            )
-        logger.info("sync %s: local (%s)", app.name, app.path)
-
-    def _sync_docker(
-        self,
-        app: App,
-        dest: Path,
-        *,
-        ref_override: Optional[str],
-        force: bool,
-    ) -> None:
-        if app.repo:
-            self._sync_git(app, dest, ref_override=ref_override, force=force)
-        wanted = self._wanted_ref(app, ref_override)
-        pull_ref = app.image_ref(wanted)
-        pin = app.compose_pin_image
-        logger.info("sync %s: docker pull %s", app.name, pull_ref)
-        self._docker_pull(pull_ref, app=app.name, repo=app.repo)
-        if pull_ref != pin:
-            logger.info("sync %s: tag %s -> %s (compose pin)", app.name, pull_ref, pin)
-            self.sh.docker("tag", pull_ref, pin)
-        digest = self._image_digest(pin)
-        self._write_docker_ref_state(app, digest, pull_ref, pin, wanted)
-        logger.info("sync %s: ready at %s", app.name, digest[:64])
-
-    def _docker_pull(
-        self,
-        image: str,
-        *,
-        app: Optional[str] = None,
-        repo: Optional[str] = None,
-    ) -> None:
-        result = self.sh.docker("pull", image, capture=True, check=False)
-        if result.returncode == 0:
-            return
-        detail = (result.stderr or result.stdout or "").strip()
-        raise_for_docker_pull_failure(image, detail=detail, app=app, repo=repo)
-
-    def _sync_git(
-        self,
-        app: App,
-        dest: Path,
-        *,
-        ref_override: Optional[str],
-        force: bool,
-    ) -> None:
-        assert app.repo
-        clone_url = self.auth.effective_clone_url(app)
-        wanted = self._wanted_ref(app, ref_override)
-        logger.info("sync %s: git %s @ %s", app.name, clone_url, wanted)
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        self._ensure_git_checkout(app, dest, clone_url)
-        if not force and self._is_dirty(dest):
-            raise OperatorError(
-                f"{dest} has local changes.\n"
-                f"Fix: commit/stash them, or: raft sync {app.name} --force"
-            )
-        self._git_fetch(app, dest, clone_url)
-        sha = self._resolve_ref(app, dest, wanted)
-        self._git_checkout_sha(app, dest, clone_url, sha)
-        if app.source != "docker":
-            self._write_git_ref_state(app, sha, wanted)
-        logger.info("sync %s: checked out %s", app.name, sha[:12])
-
-    def _ensure_git_checkout(self, app: App, dest: Path, clone_url: str) -> None:
-        if not (dest / ".git").is_dir():
-            self._clone_fresh(app, dest, clone_url)
-            return
-        try:
-            self.sh.git("remote", "set-url", "origin", clone_url, cwd=dest, capture=True)
-        except Exception as exc:
-            raise_for_git_failure(exc, app.repo or clone_url, app=app.name, always=True)
-
-    def _clone_fresh(self, app: App, dest: Path, clone_url: str) -> None:
-        if dest.exists() and any(dest.iterdir()):
-            entries = [p.name for p in dest.iterdir()]
-            if entries == [".raft"] or set(entries) <= {".raft"}:
-                logger.info(
-                    "sync %s: replacing contract stub at %s with git clone",
-                    app.name,
-                    dest,
-                )
-                shutil.rmtree(dest)
-            else:
-                raise OperatorError(
-                    f"{dest} exists but is not a git checkout.\n"
-                    f"Fix: move it aside, then: raft sync {app.name}"
-                )
-        try:
-            self.sh.git("clone", "--quiet", clone_url, str(dest), capture=True)
-        except Exception as exc:
-            raise_for_git_failure(exc, app.repo or clone_url, app=app.name, always=True)
-
-    def _git_fetch(self, app: App, dest: Path, clone_url: str) -> None:
-        try:
-            self.sh.git("fetch", "--prune", "--tags", "origin", cwd=dest, capture=True)
-        except Exception as exc:
-            raise_for_git_failure(exc, app.repo or clone_url, app=app.name, always=True)
-
-    def _resolve_ref(self, app: App, dest: Path, wanted: str) -> str:
-        checked = self.sh.git("rev-parse", "--verify", wanted, cwd=dest, check=False, capture=True)
-        if checked.returncode != 0:
-            checked = self.sh.git(
-                "rev-parse",
-                "--verify",
-                f"origin/{wanted}",
-                cwd=dest,
-                check=False,
-                capture=True,
-            )
-        if checked.returncode == 0:
-            return checked.stdout.strip()
-        raise OperatorError(
-            f"cannot resolve ref {wanted!r} in {app.repo}.\n"
-            f"Fix: raft sync {app.name} --ref <existing-branch-or-tag>"
+        ctx = SyncContext(
+            stack=self.stack,
+            auth=self.auth,
+            git=self._git,
+            docker=self._docker,
+            checkout=self._checkout,
+            refs=self._refs,
+            ref_override=ref_override,
+            force=force,
         )
-
-    def _git_checkout_sha(self, app: App, dest: Path, clone_url: str, sha: str) -> None:
-        try:
-            self.sh.git("checkout", "-q", "-f", "--detach", sha, cwd=dest, capture=True)
-        except Exception as exc:
-            raise_for_git_failure(exc, app.repo or clone_url, app=app.name, always=True)
-
-    def _image_digest(self, pin: str) -> str:
-        return self.sh.docker(
-            "image",
-            "inspect",
-            "-f",
-            "{{if .RepoDigests}}{{index .RepoDigests 0}}{{else}}{{.Id}}{{end}}",
-            pin,
-            capture=True,
-        ).stdout.strip()
-
-    def _write_docker_ref_state(
-        self, app: App, digest: str, pull_ref: str, pin: str, wanted: str
-    ) -> None:
-        state = self.stack.ref_state_file(app)
-        state.parent.mkdir(parents=True, exist_ok=True)
-        state.write_text(
-            f"{digest}\n# pulled: {pull_ref}\n# pin: {pin}\n# requested: {wanted}\n",
-            encoding="utf-8",
-        )
-
-    def _write_git_ref_state(self, app: App, sha: str, wanted: str) -> None:
-        state = self.stack.ref_state_file(app)
-        state.parent.mkdir(parents=True, exist_ok=True)
-        state.write_text(f"{sha}\n# requested: {wanted}\n", encoding="utf-8")
-
-    @staticmethod
-    def _wanted_ref(app: App, ref_override: Optional[str]) -> str:
-        return (ref_override or os.environ.get("VPS_SYNC_REF") or app.ref).strip()
-
-    def _is_dirty(self, repo: Path) -> bool:
-        result = self.sh.git("status", "--porcelain", cwd=repo, capture=True)
-        return bool(result.stdout.strip())
+        self._registry.get(app.source).sync(app, ctx)

@@ -1,27 +1,26 @@
-"""RealGithubProvider — GitHub REST API (OAuth token)."""
-
-from __future__ import annotations
+"""RealGithubProvider — GitHub REST API via gateway (OAuth token)."""
 
 import json
-import urllib.error
 import urllib.parse
-import urllib.request
 from pathlib import Path
 from typing import List, Optional
 
 from ....errors.cta import OperatorError
 from ....models.manifest import CONTRACT_REL_PATH
-
-from ..provider import GithubRepo, filter_repos
+from ..gateway import GithubApiGateway, GithubHttpError
+from ..provider import GithubProvider
+from ..repo import GithubRepo, filter_repos
 
 _API = "https://api.github.com"
-_UA = "raft-serve-github-v1"
 # Owner + collaborator + org-member only (never global public search).
 _USER_REPOS_AFFILIATION = "owner,collaborator,organization_member"
 
 
-class RealGithubProvider:
+class RealGithubProvider(GithubProvider):
     """GitHub REST API (OAuth token). Lists only the signed-in user's repos."""
+
+    def __init__(self, *, gateway: Optional[GithubApiGateway] = None) -> None:
+        self._http = gateway or GithubApiGateway()
 
     def list_repos(self, token: str, *, query: str = "") -> List[GithubRepo]:
         return filter_repos(self._list_user_repos(token), query)
@@ -29,7 +28,21 @@ class RealGithubProvider:
     def fetch_manifest(self, token: str, full_name: str, ref: str) -> str:
         enc = urllib.parse.quote(CONTRACT_REL_PATH.as_posix())
         url = f"{_API}/repos/{full_name}/contents/{enc}?ref={urllib.parse.quote(ref)}"
-        raw = self._request(token, url, accept="application/vnd.github.raw")
+        try:
+            raw = self._http.get(
+                url,
+                headers=self._http.bearer_headers(
+                    token, accept="application/vnd.github.raw"
+                ),
+            ).body
+        except GithubHttpError as exc:
+            if exc.code == 404:
+                raise OperatorError(
+                    f"no {CONTRACT_REL_PATH.as_posix()} at that ref (or repo not visible)\n"
+                    f"Fix: add .raft/app.yaml on the selected ref",
+                    has_fix=False,
+                ) from exc
+            raise self._api_error(exc) from exc
         if not raw.strip():
             raise OperatorError(
                 f"empty {CONTRACT_REL_PATH.as_posix()} in {full_name}@{ref}\n"
@@ -66,44 +79,11 @@ class RealGithubProvider:
         return out
 
     def _request_page(self, token: str, url: str) -> tuple[str, Optional[str]]:
-        req = self._build_request(token, url)
         try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                body = resp.read().decode("utf-8")
-                link = resp.headers.get("Link")
-                return body, self._next_link(link)
-        except urllib.error.HTTPError as exc:
-            raise self._http_error(exc) from exc
-
-    def _request(
-        self, token: str, url: str, *, accept: str = "application/vnd.github+json"
-    ) -> str:
-        req = self._build_request(token, url, accept=accept)
-        try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                return resp.read().decode("utf-8")
-        except urllib.error.HTTPError as exc:
-            if exc.code == 404:
-                raise OperatorError(
-                    f"no {CONTRACT_REL_PATH.as_posix()} at that ref (or repo not visible)\n"
-                    f"Fix: add .raft/app.yaml on the selected ref",
-                    has_fix=False,
-                ) from exc
-            raise self._http_error(exc) from exc
-
-    @staticmethod
-    def _build_request(
-        token: str, url: str, *, accept: str = "application/vnd.github+json"
-    ) -> urllib.request.Request:
-        return urllib.request.Request(
-            url,
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Accept": accept,
-                "User-Agent": _UA,
-                "X-GitHub-Api-Version": "2022-11-28",
-            },
-        )
+            resp = self._http.get(url, headers=self._http.bearer_headers(token))
+        except GithubHttpError as exc:
+            raise self._api_error(exc) from exc
+        return resp.body, self._next_link(resp.headers.get("Link"))
 
     @staticmethod
     def _next_link(link: Optional[str]) -> Optional[str]:
@@ -138,10 +118,9 @@ class RealGithubProvider:
         )
 
     @staticmethod
-    def _http_error(exc: urllib.error.HTTPError) -> OperatorError:
-        detail = exc.read().decode("utf-8", errors="replace")[:200]
+    def _api_error(exc: GithubHttpError) -> OperatorError:
         return OperatorError(
-            f"GitHub API error HTTP {exc.code}: {detail}\n"
+            f"GitHub API error HTTP {exc.code}: {exc.body}\n"
             f"Fix: re-login from raft serve, or check OAuth scopes (need repo for private)",
             has_fix=False,
         )

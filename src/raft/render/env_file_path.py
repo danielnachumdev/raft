@@ -1,7 +1,5 @@
 """Resolve ``spec.envFile`` for Compose and docker CLI under the data home."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Optional
 

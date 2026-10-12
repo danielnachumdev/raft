@@ -1,7 +1,5 @@
 """Shared ``raft`` logger root configuration."""
 
-from __future__ import annotations
-
 import logging
 
 

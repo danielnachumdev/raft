@@ -1,7 +1,5 @@
 """Compose healthchecks and runtime readiness waits."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import Callable, Optional
 
@@ -9,13 +7,13 @@ from ..adapters.http import HttpProbe
 from ..models.app import App
 from ..models.manifest import AppSpec
 from ..models.ports import PortSpec
-from ..models.readiness_spec import (
+from ..models.readiness_timing import (
     DEFAULT_INTERVAL_SECONDS,
     DEFAULT_PROBE_TIMEOUT_SECONDS,
     DEFAULT_RETRIES,
     DEFAULT_START_PERIOD_SECONDS,
     DEFAULT_TIMEOUT_SECONDS,
-    format_duration_seconds,
+    ReadinessTiming,
 )
 from ..models.stack import Stack
 
@@ -81,19 +79,19 @@ class ReadinessStrategy:
         return [
             "    healthcheck:",
             f"      test: [{quoted}]",
-            f"      interval: {format_duration_seconds(self.interval_seconds)}",
-            f"      timeout: {format_duration_seconds(self.probe_timeout_seconds)}",
+            f"      interval: {ReadinessTiming.format_duration_seconds(self.interval_seconds)}",
+            f"      timeout: {ReadinessTiming.format_duration_seconds(self.probe_timeout_seconds)}",
             f"      retries: {self.retries}",
             # Cold start (e.g. Alembic) often exceeds a few seconds; keep
             # health "starting" long enough for cutover TCP waits.
-            f"      start_period: {format_duration_seconds(self.start_period_seconds)}",
+            f"      start_period: {ReadinessTiming.format_duration_seconds(self.start_period_seconds)}",
         ]
 
     def timing_summary(self) -> str:
         return (
-            f"timeoutSeconds={format_duration_seconds(self.timeout_seconds)}, "
-            f"startPeriodSeconds={format_duration_seconds(self.start_period_seconds)}, "
-            f"interval={format_duration_seconds(self.interval_seconds)}, "
+            f"timeoutSeconds={ReadinessTiming.format_duration_seconds(self.timeout_seconds)}, "
+            f"startPeriodSeconds={ReadinessTiming.format_duration_seconds(self.start_period_seconds)}, "
+            f"interval={ReadinessTiming.format_duration_seconds(self.interval_seconds)}, "
             f"retries={self.retries}"
         )
 

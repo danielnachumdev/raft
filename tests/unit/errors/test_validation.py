@@ -7,19 +7,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from raft.config.paths import raft_home
-from raft.config.settings import load_config
-from raft.errors.cta import (
-    OperatorError,
-    format_cta,
-    operator,
-    subprocess_detail,
-)
-from raft.errors.domain import (
-    require_bool,
-    require_mapping,
-)
-from raft.models.ports import parse_ports
+from raft.config.paths import RaftHome, raft_home
+from raft.config.settings import SettingsLoader
+from raft.errors.cta import CtaFormatter, OperatorError
+from raft.errors.domain import DomainErrors
+from raft.models.port_list_parser import PortListParser
 from raft.deploy.wait import WaitUntil
 from raft.ops.update import SelfUpdate
 
@@ -39,27 +31,27 @@ class TestValidationCTAs(RaftTestCase):
     def test_empty_raft_data_home(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("RAFT_DATA_HOME", "   ")
         with pytest.raises(OperatorError, match="RAFT_DATA_HOME"):
-            raft_home()
+            RaftHome().resolve()
 
     def test_settings_bad_ports_and_shapes(self) -> None:
         path = self.tmp_path / "settings.yaml"
         for body, match in SETTINGS_BAD_CASES:
             path.write_text(body, encoding="utf-8")
             with pytest.raises(RuntimeError, match=match):
-                load_config(self.tmp_path)
+                SettingsLoader().load(self.tmp_path)
         bad_dir = self.tmp_path / "settings-as-dir"
         bad_dir.mkdir()
         with pytest.raises(RuntimeError, match="not a file"):
-            load_config(self.tmp_path, path=bad_dir)
+            SettingsLoader().load(self.tmp_path, path=bad_dir)
 
     def test_ports_require_int_and_bool(self) -> None:
         with pytest.raises(RuntimeError, match="containerPort"):
-            parse_ports(
+            PortListParser().parse(
                 {"ports": [{"name": "http", "containerPort": "eighty", "expose": "http"}]},
                 Path("app.yaml"),
             )
         with pytest.raises(RuntimeError, match="proxyProtocol"):
-            parse_ports(
+            PortListParser().parse(
                 {
                     "ports": [
                         {
@@ -98,15 +90,15 @@ class TestValidationCTAs(RaftTestCase):
             lambda self, *a, **k: (_ for _ in ()).throw(OSError("EACCES")),
         )
         with pytest.raises(RuntimeError, match="settings.yaml"):
-            load_config(self.tmp_path)
+            SettingsLoader().load(self.tmp_path)
 
     def test_cta_helpers_and_validation(self) -> None:
-        assert subprocess_detail(RuntimeError("plain")) == "plain"
-        formatted = format_cta("head", ("step",), detail="plain detail")
+        assert CtaFormatter.subprocess_detail(RuntimeError("plain")) == "plain"
+        formatted = CtaFormatter.format("head", ("step",), detail="plain detail")
         assert_cta(formatted, contains=("plain detail", "step"))
-        err = operator("headline", ("do this",), detail="more")
+        err = CtaFormatter.operator("headline", ("do this",), detail="more")
         assert_operator(err, contains=("do this",))
-        assert require_bool(None, label="flag", default=True) is True
-        assert require_mapping({"a": 1}, label="doc") == {"a": 1}
+        assert DomainErrors.require_bool(None, label="flag", default=True) is True
+        assert DomainErrors.require_mapping({"a": 1}, label="doc") == {"a": 1}
         with pytest.raises(RuntimeError, match="YAML mapping"):
-            require_mapping([], label="doc", path="x.yaml")
+            DomainErrors.require_mapping([], label="doc", path="x.yaml")

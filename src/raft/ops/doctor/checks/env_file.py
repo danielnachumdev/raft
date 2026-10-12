@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from ....secrets.app_secrets import ENV_FILE_MODE, AppSecretsLayout
+from ....secrets import ENV_FILE_MODE, AppSecretsLayout
 from ....errors.cta import OperatorError
 from ....render.env_file_path import ComposeEnvFilePath
 

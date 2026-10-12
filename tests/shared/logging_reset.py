@@ -1,7 +1,5 @@
 """Reset the ``raft`` logger between tests."""
 
-from __future__ import annotations
-
 from raft.utils.logging.raft_logger import RaftLogger
 
 

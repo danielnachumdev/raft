@@ -1,7 +1,5 @@
 """Wake execution + reachability waits for Scaler."""
 
-from __future__ import annotations
-
 import logging
 from pathlib import Path
 from typing import Callable, Optional, Tuple
@@ -15,7 +13,7 @@ from ....models.state.graph_event_kinds import SCALING_ACTION_WAKE
 from ....models.state.graph_event_store import GraphEventStore
 from ....models.state.scaling_store import ScalingStore
 from ....models.stack import Stack
-from ....locking.locking import apps_and_stack_locks
+from ....locking import AppsAndStackLocks
 
 __all__ = ["ScaleWake"]
 
@@ -53,7 +51,7 @@ class ScaleWake:
         diag = self._diag_id(name)
         logger.info("scale wake app=%s id=%s chain=%s", name, diag, ",".join(chain))
         try:
-            with apps_and_stack_locks(self.home, chain):
+            with AppsAndStackLocks(self.home, chain):
                 ok = self.wake_under_lock(name, chain, scaling, when, deadline)
         except OperatorError as exc:
             logger.error("scale wake failed app=%s id=%s: %s", name, diag, exc)

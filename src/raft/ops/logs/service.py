@@ -7,7 +7,7 @@ from typing import Iterator, Optional, TextIO
 
 from ...adapters.docker.stack import DockerStack
 from ...adapters.shell import Shell
-from ...errors.domain import service_not_running
+from ...errors.domain import DomainErrors
 from ...models.stack import Stack
 from .targets import LogsTargets
 
@@ -60,7 +60,7 @@ class Logs:
     def _require_containers(self, compose_ids: tuple[str, ...]) -> None:
         for service in compose_ids:
             if self.docker.try_service_container_id(service) is None:
-                raise service_not_running(service)
+                raise DomainErrors.service_not_running(service)
 
     def _print_follow(
         self,

@@ -1,7 +1,5 @@
 """Gate nginx fragment fingerprint + reload stamp."""
 
-from __future__ import annotations
-
 import hashlib
 from pathlib import Path
 from typing import Optional

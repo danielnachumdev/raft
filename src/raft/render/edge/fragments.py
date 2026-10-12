@@ -1,21 +1,18 @@
 """Mutable bag of nginx/Compose fragments produced by edge handlers."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
-from typing import Dict, List
 
 
 @dataclass
 class EdgeFragments:
-    router_includes: List[str] = field(default_factory=list)
-    router_servers: List[str] = field(default_factory=list)
-    gate_http: List[str] = field(default_factory=list)
-    gate_stream: List[str] = field(default_factory=list)
-    gate_tls: Dict[str, str] = field(default_factory=dict)
-    upstreams: Dict[str, str] = field(default_factory=dict)
-    host_publish: List[str] = field(default_factory=list)
-    expose_ports: List[int] = field(default_factory=list)
+    router_includes: list[str] = field(default_factory=list)
+    router_servers: list[str] = field(default_factory=list)
+    gate_http: list[str] = field(default_factory=list)
+    gate_stream: list[str] = field(default_factory=list)
+    gate_tls: dict[str, str] = field(default_factory=dict)
+    upstreams: dict[str, str] = field(default_factory=dict)
+    host_publish: list[str] = field(default_factory=list)
+    expose_ports: list[int] = field(default_factory=list)
 
     def merge(self, other: "EdgeFragments") -> None:
         self.router_includes.extend(other.router_includes)

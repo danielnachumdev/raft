@@ -1,7 +1,5 @@
 """Structured doctor results for a future dashboard health view (#34)."""
 
-from __future__ import annotations
-
 from typing import Any, Dict, Iterable, Mapping
 
 from ..ops.doctor.models import CheckResult

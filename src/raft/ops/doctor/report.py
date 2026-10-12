@@ -8,7 +8,7 @@ from typing import Optional, TextIO
 
 from ...models.app import display_service_label
 from ...models.stack import Stack
-from ...ui import BOLD, CYAN, DIM, GREEN, RED, YELLOW, paint, want_color
+from ...ui import BOLD, CYAN, DIM, GREEN, RED, YELLOW, TerminalColor
 from .models import (
     INFRA,
     RAFT_GROUP,
@@ -36,11 +36,11 @@ class GroupReportWriter:
         color: Optional[bool] = None,
     ) -> int:
         stream = out if out is not None else sys.stdout
-        use_color = want_color(stream, color)
+        use_color = TerminalColor.want(stream, color)
         by_member, group_order, ungrouped = self._layout(stack, results)
 
         def tint(text: str, *codes: str) -> str:
-            return paint(text, *codes, color=use_color)
+            return TerminalColor.paint(text, *codes, color=use_color)
 
         self._emit_groups(group_order, by_member, stream=stream, tint=tint)
         self._emit_ungrouped(ungrouped, by_member, stream=stream, tint=tint)

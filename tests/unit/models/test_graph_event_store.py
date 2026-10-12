@@ -6,7 +6,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from raft.models.graph_event import GraphEvent
+from raft.models.state.graph_event import GraphEvent
 from raft.models.state.graph_event_kinds import (
     KIND_DEPLOYMENT,
     KIND_DOWN,

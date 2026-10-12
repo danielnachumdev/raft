@@ -1,11 +1,10 @@
 """Notifier safe no-op and fan-out with registered strategies."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from raft.notify.event import NotificationEvent, NotificationSeverity
+from raft.notify.event import NotificationEvent
+from raft.notify.severity import NotificationSeverity
 from raft.notify.notifier import Notifier
 from raft.notify.registry import NotificationRegistry
 

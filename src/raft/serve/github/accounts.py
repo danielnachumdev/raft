@@ -1,7 +1,5 @@
 """Multi-account GitHub ledger under ``state/serve/`` (mode 0600)."""
 
-from __future__ import annotations
-
 import json
 import os
 import secrets
@@ -9,7 +7,8 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
-from .account import GithubAccount, GithubPendingOauth
+from .account import GithubAccount
+from .pending import GithubPendingOauth
 
 ACCOUNTS_FILENAME = "github-accounts.json"
 LEGACY_SESSION_FILENAME = "github-session.json"

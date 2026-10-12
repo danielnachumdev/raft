@@ -1,7 +1,5 @@
 """Scale ``ControllerJob`` — idle-stop / wake via orchestrator side-tick."""
 
-from __future__ import annotations
-
 from ...orchestrator import JobOrchestrator
 from ..controller_job import ControllerJob
 from .scale import Scaler

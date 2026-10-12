@@ -1,7 +1,5 @@
 """Last known scale-wake stage for controller diagnostic logs."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import Any, Optional
 

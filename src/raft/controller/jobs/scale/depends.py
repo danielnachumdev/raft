@@ -1,7 +1,5 @@
 """dependsOn helpers for Scaler idle co-stop and wake start order."""
 
-from __future__ import annotations
-
 import logging
 from pathlib import Path
 from typing import Callable, Dict, Optional, Tuple
@@ -18,7 +16,7 @@ from ....models.manifest import AppSpec
 from ....models.registry import AppRegistry
 from ....models.state.scaling_store import ScalingStore
 from ....models.stack import Stack
-from ....locking.locking import apps_and_stack_locks
+from ....locking import AppsAndStackLocks
 
 __all__ = ["ScaleDepends"]
 
@@ -54,7 +52,7 @@ class ScaleDepends:
         order = (name,) + tuple(reversed(costop))
         logger.info("scale idle-stop app=%s chain=%s", name, ",".join(order))
         try:
-            with apps_and_stack_locks(self.home, order):
+            with AppsAndStackLocks(self.home, order):
                 self._stop_scaled_chain(order, parent=name, parent_compose=compose_id)
         except OperatorError as exc:
             logger.error("scale idle-stop failed app=%s: %s", name, exc)

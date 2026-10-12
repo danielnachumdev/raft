@@ -1,10 +1,8 @@
 """Metrics ``ControllerJob`` — resources + HTTP edge on one schedule."""
 
-from __future__ import annotations
-
 from pathlib import Path
 
-from ....config.settings_types import MetricsConfig
+from ....config.settings.types import MetricsConfig
 from ...job import JobIds, JobSpec, QueuePolicy
 from ...orchestrator import JobOrchestrator
 from ...schedule import IntervalSchedule

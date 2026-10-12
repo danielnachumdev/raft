@@ -1,13 +1,12 @@
 """Blocking localhost HTTP server for ``raft serve``."""
 
-from __future__ import annotations
 
 from typing import Optional
 
 import uvicorn
 
 from ..models.stack import Stack
-from ..ui import say
+from ..ui import OperatorSay
 from ..ops.status import Status
 from .app import ServeAppFactory
 from .instructions import ServeInstructions
@@ -40,6 +39,6 @@ class Serve:
     def stop(self, port: int = DEFAULT_SERVE_PORT) -> None:
         """Stop a serve process on ``port`` in another process (no-op if idle)."""
         if self._runtime.stop(port):
-            say(f"stopped raft serve on 127.0.0.1:{port}", style="ok")
+            OperatorSay.say(f"stopped raft serve on 127.0.0.1:{port}", style="ok")
             return
-        say(f"raft serve is not running on 127.0.0.1:{port}", style="info")
+        OperatorSay.say(f"raft serve is not running on 127.0.0.1:{port}", style="info")

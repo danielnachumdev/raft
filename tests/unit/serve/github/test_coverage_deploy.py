@@ -11,8 +11,9 @@ import pytest
 
 from raft.errors.cta import OperatorError
 from raft.serve.github.api import ServeGithubApi
-from raft.serve.github.deploy_job import DeployJob, DeployJobStore, GithubDeployRunner
-from raft.serve.github.provider import GithubRepo
+from raft.serve.github.deploy_job import GithubDeployRunner
+from raft.serve.github.deploy_models import DeployJob, DeployJobStore
+from raft.serve.github.repo import GithubRepo
 from raft.serve.github.strategies.real import RealGithubProvider
 from raft.serve.github.accounts import GithubAccountStore
 
@@ -92,10 +93,11 @@ class TestCoverageDeploy(RaftTestCase):
             assert len(provider.list_repos("tok")) == 1
         resp = MagicMock()
         resp.read.return_value = b"[]"
+        resp.status = 200
         resp.headers = {"Link": ""}
         resp.__enter__.return_value = resp
         resp.__exit__.return_value = False
-        with patch("urllib.request.urlopen", return_value=resp):
+        with patch("raft.serve.github.gateway.urlopen", return_value=resp):
             body, nxt = provider._request_page("tok", "https://api.github.com/x")
             assert body == "[]" and nxt is None
 
@@ -104,14 +106,13 @@ class TestCoverageDeploy(RaftTestCase):
 
         provider = RealGithubProvider()
         with patch(
-            "urllib.request.urlopen",
+            "raft.serve.github.gateway.urlopen",
             side_effect=urllib.error.HTTPError("u", 403, "x", hdrs=None, fp=BytesIO(b"no")),
         ):
             with pytest.raises(OperatorError):
                 provider._request_page("tok", "https://api.github.com/x")
         assert RealGithubProvider._next_link('<https://x>; rel="prev"') is None
         assert RealGithubProvider._next_link("garbage") is None
-
     def test_run_crash_and_missing_job(self) -> None:
         store = DeployJobStore()
         runner = GithubDeployRunner(make_stack(self.tmp_path), MagicMock(), store)

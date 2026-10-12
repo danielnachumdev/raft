@@ -1,7 +1,5 @@
 """On-disk layout for ``tls: acme`` live material and ACME account/webroot state."""
 
-from __future__ import annotations
-
 from pathlib import Path
 
 

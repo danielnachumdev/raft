@@ -1,11 +1,10 @@
 """Test doubles for notify (no network / SMTP / third-party APIs)."""
 
-from __future__ import annotations
-
 from typing import Any, List, Mapping, Optional
 
 from raft.errors.cta import OperatorError
-from raft.notify.event import DeliveryResult, NotificationEvent
+from raft.notify.delivery_result import DeliveryResult
+from raft.notify.event import NotificationEvent
 from raft.notify.strategy import NotificationStrategy
 
 

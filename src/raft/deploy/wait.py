@@ -1,23 +1,13 @@
 """Poll-until helpers for redeploy/cutover readiness waits."""
 
-from __future__ import annotations
-
 import logging
 import time
-from dataclasses import dataclass
 from typing import Callable, Optional
 
 from ..errors.cta import OperatorError
-from ..errors.diagnostics import append_diagnostics
+from ..errors.diagnostics import ServiceDiagnostics
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class Step:
-    key: str
-    summary: str
-    run: Callable[["CutoverSession"], None]
 
 
 class WaitUntil:
@@ -88,7 +78,7 @@ class WaitUntil:
         if self.diagnostics is None:
             return message
         try:
-            return append_diagnostics(message, self.diagnostics())
+            return ServiceDiagnostics.append_diagnostics(message, self.diagnostics())
         except Exception:  # noqa: BLE001 — never mask the timeout
             logger.debug("diagnostics callback failed", exc_info=True)
             return message

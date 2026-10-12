@@ -1,7 +1,5 @@
 """Scaler idle-stop / wake record GraphEvents for chart markers."""
 
-from __future__ import annotations
-
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import MagicMock

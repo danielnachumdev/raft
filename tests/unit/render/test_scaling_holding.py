@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from raft.config.settings_types import EdgeConfig
+from raft.config.settings.types import EdgeConfig
 from raft.errors.cta import OperatorError
 from raft.models.app import App
 from raft.models.manifest import AppSpec

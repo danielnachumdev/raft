@@ -1,7 +1,5 @@
 """Unit tests for HttpMetricsAggregator."""
 
-from __future__ import annotations
-
 from raft.controller.jobs.metrics.http_agg import HttpMetricsAggregator
 
 

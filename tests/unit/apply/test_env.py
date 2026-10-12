@@ -1,7 +1,5 @@
 """Apply env expansion coverage."""
 
-from __future__ import annotations
-
 from unittest.mock import MagicMock
 
 import pytest
@@ -9,11 +7,11 @@ import yaml
 
 from raft.models.stack import load_stack
 from raft.apply import AppApply
-from raft.apply.manifest_env import ApplyEnvSources
+from raft.apply.env import ApplyEnvSources
 from raft.render import StackRenderer
 
 from .base import ApplyTestCase
-from .manifest_env.fixtures import (
+from .env.fixtures import (
     CI_TO_CONTAINER_APPLY_ENV,
     CI_TO_CONTAINER_ENV_MANIFEST,
     CI_TO_CONTAINER_FLAG_OVERRIDES,

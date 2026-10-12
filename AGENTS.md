@@ -389,9 +389,9 @@ Entry: `raft` console script → `raft.__main__:main` (`RaftCLI().run()`). Prefe
 
 | Path | Notes |
 |------|-------|
-| `src/raft/cli/` | `RaftCLI` (`cli.py` entry); `RaftCLICommands` (`cli_commands.py`); `commands/` auth/gate/get; `utils/` argv/deps/Fire helpers |
+| `src/raft/cli/` | `RaftCLI` (`cli.py` entry); `CliExitMapper`; `RaftCLICommands` (`commands/`); auth/gate/get; `utils/` argv package + deps/Fire helpers |
 | `src/raft/config/` | `~/.raft` paths, `settings.yaml` (logging + edge + healing + metrics + notifications / acme / github) |
-| `src/raft/utils/` | Shared cross-cutting helpers: `TraceContext`; `utils/logging/` (`HostLogging`, `ControllerLogging`, rotation helpers). Services opt in via `raft.utils` / `raft.utils.logging` |
+| `src/raft/utils/` | Shared cross-cutting helpers: `utils/trace/` (`TraceContext`); `utils/logging/` (`HostLogging`, `ControllerLogging`, rotation helpers). Services opt in via `raft.utils` / `raft.utils.logging` |
 | `src/raft/models/` | Types + parse/registry: `App`, `AppSpec`, `AppDocument` / fields, `AppRegistry`, `AppDependsGraph`, `PortSpec`, `Stack`, `ScalingSpec`, `DeploymentSpec`. Package `__init__` lists public exports. |
 | `src/raft/models/state/` | Runtime JSON stores (`ScalingStore`, `GraphEventStore` + kinds/records) under `~/.raft/state/` |
 | `src/raft/adapters/` | `shell`; `docker/` (`DockerStack`, `ContainerRuntimeGateway`, edge/images/inspect/prune); nginx upstreams; HTTP probe; host |

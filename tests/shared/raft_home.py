@@ -7,8 +7,8 @@ from typing import Optional, Sequence
 
 import yaml
 
-from raft.config.paths import ensure_raft_home
-from raft.config.settings_types import EdgeConfig, EdgeStream
+from raft.config.paths import RaftHomeBootstrap
+from raft.config.settings.types import EdgeConfig, EdgeStream
 from raft.models.stack import load_stack
 from raft.apply import AppApply
 from raft.render import StackRenderer
@@ -32,7 +32,7 @@ class RaftHomeFixtures:
 
     @staticmethod
     def prepare(home: Path, *, settings: Optional[dict] = None) -> Path:
-        ensure_raft_home(home)
+        RaftHomeBootstrap().ensure(home)
         if settings is not None:
             (home / "settings.yaml").write_text(
                 yaml.safe_dump(settings, sort_keys=False),

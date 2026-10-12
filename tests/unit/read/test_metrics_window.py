@@ -9,9 +9,7 @@ import pytest
 
 from raft.controller.jobs.metrics import METRICS_DIR, METRICS_FILENAME
 from raft.errors.cta import OperatorError
-from raft.read.metrics import MetricsRead
-from raft.read.metrics_jsonl import MetricsJsonlReader
-from raft.read.metrics_window import MetricsRangeQuery
+from raft.read.metrics import MetricsJsonlReader, MetricsRangeQuery, MetricsRead
 
 from .test_metrics_read import _MetricsFixtures
 from tests.unit.base import RaftTestCase

@@ -5,7 +5,8 @@ from __future__ import annotations
 import time
 from unittest.mock import MagicMock
 
-from raft.serve.github.deploy_job import DeployJobStore, GithubDeployRunner
+from raft.serve.github.deploy_job import GithubDeployRunner
+from raft.serve.github.deploy_models import DeployJobStore
 from raft.serve.github.strategies.mock import MockGithubProvider
 from raft.serve.paths import ServePaths
 from raft.notify.control_events import KIND_SERVE_DEPLOY_FAILED

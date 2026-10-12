@@ -10,7 +10,8 @@ import yaml
 from raft.models.app import App
 from raft.models.manifest import AppSpec, VolumeSpec
 from raft.models.ports import PortSpec
-from raft.serve.github.deploy_job import DeployJob, DeployJobStore, GithubDeployRunner
+from raft.serve.github.deploy_job import GithubDeployRunner
+from raft.serve.github.deploy_models import DeployJob, DeployJobStore
 from raft.serve.github.next_steps import DeployNextSteps
 from raft.serve.github.strategies.mock import MockGithubProvider
 from raft.serve.github.account import GithubAccount

@@ -1,37 +1,26 @@
 """Apply / delete App manifests into the on-VPS registry (low-budget k8s)."""
 
-from __future__ import annotations
-
-import logging
 import os
 import shutil
-import tempfile
 from pathlib import Path
 from typing import Any, Mapping, Optional
 
 import yaml
 
-from ..secrets.app_secrets import AppSecretsLayout
-from ..errors.checked import raise_for_git_failure
-from ..errors.cta import OperatorError
-from ..errors.domain import (
-    app_not_applied,
-    missing_manifest,
-)
-
 from ..adapters.shell import Shell
+from ..deploy.orchestrator import Orchestrator
+from ..errors.cta import OperatorError
+from ..errors.domain import DomainErrors
+from ..locking import AppAndStackLocks, AppDeployLock
 from ..models.app_document import AppDocument
 from ..models.depends_cycle import DependsOnCycleGuard
 from ..models.manifest import CONTRACT_REL_PATH
 from ..models.registry import AppRegistry
 from ..models.stack import Stack, load_stack
-from ..ui import say
-from ..auth import GitAuthManager
-from ..locking.locking import app_and_stack_locks, app_deploy_lock
-from ..deploy.orchestrator import Orchestrator
-from .manifest_preprocess import ManifestYamlLoader
-
-logger = logging.getLogger(__name__)
+from ..secrets import AppSecretsLayout
+from ..ui import OperatorSay
+from .git_checkout import GitManifestCheckout
+from .preprocess.yaml_loader import ManifestYamlLoader
 
 
 class AppApply:
@@ -49,7 +38,7 @@ class AppApply:
         env: Optional[Mapping[str, str]] = None,
     ) -> str:
         if not path.is_file():
-            raise missing_manifest(path)
+            raise DomainErrors.missing_manifest(path)
         data = self._parse_file_yaml(path, env)
         self._apply_ref_override(data, path, ref_override)
         return self._register_manifest(
@@ -69,9 +58,8 @@ class AppApply:
         force_sync: bool = False,
         env: Optional[Mapping[str, str]] = None,
     ) -> str:
-        tmp = Path(tempfile.mkdtemp(prefix="raft-apply-"))
+        tmp = GitManifestCheckout(self.stack, self.sh).checkout(repo, ref)
         try:
-            tmp = self._checkout_git(tmp, repo, ref)
             data, manifest = self._parse_git_yaml(tmp, repo, ref, env)
             self._stamp_git_spec(data, repo, ref)
             return self._register_manifest(
@@ -86,11 +74,11 @@ class AppApply:
             shutil.rmtree(tmp, ignore_errors=True)
 
     def delete(self, name: str) -> None:
-        with app_and_stack_locks(self.stack.root, name):
+        with AppAndStackLocks(self.stack.root, name):
             if not AppRegistry(self.stack.root).delete(name):
                 known = ", ".join(a.name for a in self.stack.apps) or "(none)"
-                raise app_not_applied(name, known)
-            say(f"deleted {name} from registry", style="ok")
+                raise DomainErrors.app_not_applied(name, known)
+            OperatorSay.say(f"deleted {name} from registry", style="ok")
             fresh = load_stack(self.stack.root)
             Orchestrator(fresh).render()
             self._announce_delete_render(name, fresh)
@@ -108,7 +96,7 @@ class AppApply:
         app, app_spec = AppDocument.parse(data, path=path)
         self._warn_missing_deps(app.name, app_spec.depend_names())
         DependsOnCycleGuard(self.stack.root).reject(app.name, app_spec.depends_on)
-        with app_deploy_lock(self.stack.root, app.name):
+        with AppDeployLock(self.stack.root, app.name):
             dest = AppRegistry(self.stack.root).write(data)
             AppSecretsLayout(self.stack.root).ensure_app_dir(app.name)
             self._announce_applied(app.name, dest, from_label)
@@ -167,58 +155,6 @@ class AppApply:
             f"Fix: add that file on the ref, or: raft apply --git {repo} --ref <other>"
         )
 
-    def _checkout_git(self, tmp: Path, repo: str, ref: str) -> Path:
-        clone_urls = GitAuthManager(self.stack).clone_urls_for_repo(repo)
-        last_exc: Optional[BaseException] = None
-        for clone_url in clone_urls:
-            shutil.rmtree(tmp, ignore_errors=True)
-            tmp = Path(tempfile.mkdtemp(prefix="raft-apply-"))
-            try:
-                tmp = self._clone_ref(tmp, clone_url, ref)
-                if clone_url != repo:
-                    logger.info("apply --git used auth Host alias URL %s", clone_url)
-                return tmp
-            except Exception as exc:
-                last_exc = exc
-                logger.debug("clone via %s failed: %s", clone_url, exc)
-                continue
-        assert last_exc is not None
-        raise_for_git_failure(last_exc, repo, always=True)
-
-    def _clone_ref(self, tmp: Path, clone_url: str, ref: str) -> Path:
-        try:
-            # capture=True: failed URL probes must not spam the terminal
-            # (e.g. raw git@host before the Host-alias deploy key succeeds).
-            self.sh.git(
-                "clone",
-                "--quiet",
-                "--depth",
-                "1",
-                "--branch",
-                ref,
-                clone_url,
-                str(tmp),
-                capture=True,
-            )
-            return tmp
-        except Exception:
-            shutil.rmtree(tmp, ignore_errors=True)
-            return self._clone_ref_full(clone_url, ref)
-
-    def _clone_ref_full(self, clone_url: str, ref: str) -> Path:
-        tmp = Path(tempfile.mkdtemp(prefix="raft-apply-"))
-        self.sh.git("clone", "--quiet", clone_url, str(tmp), capture=True)
-        self.sh.git(
-            "checkout",
-            "-q",
-            "-f",
-            "--detach",
-            ref,
-            cwd=tmp,
-            capture=True,
-        )
-        return tmp
-
     @staticmethod
     def _apply_ref_override(data: dict[str, Any], path: Path, ref_override: Optional[str]) -> None:
         if not ref_override:
@@ -243,7 +179,7 @@ class AppApply:
         missing = [d for d in depends_on if d not in known and d != name]
         if not missing:
             return
-        say(
+        OperatorSay.say(
             f"{name}: dependsOn not yet applied: {', '.join(missing)} "
             f"(ok if you apply them next)",
             style="warn",
@@ -252,20 +188,20 @@ class AppApply:
     def _announce_applied(self, name: str, dest: Path, from_label: Optional[str]) -> None:
         rel = dest.relative_to(self.stack.root)
         if from_label:
-            say(f"applied {name} from {from_label} → {rel}", style="ok")
+            OperatorSay.say(f"applied {name} from {from_label} → {rel}", style="ok")
         else:
-            say(f"applied {name} → {rel}", style="ok")
+            OperatorSay.say(f"applied {name} → {rel}", style="ok")
 
     @staticmethod
     def _announce_delete_render(name: str, fresh: Stack) -> None:
         if fresh.apps:
-            say(
+            OperatorSay.say(
                 "re-rendered generated/; remove the Compose service if it is still running "
                 f"(docker compose -f {fresh.root / 'compose.yaml'} rm -sf {name})",
                 style="info",
             )
         else:
-            say("re-rendered generated/ (no apps applied)", style="info")
+            OperatorSay.say("re-rendered generated/ (no apps applied)", style="info")
 
     def _deploy(
         self,

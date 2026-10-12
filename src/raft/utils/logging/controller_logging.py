@@ -1,11 +1,9 @@
 """Controller logging: stdout only (data home may be read-only)."""
 
-from __future__ import annotations
-
 import logging
 import sys
 
-from ...config.settings_types import RaftConfig
+from ...config.settings.types import RaftConfig
 from .raft_logger import RaftLogger
 
 _STDOUT_FORMAT = "%(asctime)s %(levelname)s [%(name)s] %(message)s"

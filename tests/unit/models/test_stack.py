@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pytest
 
-import raft.config.paths as paths
-from raft.config.paths import find_package_root
+from raft.config.paths.package_root import PackageRootFinder
 from raft.models.ports import PortSpec
 from raft.models.stack import load_stack
+from raft.errors.operator_error import OperatorError
 
 from ..base import RaftTestCase, make_app, write_inventory
 
@@ -79,30 +79,37 @@ class TestFindPackageRoot(RaftTestCase):
         fake = self.tmp_path / "pkg"
         (fake / "nginx").mkdir(parents=True)
         (fake / "compose.yaml").write_text("name: raft\n", encoding="utf-8")
-        monkeypatch.setattr(paths, "_bundled_share", lambda: self.tmp_path / "missing")
+        finder = PackageRootFinder()
+        monkeypatch.setattr(finder, "_bundled_share", lambda: self.tmp_path / "missing")
         nested = fake / "a" / "b"
         nested.mkdir(parents=True)
-        assert find_package_root(nested) == fake.resolve()
+        assert finder.find(nested) == fake.resolve()
 
     def test_via_package_parents(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Third search walks from package_root.py when bundled + cwd miss."""
+        import raft.config.paths.package_root as package_root_mod
+
         pkg_root = self.tmp_path / "pkgroot"
         (pkg_root / "nginx").mkdir(parents=True)
         (pkg_root / "compose.yaml").write_text("name: raft\n", encoding="utf-8")
-        fake_file = pkg_root / "raft" / "config" / "paths.py"
+        fake_file = pkg_root / "raft" / "config" / "paths" / "package_root.py"
         fake_file.parent.mkdir(parents=True)
         fake_file.write_text("#\n", encoding="utf-8")
         orphan = self.tmp_path / "orphan"
         orphan.mkdir()
-        monkeypatch.setattr(paths, "_bundled_share", lambda: self.tmp_path / "nope")
-        monkeypatch.setattr(paths, "__file__", str(fake_file))
-        assert find_package_root(orphan) == pkg_root.resolve()
+        finder = PackageRootFinder()
+        monkeypatch.setattr(finder, "_bundled_share", lambda: self.tmp_path / "nope")
+        monkeypatch.setattr(package_root_mod, "__file__", str(fake_file))
+        assert finder.find(orphan) == pkg_root.resolve()
 
     def test_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(paths, "_bundled_share", lambda: self.tmp_path / "nope")
+        finder = PackageRootFinder()
+        monkeypatch.setattr(finder, "_bundled_share", lambda: self.tmp_path / "nope")
+        monkeypatch.setattr(finder, "_is_package_root", lambda _c: False)
         nested = self.tmp_path / "empty"
         nested.mkdir()
-        with pytest.raises(RuntimeError, match="package templates"):
-            find_package_root(nested)
+        with pytest.raises(OperatorError, match="package templates"):
+            finder.find(nested)
 
 
 class TestApp(RaftTestCase):

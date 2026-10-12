@@ -1,7 +1,5 @@
 """Self-heal: Compose restart/start, then escalate to raft redeploy/cutover."""
 
-from __future__ import annotations
-
 import logging
 import time
 from dataclasses import dataclass, field
@@ -9,31 +7,22 @@ from pathlib import Path
 from typing import Callable, Dict, Optional
 
 from ....adapters.docker import DockerStack
-from ....config.settings_types import HealingConfig
-from .deps import HealDepends
+from ....config.settings.types import HealingConfig
+from ....deploy.orchestrator import Orchestrator
 from ....errors.cta import OperatorError
+from ....locking import AppAndStackLocks
 from ....models.state.scaling_store import ScalingStore
 from ....models.stack import Stack
-from ....locking.locking import app_and_stack_locks
-from ....deploy.orchestrator import Orchestrator
 from ....notify.control_events import ControlPlaneEvents
 from ....notify.notifier import Notifier
+from .deps import HealDepends
 
-__all__ = ["Healer", "needs_heal", "run_heal_forever"]
+__all__ = ["Healer"]
 
 logger = logging.getLogger(__name__)
 
 DeployFn = Callable[[str], None]
 NeedsHealFn = Callable[[], None]
-
-
-def needs_heal(status: str, health: str) -> bool:
-    """True when Compose indicates the app should be healed."""
-    if status in ("exited", "dead", "missing"):
-        return True
-    if status == "running" and health == "unhealthy":
-        return True
-    return False
 
 
 @dataclass
@@ -53,6 +42,15 @@ class Healer:
         self._deps = HealDepends(self.home, self.docker)
         if self.notifier is None:
             self.notifier = Notifier(self.home)
+
+    @staticmethod
+    def needs_heal(status: str, health: str) -> bool:
+        """True when Compose indicates the app should be healed."""
+        if status in ("exited", "dead", "missing"):
+            return True
+        if status == "running" and health == "unhealthy":
+            return True
+        return False
 
     def tick(self, *, now: Optional[float] = None) -> None:
         if not self.config.enabled:
@@ -80,7 +78,7 @@ class Healer:
         status, health = self.docker.service_runtime(compose_id)
         if self._clear_if_healthy(name, compose_id, status, health):
             return False
-        if not needs_heal(status, health):
+        if not self.needs_heal(status, health):
             return False
         self._record_fail_and_act(name, compose_id, status, health, when)
         return True
@@ -102,7 +100,9 @@ class Healer:
         if fails >= self.config.fail_threshold:
             self._heal_action(name, compose_id, status, when)
 
-    def _clear_if_healthy(self, name: str, compose_id: str, status: str, health: str) -> bool:
+    def _clear_if_healthy(
+        self, name: str, compose_id: str, status: str, health: str
+    ) -> bool:
         if not (status == "running" and health in ("healthy", "none", "starting")):
             return False
         if self.fail_counts.pop(name, None):
@@ -140,7 +140,8 @@ class Healer:
     def _ready_to_escalate(self, name: str) -> bool:
         restarts = self.restart_counts.get(name, 0)
         return (
-            restarts >= self.config.escalate_after_restarts or restarts >= self.config.max_restarts
+            restarts >= self.config.escalate_after_restarts
+            or restarts >= self.config.max_restarts
         )
 
     def _restart(self, name: str, compose_id: str, status: str, when: float) -> None:
@@ -165,7 +166,7 @@ class Healer:
         if not self._deps.ensure_deps_running(name):
             return False
         try:
-            with app_and_stack_locks(self.home, name):
+            with AppAndStackLocks(self.home, name):
                 if status in ("exited", "dead", "missing"):
                     self.docker.start_service(compose_id)
                 else:
@@ -215,37 +216,3 @@ class Healer:
             self.deploy(name)
             return
         Orchestrator(Stack.load_apps(self.home)).ensure_app_deployed(name)
-
-
-def run_heal_forever(
-    home: Path,
-    config: HealingConfig,
-    docker: DockerStack,
-    *,
-    sleep_fn: Callable[[float], None] = time.sleep,
-    deploy: Optional[DeployFn] = None,
-) -> None:
-    """Poll forever (``sleep_fn`` injectable for tests). Product path uses JobOrchestrator."""
-    healer = Healer(home=home, config=config, docker=docker, deploy=deploy)
-    _log_heal_startup(config)
-    while True:
-        try:
-            healer.tick()
-        except Exception:  # noqa: BLE001 — keep the controller alive
-            logger.exception("heal tick failed")
-        sleep_fn(config.interval_seconds)
-
-
-def _log_heal_startup(config: HealingConfig) -> None:
-    if not config.enabled:
-        logger.info("healing disabled (settings healing.enabled=false); idle loop only")
-        return
-    logger.info(
-        "healing enabled interval=%ss failThreshold=%s cooldown=%ss "
-        "maxRestarts=%s escalateAfterRestarts=%s",
-        config.interval_seconds,
-        config.fail_threshold,
-        config.cooldown_seconds,
-        config.max_restarts,
-        config.escalate_after_restarts,
-    )

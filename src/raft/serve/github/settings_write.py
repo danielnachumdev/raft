@@ -1,6 +1,5 @@
 """Persist ``github:`` OAuth settings into ``~/.raft/settings.yaml`` at runtime."""
 
-from __future__ import annotations
 
 import os
 from pathlib import Path
@@ -8,9 +7,9 @@ from typing import Any, Dict, Mapping, Optional
 
 import yaml
 
-from ...config.paths import settings_path
-from ...config.settings import load_config
-from ...config.settings_types import GithubServeConfig
+from ...config.paths import RaftHome
+from ...config.settings import SettingsLoader
+from ...config.settings.types import GithubServeConfig
 from ...errors.cta import OperatorError
 
 from .oauth_setup import SETUP_DOCS_URL, GithubOauthAppSetup
@@ -21,11 +20,11 @@ class GithubSettingsWriter:
 
     def __init__(self, data_home: Path) -> None:
         self._home = data_home
-        self._path = settings_path(data_home)
+        self._path = RaftHome().settings_path(data_home)
         self._setup = GithubOauthAppSetup()
 
     def public_status(self, *, port: int) -> Dict[str, Any]:
-        cfg = load_config(self._home).github
+        cfg = SettingsLoader().load(self._home).github
         out = self._setup.public_fields(port=port)
         out.update(
             {
@@ -45,7 +44,7 @@ class GithubSettingsWriter:
     ) -> GithubServeConfig:
         patch = self._validated_patch(client_id=client_id, client_secret=client_secret)
         self._merge_github(patch)
-        return load_config(self._home).github
+        return SettingsLoader().load(self._home).github
 
     @staticmethod
     def oauth_ready(cfg: GithubServeConfig) -> bool:

@@ -1,12 +1,10 @@
 """HTTP attachment wrapping for encoded export bytes."""
 
-from __future__ import annotations
-
 import re
 
 from fastapi.responses import Response
 
-from .format import Exporter
+from .exporter import Exporter
 
 _UNSAFE = re.compile(r"[^A-Za-z0-9._-]+")
 

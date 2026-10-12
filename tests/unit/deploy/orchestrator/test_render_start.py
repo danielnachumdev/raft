@@ -37,7 +37,7 @@ class TestOrchRenderStart(OrchestratorTestCase):
 
     def test_render_invokes_stack_renderer(self) -> None:
         self.set_running()
-        with patch("raft.deploy.orchestrator.StackRenderer") as renderer_cls:
+        with patch("raft.deploy.orchestrator.service.StackRenderer") as renderer_cls:
             instance = renderer_cls.return_value
             self.orch.render()
             renderer_cls.assert_called_once_with(self.orch.stack)

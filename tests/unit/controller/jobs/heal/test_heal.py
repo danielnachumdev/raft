@@ -1,14 +1,12 @@
 """Controller heal loop (Compose restart + escalate to redeploy)."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from raft.config.settings_types import HealingConfig
-from raft.controller.jobs.heal import Healer, needs_heal, run_heal_forever
+from raft.config.settings.types import HealingConfig
+from raft.controller.jobs.heal import HealForever, Healer
 from raft.models.state.scaling_store import ScalingStore
 from raft.errors.cta import OperatorError
 
@@ -17,14 +15,14 @@ from ...base import ControllerTestCase
 
 class TestNeedsHeal:
     def test_cases(self) -> None:
-        assert needs_heal("exited", "none")
-        assert needs_heal("dead", "none")
-        assert needs_heal("missing", "none")
-        assert needs_heal("running", "unhealthy")
-        assert not needs_heal("running", "healthy")
-        assert not needs_heal("running", "none")
-        assert not needs_heal("running", "starting")
-        assert not needs_heal("restarting", "none")
+        assert Healer.needs_heal("exited", "none")
+        assert Healer.needs_heal("dead", "none")
+        assert Healer.needs_heal("missing", "none")
+        assert Healer.needs_heal("running", "unhealthy")
+        assert not Healer.needs_heal("running", "healthy")
+        assert not Healer.needs_heal("running", "none")
+        assert not Healer.needs_heal("running", "starting")
+        assert not Healer.needs_heal("restarting", "none")
 
 
 class TestHealer(ControllerTestCase):
@@ -216,4 +214,4 @@ class TestHealer(ControllerTestCase):
                 raise StopIteration
 
         with pytest.raises(StopIteration):
-            run_heal_forever(home, cfg, docker, sleep_fn=sleep)
+            HealForever(home, cfg, docker, sleep_fn=sleep).run()

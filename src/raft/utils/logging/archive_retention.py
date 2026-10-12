@@ -1,7 +1,5 @@
 """Delete sealed log archives older than the configured age."""
 
-from __future__ import annotations
-
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path

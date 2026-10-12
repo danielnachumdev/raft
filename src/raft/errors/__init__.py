@@ -1,19 +1,30 @@
 """Operator errors and Fix CTAs."""
 
-from .checked import (
-    raise_for_compose_failure,
-    raise_for_docker_pull_failure,
-    raise_for_git_failure,
-)
-from .classify import SubprocessCtx, classify_subprocess
-from .cta import OperatorError, format_cta
+from .certs_msgs import CertMessages
+from .checked import CheckedCommands
+from .classify import SubprocessClassifier, SubprocessCtx
+from .cta import CtaFormatter
+from .diagnostics import ServiceDiagnostics
+from .docker_msgs import DockerMessages
+from .domain import DomainErrors
+from .git_msgs import GitMessages
+from .operator_error import OperatorError
+from .registry_msgs import RegistryMessages
+from .resource_msgs import ResourceMessages
+from .strategies import SubprocessRule
 
 __all__ = [
+    "CertMessages",
+    "CheckedCommands",
+    "CtaFormatter",
+    "DockerMessages",
+    "DomainErrors",
+    "GitMessages",
     "OperatorError",
+    "RegistryMessages",
+    "ResourceMessages",
+    "ServiceDiagnostics",
+    "SubprocessClassifier",
     "SubprocessCtx",
-    "classify_subprocess",
-    "format_cta",
-    "raise_for_compose_failure",
-    "raise_for_docker_pull_failure",
-    "raise_for_git_failure",
+    "SubprocessRule",
 ]

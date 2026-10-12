@@ -1,7 +1,5 @@
 """AcmeAccountStore load/create and registration persistence."""
 
-from __future__ import annotations
-
 import json
 from unittest.mock import MagicMock, patch
 
@@ -18,8 +16,8 @@ class TestAcmeAccountStore(RaftTestCase):
         mock_cls = MagicMock(return_value=fake)
         mock_cls.get_directory.return_value = MagicMock()
         net = MagicMock()
-        with patch("raft.acme.account.client.ClientNetwork", return_value=net):
-            with patch("raft.acme.account.client.ClientV2", mock_cls):
+        with patch("raft.acme.account.gateway.client.ClientNetwork", return_value=net):
+            with patch("raft.acme.account.gateway.client.ClientV2", mock_cls):
                 return store.client_for(**kwargs), net
 
     def _fake_regr(self, uri: str) -> MagicMock:
@@ -32,10 +30,10 @@ class TestAcmeAccountStore(RaftTestCase):
         store = AcmeAccountStore(self.tmp_path)
         fake = MagicMock()
         fake.new_account.return_value = self._fake_regr("https://acme.example/acct/1")
-        client, net = self._run(
+        gateway, net = self._run(
             store, fake, directory_url="https://acme.example/directory", email="ops@x.com"
         )
-        assert client is fake
+        assert gateway._client is fake
         assert AcmePaths(self.tmp_path).account_key.is_file()
         assert net.account.uri.endswith("/acct/1")
 
@@ -45,7 +43,7 @@ class TestAcmeAccountStore(RaftTestCase):
         body = messages.Registration.from_json({"status": "valid"}).to_json()
         self._write_account("https://acme.example/directory", "https://acme.example/acct/1", body)
         fake = MagicMock()
-        _c, net = self._run(
+        _gw, net = self._run(
             store, fake, directory_url="https://acme.example/directory", email="ops@x.com"
         )
         fake.new_account.assert_not_called()

@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from raft.config.settings_types import EdgeConfig, EdgeStream
+from raft.config.settings.types import EdgeConfig, EdgeStream
 from raft.models.manifest import AppSpec
 from raft.models.ports import PortSpec
 from raft.models.readiness_spec import ReadinessSpec

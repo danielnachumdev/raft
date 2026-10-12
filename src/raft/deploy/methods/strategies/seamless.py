@@ -1,7 +1,5 @@
 """SeamlessDeployment — dual-run ``*_tmp`` cutover when live; single start when down."""
 
-from __future__ import annotations
-
 import logging
 
 from ...cutover import DEPLOY_CUTOVER, CutoverSession

@@ -1,6 +1,5 @@
 """Resolve the active usable GitHub account token for repos/deploy."""
 
-from __future__ import annotations
 
 from fastapi import HTTPException
 

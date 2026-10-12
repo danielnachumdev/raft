@@ -1,18 +1,15 @@
 """Container inspect, stats, and readiness probes for Compose services."""
 
-from __future__ import annotations
-
-import json
 import logging
 import subprocess
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
-from ...errors.checked import raise_for_compose_failure
+from ...errors.checked import CheckedCommands
 from ...errors.cta import OperatorError
-from ...errors.domain import service_not_running
-
+from ...errors.domain import DomainErrors
 from ...models.stack import Stack
 from ..shell import Shell
+from .inspect_runtime import InspectRuntime
 
 logger = logging.getLogger(__name__)
 
@@ -22,12 +19,12 @@ _STATUS_HEALTH_FMT = (
 
 
 class DockerInspect:
-    """Mixin: container ids, stats, runtime, image refs, published ports."""
+    """Container ids, stats, runtime, and readiness via Engine inspect."""
 
     stack: Stack
     sh: Shell
 
-    def gate_published_ports(self) -> list[int]:
+    def gate_published_ports(self) -> List[int]:
         try:
             cid = self.service_container_id(self.stack.gate)
         except RuntimeError:
@@ -45,8 +42,8 @@ class DockerInspect:
         return self._parse_published_ports(result.stdout or "")
 
     @staticmethod
-    def _parse_published_ports(stdout: str) -> list[int]:
-        ports: list[int] = []
+    def _parse_published_ports(stdout: str) -> List[int]:
+        ports: List[int] = []
         for token in stdout.split():
             num = token.split("/", 1)[0]
             if num.isdigit():
@@ -62,10 +59,10 @@ class DockerInspect:
                 output=result.stdout,
                 stderr=(result.stderr or "").strip(),
             )
-            raise_for_compose_failure(exc, action=f"inspect service {service}")
+            CheckedCommands.raise_for_compose_failure(exc, action=f"inspect service {service}")
         cid = (result.stdout or "").strip()
         if not cid:
-            raise service_not_running(service)
+            raise DomainErrors.service_not_running(service)
         return cid
 
     def try_service_container_id(self, service: str) -> Optional[str]:
@@ -76,16 +73,16 @@ class DockerInspect:
         cid = (result.stdout or "").strip()
         return cid or None
 
-    def containers_stats(self, container_ids: list[str]) -> dict[str, dict[str, Any]]:
+    def containers_stats(self, container_ids: List[str]) -> Dict[str, Dict[str, Any]]:
         """One-shot ``docker stats --no-stream`` keyed by container id."""
         if not container_ids:
             return {}
         stdout = self._docker_stats_stdout(container_ids)
         if stdout is None:
             return {}
-        return self._index_stats_rows(stdout, container_ids)
+        return InspectRuntime.index_stats_rows(stdout, container_ids)
 
-    def _docker_stats_stdout(self, container_ids: list[str]) -> Optional[str]:
+    def _docker_stats_stdout(self, container_ids: List[str]) -> Optional[str]:
         result = self.sh.docker(
             "stats",
             "--no-stream",
@@ -104,35 +101,7 @@ class DockerInspect:
             return None
         return result.stdout or ""
 
-    @staticmethod
-    def _index_stats_rows(stdout: str, container_ids: list[str]) -> dict[str, dict[str, Any]]:
-        by_id: dict[str, dict[str, Any]] = {}
-        for line in stdout.splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            row = DockerInspect._parse_stats_line(line)
-            if row is None:
-                continue
-            raw_id = str(row.get("ID") or row.get("Container") or "").strip()
-            if not raw_id:
-                continue
-            by_id[raw_id] = row
-            for cid in container_ids:
-                if cid.startswith(raw_id) or raw_id.startswith(cid):
-                    by_id[cid] = row
-        return by_id
-
-    @staticmethod
-    def _parse_stats_line(line: str) -> Optional[dict[str, Any]]:
-        try:
-            row = json.loads(line)
-        except json.JSONDecodeError:
-            logger.debug("skip unparseable docker stats line: %r", line)
-            return None
-        return row if isinstance(row, dict) else None
-
-    def container_inspect_runtime(self, container_id: str) -> Optional[dict[str, Any]]:
+    def container_inspect_runtime(self, container_id: str) -> Optional[Dict[str, Any]]:
         """Status, health, start time, and HostConfig limits for one container.
 
         JSON inspect avoids a Docker Go-template bug: mixing ``.State.Health``
@@ -149,51 +118,7 @@ class DockerInspect:
         )
         if result.returncode != 0:
             return None
-        return self._runtime_from_inspect_json(result.stdout or "")
-
-    @staticmethod
-    def _runtime_from_inspect_json(stdout: str) -> Optional[dict[str, Any]]:
-        try:
-            data = json.loads(stdout.strip())
-        except json.JSONDecodeError:
-            return None
-        if not isinstance(data, dict):
-            return None
-        return DockerInspect._runtime_from_inspect_dict(data)
-
-    @staticmethod
-    def _runtime_from_inspect_dict(data: dict[str, Any]) -> dict[str, Any]:
-        state = data.get("State") if isinstance(data.get("State"), dict) else {}
-        host = data.get("HostConfig") if isinstance(data.get("HostConfig"), dict) else {}
-        health_obj = state.get("Health")
-        health = "none"
-        if isinstance(health_obj, dict):
-            health = str(health_obj.get("Status") or "none")
-        return {
-            "status": str(state.get("Status") or "unknown"),
-            "health": health or "none",
-            "started_at": str(state.get("StartedAt") or ""),
-            "finished_at": str(state.get("FinishedAt") or ""),
-            "restart_count": DockerInspect._restart_count(data.get("RestartCount")),
-            "oom_killed": bool(state.get("OOMKilled")),
-            "exit_code": DockerInspect._optional_int(state.get("ExitCode")),
-            "nano_cpus": DockerInspect._optional_int(host.get("NanoCpus")),
-            "memory_bytes": DockerInspect._optional_int(host.get("Memory")),
-        }
-
-    @staticmethod
-    def _restart_count(raw: Any) -> int:
-        value = DockerInspect._optional_int(raw)
-        return value if value is not None and value >= 0 else 0
-
-    @staticmethod
-    def _optional_int(raw: Any) -> Optional[int]:
-        if isinstance(raw, bool) or raw is None:
-            return None
-        if isinstance(raw, int):
-            return raw
-        text = str(raw).strip()
-        return int(text) if text.isdigit() else None
+        return InspectRuntime.from_inspect_json(result.stdout or "")
 
     def service_is_ready(self, service: str) -> bool:
         """True when running and healthy (or no healthcheck); for expose:none."""
@@ -212,7 +137,7 @@ class DockerInspect:
         health = parts[1] if len(parts) > 1 else "none"
         return health in ("none", "healthy")
 
-    def service_runtime(self, service: str) -> tuple[str, str]:
+    def service_runtime(self, service: str) -> tuple:
         """Return ``(status, health)`` for a Compose service (``missing`` if absent)."""
         stdout = self._inspect_status_health(service)
         if stdout is None:
@@ -237,7 +162,7 @@ class DockerInspect:
         return result.stdout or ""
 
     @staticmethod
-    def _runtime_status_health(stdout: str) -> tuple[str, str]:
+    def _runtime_status_health(stdout: str) -> tuple:
         parts = stdout.strip().split()
         if not parts:
             return ("missing", "none")

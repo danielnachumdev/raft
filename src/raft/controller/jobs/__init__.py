@@ -2,7 +2,7 @@
 
 from .acme import ACME_INTERVAL_SECONDS, ACME_TIMEOUT_SECONDS, AcmeJobSync
 from .controller_job import ControllerJob
-from .heal import HealJob, Healer, needs_heal, run_heal_forever
+from .heal import HealForever, HealJob, Healer
 from .metrics import (
     HTTP_METRICS_FILENAME,
     METRICS_DIR,
@@ -19,6 +19,7 @@ __all__ = [
     "AcmeJobSync",
     "ControllerJob",
     "HTTP_METRICS_FILENAME",
+    "HealForever",
     "HealJob",
     "Healer",
     "HttpMetricsRecorder",
@@ -29,6 +30,4 @@ __all__ = [
     "ScaleJob",
     "Scaler",
     "WAKE_HTTP_PORT",
-    "needs_heal",
-    "run_heal_forever",
 ]

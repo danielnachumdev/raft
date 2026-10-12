@@ -1,18 +1,15 @@
 """Best-effort ACME ensure for ``tls: acme`` apps (CLI apply + controller jobs)."""
 
-from __future__ import annotations
-
 import logging
 from datetime import datetime, timezone
 from typing import Callable, Optional, Sequence
 
-from ..config.settings import load_config
-from ..config.settings_types import AcmeConfig
+from ..config.settings import SettingsLoader
+from ..config.settings.types import AcmeConfig
 from ..models.app import App
 from ..models.stack import Stack
 from ..notify.control_events import ControlPlaneEvents
 from ..notify.notifier import Notifier
-
 from .account import AcmeAccountStore
 from .app_store import AcmeAppStore
 from .install import AcmeGateInstall
@@ -42,7 +39,7 @@ class AcmeEnsure:
         self._paths = AcmePaths(stack.root)
         self._store = store or AcmeAppStore(stack.root)
         self._writer = writer or AcmeCertWriter()
-        self._config = config if config is not None else load_config(stack.root).acme
+        self._config = config if config is not None else SettingsLoader().load(stack.root).acme
         self._now = now or (lambda: datetime.now(timezone.utc))
         self._installer = installer
         self._order_runner = order_runner
@@ -120,7 +117,9 @@ class AcmeEnsure:
         directory = self._config.directory
         return AcmeOrderRunner(
             self.stack.root,
-            client_factory=lambda: account.client_for(directory_url=directory, email=email),
+            client_factory=lambda: account.client_for(
+                directory_url=directory, email=email
+            ),
         )
 
     def _install_after_change(self) -> None:

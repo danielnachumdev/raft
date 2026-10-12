@@ -1,7 +1,5 @@
 """Batched metrics recorder (controller → state/metrics JSONL)."""
 
-from __future__ import annotations
-
 import json
 from datetime import datetime
 from pathlib import Path
@@ -128,7 +126,7 @@ class TestMetricsRecorder(ControllerTestCase):
         )
         with patch("raft.controller.jobs.metrics.metrics.Status") as status_cls:
             status_cls.return_value.collect.return_value = snap
-            with patch("raft.models.stack.ensure_raft_home") as ensure:
+            with patch("raft.models.stack.RaftHomeBootstrap") as ensure:
                 MetricsRecorder(home, batch_size=1, clock=lambda: 0.0).tick()
         ensure.assert_not_called()
         status_cls.return_value.collect.assert_called_once_with()

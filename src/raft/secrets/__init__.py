@@ -1,5 +1,9 @@
 """App secret material under ``~/.raft/secrets``."""
 
-from .app_secrets import AppSecretsLayout
+from .layout import AppSecretsLayout, ENV_FILE_MODE, SECRETS_DIRNAME
 
-__all__ = ["AppSecretsLayout"]
+__all__ = [
+    "AppSecretsLayout",
+    "ENV_FILE_MODE",
+    "SECRETS_DIRNAME",
+]

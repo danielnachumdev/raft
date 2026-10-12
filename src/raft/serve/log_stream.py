@@ -1,6 +1,5 @@
 """SSE framing for ``Logs.follow`` lines (serve live log stream)."""
 
-from __future__ import annotations
 
 from typing import Iterator
 

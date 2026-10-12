@@ -1,7 +1,5 @@
 """Env / volume field parsing for App manifest ``spec`` objects."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any, Optional
 

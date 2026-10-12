@@ -1,10 +1,8 @@
 """Derive public absolute URLs for serve status rows from App + edge config."""
 
-from __future__ import annotations
-
 from typing import Optional, Tuple
 
-from ..config.settings_types import EdgeConfig
+from ..config.settings.types import EdgeConfig
 from ..models.app import App
 from ..models.stack import Stack
 from ..models.manifest import AppSpec

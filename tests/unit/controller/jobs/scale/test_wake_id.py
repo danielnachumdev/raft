@@ -1,7 +1,5 @@
 """Wake diagnostic id is logged on request and timeout."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 

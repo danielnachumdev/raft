@@ -9,7 +9,7 @@ from io import StringIO
 from typing import Callable, Optional, TextIO
 
 from ...models.app import display_service_label
-from ...ui import BOLD, CYAN, DIM, paint, want_color
+from ...ui import BOLD, CYAN, DIM, TerminalColor
 from .formatters import StatusFormatters
 from .models import (
     STATUS_CRASH_LOOPING,
@@ -60,7 +60,7 @@ class StatusReportWriter:
             json.dump(snapshot.to_dict(), stream, indent=2, sort_keys=True)
             stream.write("\n")
             return 0
-        use_color = want_color(stream, color)
+        use_color = TerminalColor.want(stream, color)
         self._write_host(stream, snapshot.host, color=use_color)
         self._write_containers(
             stream,
@@ -119,7 +119,7 @@ class StatusReportWriter:
             sleep(interval)
 
     def _write_host(self, stream: TextIO, host: HostStatus, *, color: bool) -> None:
-        title = paint("Host", BOLD, stream=stream, color=color)
+        title = TerminalColor.paint("Host", BOLD, stream=stream, color=color)
         print(title, file=stream)
         print(f"  Name: {host.hostname or '-'}", file=stream)
         cpus = str(host.cpus) if host.cpus is not None else "-"
@@ -163,7 +163,7 @@ class StatusReportWriter:
         color: bool,
         live_footer: bool = False,
     ) -> None:
-        title = paint("Containers", BOLD, stream=stream, color=color)
+        title = TerminalColor.paint("Containers", BOLD, stream=stream, color=color)
         print(title, file=stream)
         self._print_table(stream, self._container_table_rows(containers), color=color)
         print(file=stream)
@@ -177,7 +177,7 @@ class StatusReportWriter:
         color: bool,
         live_footer: bool,
     ) -> None:
-        limits = paint(
+        limits = TerminalColor.paint(
             "  Limits are Compose deploy limits; usage is a live docker stats sample.",
             CYAN,
             stream=stream,
@@ -185,11 +185,11 @@ class StatusReportWriter:
         )
         print(limits, file=stream)
         if any(c.status == STATUS_SCALED_TO_ZERO for c in containers):
-            print(paint(_SCALED_HINT, CYAN, stream=stream, color=color), file=stream)
+            print(TerminalColor.paint(_SCALED_HINT, CYAN, stream=stream, color=color), file=stream)
         if any(c.status == STATUS_CRASH_LOOPING for c in containers):
-            print(paint(_CRASH_HINT, CYAN, stream=stream, color=color), file=stream)
+            print(TerminalColor.paint(_CRASH_HINT, CYAN, stream=stream, color=color), file=stream)
         if live_footer:
-            print(paint("  Ctrl+C to exit", DIM, stream=stream, color=color), file=stream)
+            print(TerminalColor.paint("  Ctrl+C to exit", DIM, stream=stream, color=color), file=stream)
 
     @staticmethod
     def _mem_cell(c: ContainerStatus) -> str:
@@ -240,6 +240,6 @@ class StatusReportWriter:
         for idx, row in enumerate(rows):
             line = "  ".join(cell.ljust(widths[i]) for i, cell in enumerate(row))
             if idx == 0:
-                print(paint(f"  {line}", DIM, stream=stream, color=color), file=stream)
+                print(TerminalColor.paint(f"  {line}", DIM, stream=stream, color=color), file=stream)
             else:
                 print(f"  {line}", file=stream)

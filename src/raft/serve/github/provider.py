@@ -1,37 +1,23 @@
-"""GitHub repo listing contract + shared types (strategies implement it)."""
+"""GithubProvider ABC — strategies implement list/fetch/resolve."""
 
-from __future__ import annotations
-
-from dataclasses import dataclass
+from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Optional, Protocol
+from typing import List, Optional
+
+from .repo import GithubRepo
 
 
-@dataclass(frozen=True)
-class GithubRepo:
-    full_name: str
-    name: str
-    owner: str
-    private: bool
-    default_branch: str
-    clone_url: str
-    ssh_url: str
-    html_url: str
+class GithubProvider(ABC):
+    """Open-closed GitHub repo access for serve deploy assist."""
 
-
-class GithubProvider(Protocol):
+    @abstractmethod
     def list_repos(self, token: str, *, query: str = "") -> List[GithubRepo]:
-        ...
+        """Return repos visible to ``token``, optionally filtered by ``query``."""
 
+    @abstractmethod
     def fetch_manifest(self, token: str, full_name: str, ref: str) -> str:
-        ...
+        """Return raw ``.raft/app.yaml`` text for ``full_name`` at ``ref``."""
 
+    @abstractmethod
     def resolve_local_tree(self, full_name: str) -> Optional[Path]:
-        ...
-
-
-def filter_repos(repos: List[GithubRepo], query: str) -> List[GithubRepo]:
-    q = query.strip().lower()
-    if not q:
-        return repos
-    return [r for r in repos if q in r.full_name.lower()]
+        """Return a local checkout path when the provider has one (mock)."""

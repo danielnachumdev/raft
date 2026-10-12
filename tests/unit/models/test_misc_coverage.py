@@ -7,11 +7,11 @@ from unittest.mock import patch
 
 import pytest
 
-from raft.config.settings import load_config
-from raft.config.settings_types import EdgeConfig, EdgeStream
+from raft.config.settings import SettingsLoader
+from raft.config.settings.types import EdgeConfig, EdgeStream
 from raft.models.app import App
 from raft.models.app_document import AppDocument
-from raft.models.app_spec_fields import AppSpecFields
+from raft.models.app_spec_fields import AppResourceFields
 from raft.models.registry import AppRegistry
 from raft.models.stack import load_stack
 from raft.render import StackRenderer
@@ -35,7 +35,7 @@ UNIQ_DOC = {
 class TestMiscCoverage(RaftTestCase):
     def test_null_streams_loads_empty(self) -> None:
         (self.tmp_path / "settings.yaml").write_text("edge:\n  streams: null\n", encoding="utf-8")
-        assert load_config(self.tmp_path).edge.streams == ()
+        assert SettingsLoader().load(self.tmp_path).edge.streams == ()
 
     def test_parse_expect_name_and_bad_source(self) -> None:
         path = Path("x.yaml")
@@ -84,7 +84,7 @@ class TestMiscCoverage(RaftTestCase):
         )
         (self.tmp_path / "apps" / "web").mkdir(parents=True)
         stack = load_stack(self.tmp_path)
-        with patch("raft.render.service.logger") as log:
+        with patch("raft.render.stack_renderer.logger") as log:
             StackRenderer(stack).render()
             assert log.debug.called
 
@@ -140,10 +140,10 @@ class TestMiscCoverage(RaftTestCase):
             ref="main",
         )
         assert app.image_ref("sha256:abc") == "ghcr.io/org/hub@sha256:abc"
-        assert AppSpecFields._parse_cpu(2.5, default="0.1") == "2.5"
-        assert AppSpecFields._parse_cpu("0.75", default="0.1") == "0.75"
-        assert AppSpecFields._parse_memory("10Mi", default="1M") == "10M"
-        assert AppSpecFields._parse_memory("128M", default="1M") == "128M"
+        assert AppResourceFields._parse_cpu(2.5, default="0.1") == "2.5"
+        assert AppResourceFields._parse_cpu("0.75", default="0.1") == "0.75"
+        assert AppResourceFields._parse_memory("10Mi", default="1M") == "10M"
+        assert AppResourceFields._parse_memory("128M", default="1M") == "128M"
 
     def test_parse_null_spec_tls_and_empty_extra_hosts(self) -> None:
         self._test_parse_null_spec_tls_and_empty_extra_hosts_p1()

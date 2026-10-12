@@ -1,11 +1,9 @@
 """Host CLI logging: structured file under ``~/.raft/logs`` with rotation."""
 
-from __future__ import annotations
-
 import logging
 from pathlib import Path
 
-from ...config.settings_types import RaftConfig
+from ...config.settings.types import RaftConfig
 from .raft_logger import RaftLogger
 from .rotating_file_handler import LogRotatingFileHandler
 from .rotation_bootstrap import LogRotationBootstrap

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from raft.config.settings_types import AcmeConfig
+from raft.config.settings.types import AcmeConfig
 from raft.models.stack import load_stack
 from raft.acme.ensure import AcmeEnsure
 from raft.notify.control_events import KIND_ACME_ERROR

@@ -1,14 +1,11 @@
 """Gate TLS snippets for ``spec.tls: origin`` and ``spec.tls: acme``."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from pathlib import Path
 
-from ...errors.cta import OperatorError
 from ...acme.paths import AcmePaths
-
-from ...config.settings_types import EdgeConfig
+from ...config.settings.types import EdgeConfig
+from ...errors.cta import OperatorError
 from ...models.app import App
 from ...models.manifest import AppSpec
 from .fragments import EdgeFragments

@@ -1,11 +1,11 @@
 """Shipped export catalogs. Add a format by registering another Exporter."""
 
-from __future__ import annotations
-
 from .registry import ExportRegistry
-from .strategies.logs_json import LogsJsonExporter
-from .strategies.logs_txt import LogsTxtExporter
-from .strategies.metrics_delimited import DelimitedMetricsExporter
+from .strategies import (
+    DelimitedMetricsExporter,
+    LogsJsonExporter,
+    LogsTxtExporter,
+)
 
 
 class ExportCatalogs:

@@ -1,32 +1,31 @@
 """Host logging setup coverage."""
 
-from __future__ import annotations
-
 import logging
 from datetime import datetime
+from pathlib import Path
 
 import pytest
 
-from raft.config import LoggingConfig, RaftConfig, default_config
-from raft.config.settings_types import EdgeConfig
+from raft.config import LoggingConfig, RaftConfig
+from raft.config.settings.types import EdgeConfig
 from raft.utils import HostLogging, LogRotatingFileHandler, TraceContext
 from tests.shared.logging_reset import LoggingReset
 
-from ...base import RaftTestCase
 
-
-class TestHostLogging(RaftTestCase):
+class TestHostLogging:
     @pytest.fixture(autouse=True)
-    def _reset_logging(self, _raft_base) -> None:
+    def _reset_logging(self) -> None:
         LoggingReset().for_tests()
         yield
         LoggingReset().for_tests()
 
-    def test_writes_file_only(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_writes_file_only(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.delenv("RAFT_LOG_DIR", raising=False)
         LoggingReset().for_tests()
-        log_file = HostLogging().configure(self.tmp_path, default_config())
-        assert log_file == self.tmp_path / "logs" / "raft.log"
+        log_file = HostLogging().configure(tmp_path, RaftConfig())
+        assert log_file == tmp_path / "logs" / "raft.log"
         assert log_file.parent.is_dir()
         root = logging.getLogger("raft")
         assert len(root.handlers) == 1
@@ -36,11 +35,11 @@ class TestHostLogging(RaftTestCase):
         assert "hello-file" in log_file.read_text(encoding="utf-8")
 
     def test_file_format_includes_tid_when_scoped(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.delenv("RAFT_LOG_DIR", raising=False)
         LoggingReset().for_tests()
-        log_file = HostLogging().configure(self.tmp_path, default_config())
+        log_file = HostLogging().configure(tmp_path, RaftConfig())
         with TraceContext() as tid:
             logging.getLogger("raft.test").info("scoped-line")
         text = log_file.read_text(encoding="utf-8")
@@ -48,20 +47,20 @@ class TestHostLogging(RaftTestCase):
         assert "scoped-line" in text
 
     def test_file_format_uses_dash_without_scope(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.delenv("RAFT_LOG_DIR", raising=False)
         LoggingReset().for_tests()
-        log_file = HostLogging().configure(self.tmp_path, default_config())
+        log_file = HostLogging().configure(tmp_path, RaftConfig())
         logging.getLogger("raft.test").info("no-scope-line")
         text = log_file.read_text(encoding="utf-8")
         assert " INFO - [raft.test] no-scope-line" in text
 
     def test_setup_seals_oversized_existing_log(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.delenv("RAFT_LOG_DIR", raising=False)
-        log_dir = self.tmp_path / "logs"
+        log_dir = tmp_path / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         log_file = log_dir / "raft.log"
         stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -74,7 +73,7 @@ class TestHostLogging(RaftTestCase):
             logging=LoggingConfig(retention_max_age_days=30, retention_max_bytes=55),
             edge=EdgeConfig(),
         )
-        HostLogging().configure(self.tmp_path, cfg)
+        HostLogging().configure(tmp_path, cfg)
         day = datetime.now().strftime("%Y-%m-%d")
         sealed = log_dir / f"raft.log.{day}"
         assert sealed.read_text(encoding="utf-8") == payload

@@ -1,7 +1,5 @@
 """Extra branch coverage for ACME account / ensure / material / msgs."""
 
-from __future__ import annotations
-
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
@@ -12,12 +10,8 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 
-from raft.config.settings_types import AcmeConfig
-from raft.errors.certs_msgs import (
-    format_missing_acme_certs,
-    looks_like_missing_acme_cert,
-    missing_acme_certs_fallback,
-)
+from raft.config.settings.types import AcmeConfig
+from raft.errors.certs_msgs import CertMessages
 from raft.models.stack import load_stack
 from raft.acme.account import AcmeAccountStore
 from raft.acme.app_store import AcmeAppState, AcmeAppStore
@@ -52,7 +46,7 @@ class TestAcmeCoverageExtras(RaftTestCase):
             encoding="utf-8",
         )
         with patch(
-            "raft.acme.account.messages.Registration.from_json",
+            "raft.acme.account.account.messages.Registration.from_json",
             side_effect=ValueError("bad"),
         ):
             assert store._load_registration("https://x/dir") is None
@@ -111,20 +105,22 @@ class TestAcmeCoverageExtras(RaftTestCase):
 
     def test_app_store_atomic_write_cleans_tmp(self) -> None:
         store = AcmeAppStore(self.tmp_path)
-        with patch("raft.acme.app_store.os.replace", side_effect=OSError("nope")):
-            with patch("raft.acme.app_store.os.unlink", side_effect=OSError("gone")):
+        with patch("raft.acme.app_store.store.os.replace", side_effect=OSError("nope")):
+            with patch("raft.acme.app_store.store.os.unlink", side_effect=OSError("gone")):
                 with pytest.raises(OSError, match="nope"):
                     store.save("web", AcmeAppState(last_error="x"))
 
     def test_acme_cert_msg_helpers(self) -> None:
-        assert looks_like_missing_acme_cert("BIO_new_file() failed acme.crt")
-        text = format_missing_acme_certs(
+        assert CertMessages.looks_like_missing_acme_cert(
+            "BIO_new_file() failed acme.crt"
+        )
+        text = CertMessages.format_missing_acme_certs(
             [MissingAcmeCerts("web", ("acme.pem",))],
             include_doctor_footer=True,
         )
         assert "Run `raft doctor`" in text
-        assert "acme.pem" in missing_acme_certs_fallback(detail="")
-        assert "detail" in missing_acme_certs_fallback(detail="detail")
+        assert "acme.pem" in CertMessages.missing_acme_certs_fallback(detail="")
+        assert "detail" in CertMessages.missing_acme_certs_fallback(detail="detail")
 
 
 def _cert_pem_without_san() -> bytes:

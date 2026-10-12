@@ -1,10 +1,8 @@
 """Type-id lookup for deployment methods (open for new classes)."""
 
-from __future__ import annotations
-
 from typing import Dict, List, Sequence
 
-from ...errors.cta import OperatorError, operator
+from ...errors.cta import CtaFormatter, OperatorError
 
 from .method import DeploymentMethod
 
@@ -32,7 +30,7 @@ class DeploymentMethodRegistry:
 
     def _unknown(self, type_id: str) -> OperatorError:
         known = self._known_list()
-        return operator(
+        return CtaFormatter.operator(
             f"unknown deployment method {type_id!r} (known: {known}).",
             [
                 "register a DeploymentMethod for that type_id, or",

@@ -1,7 +1,5 @@
 """TTY spinner for long operator commands (stderr; cleared before final output)."""
 
-from __future__ import annotations
-
 import itertools
 import sys
 import threading

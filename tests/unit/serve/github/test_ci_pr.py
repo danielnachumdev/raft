@@ -56,7 +56,7 @@ class TestGithubCiPrSetup(RaftTestCase):
 
         ci = GithubCiPrSetup()
         with patch(
-            "urllib.request.urlopen",
+            "raft.serve.github.gateway.urlopen",
             side_effect=urllib.error.HTTPError("u", 403, "x", hdrs=None, fp=BytesIO(b"no")),
         ):
             with pytest.raises(OperatorError, match="HTTP 403"):
@@ -66,7 +66,6 @@ class TestGithubCiPrSetup(RaftTestCase):
                 ci._branch_sha("t", "o/r", "main")
         with pytest.raises(OperatorError, match="pull request URL"):
             GithubCiPrSetup._pr_html({})
-
     def test_unexpected_wrap(self) -> None:
         ci = GithubCiPrSetup()
         with patch.object(ci, "_ensure_real", side_effect=RuntimeError("boom")):
@@ -83,7 +82,7 @@ class TestGithubCiPrSetup(RaftTestCase):
         assert BRANCH_NAME == "raft/ci-apply"
 
     def test_result_to_dict_without_pr_url(self) -> None:
-        from raft.serve.github.ci_pr import CiPrResult
+        from raft.serve.github.ci_pr_result import CiPrResult
 
         assert CiPrResult(status="exists", detail="ok").to_dict() == {
             "status": "exists",
@@ -116,17 +115,18 @@ class TestGithubCiPrSetup(RaftTestCase):
             with pytest.raises(OperatorError, match="HTTP 500"):
                 ci._open_pr("t", sample_repo(), "main")
 
-    def test_read_success(self) -> None:
+    def test_gateway_get_success(self) -> None:
         from unittest.mock import MagicMock
-
-        import urllib.request
 
         resp = MagicMock()
         resp.read.return_value = b'{"ok":true}'
+        resp.status = 200
+        resp.headers = {}
         resp.__enter__.return_value = resp
         resp.__exit__.return_value = None
-        with patch("urllib.request.urlopen", return_value=resp):
-            out = GithubCiPrSetup._read(urllib.request.Request("https://example.com"))
+        ci = GithubCiPrSetup()
+        with patch("raft.serve.github.gateway.urlopen", return_value=resp):
+            out = ci._request("t", "https://example.com")
         assert out == '{"ok":true}'
 
 

@@ -1,7 +1,5 @@
 """Aggregate gate access-log lines into one HTTP metrics sample window."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 

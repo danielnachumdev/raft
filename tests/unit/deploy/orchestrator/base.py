@@ -36,7 +36,7 @@ class OrchestratorTestCase(ServicesTestCase):
         read: Optional[str],
         patch_certs: bool = False,
     ) -> Iterator[MagicMock]:
-        with patch("raft.deploy.orchestrator.GateNginxStamp") as stamp_cls:
+        with patch("raft.deploy.orchestrator.service.GateNginxStamp") as stamp_cls:
             stamp = stamp_cls.return_value
             stamp.fingerprint.return_value = fingerprint
             stamp.read.return_value = read
@@ -45,9 +45,9 @@ class OrchestratorTestCase(ServicesTestCase):
 
     @contextmanager
     def _render_patches(self, patch_certs: bool) -> Iterator[None]:
-        with patch("raft.deploy.orchestrator.StackRenderer"):
+        with patch("raft.deploy.orchestrator.service.StackRenderer"):
             if patch_certs:
-                with patch("raft.deploy.orchestrator.CertProbe"):
+                with patch("raft.deploy.orchestrator.service.CertProbe"):
                     yield
             else:
                 yield

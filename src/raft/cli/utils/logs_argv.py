@@ -4,8 +4,6 @@ Fire maps ``logs -f router`` to ``follow='router'``. Peel ``-f`` / ``--follow`` 
 ``--tail`` first, then re-emit them after service names.
 """
 
-from __future__ import annotations
-
 from typing import Optional, Sequence
 
 

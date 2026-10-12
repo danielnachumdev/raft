@@ -1,6 +1,5 @@
 """Locate packaged serve SPA assets (Vite build output)."""
 
-from __future__ import annotations
 
 from pathlib import Path
 

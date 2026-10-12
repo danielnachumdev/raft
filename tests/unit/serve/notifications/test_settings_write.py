@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from raft.config.settings import load_config
+from raft.config.settings import SettingsLoader
 from raft.errors.cta import OperatorError
 from raft.notify.registry import NotificationRegistry
 from raft.serve.notifications.settings_write import (
@@ -34,7 +34,7 @@ class TestNotificationsSettingsWriter(RaftTestCase):
         assert listed["enabled"] is True
         assert listed["channels"][0]["id"] == "ops-primary"
         assert writer.get_public("ops-primary")["settings"]["token"] == "***"
-        loaded = load_config(self.tmp_path).notifications.channels[0]
+        loaded = SettingsLoader().load(self.tmp_path).notifications.channels[0]
         assert loaded.settings["token"] == "super-secret"
 
     @staticmethod
@@ -72,7 +72,7 @@ class TestNotificationsSettingsWriter(RaftTestCase):
         )
         assert out["enabled"] is False
         assert out["settings"]["token"] == "***"
-        assert load_config(self.tmp_path).notifications.channels[0].settings[
+        assert SettingsLoader().load(self.tmp_path).notifications.channels[0].settings[
             "token"
         ] == "keep-me"
 
@@ -81,7 +81,7 @@ class TestNotificationsSettingsWriter(RaftTestCase):
         writer.create(self._channel("a"))
         writer.create(self._email_channel("b"))
         writer.delete("a")
-        ids = [c.id for c in load_config(self.tmp_path).notifications.channels]
+        ids = [c.id for c in SettingsLoader().load(self.tmp_path).notifications.channels]
         assert ids == ["b"]
 
     @staticmethod
@@ -119,7 +119,7 @@ class TestNotificationsSettingsWriter(RaftTestCase):
     def test_mutative_uses_notifications_lock(self) -> None:
         writer = NotificationsSettingsWriter(self.tmp_path)
         with patch(
-            "raft.serve.notifications.settings_write.notifications_lock"
+            "raft.serve.notifications.settings_write.NotificationsLock"
         ) as lock:
             lock.return_value.__enter__ = lambda s: None
             lock.return_value.__exit__ = lambda s, *a: None

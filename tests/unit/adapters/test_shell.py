@@ -19,7 +19,7 @@ class TestShell(RaftTestCase):
         done = completed(returncode=0)
         done.stdout = None
         done.stderr = None
-        with patch("raft.adapters.shell.subprocess.run", return_value=done) as run:
+        with patch("raft.adapters.shell.shell.subprocess.run", return_value=done) as run:
             assert self.shell.run(["true"]) is done
         run.assert_called_once()
         assert run.call_args.kwargs["cwd"] == self.tmp_path
@@ -29,17 +29,17 @@ class TestShell(RaftTestCase):
 
     def test_docker_socket_gid_from_stat(self) -> None:
         st = MagicMock(st_gid=988)
-        with patch("raft.adapters.shell.os.stat", return_value=st) as stat:
+        with patch("raft.adapters.shell.shell.os.stat", return_value=st) as stat:
             assert Shell._docker_socket_gid() == "988"
         stat.assert_called_once_with("/var/run/docker.sock")
 
     def test_docker_socket_gid_missing_socket(self) -> None:
-        with patch("raft.adapters.shell.os.stat", side_effect=FileNotFoundError):
+        with patch("raft.adapters.shell.shell.os.stat", side_effect=FileNotFoundError):
             assert Shell._docker_socket_gid() == "0"
 
     def test_run_check_raises_with_captured_detail(self) -> None:
         with patch(
-            "raft.adapters.shell.subprocess.run",
+            "raft.adapters.shell.shell.subprocess.run",
             return_value=completed(stdout="out", returncode=7, stderr="err detail"),
         ):
             with pytest.raises(subprocess.CalledProcessError) as exc:
@@ -48,7 +48,7 @@ class TestShell(RaftTestCase):
 
     def test_run_check_raises_uses_stdout_when_stderr_empty(self) -> None:
         with patch(
-            "raft.adapters.shell.subprocess.run",
+            "raft.adapters.shell.shell.subprocess.run",
             return_value=completed(stdout="stdout only", returncode=2, stderr=""),
         ):
             with pytest.raises(subprocess.CalledProcessError) as exc:
@@ -57,7 +57,7 @@ class TestShell(RaftTestCase):
 
     def test_run_check_raises_empty_streams(self) -> None:
         with patch(
-            "raft.adapters.shell.subprocess.run",
+            "raft.adapters.shell.shell.subprocess.run",
             return_value=completed(returncode=2),
         ):
             with pytest.raises(subprocess.CalledProcessError) as exc:
@@ -66,7 +66,7 @@ class TestShell(RaftTestCase):
 
     def test_run_check_raises_without_capture(self) -> None:
         with patch(
-            "raft.adapters.shell.subprocess.run",
+            "raft.adapters.shell.shell.subprocess.run",
             return_value=completed(stdout="ignored", returncode=1, stderr="ignored"),
         ):
             with pytest.raises(subprocess.CalledProcessError) as exc:
@@ -76,7 +76,7 @@ class TestShell(RaftTestCase):
 
     def test_run_no_check_returns_failure(self) -> None:
         with patch(
-            "raft.adapters.shell.subprocess.run",
+            "raft.adapters.shell.shell.subprocess.run",
             return_value=completed(returncode=1),
         ):
             assert self.shell.run(["false"], check=False).returncode == 1
@@ -85,7 +85,7 @@ class TestShell(RaftTestCase):
         exc = subprocess.TimeoutExpired(
             cmd=["sleep"], timeout=1.5, output=b"partial", stderr=b"err"
         )
-        with patch("raft.adapters.shell.subprocess.run", side_effect=exc):
+        with patch("raft.adapters.shell.shell.subprocess.run", side_effect=exc):
             result = self.shell.run(["sleep", "9"], check=False, capture=True, timeout=1.5)
         assert result.returncode == 124
         assert result.stdout == "partial"
@@ -97,14 +97,14 @@ class TestShell(RaftTestCase):
 
     def test_run_timeout_empty_streams_message(self) -> None:
         exc = subprocess.TimeoutExpired(cmd=["sleep"], timeout=0.2)
-        with patch("raft.adapters.shell.subprocess.run", side_effect=exc):
+        with patch("raft.adapters.shell.shell.subprocess.run", side_effect=exc):
             result = self.shell.run(["sleep", "9"], check=False, timeout=0.2)
         assert result.returncode == 124
         assert "timed out after 0.2s" in (result.stderr or "")
 
     def test_run_timeout_check_true_raises(self) -> None:
         exc = subprocess.TimeoutExpired(cmd=["sleep"], timeout=0.1)
-        with patch("raft.adapters.shell.subprocess.run", side_effect=exc):
+        with patch("raft.adapters.shell.shell.subprocess.run", side_effect=exc):
             with pytest.raises(subprocess.TimeoutExpired):
                 self.shell.run(["sleep", "9"], check=True, timeout=0.1)
 
@@ -119,7 +119,7 @@ class TestShell(RaftTestCase):
 
     def test_popen_pipes_stdout(self) -> None:
         proc = MagicMock()
-        with patch("raft.adapters.shell.subprocess.Popen", return_value=proc) as popen:
+        with patch("raft.adapters.shell.shell.subprocess.Popen", return_value=proc) as popen:
             assert self.shell.popen(["echo", "hi"]) is proc
         popen.assert_called_once()
         kwargs = popen.call_args.kwargs

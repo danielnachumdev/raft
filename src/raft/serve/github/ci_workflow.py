@@ -1,6 +1,5 @@
 """GitHub Actions workflow text for serve CI PR setup (v1)."""
 
-from __future__ import annotations
 
 from .provider import GithubRepo
 

@@ -6,8 +6,8 @@ from unittest.mock import patch
 
 import pytest
 
-from raft.config.settings_github import GithubSettingsParser
-from raft.config.settings_types import GithubServeConfig
+from raft.config.settings.strategies.github import GithubSettingsParser
+from raft.config.settings.types import GithubServeConfig
 from raft.errors.cta import OperatorError
 from raft.serve.github.account import GithubAccount
 from raft.serve.github.accounts import GithubAccountStore

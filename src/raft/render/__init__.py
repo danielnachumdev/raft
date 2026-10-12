@@ -1,5 +1,24 @@
-"""Render Compose + nginx artifacts under generated/."""
+"""Render Compose + nginx artifacts under generated/.
 
-from .service import StackRenderer
+Import cutover/orchestrator consumers from owning modules when needed so
+``from raft.render import StackRenderer`` stays acyclic with deploy/acme.
+"""
 
-__all__ = ["StackRenderer"]
+from .compose_apps import ComposeAppsYaml, compose_str
+from .env_file_path import ComposeEnvFilePath
+from .fragment_collector import FragmentCollector
+from .gate_nginx import GateNginxStamp
+from .scaling_gate import ScalingGate
+from .scaling_holding import ScalingHoldingPages
+from .stack_renderer import StackRenderer
+
+__all__ = [
+    "ComposeAppsYaml",
+    "ComposeEnvFilePath",
+    "FragmentCollector",
+    "GateNginxStamp",
+    "ScalingGate",
+    "ScalingHoldingPages",
+    "StackRenderer",
+    "compose_str",
+]

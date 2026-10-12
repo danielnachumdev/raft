@@ -2,13 +2,15 @@
 
 from .attachment import ExportAttachment
 from .catalogs import ExportCatalogs
-from .format import ExportSpec, Exporter
-from .registry import ExportRegistry, UnknownExportFormat
+from .exporter import Exporter
+from .registry import ExportRegistry
+from .spec import ExportSpec
 from .strategies import (
     DelimitedMetricsExporter,
     LogsJsonExporter,
     LogsTxtExporter,
 )
+from .unknown_format import UnknownExportFormat
 
 __all__ = [
     "DelimitedMetricsExporter",

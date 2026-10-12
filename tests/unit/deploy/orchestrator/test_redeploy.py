@@ -18,7 +18,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
         orch = self.orchestrator()
         orch.docker.service_is_ready.return_value = True
         app = orch.stack.app("app")
-        with patch("raft.deploy.orchestrator.WaitUntil") as wait:
+        with patch("raft.deploy.orchestrator.ready.WaitUntil") as wait:
             orch._wait_app_ready(app, timeout=5)
         self._assert_compose_ready_wait(orch, app, wait)
 
@@ -54,7 +54,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
         )
         orch = self.orchestrator()
         app = orch.stack.app("app")
-        with patch("raft.deploy.orchestrator.WaitUntil") as wait:
+        with patch("raft.deploy.orchestrator.ready.WaitUntil") as wait:
             orch._wait_app_ready(app, timeout=5)
         wait.assert_not_called()
 
@@ -70,16 +70,17 @@ class TestOrchRedeploy(OrchestratorTestCase):
         orch = self.orchestrator()
         ScalingStore(self.tmp_path).mark_scaled_to_zero("app")
         app = orch.stack.app("app")
-        with patch("raft.deploy.orchestrator.WaitUntil") as wait:
+        with patch("raft.deploy.orchestrator.ready.WaitUntil") as wait:
             orch._wait_app_ready(app, timeout=5)
         wait.assert_not_called()
 
     def test_skip_scaled_host_wait_requires_public_host(self) -> None:
         from raft.models.app import App
+        from raft.deploy.orchestrator.ready import AppReadyWait
 
         orch = self.orchestrator()
         app = App(name="internal", public_host="", source="local", path="apps/x")
-        assert orch._skip_scaled_host_wait(app) is False
+        assert AppReadyWait(orch)._skip_scaled_host_wait(app) is False
 
     def test_wait_app_ready_label_includes_readiness_path(self) -> None:
         write_applied_app(
@@ -91,7 +92,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
         orch = self.orchestrator()
         self.stub_http_ready(orch.http)
         app = orch.stack.app("app")
-        with patch("raft.deploy.orchestrator.WaitUntil") as wait:
+        with patch("raft.deploy.orchestrator.ready.WaitUntil") as wait:
             orch._wait_app_ready(app, timeout=5)
         assert wait.call_args.args[0] == "Host app.test/health"
 
@@ -125,7 +126,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
         orch.http.tcp_port_ok.return_value = True
         app = orch.stack.app("app")
 
-        with patch("raft.deploy.orchestrator.WaitUntil") as wait:
+        with patch("raft.deploy.orchestrator.ready.WaitUntil") as wait:
             orch._wait_app_ready(app, timeout=5)
 
         label = wait.call_args.args[0]
@@ -231,7 +232,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
 
     def test_ensure_acme_best_effort_swallows_errors(self) -> None:
         with patch(
-            "raft.deploy.orchestrator_deploy.AcmeEnsure",
+            "raft.deploy.orchestrator.stack_up.AcmeEnsure",
             side_effect=RuntimeError("acme boom"),
         ):
             self.orch._ensure_acme_best_effort(["app"])

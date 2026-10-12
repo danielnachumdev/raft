@@ -1,23 +1,13 @@
 """Fan-out dispatcher: enabled channels → strategy → deliver."""
 
-from __future__ import annotations
-
-from dataclasses import dataclass
 from typing import List, Sequence
 
 from .channel import ChannelDescriptor
-from .event import DeliveryResult, NotificationEvent
+from .channel_delivery import ChannelDelivery
+from .delivery_result import DeliveryResult
+from .event import NotificationEvent
 from .registry import NotificationRegistry
 from .strategy import NotificationStrategy
-
-
-@dataclass(frozen=True)
-class ChannelDelivery:
-    """Outcome for one channel after a dispatch pass."""
-
-    channel_id: str
-    type_id: str
-    result: DeliveryResult
 
 
 class NotificationDispatcher:

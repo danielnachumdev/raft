@@ -4,7 +4,7 @@ Import public names from owning modules. Keep this ``__init__`` free of
 ensure/install/http_redirect (those pull render) so leaf imports stay acyclic.
 """
 
-from .account import AcmeAccountStore
+from .account import AcmeAccountStore, AcmeClientGateway
 from .app_store import AcmeAppState, AcmeAppStore
 from .material import AcmeCertMaterial, AcmeCertWriter
 from .order import AcmeOrderRunner
@@ -17,6 +17,7 @@ __all__ = [
     "AcmeAppStore",
     "AcmeCertMaterial",
     "AcmeCertWriter",
+    "AcmeClientGateway",
     "AcmeHttp01Webroot",
     "AcmeOrderRunner",
     "AcmePaths",

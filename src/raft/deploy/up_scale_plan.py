@@ -1,7 +1,5 @@
 """Which apps stay scaled-to-zero on ``raft up`` (pull images, do not start)."""
 
-from __future__ import annotations
-
 import logging
 from typing import AbstractSet, Dict, Optional, Tuple
 

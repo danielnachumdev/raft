@@ -12,6 +12,7 @@ from raft.errors.cta import OperatorError
 from raft.models.state.graph_event_kinds import KIND_UPDATE
 from raft.models.state.graph_event_store import GraphEventStore
 from raft.ops import update as update_mod
+from raft.ops.update import identity as identity_mod
 from raft.ops.update import DEFAULT_INSTALL_URL, InstallIdentity, SelfUpdate
 from raft.ui.progress import TerminalProgress
 
@@ -33,7 +34,7 @@ class TestSelfUpdate(ServicesTestCase):
         shell = MagicMock()
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        with patch("raft.ops.update.say") as say:
+        with patch("raft.ops.update.service.OperatorSay.say") as say:
             upd.run()
         shell.run.assert_called_once()
         args = shell.run.call_args.args[0]
@@ -55,7 +56,7 @@ class TestSelfUpdate(ServicesTestCase):
         shell = MagicMock()
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        with patch("raft.ops.update.say") as say:
+        with patch("raft.ops.update.service.OperatorSay.say") as say:
             upd.run()
         styles = [c.kwargs.get("style") for c in say.call_args_list]
         assert styles == ["info"]
@@ -70,7 +71,7 @@ class TestSelfUpdate(ServicesTestCase):
         shell = MagicMock()
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        with patch("raft.ops.update.say") as say:
+        with patch("raft.ops.update.service.OperatorSay.say") as say:
             upd.run()
         styles = [c.kwargs.get("style") for c in say.call_args_list]
         assert "ok" in styles and styles.count("info") >= 1
@@ -84,7 +85,7 @@ class TestSelfUpdate(ServicesTestCase):
         shell = MagicMock()
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        with patch("raft.ops.update.say"):
+        with patch("raft.ops.update.service.OperatorSay.say"):
             upd.run()
         assert shell.run.call_args.args[0][4] == url
 
@@ -96,7 +97,7 @@ class TestSelfUpdate(ServicesTestCase):
         shell = MagicMock()
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        with patch("raft.ops.update.say"):
+        with patch("raft.ops.update.service.OperatorSay.say"):
             upd.run()
         args = shell.run.call_args.args[0]
         assert args[4] == DEFAULT_INSTALL_URL
@@ -110,7 +111,7 @@ class TestSelfUpdate(ServicesTestCase):
         shell.run.side_effect = self._active_step(order, "install")
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        with patch("raft.ops.update.say"):
+        with patch("raft.ops.update.service.OperatorSay.say"):
             upd.run(progress_stream=object())
         assert order == ["identity", "install", "identity"]
         assert TerminalProgress.active() is None
@@ -131,7 +132,7 @@ class TestSelfUpdate(ServicesTestCase):
         shell.run.side_effect = RuntimeError("curl failed")
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        with patch("raft.ops.update.say"):
+        with patch("raft.ops.update.service.OperatorSay.say"):
             try:
                 upd.run(progress_stream=object())
                 raise AssertionError("expected OperatorError")
@@ -147,7 +148,7 @@ class TestSelfUpdate(ServicesTestCase):
         upd = SelfUpdate(self.stack)
         upd.sh = shell
         with TerminalProgress(prefix="raft update", label="updating"):
-            with patch("raft.ops.update.say"):
+            with patch("raft.ops.update.service.OperatorSay.say"):
                 upd.run()
             assert TerminalProgress.active() is not None
             assert TerminalProgress.current()._finished
@@ -177,26 +178,26 @@ class TestInstallIdentity(ServicesTestCase):
     def test_identity_from_direct_url_via_which(self, monkeypatch) -> None:
         root = self._fake_tool_env(direct_url='{"url":"git","vcs_info":{"commit_id":"abc"}}\n')
         raft_bin = root / "bin" / "raft"
-        monkeypatch.setattr(update_mod.shutil, "which", lambda _name: str(raft_bin))
+        monkeypatch.setattr(identity_mod.shutil, "which", lambda _name: str(raft_bin))
         assert InstallIdentity().read() == '{"url":"git","vcs_info":{"commit_id":"abc"}}'
 
     def test_identity_falls_back_to_metadata(self, monkeypatch) -> None:
         root = self._fake_tool_env(metadata="Name: raft\nVersion: 0.1.0\n")
         raft_bin = root / "bin" / "raft"
-        monkeypatch.setattr(update_mod.shutil, "which", lambda _name: str(raft_bin))
+        monkeypatch.setattr(identity_mod.shutil, "which", lambda _name: str(raft_bin))
         identity = InstallIdentity().read() or ""
         assert "0.1.0" in identity
 
     def test_identity_via_uv_tool_dir_when_which_misses(self, monkeypatch) -> None:
         root = self._fake_tool_env(direct_url='{"commit":"xyz"}')
-        monkeypatch.setattr(update_mod.shutil, "which", lambda _name: None)
+        monkeypatch.setattr(identity_mod.shutil, "which", lambda _name: None)
         monkeypatch.setenv("UV_TOOL_DIR", str(root.parent))
         assert InstallIdentity().read() == '{"commit":"xyz"}'
 
     def test_identity_none_when_missing(self, monkeypatch) -> None:
-        monkeypatch.setattr(update_mod.shutil, "which", lambda _name: None)
+        monkeypatch.setattr(identity_mod.shutil, "which", lambda _name: None)
         monkeypatch.setenv("UV_TOOL_DIR", str(self.tmp_path / "empty-tools"))
-        monkeypatch.setattr(update_mod.Path, "home", lambda: self.tmp_path / "nohome")
+        monkeypatch.setattr(identity_mod.Path, "home", lambda: self.tmp_path / "nohome")
         assert InstallIdentity().read() is None
 
     def test_identity_none_when_tool_env_has_no_dist_info(self, monkeypatch) -> None:
@@ -204,13 +205,13 @@ class TestInstallIdentity(ServicesTestCase):
         (root / "bin").mkdir(parents=True)
         raft_bin = root / "bin" / "raft"
         raft_bin.write_text("#!/bin/sh\n", encoding="utf-8")
-        monkeypatch.setattr(update_mod.shutil, "which", lambda _name: str(raft_bin))
+        monkeypatch.setattr(identity_mod.shutil, "which", lambda _name: str(raft_bin))
         assert InstallIdentity().read() is None
 
     def test_identity_none_when_dist_info_empty(self, monkeypatch) -> None:
         root = self._fake_tool_env()
         raft_bin = root / "bin" / "raft"
-        monkeypatch.setattr(update_mod.shutil, "which", lambda _name: str(raft_bin))
+        monkeypatch.setattr(identity_mod.shutil, "which", lambda _name: str(raft_bin))
         assert InstallIdentity().read() is None
 
     def test_identity_falls_through_when_which_not_bin_layout(self, monkeypatch) -> None:
@@ -218,7 +219,7 @@ class TestInstallIdentity(ServicesTestCase):
         odd = self.tmp_path / "elsewhere" / "raft"
         odd.parent.mkdir(parents=True)
         odd.write_text("x", encoding="utf-8")
-        monkeypatch.setattr(update_mod.shutil, "which", lambda _name: str(odd))
+        monkeypatch.setattr(identity_mod.shutil, "which", lambda _name: str(odd))
         monkeypatch.setenv("UV_TOOL_DIR", str(root.parent))
         assert InstallIdentity().read() == '{"commit":"from-env"}'
 
@@ -228,7 +229,7 @@ class TestInstallIdentity(ServicesTestCase):
         dist = root / "lib" / "python3.12" / "site-packages" / "raft-0.1.0.dist-info"
         dist.mkdir(parents=True)
         (dist / "direct_url.json").write_text('{"ok":1}', encoding="utf-8")
-        monkeypatch.setattr(update_mod.shutil, "which", lambda _name: None)
+        monkeypatch.setattr(identity_mod.shutil, "which", lambda _name: None)
         monkeypatch.delenv("UV_TOOL_DIR", raising=False)
-        monkeypatch.setattr(update_mod.Path, "home", lambda: home)
+        monkeypatch.setattr(identity_mod.Path, "home", lambda: home)
         assert InstallIdentity().read() == '{"ok":1}'

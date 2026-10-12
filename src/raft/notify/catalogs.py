@@ -1,7 +1,5 @@
 """Shipped notification strategy catalogs (composition root)."""
 
-from __future__ import annotations
-
 from .registry import NotificationRegistry
 from .strategies.email import EmailStrategy
 from .strategies.webhook import WebhookStrategy

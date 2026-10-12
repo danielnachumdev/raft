@@ -8,8 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from raft.controller.jobs.metrics import METRICS_DIR, METRICS_FILENAME
-from raft.read.metrics import MetricsRead
-from raft.read.metrics_jsonl import MetricsJsonlReader
+from raft.read.metrics import MetricsJsonlReader, MetricsRead
 
 from tests.unit.base import RaftTestCase
 

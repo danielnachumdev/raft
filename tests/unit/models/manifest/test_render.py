@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from raft.config.settings_types import EdgeConfig, EdgeStream
+from raft.config.settings.types import EdgeConfig, EdgeStream
 from tests.shared.artifacts import GeneratedArtifacts
 from tests.shared.files import FileText
 

@@ -1,7 +1,5 @@
 """Controller process wiring (orchestrator + scale side_ticks)."""
 
-from __future__ import annotations
-
 import logging
 import runpy
 from pathlib import Path
@@ -9,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from raft.config.settings_types import HealingConfig, MetricsConfig, RaftConfig, default_config
+from raft.config.settings.types import HealingConfig, MetricsConfig, RaftConfig, default_config
 from raft.controller import PrereqSmoke, main
 from raft.controller.job import JobIds, QueuePolicy
 from raft.controller.jobs import ControllerJob
@@ -30,7 +28,7 @@ class TestControllerPrereq(ControllerTestCase):
         assert PrereqSmoke is smoke_impl
 
     def test_setup_controller_logging_stdout_only(self) -> None:
-        ControllerLogging().configure(default_config())
+        ControllerLogging().configure(RaftConfig())
         root = logging.getLogger("raft")
         assert len(root.handlers) == 1
         assert isinstance(root.handlers[0], logging.StreamHandler)
@@ -69,8 +67,8 @@ class TestControllerPrereq(ControllerTestCase):
         home = tmp_path / "home"
         home.mkdir()
         monkeypatch.setenv("RAFT_DATA_HOME", str(home))
-        with patch("raft.controller.run.PrereqSmoke") as smoke_cls:
-            with patch("raft.controller.run.WakeHttpServer.bind"):
+        with patch("raft.controller.run.raft_controller.PrereqSmoke") as smoke_cls:
+            with patch("raft.controller.run.raft_controller.WakeHttpServer.bind"):
                 with patch.object(
                     ControllerLoop, "run", side_effect=StopIteration
                 ):
@@ -107,8 +105,8 @@ class TestControllerPrereq(ControllerTestCase):
     def test_loop_builds_default_orchestrator(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
         scaler = MagicMock()
-        cfg = default_config()
-        with patch("raft.controller.run.JobOrchestrator") as orch_cls:
+        cfg = RaftConfig()
+        with patch("raft.controller.run.controller_loop.JobOrchestrator") as orch_cls:
             orch = MagicMock()
             orch.registered_ids.return_value = frozenset()
             orch_cls.return_value = orch
@@ -127,7 +125,7 @@ class TestControllerPrereq(ControllerTestCase):
         sleep = MagicMock()
         clock = MagicMock()
         with pytest.raises(StopIteration):
-            ControllerLoop(home, default_config(), MagicMock(), MagicMock()).run(
+            ControllerLoop(home, RaftConfig(), MagicMock(), MagicMock()).run(
                 sleep_fn=sleep,
                 clock=clock,
                 orchestrator=orch,
@@ -137,7 +135,7 @@ class TestControllerPrereq(ControllerTestCase):
     def test_nudge_enqueues_metrics(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
         orch = MagicMock()
-        job = HealJob(home, default_config().healing, MagicMock())
+        job = HealJob(home, RaftConfig().healing, MagicMock())
         job.attach(orch)
         assert job._healer.on_needs_heal is not None
         job._healer.on_needs_heal()
@@ -145,7 +143,7 @@ class TestControllerPrereq(ControllerTestCase):
         assert orch.enqueue.call_args.args[0].job_id == JobIds.METRICS
 
     def test_metrics_tick_runs_resource_and_http(self, tmp_path: Path) -> None:
-        job = MetricsJob(self.raft_home(tmp_path), default_config().metrics)
+        job = MetricsJob(self.raft_home(tmp_path), RaftConfig().metrics)
         resources = MagicMock()
         http_metrics = MagicMock()
         job._resources = resources
@@ -163,7 +161,7 @@ class TestControllerPrereq(ControllerTestCase):
         home = self.raft_home(tmp_path)
         orch = MagicMock()
         jobs = ControllerLoop(
-            home, default_config(), MagicMock(), MagicMock()
+            home, RaftConfig(), MagicMock(), MagicMock()
         )._jobs(orch)
         assert len(jobs) == 4
         assert all(isinstance(j, ControllerJob) for j in jobs)

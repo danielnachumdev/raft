@@ -1,25 +1,23 @@
 """FastAPI handlers for GitHub login / repos / deploy (serve v1)."""
 
-from __future__ import annotations
-
 from typing import Any, Dict, Optional
 from urllib.parse import quote
 
 from fastapi import Body, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
-from ...config.settings import load_config
+from ...config.settings import SettingsLoader
 from ...errors.cta import OperatorError
-
 from ...models.stack import Stack
 from .accounts import GithubAccountStore
 from .active import GithubActiveResolver
-from .deploy_job import DeployJobStore, GithubDeployRunner
+from .deploy_job import GithubDeployRunner
+from .deploy_models import DeployJobStore
 from .oauth import GITHUB_OAUTH_SCOPES, GithubOauth
 from .provider import GithubProvider
+from .settings_write import GithubSettingsWriter
 from .strategies.mock import MockGithubProvider
 from .strategies.real import RealGithubProvider
-from .settings_write import GithubSettingsWriter
 
 
 class ServeGithubApi:
@@ -40,7 +38,7 @@ class ServeGithubApi:
         self._active = GithubActiveResolver(self._accounts)
         self._provider_override = provider
         self._jobs = jobs or DeployJobStore()
-        self._cfg = load_config(stack.root).github
+        self._cfg = SettingsLoader().load(stack.root).github
         self._oauth = GithubOauth(self._cfg, self._accounts)
         self._provider = provider or self._default_provider()
         self._runner = GithubDeployRunner(stack, self._provider, self._jobs)

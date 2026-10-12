@@ -14,6 +14,7 @@ import pytest
 
 from raft.errors.cta import OperatorError
 from raft.serve import runtime as runtime_mod
+from raft.serve.lease import ServeLease
 from raft.serve.runtime import ServeRuntime
 from raft.serve.service import Serve
 
@@ -181,7 +182,7 @@ class TestServeRuntime(RaftTestCase):
 
     def test_unlink_quiet_swallows_oserror(self) -> None:
         with patch("pathlib.Path.unlink", side_effect=OSError("busy")):
-            runtime_mod._unlink_quiet(self.tmp_path / "missing")
+            ServeLease._unlink_quiet(self.tmp_path / "missing")
 
 
 class TestServeStopMessages(RaftTestCase):

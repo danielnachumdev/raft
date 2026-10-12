@@ -1,14 +1,12 @@
 """Re-render gate TLS/HTTP and reload nginx after ACME material changes."""
 
-from __future__ import annotations
-
 import logging
 from typing import TYPE_CHECKING, Optional
 
-from ..locking.locking import stack_lock
+from ..locking import StackLock
 from ..models.stack import Stack
 from ..render.gate_nginx import GateNginxStamp
-from ..render.service import StackRenderer
+from ..render.stack_renderer import StackRenderer
 
 if TYPE_CHECKING:
     from ..adapters.docker.stack import DockerStack
@@ -25,7 +23,7 @@ class AcmeGateInstall:
 
     def apply(self) -> None:
         """Hold ``stack.lock`` only around render + gate nginx reload."""
-        with stack_lock(self.stack.root):
+        with StackLock(self.stack.root):
             self._apply_locked()
 
     def _apply_locked(self) -> None:

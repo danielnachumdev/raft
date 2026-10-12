@@ -1,7 +1,5 @@
 """dependsOn helpers for Healer restart / escalate."""
 
-from __future__ import annotations
-
 import logging
 from pathlib import Path
 from typing import Dict, Optional, Tuple
@@ -13,7 +11,7 @@ from ....models.depends import AppDependsGraph, DependsOnError
 from ....models.registry import AppRegistry
 from ....models.state.scaling_store import ScalingStore
 from ....models.stack import Stack
-from ....locking.locking import app_and_stack_locks
+from ....locking import AppAndStackLocks
 
 __all__ = ["HealDepends"]
 
@@ -74,7 +72,7 @@ class HealDepends:
     def start_dep(self, dep: str, compose_id: str) -> bool:
         logger.info("heal start dep=%s compose=%s", dep, compose_id)
         try:
-            with app_and_stack_locks(self.home, dep):
+            with AppAndStackLocks(self.home, dep):
                 self.docker.start_service(compose_id)
         except OperatorError as exc:
             logger.error("heal start dep failed dep=%s: %s", dep, exc)

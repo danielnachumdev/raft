@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from raft.config.settings_types import EdgeConfig
+from raft.config.settings.types import EdgeConfig
 from raft.acme.http_redirect import AcmeHttpRedirect
 
 from tests.unit.base import RaftTestCase, write_applied_app

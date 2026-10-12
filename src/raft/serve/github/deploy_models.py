@@ -1,7 +1,5 @@
 """In-memory deploy job types for serve GitHub assist."""
 
-from __future__ import annotations
-
 import secrets
 import threading
 import time

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from raft.config.paths import find_package_root
-from raft.config.settings_types import EdgeConfig
+from raft.config.paths import PackageRootFinder
+from raft.config.settings.types import EdgeConfig
 from raft.errors.cta import OperatorError
 from raft.models.app import App
 from raft.models.manifest import AppSpec
@@ -87,7 +87,7 @@ class TestScalingRender(RaftTestCase):
         assert "web.id" in conf
 
     def test_timeout_page_has_admin_cta_and_holding_does_not(self) -> None:
-        errors = find_package_root() / "nginx" / "errors"
+        errors = PackageRootFinder().find() / "nginx" / "errors"
         timeout = (errors / "holding-timeout.html").read_text(encoding="utf-8")
         holding = (errors / "holding.html").read_text(encoding="utf-8")
         assert "contact the administrator" in timeout
@@ -137,7 +137,7 @@ class TestScalingRender(RaftTestCase):
         conf = (gen / "nginx/gate-http/listeners.conf").read_text(encoding="utf-8")
         assert "acme_challenge.inc" in conf
         assert conf.index("acme_challenge.inc") < conf.index("location /")
-        product = find_package_root() / "nginx" / "gate" / "proxy_router.inc"
+        product = PackageRootFinder().find() / "nginx" / "gate" / "proxy_router.inc"
         text = product.read_text(encoding="utf-8")
         assert "acme_challenge.inc" in text
         assert text.index("acme_challenge.inc") < text.index("location /")

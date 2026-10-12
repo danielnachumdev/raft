@@ -1,16 +1,14 @@
 """Safe ``notify(event)`` entrypoint for control-plane producers."""
 
-from __future__ import annotations
-
 import logging
 from pathlib import Path
 from typing import List, Optional, Sequence
 
-from ..config.settings import load_config
+from ..config.settings import SettingsLoader
 
 from .catalogs import NotificationCatalogs
 from .channel import ChannelDescriptor
-from .config_adapt import NotifyConfigAdapter
+from .config_adapter import NotifyConfigAdapter
 from .dispatcher import NotificationDispatcher
 from .event import NotificationEvent
 from .registry import NotificationRegistry
@@ -50,7 +48,7 @@ class Notifier:
             logger.exception("notification dispatch failed kind=%s", event.kind)
 
     def _dispatch(self, event: NotificationEvent) -> None:
-        config = load_config(self._home).notifications
+        config = SettingsLoader().load(self._home).notifications
         if not config.enabled:
             return
         channels = self._deliverable(self._adapt.descriptors(config))

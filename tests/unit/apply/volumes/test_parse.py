@@ -1,13 +1,12 @@
 """Parse errors for group / env / volumes fields."""
 
-from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
 
 from raft.models.app_document import AppDocument
-from raft.models.ports import PortSpec, port_by_name
+from raft.models.ports import PortSpec
 from raft.render.compose_apps import compose_str
 
 from .base import VolumesTestCase
@@ -31,12 +30,12 @@ class TestVolumesParse(VolumesTestCase):
         assert compose_str("a:b") == '"a:b"'
         assert compose_str("plain") == "plain"
         with pytest.raises(KeyError, match="unknown port"):
-            port_by_name((), "x")
+            PortSpec.by_name((), "x")
         ports = (
             PortSpec(name="http", container_port=80, expose="http"),
             PortSpec(name="redis", container_port=6379, expose="none"),
         )
-        assert port_by_name(ports, "redis") is ports[1]
+        assert PortSpec.by_name(ports, "redis") is ports[1]
 
     def test_group_parse_ok_and_errors(self) -> None:
         data = self.base_docker()

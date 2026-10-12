@@ -1,16 +1,9 @@
 """Docker Compose helpers for the compose stack."""
 
-from __future__ import annotations
-
 import logging
 from typing import Optional, Sequence
 
-from ...errors.checked import (
-    raise_for_compose_failure,
-    raise_for_docker_pull_failure,
-    run_compose_checked,
-    run_docker_checked,
-)
+from ...errors.checked import CheckedCommands
 from ...errors.cta import OperatorError
 
 from ...models.app import App
@@ -61,7 +54,7 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
 
     def recreate_router(self) -> None:
         logger.info("force-recreate router")
-        run_compose_checked(
+        CheckedCommands.run_compose(
             self.sh,
             ("up", "-d", "--no-deps", "--force-recreate", self.stack.router),
             action="recreate router",
@@ -70,7 +63,7 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
 
     def recreate_gate(self) -> None:
         logger.info("force-recreate gate (published edge ports)")
-        run_compose_checked(
+        CheckedCommands.run_compose(
             self.sh,
             ("up", "-d", "--no-deps", "--force-recreate", self.stack.gate),
             action="recreate gate",
@@ -81,7 +74,7 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
     def rebuild_service(self, service: str) -> None:
         logger.info("rebuild service %s", service)
         try:
-            run_compose_checked(
+            CheckedCommands.run_compose(
                 self.sh,
                 ("up", "-d", "--build", "--no-deps", service),
                 action=f"rebuild service {service}",
@@ -103,7 +96,7 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
 
     def _force_recreate_service(self, compose_id: str) -> None:
         try:
-            run_compose_checked(
+            CheckedCommands.run_compose(
                 self.sh,
                 (
                     "up",
@@ -123,9 +116,9 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
         result = self.sh.docker("pull", pull_ref, capture=True, check=False)
         if result.returncode != 0:
             detail = (result.stderr or result.stdout or "").strip()
-            raise_for_docker_pull_failure(pull_ref, detail=detail, app=app.name, repo=app.repo)
+            CheckedCommands.raise_for_docker_pull_failure(pull_ref, detail=detail, app=app.name, repo=app.repo)
         if pull_ref != pin:
-            run_docker_checked(
+            CheckedCommands.run_docker(
                 self.sh,
                 ("tag", pull_ref, pin),
                 action=f"tag {pull_ref} as {pin}",
@@ -135,7 +128,7 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
         """Restart a running service (Compose ``restart``)."""
         logger.info("compose restart %s", service)
         try:
-            run_compose_checked(
+            CheckedCommands.run_compose(
                 self.sh,
                 ("restart", service),
                 action=f"restart service {service}",
@@ -148,7 +141,7 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
         """Stop a service without removing it (Compose ``stop``)."""
         logger.info("compose stop %s", service)
         try:
-            run_compose_checked(
+            CheckedCommands.run_compose(
                 self.sh,
                 ("stop", service),
                 action=f"stop service {service}",
@@ -161,7 +154,7 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
         """Start / ensure a service is up without rebuild (Compose ``up -d --no-deps``)."""
         logger.info("compose up -d --no-deps %s", service)
         try:
-            run_compose_checked(
+            CheckedCommands.run_compose(
                 self.sh,
                 ("up", "-d", "--no-deps", "--no-build", service),
                 action=f"start service {service}",
@@ -186,7 +179,7 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
         logger.info("run tmp container name=%s alias=%s image=%s", name, alias, image)
         self.remove_container(name)
         args = self._tmp_run_args(name, alias, image, network, env_file)
-        run_docker_checked(
+        CheckedCommands.run_docker(
             self.sh,
             tuple(args),
             action=f"start cutover tmp container {name}",

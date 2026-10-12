@@ -1,6 +1,5 @@
 """Mutative service actions for ``raft serve`` (start / stop / redeploy)."""
 
-from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
@@ -12,7 +11,7 @@ from ..models.app import App
 from ..models.stack import Stack
 from ..models.state.graph_event_store import GraphEventStore
 from ..models.state.scaling_store import ScalingStore
-from ..locking.locking import app_and_stack_locks, stack_lock
+from ..locking import AppAndStackLocks, StackLock
 from ..deploy.orchestrator import Orchestrator
 from ..ops.logs.targets import LogsTargets
 from ..ops.purge import Purge
@@ -100,8 +99,8 @@ class ServeActions:
 
     def _locks(self, app: Optional[App]):
         if app is None:
-            return stack_lock(self.stack.root)
-        return app_and_stack_locks(self.stack.root, app.name)
+            return StackLock(self.stack.root)
+        return AppAndStackLocks(self.stack.root, app.name)
 
     def _docker_stack(self) -> DockerStack:
         if self._docker is not None:

@@ -1,6 +1,5 @@
 """Persist ``notifications:`` channel CRUD into ``~/.raft/settings.yaml``."""
 
-from __future__ import annotations
 
 import os
 from pathlib import Path
@@ -8,14 +7,14 @@ from typing import Any, Dict, List, Mapping, Optional
 
 import yaml
 
-from ...config.paths import settings_path
-from ...config.settings import load_config
-from ...config.settings_notifications import NotificationsSettingsParser
-from ...config.settings_types import NotificationChannelConfig, NotificationsConfig
+from ...config.paths import RaftHome
+from ...config.settings import SettingsLoader
+from ...config.settings.strategies.notifications import NotificationsSettingsParser
+from ...config.settings.types import NotificationChannelConfig, NotificationsConfig
 from ...errors.cta import OperatorError
-from ...locking.locking import notifications_lock
+from ...locking import NotificationsLock
 from ...notify.catalogs import NotificationCatalogs
-from ...notify.redact import SettingsRedactor
+from ...notify.settings_redactor import SettingsRedactor
 from ...notify.registry import NotificationRegistry
 
 
@@ -29,7 +28,7 @@ class NotificationsSettingsWriter:
         registry: Optional[NotificationRegistry] = None,
     ) -> None:
         self._home = data_home
-        self._path = settings_path(data_home)
+        self._path = RaftHome().settings_path(data_home)
         self._parser = NotificationsSettingsParser()
         self._redactor = SettingsRedactor()
         self._registry = registry or NotificationCatalogs.default()
@@ -45,7 +44,7 @@ class NotificationsSettingsWriter:
         return self._public(self._require(self._load(), channel_id))
 
     def create(self, body: Mapping[str, Any]) -> Dict[str, Any]:
-        with notifications_lock(self._home):
+        with NotificationsLock(self._home):
             cfg = self._load()
             channel = self._channel_from_body(body, path="create")
             self._reject_duplicate(cfg, channel.id)
@@ -55,7 +54,7 @@ class NotificationsSettingsWriter:
             return self._public(channel)
 
     def update(self, channel_id: str, body: Mapping[str, Any]) -> Dict[str, Any]:
-        with notifications_lock(self._home):
+        with NotificationsLock(self._home):
             cfg = self._load()
             current = self._require(cfg, channel_id)
             updated = self._merge_channel(current, body)
@@ -67,14 +66,14 @@ class NotificationsSettingsWriter:
             return self._public(updated)
 
     def delete(self, channel_id: str) -> None:
-        with notifications_lock(self._home):
+        with NotificationsLock(self._home):
             cfg = self._load()
             self._require(cfg, channel_id)
             kept = [ch for ch in cfg.channels if ch.id != channel_id]
             self._persist(self._with_channels(cfg, kept))
 
     def _load(self) -> NotificationsConfig:
-        return load_config(self._home).notifications
+        return SettingsLoader().load(self._home).notifications
 
     def _public(self, channel: NotificationChannelConfig) -> Dict[str, Any]:
         return {

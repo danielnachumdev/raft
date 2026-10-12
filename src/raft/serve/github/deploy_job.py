@@ -1,7 +1,5 @@
 """Deploy job runner (AppApply / auth reuse + CI PR setup)."""
 
-from __future__ import annotations
-
 import base64
 import hashlib
 import logging
@@ -12,23 +10,21 @@ from typing import Optional
 
 import yaml
 
-from ...errors.cta import OperatorError
-from ...notify.control_events import ControlPlaneEvents
-from ...notify.notifier import Notifier
-
-from ...models.app_document import AppDocument
-from ...models.stack import Stack, load_stack
 from ...apply.service import AppApply
 from ...auth.manager import GitAuthManager
+from ...errors.cta import OperatorError
+from ...models.app_document import AppDocument
+from ...models.stack import Stack, load_stack
+from ...notify.control_events import ControlPlaneEvents
+from ...notify.notifier import Notifier
+from .account import GithubAccount
 from .ci_pr import GithubCiPrSetup
 from .deploy_models import DeployJob, DeployJobStore, DeployStep
 from .next_steps import DeployNextSteps
-from .provider import GithubProvider, GithubRepo
-from .account import GithubAccount
+from .provider import GithubProvider
+from .repo import GithubRepo
 
 logger = logging.getLogger(__name__)
-
-__all__ = ["DeployJob", "DeployJobStore", "DeployStep", "GithubDeployRunner"]
 
 
 class GithubDeployRunner:

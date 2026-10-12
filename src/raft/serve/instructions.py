@@ -1,6 +1,5 @@
 """Stdout connection instructions for localhost-only serve."""
 
-from __future__ import annotations
 
 import sys
 from typing import Optional, TextIO

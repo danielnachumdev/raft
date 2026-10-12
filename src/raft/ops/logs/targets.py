@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ...errors.domain import unknown_logs_target
+from ...errors.domain import DomainErrors
 from ...models.app import (
     CONTROLLER_COMPOSE_ID,
     GATE_COMPOSE_ID,
@@ -45,4 +45,4 @@ class LogsTargets:
         for app in self.stack.apps:
             if app.name == name or app.compose_id == name:
                 return app.compose_id
-        raise unknown_logs_target(name, self.known_labels())
+        raise DomainErrors.unknown_logs_target(name, self.known_labels())

@@ -1,10 +1,9 @@
 """Logs download as UTF-8 plain text (container stdout/stderr)."""
 
-from __future__ import annotations
-
 from typing import Any
 
-from ..format import Exporter, ExportSpec
+from ..exporter import Exporter
+from ..spec import ExportSpec
 
 
 class LogsTxtExporter(Exporter):

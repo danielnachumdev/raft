@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from raft.cli import RaftCLI
-from raft.cli.cli import CliExitMapper
+from raft.cli.exit_mapper import CliExitMapper
 from raft.utils import TraceContext
 
 from .base import CliTestCase
@@ -21,8 +21,8 @@ class TestCliBootstrap(CliTestCase):
     def test_doctor_failure_does_not_suggest_doctor(self, capsys) -> None:
         doctor = MagicMock()
         doctor.report.return_value = 1
-        with patch("raft.cli.cli_commands.load_stack", return_value=self.stack):
-            with patch("raft.cli.cli_commands.Doctor", return_value=doctor):
+        with patch("raft.cli.commands.raft_commands.load_stack", return_value=self.stack):
+            with patch("raft.cli.commands.raft_commands.Doctor", return_value=doctor):
                 with pytest.raises(SystemExit) as exc:
                     RaftCLI().run(["doctor"])
         assert exc.value.code == 1
