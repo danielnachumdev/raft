@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from raft.core.observe.notify.registry import NotificationRegistry
 from raft.core.observe.ops.status.models import StatusSnapshot
-from raft.services.serve.app import ServeAppFactory
+from raft.services.serve.http.app import ServeAppFactory
 from raft.services.serve.notifications.api import ServeNotificationsApi
 
 from tests.unit.base import RaftTestCase, StackMakers

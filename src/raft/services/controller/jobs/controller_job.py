@@ -4,7 +4,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Callable
 
-from ..orchestrator import JobOrchestrator
+from ..engine import JobOrchestrator
 
 logger = logging.getLogger(__name__)
 

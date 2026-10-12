@@ -9,9 +9,9 @@ from raft.services.controller.jobs.acme import (
     ACME_TIMEOUT_SECONDS,
     AcmeJobSync,
 )
-from raft.services.controller.job import JobIds, JobSpec, JobType, QueuePolicy
-from raft.services.controller.orchestrator import JobOrchestrator
-from raft.services.controller.schedule import IntervalSchedule
+from raft.services.controller.engine.job import JobIds, JobSpec, JobType, QueuePolicy
+from raft.services.controller.engine.orchestrator import JobOrchestrator
+from raft.services.controller.engine.schedule import IntervalSchedule
 from raft.core.core.models.stack import Stack
 
 from tests.unit.base import AppliedInventory

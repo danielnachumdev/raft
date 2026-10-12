@@ -14,7 +14,7 @@ from raft.core.observe.read.metrics import (
     MetricsRead,
     MetricsSeriesBuilder,
 )
-from raft.services.serve.page import ServePage
+from raft.services.serve.http.page import ServePage
 
 from tests.unit.base import RaftTestCase
 

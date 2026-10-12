@@ -12,9 +12,9 @@ from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.stack import Stack
 from raft.core.core.utils import ControllerLogging
 from ..jobs import Scaler, WAKE_HTTP_PORT
-from ..smoke import PrereqSmoke
 from ..wake_http import WakeHttpServer
 from .controller_loop import ControllerLoop
+from .smoke import PrereqSmoke
 
 logger = logging.getLogger(__name__)
 

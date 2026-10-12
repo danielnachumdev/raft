@@ -6,8 +6,8 @@ from io import StringIO
 
 from raft.core.core.models.app import EDGE_GROUP
 from raft.core.observe.ops.status.models import StatusSnapshot
-from raft.services.serve.instructions import ServeInstructions
-from raft.services.serve.paths import ServePaths
+from raft.services.serve.http.instructions import ServeInstructions
+from raft.services.serve.http.paths import ServePaths
 from raft.core.observe.read import ServeSnapshotView
 
 from tests.unit.core.observe.ops.status import fixtures as status_fx

@@ -9,14 +9,14 @@ import pytest
 
 from raft.core.core.config.settings.types import HealingConfig, MetricsConfig, RaftConfig, default_config
 from raft.services.controller import PrereqSmoke, main
-from raft.services.controller.job import JobIds, QueuePolicy
+from raft.services.controller.engine.job import JobIds, QueuePolicy
 from raft.services.controller.jobs import ControllerJob
 from raft.services.controller.jobs.heal import HealJob
 from raft.services.controller.jobs.metrics import MetricsJob
 from raft.services.controller.jobs.scale import ScaleJob
 from raft.core.core.utils import ControllerLogging
 from raft.services.controller.run import ControllerLoop, RaftController, main as main_impl
-from raft.services.controller.smoke import PrereqSmoke as smoke_impl
+from raft.services.controller.run.smoke import PrereqSmoke as smoke_impl
 from raft.core.core.errors.cta import OperatorError
 
 from tests.unit.services.controller.base import ControllerTestCase
@@ -40,7 +40,7 @@ class TestControllerPrereq(ControllerTestCase):
         compose = MagicMock(returncode=0, stdout="Docker Compose version v2.29.7\n")
         sh.docker.return_value = version
         sh.compose.return_value = compose
-        with patch("raft.services.controller.smoke.Stack.load_apps") as load_apps:
+        with patch("raft.services.controller.run.smoke.Stack.load_apps") as load_apps:
             load_apps.return_value = MagicMock(apps=(), core_services=("raft-gate",))
             PrereqSmoke(home, sh).run()
         sh.docker.assert_called_once_with(
