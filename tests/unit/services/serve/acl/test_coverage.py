@@ -10,6 +10,7 @@ from raft.core.core.config.settings.strategies.acl import AclSettingsParser
 from raft.core.core.config.settings.types import EdgeConfig
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.acl_policy import AclPolicy
+from raft.core.core.models.app import App
 from raft.core.core.models.app_document import AppDocument
 from raft.core.core.models.registry import AppRegistry
 from raft.core.core.models.state.acl_store import AppAclStore
@@ -40,20 +41,7 @@ class TestAclCoverage(RaftTestCase):
             AclPolicy.from_mapping({"mode": "maybe"}, path="acl.gate")
         with pytest.raises(OperatorError, match="entries must be a list"):
             AclPolicy.from_mapping({"mode": "off", "entries": {}}, path="acl.gate")
-        with pytest.raises(OperatorError, match="must be a mapping"):
-            AclPolicy.from_mapping(
-                {"mode": "blacklist", "entries": ["x"]}, path="acl.gate"
-            )
-        with pytest.raises(OperatorError, match="id is required"):
-            AclPolicy.from_mapping(
-                {"mode": "blacklist", "entries": [{"cidr": "192.0.2.1"}]},
-                path="acl.gate",
-            )
-        with pytest.raises(OperatorError, match="is required"):
-            AclPolicy.from_mapping(
-                {"mode": "blacklist", "entries": [{"id": "x", "cidr": ""}]},
-                path="acl.gate",
-            )
+        self._assert_entry_shape_errors()
 
     def test_store_list_and_corrupt_json(self) -> None:
         store = AppAclStore(self.tmp_path)
@@ -78,30 +66,16 @@ class TestAclCoverage(RaftTestCase):
         assert not stale.exists()
 
     def test_http_gate_host_skips(self) -> None:
-        AppliedInventory.write_applied_app(
-            self.tmp_path, "demo-api", public_host="demo-api.test"
-        )
-        AppliedInventory.write_applied_app(
-            self.tmp_path,
-            "worker",
-            public_host="",
-            extra={"ports": [], "readiness": {"type": "none"}},
-        )
+        self._write_demo_and_worker()
         host = HttpGateHost()
-        app = StackMakers.make_app("demo-api")
-        _, app_spec = AppDocument.load(
-            AppRegistry(self.tmp_path).path_for("demo-api"), expect_name="demo-api"
-        )
+        app, app_spec = self._load_app("demo-api")
         assert (
             host.contribute(
                 app, app_spec, edge=EdgeConfig(http=80), acl_include=""
             ).gate_http
             == []
         )
-        wapp = StackMakers.make_app("worker", public_host="")
-        _, wspec = AppDocument.load(
-            AppRegistry(self.tmp_path).path_for("worker"), expect_name="worker"
-        )
+        wapp, wspec = self._load_app("worker")
         assert (
             host.contribute(
                 wapp, wspec, edge=EdgeConfig(http=80), acl_include="include x;\n"
@@ -113,28 +87,11 @@ class TestAclCoverage(RaftTestCase):
         AppliedInventory.write_applied_app(
             self.tmp_path, "demo-api", public_host="demo-api.test"
         )
-        stack = load_stack(self.tmp_path)
-        elig = AclEligibility(stack)
+        elig = AclEligibility(load_stack(self.tmp_path))
         assert elig.meta("missing")["supported"] is False
         with pytest.raises(OperatorError, match="not applied"):
             elig.require_app("missing")
-        from raft.core.core.models.app import App
-
-        _, spec = AppDocument.load(
-            AppRegistry(self.tmp_path).path_for("demo-api"), expect_name="demo-api"
-        )
-        bare = App(
-            name="demo-api",
-            public_host="",
-            source="local",
-            path="apps/demo-api",
-            repo=None,
-            ref="main",
-            image=None,
-        )
-        with pytest.raises(OperatorError, match="publicHost"):
-            AclEligibility._require_http_host(bare, spec)
-        assert "expose: http" in AclEligibility._fix_line("no Fix line")
+        self._assert_public_host_required()
 
     def test_settings_write_clear_and_errors(self) -> None:
         writer = GateAclSettingsWriter(self.tmp_path)
@@ -143,12 +100,7 @@ class TestAclCoverage(RaftTestCase):
         assert writer.put({"mode": "off", "entries": []})["mode"] == "off"
         assert writer.get_public()["mode"] == "off"
         assert writer.clear()["mode"] == "off"
-        path.write_text("- not a mapping\n", encoding="utf-8")
-        with pytest.raises(OperatorError, match="YAML mapping"):
-            writer.put({"mode": "off", "entries": []})
-        path.write_text("edge: {\n", encoding="utf-8")
-        with pytest.raises(OperatorError, match="cannot read"):
-            writer.put({"mode": "off", "entries": []})
+        self._assert_settings_write_errors(writer, path)
 
     def test_store_write_cleanup_on_replace_failure(
         self, monkeypatch: pytest.MonkeyPatch
@@ -174,6 +126,77 @@ class TestAclCoverage(RaftTestCase):
         assert list((self.tmp_path / "state/acl/apps").glob("*.tmp")) == []
 
     def test_api_operator_errors(self) -> None:
+        client = self._acl_client_with_gate_clear_error()
+        bad = client.put("/api/acl/gate", json={"mode": "whitelist", "entries": []})
+        assert bad.status_code == 400
+        assert client.delete("/api/acl/gate").status_code == 400
+        assert client.get("/api/acl/apps/missing").status_code == 400
+        assert client.delete("/api/acl/apps/missing").status_code == 400
+
+    def _assert_entry_shape_errors(self) -> None:
+        with pytest.raises(OperatorError, match="must be a mapping"):
+            AclPolicy.from_mapping(
+                {"mode": "blacklist", "entries": ["x"]}, path="acl.gate"
+            )
+        with pytest.raises(OperatorError, match="id is required"):
+            AclPolicy.from_mapping(
+                {"mode": "blacklist", "entries": [{"cidr": "192.0.2.1"}]},
+                path="acl.gate",
+            )
+        with pytest.raises(OperatorError, match="is required"):
+            AclPolicy.from_mapping(
+                {"mode": "blacklist", "entries": [{"id": "x", "cidr": ""}]},
+                path="acl.gate",
+            )
+
+    def _write_demo_and_worker(self) -> None:
+        AppliedInventory.write_applied_app(
+            self.tmp_path, "demo-api", public_host="demo-api.test"
+        )
+        AppliedInventory.write_applied_app(
+            self.tmp_path,
+            "worker",
+            public_host="",
+            extra={"ports": [], "readiness": {"type": "none"}},
+        )
+
+    def _load_app(self, name: str):
+        app = StackMakers.make_app(
+            name, public_host="" if name == "worker" else "demo-api.test"
+        )
+        _, spec = AppDocument.load(
+            AppRegistry(self.tmp_path).path_for(name), expect_name=name
+        )
+        return app, spec
+
+    def _assert_public_host_required(self) -> None:
+        _, spec = AppDocument.load(
+            AppRegistry(self.tmp_path).path_for("demo-api"), expect_name="demo-api"
+        )
+        bare = App(
+            name="demo-api",
+            public_host="",
+            source="local",
+            path="apps/demo-api",
+            repo=None,
+            ref="main",
+            image=None,
+        )
+        with pytest.raises(OperatorError, match="publicHost"):
+            AclEligibility._require_http_host(bare, spec)
+        assert "expose: http" in AclEligibility._fix_line("no Fix line")
+
+    def _assert_settings_write_errors(
+        self, writer: GateAclSettingsWriter, path
+    ) -> None:
+        path.write_text("- not a mapping\n", encoding="utf-8")
+        with pytest.raises(OperatorError, match="YAML mapping"):
+            writer.put({"mode": "off", "entries": []})
+        path.write_text("edge: {\n", encoding="utf-8")
+        with pytest.raises(OperatorError, match="cannot read"):
+            writer.put({"mode": "off", "entries": []})
+
+    def _acl_client_with_gate_clear_error(self) -> TestClient:
         (self.tmp_path / "settings.yaml").write_text(
             "edge: {http: 80}\n", encoding="utf-8"
         )
@@ -185,17 +208,9 @@ class TestAclCoverage(RaftTestCase):
         status.collect.return_value = StatusSnapshot(
             host=status_fx.empty_host_status(), containers=()
         )
-        orch = MagicMock()
-        service = ServeAclService(stack, orchestrator=orch)
+        service = ServeAclService(stack, orchestrator=MagicMock())
         service.gate_clear = MagicMock(  # type: ignore[method-assign]
             side_effect=OperatorError("boom\nFix: retry", has_fix=False)
         )
         api = ServeAclApi(stack, service=service)
-        client = TestClient(ServeAppFactory(stack, status=status, acl=api).create())
-        bad = client.put("/api/acl/gate", json={"mode": "whitelist", "entries": []})
-        assert bad.status_code == 400
-        assert client.delete("/api/acl/gate").status_code == 400
-        bad_app = client.get("/api/acl/apps/missing")
-        assert bad_app.status_code == 400
-        del_missing = client.delete("/api/acl/apps/missing")
-        assert del_missing.status_code == 400
+        return TestClient(ServeAppFactory(stack, status=status, acl=api).create())
