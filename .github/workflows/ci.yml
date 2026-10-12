@@ -93,6 +93,6 @@ jobs:
       - name: Install package + test deps
         run: uv sync --extra dev
       - name: Seed images (ECR Public + local http-echo)
-        run: bash scripts/ci_seed_docker_images.sh
+        run: bash .github/workflows/ci_seed_docker_images.sh
       - name: E2E Compose tests
         run: uv run pytest tests/e2e -m e2e -q --tb=short --no-cov -n0
