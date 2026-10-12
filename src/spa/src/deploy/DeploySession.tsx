@@ -1,5 +1,5 @@
 import type { GithubOauthConfig, GithubSession } from "./github/index.ts";
-import { accountCount } from "./github/index.ts";
+import { accountCount, githubLoginHref } from "./github/index.ts";
 import { GithubAccountSwitcher } from "./github/GithubAccountSwitcher";
 import { OauthSetupPanel } from "./oauth/OauthSetupPanel";
 
@@ -55,7 +55,11 @@ export function DeploySession(props: {
           Serve stays on localhost. Fix OAuth settings or grant the requested
           scopes, then try again.
         </p>
-        <a className="refresh deploy-cta" href="/api/github/login" id="oauth-retry">
+        <a
+          className="refresh deploy-cta"
+          href={githubLoginHref()}
+          id="oauth-retry"
+        >
           Try GitHub login again
         </a>
       </section>
@@ -80,7 +84,11 @@ export function DeploySession(props: {
       <p className="muted">
         Scopes: <code>{session.scopes || "read:user repo workflow"}</code>
       </p>
-      <a className="refresh deploy-cta" href="/api/github/login">
+      <a
+        className="refresh deploy-cta"
+        href={githubLoginHref()}
+        id="github-continue"
+      >
         Continue to GitHub
       </a>
     </section>

@@ -39,9 +39,15 @@ class GithubOauth:
     def mock_enabled(self) -> bool:
         return self._cfg.mock
 
-    def login_url(self, *, port: int, redirect_path: str = "/api/github/callback") -> str:
+    def login_url(
+        self,
+        *,
+        port: int,
+        redirect_path: str = "/api/github/callback",
+        select_account: bool = False,
+    ) -> str:
         if self._cfg.mock:
-            return f"http://127.0.0.1:{port}/api/github/callback?mock=1"
+            return self._mock_login_url(port=port, select_account=select_account)
         self._require_oauth_creds()
         state = self._store.mint_oauth_state()
         self._store.set_pending(state)
@@ -51,22 +57,35 @@ class GithubOauth:
             "scope": GITHUB_OAUTH_SCOPES,
             "state": state,
         }
+        if select_account:
+            params["prompt"] = "select_account"
         return f"{_AUTHORIZE}?{urlencode(params)}"
 
-    def complete_mock(self) -> GithubAccount:
+    def complete_mock(self, *, add: bool = False) -> GithubAccount:
         if not self._cfg.mock:
             raise OperatorError(
                 "mock GitHub login is disabled.\n"
                 "Fix: set github.mock: true in settings.yaml or RAFT_GITHUB_MOCK=1",
                 has_fix=False,
             )
-        return self._store.upsert_account(
-            self._new_account(
-                "mock-operator",
-                f"mock-{secrets.token_hex(8)}",
-                mock=True,
-            )
+        login = (
+            f"mock-operator-{secrets.token_hex(3)}" if add else "mock-operator"
         )
+        account = self._new_account(
+            login,
+            f"mock-{secrets.token_hex(8)}",
+            mock=True,
+        )
+        if add:
+            return self._store.append_account(account)
+        return self._store.upsert_account(account)
+
+    @staticmethod
+    def _mock_login_url(*, port: int, select_account: bool) -> str:
+        query = "mock=1"
+        if select_account:
+            query += "&add=1"
+        return f"http://127.0.0.1:{port}/api/github/callback?{query}"
 
     def complete_oauth(self, *, code: str, state: str) -> GithubAccount:
         self._require_oauth_creds()

@@ -1,4 +1,4 @@
-import type { GithubSession } from "./index.ts";
+import { githubLoginHref, type GithubSession } from "./index.ts";
 import "./GithubAccountSwitcher.css";
 
 /** Connected GitHub identities: per-row logout and + to add another. */
@@ -17,7 +17,7 @@ export function GithubAccountSwitcher(props: {
         <h2>Connected accounts</h2>
         <a
           className="gh-account-add"
-          href="/api/github/login"
+          href={githubLoginHref({ add: true })}
           id="github-add-account"
           title="Add GitHub account"
           aria-label="Add GitHub account"

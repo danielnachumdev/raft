@@ -18,8 +18,11 @@ This is **not** a public multi-user console and **not** a full App lifecycle UI.
 3. Visits with **zero** connected accounts **auto-redirect** to
    `/api/github/login` (real OAuth authorize page when configured; mock callback
    only when `github.mock` / `RAFT_GITHUB_MOCK=1`). With one or more accounts,
-   the UI lists connected identities (per-row **Log out**, header **`+`** to
-   add) without forcing another login. Expired rows stay visible with a badge.
+   the UI lists connected identities (per-row **Log out**, header **`+`** →
+   `/api/github/login?add=1` with GitHub `prompt=select_account` so add/reconnect
+   is visible). Explicit **Log out** removes the row and does **not**
+   auto-login again until **Continue to GitHub** or **`+`**. Expired rows stay
+   visible with a badge.
 4. If OAuth is **not configured**, `/deploy` shows an ordered checklist (create
    OAuth App link + copyable field values) and paste-in controls for
    `clientId` / `clientSecret`. Saving writes `github:` into

@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   accountCount,
+  githubLoginHref,
+  shouldAutoLoginGithub,
   usableAccounts,
   type GithubSession,
 } from "../../../src/deploy/github/index.ts";
@@ -68,5 +70,64 @@ describe("usableAccounts", () => {
 
   it("returns empty when session missing", () => {
     assert.deepEqual(usableAccounts(null), []);
+  });
+});
+
+describe("githubLoginHref", () => {
+  it("uses plain login for first connection", () => {
+    assert.equal(githubLoginHref(), "/api/github/login");
+  });
+
+  it("uses add=1 so + can open the account-picker OAuth path", () => {
+    assert.equal(githubLoginHref({ add: true }), "/api/github/login?add=1");
+  });
+});
+
+describe("shouldAutoLoginGithub", () => {
+  it("auto-logins only when zero accounts and not suppressed", () => {
+    assert.equal(
+      shouldAutoLoginGithub({
+        session: sessionWith([]),
+        oauthError: null,
+        needsSetup: false,
+        suppressAfterLogout: false,
+        redirecting: false,
+      }),
+      true,
+    );
+  });
+
+  it("does not auto-login when accounts exist (including expired)", () => {
+    assert.equal(
+      shouldAutoLoginGithub({
+        session: sessionWith([
+          {
+            id: "1",
+            login: "demo-user",
+            mock: false,
+            expires_at: 1,
+            expired: true,
+          },
+        ]),
+        oauthError: null,
+        needsSetup: false,
+        suppressAfterLogout: false,
+        redirecting: false,
+      }),
+      false,
+    );
+  });
+
+  it("does not auto-login after explicit logout cleared the list", () => {
+    assert.equal(
+      shouldAutoLoginGithub({
+        session: sessionWith([]),
+        oauthError: null,
+        needsSetup: false,
+        suppressAfterLogout: true,
+        redirecting: false,
+      }),
+      false,
+    );
   });
 });

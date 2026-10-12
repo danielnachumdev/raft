@@ -14,8 +14,10 @@ export {
 export {
   accountCount,
   filterGithubRepos,
+  githubLoginHref,
   needsOauthSetup,
   oauthErrorFromSearch,
+  shouldAutoLoginGithub,
   usableAccounts,
 } from "./helpers.ts";
 export type {

@@ -10,10 +10,12 @@ import {
   fetchGithubRepos,
   fetchGithubSession,
   filterGithubRepos,
+  githubLoginHref,
   logoutGithubAccount,
   needsOauthSetup,
   oauthErrorFromSearch,
   selectGithubAccount,
+  shouldAutoLoginGithub,
   startGithubDeploy,
   usableAccounts,
   type DeployJob,
@@ -42,6 +44,7 @@ export function DeployPage() {
   const [busy, setBusy] = useState(false);
   const [viewAsId, setViewAsId] = useState("");
   const redirecting = useRef(false);
+  const suppressAutoLogin = useRef(false);
   const needsSetup = needsOauthSetup(session, oauthError);
   const browseAccounts = usableAccounts(session);
   const browseIdsKey = browseAccounts.map((a) => a.id).join(",");
@@ -73,17 +76,20 @@ export function DeployPage() {
 
   useEffect(() => {
     // Auto-login only when zero connected accounts (not when expired rows exist).
+    // Explicit logout suppresses this so the row stays gone until Continue / +.
     if (
-      oauthError ||
-      needsSetup ||
-      !session ||
-      accountCount(session) > 0 ||
-      redirecting.current
+      !shouldAutoLoginGithub({
+        session,
+        oauthError,
+        needsSetup,
+        suppressAfterLogout: suppressAutoLogin.current,
+        redirecting: redirecting.current,
+      })
     ) {
       return;
     }
     redirecting.current = true;
-    window.location.assign("/api/github/login");
+    window.location.assign(githubLoginHref());
   }, [session, oauthError, needsSetup]);
 
   useEffect(() => {
@@ -162,6 +168,7 @@ export function DeployPage() {
       }
       clearRepoSelection();
       redirecting.current = false;
+      suppressAutoLogin.current = true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Logout failed");
     } finally {
@@ -187,9 +194,10 @@ export function DeployPage() {
 
   const onOauthSaved = async () => {
     redirecting.current = false;
+    suppressAutoLogin.current = false;
     navigate("/deploy", { replace: true });
     await refreshSession();
-    window.location.assign("/api/github/login");
+    window.location.assign(githubLoginHref());
   };
 
   const showRepos = Boolean(
