@@ -10,18 +10,15 @@ from raft.ops.status import Status
 from raft.ops.status.models import AllocatedResources
 from raft.ops.status.report import StatusReportWriter
 
-from tests.unit.base import RaftTestCase, AppMakers, AppliedInventory, StackMakers
-from .fixtures import StatusFixtures
-
-_HOST_PATCH = "raft.ops.status.service.HostGateway.resources"
+from .base import StatusTestCase
+from . import fixtures as status_fx
 
 
-class TestStatusReportHuman(RaftTestCase):
+class TestStatusReportHuman(StatusTestCase):
     def _stopped_snapshot(self):
-        AppliedInventory.write_applied_app(self.tmp_path, "app")
-        status = Status(StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("app"),)))
-        StatusFixtures.mock_docker_idle(status)
-        with patch(_HOST_PATCH, return_value=StatusFixtures.host()):
+        status = self.make_status("app")
+        status_fx.mock_docker_idle(status)
+        with self.patch_host():
             return status, status.collect()
 
     def test_report_human_and_json(self) -> None:
@@ -55,9 +52,9 @@ class TestStatusReportHuman(RaftTestCase):
         assert "allocated" in payload["containers"][0]
 
     def test_report_group_column(self) -> None:
-        snap = StatusFixtures.snapshot(
-            StatusFixtures.container("raft-gate", role="gate", group="raft", cpu=0.1),
-            StatusFixtures.container("demo-web", app="web", group="demo"),
+        snap = status_fx.snapshot(
+            status_fx.container("raft-gate", role="gate", group="raft", cpu=0.1),
+            status_fx.container("demo-web", app="web", group="demo"),
         )
         text = self._render(snap)
         self._assert_group_headers(text)

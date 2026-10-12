@@ -14,87 +14,80 @@ from raft.ops.status.models import StatusSnapshot
 from raft.serve.actions import ServeActions
 from raft.serve.app import ServeAppFactory
 
-from tests.unit.base import AppliedInventory
-from tests.unit.ops.status.fixtures import StatusFixtures
+from tests.unit.base import AppSpecExtras, AppliedInventory
+from tests.unit.ops.status import fixtures as status_fx
 
 
-class ServeFixtures:
-    @staticmethod
-    def full_snapshot() -> StatusSnapshot:
-        fx = StatusFixtures
-        return StatusSnapshot(
-            host=fx.empty_host_status(),
-            containers=(
-                fx.container("raft-gate", role="gate", group=EDGE_GROUP),
-                fx.container("raft-router", role="router", group=EDGE_GROUP),
-                fx.container("raft-controller", role="controller", group=EDGE_GROUP),
-                fx.container(
-                    "site", role="app", app="site", status="not running", uptime=None
-                ),
+def full_snapshot() -> StatusSnapshot:
+    return StatusSnapshot(
+        host=status_fx.empty_host_status(),
+        containers=(
+            status_fx.container("raft-gate", role="gate", group=EDGE_GROUP),
+            status_fx.container("raft-router", role="router", group=EDGE_GROUP),
+            status_fx.container("raft-controller", role="controller", group=EDGE_GROUP),
+            status_fx.container(
+                "site", role="app", app="site", status="not running", uptime=None
             ),
-        )
+        ),
+    )
 
-    @staticmethod
-    def empty_snapshot() -> StatusSnapshot:
-        return StatusSnapshot(host=StatusFixtures.empty_host_status(), containers=())
 
-    @staticmethod
-    def client_and_status(stack, snapshot: StatusSnapshot):
-        status = MagicMock()
-        status.collect.return_value = snapshot
-        return TestClient(ServeAppFactory(stack, status=status).create()), status
+def empty_snapshot() -> StatusSnapshot:
+    return StatusSnapshot(host=status_fx.empty_host_status(), containers=())
 
-    @staticmethod
-    def client_with_actions(stack, actions):
-        status = MagicMock()
-        status.collect.return_value = ServeFixtures.empty_snapshot()
-        return TestClient(
-            ServeAppFactory(stack, status=status, actions=actions).create()
-        )
 
-    @staticmethod
-    def write_metrics_sample(stack, *, ts: str) -> None:
-        path = stack.root / METRICS_DIR / METRICS_FILENAME
-        path.parent.mkdir(parents=True, exist_ok=True)
-        row = {
-            "ts": ts,
-            "host": {"cpus": 2, "loadavg": [1.0], "memory": {"used_percent": 10}},
-            "containers": [
-                {
-                    "service": "raft-gate",
-                    "role": "gate",
-                    "group": "raft",
-                    "cpu_percent": 4.0,
-                    "memory": {"used_percent": 20},
-                }
-            ],
-        }
-        path.write_text(json.dumps(row) + "\n", encoding="utf-8")
+def client_and_status(stack, snapshot: StatusSnapshot):
+    status = MagicMock()
+    status.collect.return_value = snapshot
+    return TestClient(ServeAppFactory(stack, status=status).create()), status
 
-    @staticmethod
-    def live_registry_client(root):
-        AppliedInventory.write_applied_app(root, "site")
-        stack = Stack.load_apps(root)
-        status = Status(stack)
-        StatusFixtures.mock_docker_idle(status)
-        actions = ServeActions(stack)
-        logs = Logs(stack)
-        client = TestClient(
-            ServeAppFactory(
-                stack, status=status, actions=actions, logs=logs
-            ).create()
-        )
-        return client, actions, logs
 
-    @staticmethod
-    def write_out_of_band_apps(root) -> None:
-        AppliedInventory.write_applied_app(root, "demo-api")
-        AppliedInventory.write_applied_app(
-            root,
-            "demo-worker",
-            source="docker",
-            image="ghcr.io/example/worker",
-            public_host="",
-            build_context=None,
-            extra={"ports": [], "readiness": {"type": "none"}},
-        )
+def client_with_actions(stack, actions):
+    status = MagicMock()
+    status.collect.return_value = empty_snapshot()
+    return TestClient(ServeAppFactory(stack, status=status, actions=actions).create())
+
+
+def write_metrics_sample(stack, *, ts: str) -> None:
+    path = stack.root / METRICS_DIR / METRICS_FILENAME
+    path.parent.mkdir(parents=True, exist_ok=True)
+    row = {
+        "ts": ts,
+        "host": {"cpus": 2, "loadavg": [1.0], "memory": {"used_percent": 10}},
+        "containers": [
+            {
+                "service": "raft-gate",
+                "role": "gate",
+                "group": "raft",
+                "cpu_percent": 4.0,
+                "memory": {"used_percent": 20},
+            }
+        ],
+    }
+    path.write_text(json.dumps(row) + "\n", encoding="utf-8")
+
+
+def live_registry_client(root):
+    AppliedInventory.write_applied_app(root, "site")
+    stack = Stack.load_apps(root)
+    status = Status(stack)
+    status_fx.mock_docker_idle(status)
+    actions = ServeActions(stack)
+    logs = Logs(stack)
+    client = TestClient(
+        ServeAppFactory(stack, status=status, actions=actions, logs=logs).create()
+    )
+    return client, actions, logs
+
+
+def write_out_of_band_apps(root) -> None:
+    AppliedInventory.write_applied_app(root, "demo-api")
+    AppliedInventory.write_applied_app(
+        root,
+        "demo-worker",
+        source="docker",
+        image="ghcr.io/example/worker",
+        public_host="",
+        build_context=None,
+        extra=AppSpecExtras.worker_ports(),
+    )

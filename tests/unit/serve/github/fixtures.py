@@ -1,7 +1,5 @@
 """Shared fixtures for serve GitHub unit tests."""
 
-from __future__ import annotations
-
 import time
 
 from raft.serve.github.account import GithubAccount
@@ -33,11 +31,11 @@ def sample_account(**kwargs) -> GithubAccount:
     return GithubAccount(**base)
 
 
-# Compat alias used by older deploy tests.
-sample_session = sample_account
-
-
 def stub_auth(auth_cls) -> None:
     auth = auth_cls.return_value
-    auth.show_pubkey.return_value = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI comment"
-    auth_cls._pubkey_for_paste.return_value = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI"
+    auth.show_pubkey.return_value = (
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI comment"
+    )
+    auth_cls._pubkey_for_paste.return_value = (
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI"
+    )

@@ -10,7 +10,7 @@ from raft.controller.jobs.metrics import MetricsRecorder
 from raft.controller.jobs.metrics.rotation import MetricsRotation
 from raft.ops.status.models import StatusSnapshot
 
-from ....ops.status.fixtures import StatusFixtures
+from ....ops.status import fixtures as status_fx
 from ...base import ControllerTestCase
 
 
@@ -103,7 +103,7 @@ class TestMetricsRecorder(ControllerTestCase):
     def test_collect_status_default_path(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
         snap = StatusSnapshot(
-            host=StatusFixtures.empty_host_status(),
+            host=status_fx.empty_host_status(),
             containers=(),
         )
         stack = MagicMock(name="loaded_stack")
@@ -121,7 +121,7 @@ class TestMetricsRecorder(ControllerTestCase):
     def test_collect_status_skips_ensure_raft_home(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
         snap = StatusSnapshot(
-            host=StatusFixtures.empty_host_status(),
+            host=status_fx.empty_host_status(),
             containers=(),
         )
         with patch("raft.controller.jobs.metrics.metrics.Status") as status_cls:

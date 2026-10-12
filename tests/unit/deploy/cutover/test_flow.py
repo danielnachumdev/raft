@@ -10,7 +10,7 @@ from raft.errors.cta import OperatorError
 from tests.shared.nginx import NginxEmerg
 
 from tests.unit.base import AppliedInventory
-from tests.unit.cta_asserts import assert_operator
+from tests.unit.cta_asserts import CtaAsserts
 from .base import CutoverTestCase
 
 
@@ -149,7 +149,7 @@ class TestCutoverFlow(CutoverTestCase):
             with pytest.raises(OperatorError) as caught:
                 s.start_tmp_from_previous()
 
-        assert_operator(
+        CtaAsserts.operator(
             caught.value,
             contains=("app_tmp", "OAUTH_CLIENT_ID"),
         )

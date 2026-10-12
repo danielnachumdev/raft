@@ -11,7 +11,7 @@ from raft.controller.jobs.metrics import METRICS_DIR, METRICS_FILENAME
 from raft.errors.cta import OperatorError
 from raft.read.metrics import MetricsJsonlReader, MetricsRangeQuery, MetricsRead
 
-from .test_metrics_read import _MetricsFixtures
+from tests.unit.read.metrics import fixtures as metrics_fx
 from tests.unit.base import RaftTestCase
 
 _NOW = datetime(2026, 10, 6, 12, 0, tzinfo=timezone.utc)
@@ -100,12 +100,12 @@ class TestMetricsReadRange(RaftTestCase):
         home = self.tmp_path / "raft"
         now = datetime(2026, 10, 6, 12, 0, tzinfo=timezone.utc)
         old, mid = now - timedelta(hours=3), now - timedelta(hours=1)
-        _MetricsFixtures.write_jsonl(
+        metrics_fx.write_jsonl(
             home,
             [
-                _MetricsFixtures.sample(old, cpu=1),
-                _MetricsFixtures.sample(mid, cpu=2),
-                _MetricsFixtures.sample(now - timedelta(minutes=1), cpu=3),
+                metrics_fx.sample(old, cpu=1),
+                metrics_fx.sample(mid, cpu=2),
+                metrics_fx.sample(now - timedelta(minutes=1), cpu=3),
             ],
         )
         payload = MetricsRead(home).history(
@@ -121,12 +121,12 @@ class TestMetricsReadRange(RaftTestCase):
     def test_earliest_ts_and_to_ts_filter(self) -> None:
         home = self.tmp_path / "raft"
         now = datetime(2026, 10, 6, 12, 0, tzinfo=timezone.utc)
-        path = _MetricsFixtures.write_jsonl(
+        path = metrics_fx.write_jsonl(
             home,
             [
-                _MetricsFixtures.sample(now - timedelta(hours=2), cpu=1),
-                _MetricsFixtures.sample(now - timedelta(hours=1), cpu=2),
-                _MetricsFixtures.sample(now, cpu=3),
+                metrics_fx.sample(now - timedelta(hours=2), cpu=1),
+                metrics_fx.sample(now - timedelta(hours=1), cpu=2),
+                metrics_fx.sample(now, cpu=3),
             ],
         )
         reader = MetricsJsonlReader(path)
@@ -178,7 +178,7 @@ class TestMetricsReadRange(RaftTestCase):
         archive = path.parent / f"{METRICS_FILENAME}.2026-10-05"
         archive.write_text("not-json\n", encoding="utf-8")
         ts = _NOW - timedelta(minutes=5)
-        _MetricsFixtures.write_jsonl(home, [_MetricsFixtures.sample(ts, cpu=9)])
+        metrics_fx.write_jsonl(home, [metrics_fx.sample(ts, cpu=9)])
         reader = MetricsJsonlReader(path)
         assert reader.earliest_ts() == ts
         assert reader._first_sample_ts(path.parent) is None

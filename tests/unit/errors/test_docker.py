@@ -11,7 +11,7 @@ from raft.errors.checked import CheckedCommands
 from raft.errors.cta import CtaFormatter, OperatorError
 from raft.errors.docker_msgs import DockerMessages
 
-from ..cta_asserts import assert_cta, assert_operator
+from ..cta_asserts import CtaAsserts
 
 
 class TestCommandErrors:
@@ -24,24 +24,24 @@ class TestCommandErrors:
             1, ["docker"], stderr="Cannot connect to the Docker daemon"
         )
         assert DockerMessages.looks_like_docker_daemon_down(daemon)
-        assert_cta(
+        CtaAsserts.cta(
             DockerMessages.docker_daemon_message(detail="boom\nmore"),
             contains=("systemctl start docker", "raft doctor"),
             tag="docker",
         )
-        assert_cta(DockerMessages.docker_daemon_message(detail="   \n"), contains=("raft doctor",))
+        CtaAsserts.cta(DockerMessages.docker_daemon_message(detail="   \n"), contains=("raft doctor",))
 
     def _assert_port_detection(self) -> None:
         port = subprocess.CalledProcessError(
             1, ["docker"], stderr="Bind for 0.0.0.0:80 failed: port is already allocated"
         )
         assert DockerMessages.looks_like_port_in_use(port)
-        assert_cta(
+        CtaAsserts.cta(
             DockerMessages.port_in_use_message(detail="addr in use"),
             contains=("gate recreate", "raft doctor"),
             tag="docker",
         )
-        assert_cta(DockerMessages.port_in_use_message(detail=""), contains=("gate recreate",))
+        CtaAsserts.cta(DockerMessages.port_in_use_message(detail=""), contains=("gate recreate",))
 
     def test_compose_messages_and_raise(self) -> None:
         self._test_compose_messages_and_raise_p1()
@@ -49,7 +49,7 @@ class TestCommandErrors:
 
     def _test_compose_messages_and_raise_p1(self) -> None:
         msg = DockerMessages.compose_failure_message("up", detail="oops\n", hint="check logs")
-        assert_cta(msg, contains=("hint: check logs", "raft doctor"), tag="docker")
+        CtaAsserts.cta(msg, contains=("hint: check logs", "raft doctor"), tag="docker")
         assert "(docker: oops)" in msg
         with pytest.raises(OperatorError) as caught:
             CheckedCommands.raise_for_compose_failure(
@@ -58,7 +58,7 @@ class TestCommandErrors:
                 ),
                 action="up",
             )
-        assert_operator(caught.value, contains=("systemctl start docker",))
+        CtaAsserts.operator(caught.value, contains=("systemctl start docker",))
 
     def _test_compose_messages_and_raise_p2(self) -> None:
         with pytest.raises(OperatorError) as caught:
@@ -68,10 +68,10 @@ class TestCommandErrors:
                 ),
                 action="up",
             )
-        assert_operator(caught.value, contains=("gate recreate",))
+        CtaAsserts.operator(caught.value, contains=("gate recreate",))
         with pytest.raises(OperatorError) as caught:
             CheckedCommands.raise_for_compose_failure(RuntimeError("mystery"), action="up", hint="x")
-        assert_operator(caught.value, contains=("raft doctor", "hint: x"))
+        CtaAsserts.operator(caught.value, contains=("raft doctor", "hint: x"))
 
     def test_run_compose_checked(self) -> None:
         shell = MagicMock()
@@ -86,7 +86,7 @@ class TestCommandErrors:
         )
         with pytest.raises(OperatorError) as caught:
             CheckedCommands.run_compose(shell, ("up", "-d"), action="up")
-        assert_operator(caught.value, contains=("gate recreate",))
+        CtaAsserts.operator(caught.value, contains=("gate recreate",))
 
     def _assert_compose_stream_paths(self, shell) -> None:
         shell.compose.reset_mock()
@@ -96,7 +96,7 @@ class TestCommandErrors:
         shell.compose.return_value = MagicMock(returncode=1, stdout="", stderr="")
         with pytest.raises(OperatorError) as caught:
             CheckedCommands.run_compose(shell, ("down",), action="down", stream=True)
-        assert_operator(caught.value, contains=("raft doctor",))
+        CtaAsserts.operator(caught.value, contains=("raft doctor",))
 
     def test_image_missing_and_pull(self) -> None:
         self._assert_pull_messages()
@@ -106,12 +106,12 @@ class TestCommandErrors:
         assert DockerMessages.looks_like_image_missing(
             subprocess.CalledProcessError(1, ["docker"], stderr="manifest unknown")
         )
-        assert_cta(
+        CtaAsserts.cta(
             DockerMessages.docker_pull_failure_message("img", detail="fail\n", app="web"),
             contains=("raft sync web", "raft doctor"),
             tag="docker",
         )
-        assert_cta(
+        CtaAsserts.cta(
             DockerMessages.docker_pull_failure_message("img", detail="  \n"),
             contains=("docker login", "raft doctor"),
         )
@@ -119,7 +119,7 @@ class TestCommandErrors:
     def _assert_pull_raises(self) -> None:
         with pytest.raises(OperatorError) as caught:
             CheckedCommands.raise_for_docker_pull_failure("img", detail="unauthorized: authentication required")
-        assert_operator(
+        CtaAsserts.operator(
             caught.value,
             contains=("docker login",),
             fix_label="Fix (as the raft user):",
@@ -129,10 +129,10 @@ class TestCommandErrors:
                 "img",
                 detail="Cannot connect to the Docker daemon at unix:///var/run/docker.sock",
             )
-        assert_operator(caught.value, contains=("systemctl start docker",))
+        CtaAsserts.operator(caught.value, contains=("systemctl start docker",))
         with pytest.raises(OperatorError) as caught:
             CheckedCommands.raise_for_docker_pull_failure("img", detail="no such host")
-        assert_operator(caught.value, contains=("raft sync",))
+        CtaAsserts.operator(caught.value, contains=("raft sync",))
 
     def test_run_docker_checked(self) -> None:
         shell = MagicMock()
@@ -147,7 +147,7 @@ class TestCommandErrors:
         )
         with pytest.raises(OperatorError) as caught:
             CheckedCommands.run_docker(shell, ("ps",), action="ps")
-        assert_operator(caught.value, contains=("systemctl start docker",))
+        CtaAsserts.operator(caught.value, contains=("systemctl start docker",))
 
     def _assert_docker_hint_and_empty(self, shell) -> None:
         shell.docker.return_value = MagicMock(
@@ -155,11 +155,11 @@ class TestCommandErrors:
         )
         with pytest.raises(OperatorError) as caught:
             CheckedCommands.run_docker(shell, ("run", "x"), action="run tmp", hint="retry")
-        assert_operator(caught.value, contains=("hint: retry", "(docker: something broke)"))
+        CtaAsserts.operator(caught.value, contains=("hint: retry", "(docker: something broke)"))
         shell.docker.return_value = MagicMock(returncode=1, stdout="", stderr="   \n")
         with pytest.raises(OperatorError) as caught:
             CheckedCommands.run_docker(shell, ("ps",), action="ps")
-        assert_operator(caught.value, contains=("raft doctor",))
+        CtaAsserts.operator(caught.value, contains=("raft doctor",))
 
     def test_run_checked_dispatch(self) -> None:
         shell = MagicMock()

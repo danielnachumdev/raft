@@ -9,7 +9,7 @@ from raft.ops.status.models import StatusSnapshot
 from raft.read import ServeDependsMap, ServeSnapshotView, StatusRead
 
 from tests.unit.base import RaftTestCase, AppMakers, AppliedInventory, StackMakers
-from tests.unit.ops.status.fixtures import StatusFixtures
+from tests.unit.ops.status import fixtures as status_fx
 
 
 class TestServeDependsMap(RaftTestCase):
@@ -70,10 +70,10 @@ class TestStatusDependsPresentation(RaftTestCase):
         AppliedInventory.write_applied_app(self.tmp_path, "back")
         stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("front"), AppMakers.make_app("back")))
         snap = StatusSnapshot(
-            host=StatusFixtures.empty_host_status(),
+            host=status_fx.empty_host_status(),
             containers=(
-                StatusFixtures.container("front", role="app", app="front"),
-                StatusFixtures.container("back", role="app", app="back"),
+                status_fx.container("front", role="app", app="front"),
+                status_fx.container("back", role="app", app="back"),
             ),
         )
         rows = ServeSnapshotView(snap, depends=ServeDependsMap(stack)).apps()
@@ -92,7 +92,7 @@ class TestStatusDependsPresentation(RaftTestCase):
         )
 
     def _demo_snap(self) -> StatusSnapshot:
-        fx = StatusFixtures
+        fx = status_fx
         return StatusSnapshot(
             host=fx.empty_host_status(),
             containers=(

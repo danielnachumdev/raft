@@ -13,7 +13,7 @@ from raft.models.state.graph_event_kinds import (
 from raft.models.state.graph_event_store import GraphEventStore
 from raft.read.metrics import MetricsRead
 
-from .test_metrics_read import _MetricsFixtures
+from tests.unit.read.metrics import fixtures as metrics_fx
 from tests.unit.base import RaftTestCase
 
 
@@ -82,8 +82,8 @@ class TestMetricsReadEvents(RaftTestCase):
     def _seed_samples(self):
         home = self.tmp_path / "raft"
         now = datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)
-        _MetricsFixtures.write_jsonl(
-            home, [_MetricsFixtures.sample(now - timedelta(minutes=5))]
+        metrics_fx.write_jsonl(
+            home, [metrics_fx.sample(now - timedelta(minutes=5))]
         )
         return home, now
 

@@ -10,7 +10,7 @@ from raft.deploy.wait import WaitUntil
 from tests.shared.compose_ids import RunningServices
 from tests.shared.nginx import NginxEmerg
 
-from tests.unit.cta_asserts import assert_operator
+from tests.unit.cta_asserts import CtaAsserts
 from tests.unit.domain_case import DomainTestCase
 
 
@@ -28,7 +28,7 @@ class TestWaitUntil:
     def test_times_out(self) -> None:
         with pytest.raises(OperatorError) as caught:
             WaitUntil("never", lambda: False, timeout=0.05, interval=0.01).run()
-        assert_operator(caught.value, has_fix=False, contains=("never",))
+        CtaAsserts.operator(caught.value, has_fix=False, contains=("never",))
 
     def test_times_out_includes_diagnostics(self) -> None:
         with pytest.raises(OperatorError) as caught:
@@ -40,7 +40,7 @@ class TestWaitUntil:
                 fix="raft doctor",
                 diagnostics=lambda: ("--- raft-app_tmp ---\n" + NginxEmerg.host_not_found("old")),
             ).run()
-        assert_operator(
+        CtaAsserts.operator(
             caught.value,
             contains=("app_tmp", "host not found"),
             fix_label="Fix: raft doctor",
@@ -58,7 +58,7 @@ class TestWaitUntil:
                 interval=0.01,
                 diagnostics=boom,
             ).run()
-        assert_operator(caught.value, has_fix=False, contains=("never",))
+        CtaAsserts.operator(caught.value, has_fix=False, contains=("never",))
 
 
 class TestDeployCutover:
@@ -76,7 +76,7 @@ class TestDeployCutover:
 
 class TestOrchestratorPolicy(DomainTestCase):
     @pytest.fixture(autouse=True)
-    def _policy_setup(self, _domain_setup) -> None:
+    def _policy_setup(self, _applied_stack) -> None:
         self.orch = self.orchestrator(mock_deps=False)
 
     def test_redeploy_refuses_gate(self) -> None:

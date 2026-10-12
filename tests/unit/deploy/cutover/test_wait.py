@@ -8,8 +8,8 @@ import pytest
 
 from raft.deploy.cutover import CutoverSession
 
-from tests.unit.base import AppMakers, AppliedInventory, StackMakers
-from tests.unit.cta_asserts import assert_logged, assert_operator
+from tests.unit.base import AppSpecExtras, AppMakers, AppliedInventory, StackMakers
+from tests.unit.cta_asserts import CtaAsserts
 from .base import CutoverTestCase
 
 
@@ -90,12 +90,12 @@ class TestCutoverWait(CutoverTestCase):
         with caplog.at_level("ERROR"), sleep_p, mono_p:
             with pytest.raises(OperatorError) as exc:
                 self._wait_until_budget()
-        assert_operator(
+        CtaAsserts.operator(
             exc.value,
             contains=("demo ready", "running/starting"),
             fix_label="Fix: raise readiness.timeoutSeconds",
         )
-        assert_logged(caplog, level="ERROR", contains=("demo ready",))
+        CtaAsserts.logged(caplog, level="ERROR", contains=("demo ready",))
 
     @staticmethod
     def _wait_until_budget() -> None:
@@ -125,8 +125,8 @@ class TestCutoverWait(CutoverTestCase):
                     interval=0.05,
                     progress_every=0.1,
                 ).run()
-        assert_operator(caught.value, has_fix=False, contains=("slow ready",))
-        assert_logged(caplog, level="INFO", contains=("slow ready",))
+        CtaAsserts.operator(caught.value, has_fix=False, contains=("slow ready",))
+        CtaAsserts.logged(caplog, level="INFO", contains=("slow ready",))
 
     def test_abort_cleanup_restores_stable_and_removes_tmp(self) -> None:
         s = self.session
@@ -145,8 +145,8 @@ class TestCutoverWait(CutoverTestCase):
         s.docker.remove_container.side_effect = RuntimeError("rm failed")
         with caplog.at_level("WARNING"):
             s.abort_cleanup()
-        assert_logged(caplog, level="WARNING", contains=(s.app.compose_id,))
-        assert_logged(caplog, level="WARNING", contains=(s.app.tmp_container,))
+        CtaAsserts.logged(caplog, level="WARNING", contains=(s.app.compose_id,))
+        CtaAsserts.logged(caplog, level="WARNING", contains=(s.app.tmp_container,))
         assert s.tmp_active is True
 
     def test_abort_cleanup_noop_when_tmp_inactive(self) -> None:
@@ -157,7 +157,7 @@ class TestCutoverWait(CutoverTestCase):
         s.docker.remove_container.assert_not_called()
 
     def test_wait_ready_skips_when_readiness_none(self) -> None:
-        AppliedInventory.write_applied_app(self.tmp_path, "app", extra={"readiness": {"type": "none"}})
+        AppliedInventory.write_applied_app(self.tmp_path, "app", extra=AppSpecExtras.readiness_none())
         with patch("raft.deploy.cutover.session.WaitUntil") as wait:
             self.session._wait_ready("noop")
         wait.assert_not_called()
@@ -166,4 +166,4 @@ class TestCutoverWait(CutoverTestCase):
 
         with caplog.at_level("INFO"):
             self.session.log("hello")
-        assert_logged(caplog, level="INFO", contains=("hello",))
+        CtaAsserts.logged(caplog, level="INFO", contains=("hello",))

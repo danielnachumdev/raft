@@ -13,7 +13,7 @@ from raft.errors.classify import SubprocessClassifier, SubprocessCtx
 from raft.errors.cta import CtaFormatter, OperatorError
 from raft.errors.resource_msgs import ResourceMessages
 
-from ..cta_asserts import assert_cta, assert_operator
+from ..cta_asserts import CtaAsserts
 
 
 class TestResourceDetection:
@@ -41,7 +41,7 @@ class TestResourceMessages:
             image="ghcr.io/demo/api:abc",
             action="pull image",
         )
-        assert_cta(
+        CtaAsserts.cta(
             msg,
             contains=(
                 "demo-api",
@@ -62,7 +62,7 @@ class TestResourceMessages:
             app="demo-api",
             image="ghcr.io/demo/api:abc",
         )
-        assert_cta(
+        CtaAsserts.cta(
             msg,
             contains=(
                 "demo-api",
@@ -82,7 +82,7 @@ class TestResourceRaisePaths:
                 detail="failed to register layer: Cannot allocate memory",
                 app="demo-api",
             )
-        assert_operator(
+        CtaAsserts.operator(
             caught.value,
             contains=("insufficient host memory (OOM)", "demo-api", "not registry auth"),
         )
@@ -95,7 +95,7 @@ class TestResourceRaisePaths:
                 detail="failed to extract layer: no space left on device",
                 app="demo-api",
             )
-        assert_operator(
+        CtaAsserts.operator(
             caught.value,
             contains=("insufficient host disk space", "demo-api", "not registry auth"),
         )
@@ -111,7 +111,7 @@ class TestResourceRaisePaths:
                 action="start service demo-api",
                 app="demo-api",
             )
-        assert_operator(caught.value, contains=("insufficient host memory (OOM)", "demo-api"))
+        CtaAsserts.operator(caught.value, contains=("insufficient host memory (OOM)", "demo-api"))
 
     def test_run_docker_checked_oom(self) -> None:
         shell = MagicMock()
@@ -126,7 +126,7 @@ class TestResourceRaisePaths:
                 ("run", "-d", "ghcr.io/demo/api:abc"),
                 action="start cutover tmp",
             )
-        assert_operator(
+        CtaAsserts.operator(
             caught.value,
             contains=("insufficient host memory (OOM)", "ghcr.io/demo/api:abc"),
         )
@@ -139,7 +139,7 @@ class TestResourceRaisePaths:
         )
         err = SubprocessClassifier().classify(oom, SubprocessCtx(app="demo-api"))
         assert err is not None
-        assert_operator(err, contains=("insufficient host memory (OOM)", "demo-api"))
+        CtaAsserts.operator(err, contains=("insufficient host memory (OOM)", "demo-api"))
         disk = subprocess.CalledProcessError(
             1,
             ["docker", "pull", "ghcr.io/demo/api:abc"],
@@ -147,7 +147,7 @@ class TestResourceRaisePaths:
         )
         err = SubprocessClassifier().classify(disk, SubprocessCtx(app="demo-api"))
         assert err is not None
-        assert_operator(err, contains=("insufficient host disk space",))
+        CtaAsserts.operator(err, contains=("insufficient host disk space",))
 
     def test_resource_error_from_text_none(self) -> None:
         assert ResourceMessages.resource_error_from_text("manifest unknown") is None
@@ -158,22 +158,22 @@ class TestResourceRaisePaths:
         diag = ComposeDiagnostics(stack=MagicMock(), shell=MagicMock(), docker=docker)
         base = OperatorError("docker compose failed while trying to start service")
         err = diag.enrich_compose_failure(base, services=("demo-api",))
-        assert_operator(err, contains=("insufficient host memory (OOM)", "not registry auth"))
+        CtaAsserts.operator(err, contains=("insufficient host memory (OOM)", "not registry auth"))
 
     def test_exit_137_classify_and_disk_from_exc(self) -> None:
         oom = subprocess.CalledProcessError(137, ["docker", "pull", "img"], stderr="")
         err = SubprocessClassifier().classify(oom, SubprocessCtx(app="demo-api"))
         assert err is not None
-        assert_operator(err, contains=("insufficient host memory (OOM)",))
+        CtaAsserts.operator(err, contains=("insufficient host memory (OOM)",))
         disk_exc = subprocess.CalledProcessError(
             1, ["docker", "compose", "up"], stderr="no space left on device"
         )
         disk_err = ResourceMessages.resource_error_from_exc(disk_exc, app="demo-api")
         assert disk_err is not None
-        assert_operator(disk_err, contains=("insufficient host disk space",))
+        CtaAsserts.operator(disk_err, contains=("insufficient host disk space",))
         classified = SubprocessClassifier().classify(disk_exc, SubprocessCtx(app="demo-api"))
         assert classified is not None
-        assert_operator(classified, contains=("insufficient host disk space",))
+        CtaAsserts.operator(classified, contains=("insufficient host disk space",))
 
     def test_headline_without_app_or_action(self) -> None:
         msg = ResourceMessages.host_oom_message(detail="Cannot allocate memory")
@@ -182,4 +182,4 @@ class TestResourceRaisePaths:
     def test_build_resource_fallback(self) -> None:
         exc = subprocess.CalledProcessError(1, ["docker", "ps"], stderr="")
         err = ResourceMessages.from_subprocess(exc, detail="")
-        assert_operator(err, contains=("insufficient host memory (OOM)",))
+        CtaAsserts.operator(err, contains=("insufficient host memory (OOM)",))

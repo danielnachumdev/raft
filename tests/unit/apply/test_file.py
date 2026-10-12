@@ -1,8 +1,6 @@
 """Apply from local file coverage."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
 import pytest
 import yaml
 
@@ -83,14 +81,14 @@ class TestApplyFile(ApplyTestCase):
         stack = load_stack(self.tmp_path)
         applier = AppApply(stack)
 
-        orch = MagicMock()
-        with patch("raft.apply.service.Orchestrator", return_value=orch):
-            with patch("raft.apply.service.load_stack", return_value=stack):
-                applier.apply_file(path, deploy=True)
-        orch.ensure_app_deployed.assert_called_once_with("web", ref_override=None, force_sync=False)
+        with self.patched_deploy(stack) as orch:
+            applier.apply_file(path, deploy=True)
+        orch.ensure_app_deployed.assert_called_once_with(
+            "web", ref_override=None, force_sync=False
+        )
 
-        orch2 = MagicMock()
-        with patch("raft.apply.service.Orchestrator", return_value=orch2):
-            with patch("raft.apply.service.load_stack", return_value=stack):
-                applier.apply_file(path, deploy=True, force_sync=True)
-        orch2.ensure_app_deployed.assert_called_once_with("web", ref_override=None, force_sync=True)
+        with self.patched_deploy(stack) as orch2:
+            applier.apply_file(path, deploy=True, force_sync=True)
+        orch2.ensure_app_deployed.assert_called_once_with(
+            "web", ref_override=None, force_sync=True
+        )

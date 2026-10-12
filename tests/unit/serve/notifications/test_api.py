@@ -14,7 +14,7 @@ from raft.serve.app import ServeAppFactory
 from raft.serve.notifications.api import ServeNotificationsApi
 
 from tests.unit.base import RaftTestCase, StackMakers
-from tests.unit.ops.status.fixtures import StatusFixtures
+from tests.unit.ops.status import fixtures as status_fx
 from tests.unit.notify.fakes import FakeStrategy
 
 
@@ -26,7 +26,7 @@ class TestServeNotificationsApi(RaftTestCase):
         )
         status = MagicMock()
         status.collect.return_value = StatusSnapshot(
-            host=StatusFixtures.empty_host_status(), containers=()
+            host=status_fx.empty_host_status(), containers=()
         )
         api = ServeNotificationsApi(stack, registry=registry or NotificationRegistry())
         return TestClient(
@@ -63,7 +63,7 @@ class TestServeNotificationsApi(RaftTestCase):
         )
         status = MagicMock()
         status.collect.return_value = StatusSnapshot(
-            host=StatusFixtures.empty_host_status(), containers=()
+            host=status_fx.empty_host_status(), containers=()
         )
         return TestClient(
             ServeAppFactory(

@@ -12,7 +12,7 @@ from raft.locking import AppAndStackLocks, LockPaths, StackLock
 from raft.render import StackRenderer
 
 from tests.unit.base import RaftTestCase, AppliedInventory, StackMakers
-from tests.unit.cta_asserts import assert_operator
+from tests.unit.cta_asserts import CtaAsserts
 from .hold import LockHoldThread
 
 
@@ -155,7 +155,7 @@ class TestStackLockContention(RaftTestCase):
             with pytest.raises(OperatorError) as caught:
                 with StackLock(self.root, timeout=0.15):
                     pass
-            assert_operator(
+            CtaAsserts.operator(
                 caught.value,
                 contains=("stack", "RAFT_LOCK_TIMEOUT_SECONDS"),
             )

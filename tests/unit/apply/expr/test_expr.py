@@ -7,7 +7,7 @@ import pytest
 from raft.errors.cta import OperatorError
 from raft.apply.expr import DirectiveExpression
 
-from tests.unit.cta_asserts import assert_operator
+from tests.unit.cta_asserts import CtaAsserts
 
 ENV = {"FLAG": "on", "MODE": "edge", "OTHER": "on", "WEIRD": "a b/c"}
 
@@ -69,18 +69,18 @@ class TestBooleanCombine:
 
 class TestErrors:
     def test_bare_ident_rejected(self) -> None:
-        with pytest.raises(OperatorError, match="invalid") as caught:
+        with CtaAsserts.raises(match="invalid", contains=("Fix:", "${")):
             _eval("FLAG == 'on'")
-        assert_operator(caught.value, contains=("Fix:", "${"))
 
     def test_bareword_literal_rejected(self) -> None:
         with pytest.raises(OperatorError, match="invalid"):
             _eval("${FLAG} == on")
 
     def test_undefined_env_ref(self) -> None:
-        with pytest.raises(OperatorError, match="undefined variable MISSING") as caught:
+        with CtaAsserts.raises(
+            match="undefined variable MISSING", contains=("--env", "MISSING")
+        ):
             _eval("${MISSING} == 'x'", env={})
-        assert_operator(caught.value, contains=("--env", "MISSING"))
 
     def test_empty_expression(self) -> None:
         with pytest.raises(OperatorError, match="invalid"):
@@ -95,9 +95,8 @@ class TestErrors:
             _eval("(${FLAG} == 'on'")
 
     def test_path_label_in_error(self) -> None:
-        with pytest.raises(OperatorError, match="manifest at app.yaml") as caught:
+        with CtaAsserts.raises(match="manifest at app.yaml", contains=("Fix:",)):
             DirectiveExpression({}, path="app.yaml").evaluate("${MISSING} == 'x'")
-        assert_operator(caught.value, contains=("Fix:",))
 
     def test_bare_env_ref_is_not_a_condition(self) -> None:
         with pytest.raises(OperatorError, match="invalid"):
@@ -119,4 +118,4 @@ class TestErrors:
         junk = "@" * 60
         with pytest.raises(OperatorError, match=r"\.\.\.") as caught:
             _eval(junk)
-        assert_operator(caught.value, contains=("Fix:",))
+        CtaAsserts.operator(caught.value, contains=("Fix:",))

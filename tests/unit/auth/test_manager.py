@@ -12,7 +12,7 @@ from tests.unit.domain_case import DomainTestCase
 
 class TestGitAuthManager(DomainTestCase):
     @pytest.fixture(autouse=True)
-    def _auth_setup(self, _domain_setup) -> None:
+    def _auth_setup(self, _applied_stack) -> None:
         self.mgr = self.auth_manager()
         self.shell.run.side_effect = self.fake_ssh_keygen()
 

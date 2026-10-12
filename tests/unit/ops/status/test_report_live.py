@@ -11,18 +11,16 @@ from raft.errors.cta import OperatorError
 from raft.ops.status import Status
 from raft.ops.status.report import StatusReportWriter
 
-from tests.unit.base import RaftTestCase, AppMakers, AppliedInventory, StackMakers
-from .fixtures import StatusFixtures
+from tests.unit.base import AppliedInventory
+from .base import StatusTestCase
+from . import fixtures as status_fx
 
-_HOST_PATCH = "raft.ops.status.service.HostGateway.resources"
 
-
-class TestStatusReportLive(RaftTestCase):
+class TestStatusReportLive(StatusTestCase):
     def _stopped_snapshot(self):
-        AppliedInventory.write_applied_app(self.tmp_path, "app")
-        status = Status(StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("app"),)))
-        StatusFixtures.mock_docker_idle(status)
-        with patch(_HOST_PATCH, return_value=StatusFixtures.host()):
+        status = self.make_status("app")
+        status_fx.mock_docker_idle(status)
+        with self.patch_host():
             return status, status.collect()
 
     def test_report_live_and_rejects_json_combo(self) -> None:
@@ -79,11 +77,10 @@ class TestStatusReportLive(RaftTestCase):
                 collect.assert_called_once_with(refresh_apps=True)
 
     def test_collect_refresh_apps_reloads_registry(self) -> None:
-        AppliedInventory.write_applied_app(self.tmp_path, "app")
-        status = Status(StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("app"),)))
-        StatusFixtures.mock_docker_idle(status)
+        status = self.make_status("app")
+        status_fx.mock_docker_idle(status)
         AppliedInventory.write_applied_app(self.tmp_path, "newbie")
-        with patch(_HOST_PATCH, return_value=StatusFixtures.host()):
+        with self.patch_host():
             snap = status.collect(refresh_apps=True)
         names = [c.service for c in snap.containers]
         assert "app" in names and "newbie" in names
@@ -94,7 +91,7 @@ class TestStatusReportLive(RaftTestCase):
         assert writer._line_count("") == 0
         assert writer._line_count("one") == 1
         assert writer._line_count("a\nb\n") == 2
-        snap = StatusFixtures.snapshot()
+        snap = status_fx.snapshot()
         out = StringIO()
         calls = {"n": 0}
 

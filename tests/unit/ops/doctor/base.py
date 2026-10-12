@@ -11,6 +11,7 @@ import pytest
 from raft.adapters.docker.compose_status import ComposeStatusTable
 from raft.ops.doctor import CheckResult, Doctor
 
+from tests.unit.base import ShellMocks
 from tests.unit.domain_case import DomainTestCase
 
 
@@ -73,9 +74,7 @@ class DoctorTestCase(DomainTestCase):
         path.write_text(text, encoding="utf-8")
 
     def mock_shell(self, returncode: int = 0) -> MagicMock:
-        shell = MagicMock()
-        shell.run.return_value = MagicMock(returncode=returncode, stdout="", stderr="")
-        return shell
+        return ShellMocks.stub_run(MagicMock(), returncode=returncode)
 
     def mock_docker(
         self,

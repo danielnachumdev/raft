@@ -19,7 +19,7 @@ from raft.serve.github.strategies.mock import MockGithubProvider
 from raft.serve.paths import ServePaths
 
 from tests.unit.base import RaftTestCase, StackMakers
-from tests.unit.ops.status.fixtures import StatusFixtures
+from tests.unit.ops.status import fixtures as status_fx
 
 
 class TestServeGithubApi(RaftTestCase):
@@ -28,10 +28,10 @@ class TestServeGithubApi(RaftTestCase):
         body = settings or (
             "edge: {http: 80, https: null}\ngithub: {mock: true}\n"
         )
-        (self.tmp_path / "settings.yaml").write_text(body, encoding="utf-8")
+        self.write_home_settings(body)
         status = MagicMock()
         status.collect.return_value = StatusSnapshot(
-            host=StatusFixtures.empty_host_status(), containers=()
+            host=status_fx.empty_host_status(), containers=()
         )
         github = ServeGithubApi(
             stack,
@@ -168,7 +168,7 @@ class TestServeGithubApi(RaftTestCase):
         )
         status = MagicMock()
         status.collect.return_value = StatusSnapshot(
-            host=StatusFixtures.empty_host_status(), containers=()
+            host=status_fx.empty_host_status(), containers=()
         )
         return TestClient(ServeAppFactory(stack, status=status, github=api).create())
 

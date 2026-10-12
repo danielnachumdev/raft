@@ -12,7 +12,7 @@ from raft.serve.paths import ServePaths
 from raft.notify.control_events import KIND_SERVE_DEPLOY_FAILED
 
 from tests.unit.base import RaftTestCase, StackMakers
-from ._helpers import sample_account
+from tests.unit.serve.github import fixtures as github_fx
 
 
 class TestDeployNotify(RaftTestCase):
@@ -29,7 +29,7 @@ class TestDeployNotify(RaftTestCase):
             for r in MockGithubProvider(ServePaths.mock_github_dir()).list_repos("t")
             if r.full_name == "demo/no-manifest"
         )
-        job = runner.start(sample_account(), repo, "main")
+        job = runner.start(github_fx.sample_account(), repo, "main")
         self._wait(job)
         event = notifier.notify.call_args[0][0]
         assert event.kind == KIND_SERVE_DEPLOY_FAILED

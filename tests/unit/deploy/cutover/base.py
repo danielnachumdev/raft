@@ -14,7 +14,7 @@ from tests.unit.domain_case import DomainTestCase
 
 class CutoverTestCase(DomainTestCase):
     @pytest.fixture(autouse=True)
-    def _cutover_setup(self, _domain_setup) -> None:
+    def _cutover_setup(self, _applied_stack) -> None:
         self.session = self.cutover_session()
 
     def docker_session(self, *, ref_text: str | None = None) -> CutoverSession:

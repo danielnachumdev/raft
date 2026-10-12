@@ -1,8 +1,9 @@
 """Shared AppApply test helpers."""
 
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
-from unittest.mock import MagicMock
+from typing import Any, Iterator, Optional
+from unittest.mock import MagicMock, patch
 
 import yaml
 
@@ -60,3 +61,15 @@ class ApplyTestCase(DomainTestCase):
             return MagicMock(returncode=0)
 
         return clone
+
+    @contextmanager
+    def patched_deploy(
+        self,
+        stack=None,
+        orch: Optional[MagicMock] = None,
+    ) -> Iterator[MagicMock]:
+        stack = self.stack if stack is None else stack
+        orch = MagicMock() if orch is None else orch
+        with patch("raft.apply.service.Orchestrator", return_value=orch):
+            with patch("raft.apply.service.load_stack", return_value=stack):
+                yield orch

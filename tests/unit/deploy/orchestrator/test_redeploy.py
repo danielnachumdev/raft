@@ -8,7 +8,7 @@ from raft.models.stack import load_stack
 from raft.deploy.orchestrator import Orchestrator
 from tests.shared.compose_ids import RunningServices
 
-from tests.unit.base import AppliedInventory
+from tests.unit.base import AppSpecExtras, AppliedInventory
 from .base import OrchestratorTestCase
 
 
@@ -50,7 +50,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
         AppliedInventory.write_applied_app(
             self.tmp_path,
             "app",
-            extra={"readiness": {"type": "none"}},
+            extra=AppSpecExtras.readiness_none(),
         )
         orch = self.orchestrator()
         app = orch.stack.app("app")

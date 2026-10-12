@@ -22,7 +22,7 @@ from raft.serve.github.strategies.mock import MockGithubProvider
 from raft.serve.paths import ServePaths
 
 from tests.unit.base import RaftTestCase, StackMakers
-from tests.unit.ops.status.fixtures import StatusFixtures
+from tests.unit.ops.status import fixtures as status_fx
 
 
 class TestAccountsCoverage(RaftTestCase):
@@ -109,7 +109,7 @@ class TestAccountsCoverage(RaftTestCase):
         )
         status = MagicMock()
         status.collect.return_value = StatusSnapshot(
-            host=StatusFixtures.empty_host_status(), containers=()
+            host=status_fx.empty_host_status(), containers=()
         )
         return TestClient(ServeAppFactory(stack, status=status, github=api).create())
 

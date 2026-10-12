@@ -12,7 +12,7 @@ from tests.unit.domain_case import DomainTestCase
 
 class SyncTestCase(DomainTestCase):
     @pytest.fixture(autouse=True)
-    def _sync_setup(self, _domain_setup) -> None:
+    def _sync_setup(self, _applied_stack) -> None:
         self.syncer = SourceSync(self.stack, self.shell)
 
     def git_syncer(self, **app_kwargs) -> SourceSync:

@@ -10,7 +10,7 @@ from raft.serve.instructions import ServeInstructions
 from raft.serve.paths import ServePaths
 from raft.read import ServeSnapshotView
 
-from tests.unit.ops.status.fixtures import StatusFixtures
+from tests.unit.ops.status import fixtures as status_fx
 
 
 class TestServeInstructions:
@@ -37,7 +37,7 @@ class TestServePaths:
 
 class TestServeSnapshotView:
     def _snapshot(self) -> StatusSnapshot:
-        fx = StatusFixtures
+        fx = status_fx
         return StatusSnapshot(
             host=fx.empty_host_status(),
             containers=(
@@ -100,9 +100,9 @@ class TestServeSnapshotView:
 
     def test_started_dash_when_uptime_missing(self) -> None:
         snap = StatusSnapshot(
-            host=StatusFixtures.empty_host_status(),
+            host=status_fx.empty_host_status(),
             containers=(
-                StatusFixtures.container(
+                status_fx.container(
                     "demo-web", role="app", app="web", group="demo", uptime=None
                 ),
             ),

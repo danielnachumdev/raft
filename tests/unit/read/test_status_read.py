@@ -11,16 +11,16 @@ from raft.ops.status import Status
 from raft.ops.status.models import StatusSnapshot
 from raft.read import DoctorRead, StatusRead
 
-from tests.unit.base import RaftTestCase, AppMakers, AppliedInventory, StackMakers
-from tests.unit.ops.status.fixtures import StatusFixtures
+from tests.unit.base import AppSpecExtras, RaftTestCase, AppMakers, AppliedInventory, StackMakers
+from tests.unit.ops.status import fixtures as status_fx
 
 
 class TestStatusRead(RaftTestCase):
     def test_snapshot_dict_matches_status_to_dict(self) -> None:
         snap = StatusSnapshot(
-            host=StatusFixtures.empty_host_status(),
+            host=status_fx.empty_host_status(),
             containers=(
-                StatusFixtures.container("raft-gate", role="gate", group=EDGE_GROUP),
+                status_fx.container("raft-gate", role="gate", group=EDGE_GROUP),
             ),
         )
         status = MagicMock()
@@ -32,10 +32,10 @@ class TestStatusRead(RaftTestCase):
 
     def test_api_payload_shares_collector_and_adds_rows(self) -> None:
         snap = StatusSnapshot(
-            host=StatusFixtures.empty_host_status(),
+            host=status_fx.empty_host_status(),
             containers=(
-                StatusFixtures.container("raft-gate", role="gate", group=EDGE_GROUP),
-                StatusFixtures.container("site", role="app", app="site"),
+                status_fx.container("raft-gate", role="gate", group=EDGE_GROUP),
+                status_fx.container("site", role="app", app="site"),
             ),
         )
         status = MagicMock()
@@ -53,7 +53,7 @@ class TestStatusRead(RaftTestCase):
     def test_api_payload_includes_registry_issues(self) -> None:
         from raft.models.registry import RegistryIssue
 
-        snap = StatusSnapshot(host=StatusFixtures.empty_host_status(), containers=())
+        snap = StatusSnapshot(host=status_fx.empty_host_status(), containers=())
         status = MagicMock()
         status.collect.return_value = snap
         stack = StackMakers.make_stack(
@@ -70,9 +70,9 @@ class TestStatusRead(RaftTestCase):
 
     def test_service_detail_known_and_unknown(self) -> None:
         snap = StatusSnapshot(
-            host=StatusFixtures.empty_host_status(),
+            host=status_fx.empty_host_status(),
             containers=(
-                StatusFixtures.container("raft-gate", role="gate", group=EDGE_GROUP),
+                status_fx.container("raft-gate", role="gate", group=EDGE_GROUP),
             ),
         )
         status = MagicMock()
@@ -91,9 +91,9 @@ class TestStatusRead(RaftTestCase):
             self.tmp_path, "site", public_host="site.test", tls="origin"
         )
         snap = StatusSnapshot(
-            host=StatusFixtures.empty_host_status(),
+            host=status_fx.empty_host_status(),
             containers=(
-                StatusFixtures.container("site", role="app", app="site"),
+                status_fx.container("site", role="app", app="site"),
             ),
         )
         status = MagicMock()
@@ -107,7 +107,7 @@ class TestStatusRead(RaftTestCase):
         self._write_out_of_band_apps()
         with patch(
             "raft.ops.status.service.HostGateway.resources",
-            return_value=StatusFixtures.host(),
+            return_value=status_fx.host(),
         ):
             payload = reader.api_payload(refresh_apps=True)
         names = {row["service"] for row in payload["apps"]}
@@ -120,7 +120,7 @@ class TestStatusRead(RaftTestCase):
     def _reader_with_site(self) -> StatusRead:
         AppliedInventory.write_applied_app(self.tmp_path, "site")
         status = Status(StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),)))
-        StatusFixtures.mock_docker_idle(status)
+        status_fx.mock_docker_idle(status)
         return StatusRead(status.stack, status=status)
 
     def _write_out_of_band_apps(self) -> None:
@@ -132,7 +132,7 @@ class TestStatusRead(RaftTestCase):
             image="ghcr.io/example/worker",
             public_host="",
             build_context=None,
-            extra={"ports": [], "readiness": {"type": "none"}},
+            extra=AppSpecExtras.worker_ports(),
         )
 
 

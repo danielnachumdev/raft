@@ -6,14 +6,14 @@ from unittest.mock import MagicMock, patch
 from raft.serve.app import ServeAppFactory
 
 from tests.unit.base import RaftTestCase, StackMakers
-from tests.unit.ops.status.fixtures import StatusFixtures
-from tests.unit.serve.fixtures import ServeFixtures
+from tests.unit.ops.status import fixtures as status_fx
+from tests.unit.serve import fixtures as serve_fx
 
 
 class TestServeAppFactory(RaftTestCase):
     def test_index_serves_spa_shell_without_collect(self) -> None:
-        client, status = ServeFixtures.client_and_status(
-            StackMakers.make_stack(self.tmp_path), ServeFixtures.full_snapshot()
+        client, status = serve_fx.client_and_status(
+            StackMakers.make_stack(self.tmp_path), serve_fx.full_snapshot()
         )
         response = client.get("/")
         body = response.text
@@ -24,8 +24,8 @@ class TestServeAppFactory(RaftTestCase):
         assert "raft serve" in body
 
     def test_api_status_returns_json_from_collect(self) -> None:
-        client, status = ServeFixtures.client_and_status(
-            StackMakers.make_stack(self.tmp_path), ServeFixtures.full_snapshot()
+        client, status = serve_fx.client_and_status(
+            StackMakers.make_stack(self.tmp_path), serve_fx.full_snapshot()
         )
         response = client.get("/api/status")
         assert response.status_code == 200
@@ -39,8 +39,8 @@ class TestServeAppFactory(RaftTestCase):
         assert data["apps"][0]["service"] == "site"
 
     def test_api_service_returns_detail(self) -> None:
-        client, status = ServeFixtures.client_and_status(
-            StackMakers.make_stack(self.tmp_path), ServeFixtures.full_snapshot()
+        client, status = serve_fx.client_and_status(
+            StackMakers.make_stack(self.tmp_path), serve_fx.full_snapshot()
         )
         response = client.get("/api/service/raft-gate")
         assert response.status_code == 200
@@ -51,15 +51,15 @@ class TestServeAppFactory(RaftTestCase):
         assert data["presentation"]["role"] == "gate"
 
     def test_api_service_unknown_is_404(self) -> None:
-        client, _ = ServeFixtures.client_and_status(
-            StackMakers.make_stack(self.tmp_path), ServeFixtures.full_snapshot()
+        client, _ = serve_fx.client_and_status(
+            StackMakers.make_stack(self.tmp_path), serve_fx.full_snapshot()
         )
         response = client.get("/api/service/missing")
         assert response.status_code == 404
 
     def test_spa_deep_link_serves_index(self) -> None:
-        client, status = ServeFixtures.client_and_status(
-            StackMakers.make_stack(self.tmp_path), ServeFixtures.empty_snapshot()
+        client, status = serve_fx.client_and_status(
+            StackMakers.make_stack(self.tmp_path), serve_fx.empty_snapshot()
         )
         response = client.get("/service/raft-gate")
         assert response.status_code == 200
@@ -67,26 +67,26 @@ class TestServeAppFactory(RaftTestCase):
         assert 'id="root"' in response.text
 
     def test_unknown_api_path_is_not_spa(self) -> None:
-        client, _ = ServeFixtures.client_and_status(
-            StackMakers.make_stack(self.tmp_path), ServeFixtures.empty_snapshot()
+        client, _ = serve_fx.client_and_status(
+            StackMakers.make_stack(self.tmp_path), serve_fx.empty_snapshot()
         )
         response = client.get("/api/nope")
         assert response.status_code == 404
         assert "text/html" not in response.headers.get("content-type", "")
 
     def test_api_status_empty_snapshot(self) -> None:
-        client, _ = ServeFixtures.client_and_status(
-            StackMakers.make_stack(self.tmp_path), ServeFixtures.empty_snapshot()
+        client, _ = serve_fx.client_and_status(
+            StackMakers.make_stack(self.tmp_path), serve_fx.empty_snapshot()
         )
         data = client.get("/api/status").json()
         assert data["control_plane"] == [] and data["apps"] == []
 
     def test_api_status_reloads_registry_including_worker(self) -> None:
-        client, actions, logs = ServeFixtures.live_registry_client(self.tmp_path)
-        ServeFixtures.write_out_of_band_apps(self.tmp_path)
+        client, actions, logs = serve_fx.live_registry_client(self.tmp_path)
+        serve_fx.write_out_of_band_apps(self.tmp_path)
         with patch(
             "raft.ops.status.service.HostGateway.resources",
-            return_value=StatusFixtures.host(),
+            return_value=status_fx.host(),
         ):
             data = client.get("/api/status").json()
         names = {row["service"] for row in data["apps"]}
@@ -97,9 +97,9 @@ class TestServeAppFactory(RaftTestCase):
     def test_api_metrics_reads_jsonl(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path)
         ts = datetime.now(timezone.utc).isoformat()
-        ServeFixtures.write_metrics_sample(stack, ts=ts)
-        client, _ = ServeFixtures.client_and_status(
-            stack, ServeFixtures.empty_snapshot()
+        serve_fx.write_metrics_sample(stack, ts=ts)
+        client, _ = serve_fx.client_and_status(
+            stack, serve_fx.empty_snapshot()
         )
         data = client.get("/api/metrics", params={"window": 3600}).json()
         assert data["cursor"] == ts
@@ -108,15 +108,15 @@ class TestServeAppFactory(RaftTestCase):
         assert data["clamped"] is False
 
     def test_api_metrics_rejects_bad_start(self) -> None:
-        client, _ = ServeFixtures.client_and_status(
-            StackMakers.make_stack(self.tmp_path), ServeFixtures.empty_snapshot()
+        client, _ = serve_fx.client_and_status(
+            StackMakers.make_stack(self.tmp_path), serve_fx.empty_snapshot()
         )
         res = client.get("/api/metrics", params={"start": "not-a-time"})
         assert res.status_code == 400
 
     def test_spa_assets_are_served(self) -> None:
-        client, _ = ServeFixtures.client_and_status(
-            StackMakers.make_stack(self.tmp_path), ServeFixtures.empty_snapshot()
+        client, _ = serve_fx.client_and_status(
+            StackMakers.make_stack(self.tmp_path), serve_fx.empty_snapshot()
         )
         index = client.get("/").text
         marker = 'src="/assets/'

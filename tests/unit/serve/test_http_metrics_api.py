@@ -9,7 +9,7 @@ from raft.controller.jobs.metrics import HTTP_METRICS_FILENAME
 from raft.controller.jobs.metrics import METRICS_DIR
 
 from tests.unit.base import RaftTestCase, StackMakers
-from .fixtures import ServeFixtures
+from . import fixtures as serve_fx
 
 
 class TestServeHttpMetricsApi(RaftTestCase):
@@ -17,16 +17,16 @@ class TestServeHttpMetricsApi(RaftTestCase):
         stack = StackMakers.make_stack(self.tmp_path)
         ts = datetime.now(timezone.utc).isoformat()
         self._write_sample(stack, ts=ts)
-        client, _ = ServeFixtures.client_and_status(
-            stack, ServeFixtures.empty_snapshot()
+        client, _ = serve_fx.client_and_status(
+            stack, serve_fx.empty_snapshot()
         )
         data = client.get("/api/metrics/http", params={"window": 3600}).json()
         assert data["kind"] == "http" and data["cursor"] == ts
         assert {s["id"] for s in data["series"]} == {"edge"}
 
     def test_api_metrics_http_rejects_bad_start(self) -> None:
-        client, _ = ServeFixtures.client_and_status(
-            StackMakers.make_stack(self.tmp_path), ServeFixtures.empty_snapshot()
+        client, _ = serve_fx.client_and_status(
+            StackMakers.make_stack(self.tmp_path), serve_fx.empty_snapshot()
         )
         res = client.get("/api/metrics/http", params={"start": "not-a-time"})
         assert res.status_code == 400

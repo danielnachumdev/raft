@@ -9,7 +9,8 @@ from raft.ops.doctor.checks.apps import AppChecks
 
 from tests.unit.base import AppliedInventory, StackMakers
 from .base import DoctorTestCase
-from .report_cases import NoTty, ReportCases, Tty
+from tests.unit.ops.doctor.fixtures import NoTty, Tty
+from tests.unit.ops.doctor import fixtures as doctor_fx
 
 
 class TestDoctorReport(DoctorTestCase):
@@ -21,7 +22,7 @@ class TestDoctorReport(DoctorTestCase):
         self._assert_fail_infra(d, capsys)
 
     def _assert_healthy_collapsed(self, d, capsys) -> None:
-        assert d.report(ReportCases.ok_infra_and_svc(), color=False) == 0
+        assert d.report(doctor_fx.ok_infra_and_svc(), color=False) == 0
         out = capsys.readouterr().out
         assert "raft\n" in out and "  docker\n" not in out
         assert "  gate\n" in out and "  router\n" in out
@@ -33,20 +34,20 @@ class TestDoctorReport(DoctorTestCase):
         assert "  OK    auth" not in out and "  OK    sync" not in out
 
     def _assert_warn_expanded(self, d, capsys) -> None:
-        assert d.report(ReportCases.warn_svc(), color=False) == 0
+        assert d.report(doctor_fx.warn_svc(), color=False) == 0
         out = capsys.readouterr().out
         assert "svc\n" in out and "  WARN" in out
         assert "fix →" in out
         assert "sync" not in out and "auth" not in out
 
     def _assert_fail_multiline(self, d, capsys) -> None:
-        assert d.report(ReportCases.fail_hub_multiline(), color=False) == 1
+        assert d.report(doctor_fx.fail_hub_multiline(), color=False) == 1
         out = capsys.readouterr().out
         assert "hub\n" in out and "  FAIL" in out
         assert "fix →" in out and "line one" in out and "line two" in out
 
     def _assert_fail_infra(self, d, capsys) -> None:
-        assert d.report(ReportCases.fail_infra_docker(), color=False) == 1
+        assert d.report(doctor_fx.fail_infra_docker(), color=False) == 1
         out = capsys.readouterr().out
         assert "raft\n" in out and "  docker\n" in out
         assert "    FAIL" in out
@@ -84,7 +85,7 @@ class TestDoctorReport(DoctorTestCase):
         AppliedInventory.write_applied_app(self.tmp_path, "raftling", extra={"group": "raft"})
         AppliedInventory.write_applied_app(self.tmp_path, "solo")
         d = self.doctor(stack=load_stack(self.tmp_path))
-        assert d.report(ReportCases.raft_group_mix(), color=False) == 0
+        assert d.report(doctor_fx.raft_group_mix(), color=False) == 0
         self._assert_raft_group_out(capsys.readouterr().out)
         self._assert_custom_ungrouped(capsys)
 

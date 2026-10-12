@@ -185,12 +185,10 @@ class TestApplyGit(ApplyTestCase):
         stack = load_stack(self.tmp_path)
         shell = MagicMock()
         shell.git.side_effect = self.clone_side_effect(self._image_only_doc())
-        orch = MagicMock()
-        with patch("raft.apply.service.Orchestrator", return_value=orch):
-            with patch("raft.apply.service.load_stack", return_value=stack):
-                name = self.applier(stack, shell).apply_git(
-                    "git@github.com:org/img.git", deploy=True
-                )
+        with self.patched_deploy(stack) as orch:
+            name = self.applier(stack, shell).apply_git(
+                "git@github.com:org/img.git", deploy=True
+            )
         assert name == "img"
         orch.ensure_app_deployed.assert_called_once_with(
             "img", ref_override="main", force_sync=False

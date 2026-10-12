@@ -12,14 +12,14 @@ from raft.serve.app import ServeAppFactory
 from raft.serve.log_stream import LogSseStream
 
 from tests.unit.base import RaftTestCase, AppMakers, StackMakers
-from tests.unit.ops.status.fixtures import StatusFixtures
+from tests.unit.ops.status import fixtures as status_fx
 
 
 class TestServeServiceLogs(RaftTestCase):
     def _client(self, logs) -> TestClient:
         status = MagicMock()
         status.collect.return_value = StatusSnapshot(
-            host=StatusFixtures.empty_host_status(),
+            host=status_fx.empty_host_status(),
             containers=(),
         )
         stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))

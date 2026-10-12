@@ -11,7 +11,7 @@ from raft.ops.status.report import StatusReportWriter
 from raft.ops.status.service import Status
 
 from tests.unit.base import RaftTestCase
-from .fixtures import StatusFixtures
+from . import fixtures as status_fx
 
 
 class TestStatusReportDegraded(RaftTestCase):
@@ -30,8 +30,8 @@ class TestStatusReportDegraded(RaftTestCase):
         assert "1.0KiB / 2.0KiB" in text
 
     def _degraded_snapshot(self, host):
-        return StatusFixtures.snapshot(
-            StatusFixtures.container(
+        return status_fx.snapshot(
+            status_fx.container(
                 "app",
                 app="app",
                 status="not running",
@@ -43,7 +43,7 @@ class TestStatusReportDegraded(RaftTestCase):
                 pids=None,
                 allocated=AllocatedResources("0.5", "", "0.1", "32M"),
             ),
-            StatusFixtures.container("app2", app="app2"),
+            status_fx.container("app2", app="app2"),
             host=host,
         )
 

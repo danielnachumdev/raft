@@ -11,83 +11,7 @@ from raft.controller.jobs.metrics import METRICS_DIR, METRICS_FILENAME
 from raft.read.metrics import MetricsJsonlReader, MetricsRead
 
 from tests.unit.base import RaftTestCase
-
-
-class _MetricsFixtures:
-    @staticmethod
-    def write_jsonl(home: Path, rows: List[Dict[str, Any]]) -> Path:
-        path = home / METRICS_DIR / METRICS_FILENAME
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            "".join(json.dumps(r, separators=(",", ":")) + "\n" for r in rows),
-            encoding="utf-8",
-        )
-        return path
-
-    @staticmethod
-    def host_block(*, mem_pct: float, load1: float, cpus: int) -> Dict[str, Any]:
-        return {
-            "cpus": cpus,
-            "loadavg": [load1, 0.2, 0.1],
-            "memory": {
-                "used_percent": mem_pct,
-                "used_bytes": 1000,
-                "total_bytes": 2000,
-                "available_bytes": 1000,
-            },
-        }
-
-    @staticmethod
-    def container_block(
-        *, service: str, cpu: float, mem_pct: float
-    ) -> Dict[str, Any]:
-        return {
-            "service": service,
-            "role": "gate",
-            "group": "raft",
-            "cpu_percent": cpu,
-            "uptime_seconds": 120.0,
-            "pids": 4,
-            "memory": {
-                "used_percent": mem_pct,
-                "used_bytes": 500,
-                "limit_bytes": 1000,
-            },
-            "network": {"rx_bytes": 11, "tx_bytes": 22},
-            "block_io": {"read_bytes": 33, "write_bytes": 44},
-        }
-
-    @classmethod
-    def sample(
-        cls,
-        ts: datetime,
-        *,
-        cpu: float = 10.0,
-        mem_pct: float = 40.0,
-        service: str = "raft-gate",
-        load1: float = 0.5,
-        cpus: int = 2,
-    ) -> Dict[str, Any]:
-        return {
-            "ts": ts.isoformat(),
-            "host": cls.host_block(mem_pct=mem_pct, load1=load1, cpus=cpus),
-            "containers": [
-                cls.container_block(service=service, cpu=cpu, mem_pct=mem_pct)
-            ],
-        }
-
-    @classmethod
-    def multi_sample(
-        cls, ts: datetime, services: List[str], *, cpu: float = 1.0
-    ) -> Dict[str, Any]:
-        return {
-            "ts": ts.isoformat(),
-            "host": cls.host_block(mem_pct=40.0, load1=0.5, cpus=2),
-            "containers": [
-                cls.container_block(service=name, cpu=cpu + i, mem_pct=10.0 + i)
-                for i, name in enumerate(services)
-            ],
-        }
+from tests.unit.read.metrics import fixtures as metrics_fx
 
 
 class TestMetricsJsonlReader(RaftTestCase):
@@ -97,9 +21,9 @@ class TestMetricsJsonlReader(RaftTestCase):
         path = home / METRICS_DIR / METRICS_FILENAME
         path.parent.mkdir(parents=True)
         lines = [
-            json.dumps(_MetricsFixtures.sample(now - timedelta(hours=2), cpu=1)),
-            json.dumps(_MetricsFixtures.sample(now - timedelta(minutes=30), cpu=2)),
-            json.dumps(_MetricsFixtures.sample(now - timedelta(minutes=5), cpu=3)),
+            json.dumps(metrics_fx.sample(now - timedelta(hours=2), cpu=1)),
+            json.dumps(metrics_fx.sample(now - timedelta(minutes=30), cpu=2)),
+            json.dumps(metrics_fx.sample(now - timedelta(minutes=5), cpu=3)),
             '{"ts":"bad","host":{},"containers":[]}',
             "not-json",
         ]
@@ -115,12 +39,12 @@ class TestMetricsJsonlReader(RaftTestCase):
         t1 = now - timedelta(minutes=10)
         t2 = now - timedelta(minutes=5)
         t3 = now - timedelta(minutes=1)
-        path = _MetricsFixtures.write_jsonl(
+        path = metrics_fx.write_jsonl(
             home,
             [
-                _MetricsFixtures.sample(t1, cpu=1),
-                _MetricsFixtures.sample(t2, cpu=2),
-                _MetricsFixtures.sample(t3, cpu=3),
+                metrics_fx.sample(t1, cpu=1),
+                metrics_fx.sample(t2, cpu=2),
+                metrics_fx.sample(t3, cpu=3),
             ],
         )
         got = MetricsJsonlReader(path).samples_in_window(
@@ -137,11 +61,11 @@ class TestMetricsJsonlReader(RaftTestCase):
         (path.parent / "noise-dir").mkdir()
         archive = path.parent / f"{METRICS_FILENAME}.2026-10-02"
         archive.write_text(
-            json.dumps(_MetricsFixtures.sample(now - timedelta(hours=2), cpu=1)) + "\n",
+            json.dumps(metrics_fx.sample(now - timedelta(hours=2), cpu=1)) + "\n",
             encoding="utf-8",
         )
         path.write_text(
-            json.dumps(_MetricsFixtures.sample(now - timedelta(minutes=5), cpu=9)) + "\n",
+            json.dumps(metrics_fx.sample(now - timedelta(minutes=5), cpu=9)) + "\n",
             encoding="utf-8",
         )
         got = MetricsJsonlReader(path).samples_in_window(
@@ -162,11 +86,11 @@ class TestMetricsRead(RaftTestCase):
     def test_history_builds_host_and_container_series(self) -> None:
         home = self.tmp_path / "raft"
         now = datetime(2026, 10, 2, 12, 0, tzinfo=timezone.utc)
-        _MetricsFixtures.write_jsonl(
+        metrics_fx.write_jsonl(
             home,
             [
-                _MetricsFixtures.sample(now - timedelta(minutes=20), cpu=5.0),
-                _MetricsFixtures.sample(now - timedelta(minutes=10), cpu=15.0),
+                metrics_fx.sample(now - timedelta(minutes=20), cpu=5.0),
+                metrics_fx.sample(now - timedelta(minutes=10), cpu=15.0),
             ],
         )
         payload = MetricsRead(home).history(window_seconds=3600, now=now)
@@ -198,9 +122,9 @@ class TestMetricsRead(RaftTestCase):
         home = self.tmp_path / "raft"
         now = datetime(2026, 10, 2, 12, 0, tzinfo=timezone.utc)
         names = ["raft-gate", "raft-router", "demo-web"]
-        _MetricsFixtures.write_jsonl(
+        metrics_fx.write_jsonl(
             home,
-            [_MetricsFixtures.multi_sample(now - timedelta(minutes=5), names)],
+            [metrics_fx.multi_sample(now - timedelta(minutes=5), names)],
         )
         payload = MetricsRead(home).history(window_seconds=3600, now=now)
         ids = {s["id"] for s in payload["series"]}
@@ -211,9 +135,9 @@ class TestMetricsRead(RaftTestCase):
         home = self.tmp_path / "raft"
         now = datetime(2026, 10, 2, 12, 0, tzinfo=timezone.utc)
         names = ["raft-gate", "raft-router"]
-        _MetricsFixtures.write_jsonl(
+        metrics_fx.write_jsonl(
             home,
-            [_MetricsFixtures.multi_sample(now - timedelta(minutes=5), names)],
+            [metrics_fx.multi_sample(now - timedelta(minutes=5), names)],
         )
         payload = MetricsRead(home).history(
             window_seconds=3600, services=names, now=now
@@ -225,12 +149,12 @@ class TestMetricsRead(RaftTestCase):
         home = self.tmp_path / "raft"
         now = datetime(2026, 10, 2, 12, 0, tzinfo=timezone.utc)
         mid = now - timedelta(minutes=10)
-        _MetricsFixtures.write_jsonl(
+        metrics_fx.write_jsonl(
             home,
             [
-                _MetricsFixtures.sample(now - timedelta(minutes=20), cpu=1),
-                _MetricsFixtures.sample(mid, cpu=2),
-                _MetricsFixtures.sample(now - timedelta(minutes=1), cpu=3),
+                metrics_fx.sample(now - timedelta(minutes=20), cpu=1),
+                metrics_fx.sample(mid, cpu=2),
+                metrics_fx.sample(now - timedelta(minutes=1), cpu=3),
             ],
         )
         payload = MetricsRead(home).history(
@@ -254,10 +178,10 @@ class TestMetricsRead(RaftTestCase):
         home = self.tmp_path / "raft"
         now = datetime(2026, 10, 2, 12, 0, tzinfo=timezone.utc)
         rows = [
-            _MetricsFixtures.sample(now - timedelta(seconds=i), cpu=float(i))
+            metrics_fx.sample(now - timedelta(seconds=i), cpu=float(i))
             for i in range(50, 0, -1)
         ]
-        _MetricsFixtures.write_jsonl(home, rows)
+        metrics_fx.write_jsonl(home, rows)
         payload = MetricsRead(home).history(
             window_seconds=3600, max_points=10, now=now
         )

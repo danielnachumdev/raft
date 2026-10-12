@@ -9,5 +9,5 @@ from ..base import AdapterTestCase
 
 class DockerTestCase(AdapterTestCase):
     @pytest.fixture(autouse=True)
-    def _docker_setup(self, _adapter_setup) -> None:
+    def _docker_setup(self, _applied_stack) -> None:
         self.docker = self.docker_stack()

@@ -15,14 +15,14 @@ from raft.serve.app import ServeAppFactory
 from raft.serve.downloads import ServeDownloads
 
 from tests.unit.base import RaftTestCase, AppMakers, StackMakers
-from tests.unit.ops.status.fixtures import StatusFixtures
+from tests.unit.ops.status import fixtures as status_fx
 
 
 class TestServeDownloads(RaftTestCase):
     def _client(self, logs=None) -> TestClient:
         status = MagicMock()
         status.collect.return_value = StatusSnapshot(
-            host=StatusFixtures.empty_host_status(),
+            host=status_fx.empty_host_status(),
             containers=(),
         )
         stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))
@@ -89,7 +89,7 @@ class TestServeDownloads(RaftTestCase):
         self._write_sample(stack, ts=ts)
         status = MagicMock()
         status.collect.return_value = StatusSnapshot(
-            host=StatusFixtures.empty_host_status(), containers=()
+            host=status_fx.empty_host_status(), containers=()
         )
         client = TestClient(ServeAppFactory(stack, status=status).create())
         response = client.get("/api/metrics/download", params={"format": "csv"})

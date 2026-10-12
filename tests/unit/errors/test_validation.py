@@ -16,7 +16,7 @@ from raft.deploy.wait import WaitUntil
 from raft.ops.update import SelfUpdate
 
 from ..base import RaftTestCase, StackMakers
-from ..cta_asserts import assert_cta, assert_operator
+from ..cta_asserts import CtaAsserts
 
 SETTINGS_BAD_CASES = [
     ("edge:\n  http: eighty\n", "integer port"),
@@ -69,7 +69,7 @@ class TestValidationCTAs(RaftTestCase):
     def test_wait_until_fix_cta(self) -> None:
         with pytest.raises(OperatorError) as caught:
             WaitUntil("never", lambda: False, timeout=0.05, interval=0.01, fix="retry").run()
-        assert_operator(caught.value, contains=("never",), fix_label="Fix: retry")
+        CtaAsserts.operator(caught.value, contains=("never",), fix_label="Fix: retry")
 
     def test_update_failure_cta(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path, ())
@@ -79,7 +79,7 @@ class TestValidationCTAs(RaftTestCase):
             upd = SelfUpdate(stack)
             upd.sh = shell
             upd.run()
-        assert_operator(caught.value, contains=("raft update",))
+        CtaAsserts.operator(caught.value, contains=("raft update",))
 
     def test_settings_unreadable(self, monkeypatch: pytest.MonkeyPatch) -> None:
         path = self.tmp_path / "settings.yaml"
@@ -95,9 +95,9 @@ class TestValidationCTAs(RaftTestCase):
     def test_cta_helpers_and_validation(self) -> None:
         assert CtaFormatter.subprocess_detail(RuntimeError("plain")) == "plain"
         formatted = CtaFormatter.format("head", ("step",), detail="plain detail")
-        assert_cta(formatted, contains=("plain detail", "step"))
+        CtaAsserts.cta(formatted, contains=("plain detail", "step"))
         err = CtaFormatter.operator("headline", ("do this",), detail="more")
-        assert_operator(err, contains=("do this",))
+        CtaAsserts.operator(err, contains=("do this",))
         assert DomainErrors.require_bool(None, label="flag", default=True) is True
         assert DomainErrors.require_mapping({"a": 1}, label="doc") == {"a": 1}
         with pytest.raises(RuntimeError, match="YAML mapping"):

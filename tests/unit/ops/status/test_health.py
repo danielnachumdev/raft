@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-from raft.ops.status import Status
 from raft.ops.status.formatters import StatusFormatters
 from raft.ops.status.models import STATUS_STARTING, STATUS_UNHEALTHY
 
-from tests.unit.base import RaftTestCase, AppMakers, AppliedInventory, StackMakers
-from .fixtures import StatusFixtures
-
-_HOST_PATCH = "raft.ops.status.service.HostGateway.resources"
+from .base import StatusTestCase
+from . import fixtures as status_fx
 
 
-class TestStatusHealth(RaftTestCase):
+class TestStatusHealth(StatusTestCase):
     def test_formatter_maps_health(self) -> None:
         assert StatusFormatters.container_status("running", "none") == "running"
         assert StatusFormatters.container_status("running", "healthy") == "running"
@@ -24,10 +21,9 @@ class TestStatusHealth(RaftTestCase):
         assert StatusFormatters.container_status("", "none") == "unknown"
 
     def test_collect_marks_unhealthy(self) -> None:
-        AppliedInventory.write_applied_app(self.tmp_path, "app")
-        status = Status(StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("app"),)))
-        self._wire_unhealthy_app(StatusFixtures.mock_containers_idle(status))
-        with patch(_HOST_PATCH, return_value=StatusFixtures.host()):
+        status = self.make_status("app")
+        self._wire_unhealthy_app(status_fx.mock_containers_idle(status))
+        with self.patch_host():
             snap = status.collect()
         by_svc = {c.service: c for c in snap.containers}
         assert by_svc["raft-gate"].status == "running"
@@ -35,10 +31,9 @@ class TestStatusHealth(RaftTestCase):
 
     def test_collect_edge_without_healthcheck(self) -> None:
         """nginx edge has no Health key; must still show running + uptime."""
-        AppliedInventory.write_applied_app(self.tmp_path, "app")
-        status = Status(StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("app"),)))
-        self._wire_edge_no_health(StatusFixtures.mock_containers_idle(status))
-        with patch(_HOST_PATCH, return_value=StatusFixtures.host()):
+        status = self.make_status("app")
+        self._wire_edge_no_health(status_fx.mock_containers_idle(status))
+        with self.patch_host():
             snap = status.collect()
         by_svc = {c.service: c for c in snap.containers}
         for name in ("raft-gate", "raft-router", "raft-controller"):
@@ -49,13 +44,13 @@ class TestStatusHealth(RaftTestCase):
     @staticmethod
     def _wire_unhealthy_app(gateway: MagicMock) -> None:
         gateway.collect.return_value = {
-            "raft-gate": StatusFixtures.runtime_row("gatecid", health="none"),
-            "app": StatusFixtures.runtime_row("appcid", health="unhealthy"),
+            "raft-gate": status_fx.runtime_row("gatecid", health="none"),
+            "app": status_fx.runtime_row("appcid", health="unhealthy"),
         }
 
     @staticmethod
     def _wire_edge_no_health(gateway: MagicMock) -> None:
         gateway.collect.return_value = {
-            name: StatusFixtures.runtime_row(f"{name}-cid", memory_bytes=0)
+            name: status_fx.runtime_row(f"{name}-cid", memory_bytes=0)
             for name in ("raft-gate", "raft-router", "raft-controller")
         }

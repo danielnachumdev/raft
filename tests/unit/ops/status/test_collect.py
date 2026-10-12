@@ -4,34 +4,25 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from raft.errors.cta import OperatorError
-from raft.ops.status import Status
 from raft.ops.status.allocated import StatusAllocated
 from raft.ops.status.models import EDGE_CPUS_LIMIT
 
-from tests.unit.base import RaftTestCase, AppMakers, AppliedInventory, StackMakers
-from .fixtures import StatusFixtures
+from tests.unit.base import AppMakers, AppSpecExtras, AppliedInventory, StackMakers
+from .base import StatusTestCase
+from . import fixtures as status_fx
 
-_HOST_PATCH = "raft.ops.status.service.HostGateway.resources"
 
-
-class TestStatusCollect(RaftTestCase):
+class TestStatusCollect(StatusTestCase):
     def _idle_status(self, *apps):
-        stack = StackMakers.make_stack(self.tmp_path, apps or (AppMakers.make_app("app"),))
-        status = Status(stack)
-        StatusFixtures.mock_docker_idle(status)
+        status = self.make_status(apps=apps or (AppMakers.make_app("app"),))
+        status_fx.mock_docker_idle(status)
         return status
 
-    def _patch_host(self):
-        return patch(_HOST_PATCH, return_value=StatusFixtures.host())
-
     def test_collect_running_and_stopped(self) -> None:
-        AppliedInventory.write_applied_app(self.tmp_path, "app")
         status = self._idle_status(AppMakers.make_app("app"))
-        StatusFixtures.wire_gate_router_running(status._containers)
-        with self._patch_host():
+        status_fx.wire_gate_router_running(status._containers)
+        with self.patch_host():
             snap = status.collect()
         self._assert_running_gate_router(snap)
         self._assert_stopped_controller_app(snap)
@@ -60,9 +51,8 @@ class TestStatusCollect(RaftTestCase):
         assert app.allocated.cpus_limit == "0.50"
 
     def test_collect_app_group(self) -> None:
-        AppliedInventory.write_applied_app(self.tmp_path, "web")
         status = self._idle_status(AppMakers.make_app("web", group="demo"))
-        with self._patch_host():
+        with self.patch_host():
             snap = status.collect()
         gate, router, controller, app = snap.containers
         assert gate.group == router.group == controller.group == "raft"
@@ -77,10 +67,10 @@ class TestStatusCollect(RaftTestCase):
             image="ghcr.io/example/worker",
             public_host="",
             build_context=None,
-            extra={"ports": [], "readiness": {"type": "none"}},
+            extra=AppSpecExtras.worker_ports(),
         )
         status = self._idle_status(AppMakers.make_app("worker", public_host=""))
-        with self._patch_host():
+        with self.patch_host():
             snap = status.collect()
         names = [c.service for c in snap.containers]
         assert "worker" in names
@@ -94,20 +84,18 @@ class TestStatusCollect(RaftTestCase):
         assert StatusAllocated.app(bad, AppMakers.make_app("x")).cpus_limit == "0.50"
 
     def test_collect_refresh_apps_reloads_registry(self) -> None:
-        AppliedInventory.write_applied_app(self.tmp_path, "app")
         status = self._idle_status(AppMakers.make_app("app"))
         AppliedInventory.write_applied_app(self.tmp_path, "newbie")
-        with self._patch_host():
+        with self.patch_host():
             snap = status.collect(refresh_apps=True)
         names = [c.service for c in snap.containers]
         assert "app" in names and "newbie" in names
         assert len(status.stack.apps) == 2
 
     def test_collect_refresh_apps_skips_ensure_raft_home(self) -> None:
-        AppliedInventory.write_applied_app(self.tmp_path, "app")
         status = self._idle_status(AppMakers.make_app("app"))
         reloaded = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("app"),))
-        with self._patch_host():
+        with self.patch_host():
             with patch(
                 "raft.ops.status.service.Stack.load_apps",
                 return_value=reloaded,

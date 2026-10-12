@@ -9,7 +9,7 @@ from raft.deploy.cutover import CutoverSession
 from raft.deploy.orchestrator import Orchestrator
 from tests.shared.compose_ids import RunningServices
 
-from tests.unit.base import RaftTestCase, AppMakers, AppliedInventory, StackMakers
+from tests.unit.base import AppSpecExtras, RaftTestCase, AppMakers, AppliedInventory, StackMakers
 
 
 class TestOrchCutoverEdgeCoverage(RaftTestCase):
@@ -17,7 +17,7 @@ class TestOrchCutoverEdgeCoverage(RaftTestCase):
         AppliedInventory.write_applied_app(
             self.tmp_path,
             "app",
-            extra={"readiness": {"type": "none"}},
+            extra=AppSpecExtras.readiness_none(),
         )
         stack = load_stack(self.tmp_path)
         orch = Orchestrator(stack)
@@ -34,7 +34,7 @@ class TestOrchCutoverEdgeCoverage(RaftTestCase):
         orch.http.public_host_ok.assert_not_called()
 
     def test_shift_skips_wait_when_none(self) -> None:
-        AppliedInventory.write_applied_app(self.tmp_path, "app", extra={"readiness": {"type": "none"}})
+        AppliedInventory.write_applied_app(self.tmp_path, "app", extra=AppSpecExtras.readiness_none())
         session = self._none_session()
         session.previous_image = "img:old"
         session.start_tmp_from_previous()

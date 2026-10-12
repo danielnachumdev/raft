@@ -18,7 +18,7 @@ from raft.locking import (
 )
 
 from tests.unit.base import RaftTestCase
-from tests.unit.cta_asserts import assert_logged, assert_operator
+from tests.unit.cta_asserts import CtaAsserts
 from .hold import LockHoldThread
 
 
@@ -41,11 +41,11 @@ class TestExclusiveLock(RaftTestCase):
             with caplog.at_level("INFO"), pytest.raises(OperatorError) as caught:
                 with ExclusiveLock(path, kind="stack", timeout=0.15):
                     pass
-            assert_operator(
+            CtaAsserts.operator(
                 caught.value,
                 contains=("stack", "RAFT_LOCK_TIMEOUT_SECONDS"),
             )
-            assert_logged(caplog, level="INFO", contains=("waiting for", "stack"))
+            CtaAsserts.logged(caplog, level="INFO", contains=("waiting for", "stack"))
             assert not any("acquired" in r.getMessage() for r in caplog.records)
         finally:
             holder.stop()
@@ -66,8 +66,8 @@ class TestExclusiveLock(RaftTestCase):
             t_b.join(timeout=2)
 
         assert order == ["A-start", "A-end", "B"]
-        assert_logged(caplog, level="INFO", contains=("waiting for", "stack"))
-        assert_logged(caplog, level="INFO", contains=("acquired", "stack"))
+        CtaAsserts.logged(caplog, level="INFO", contains=("waiting for", "stack"))
+        CtaAsserts.logged(caplog, level="INFO", contains=("acquired", "stack"))
 
     def _slow(self, path, order, held, release) -> None:
         with ExclusiveLock(path, kind="stack", timeout=5):
@@ -129,7 +129,7 @@ class TestExclusiveLock(RaftTestCase):
             with ExclusiveLock(path, kind="stack", timeout=0.15):
                 pass
 
-        assert_operator(caught.value, contains=("stack", "RAFT_LOCK_TIMEOUT_SECONDS"))
+        CtaAsserts.operator(caught.value, contains=("stack", "RAFT_LOCK_TIMEOUT_SECONDS"))
 
     def _flaky_close_success(self, path, monkeypatch) -> None:
         real_close = os.close

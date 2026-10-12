@@ -11,7 +11,7 @@ from raft.ops.status.models import StatusSnapshot
 from raft.serve.app import ServeAppFactory
 
 from tests.unit.base import RaftTestCase, AppMakers, StackMakers
-from tests.unit.ops.status.fixtures import StatusFixtures
+from tests.unit.ops.status import fixtures as status_fx
 
 
 class TestServePurgeApi(RaftTestCase):
@@ -19,7 +19,7 @@ class TestServePurgeApi(RaftTestCase):
         stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))
         status = MagicMock()
         status.collect.return_value = StatusSnapshot(
-            host=StatusFixtures.empty_host_status(),
+            host=status_fx.empty_host_status(),
             containers=(),
         )
         return TestClient(

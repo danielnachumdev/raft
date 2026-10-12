@@ -10,7 +10,7 @@ from raft.errors.checked import CheckedCommands
 from raft.errors.cta import CtaFormatter, OperatorError
 from raft.errors.git_msgs import GitMessages
 
-from ..cta_asserts import assert_cta, assert_operator
+from ..cta_asserts import CtaAsserts
 
 
 class TestGitErrors:
@@ -22,18 +22,18 @@ class TestGitErrors:
     def _assert_auth_messages(self) -> None:
         auth = subprocess.CalledProcessError(1, ["git"], stderr="Permission denied (publickey)")
         assert GitMessages.looks_like_git_auth_failure(auth)
-        assert_cta(
+        CtaAsserts.cta(
             GitMessages.git_auth_failure_message("git@h:o/r.git", app="web", detail="nope\n"),
             contains=("auth setup web", "auth test web"),
             fix_label="Fix (as the raft user):",
             tag="git",
         )
-        assert_cta(
+        CtaAsserts.cta(
             GitMessages.git_auth_failure_message("r", detail="  "),
             contains=("auth setup",),
             fix_label="Fix (as the raft user):",
         )
-        assert_cta(
+        CtaAsserts.cta(
             GitMessages.git_auth_failure_message("r", detail="\n\n"),
             contains=("auth setup",),
             fix_label="Fix (as the raft user):",
@@ -42,21 +42,21 @@ class TestGitErrors:
     def _assert_network_messages(self) -> None:
         net = RuntimeError("Could not resolve host: github.com")
         assert GitMessages.looks_like_git_network_failure(net)
-        assert_cta(
+        CtaAsserts.cta(
             GitMessages.git_network_failure_message("r", detail="dns\nfail"),
             contains=("auth test",),
             tag="git",
         )
-        assert_cta(GitMessages.git_network_failure_message("r", detail=""), contains=("auth test",))
-        assert_cta(GitMessages.git_network_failure_message("r", detail="\n  \n"), contains=("auth test",))
+        CtaAsserts.cta(GitMessages.git_network_failure_message("r", detail=""), contains=("auth test",))
+        CtaAsserts.cta(GitMessages.git_network_failure_message("r", detail="\n  \n"), contains=("auth test",))
 
     def _assert_generic_messages(self) -> None:
-        assert_cta(
+        CtaAsserts.cta(
             GitMessages.git_generic_failure_message("r", app="web", detail="x\n"),
             contains=("auth test web", "raft doctor"),
             tag="git",
         )
-        assert_cta(
+        CtaAsserts.cta(
             GitMessages.git_generic_failure_message("r", detail="  "),
             contains=("auth test", "raft doctor"),
         )
@@ -70,15 +70,15 @@ class TestGitErrors:
                 "git@h:o/r.git",
                 app="web",
             )
-        assert_operator(
+        CtaAsserts.operator(
             caught.value,
             contains=("auth setup web",),
             fix_label="Fix (as the raft user):",
         )
         with pytest.raises(OperatorError) as caught:
             CheckedCommands.raise_for_git_failure(RuntimeError("connection timed out"), "r")
-        assert_operator(caught.value, contains=("auth test",))
+        CtaAsserts.operator(caught.value, contains=("auth test",))
         CheckedCommands.raise_for_git_failure(RuntimeError("weird"), "r")
         with pytest.raises(OperatorError) as caught:
             CheckedCommands.raise_for_git_failure(RuntimeError("weird"), "r", always=True)
-        assert_operator(caught.value, contains=("auth test", "raft doctor"))
+        CtaAsserts.operator(caught.value, contains=("auth test", "raft doctor"))

@@ -17,7 +17,7 @@ from raft.serve.github.repo import GithubRepo
 from raft.serve.github.strategies.real import RealGithubProvider
 from raft.serve.github.accounts import GithubAccountStore
 
-from ._helpers import sample_repo, sample_session, stub_auth
+from tests.unit.serve.github import fixtures as github_fx
 from tests.unit.base import RaftTestCase, StackMakers
 
 
@@ -39,10 +39,10 @@ class TestCoverageDeploy(RaftTestCase):
         with patch("raft.serve.github.deploy_job.GitAuthManager") as auth_cls, patch(
             "raft.serve.github.deploy_job.AppApply"
         ) as apply_cls:
-            stub_auth(auth_cls)
+            github_fx.stub_auth(auth_cls)
             apply_cls.return_value.apply_git.side_effect = OperatorError("no", has_fix=False)
             with pytest.raises(OperatorError, match="deploy public key"):
-                runner._deploy_git(job, sample_session(), sample_repo(), "web")
+                runner._deploy_git(job, github_fx.sample_account(), github_fx.sample_repo(), "web")
         assert job.next_steps
 
     def test_api_callback_oauth(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -53,7 +53,7 @@ class TestCoverageDeploy(RaftTestCase):
         api = ServeGithubApi(StackMakers.make_stack(self.tmp_path), provider=MagicMock(), port=9999)
         assert api._default_provider().__class__.__name__ == "RealGithubProvider"
         GithubAccountStore(self.tmp_path).set_pending("good")
-        with patch.object(api._oauth, "complete_oauth", return_value=sample_session(mock=False)):
+        with patch.object(api._oauth, "complete_oauth", return_value=github_fx.sample_account(mock=False)):
             assert api.api_callback(MagicMock(), code="c", state="good").status_code == 302
         bad = api.api_callback(MagicMock(), code=None, state=None, mock=None)
         assert bad.status_code == 302 and "oauth_error=" in bad.headers["location"]
@@ -66,7 +66,7 @@ class TestCoverageDeploy(RaftTestCase):
         (self.tmp_path / "settings.yaml").write_text("github: {mock: true}\n", encoding="utf-8")
         provider = MagicMock()
         api = ServeGithubApi(StackMakers.make_stack(self.tmp_path), provider=provider, jobs=DeployJobStore())
-        GithubAccountStore(self.tmp_path).upsert_account(sample_session())
+        GithubAccountStore(self.tmp_path).upsert_account(github_fx.sample_account())
         req = MagicMock()
         req.headers = {"host": "127.0.0.1:8888"}
         assert api._request_port(req) == 8888
@@ -118,9 +118,9 @@ class TestCoverageDeploy(RaftTestCase):
         runner = GithubDeployRunner(StackMakers.make_stack(self.tmp_path), MagicMock(), store)
         job = store.create("o/r", "main")
         with patch.object(runner, "_execute", side_effect=RuntimeError("boom")):
-            runner._run(job.id, sample_session(), sample_repo())
+            runner._run(job.id, github_fx.sample_account(), github_fx.sample_repo())
         assert store.get(job.id).status == "failed"
-        runner._run("missing", sample_session(), sample_repo())
+        runner._run("missing", github_fx.sample_account(), github_fx.sample_repo())
 
     def test_remaining_api_hints(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("RAFT_GITHUB_MOCK", raising=False)
@@ -174,9 +174,9 @@ class TestCoverageDeploy(RaftTestCase):
         with patch("raft.serve.github.deploy_job.GitAuthManager") as auth_cls, patch(
             "raft.serve.github.deploy_job.AppApply"
         ) as apply_cls:
-            stub_auth(auth_cls)
+            github_fx.stub_auth(auth_cls)
             apply_cls.return_value.apply_git.return_value = "web"
-            job = runner.start(sample_session(mock=False), sample_repo(), "main")
+            job = runner.start(github_fx.sample_account(mock=False), github_fx.sample_repo(), "main")
             for _ in range(80):
                 time.sleep(0.05)
                 if job.status in {"succeeded", "failed"}:

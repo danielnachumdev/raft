@@ -3,32 +3,28 @@
 from __future__ import annotations
 
 from io import StringIO
-from unittest.mock import patch
 
 from raft.models.state.scaling_store import ScalingStore
 from raft.ops.status import Status
 from raft.ops.status.models import STATUS_NOT_RUNNING, STATUS_SCALED_TO_ZERO
 from raft.ops.status.report import StatusReportWriter
 
-from tests.unit.base import RaftTestCase, AppMakers, AppliedInventory, StackMakers
-from .fixtures import StatusFixtures
+from tests.unit.base import AppMakers
+from .base import StatusTestCase
+from . import fixtures as status_fx
 
-_HOST_PATCH = "raft.ops.status.service.HostGateway.resources"
 
-
-class TestStatusScaledToZero(RaftTestCase):
+class TestStatusScaledToZero(StatusTestCase):
     def _status(self, *names: str) -> Status:
         apps = tuple(AppMakers.make_app(n) for n in names) or (AppMakers.make_app("app"),)
-        for app in apps:
-            AppliedInventory.write_applied_app(self.tmp_path, app.name)
-        status = Status(StackMakers.make_stack(self.tmp_path, apps))
-        StatusFixtures.mock_docker_idle(status)
+        status = self.make_status(apps=apps)
+        status_fx.mock_docker_idle(status)
         return status
 
     def test_collect_marks_scaled_to_zero(self) -> None:
         status = self._status("app")
         ScalingStore(self.tmp_path).mark_scaled_to_zero("app")
-        with patch(_HOST_PATCH, return_value=StatusFixtures.host()):
+        with self.patch_host():
             snap = status.collect()
         app = next(c for c in snap.containers if c.app == "app")
         assert app.status == STATUS_SCALED_TO_ZERO
@@ -36,14 +32,14 @@ class TestStatusScaledToZero(RaftTestCase):
 
     def test_collect_keeps_not_running_when_unscaled(self) -> None:
         status = self._status("app")
-        with patch(_HOST_PATCH, return_value=StatusFixtures.host()):
+        with self.patch_host():
             snap = status.collect()
         app = next(c for c in snap.containers if c.app == "app")
         assert app.status == STATUS_NOT_RUNNING
 
     def test_report_footnote_for_scaled_to_zero(self) -> None:
-        snap = StatusFixtures.snapshot(
-            StatusFixtures.container(
+        snap = status_fx.snapshot(
+            status_fx.container(
                 "app",
                 app="app",
                 status=STATUS_SCALED_TO_ZERO,

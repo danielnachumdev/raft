@@ -15,7 +15,7 @@ from tests.unit.domain_case import DomainTestCase
 
 class OrchestratorTestCase(DomainTestCase):
     @pytest.fixture(autouse=True)
-    def _orch_setup(self, _domain_setup) -> None:
+    def _orch_setup(self, _applied_stack) -> None:
         self.orch = self.orchestrator()
 
     def set_running(self, *services: str, orch=None) -> None:

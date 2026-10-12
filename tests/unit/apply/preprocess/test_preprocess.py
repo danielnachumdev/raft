@@ -6,7 +6,7 @@ import yaml
 from raft.errors.cta import OperatorError
 from raft.apply.preprocess import ManifestPreprocessor, ManifestYamlLoader
 
-from tests.unit.cta_asserts import assert_operator
+from tests.unit.cta_asserts import CtaAsserts
 
 ON = {"FLAG": "on", "MODE": "edge"}
 OFF = {"FLAG": "off", "MODE": "edge"}
@@ -158,7 +158,7 @@ class TestErrors:
     def test_unmatched_endif(self) -> None:
         with pytest.raises(OperatorError, match="endif") as caught:
             _resolve(ON, "${{ endif }}\n")
-        assert_operator(caught.value, contains=("Fix:", "if"))
+        CtaAsserts.operator(caught.value, contains=("Fix:", "if"))
 
     def test_unclosed_if(self) -> None:
         with pytest.raises(OperatorError, match="without matching"):

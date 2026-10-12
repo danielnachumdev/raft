@@ -6,7 +6,7 @@ import yaml
 from raft.errors.cta import OperatorError
 from raft.apply.env import ManifestTextExpander
 
-from tests.unit.cta_asserts import assert_operator
+from tests.unit.cta_asserts import CtaAsserts
 from .fixtures import (
     DEFAULT_PLACEHOLDER_CASES,
     EXPECTED_EXPANDED_SNIPPET,
@@ -29,7 +29,7 @@ class TestRequiredAndDefault:
     def test_undefined_required(self) -> None:
         with pytest.raises(OperatorError, match="undefined variable FOO") as caught:
             ManifestTextExpander({}).expand("x: ${FOO}")
-        assert_operator(caught.value, contains=("--env-file", "FOO"))
+        CtaAsserts.operator(caught.value, contains=("--env-file", "FOO"))
 
     def test_empty_env_value_treated_as_unset_for_required(self) -> None:
         with pytest.raises(OperatorError, match="undefined variable FOO"):
@@ -92,7 +92,7 @@ class TestInvalidPlaceholder:
         with pytest.raises(OperatorError, match=case.match) as caught:
             ManifestTextExpander(case.env).expand(case.text)
 
-        assert_operator(caught.value, contains=("Fix:",))
+        CtaAsserts.operator(caught.value, contains=("Fix:",))
 
 
 class TestMultiplePlaceholders:
