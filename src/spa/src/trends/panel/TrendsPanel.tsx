@@ -36,7 +36,7 @@ import {
   metricsCacheKey,
   toQuery,
   type TrendsRangeState,
-} from "../trendsRange";
+} from "../range/index.ts";
 import {
   groupOptions,
   resolveVisibleSeries,

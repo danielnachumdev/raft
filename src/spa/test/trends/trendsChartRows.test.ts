@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { MetricsSeries } from "../../src/shared/api.ts";
+import type { MetricsSeries } from "../../src/shared/api/index.ts";
 import { RUNTIME_METRICS } from "../../src/trends/runtimeMetrics.ts";
 import {
   aggregatePlots,
@@ -12,7 +12,7 @@ import {
   RIGHT_AXIS,
   toPlotSeries,
   typeIdsForMetrics,
-} from "../../src/trends/panel/trendsChartRows.ts";
+} from "../../src/trends/chart/trendsChartRows.ts";
 
 function series(
   id: string,

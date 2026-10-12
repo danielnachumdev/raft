@@ -15,7 +15,7 @@ import type { RuntimeMetricDef } from "../runtimeMetrics";
 import { timeScaleXAxis } from "../chart/TimeScaleXAxis";
 import { useChartHover } from "../chart/useChartHover";
 import type { ChartRow } from "./runtimeTrendsPoll";
-import "../panel/TrendsChart.css";
+import "../chart/TrendsChart.css";
 const SERIES_ID = "value";
 
 export function ServiceRuntimeChart(props: {

@@ -22,7 +22,7 @@ import {
   isRollingWindow,
   toQuery,
   type TrendsRangeState,
-} from "../trendsRange";
+} from "../range/index.ts";
 import { RuntimeTrendsBody } from "./RuntimeTrendsBody";
 import {
   buildRows,

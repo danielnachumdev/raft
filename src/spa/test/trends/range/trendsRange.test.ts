@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { MetricsBounds } from "../../src/shared/api.ts";
 import {
   applyCustomDuration,
   clampWindowSec,
@@ -11,15 +10,10 @@ import {
   metricsCacheKey,
   selectRangeKind,
   toQuery,
-} from "../../src/trends/trendsRange.ts";
+} from "../../../src/trends/range/index.ts";
+import { metricsBounds } from "../../fixtures.ts";
 
-const bounds: MetricsBounds = {
-  retention_max_age_days: 2,
-  retention_max_bytes: 100,
-  available_from: "2026-10-04T12:00:00.000Z",
-  earliest_ts: "2026-10-04T12:00:00.000Z",
-  max_window_seconds: 2 * 86400,
-};
+const bounds = metricsBounds();
 
 describe("customSeconds", () => {
   it("converts units to seconds", () => {

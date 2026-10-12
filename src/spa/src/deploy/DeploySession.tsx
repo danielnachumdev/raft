@@ -1,7 +1,7 @@
-import type { GithubOauthConfig, GithubSession } from "./githubApi";
-import { accountCount } from "./githubApi";
-import { GithubAccountSwitcher } from "./GithubAccountSwitcher";
-import { OauthSetupPanel } from "./OauthSetupPanel";
+import type { GithubOauthConfig, GithubSession } from "./github/index.ts";
+import { accountCount } from "./github/index.ts";
+import { GithubAccountSwitcher } from "./github/GithubAccountSwitcher";
+import { OauthSetupPanel } from "./oauth/OauthSetupPanel";
 
 export function DeploySession(props: {
   session: GithubSession | null;

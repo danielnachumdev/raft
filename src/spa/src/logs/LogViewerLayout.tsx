@@ -1,8 +1,8 @@
 import type { ReactNode, RefObject } from "react";
-import type { LogFilter } from "./logFilter";
+import type { LogFilter } from "./model/logFilter";
 import { LogFilterBar } from "./LogFilterBar";
 import { LogLines } from "./LogLines";
-import type { ParsedLogLine } from "./logParse";
+import type { ParsedLogLine } from "./model/logParse";
 
 const NEAR_BOTTOM_PX = 48;
 

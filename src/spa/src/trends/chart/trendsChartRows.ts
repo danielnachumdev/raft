@@ -1,9 +1,9 @@
-import type { MetricsSeries } from "../../shared/api.ts";
+import type { MetricsSeries } from "../../shared/api/index.ts";
 import {
   mergeTimedRows,
   toEpochMs,
   type TimedValue,
-} from "../chart/chartTimeScale.ts";
+} from "./chartTimeScale.ts";
 import {
   uniqueTypeIds,
   type MetricTypeId,

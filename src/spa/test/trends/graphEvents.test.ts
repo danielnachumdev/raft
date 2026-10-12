@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { GraphEvent, MetricsSeries } from "../../src/shared/api.ts";
+import type { GraphEvent, MetricsSeries } from "../../src/shared/api/index.ts";
 import { mergeTimedRows } from "../../src/trends/chart/chartTimeScale.ts";
 import {
   eventMarkerLabel,

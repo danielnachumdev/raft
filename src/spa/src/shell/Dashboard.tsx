@@ -2,16 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   documentTitleForHost,
-  STATUS_POLL_MS,
   type StatusPayload,
-  type StatusRow,
-} from "../shared/api";
+} from "../shared/api/index.ts";
 import { peekStatus, refreshStatus } from "../shared/dashboardCache";
-import { LiveIndicator } from "../chrome/LiveIndicator";
 import { ThemeToggle } from "../chrome/ThemeToggle";
-import { StatusTable } from "../status/StatusTable";
 import { TrendsPanel } from "../trends/panel/TrendsPanel";
+import { DashboardSection } from "./DashboardSection";
 import { PurgeButton } from "./PurgeButton";
+import { statusMetaLabel } from "./statusMeta";
+import { bindStatusPolling, tabIsVisible } from "./statusPolling";
 
 /** Main dashboard: cached paint, quiet poll while visible, then background refresh. */
 export function Dashboard() {
@@ -156,7 +155,7 @@ export function Dashboard() {
 
       {data ? (
         <>
-          <Section
+          <DashboardSection
             title="Control plane"
             rows={data.control_plane}
             empty="No control-plane services."
@@ -164,7 +163,7 @@ export function Dashboard() {
             isLive={statusLive}
             onActionDone={() => void load({ quiet: true })}
           />
-          <Section
+          <DashboardSection
             title="Apps"
             rows={data.apps}
             empty="No applied apps."
@@ -179,110 +178,4 @@ export function Dashboard() {
       <TrendsPanel />
     </div>
   );
-}
-
-function Section(props: {
-  title: string;
-  rows: StatusRow[];
-  empty: string;
-  storageKey: string;
-  isLive: boolean;
-  onActionDone: () => void;
-  addHref?: string;
-}) {
-  return (
-    <section className="panel">
-      <div className="panel-head">
-        <h2>{props.title}</h2>
-        <div className="panel-head-actions">
-          {props.addHref ? (
-            <Link
-              className="panel-add"
-              to={props.addHref}
-              aria-label="Add new service"
-              id="add-service"
-              title="Add new service"
-            >
-              +
-            </Link>
-          ) : null}
-          <LiveIndicator
-            isLive={props.isLive}
-            label={props.isLive ? undefined : "Paused · tab hidden"}
-          />
-        </div>
-      </div>
-      <StatusTable
-        rows={props.rows}
-        empty={props.empty}
-        storageKey={props.storageKey}
-        onActionDone={props.onActionDone}
-      />
-    </section>
-  );
-}
-
-/** Interval poll while visible; refetch once when the tab becomes visible again. */
-function bindStatusPolling(
-  onTick: () => void,
-  onLiveChange: (live: boolean) => void,
-): () => void {
-  let timer: number | undefined;
-
-  const clear = () => {
-    if (timer !== undefined) {
-      window.clearInterval(timer);
-      timer = undefined;
-    }
-  };
-
-  const arm = () => {
-    clear();
-    if (!tabIsVisible()) {
-      onLiveChange(false);
-      return;
-    }
-    timer = window.setInterval(onTick, STATUS_POLL_MS);
-    onLiveChange(true);
-  };
-
-  const onVisibility = () => {
-    if (tabIsVisible()) {
-      onTick();
-      arm();
-      return;
-    }
-    clear();
-    onLiveChange(false);
-  };
-
-  arm();
-  document.addEventListener("visibilitychange", onVisibility);
-  return () => {
-    clear();
-    document.removeEventListener("visibilitychange", onVisibility);
-  };
-}
-
-function tabIsVisible(): boolean {
-  return document.visibilityState === "visible";
-}
-
-function statusMetaLabel(opts: {
-  updating: boolean;
-  fetchedAt: number | null;
-  now: number;
-}): string | null {
-  if (opts.updating) return "Updating…";
-  if (opts.fetchedAt === null) return null;
-  return formatUpdatedAgo(opts.fetchedAt, opts.now);
-}
-
-function formatUpdatedAgo(fetchedAt: number, now: number): string {
-  const sec = Math.max(0, Math.floor((now - fetchedAt) / 1000));
-  if (sec < 5) return "Updated just now";
-  if (sec < 60) return `Updated ${sec}s ago`;
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `Updated ${min}m ago`;
-  return `Updated ${Math.floor(min / 60)}h ago`;
 }

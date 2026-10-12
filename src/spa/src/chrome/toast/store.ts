@@ -1,0 +1,98 @@
+import {
+  TOAST_DURATION_MS,
+  type ToastExtras,
+  type ToastRecord,
+  type ToastType,
+} from "./types.ts";
+
+const MAX_TOASTS = 5;
+const listeners = new Set<() => void>();
+const timers = new Map<string, ReturnType<typeof setTimeout>>();
+
+let toasts: ToastRecord[] = [];
+let nextSeq = 1;
+
+function emit(): void {
+  listeners.forEach((listener) => listener());
+}
+
+function clearTimer(id: string): void {
+  const timer = timers.get(id);
+  if (timer === undefined) return;
+  clearTimeout(timer);
+  timers.delete(id);
+}
+
+export function subscribeToasts(onStoreChange: () => void): () => void {
+  listeners.add(onStoreChange);
+  return () => {
+    listeners.delete(onStoreChange);
+  };
+}
+
+export function getToasts(): ToastRecord[] {
+  return toasts;
+}
+
+export function enqueue(
+  type: ToastType,
+  message: string,
+  extra?: ToastExtras,
+): string {
+  const id = `toast-${nextSeq}`;
+  nextSeq += 1;
+  const durationMs = extra?.durationMs ?? TOAST_DURATION_MS[type];
+  const record = buildRecord(id, type, message, durationMs, extra);
+  toasts = trimQueue([...toasts, record]);
+  emit();
+  scheduleDismiss(id, durationMs);
+  return id;
+}
+
+function buildRecord(
+  id: string,
+  type: ToastType,
+  message: string,
+  durationMs: number,
+  extra?: ToastExtras,
+): ToastRecord {
+  const record: ToastRecord = { id, type, message, durationMs };
+  if (extra?.href) record.href = extra.href;
+  if (extra?.linkLabel) record.linkLabel = extra.linkLabel;
+  if (extra?.actions && extra.actions.length > 0) record.actions = extra.actions;
+  return record;
+}
+
+function trimQueue(next: ToastRecord[]): ToastRecord[] {
+  if (next.length <= MAX_TOASTS) return next;
+  const dropped = next.slice(0, next.length - MAX_TOASTS);
+  dropped.forEach((item) => clearTimer(item.id));
+  return next.slice(-MAX_TOASTS);
+}
+
+function scheduleDismiss(id: string, durationMs: number): void {
+  if (durationMs <= 0) return;
+  timers.set(
+    id,
+    setTimeout(() => {
+      timers.delete(id);
+      dismiss(id);
+    }, durationMs),
+  );
+}
+
+export function dismiss(id: string): void {
+  clearTimer(id);
+  const next = toasts.filter((item) => item.id !== id);
+  if (next.length === toasts.length) return;
+  toasts = next;
+  emit();
+}
+
+export function clear(): void {
+  timers.forEach((timer) => clearTimeout(timer));
+  timers.clear();
+  if (toasts.length === 0) return;
+  toasts = [];
+  emit();
+}

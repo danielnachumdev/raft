@@ -4,7 +4,7 @@ import {
   logFilterOpLabel,
   type LogFilter,
   type LogFilterOp,
-} from "./logFilter";
+} from "./model/logFilter";
 import "./LogFilterBar.css";
 
 /** Operator selector + multi-value string boxes for client-side log filtering. */
