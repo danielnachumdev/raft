@@ -7,11 +7,11 @@ from typing import List
 
 import yaml
 
-from raft.adapters.docker import DockerStack
-from raft.adapters.shell import Shell
-from raft.config.settings.types import HealingConfig
-from raft.controller.jobs.heal import Healer
-from raft.models.stack import load_stack
+from raft.core.platform.adapters.docker import DockerStack
+from raft.core.platform.adapters.shell import Shell
+from raft.core.core.config.settings.types import HealingConfig
+from raft.services.controller.jobs.heal import Healer
+from raft.core.core.models.stack import load_stack
 from tests.e2e.shared.compose import apps_only_compose, new_project_name
 from tests.e2e.shared.runtime import ServiceRuntimeWait
 from tests.shared.raft_home import RaftHomeFixtures

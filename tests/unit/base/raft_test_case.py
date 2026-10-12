@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from raft.models.stack import Stack
+from raft.core.core.models.stack import Stack
 
 from .applied_inventory import AppliedInventory
 from .shell_mocks import ShellMocks

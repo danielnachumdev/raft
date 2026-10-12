@@ -1,6 +1,6 @@
 """Reset the ``raft`` logger between tests."""
 
-from raft.utils.logging.raft_logger import RaftLogger
+from raft.core.core.utils.logging.raft_logger import RaftLogger
 
 
 class LoggingReset:

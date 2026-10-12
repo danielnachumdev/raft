@@ -1,0 +1,28 @@
+"""AcmeEnsure notifies on lastError persistence."""
+
+from __future__ import annotations
+
+from unittest.mock import MagicMock
+
+from raft.core.core.config.settings.types import AcmeConfig
+from raft.core.core.models.stack import load_stack
+from raft.core.lifecycle.acme.ensure import AcmeEnsure
+from raft.core.observe.notify.control_events import KIND_ACME_ERROR
+
+from tests.unit.base import RaftTestCase, AppliedInventory
+
+
+class TestAcmeNotifyError(RaftTestCase):
+    def test_missing_email_notifies(self) -> None:
+        AppliedInventory.write_applied_app(
+            self.tmp_path, "demo-api", public_host="demo.example.invalid", tls="acme"
+        )
+        notifier = MagicMock()
+        AcmeEnsure(
+            load_stack(self.tmp_path),
+            config=AcmeConfig(email=None),
+            notifier=notifier,
+        ).run(["demo-api"])
+        event = notifier.notify.call_args[0][0]
+        assert event.kind == KIND_ACME_ERROR
+        assert event.context["app"] == "demo-api"

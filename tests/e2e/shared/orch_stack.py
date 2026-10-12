@@ -8,15 +8,15 @@ from typing import Callable, List, Optional
 
 import yaml
 
-from raft.adapters.docker import DockerStack
-from raft.adapters.shell import Shell
-from raft.config.settings.types import HealingConfig
-from raft.controller.jobs.heal import Healer
-from raft.controller.job import JobIds, JobRequest, JobSpec, QueuePolicy
-from raft.controller.jobs.metrics import MetricsRecorder
-from raft.controller.orchestrator import JobOrchestrator
-from raft.controller.schedule import IntervalSchedule
-from raft.models.stack import load_stack
+from raft.core.platform.adapters.docker import DockerStack
+from raft.core.platform.adapters.shell import Shell
+from raft.core.core.config.settings.types import HealingConfig
+from raft.services.controller.jobs.heal import Healer
+from raft.services.controller.job import JobIds, JobRequest, JobSpec, QueuePolicy
+from raft.services.controller.jobs.metrics import MetricsRecorder
+from raft.services.controller.orchestrator import JobOrchestrator
+from raft.services.controller.schedule import IntervalSchedule
+from raft.core.core.models.stack import load_stack
 from tests.e2e.shared.compose import apps_only_compose, new_project_name
 from tests.e2e.shared.runtime import ServiceRuntimeWait
 from tests.shared.raft_home import RaftHomeFixtures

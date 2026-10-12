@@ -3,9 +3,9 @@
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from raft.auth import GitAuthManager
-from raft.deploy.cutover import CutoverSession
-from raft.deploy.orchestrator import Orchestrator
+from raft.core.platform.auth import GitAuthManager
+from raft.core.lifecycle.deploy.cutover import CutoverSession
+from raft.core.lifecycle.deploy.orchestrator import Orchestrator
 
 from .base import AppliedInventory, AppliedStackCase, StackMakers
 

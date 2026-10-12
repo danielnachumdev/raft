@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from raft.models.app import App
+from raft.core.core.models.app import App
 
 
 class AppMakers:
