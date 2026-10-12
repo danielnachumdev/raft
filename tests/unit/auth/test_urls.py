@@ -4,7 +4,7 @@ import pytest
 
 from raft.auth.urls import SshGitUrls
 
-from tests.unit.services_case import ServicesTestCase
+from tests.unit.domain_case import DomainTestCase
 
 
 class TestParseSshGitUrl:
@@ -36,7 +36,7 @@ class TestHostAliasHelpers:
         assert self.urls.real_git_host("svc", "github.com") == "github.com"
 
 
-class TestDefaultSshDir(ServicesTestCase):
+class TestDefaultSshDir(DomainTestCase):
     def test_env_override(self, monkeypatch: pytest.MonkeyPatch) -> None:
         target = self.tmp_path / "custom-ssh"
         target.mkdir()

@@ -3,14 +3,17 @@
 from pathlib import Path
 from unittest.mock import patch
 
+from raft.adapters.nginx import NginxUpstreamText
+from raft.models.ports import PortSpec
 from raft.models.scaling_spec import ScalingSpec
+from raft.models.stack import load_stack
 
-from .test_scale import TestScaler
+from .base import ScalerTestCase
 
 
-class TestScalerWakeNginx(TestScaler):
+class TestScalerWakeNginx(ScalerTestCase):
     def test_wake_now_restarts_when_not_scaled_but_down(self, tmp_path: Path) -> None:
-        scaler, docker = self._scaler(tmp_path)
+        scaler, docker = self.scaler(tmp_path)
         docker.service_runtime.side_effect = [
             ("exited", "none"),
             ("exited", "none"),
@@ -24,7 +27,7 @@ class TestScalerWakeNginx(TestScaler):
         assert not scaler.store.is_scaled_to_zero(self.APP)
 
     def test_wait_wake_idle_times_out(self, tmp_path: Path) -> None:
-        scaler, _ = self._scaler(tmp_path)
+        scaler, _ = self.scaler(tmp_path)
         clock = {"t": 0.0}
         scaler._clock = lambda: clock["t"]
         scaler._sleep = lambda s: clock.__setitem__("t", clock["t"] + s)
@@ -36,18 +39,18 @@ class TestScalerWakeNginx(TestScaler):
             pass
 
     def test_chain_running_false_when_wake_chain_missing(self, tmp_path: Path) -> None:
-        scaler, _ = self._scaler(tmp_path)
+        scaler, _ = self.scaler(tmp_path)
         with patch.object(scaler._deps, "wake_chain", return_value=None):
             assert scaler._chain_running(self.APP) is False
 
     def test_chain_running_false_when_dep_compose_missing(self, tmp_path: Path) -> None:
-        scaler, _ = self._scaler(tmp_path)
+        scaler, _ = self.scaler(tmp_path)
         with patch.object(scaler._deps, "wake_chain", return_value=("api", self.APP)):
             with patch.object(scaler, "_compose_id", side_effect=[None]):
                 assert scaler._chain_running(self.APP) is False
 
     def test_wake_nginx_host_times_out(self, tmp_path: Path) -> None:
-        scaler, docker = self._scaler(tmp_path)
+        scaler, docker = self.scaler(tmp_path)
         clock = {"t": 100.0}
         scaler._clock = lambda: clock["t"]
         scaler._sleep = lambda s: clock.__setitem__("t", clock["t"] + s)
@@ -61,7 +64,7 @@ class TestScalerWakeNginx(TestScaler):
         assert scaler.store.is_scaled_to_zero(self.APP)
 
     def test_wake_reloads_until_nginx_host_ok(self, tmp_path: Path) -> None:
-        scaler, docker = self._scaler(tmp_path)
+        scaler, docker = self.scaler(tmp_path)
         docker.service_runtime.return_value = ("running", "none")
         docker.router_can_fetch.return_value = True
         docker.router_serves_host.side_effect = [False, True]
@@ -72,8 +75,6 @@ class TestScalerWakeNginx(TestScaler):
         assert not scaler.store.is_scaled_to_zero(self.APP)
 
     def test_idle_stop_parks_upstream_wake_restores(self, tmp_path: Path) -> None:
-        from raft.adapters.nginx import NginxUpstreamText
-
         scaler, docker, up = self._scaler_with_upstream(tmp_path)
         docker.service_runtime.return_value = ("running", "healthy")
         scaler.store.touch_activity(self.APP, now=0.0)
@@ -84,10 +85,7 @@ class TestScalerWakeNginx(TestScaler):
         assert f"server {self.APP}:80" in up.read_text(encoding="utf-8")
 
     def _scaler_with_upstream(self, tmp_path: Path):
-        from raft.models.ports import PortSpec
-        from raft.models.stack import load_stack
-
-        scaler, docker = self._scaler(tmp_path)
+        scaler, docker = self.scaler(tmp_path)
         stack = load_stack(scaler.home)
         port = PortSpec(name="http", container_port=80, expose="http")
         up = stack.upstream_file(stack.apps[0], port)
@@ -103,6 +101,6 @@ class TestScalerWakeNginx(TestScaler):
             assert scaler.wake_now(self.APP, ScalingSpec(10, 30, 5), now=1.0) is True
 
     def test_park_restore_skips_unknown_app_names(self, tmp_path: Path) -> None:
-        scaler, _docker = self._scaler(tmp_path)
+        scaler, _docker = self.scaler(tmp_path)
         scaler._deps._park_upstreams(("ghost",))
         scaler._deps._restore_upstreams(("ghost",))

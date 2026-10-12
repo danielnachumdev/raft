@@ -7,12 +7,12 @@ import pytest
 from raft.auth import GitAuthManager
 from raft.models.stack import Stack
 
-from tests.unit.services_case import ServicesTestCase
+from tests.unit.domain_case import DomainTestCase
 
 
-class TestGitAuthManager(ServicesTestCase):
+class TestGitAuthManager(DomainTestCase):
     @pytest.fixture(autouse=True)
-    def _auth_setup(self, _services_setup) -> None:
+    def _auth_setup(self, _domain_setup) -> None:
         self.mgr = self.auth_manager()
         self.shell.run.side_effect = self.fake_ssh_keygen()
 

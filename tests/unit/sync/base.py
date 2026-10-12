@@ -7,12 +7,12 @@ import pytest
 from raft.sync import SourceSync
 
 from tests.unit.base import make_git_app, make_stack
-from tests.unit.services_case import ServicesTestCase
+from tests.unit.domain_case import DomainTestCase
 
 
-class SyncTestCase(ServicesTestCase):
+class SyncTestCase(DomainTestCase):
     @pytest.fixture(autouse=True)
-    def _sync_setup(self, _services_setup) -> None:
+    def _sync_setup(self, _domain_setup) -> None:
         self.syncer = SourceSync(self.stack, self.shell)
 
     def git_syncer(self, **app_kwargs) -> SourceSync:

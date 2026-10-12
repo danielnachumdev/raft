@@ -11,10 +11,10 @@ import pytest
 from raft.adapters.docker.compose_status import ComposeStatusTable
 from raft.ops.doctor import CheckResult, Doctor
 
-from tests.unit.services_case import ServicesTestCase
+from tests.unit.domain_case import DomainTestCase
 
 
-class DoctorTestCase(ServicesTestCase):
+class DoctorTestCase(DomainTestCase):
     @pytest.fixture(autouse=True)
     def _public_host_ok(self):
         with patch(

@@ -11,7 +11,7 @@ from tests.shared.compose_ids import RunningServices
 from tests.shared.nginx import NginxEmerg
 
 from tests.unit.cta_asserts import assert_operator
-from tests.unit.services_case import ServicesTestCase
+from tests.unit.domain_case import DomainTestCase
 
 
 class TestWaitUntil:
@@ -74,9 +74,9 @@ class TestDeployCutover:
         ]
 
 
-class TestOrchestratorPolicy(ServicesTestCase):
+class TestOrchestratorPolicy(DomainTestCase):
     @pytest.fixture(autouse=True)
-    def _policy_setup(self, _services_setup) -> None:
+    def _policy_setup(self, _domain_setup) -> None:
         self.orch = self.orchestrator(mock_deps=False)
 
     def test_redeploy_refuses_gate(self) -> None:

@@ -9,12 +9,12 @@ import pytest
 from raft.deploy.cutover import CutoverSession
 
 from tests.unit.base import make_app, make_stack, write_applied_app
-from tests.unit.services_case import ServicesTestCase
+from tests.unit.domain_case import DomainTestCase
 
 
-class CutoverTestCase(ServicesTestCase):
+class CutoverTestCase(DomainTestCase):
     @pytest.fixture(autouse=True)
-    def _cutover_setup(self, _services_setup) -> None:
+    def _cutover_setup(self, _domain_setup) -> None:
         self.session = self.cutover_session()
 
     def docker_session(self, *, ref_text: str | None = None) -> CutoverSession:

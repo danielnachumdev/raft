@@ -11,7 +11,7 @@ from raft.apply import AppApply
 from raft.auth import GitAuthManager
 
 from tests.unit.base import write_applied_app
-from tests.unit.services_case import ServicesTestCase
+from tests.unit.domain_case import DomainTestCase
 from .base import ApplyTestCase
 
 
@@ -137,7 +137,7 @@ class TestApplyGit(ApplyTestCase):
         mgr.ssh_dir = auth_dir
         mgr.keys_dir = auth_dir / "raft"
         mgr.config_path = auth_dir / "config"
-        ServicesTestCase.write_keypair(mgr, "site")
+        DomainTestCase.write_keypair(mgr, "site")
         return shell, mgr, []
 
     def _alias_clone(self, calls: list):

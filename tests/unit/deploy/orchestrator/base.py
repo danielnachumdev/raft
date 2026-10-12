@@ -10,12 +10,12 @@ import pytest
 
 from tests.shared.compose_ids import RunningServices
 
-from tests.unit.services_case import ServicesTestCase
+from tests.unit.domain_case import DomainTestCase
 
 
-class OrchestratorTestCase(ServicesTestCase):
+class OrchestratorTestCase(DomainTestCase):
     @pytest.fixture(autouse=True)
-    def _orch_setup(self, _services_setup) -> None:
+    def _orch_setup(self, _domain_setup) -> None:
         self.orch = self.orchestrator()
 
     def set_running(self, *services: str, orch=None) -> None:

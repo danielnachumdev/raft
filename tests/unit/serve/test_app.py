@@ -1,110 +1,19 @@
-"""App factory + route smoke tests for ``raft serve``."""
+"""App factory + status/SPA route smoke tests for ``raft serve``."""
 
-from __future__ import annotations
-
-import json
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
-from fastapi.testclient import TestClient
-
-from raft.controller.jobs.metrics import METRICS_DIR, METRICS_FILENAME
-from raft.models.app import EDGE_GROUP
-from raft.models.stack import Stack
-from raft.ops.logs import Logs
-from raft.ops.status import Status
-from raft.ops.status.models import StatusSnapshot
-from raft.serve.actions import ServeActions
 from raft.serve.app import ServeAppFactory
-from raft.serve.service import DEFAULT_SERVE_PORT, Serve
 
-from tests.unit.base import RaftTestCase, make_app, make_stack, write_applied_app
+from tests.unit.base import RaftTestCase, make_stack
 from tests.unit.ops.status.fixtures import StatusFixtures
+from tests.unit.serve.fixtures import ServeFixtures
 
-
-class _ServeFixtures:
-    @staticmethod
-    def full_snapshot() -> StatusSnapshot:
-        fx = StatusFixtures
-        return StatusSnapshot(
-            host=fx.empty_host_status(),
-            containers=(
-                fx.container("raft-gate", role="gate", group=EDGE_GROUP),
-                fx.container("raft-router", role="router", group=EDGE_GROUP),
-                fx.container("raft-controller", role="controller", group=EDGE_GROUP),
-                fx.container("site", role="app", app="site", status="not running", uptime=None),
-            ),
-        )
-
-    @staticmethod
-    def empty_snapshot() -> StatusSnapshot:
-        return StatusSnapshot(host=StatusFixtures.empty_host_status(), containers=())
-
-    @staticmethod
-    def client_and_status(stack, snapshot: StatusSnapshot):
-        status = MagicMock()
-        status.collect.return_value = snapshot
-        return TestClient(ServeAppFactory(stack, status=status).create()), status
-
-    @staticmethod
-    def client_with_actions(stack, actions):
-        status = MagicMock()
-        status.collect.return_value = _ServeFixtures.empty_snapshot()
-        return TestClient(
-            ServeAppFactory(stack, status=status, actions=actions).create()
-        )
-
-    @staticmethod
-    def write_metrics_sample(stack, *, ts: str) -> None:
-        path = stack.root / METRICS_DIR / METRICS_FILENAME
-        path.parent.mkdir(parents=True, exist_ok=True)
-        row = {
-            "ts": ts,
-            "host": {"cpus": 2, "loadavg": [1.0], "memory": {"used_percent": 10}},
-            "containers": [
-                {
-                    "service": "raft-gate",
-                    "role": "gate",
-                    "group": "raft",
-                    "cpu_percent": 4.0,
-                    "memory": {"used_percent": 20},
-                }
-            ],
-        }
-        path.write_text(json.dumps(row) + "\n", encoding="utf-8")
-
-    @staticmethod
-    def live_registry_client(root):
-        write_applied_app(root, "site")
-        stack = Stack.load_apps(root)
-        status = Status(stack)
-        StatusFixtures.mock_docker_idle(status)
-        actions = ServeActions(stack)
-        logs = Logs(stack)
-        client = TestClient(
-            ServeAppFactory(
-                stack, status=status, actions=actions, logs=logs
-            ).create()
-        )
-        return client, actions, logs
-
-    @staticmethod
-    def write_out_of_band_apps(root) -> None:
-        write_applied_app(root, "demo-api")
-        write_applied_app(
-            root,
-            "demo-worker",
-            source="docker",
-            image="ghcr.io/example/worker",
-            public_host="",
-            build_context=None,
-            extra={"ports": [], "readiness": {"type": "none"}},
-        )
 
 class TestServeAppFactory(RaftTestCase):
     def test_index_serves_spa_shell_without_collect(self) -> None:
-        client, status = _ServeFixtures.client_and_status(
-            make_stack(self.tmp_path), _ServeFixtures.full_snapshot()
+        client, status = ServeFixtures.client_and_status(
+            make_stack(self.tmp_path), ServeFixtures.full_snapshot()
         )
         response = client.get("/")
         body = response.text
@@ -115,8 +24,8 @@ class TestServeAppFactory(RaftTestCase):
         assert "raft serve" in body
 
     def test_api_status_returns_json_from_collect(self) -> None:
-        client, status = _ServeFixtures.client_and_status(
-            make_stack(self.tmp_path), _ServeFixtures.full_snapshot()
+        client, status = ServeFixtures.client_and_status(
+            make_stack(self.tmp_path), ServeFixtures.full_snapshot()
         )
         response = client.get("/api/status")
         assert response.status_code == 200
@@ -130,8 +39,8 @@ class TestServeAppFactory(RaftTestCase):
         assert data["apps"][0]["service"] == "site"
 
     def test_api_service_returns_detail(self) -> None:
-        client, status = _ServeFixtures.client_and_status(
-            make_stack(self.tmp_path), _ServeFixtures.full_snapshot()
+        client, status = ServeFixtures.client_and_status(
+            make_stack(self.tmp_path), ServeFixtures.full_snapshot()
         )
         response = client.get("/api/service/raft-gate")
         assert response.status_code == 200
@@ -142,72 +51,15 @@ class TestServeAppFactory(RaftTestCase):
         assert data["presentation"]["role"] == "gate"
 
     def test_api_service_unknown_is_404(self) -> None:
-        client, _ = _ServeFixtures.client_and_status(
-            make_stack(self.tmp_path), _ServeFixtures.full_snapshot()
+        client, _ = ServeFixtures.client_and_status(
+            make_stack(self.tmp_path), ServeFixtures.full_snapshot()
         )
         response = client.get("/api/service/missing")
         assert response.status_code == 404
 
-    def test_api_service_start_ok(self) -> None:
-        stack = make_stack(self.tmp_path, (make_app("site"),))
-        actions = MagicMock()
-        actions.start.return_value = {"ok": True, "action": "start", "service": "site"}
-        client = _ServeFixtures.client_with_actions(stack, actions)
-        response = client.post("/api/service/site/start")
-        assert response.status_code == 200
-        assert response.json()["action"] == "start"
-        actions.start.assert_called_once_with("site")
-
-    def test_api_service_stop_ok(self) -> None:
-        stack = make_stack(self.tmp_path, (make_app("site"),))
-        actions = MagicMock()
-        actions.stop.return_value = {"ok": True, "action": "stop", "service": "site"}
-        client = _ServeFixtures.client_with_actions(stack, actions)
-        response = client.post("/api/service/site/stop")
-        assert response.status_code == 200
-        actions.stop.assert_called_once_with("site")
-
-    def test_api_service_redeploy_ok(self) -> None:
-        stack = make_stack(self.tmp_path, (make_app("site"),))
-        actions = MagicMock()
-        actions.redeploy.return_value = {
-            "ok": True,
-            "action": "redeploy",
-            "service": "site",
-        }
-        client = _ServeFixtures.client_with_actions(stack, actions)
-        response = client.post("/api/service/site/redeploy")
-        assert response.status_code == 200
-        actions.redeploy.assert_called_once_with("site")
-
-    def test_api_service_action_operator_error_is_400(self) -> None:
-        from raft.errors.cta import OperatorError
-
-        stack = make_stack(self.tmp_path, (make_app("site"),))
-        actions = MagicMock()
-        actions.redeploy.side_effect = OperatorError(
-            "refusing to redeploy `gate`", has_fix=False
-        )
-        client = _ServeFixtures.client_with_actions(stack, actions)
-        response = client.post("/api/service/raft-gate/redeploy")
-        assert response.status_code == 400
-        assert "gate" in response.json()["detail"]
-
-    def test_api_service_action_unknown_is_404(self) -> None:
-        from raft.errors.cta import OperatorError
-
-        stack = make_stack(self.tmp_path)
-        actions = MagicMock()
-        actions.start.side_effect = OperatorError(
-            "unknown logs target 'missing' (known: gate)",
-        )
-        client = _ServeFixtures.client_with_actions(stack, actions)
-        response = client.post("/api/service/missing/start")
-        assert response.status_code == 404
-
     def test_spa_deep_link_serves_index(self) -> None:
-        client, status = _ServeFixtures.client_and_status(
-            make_stack(self.tmp_path), _ServeFixtures.empty_snapshot()
+        client, status = ServeFixtures.client_and_status(
+            make_stack(self.tmp_path), ServeFixtures.empty_snapshot()
         )
         response = client.get("/service/raft-gate")
         assert response.status_code == 200
@@ -215,23 +67,23 @@ class TestServeAppFactory(RaftTestCase):
         assert 'id="root"' in response.text
 
     def test_unknown_api_path_is_not_spa(self) -> None:
-        client, _ = _ServeFixtures.client_and_status(
-            make_stack(self.tmp_path), _ServeFixtures.empty_snapshot()
+        client, _ = ServeFixtures.client_and_status(
+            make_stack(self.tmp_path), ServeFixtures.empty_snapshot()
         )
         response = client.get("/api/nope")
         assert response.status_code == 404
         assert "text/html" not in response.headers.get("content-type", "")
 
     def test_api_status_empty_snapshot(self) -> None:
-        client, _ = _ServeFixtures.client_and_status(
-            make_stack(self.tmp_path), _ServeFixtures.empty_snapshot()
+        client, _ = ServeFixtures.client_and_status(
+            make_stack(self.tmp_path), ServeFixtures.empty_snapshot()
         )
         data = client.get("/api/status").json()
         assert data["control_plane"] == [] and data["apps"] == []
 
     def test_api_status_reloads_registry_including_worker(self) -> None:
-        client, actions, logs = _ServeFixtures.live_registry_client(self.tmp_path)
-        _ServeFixtures.write_out_of_band_apps(self.tmp_path)
+        client, actions, logs = ServeFixtures.live_registry_client(self.tmp_path)
+        ServeFixtures.write_out_of_band_apps(self.tmp_path)
         with patch(
             "raft.ops.status.service.HostGateway.resources",
             return_value=StatusFixtures.host(),
@@ -245,8 +97,10 @@ class TestServeAppFactory(RaftTestCase):
     def test_api_metrics_reads_jsonl(self) -> None:
         stack = make_stack(self.tmp_path)
         ts = datetime.now(timezone.utc).isoformat()
-        _ServeFixtures.write_metrics_sample(stack, ts=ts)
-        client, _ = _ServeFixtures.client_and_status(stack, _ServeFixtures.empty_snapshot())
+        ServeFixtures.write_metrics_sample(stack, ts=ts)
+        client, _ = ServeFixtures.client_and_status(
+            stack, ServeFixtures.empty_snapshot()
+        )
         data = client.get("/api/metrics", params={"window": 3600}).json()
         assert data["cursor"] == ts
         assert {s["id"] for s in data["series"]} == {"host", "raft-gate"}
@@ -254,24 +108,22 @@ class TestServeAppFactory(RaftTestCase):
         assert data["clamped"] is False
 
     def test_api_metrics_rejects_bad_start(self) -> None:
-        client, _ = _ServeFixtures.client_and_status(
-            make_stack(self.tmp_path), _ServeFixtures.empty_snapshot()
+        client, _ = ServeFixtures.client_and_status(
+            make_stack(self.tmp_path), ServeFixtures.empty_snapshot()
         )
         res = client.get("/api/metrics", params={"start": "not-a-time"})
         assert res.status_code == 400
 
     def test_spa_assets_are_served(self) -> None:
-        client, _ = _ServeFixtures.client_and_status(
-            make_stack(self.tmp_path), _ServeFixtures.empty_snapshot()
+        client, _ = ServeFixtures.client_and_status(
+            make_stack(self.tmp_path), ServeFixtures.empty_snapshot()
         )
         index = client.get("/").text
-        # Hashed asset path from Vite build, e.g. /assets/index-xxxxx.js
         marker = 'src="/assets/'
         assert marker in index
         start = index.index(marker) + len('src="')
         end = index.index('"', start)
-        asset_path = index[start:end]
-        asset = client.get(asset_path)
+        asset = client.get(index[start:end])
         assert asset.status_code == 200
         assert len(asset.content) > 0
 
@@ -281,16 +133,3 @@ class TestServeAppFactory(RaftTestCase):
             status_cls.return_value = MagicMock()
             ServeAppFactory(stack).create()
         status_cls.assert_called_once_with(stack)
-
-
-class TestServeRun(RaftTestCase):
-    def test_run_prints_instructions_and_starts_uvicorn(self, capsys) -> None:
-        with patch("raft.serve.service.uvicorn.run") as run:
-            Serve(make_stack(self.tmp_path)).run(port=DEFAULT_SERVE_PORT)
-        out = capsys.readouterr().out
-        assert "http://127.0.0.1:8787/" in out
-        assert "ssh -L 8787:127.0.0.1:8787" in out
-        run.assert_called_once()
-        args, kwargs = run.call_args
-        assert kwargs["host"] == "127.0.0.1" and kwargs["port"] == 8787
-        assert args[0] is not None

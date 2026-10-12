@@ -1,7 +1,5 @@
 """Unit tests for fail-fast Fire unused-arg rejection."""
 
-from __future__ import annotations
-
 import fire
 from fire import core as fire_core
 
@@ -16,58 +14,48 @@ class _Leaf:
         return "called"
 
 
-def _stock_call():
-    return fire_core._CallAndUpdateTrace
+class TestFireRunner:
+    def test_rejects_unknown_flag_before_routine(self) -> None:
+        calls: list[str] = []
+        before = fire_core._CallAndUpdateTrace
 
+        class CLI:
+            def status(self, live: bool = False) -> None:
+                calls.append("status")
 
-def test_run_fire_rejects_unknown_flag_before_routine() -> None:
-    calls: list[str] = []
-    before = _stock_call()
+        self._assert_exits_two(CLI, ["status", "--leiv"])
+        assert calls == []
+        assert fire_core._CallAndUpdateTrace is before
 
-    class CLI:
-        def status(self, live: bool = False) -> None:
-            calls.append("status")
+    def test_allows_valid_flags(self) -> None:
+        calls: list[bool] = []
 
-    try:
-        FireRunner().run(CLI, command=["status", "--leiv"], name="raft")
-    except SystemExit as exc:
-        assert exc.code == 2
-    else:
-        raise AssertionError("expected SystemExit")
+        class CLI:
+            def status(self, live: bool = False) -> None:
+                calls.append(live)
 
-    assert calls == []
-    assert fire_core._CallAndUpdateTrace is before
+        assert FireRunner().run(CLI, command=["status", "--live"], name="raft") is None
+        assert calls == [True]
 
+    def test_rejects_unused_on_callable_object(self) -> None:
+        """Callable treatment path (not used by RaftCLI, but covered for fail-fast)."""
+        self._assert_exits_two({"go": _Leaf()}, ["go", "--leiv"])
 
-def test_run_fire_allows_valid_flags() -> None:
-    calls: list[bool] = []
+    def test_restores_hook_after_success(self) -> None:
+        before = fire_core._CallAndUpdateTrace
+        FireRunner().run(_Leaf, command=["status"], name="raft")
+        assert fire_core._CallAndUpdateTrace is before
+        try:
+            fire.Fire(_Leaf, command=["status", "--leiv"], name="raft")
+        except SystemExit:
+            pass
+        assert fire_core._CallAndUpdateTrace is before
 
-    class CLI:
-        def status(self, live: bool = False) -> None:
-            calls.append(live)
-
-    assert FireRunner().run(CLI, command=["status", "--live"], name="raft") is None
-    assert calls == [True]
-
-
-def test_run_fire_rejects_unused_on_callable_object() -> None:
-    """Callable treatment path (not used by RaftCLI, but covered for fail-fast)."""
-    leaf = _Leaf()
-    try:
-        FireRunner().run({"go": leaf}, command=["go", "--leiv"], name="raft")
-    except SystemExit as exc:
-        assert exc.code == 2
-    else:
-        raise AssertionError("expected SystemExit")
-
-
-def test_run_fire_restores_hook_after_success() -> None:
-    before = _stock_call()
-    FireRunner().run(_Leaf, command=["status"], name="raft")
-    assert fire_core._CallAndUpdateTrace is before
-    # Stock Fire still runs-then-rejects without our hook.
-    try:
-        fire.Fire(_Leaf, command=["status", "--leiv"], name="raft")
-    except SystemExit:
-        pass
-    assert fire_core._CallAndUpdateTrace is before
+    @staticmethod
+    def _assert_exits_two(component, command: list) -> None:
+        try:
+            FireRunner().run(component, command=command, name="raft")
+        except SystemExit as exc:
+            assert exc.code == 2
+        else:
+            raise AssertionError("expected SystemExit")

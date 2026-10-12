@@ -8,10 +8,10 @@ import yaml
 
 from raft.apply import AppApply
 
-from tests.unit.services_case import ServicesTestCase
+from tests.unit.domain_case import DomainTestCase
 
 
-class ApplyTestCase(ServicesTestCase):
+class ApplyTestCase(DomainTestCase):
     def applier(self, stack=None, shell=None) -> AppApply:
         applier = AppApply(stack or self.stack)
         applier.sh = shell if shell is not None else self.shell
