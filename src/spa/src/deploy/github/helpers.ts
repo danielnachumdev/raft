@@ -17,6 +17,32 @@ export function accountCount(session: GithubSession | null): number {
   return session?.accounts?.length ?? 0;
 }
 
+/** OAuth entry URL; ``add`` forces the account-picker / append path. */
+export function githubLoginHref(options?: { add?: boolean }): string {
+  return options?.add ? "/api/github/login?add=1" : "/api/github/login";
+}
+
+/** Zero-account auto-redirect; never after explicit logout or when rows exist. */
+export function shouldAutoLoginGithub(input: {
+  session: GithubSession | null;
+  oauthError: string | null;
+  needsSetup: boolean;
+  suppressAfterLogout: boolean;
+  redirecting: boolean;
+}): boolean {
+  if (
+    input.oauthError ||
+    input.needsSetup ||
+    !input.session ||
+    input.suppressAfterLogout ||
+    input.redirecting ||
+    accountCount(input.session) > 0
+  ) {
+    return false;
+  }
+  return true;
+}
+
 /** Non-expired connected accounts available for repo browse / deploy. */
 export function usableAccounts(
   session: GithubSession | null,

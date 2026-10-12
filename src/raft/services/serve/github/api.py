@@ -87,10 +87,13 @@ class ServeGithubApi:
         out["reloaded"] = True
         return out
 
-    def api_login(self, request: Request) -> RedirectResponse:
+    def api_login(
+        self, request: Request, add: Optional[str] = None
+    ) -> RedirectResponse:
         port = self._request_port(request)
+        select = self._wants_account_picker(add)
         try:
-            url = self._oauth.login_url(port=port)
+            url = self._oauth.login_url(port=port, select_account=select)
         except OperatorError as exc:
             return self._oauth_error_redirect(str(exc))
         return RedirectResponse(url, status_code=302)
@@ -101,6 +104,7 @@ class ServeGithubApi:
         code: Optional[str] = None,
         state: Optional[str] = None,
         mock: Optional[str] = None,
+        add: Optional[str] = None,
         error: Optional[str] = None,
         error_description: Optional[str] = None,
     ) -> RedirectResponse:
@@ -109,7 +113,7 @@ class ServeGithubApi:
             msg = error_description or error
             return self._oauth_error_redirect(f"GitHub authorization failed: {msg}")
         try:
-            self._complete_callback(code=code, state=state, mock=mock)
+            self._complete_callback(code=code, state=state, mock=mock, add=add)
         except OperatorError as exc:
             return self._oauth_error_redirect(str(exc))
         return RedirectResponse("/deploy", status_code=302)
@@ -120,9 +124,10 @@ class ServeGithubApi:
         code: Optional[str],
         state: Optional[str],
         mock: Optional[str],
+        add: Optional[str],
     ) -> None:
         if mock == "1" or (self._cfg.mock and not code):
-            self._oauth.complete_mock()
+            self._oauth.complete_mock(add=self._truthy(add))
             return
         if not code or not state:
             raise OperatorError(
@@ -130,6 +135,15 @@ class ServeGithubApi:
                 has_fix=False,
             )
         self._oauth.complete_oauth(code=code, state=state)
+
+    def _wants_account_picker(self, add: Optional[str]) -> bool:
+        if self._truthy(add):
+            return True
+        return bool(self._accounts.public_snapshot().get("accounts"))
+
+    @staticmethod
+    def _truthy(value: Optional[str]) -> bool:
+        return str(value or "").strip().lower() in {"1", "true", "yes"}
 
     def api_logout(self) -> Dict[str, Any]:
         self._accounts.logout_active()

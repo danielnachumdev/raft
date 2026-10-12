@@ -86,6 +86,15 @@ class GithubAccountStore:
         self._write_ledger(ledger)
         return account
 
+    def append_account(self, account: GithubAccount) -> GithubAccount:
+        """Force-add an identity (add-account flow); never merge into peers."""
+        ledger = self._load_ledger()
+        ledger["accounts"].append(account)
+        ledger["active_account_id"] = account.id
+        ledger["pending"] = None
+        self._write_ledger(ledger)
+        return account
+
     def select(self, account_id: str) -> GithubAccount:
         ledger = self._load_ledger()
         account = self._by_id(ledger["accounts"], account_id)
