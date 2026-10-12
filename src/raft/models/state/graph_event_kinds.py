@@ -1,9 +1,7 @@
 """Kind / action constants for GraphEvent JSONL records."""
 
-from __future__ import annotations
-
 from ..app import CONTROLLER_COMPOSE_ID, GATE_COMPOSE_ID, ROUTER_COMPOSE_ID
-from ..graph_event import GraphEvent
+from .graph_event import GraphEvent
 
 KIND_DEPLOYMENT = "deployment"
 KIND_STOP = "stop"
@@ -23,10 +21,14 @@ RAFT_LEVEL_KINDS = frozenset(
 )
 
 
-def is_raft_level(event: GraphEvent) -> bool:
-    """Stack-wide / edge events — always relevant on Trends (and Runtime)."""
-    if event.service is None:
-        return True
-    if event.kind in RAFT_LEVEL_KINDS:
-        return True
-    return event.service in RAFT_LEVEL_SERVICES
+class RaftLevelEvent:
+    """Classify stack-wide / edge graph events for Trends filters."""
+
+    @staticmethod
+    def matches(event: GraphEvent) -> bool:
+        """Stack-wide / edge events — always relevant on Trends (and Runtime)."""
+        if event.service is None:
+            return True
+        if event.kind in RAFT_LEVEL_KINDS:
+            return True
+        return event.service in RAFT_LEVEL_SERVICES

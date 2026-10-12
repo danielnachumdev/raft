@@ -5,9 +5,9 @@ from unittest.mock import patch
 import pytest
 
 from raft.models.ports import PortSpec
-from raft.services.ops.certs import MissingOriginCerts
+from raft.ops.certs import MissingOriginCerts
 
-from ...base import make_app
+from ...base import AppMakers
 from .base import DockerTestCase
 
 

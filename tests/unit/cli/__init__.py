@@ -1,1 +1,1 @@
-"""CLI unit tests split by concern."""
+"""CLI unit tests mirroring ``src/raft/cli/``."""

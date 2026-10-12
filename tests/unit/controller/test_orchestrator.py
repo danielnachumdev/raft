@@ -1,7 +1,5 @@
 """JobOrchestrator: schedules, soft timeout, skip-if-running, side_ticks."""
 
-from __future__ import annotations
-
 import threading
 import time
 from datetime import datetime, timedelta

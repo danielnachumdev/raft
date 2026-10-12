@@ -1,12 +1,10 @@
 """Compose up / down / pull / build for the raft stack."""
 
-from __future__ import annotations
-
 import logging
 from typing import Optional, Sequence
 
-from raft.errors.checked import run_compose_checked
-from raft.errors.cta import OperatorError
+from ...errors.checked import CheckedCommands
+from ...errors.cta import OperatorError
 
 from ...models.app import COMPOSE_PROJECT
 from ...models.stack import Stack
@@ -30,7 +28,7 @@ class DockerComposeLifecycle:
         args = self._start_stack_args(services)
         logger.info("compose %s", " ".join(args))
         try:
-            run_compose_checked(
+            CheckedCommands.run_compose(
                 self.sh,
                 args,
                 action="bring the stack up",
@@ -41,7 +39,7 @@ class DockerComposeLifecycle:
 
     def stop_stack(self) -> None:
         logger.info("compose down --remove-orphans")
-        run_compose_checked(
+        CheckedCommands.run_compose(
             self.sh,
             ("down", "--remove-orphans"),
             action="bring the stack down",
@@ -69,7 +67,7 @@ class DockerComposeLifecycle:
             return
         logger.info("compose pull %s", " ".join(services))
         try:
-            run_compose_checked(
+            CheckedCommands.run_compose(
                 self.sh,
                 ("pull", "--ignore-buildable", *services),
                 action="pull service images",
@@ -83,7 +81,7 @@ class DockerComposeLifecycle:
             return
         logger.info("compose build %s", " ".join(services))
         try:
-            run_compose_checked(
+            CheckedCommands.run_compose(
                 self.sh,
                 ("build", *services),
                 action="build service images",

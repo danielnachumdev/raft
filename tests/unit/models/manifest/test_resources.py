@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from raft.models.app_document import AppDocument
-from raft.models.app_spec_fields import AppSpecFields
+from raft.models.app_spec_fields import AppResourceFields
 from raft.models.stack import load_stack
 
 from ...base import RaftTestCase
@@ -88,9 +88,9 @@ class TestManifestResourceCoverage(RaftTestCase):
         assert stack.registry_issues
 
     def test_parse_memory_gi_and_cpu_millis(self) -> None:
-        assert AppSpecFields._parse_memory("2Gi", default="1M") == "2G"
-        assert AppSpecFields._parse_memory(None, default="1M") == "1M"
-        assert AppSpecFields._parse_memory("  ", default="1M") == "1M"
-        assert AppSpecFields._parse_cpu(None, default="0.1") == "0.1"
-        assert AppSpecFields._parse_cpu("  ", default="0.1") == "0.1"
-        assert AppSpecFields._parse_cpu("500m", default="0.1") == "0.5"
+        assert AppResourceFields._parse_memory("2Gi", default="1M") == "2G"
+        assert AppResourceFields._parse_memory(None, default="1M") == "1M"
+        assert AppResourceFields._parse_memory("  ", default="1M") == "1M"
+        assert AppResourceFields._parse_cpu(None, default="0.1") == "0.1"
+        assert AppResourceFields._parse_cpu("  ", default="0.1") == "0.1"
+        assert AppResourceFields._parse_cpu("500m", default="0.1") == "0.5"

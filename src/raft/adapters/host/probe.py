@@ -1,7 +1,5 @@
 """Host resource probes (Linux ``/proc`` + ``shutil``; no extra deps)."""
 
-from __future__ import annotations
-
 import os
 import shutil
 from pathlib import Path

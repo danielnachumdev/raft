@@ -1,34 +1,20 @@
 """Nginx reload and router reachability helpers for the Compose stack."""
 
-from __future__ import annotations
-
 import logging
 
-from raft.errors.certs_msgs import (
-    format_missing_acme_certs,
-    format_missing_origin_certs,
-    looks_like_missing_acme_cert,
-    looks_like_missing_origin_cert,
-    missing_acme_certs_fallback,
-    missing_origin_certs_fallback,
-)
-from raft.errors.cta import OperatorError
-from raft.errors.docker_msgs import (
-    nginx_rejected,
-    nginx_reload_failed,
-)
-
+from ...errors.certs_msgs import CertMessages
+from ...errors.cta import OperatorError
+from ...errors.docker_msgs import DockerMessages
 from ...models.app import App
 from ...models.ports import PortSpec
 from ...models.stack import Stack
-from ...services.ops.certs import missing_acme_certs, missing_origin_certs
 from ..shell import Shell
 
 logger = logging.getLogger(__name__)
 
 
 class DockerEdge:
-    """Mixin: router/gate nginx reload and upstream/fetch probes."""
+    """Router/gate nginx reload and upstream/fetch probes."""
 
     stack: Stack
     sh: Shell
@@ -75,7 +61,7 @@ class DockerEdge:
         )
         if result.returncode != 0:
             detail = (result.stderr or result.stdout or "").strip()
-            raise nginx_rejected("router", detail)
+            raise DockerMessages.nginx_rejected("router", detail)
         reload = self.sh.compose(
             "exec",
             "-T",
@@ -88,7 +74,7 @@ class DockerEdge:
         )
         if reload.returncode != 0:
             detail = (reload.stderr or reload.stdout or "").strip()
-            raise nginx_reload_failed("router", detail)
+            raise DockerMessages.nginx_reload_failed("router", detail)
 
     def nginx_test_and_reload(self) -> None:
         """Reload router nginx (alias kept for call sites / tests)."""
@@ -113,26 +99,18 @@ class DockerEdge:
         )
         if reload.returncode != 0:
             detail = (reload.stderr or reload.stdout or "").strip()
-            raise nginx_reload_failed("gate", detail)
+            raise DockerMessages.nginx_reload_failed("gate", detail)
 
     def _raise_gate_nginx_test_failure(self, detail: str) -> None:
+        """Classify cert vs generic nginx -t failures without importing ops."""
         detail = detail.strip()
         blob = f"nginx -t\n{detail}"
-        if looks_like_missing_acme_cert(blob):
-            missing = missing_acme_certs(self.stack)
-            if missing:
-                raise OperatorError(
-                    format_missing_acme_certs(missing, include_doctor_footer=False)
-                )
-            raise OperatorError(missing_acme_certs_fallback(detail=detail))
-        if looks_like_missing_origin_cert(blob):
-            missing = missing_origin_certs(self.stack)
-            if missing:
-                raise OperatorError(
-                    format_missing_origin_certs(missing, include_doctor_footer=False)
-                )
-            raise OperatorError(missing_origin_certs_fallback(detail=detail))
-        raise nginx_rejected("gate", detail)
+        if CertMessages.looks_like_missing_acme_cert(blob):
+            raise OperatorError(CertMessages.missing_acme_certs_fallback(detail=detail))
+        if CertMessages.looks_like_missing_origin_cert(blob):
+            raise OperatorError(CertMessages.missing_origin_certs_fallback(detail=detail))
+        raise DockerMessages.nginx_rejected("gate", detail)
+
     def router_sees_upstream_target(
         self,
         app: App,

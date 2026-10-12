@@ -1,38 +1,18 @@
 """On-disk applied App registry under ``~/.raft/state/apps/``."""
 
-from __future__ import annotations
-
 import logging
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
 import yaml
 
-from raft.errors.cta import OperatorError
-
+from ..errors.cta import OperatorError
 from .app import App
 from .app_document import AppDocument
 from .manifest import REGISTRY_DIR
+from .registry_issue import RegistryIssue, RegistryLoadResult
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class RegistryIssue:
-    """One applied manifest that failed to load (others still load)."""
-
-    file: str
-    error: str
-
-    def to_dict(self) -> dict[str, str]:
-        return {"file": self.file, "error": self.error}
-
-
-@dataclass(frozen=True)
-class RegistryLoadResult:
-    apps: tuple[App, ...]
-    issues: tuple[RegistryIssue, ...]
 
 
 class AppRegistry:
@@ -108,7 +88,8 @@ class AppRegistry:
         app, _ = AppDocument.load(path)
         if path.stem != app.name:
             raise ValueError(
-                f"{path}: filename stem {path.stem!r} must match " f"metadata.name {app.name!r}"
+                f"{path}: filename stem {path.stem!r} must match "
+                f"metadata.name {app.name!r}"
             )
         return app
 
@@ -116,7 +97,9 @@ class AppRegistry:
     def _assert_unique_hosts(apps: list[App]) -> None:
         hosts = [a.public_host.lower() for a in apps if a.public_host]
         if len(hosts) != len(set(hosts)):
-            raise ValueError("registry: publicHost values must be unique across applied apps")
+            raise ValueError(
+                "registry: publicHost values must be unique across applied apps"
+            )
 
     @staticmethod
     def _assert_host_available(app: App, directory: Path) -> None:

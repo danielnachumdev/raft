@@ -1,4 +1,4 @@
-"""Integration story: settings retention knobs rotate raft.log on setup_logging."""
+"""Integration story: settings retention knobs rotate raft.log on HostLogging."""
 
 from __future__ import annotations
 
@@ -7,7 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from raft.config import load_config, reset_logging_for_tests, setup_logging
+from raft.config import SettingsLoader
+from raft.utils import HostLogging
+from tests.shared.logging_reset import LoggingReset
 from tests.shared.raft_home import RaftHomeFixtures
 from tests.shared.yaml_doc import YamlDoc
 
@@ -20,7 +22,7 @@ class TestLogRetentionFromSettings:
     Scenario:
       1) settings.yaml sets a small retentionMaxBytes.
       2) raft.log already holds more than that.
-      3) setup_logging seals the oversized active file and starts a fresh segment.
+      3) HostLogging seals the oversized active file and starts a fresh segment.
     """
 
     def test_settings_retention_seals_on_cli_logging_setup(
@@ -39,8 +41,8 @@ class TestLogRetentionFromSettings:
         )
         log_file = self._write_oversized(home)
         payload = log_file.read_text(encoding="utf-8")
-        reset_logging_for_tests()
-        setup_logging(home, load_config(home))
+        LoggingReset().for_tests()
+        HostLogging().configure(home, SettingsLoader().load(home))
         day = datetime.now().strftime("%Y-%m-%d")
         sealed = home / "logs" / f"raft.log.{day}"
         assert sealed.read_text(encoding="utf-8") == payload

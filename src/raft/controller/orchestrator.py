@@ -1,7 +1,5 @@
 """Schedule-aware job orchestrator (heal + metrics; scale via side_ticks)."""
 
-from __future__ import annotations
-
 import logging
 import threading
 import time

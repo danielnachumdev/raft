@@ -84,13 +84,12 @@ class TestConfig(RaftTestCase):
         assert cfg.acme.challenge == "http-01"
 
     def test_load_acme_section(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
+        self.write_home_settings(
             "acme:\n"
             "  email: ops@example.com\n"
             "  directory: https://acme-staging-v02.api.letsencrypt.org/directory\n"
             "  renewDaysBeforeExpiry: 14\n"
-            "  challenge: http-01\n",
-            encoding="utf-8",
+            "  challenge: http-01\n"
         )
         cfg = load_config(self.tmp_path)
         assert cfg.acme.email == "ops@example.com"
@@ -99,17 +98,14 @@ class TestConfig(RaftTestCase):
         assert cfg.acme.challenge == "http-01"
 
     def test_load_acme_defaults_challenge_when_omitted(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
-            "acme:\n  email: ops@example.com\n",
-            encoding="utf-8",
-        )
+        self.write_home_settings("acme:\n  email: ops@example.com\n")
         cfg = load_config(self.tmp_path)
         assert cfg.acme.email == "ops@example.com"
         assert cfg.acme.challenge == "http-01"
         assert cfg.acme.directory.startswith("https://acme-v02")
 
     def test_load_healing_section(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(HEALING_OK_YAML, encoding="utf-8")
+        self.write_home_settings(HEALING_OK_YAML)
         cfg = load_config(self.tmp_path)
         assert cfg.healing.enabled is True
         assert cfg.healing.interval_seconds == 10
@@ -129,7 +125,7 @@ class TestConfig(RaftTestCase):
 
     def test_load_healing_invalid(self) -> None:
         for body, match in HEALING_ERROR_CASES:
-            (self.tmp_path / "settings.yaml").write_text(body, encoding="utf-8")
+            self.write_home_settings(body)
             with pytest.raises(RuntimeError, match=match):
                 load_config(self.tmp_path)
 
@@ -140,9 +136,8 @@ class TestConfig(RaftTestCase):
         assert load_config(self.tmp_path) == default_config()
 
     def test_load_from_file(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
-            "logging:\n  dir: var/log\n  file: orch.log\n  level: DEBUG\n",
-            encoding="utf-8",
+        self.write_home_settings(
+            "logging:\n  dir: var/log\n  file: orch.log\n  level: DEBUG\n"
         )
         cfg = load_config(self.tmp_path)
         assert cfg.logging.dir == "var/log"
@@ -150,12 +145,12 @@ class TestConfig(RaftTestCase):
         assert cfg.logging.level == "DEBUG"
 
     def test_rejects_bad_logging_table(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text("logging: nope\n", encoding="utf-8")
+        self.write_home_settings("logging: nope\n")
         with pytest.raises(RuntimeError, match="must be a mapping"):
             load_config(self.tmp_path)
 
     def test_load_logging_null(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text("# no logging mapping\n", encoding="utf-8")
+        self.write_home_settings("# no logging mapping\n")
         assert load_config(self.tmp_path).logging.dir == "logs"
 
     def test_resolve_dir_relative_absolute_and_env(self, monkeypatch: pytest.MonkeyPatch) -> None:

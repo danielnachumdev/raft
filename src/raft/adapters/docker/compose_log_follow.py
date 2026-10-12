@@ -1,7 +1,5 @@
 """Shared ``docker compose logs -f`` line stream for CLI and serve."""
 
-from __future__ import annotations
-
 import subprocess
 import sys
 from typing import Iterator, Optional, TextIO

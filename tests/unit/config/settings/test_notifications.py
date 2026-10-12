@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from raft.config.settings import load_config
-from raft.config.settings_notifications import NotificationsSettingsParser
+from raft.config.settings.strategies.notifications import NotificationsSettingsParser
 from raft.errors.cta import OperatorError
 
 from ...base import RaftTestCase

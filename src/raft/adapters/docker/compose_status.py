@@ -1,18 +1,8 @@
 """Batch ``docker compose ps`` status (Service / State / Health)."""
 
-from __future__ import annotations
-
-from dataclasses import dataclass
 from typing import Dict, Iterable, Mapping, Optional, Sequence, Tuple
 
-
-@dataclass(frozen=True)
-class ComposeServiceRow:
-    """One Compose service row from batch ``ps`` output."""
-
-    service: str
-    state: str
-    health: str
+from .compose_service_row import ComposeServiceRow
 
 
 class ComposeStatusTable:

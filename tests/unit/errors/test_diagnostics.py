@@ -2,15 +2,7 @@
 
 from __future__ import annotations
 
-from raft.errors.diagnostics import (
-    append_diagnostics,
-    compact_log_lines,
-    compose_services_from_failure_text,
-    format_service_log_block,
-    join_diagnostic_blocks,
-    prefer_errorish_lines,
-    summarize_health_inspect,
-)
+from raft.errors.diagnostics import ServiceDiagnostics
 from tests.shared.nginx import NginxEmerg
 
 
@@ -23,28 +15,28 @@ class TestDiagnosticsHelpers:
                 "info other",
             ]
         )
-        assert "emerg" in prefer_errorish_lines(blob)
-        assert "old-backend" in prefer_errorish_lines(blob)
-        assert compact_log_lines("\n\na\n\nb\n", max_lines=1) == "b"
-        assert compact_log_lines("   \n") == ""
-        assert prefer_errorish_lines("") == ""
+        assert "emerg" in ServiceDiagnostics.prefer_errorish_lines(blob)
+        assert "old-backend" in ServiceDiagnostics.prefer_errorish_lines(blob)
+        assert ServiceDiagnostics.compact_log_lines("\n\na\n\nb\n", max_lines=1) == "b"
+        assert ServiceDiagnostics.compact_log_lines("   \n") == ""
+        assert ServiceDiagnostics.prefer_errorish_lines("") == ""
 
     def test_format_service_log_block(self) -> None:
-        block = format_service_log_block(
+        block = ServiceDiagnostics.format_service_log_block(
             "frontend-dev",
             NginxEmerg.host_not_found("backend"),
             health="running/unhealthy",
         )
         assert "--- frontend-dev (running/unhealthy) ---" in block
         assert "host not found" in block
-        assert format_service_log_block("x", "", health="") == ""
-        assert "--- x (absent) ---" == format_service_log_block("x", "", health="absent")
+        assert ServiceDiagnostics.format_service_log_block("x", "", health="") == ""
+        assert "--- x (absent) ---" == ServiceDiagnostics.format_service_log_block("x", "", health="absent")
 
     def test_join_and_append(self) -> None:
-        joined = join_diagnostic_blocks("a", "", "b")
+        joined = ServiceDiagnostics.join_diagnostic_blocks("a", "", "b")
         assert joined == "a\n\nb"
-        assert append_diagnostics("timed out", "") == "timed out"
-        assert "emerg" in append_diagnostics(
+        assert ServiceDiagnostics.append_diagnostics("timed out", "") == "timed out"
+        assert "emerg" in ServiceDiagnostics.append_diagnostics(
             "timed out waiting for: app_tmp",
             "--- raft-app_tmp ---\nnginx: [emerg] boom",
         )
@@ -53,24 +45,24 @@ class TestDiagnosticsHelpers:
         text = (
             "dependency failed to start: " "container raft-demo-stack-frontend-1 is unhealthy"
         )
-        found = compose_services_from_failure_text(
+        found = ServiceDiagnostics.compose_services_from_failure_text(
             text,
             known_services=("demo-stack-frontend", "demo-stack-backend"),
         )
         assert found[0] == "demo-stack-frontend"
-        assert "demo-stack-frontend" in compose_services_from_failure_text(
+        assert "demo-stack-frontend" in ServiceDiagnostics.compose_services_from_failure_text(
             "service demo-stack-frontend failed",
             known_services=("demo-stack-frontend",),
         )
         # Non-project container name is kept as-is.
-        assert compose_services_from_failure_text("container weird_name is unhealthy") == [
+        assert ServiceDiagnostics.compose_services_from_failure_text("container weird_name is unhealthy") == [
             "weird_name"
         ]
 
     def test_summarize_health_inspect(self) -> None:
-        assert summarize_health_inspect("running", "healthy") == "running/healthy"
-        assert summarize_health_inspect("running", "none") == "running"
-        summary = summarize_health_inspect(
+        assert ServiceDiagnostics.summarize_health_inspect("running", "healthy") == "running/healthy"
+        assert ServiceDiagnostics.summarize_health_inspect("running", "none") == "running"
+        summary = ServiceDiagnostics.summarize_health_inspect(
             "running",
             "unhealthy",
             last_output="wget: can't connect\n",

@@ -11,9 +11,9 @@ from fastapi.testclient import TestClient
 from raft.adapters.docker import DockerStack
 from raft.adapters.shell import Shell
 from raft.models.stack import load_stack
-from raft.services.ops.logs import Logs
-from raft.services.ops.status import Status
-from raft.services.serve.app import ServeAppFactory
+from raft.ops.logs import Logs
+from raft.ops.status import Status
+from raft.serve.app import ServeAppFactory
 from tests.e2e.shared.compose import apps_only_compose, new_project_name
 from tests.e2e.shared.runtime import ServiceRuntimeWait
 from tests.shared.http import HttpClient

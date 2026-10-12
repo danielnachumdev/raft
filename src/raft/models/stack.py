@@ -1,20 +1,17 @@
 """Stack model — applied apps live in ``~/.raft/state/apps/*.yaml``."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
-
-from raft.errors.domain import unknown_app
 
 from ..config.paths import (
     CERTS_DIRNAME,
     DEPLOY_DIRNAME,
     GENERATED_DIRNAME,
-    ensure_raft_home,
-    raft_home,
+    RaftHome,
+    RaftHomeBootstrap,
 )
+from ..errors.domain import DomainErrors
 from .app import (
     COMPOSE_PROJECT,
     CONTROLLER_COMPOSE_ID,
@@ -24,7 +21,8 @@ from .app import (
 )
 from .app_document import AppDocument
 from .ports import PortSpec
-from .registry import AppRegistry, RegistryIssue
+from .registry import AppRegistry
+from .registry_issue import RegistryIssue
 
 __all__ = [
     "COMPOSE_PROJECT",
@@ -57,7 +55,7 @@ class Stack:
             if app.name == name:
                 return app
         known = ", ".join(a.name for a in self.apps) or "(none applied)"
-        raise unknown_app(name, known)
+        raise DomainErrors.unknown_app(name, known)
 
     @property
     def core_services(self) -> tuple[str, ...]:
@@ -117,6 +115,6 @@ class Stack:
 
 
 def load_stack(root: Optional[Path] = None) -> Stack:
-    data_home = root if root is not None else raft_home()
-    ensure_raft_home(data_home)
+    data_home = root if root is not None else RaftHome().resolve()
+    RaftHomeBootstrap().ensure(data_home)
     return Stack.load_apps(data_home)

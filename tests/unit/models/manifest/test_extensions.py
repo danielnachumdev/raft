@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from raft.config.paths import find_package_root
+from raft.config.paths import PackageRootFinder
 from raft.models.app_document import AppDocument
 
 from .base import ManifestTestCase
@@ -76,6 +76,6 @@ class TestAppSpecExtensions(ManifestTestCase):
 
 class TestFindPackageRoot(ManifestTestCase):
     def test_bundled(self) -> None:
-        root = find_package_root()
+        root = PackageRootFinder().find()
         assert (root / "compose.yaml").is_file()
         assert (root / "nginx" / "gate" / "nginx.conf").is_file()

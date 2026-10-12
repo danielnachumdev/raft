@@ -4,46 +4,47 @@ from pathlib import Path
 
 import pytest
 
-from raft.models.ports import PortSpec, parse_ports, port_by_name
+from raft.models.port_list_parser import PortListParser
+from raft.models.ports import PortSpec
 
 from ..base import RaftTestCase
 
 
 class TestPorts(RaftTestCase):
     def test_parse_http_default_expose(self) -> None:
-        ports = parse_ports(
+        ports = PortListParser().parse(
             {"ports": [{"name": "http", "containerPort": 8080}]},
             Path("app.yaml"),
         )
         assert ports[0].expose == "http"
         assert ports[0].container_port == 8080
-        assert port_by_name(ports, "http") is ports[0]
+        assert PortSpec.by_name(ports, "http") is ports[0]
 
     def test_stream_requires_public_port(self) -> None:
         with pytest.raises(ValueError, match="publicPort is required"):
-            parse_ports(
+            PortListParser().parse(
                 {"ports": [{"name": "smtp", "containerPort": 25, "expose": "stream"}]},
                 Path("app.yaml"),
             )
 
     def test_rejects_legacy_port_key(self) -> None:
         with pytest.raises(ValueError, match="spec.port is not supported"):
-            parse_ports(
+            PortListParser().parse(
                 {"port": 80, "ports": [{"name": "http", "containerPort": 80}]},
                 Path("app.yaml"),
             )
         with pytest.raises(ValueError, match="spec.port is not supported"):
-            parse_ports({"port": 80}, Path("app.yaml"))
+            PortListParser().parse({"port": 80}, Path("app.yaml"))
 
     def test_empty_or_omitted_ports(self) -> None:
-        assert parse_ports({}, Path("app.yaml")) == ()
-        assert parse_ports({"ports": []}, Path("app.yaml")) == ()
+        assert PortListParser().parse({}, Path("app.yaml")) == ()
+        assert PortListParser().parse({"ports": []}, Path("app.yaml")) == ()
         with pytest.raises(ValueError, match="spec.ports must be a list"):
-            parse_ports({"ports": {}}, Path("app.yaml"))
+            PortListParser().parse({"ports": {}}, Path("app.yaml"))
 
     def test_rejects_duplicate_names(self) -> None:
         with pytest.raises(ValueError, match="duplicate port name"):
-            parse_ports(
+            PortListParser().parse(
                 {
                     "ports": [
                         {"name": "http", "containerPort": 80},
@@ -63,7 +64,7 @@ class TestPorts(RaftTestCase):
             ).validate(path=Path("x"))
 
     def test_parse_expose_none(self) -> None:
-        ports = parse_ports(
+        ports = PortListParser().parse(
             {
                 "ports": [
                     {
@@ -80,7 +81,7 @@ class TestPorts(RaftTestCase):
 
     def test_none_rejects_public_port(self) -> None:
         with pytest.raises(ValueError, match="publicPort is only valid"):
-            parse_ports(
+            PortListParser().parse(
                 {
                     "ports": [
                         {

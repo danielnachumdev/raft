@@ -10,7 +10,7 @@ import yaml
 
 from raft.models.stack import load_stack
 
-from ..base import write_applied_app
+from ..base import AppliedInventory
 from .base import CliTestCase
 
 
@@ -132,7 +132,7 @@ class TestCliErrorRewrite(CliTestCase):
         assert "YAML" in capsys.readouterr().err
 
     def test_run_rewrites_missing_origin_cert_errors(self, capsys) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="origin")
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="origin")
         stack = load_stack(self.tmp_path)
         err = subprocess.CalledProcessError(
             1,
@@ -143,7 +143,7 @@ class TestCliErrorRewrite(CliTestCase):
             ),
         )
         self.orch.stop.side_effect = err
-        with patch("raft.cli.entry.load_stack", return_value=stack):
+        with patch("raft.cli.exit_mapper.load_stack", return_value=stack):
             with pytest.raises(SystemExit) as exc:
                 self.run_cli(["down"])
         assert exc.value.code == 1
@@ -194,7 +194,7 @@ class TestCliErrorRewrite(CliTestCase):
             stderr='cannot load certificate "/etc/nginx/certs/web/origin.pem"\n',
         )
         self.orch.stop.side_effect = err
-        with patch("raft.cli.entry.load_stack", side_effect=RuntimeError("no home")):
+        with patch("raft.cli.exit_mapper.load_stack", side_effect=RuntimeError("no home")):
             with pytest.raises(SystemExit) as exc:
                 self.run_cli(["down"])
         assert exc.value.code == 1
@@ -208,8 +208,9 @@ class TestCliErrorRewrite(CliTestCase):
             stderr='cannot load certificate "/etc/nginx/certs/web/origin.pem"\n',
         )
         self.orch.stop.side_effect = err
-        with patch("raft.cli.entry.load_stack", return_value=self.stack):
-            with patch("raft.cli.entry.missing_origin_certs", return_value=[]):
+        with patch("raft.cli.exit_mapper.load_stack", return_value=self.stack):
+            with patch("raft.cli.exit_mapper.CertProbe") as probe_cls:
+                probe_cls.return_value.missing_origin.return_value = []
                 with pytest.raises(SystemExit) as exc:
                     self.run_cli(["down"])
         assert exc.value.code == 1
@@ -223,8 +224,9 @@ class TestCliErrorRewrite(CliTestCase):
             stderr="",
         )
         self.orch.stop.side_effect = err
-        with patch("raft.cli.entry.load_stack", return_value=self.stack):
-            with patch("raft.cli.entry.missing_origin_certs", return_value=[]):
+        with patch("raft.cli.exit_mapper.load_stack", return_value=self.stack):
+            with patch("raft.cli.exit_mapper.CertProbe") as probe_cls:
+                probe_cls.return_value.missing_origin.return_value = []
                 with pytest.raises(SystemExit) as exc:
                     self.run_cli(["down"])
         assert exc.value.code == 1

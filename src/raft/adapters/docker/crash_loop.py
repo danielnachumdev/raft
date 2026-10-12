@@ -13,8 +13,6 @@ the RestartCount + short-uptime branch is the primary signal for churn that
 still looks ``running``.
 """
 
-from __future__ import annotations
-
 from datetime import datetime, timezone
 from typing import Optional
 

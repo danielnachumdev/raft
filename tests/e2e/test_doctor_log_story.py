@@ -9,10 +9,11 @@ from pathlib import Path
 
 import pytest
 
-from raft.config import load_config, reset_logging_for_tests, setup_logging
-from raft.config.trace_context import TraceContext
+from raft.config import SettingsLoader
+from raft.utils import HostLogging, TraceContext
 from raft.models.stack import load_stack
-from raft.services.ops.doctor import Doctor
+from raft.ops.doctor import Doctor
+from tests.shared.logging_reset import LoggingReset
 from tests.shared.raft_home import RaftHomeFixtures
 from tests.shared.yaml_doc import YamlDoc
 
@@ -29,7 +30,7 @@ class TestDoctorLogObservability:
 
     Scenario:
       1) raft.log is oversized under configured retentionMaxBytes.
-      2) Operator bootstraps logging (CLI setup_logging path) → seal aside.
+      2) Operator bootstraps logging (CLI HostLogging path) → seal aside.
       3) Operator runs ``raft doctor`` under one TraceContext.
       4) raft.log shows one tid on suite timings and compose-call summary.
     """
@@ -40,13 +41,13 @@ class TestDoctorLogObservability:
         home = isolated_raft_env
         RaftHomeFixtures.apply_and_render(home, RaftHomeFixtures.fixture_app_yamls("http_only"))
         log_file = self._seed_oversized_log(home, monkeypatch)
-        reset_logging_for_tests()
-        setup_logging(home, load_config(home))
+        LoggingReset().for_tests()
+        HostLogging().configure(home, SettingsLoader().load(home))
         self._assert_oversized_sealed(log_file)
         # Tiny maxBytes is only for the seal step; doctor must fit in one active file.
         self._raise_retention_bytes(home, max_bytes=1_000_000)
-        reset_logging_for_tests()
-        setup_logging(home, load_config(home))
+        LoggingReset().for_tests()
+        HostLogging().configure(home, SettingsLoader().load(home))
         with TraceContext() as tid:
             Doctor(load_stack(home)).report(out=StringIO(), color=False)
         self._assert_observability(log_file.read_text(encoding="utf-8"), tid)

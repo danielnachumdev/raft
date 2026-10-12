@@ -1,7 +1,5 @@
 """Edge settings validation coverage."""
 
-from __future__ import annotations
-
 import pytest
 
 from raft.config.settings import load_config
@@ -33,6 +31,45 @@ EDGE_ERROR_CASES = [
         "protocol must be",
     ),
 ]
+
+
+class TestSettingsEdge(RaftTestCase):
+    def test_load_edge_section(self) -> None:
+        (self.tmp_path / "settings.yaml").write_text(
+            """
+logging:
+  level: INFO
+edge:
+  http: 8080
+  https: null
+  streams:
+    - name: smtp
+      port: 25
+      protocol: tcp
+""",
+            encoding="utf-8",
+        )
+        cfg = load_config(self.tmp_path)
+        assert cfg.edge.http == 8080
+        assert cfg.edge.https is None
+        assert len(cfg.edge.streams) == 1
+        assert cfg.edge.streams[0].name == "smtp"
+        assert cfg.edge.published_ports() == [(8080, "tcp"), (25, "tcp")]
+
+    def test_edge_rejects_duplicate_stream_port(self) -> None:
+        (self.tmp_path / "settings.yaml").write_text(
+            """
+edge:
+  streams:
+    - name: a
+      port: 25
+    - name: b
+      port: 25
+""",
+            encoding="utf-8",
+        )
+        with pytest.raises(RuntimeError, match="duplicate port"):
+            load_config(self.tmp_path)
 
 
 class TestSettingsEdgeErrors(RaftTestCase):

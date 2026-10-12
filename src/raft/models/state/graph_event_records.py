@@ -1,12 +1,10 @@
 """Typed GraphEvent producers used by lifecycle code paths."""
 
-from __future__ import annotations
-
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from ..app import GATE_COMPOSE_ID
-from ..graph_event import GraphEvent
+from .graph_event import GraphEvent
 from .graph_event_kinds import (
     KIND_DEPLOYMENT,
     KIND_DOWN,

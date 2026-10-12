@@ -10,10 +10,10 @@ import yaml
 
 from raft.adapters.docker import DockerStack
 from raft.adapters.shell import Shell
-from raft.config.settings_types import HealingConfig
-from raft.controller.heal import Healer
+from raft.config.settings.types import HealingConfig
+from raft.controller.jobs.heal import Healer
 from raft.controller.job import JobIds, JobRequest, JobSpec, QueuePolicy
-from raft.controller.metrics import MetricsRecorder
+from raft.controller.jobs.metrics import MetricsRecorder
 from raft.controller.orchestrator import JobOrchestrator
 from raft.controller.schedule import IntervalSchedule
 from raft.models.stack import load_stack

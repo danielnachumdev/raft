@@ -1,7 +1,5 @@
 """Shared gateway for host-machine facts (identity + resource probes)."""
 
-from __future__ import annotations
-
 import socket
 from pathlib import Path
 from typing import Callable, Optional

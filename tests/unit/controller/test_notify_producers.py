@@ -1,14 +1,12 @@
 """Heal escalate + scale wake timeout call Notifier."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from raft.config.settings_types import HealingConfig
-from raft.controller.heal import Healer
-from raft.controller.scale import Scaler
-from raft.services.notify.control_events import (
+from raft.config.settings.types import HealingConfig
+from raft.controller.jobs.heal import Healer
+from raft.controller.jobs.scale import Scaler
+from raft.notify.control_events import (
     KIND_HEAL_ESCALATE,
     KIND_SCALE_WAKE_TIMEOUT,
 )

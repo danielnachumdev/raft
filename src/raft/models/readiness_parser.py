@@ -1,19 +1,16 @@
 """Parse ``spec.readiness`` into a validated ReadinessSpec."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any, Optional
 
 from .ports import PortSpec
-from .readiness_spec import (
+from .readiness_spec import READINESS_TYPES, ReadinessSpec
+from .readiness_timing import (
     DEFAULT_INTERVAL_SECONDS,
     DEFAULT_PROBE_TIMEOUT_SECONDS,
     DEFAULT_RETRIES,
     DEFAULT_START_PERIOD_SECONDS,
-    READINESS_TYPES,
-    ReadinessSpec,
-    default_timeout_seconds,
+    ReadinessTiming,
 )
 
 
@@ -159,7 +156,7 @@ class ReadinessParser:
         retries_n: int,
     ) -> float:
         if timeout is None:
-            return default_timeout_seconds(
+            return ReadinessTiming.default_timeout_seconds(
                 start_period_seconds=start_period_seconds,
                 interval_seconds=interval_seconds,
                 retries=retries_n,
@@ -215,11 +212,3 @@ class ReadinessParser:
         if value <= 0:
             raise ValueError(f"{path}: readiness.{field} must be > 0")
         return value
-
-
-def parse_readiness(
-    spec: dict[str, Any],
-    ports: tuple[PortSpec, ...],
-    path: Path,
-) -> ReadinessSpec:
-    return ReadinessParser().parse(spec, ports, path)

@@ -1,15 +1,13 @@
 """Batch container runtime facts via Docker Engine (not ``compose ps``)."""
 
-from __future__ import annotations
-
 import json
 import logging
-from dataclasses import dataclass
 from typing import Any, Dict, Mapping, Optional, Sequence
 
 from ...models.app import COMPOSE_PROJECT
 from ..shell import Shell
-from .inspect import DockerInspect
+from .inspect_runtime import InspectRuntime
+from .runtime_row import ContainerRuntimeRow
 
 logger = logging.getLogger(__name__)
 
@@ -19,28 +17,12 @@ _LABEL_PROJECT = "com.docker.compose.project"
 _DOCKER_TIMEOUT_SECONDS = 25.0
 
 
-@dataclass(frozen=True)
-class ContainerRuntimeRow:
-    """Runtime + stats for one Compose service container."""
-
-    container_id: str
-    status: str
-    health: str
-    started_at: str
-    memory_bytes: Optional[int]
-    stats: Optional[Dict[str, Any]]
-    restart_count: int = 0
-    oom_killed: bool = False
-    finished_at: str = ""
-    exit_code: Optional[int] = None
-
-
 class ContainerRuntimeGateway:
-    """Single source of truth for Compose-project container resource facts.
+    """Engine ``ps`` / ``inspect`` / ``stats`` for Compose-project containers.
 
-    Uses ``docker ps`` / ``inspect`` / ``stats`` (Engine API), not
-    ``docker compose ps``. That avoids Compose-file include conflicts inside
-    ``raft-controller`` (older Compose rejects merged ``raft-router``).
+    Uses Docker Engine commands, not ``docker compose ps``. That avoids
+    Compose-file include conflicts inside ``raft-controller`` (older Compose
+    rejects merged ``raft-router``).
     """
 
     def __init__(self, sh: Shell, *, project: str = COMPOSE_PROJECT) -> None:
@@ -89,7 +71,6 @@ class ContainerRuntimeGateway:
             if not line or "\t" not in line:
                 continue
             cid, service = line.split("\t", 1)
-            # Line strip already dropped edge-only whitespace fields.
             by_service[service.strip()] = cid.strip()
         return by_service
 
@@ -125,7 +106,7 @@ class ContainerRuntimeGateway:
         for item in items:
             if not isinstance(item, dict):
                 continue
-            runtime = DockerInspect._runtime_from_inspect_dict(item)
+            runtime = InspectRuntime.from_inspect_dict(item)
             raw_id = str(item.get("Id") or "").strip()
             ContainerRuntimeGateway._store_runtime(by_id, raw_id, runtime, container_ids)
         return by_id
@@ -164,7 +145,7 @@ class ContainerRuntimeGateway:
                 (result.stderr or "").strip(),
             )
             return {}
-        return DockerInspect._index_stats_rows(result.stdout or "", list(container_ids))
+        return InspectRuntime.index_stats_rows(result.stdout or "", list(container_ids))
 
     @staticmethod
     def _rows_for(

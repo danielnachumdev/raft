@@ -5,9 +5,9 @@ from unittest.mock import patch
 import pytest
 
 from raft.models.ports import PortSpec
-from raft.services.ops.certs import MissingOriginCerts
+from raft.ops.certs import MissingOriginCerts
 
-from ...base import make_app
+from ...base import AppMakers
 from .base import DockerTestCase
 
 
@@ -99,7 +99,7 @@ class TestDockerLifecycle(DockerTestCase):
     def test_recreate_pulled_service_tags_then_up(self) -> None:
         self.shell.compose.return_value = self.ok()
         self.shell.docker.return_value = self.ok()
-        app = make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
+        app = AppMakers.make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
         self.docker.recreate_pulled_service(app, pull_ref="ghcr.io/org/hub:abc")
         self._assert_tag_then_up()
 
@@ -122,7 +122,7 @@ class TestDockerLifecycle(DockerTestCase):
     def test_recreate_pulled_service_skips_tag_when_pin(self) -> None:
         self.shell.compose.return_value = self.ok()
         self.shell.docker.return_value = self.ok()
-        app = make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
+        app = AppMakers.make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
         self.docker.recreate_pulled_service(app, pull_ref="ghcr.io/org/hub:main")
         self.shell.docker.assert_any_call("pull", "ghcr.io/org/hub:main", capture=True, check=False)
         assert not any(c.args[:1] == ("tag",) for c in self.shell.docker.call_args_list)
@@ -131,7 +131,7 @@ class TestDockerLifecycle(DockerTestCase):
         self.shell.docker.return_value = self.ok(
             returncode=1, stderr="Error response from daemon: unauthorized\n"
         )
-        app = make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
+        app = AppMakers.make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
         with pytest.raises(RuntimeError, match="docker login") as exc:
             self.docker.recreate_pulled_service(app, pull_ref="ghcr.io/org/hub:main")
         assert "unauthorized" in str(exc.value).lower() or "login" in str(exc.value).lower()

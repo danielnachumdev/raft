@@ -6,8 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from raft.models.ports import PortSpec, parse_ports
-from raft.models.readiness_parser import parse_readiness
+from raft.models.port_list_parser import PortListParser
+from raft.models.ports import PortSpec
+from raft.models.readiness_parser import ReadinessParser
 from raft.models.readiness_spec import ReadinessSpec
 
 from ..base import RaftTestCase
@@ -55,16 +56,16 @@ class TestPortsAndReadinessCoverage(RaftTestCase):
                 PortSpec(**kwargs).validate(path=PATH)
         for raw, match in PARSE_PORTS_CASES:
             with pytest.raises(ValueError, match=match):
-                parse_ports(raw, PATH)
+                PortListParser().parse(raw, PATH)
 
     def test_empty_or_omitted_ports(self) -> None:
-        assert parse_ports({}, PATH) == ()
-        assert parse_ports({"ports": []}, PATH) == ()
-        assert parse_readiness({}, (), PATH).type == "none"
+        assert PortListParser().parse({}, PATH) == ()
+        assert PortListParser().parse({"ports": []}, PATH) == ()
+        assert ReadinessParser().parse({}, (), PATH).type == "none"
         with pytest.raises(ValueError, match="readiness requires a named port"):
-            parse_readiness({"readiness": {"type": "tcp"}}, (), PATH)
+            ReadinessParser().parse({"readiness": {"type": "tcp"}}, (), PATH)
         with pytest.raises(ValueError, match="readiness requires a named port"):
-            parse_readiness({"readiness": {"type": "http"}}, (), PATH)
+            ReadinessParser().parse({"readiness": {"type": "http"}}, (), PATH)
 
     def _ports(self):
         return (
@@ -80,24 +81,24 @@ class TestPortsAndReadinessCoverage(RaftTestCase):
 
     def _assert_readiness_parse_errors(self, ports) -> None:
         with pytest.raises(ValueError, match="must be an object"):
-            parse_readiness({"readiness": "x"}, ports, PATH)
+            ReadinessParser().parse({"readiness": "x"}, ports, PATH)
         with pytest.raises(ValueError, match="readiness.type must be"):
-            parse_readiness({"readiness": {"type": "udp"}}, ports, PATH)
+            ReadinessParser().parse({"readiness": {"type": "udp"}}, ports, PATH)
         with pytest.raises(ValueError, match="not in ports"):
-            parse_readiness({"readiness": {"type": "tcp", "port": "missing"}}, ports, PATH)
+            ReadinessParser().parse({"readiness": {"type": "tcp", "port": "missing"}}, ports, PATH)
         with pytest.raises(ValueError, match="requires an expose=http"):
-            parse_readiness({"readiness": {"type": "http", "port": "smtp"}}, ports, PATH)
+            ReadinessParser().parse({"readiness": {"type": "http", "port": "smtp"}}, ports, PATH)
 
     def _assert_readiness_defaults(self, ports) -> None:
-        r = parse_readiness({"readiness": {"type": "none"}}, ports, PATH)
+        r = ReadinessParser().parse({"readiness": {"type": "none"}}, ports, PATH)
         assert r.type == "none" and r.timeout_seconds == 120.0
         assert r.start_period_seconds == 45.0
         assert (
-            parse_readiness({"readiness": {"type": "http", "path": "ready"}}, ports, PATH).path
+            ReadinessParser().parse({"readiness": {"type": "http", "path": "ready"}}, ports, PATH).path
             == "/ready"
         )
-        assert parse_readiness({}, ports, PATH).port == "http"
-        r4 = parse_readiness({}, (ports[1],), PATH)
+        assert ReadinessParser().parse({}, ports, PATH).port == "http"
+        r4 = ReadinessParser().parse({}, (ports[1],), PATH)
         assert r4.type == "tcp"
 
     def _assert_resolve_port(self, ports) -> None:
@@ -111,7 +112,7 @@ class TestPortsAndReadinessCoverage(RaftTestCase):
         return (PortSpec(name="http", container_port=80, expose="http"),)
 
     def test_readiness_timing_defaults(self) -> None:
-        defaults = parse_readiness(
+        defaults = ReadinessParser().parse(
             {"readiness": {"type": "tcp", "port": "http"}}, self._http_ports(), PATH
         )
         assert defaults.timeout_seconds == 120.0
@@ -121,14 +122,14 @@ class TestPortsAndReadinessCoverage(RaftTestCase):
 
     def test_readiness_timing_custom_and_auto_bump(self) -> None:
         ports = self._http_ports()
-        custom = parse_readiness(
+        custom = ReadinessParser().parse(
             {"readiness": self._custom_timing_raw()},
             ports,
             PATH,
         )
         assert custom.timeout_seconds == 180.0 and custom.start_period_seconds == 60.0
         assert custom.interval_seconds == 3.0 and custom.retries == 10
-        long_start = parse_readiness(
+        long_start = ReadinessParser().parse(
             {"readiness": {"type": "tcp", "port": "http", "startPeriodSeconds": 90}},
             ports,
             PATH,
@@ -152,4 +153,4 @@ class TestPortsAndReadinessCoverage(RaftTestCase):
         for extra, match in READINESS_TIMING_ERROR_CASES:
             readiness = {"type": "tcp", "port": "http", **extra}
             with pytest.raises(ValueError, match=match):
-                parse_readiness({"readiness": readiness}, ports, PATH)
+                ReadinessParser().parse({"readiness": readiness}, ports, PATH)

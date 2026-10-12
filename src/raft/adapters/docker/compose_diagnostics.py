@@ -1,21 +1,12 @@
 """Compose/container log and health diagnostics for operator CTAs."""
 
-from __future__ import annotations
-
 import json
 import logging
 from typing import TYPE_CHECKING, Any, Optional, Sequence
 
-from raft.errors.cta import OperatorError
-from raft.errors.diagnostics import (
-    append_diagnostics,
-    compose_services_from_failure_text,
-    format_service_log_block,
-    join_diagnostic_blocks,
-    prefer_errorish_lines,
-    summarize_health_inspect,
-)
-from raft.errors.resource_msgs import resource_error_from_text
+from ...errors.cta import OperatorError
+from ...errors.diagnostics import ServiceDiagnostics
+from ...errors.resource_msgs import ResourceMessages
 
 from ...models.stack import Stack
 from ..shell import Shell
@@ -103,7 +94,7 @@ class ComposeDiagnostics:
         blocks.extend(
             self._container_block(n, tail=tail, max_lines=max_lines) for n in containers if n
         )
-        return join_diagnostic_blocks(*blocks)
+        return ServiceDiagnostics.join_diagnostic_blocks(*blocks)
 
     def enrich_compose_failure(
         self,
@@ -122,7 +113,7 @@ class ComposeDiagnostics:
         if not diagnostics:
             return exc
         return OperatorError(
-            append_diagnostics(blob, diagnostics),
+            ServiceDiagnostics.append_diagnostics(blob, diagnostics),
             has_fix=exc.has_fix,
         )
 
@@ -134,7 +125,7 @@ class ComposeDiagnostics:
         diagnostics: str,
     ) -> Optional[OperatorError]:
         combined = "\n".join(part for part in (blob, detail, diagnostics) if part)
-        return resource_error_from_text(combined, action="start or pull")
+        return ResourceMessages.resource_error_from_text(combined, action="start or pull")
 
     def _inspect_state(self, container_id: str) -> Optional[dict[str, Any]]:
         result = self.sh.docker(
@@ -162,7 +153,7 @@ class ComposeDiagnostics:
         if isinstance(health_obj, dict):
             health = str(health_obj.get("Status") or "none")
             last_out = ComposeDiagnostics._last_health_output(health_obj)
-        return summarize_health_inspect(status, health, last_output=last_out)
+        return ServiceDiagnostics.summarize_health_inspect(status, health, last_output=last_out)
 
     @staticmethod
     def _last_health_output(health_obj: dict[str, Any]) -> str:
@@ -175,8 +166,8 @@ class ComposeDiagnostics:
         return str(last.get("Output") or "")
 
     def _service_block(self, service: str, *, tail: int, max_lines: int) -> str:
-        logs = prefer_errorish_lines(self.compose_logs(service, tail=tail), max_lines=max_lines)
-        return format_service_log_block(
+        logs = ServiceDiagnostics.prefer_errorish_lines(self.compose_logs(service, tail=tail), max_lines=max_lines)
+        return ServiceDiagnostics.format_service_log_block(
             service,
             logs,
             health=self.service_health_summary(service),
@@ -184,8 +175,8 @@ class ComposeDiagnostics:
         )
 
     def _container_block(self, name: str, *, tail: int, max_lines: int) -> str:
-        logs = prefer_errorish_lines(self.container_logs(name, tail=tail), max_lines=max_lines)
-        return format_service_log_block(name, logs, health="container", max_lines=max_lines)
+        logs = ServiceDiagnostics.prefer_errorish_lines(self.container_logs(name, tail=tail), max_lines=max_lines)
+        return ServiceDiagnostics.format_service_log_block(name, logs, health="container", max_lines=max_lines)
 
     def _failure_targets(
         self,
@@ -194,7 +185,7 @@ class ComposeDiagnostics:
         detail: str,
         services: Optional[Sequence[str]],
     ) -> list[str]:
-        mentioned = compose_services_from_failure_text(
+        mentioned = ServiceDiagnostics.compose_services_from_failure_text(
             f"{blob}\n{detail}",
             known_services=list(self.stack.core_services),
         )
