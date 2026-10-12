@@ -3,6 +3,7 @@
 from .actions import ServeActions
 from .app import ServeAppFactory
 from .downloads import ServeDownloads
+from .entry import ServeMain, main
 from .instructions import ServeInstructions
 from .lease import ServeLease
 from .log_stream import LogSseStream
@@ -20,7 +21,9 @@ __all__ = [
     "ServeDownloads",
     "ServeInstructions",
     "ServeLease",
+    "ServeMain",
     "ServePage",
     "ServePaths",
     "ServeRuntime",
+    "main",
 ]

@@ -1,4 +1,6 @@
-from .services.cli import RaftCLI
+"""``python -m raft.services.cli`` entry."""
+
+from .cli import RaftCLI
 
 
 def main() -> None:

@@ -383,7 +383,7 @@ Top-level **commands** (not nested groups, except `auth` and `gate`):
 | `uninstall` | Full removal (`--yes`; optional `--uv` to remove uv too) |
 | `auth` | `setup` / `list` / `show` / `test` / `remove` |
 
-Entry: `raft` console script → `raft.__main__:main` (`RaftCLI().run()`). Prefer `install.sh` / `uv tool install` so `raft` is on `PATH`; in a bare checkout `uv run raft …` still works.
+Entry: `raft` console script → `raft.services.cli.__main__:main` (`RaftCLI().run()`). Prefer `install.sh` / `uv tool install` so `raft` is on `PATH`; in a bare checkout `uv run raft …` still works.
 
 ---
 
