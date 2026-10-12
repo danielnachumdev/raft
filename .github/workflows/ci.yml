@@ -1,6 +1,7 @@
 # Test matrix: Python 3.9+ (runtime config is YAML via PyYAML; no tomllib).
 # SPA (src/spa) is tested/built once — not per Python version. Packaged assets
 # under src/raft/share/serve/spa/ are committed; unit/integration/e2e use those.
+# Order: Meta → Unit+Integration → E2E (SPA stays independent).
 name: CI
 
 on:
@@ -34,8 +35,22 @@ jobs:
           npm test
           npm run build
 
+  meta:
+    name: Meta
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.0.0
+        with:
+          python-version: "3.13"
+      - name: Install package + test deps
+        run: uv sync --extra dev
+      - name: Meta tests (codebase-as-artifact)
+        run: uv run pytest tests/meta --no-cov -n0
+
   test:
     name: Unit+Integration (Py ${{ matrix.python-version }})
+    needs: [meta]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -58,21 +73,9 @@ jobs:
       - name: Integration tests
         run: uv run pytest tests/integration -q --no-cov
 
-  meta:
-    name: Meta
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.0.0
-        with:
-          python-version: "3.13"
-      - name: Install package + test deps
-        run: uv sync --extra dev
-      - name: Meta tests (codebase-as-artifact)
-        run: uv run pytest tests/meta --no-cov -n0
-
   e2e:
     name: E2E (Py ${{ matrix.python-version }})
+    needs: [test]
     runs-on: ubuntu-latest
     # Cap concurrency so five Py versions do not burst ECR Public pulls together.
     # Seed script retries absorb transient rate limits; cancel-in-progress drops stale runs.
