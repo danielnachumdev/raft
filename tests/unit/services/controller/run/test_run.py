@@ -141,6 +141,9 @@ class TestControllerPrereq(ControllerTestCase):
         job._healer.on_needs_heal()
         orch.enqueue.assert_called_once()
         assert orch.enqueue.call_args.args[0].job_id == JobIds.METRICS
+        job._healer = MagicMock()
+        job.tick()
+        job._healer.tick.assert_called_once()
 
     def test_metrics_tick_runs_resource_and_http(self, tmp_path: Path) -> None:
         job = MetricsJob(self.raft_home(tmp_path), RaftConfig().metrics)

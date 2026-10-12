@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from io import StringIO
+import time
 from pathlib import Path
 
 import yaml
@@ -59,9 +59,18 @@ class OpsE2EStack:
         HttpClient(f"http://127.0.0.1:{self.published_port()}").get("/")
 
     def snapshot_logs(self, *names: str, tail: int = 50) -> str:
-        out = StringIO()
-        Logs(self.stack).show(*(names or (self.APP,)), tail=tail, out=out)
-        return out.getvalue()
+        # Prefer Logs.snapshot (string return). Retry briefly — some engines
+        # buffer app stdout for a beat after the first HTTP hit.
+        names = names or (self.APP,)
+        logs = Logs(self.stack)
+        deadline = time.monotonic() + 10.0
+        text = ""
+        while time.monotonic() < deadline:
+            text = logs.snapshot(*names, tail=tail)
+            if text.strip():
+                return text
+            time.sleep(0.25)
+        return text
 
     def serve_client(self) -> TestClient:
         return TestClient(ServeAppFactory(self.stack, status=Status(self.stack)).create())
