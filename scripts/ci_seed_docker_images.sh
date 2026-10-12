@@ -4,6 +4,48 @@
 # hashicorp/http-echo is a tiny local stand-in (same listen port / default text).
 set -euo pipefail
 
+_MAX_ATTEMPTS="${CI_SEED_MAX_ATTEMPTS:-5}"
+_BASE_SLEEP_SECONDS="${CI_SEED_BASE_SLEEP_SECONDS:-5}"
+
+_retryable_output() {
+  local text="$1"
+  [[ "$text" == *toomanyrequests* ]] \
+    || [[ "$text" == *"Rate exceeded"* ]] \
+    || [[ "$text" == *"rate limit"* ]] \
+    || [[ "$text" == *"Too Many Requests"* ]] \
+    || [[ "$text" == *"connection reset"* ]] \
+    || [[ "$text" == *"Client.Timeout"* ]] \
+    || [[ "$text" == *"TLS handshake timeout"* ]] \
+    || [[ "$text" == *"i/o timeout"* ]] \
+    || [[ "$text" == *"temporary failure"* ]] \
+    || [[ "$text" == *"EOF"* ]]
+}
+
+_retry_docker() {
+  local attempt=1
+  local sleep_s="$_BASE_SLEEP_SECONDS"
+  local out rc
+  while true; do
+    set +e
+    out="$("$@" 2>&1)"
+    rc=$?
+    set -e
+    if [[ "$rc" -eq 0 ]]; then
+      [[ -n "$out" ]] && printf '%s\n' "$out"
+      return 0
+    fi
+    if [[ "$attempt" -ge "$_MAX_ATTEMPTS" ]] || ! _retryable_output "$out"; then
+      printf '%s\n' "$out" >&2
+      return "$rc"
+    fi
+    echo "retry $attempt/$_MAX_ATTEMPTS after transient docker error; sleep ${sleep_s}s" >&2
+    printf '%s\n' "$out" >&2
+    sleep "$sleep_s"
+    attempt=$((attempt + 1))
+    sleep_s=$((sleep_s * 2))
+  done
+}
+
 mirror() {
   local src="$1" dest="$2"
   if docker image inspect "$dest" >/dev/null 2>&1; then
@@ -11,7 +53,7 @@ mirror() {
     return 0
   fi
   echo "pull $src → tag $dest"
-  docker pull "$src"
+  _retry_docker docker pull "$src"
   docker tag "$src" "$dest"
 }
 
@@ -65,7 +107,7 @@ COPY --from=build /http-echo /http-echo
 ENTRYPOINT ["/http-echo"]
 EOF
   echo "build local hashicorp/http-echo stand-in"
-  docker build -t hashicorp/http-echo:1.0.0 "$dir"
+  _retry_docker docker build -t hashicorp/http-echo:1.0.0 "$dir"
   docker tag hashicorp/http-echo:1.0.0 hashicorp/http-echo:latest
   docker tag hashicorp/http-echo:1.0.0 hashicorp/http-echo
 }
