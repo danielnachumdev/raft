@@ -44,8 +44,9 @@ class CheckedCommands:
             DockerMessages.compose_failure_message(action, detail=detail, hint=hint)
         ) from exc
 
-    @staticmethod
+    @classmethod
     def raise_for_docker_pull_failure(
+        cls,
         image: str,
         *,
         detail: str = "",
@@ -64,6 +65,12 @@ class CheckedCommands:
                     image, detail=detail, app=app, repo=repo
                 )
             )
+        cls._raise_daemon_or_pull(image, detail=detail, app=app)
+
+    @staticmethod
+    def _raise_daemon_or_pull(
+        image: str, *, detail: str, app: Optional[str]
+    ) -> None:
         blob = detail.lower()
         if (
             DockerMessages.looks_like_docker_daemon_down(

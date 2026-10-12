@@ -31,28 +31,38 @@ class MetricsSettingsParser(SettingsSectionParser[MetricsConfig]):
                 "Fix: set metrics: {intervalSeconds: 60, ...} in ~/.raft/settings.yaml"
             )
         return MetricsConfig(
-            interval_seconds=self._scalars.pos_float(
+            **self._timing_fields(raw),
+            **self._retention_fields(raw),
+        )
+
+    def _timing_fields(self, raw: dict) -> dict:
+        s = self._scalars
+        return {
+            "interval_seconds": s.pos_float(
                 raw, "intervalSeconds", DEFAULT_METRICS_INTERVAL_SECONDS, "metrics"
             ),
-            timeout_seconds=self._scalars.pos_float(
+            "timeout_seconds": s.pos_float(
                 raw, "timeoutSeconds", DEFAULT_METRICS_TIMEOUT_SECONDS, "metrics"
             ),
-            batch_size=self._scalars.pos_int(
-                raw, "batchSize", DEFAULT_METRICS_BATCH_SIZE, "metrics"
-            ),
-            flush_seconds=self._scalars.pos_float(
+            "batch_size": s.pos_int(raw, "batchSize", DEFAULT_METRICS_BATCH_SIZE, "metrics"),
+            "flush_seconds": s.pos_float(
                 raw, "flushSeconds", DEFAULT_METRICS_FLUSH_SECONDS, "metrics"
             ),
-            retention_max_age_days=self._scalars.pos_int(
+        }
+
+    def _retention_fields(self, raw: dict) -> dict:
+        s = self._scalars
+        return {
+            "retention_max_age_days": s.pos_int(
                 raw,
                 "retentionMaxAgeDays",
                 DEFAULT_METRICS_RETENTION_MAX_AGE_DAYS,
                 "metrics",
             ),
-            retention_max_bytes=self._scalars.pos_int(
+            "retention_max_bytes": s.pos_int(
                 raw,
                 "retentionMaxBytes",
                 DEFAULT_METRICS_RETENTION_MAX_BYTES,
                 "metrics",
             ),
-        )
+        }

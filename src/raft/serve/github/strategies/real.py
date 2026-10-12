@@ -26,10 +26,20 @@ class RealGithubProvider(GithubProvider):
         return filter_repos(self._list_user_repos(token), query)
 
     def fetch_manifest(self, token: str, full_name: str, ref: str) -> str:
+        raw = self._manifest_body(token, full_name, ref)
+        if not raw.strip():
+            raise OperatorError(
+                f"empty {CONTRACT_REL_PATH.as_posix()} in {full_name}@{ref}\n"
+                f"Fix: put a valid App manifest at that path",
+                has_fix=False,
+            )
+        return raw
+
+    def _manifest_body(self, token: str, full_name: str, ref: str) -> str:
         enc = urllib.parse.quote(CONTRACT_REL_PATH.as_posix())
         url = f"{_API}/repos/{full_name}/contents/{enc}?ref={urllib.parse.quote(ref)}"
         try:
-            raw = self._http.get(
+            return self._http.get(
                 url,
                 headers=self._http.bearer_headers(
                     token, accept="application/vnd.github.raw"
@@ -43,13 +53,6 @@ class RealGithubProvider(GithubProvider):
                     has_fix=False,
                 ) from exc
             raise self._api_error(exc) from exc
-        if not raw.strip():
-            raise OperatorError(
-                f"empty {CONTRACT_REL_PATH.as_posix()} in {full_name}@{ref}\n"
-                f"Fix: put a valid App manifest at that path",
-                has_fix=False,
-            )
-        return raw
 
     def resolve_local_tree(self, full_name: str) -> Optional[Path]:
         del full_name

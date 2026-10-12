@@ -80,11 +80,13 @@ class TestRealGithubProvider(RaftTestCase):
         with pytest.raises(OperatorError, match="empty"):
             provider.fetch_manifest("tok", "a/b", "main")
 
-    def test_request_ok_and_404(self) -> None:
-        provider = RealGithubProvider()
+    def test_next_link_parsing(self) -> None:
         assert RealGithubProvider._next_link(None) is None
         link = '<https://api.github.com/x?page=2>; rel="next", <u>; rel="prev"'
         assert "page=2" in (RealGithubProvider._next_link(link) or "")
+
+    def test_gateway_get_ok(self) -> None:
+        provider = RealGithubProvider()
         resp = MagicMock()
         resp.read.return_value = b"ok"
         resp.status = 200
@@ -97,11 +99,16 @@ class TestRealGithubProvider(RaftTestCase):
                 headers=provider._http.bearer_headers("tok"),
             )
             assert out.body == "ok"
+
+    def test_gateway_get_404_and_manifest_missing(self) -> None:
         import urllib.error
 
         from raft.serve.github.gateway import GithubHttpError
 
-        err = urllib.error.HTTPError("u", 404, "x", hdrs=None, fp=BytesIO(b'{"message":"no"}'))
+        provider = RealGithubProvider()
+        err = urllib.error.HTTPError(
+            "u", 404, "x", hdrs=None, fp=BytesIO(b'{"message":"no"}')
+        )
         with patch(_GATEWAY_URLOPEN, side_effect=err):
             with pytest.raises(GithubHttpError) as raised:
                 provider._http.get("https://example.com", headers={})

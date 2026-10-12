@@ -26,20 +26,20 @@ class HealingSettingsParser(SettingsSectionParser[HealingConfig]):
                 "settings.yaml healing must be a mapping.\n"
                 "Fix: set healing: {enabled: true, ...} in ~/.raft/settings.yaml"
             )
+        return self._from_mapping(raw)
+
+    def _from_mapping(self, raw: dict) -> HealingConfig:
+        s = self._scalars
         return HealingConfig(
             enabled=bool(raw.get("enabled", False)),
-            interval_seconds=self._scalars.pos_float(
+            interval_seconds=s.pos_float(
                 raw, "intervalSeconds", DEFAULT_HEAL_INTERVAL_SECONDS, "healing"
             ),
-            timeout_seconds=self._scalars.pos_float(
+            timeout_seconds=s.pos_float(
                 raw, "timeoutSeconds", DEFAULT_HEAL_TIMEOUT_SECONDS, "healing"
             ),
-            fail_threshold=self._scalars.pos_int(raw, "failThreshold", 3, "healing"),
-            cooldown_seconds=self._scalars.pos_float(
-                raw, "cooldownSeconds", 60.0, "healing"
-            ),
-            max_restarts=self._scalars.pos_int(raw, "maxRestarts", 1, "healing"),
-            escalate_after_restarts=self._scalars.pos_int(
-                raw, "escalateAfterRestarts", 1, "healing"
-            ),
+            fail_threshold=s.pos_int(raw, "failThreshold", 3, "healing"),
+            cooldown_seconds=s.pos_float(raw, "cooldownSeconds", 60.0, "healing"),
+            max_restarts=s.pos_int(raw, "maxRestarts", 1, "healing"),
+            escalate_after_restarts=s.pos_int(raw, "escalateAfterRestarts", 1, "healing"),
         )
