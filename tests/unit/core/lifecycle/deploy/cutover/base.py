@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Optional
 from unittest.mock import MagicMock
 
 import pytest
@@ -17,7 +18,7 @@ class CutoverTestCase(DomainTestCase):
     def _cutover_setup(self, _applied_stack) -> None:
         self.session = self.cutover_session()
 
-    def docker_session(self, *, ref_text: str | None = None) -> CutoverSession:
+    def docker_session(self, *, ref_text: Optional[str] = None) -> CutoverSession:
         AppliedInventory.write_applied_app(
             self.tmp_path,
             "hub",

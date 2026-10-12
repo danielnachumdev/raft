@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Optional
 from unittest.mock import MagicMock
 
 from raft.core.core.config.settings.types import AcmeConfig, EdgeConfig, RaftConfig
@@ -15,7 +16,7 @@ from tests.unit.core.observe.ops.doctor.base import DoctorTestCase
 
 
 class TestAcmeCertHealth(DoctorTestCase):
-    def _write_settings(self, *, email: str | None = "ops@example.com", http=80) -> None:
+    def _write_settings(self, *, email: Optional[str] = "ops@example.com", http=80) -> None:
         cfg = RaftConfig(
             edge=EdgeConfig(http=http, https=443),
             acme=AcmeConfig(email=email, renew_days_before_expiry=30),

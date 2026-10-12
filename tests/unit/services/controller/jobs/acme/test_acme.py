@@ -1,5 +1,6 @@
 """AcmeJobSync: register/drop parallel ``acme:<app>`` jobs from manifests."""
 
+from typing import Optional
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -19,7 +20,7 @@ from tests.unit.services.controller.base import ControllerTestCase
 
 class TestAcmeJobSync(ControllerTestCase):
     def _sync(
-        self, home: Path, orch: JobOrchestrator | None = None
+        self, home: Path, orch: Optional[JobOrchestrator] = None
     ) -> tuple[AcmeJobSync, JobOrchestrator]:
         orch = orch or JobOrchestrator()
         return AcmeJobSync(home, MagicMock(), orch), orch
