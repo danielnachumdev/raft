@@ -4,12 +4,12 @@ import {
   needsOauthSetup,
   oauthErrorFromSearch,
   type GithubSession,
-} from "../../src/deploy/github/githubApi.ts";
+} from "../../../src/deploy/github/index.ts";
 import {
   DEFAULT_APPLICATION_NAME,
   buildOauthAppCreateUrl,
   resolveOauthSetupHints,
-} from "../../src/deploy/oauth/oauthSetupHints.ts";
+} from "../../../src/deploy/oauth/oauthSetupHints.ts";
 
 describe("needsOauthSetup", () => {
   it("detects missing config from session", () => {

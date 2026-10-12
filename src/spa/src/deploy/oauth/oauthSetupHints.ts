@@ -1,4 +1,4 @@
-import type { GithubOauthConfig, GithubSession } from "../github/githubApi";
+import type { GithubOauthConfig, GithubSession } from "../github/index.ts";
 
 const OAUTH_APP_NEW = "https://github.com/settings/applications/new";
 

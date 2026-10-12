@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { GraphEvent } from "../../src/shared/api.ts";
+import type { GraphEvent } from "../../src/shared/api/index.ts";
 import {
   ChartHoverHighlight,
   eventKindHover,

@@ -1,4 +1,4 @@
-import type { MetricsSeries } from "../../shared/api.ts";
+import type { MetricsSeries } from "../../shared/api/index.ts";
 import {
   mergeTimedRows,
   toEpochMs,

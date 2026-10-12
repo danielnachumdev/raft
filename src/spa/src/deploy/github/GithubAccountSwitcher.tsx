@@ -1,4 +1,4 @@
-import type { GithubSession } from "./githubApi";
+import type { GithubSession } from "./index.ts";
 import "./GithubAccountSwitcher.css";
 
 /** Connected GitHub identities: per-row logout and + to add another. */

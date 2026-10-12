@@ -10,7 +10,7 @@ import {
   toDatetimeLocal,
   type DurationUnit,
   type TrendsRangeState,
-} from "./trendsRange";
+} from "./range/index.ts";
 import "./TrendsRangeControls.css";
 export function TrendsRangeControls(props: {
   range: TrendsRangeState;

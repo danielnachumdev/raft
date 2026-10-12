@@ -10,7 +10,7 @@ import {
   type MetricsSeries,
 } from "../../shared/api";
 import type { MetricPlane } from "../runtimeMetrics";
-import type { MetricsQueryOpts } from "../trendsRange";
+import type { MetricsQueryOpts } from "../range/index.ts";
 
 export type PlaneCursors = Partial<Record<MetricPlane, string | null>>;
 

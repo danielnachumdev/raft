@@ -1,4 +1,4 @@
-import type { MetricsPoint } from "../shared/api.ts";
+import type { MetricsPoint } from "../shared/api/index.ts";
 import {
   formatMetricValue,
   yAxisSuffix,

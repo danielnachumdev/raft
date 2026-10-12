@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { MetricsSeries } from "../../src/shared/api.ts";
 import {
   buildPerGroupSeries,
   isSingleLineAvg,
@@ -8,42 +7,19 @@ import {
   seriesInGroups,
   UNGROUPED_ID,
 } from "../../src/trends/panel/trendsView.ts";
+import { metricsSeries } from "../fixtures.ts";
 
-function point(t: string, cpu: number | null, mem: number | null = null) {
-  return {
-    t,
-    cpu_percent: cpu,
-    memory_used_percent: mem,
-    memory_used_bytes: null,
-  };
-}
-
-function series(
-  id: string,
-  group: string | null,
-  points: { t: string; cpu: number | null; mem?: number | null }[],
-): MetricsSeries {
-  return {
-    id,
-    label: id,
-    kind: "container",
-    role: "app",
-    group,
-    points: points.map((p) => point(p.t, p.cpu, p.mem ?? null)),
-  };
-}
-
-const sample: MetricsSeries[] = [
-  series("host", null, [{ t: "t1", cpu: 90 }]),
-  series("demo-web", "demo", [
+const sample = [
+  metricsSeries("host", null, [{ t: "t1", cpu: 90 }]),
+  metricsSeries("demo-web", "demo", [
     { t: "t1", cpu: 10, mem: 40 },
     { t: "t2", cpu: 20, mem: 50 },
   ]),
-  series("demo-api", "demo", [
+  metricsSeries("demo-api", "demo", [
     { t: "t1", cpu: 30, mem: 60 },
     { t: "t2", cpu: 40, mem: 70 },
   ]),
-  series("solo", null, [{ t: "t1", cpu: 50 }]),
+  metricsSeries("solo", null, [{ t: "t1", cpu: 50 }]),
 ];
 
 describe("isSingleLineAvg", () => {

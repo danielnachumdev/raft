@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import {
   filterGithubRepos,
   type GithubRepo,
-} from "../../src/deploy/github/githubApi.ts";
+} from "../../../src/deploy/github/index.ts";
 
 function repo(fullName: string): GithubRepo {
   const [owner, name] = fullName.split("/", 2);

@@ -1,5 +1,5 @@
-import type { GithubOauthConfig, GithubSession } from "./github/githubApi";
-import { accountCount } from "./github/githubApi";
+import type { GithubOauthConfig, GithubSession } from "./github/index.ts";
+import { accountCount } from "./github/index.ts";
 import { GithubAccountSwitcher } from "./github/GithubAccountSwitcher";
 import { OauthSetupPanel } from "./oauth/OauthSetupPanel";
 
