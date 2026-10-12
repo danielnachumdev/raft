@@ -2,8 +2,8 @@
 
 import time
 
-from raft.services.serve.github.account import GithubAccount
-from raft.services.serve.github.repo import GithubRepo
+from raft.services.serve.github.accounts import GithubAccount
+from raft.services.serve.github.providers import GithubRepo
 
 
 def sample_repo() -> GithubRepo:

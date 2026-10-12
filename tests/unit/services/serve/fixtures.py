@@ -12,7 +12,7 @@ from raft.core.observe.ops.logs import Logs
 from raft.core.observe.ops.status import Status
 from raft.core.observe.ops.status.models import StatusSnapshot
 from raft.services.serve.actions import ServeActions
-from raft.services.serve.app import ServeAppFactory
+from raft.services.serve.http.app import ServeAppFactory
 
 from tests.unit.base import AppSpecExtras, AppliedInventory
 from tests.unit.core.observe.ops.status import fixtures as status_fx

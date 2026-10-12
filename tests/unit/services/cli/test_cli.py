@@ -76,10 +76,10 @@ class TestCliBootstrap(CliTestCase):
 
     def test_main_module_entry(self) -> None:
         with patch("raft.services.cli.cli.RaftCLI.run") as run:
-            runpy.run_module("raft.__main__", run_name="__main__")
+            runpy.run_module("raft.services.cli", run_name="__main__")
         run.assert_called_once_with()
 
-        main_mod = importlib.import_module("raft.__main__")
+        main_mod = importlib.import_module("raft.services.cli.__main__")
         assert main_mod.RaftCLI is RaftCLI
         assert callable(main_mod.main)
 

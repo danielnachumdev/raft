@@ -14,7 +14,7 @@ from ..jobs import (
     ScaleJob,
     Scaler,
 )
-from ..orchestrator import ClockFn, JobOrchestrator, SleepFn
+from ..engine import ClockFn, JobOrchestrator, SleepFn
 
 logger = logging.getLogger(__name__)
 

@@ -13,7 +13,7 @@ from raft.core.platform.adapters.shell import Shell
 from raft.core.core.models.stack import load_stack
 from raft.core.observe.ops.logs import Logs
 from raft.core.observe.ops.status import Status
-from raft.services.serve.app import ServeAppFactory
+from raft.services.serve.http.app import ServeAppFactory
 from tests.e2e.shared.compose import apps_only_compose, new_project_name
 from tests.e2e.shared.runtime import ServiceRuntimeWait
 from tests.shared.http import HttpClient

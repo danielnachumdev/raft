@@ -2,6 +2,7 @@
 
 from .controller_loop import ControllerLoop
 from .raft_controller import RaftController
+from .smoke import PrereqSmoke
 
 
 def main() -> None:
@@ -9,4 +10,4 @@ def main() -> None:
     RaftController().run()
 
 
-__all__ = ["ControllerLoop", "RaftController", "main"]
+__all__ = ["ControllerLoop", "PrereqSmoke", "RaftController", "main"]

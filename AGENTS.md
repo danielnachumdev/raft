@@ -283,7 +283,7 @@ Localhost dashboard for operators (`raft serve`). **Hard rules:** bind `127.0.0.
 
 | Piece | Path / type | Role |
 |-------|-------------|------|
-| CLI entry | `raft serve` → `serve/service.py` | uvicorn on `--port` (default **8787**); prints tunnel CTAs; flock lease under `state/serve/`; `--stop` |
+| CLI entry | `raft serve` → `serve/service.py` (`http/` FastAPI, `runtime/` lease) | uvicorn on `--port` (default **8787**); prints tunnel CTAs; flock lease under `state/serve/`; `--stop` |
 | App factory | `ServeAppFactory` | mounts `/assets`, SPA catch-all, registers `/api/*` |
 | Page / routes | `ServePage` | status, metrics, service detail, logs, start/stop/redeploy, purge |
 | Downloads | `ServeDownloads` + `export/` | catalog-driven log/metrics file export (register an `Exporter`) |
@@ -383,7 +383,7 @@ Top-level **commands** (not nested groups, except `auth` and `gate`):
 | `uninstall` | Full removal (`--yes`; optional `--uv` to remove uv too) |
 | `auth` | `setup` / `list` / `show` / `test` / `remove` |
 
-Entry: `raft` console script → `raft.__main__:main` (`RaftCLI().run()`). Prefer `install.sh` / `uv tool install` so `raft` is on `PATH`; in a bare checkout `uv run raft …` still works.
+Entry: `raft` console script → `raft.services.cli.__main__:main` (`RaftCLI().run()`). Prefer `install.sh` / `uv tool install` so `raft` is on `PATH`; in a bare checkout `uv run raft …` still works.
 
 ---
 
@@ -392,8 +392,8 @@ Entry: `raft` console script → `raft.__main__:main` (`RaftCLI().run()`). Prefe
 | Path | Notes |
 |------|-------|
 | `src/raft/services/cli/` | `RaftCLI` entry; `CliExitMapper`; `RaftCLICommands` (`commands/`); auth/gate/get; CLI `utils/` argv + deps/Fire helpers |
-| `src/raft/services/serve/` | `raft serve`: FastAPI factory, `ServePage`, `ServeActions`, SSE log bridge, SPA paths; `github/` OAuth + deploy assist (`github/strategies/`) |
-| `src/raft/services/controller/` | Always-on Compose `raft-controller` (`run` + orchestrator; `ControllerJob` + `jobs/`; scale/heal/metrics/acme) |
+| `src/raft/services/serve/` | `raft serve`: `service`/`entry`/`actions`, `http/`, `runtime/`; `github/` (`accounts`/`oauth`/`deploy`/`providers`) + `notifications/` |
+| `src/raft/services/controller/` | Always-on Compose `raft-controller` (`run/` + `engine/` + `jobs/` + `wake_http/`) |
 | `src/raft/core/core/models/` | Types + parse/registry: `App`, `AppSpec`, `AppDocument`, `AppRegistry`, `Stack`, scaling/deployment specs; `models/state/` stores |
 | `src/raft/core/core/config/` | `~/.raft` paths, `settings.yaml` (logging + edge + healing + metrics + notifications / acme / github) |
 | `src/raft/core/core/errors/` | Operator errors + CTAs; package `__init__` lists public exports |
