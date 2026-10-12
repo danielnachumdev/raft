@@ -13,12 +13,12 @@ from raft.render.edge import StreamEdge
 from tests.shared.artifacts import GeneratedArtifacts
 from tests.shared.files import FileText
 
-from tests.unit.base import RaftTestCase, make_app, write_applied_app
+from tests.unit.base import RaftTestCase, AppMakers, AppliedInventory
 
 
 class TestRenderEdgeCoverage(RaftTestCase):
     def test_stream_protocol_mismatch_and_empty_edge(self) -> None:
-        app = make_app("mail", public_host="mail.example.com")
+        app = AppMakers.make_app("mail", public_host="mail.example.com")
         port = PortSpec(
             name="smtp",
             container_port=25,
@@ -31,14 +31,14 @@ class TestRenderEdgeCoverage(RaftTestCase):
         with pytest.raises(RuntimeError, match="does not match"):
             StreamEdge().contribute(app, spec, port, edge=edge)
 
-        write_applied_app(self.tmp_path, "web")
+        AppliedInventory.write_applied_app(self.tmp_path, "web")
         gen = GeneratedArtifacts(
             self.render_applied(edge=EdgeConfig(http=None, https=None, streams=()))
         )
         FileText.contains(gen.path("compose.edge.yaml"), "ports:\n      []")
 
     def test_render_dockerfile_and_stale_prune(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "web",
             extra={"build": {"context": ".", "dockerfile": "Dockerfile.web"}},
@@ -66,7 +66,7 @@ class TestRenderEdgeCoverage(RaftTestCase):
         FileText.contains(gen / "compose.apps.yaml", "dockerfile: Dockerfile.web")
 
     def test_render_aliases_and_errors(self) -> None:
-        write_applied_app(self.tmp_path, "web")
+        AppliedInventory.write_applied_app(self.tmp_path, "web")
         self.ensure_checkouts("web")
         stack = load_stack(self.tmp_path)
         renderer = StackRenderer(stack)
@@ -77,7 +77,7 @@ class TestRenderEdgeCoverage(RaftTestCase):
         self._render_docker_image_alias()
 
     def _render_docker_image_alias(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "hub",
             source="docker",
@@ -92,7 +92,7 @@ class TestRenderEdgeCoverage(RaftTestCase):
         )
 
     def test_render_build_outside_home(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "web",
             path="apps/web",
@@ -102,7 +102,7 @@ class TestRenderEdgeCoverage(RaftTestCase):
             self.render_applied()
 
     def test_stream_dir_stale_prune(self) -> None:
-        write_applied_app(self.tmp_path, "web")
+        AppliedInventory.write_applied_app(self.tmp_path, "web")
         self.ensure_checkouts("web")
         stack = load_stack(self.tmp_path)
         stream_dir = stack.generated_dir() / "nginx" / "gate-stream"
@@ -122,7 +122,7 @@ class TestRenderEdgeCoverage(RaftTestCase):
         assert spec.host_ports() == ()
 
     def test_gate_listener_https_only(self) -> None:
-        write_applied_app(self.tmp_path, "web", tls="origin")
+        AppliedInventory.write_applied_app(self.tmp_path, "web", tls="origin")
         gen = GeneratedArtifacts(
             self.render_applied(edge=EdgeConfig(http=None, https=443, streams=()))
         )

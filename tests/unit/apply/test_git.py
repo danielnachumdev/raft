@@ -10,7 +10,7 @@ from raft.models.stack import load_stack
 from raft.apply import AppApply
 from raft.auth import GitAuthManager
 
-from tests.unit.base import write_applied_app
+from tests.unit.base import AppliedInventory
 from tests.unit.domain_case import DomainTestCase
 from .base import ApplyTestCase
 
@@ -161,8 +161,8 @@ class TestApplyGit(ApplyTestCase):
         return clone_alias
 
     def test_delete_re_renders(self, capsys) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test")
-        write_applied_app(self.tmp_path, "other", public_host="other.test")
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test")
+        AppliedInventory.write_applied_app(self.tmp_path, "other", public_host="other.test")
         with patch("raft.apply.service.Orchestrator") as orch_cls:
             AppApply(load_stack(self.tmp_path)).delete("web")
             orch_cls.return_value.render.assert_called_once()

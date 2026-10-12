@@ -9,13 +9,13 @@ from raft.models.ports import PortSpec
 from raft.models.stack import load_stack
 from raft.errors.operator_error import OperatorError
 
-from ..base import RaftTestCase, make_app, write_inventory
+from ..base import RaftTestCase, AppMakers, AppliedInventory
 
 
 class TestStack(RaftTestCase):
     @pytest.fixture(autouse=True)
     def _stack_setup(self, _raft_base) -> None:
-        write_inventory(
+        AppliedInventory.write_inventory(
             self.tmp_path,
             """
 services:
@@ -59,7 +59,7 @@ services:
     def test_load_stack_uses_raft_home_when_root_none(
         self, monkeypatch: pytest.MonkeyPatch, isolated_raft_data_home: Path
     ) -> None:
-        write_inventory(
+        AppliedInventory.write_inventory(
             isolated_raft_data_home,
             """
 services:
@@ -114,7 +114,7 @@ class TestFindPackageRoot(RaftTestCase):
 
 class TestApp(RaftTestCase):
     def test_abs_path(self) -> None:
-        app = make_app("d", public_host="d.example.com", path="apps/d")
+        app = AppMakers.make_app("d", public_host="d.example.com", path="apps/d")
         (self.tmp_path / "apps" / "d").mkdir(parents=True)
         assert app.abs_path(self.tmp_path) == (self.tmp_path / "apps" / "d").resolve()
 

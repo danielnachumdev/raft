@@ -11,7 +11,7 @@ from raft.ops.status import Status
 from raft.ops.status.models import StatusSnapshot
 from raft.read import DoctorRead, StatusRead
 
-from tests.unit.base import RaftTestCase, make_app, make_stack, write_applied_app
+from tests.unit.base import RaftTestCase, AppMakers, AppliedInventory, StackMakers
 from tests.unit.ops.status.fixtures import StatusFixtures
 
 
@@ -25,7 +25,7 @@ class TestStatusRead(RaftTestCase):
         )
         status = MagicMock()
         status.collect.return_value = snap
-        reader = StatusRead(make_stack(self.tmp_path), status=status)
+        reader = StatusRead(StackMakers.make_stack(self.tmp_path), status=status)
         assert reader.status is status
         assert reader.snapshot_dict() == snap.to_dict()
         status.collect.assert_called_once()
@@ -40,7 +40,7 @@ class TestStatusRead(RaftTestCase):
         )
         status = MagicMock()
         status.collect.return_value = snap
-        payload = StatusRead(make_stack(self.tmp_path), status=status).api_payload()
+        payload = StatusRead(StackMakers.make_stack(self.tmp_path), status=status).api_payload()
         assert payload["host"] == snap.to_dict()["host"]
         assert payload["containers"] == snap.to_dict()["containers"]
         assert payload["control_plane"][0]["name"] == "gate"
@@ -56,7 +56,7 @@ class TestStatusRead(RaftTestCase):
         snap = StatusSnapshot(host=StatusFixtures.empty_host_status(), containers=())
         status = MagicMock()
         status.collect.return_value = snap
-        stack = make_stack(
+        stack = StackMakers.make_stack(
             self.tmp_path,
             (),
             registry_issues=(
@@ -77,7 +77,7 @@ class TestStatusRead(RaftTestCase):
         )
         status = MagicMock()
         status.collect.return_value = snap
-        reader = StatusRead(make_stack(self.tmp_path), status=status)
+        reader = StatusRead(StackMakers.make_stack(self.tmp_path), status=status)
         detail = reader.service_detail("raft-gate")
         assert detail is not None
         assert detail["container"]["service"] == "raft-gate"
@@ -87,7 +87,7 @@ class TestStatusRead(RaftTestCase):
         assert status.collect.call_count == 2
 
     def test_api_payload_includes_app_external_urls(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path, "site", public_host="site.test", tls="origin"
         )
         snap = StatusSnapshot(
@@ -98,7 +98,7 @@ class TestStatusRead(RaftTestCase):
         )
         status = MagicMock()
         status.collect.return_value = snap
-        stack = make_stack(self.tmp_path, (make_app("site", public_host="site.test"),))
+        stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site", public_host="site.test"),))
         payload = StatusRead(stack, status=status).api_payload()
         assert payload["apps"][0]["external_urls"] == ["https://site.test/"]
 
@@ -118,14 +118,14 @@ class TestStatusRead(RaftTestCase):
         assert worker["status"] == "not running" and worker["app"] == "demo-worker"
 
     def _reader_with_site(self) -> StatusRead:
-        write_applied_app(self.tmp_path, "site")
-        status = Status(make_stack(self.tmp_path, (make_app("site"),)))
+        AppliedInventory.write_applied_app(self.tmp_path, "site")
+        status = Status(StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),)))
         StatusFixtures.mock_docker_idle(status)
         return StatusRead(status.stack, status=status)
 
     def _write_out_of_band_apps(self) -> None:
-        write_applied_app(self.tmp_path, "demo-api")
-        write_applied_app(
+        AppliedInventory.write_applied_app(self.tmp_path, "demo-api")
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "demo-worker",
             source="docker",

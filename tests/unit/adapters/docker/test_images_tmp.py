@@ -7,7 +7,7 @@ import pytest
 from raft.models.ports import PortSpec
 from raft.ops.certs import MissingOriginCerts
 
-from ...base import make_app
+from ...base import AppMakers
 from .base import DockerTestCase
 
 

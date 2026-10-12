@@ -14,13 +14,13 @@ from raft.ops.doctor.context import DoctorContext
 from tests.shared.compose_ids import RunningServices
 from tests.shared.nginx import NginxEmerg
 
-from tests.unit.base import make_stack, write_applied_app
+from tests.unit.base import AppliedInventory, StackMakers
 from .base import DoctorTestCase
 
 
 class TestDoctorProbes(DoctorTestCase):
     def test_public_host_probe_fails_when_unreachable(self) -> None:
-        write_applied_app(self.tmp_path, "app")
+        AppliedInventory.write_applied_app(self.tmp_path, "app")
         self.ensure_checkouts("app")
         self.seed_compose()
         docker = self.mock_docker(running=RunningServices.with_apps("app"))
@@ -46,7 +46,7 @@ class TestDoctorProbes(DoctorTestCase):
         assert "logs --tail=40 app" in fix
 
     def _probe_ctx(self, docker: MagicMock) -> DoctorContext:
-        write_applied_app(self.tmp_path, "app")
+        AppliedInventory.write_applied_app(self.tmp_path, "app")
         return DoctorContext(
             stack=load_stack(self.tmp_path),
             shell=MagicMock(),
@@ -94,7 +94,7 @@ class TestDoctorProbes(DoctorTestCase):
         assert non_str[0].status == "fail" and "—" not in non_str[0].detail
 
     def test_readiness_path_from_spec(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "app",
             extra={"readiness": {"type": "http", "port": "http", "path": "/ready"}},
@@ -127,7 +127,7 @@ class TestDoctorProbes(DoctorTestCase):
     def test_public_host_probe_skips_blank_host(self) -> None:
         app = App(name="internal", public_host="", source="local", path="apps/internal")
         ctx = DoctorContext(
-            stack=make_stack(self.tmp_path, (app,)),
+            stack=StackMakers.make_stack(self.tmp_path, (app,)),
             shell=MagicMock(),
             auth=MagicMock(),
             docker=MagicMock(),
@@ -151,8 +151,8 @@ class TestDoctorProbes(DoctorTestCase):
         self._assert_spec_empty_or_dup(ctx)
 
     def _seed_web_and_mail(self) -> None:
-        write_applied_app(self.tmp_path, "web")
-        write_applied_app(
+        AppliedInventory.write_applied_app(self.tmp_path, "web")
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "mail",
             extra={

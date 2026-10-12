@@ -13,7 +13,7 @@ from raft.models.readiness_parser import ReadinessParser
 from raft.models.readiness_spec import ReadinessSpec
 from raft.deploy.readiness import ReadinessStrategy
 
-from tests.unit.base import RaftTestCase, make_app, make_stack
+from tests.unit.base import RaftTestCase, AppMakers, StackMakers
 
 
 class TestReadinessExtraCoverage(RaftTestCase):
@@ -50,12 +50,12 @@ class TestReadinessExtraCoverage(RaftTestCase):
 
     def _assert_docker_non_digit_and_tcp(self) -> None:
         shell = MagicMock()
-        docker = DockerStack(make_stack(self.tmp_path), shell)
+        docker = DockerStack(StackMakers.make_stack(self.tmp_path), shell)
         shell.compose.return_value = MagicMock(stdout="cid\n", returncode=0)
         shell.docker.return_value = MagicMock(stdout="80/tcp weird\n", returncode=0)
         assert docker.gate_published_ports() == [80]
-        app = make_app()
-        stack = make_stack(self.tmp_path, (app,))
+        app = AppMakers.make_app()
+        stack = StackMakers.make_stack(self.tmp_path, (app,))
         http = MagicMock()
         http.tcp_port_ok.return_value = True
         strategy = ReadinessStrategy(

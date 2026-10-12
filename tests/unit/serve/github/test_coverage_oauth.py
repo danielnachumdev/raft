@@ -18,7 +18,7 @@ from raft.serve.github.oauth import GithubOauth
 from raft.serve.github.strategies.real import RealGithubProvider
 from raft.serve.github.accounts import GithubAccountStore
 
-from tests.unit.base import RaftTestCase, make_stack
+from tests.unit.base import RaftTestCase, StackMakers
 
 
 class TestCoverageOauth(RaftTestCase):
@@ -101,7 +101,7 @@ class TestCoverageOauth(RaftTestCase):
         assert GithubOauth._user_from_payload({"login": "x", "id": 7}) == ("x", "7")
 
     def test_deploy_parse_errors(self) -> None:
-        runner = GithubDeployRunner(make_stack(self.tmp_path), MagicMock(), DeployJobStore())
+        runner = GithubDeployRunner(StackMakers.make_stack(self.tmp_path), MagicMock(), DeployJobStore())
         with pytest.raises(OperatorError):
             runner._parse_yaml(":", "o/r")
         with pytest.raises(OperatorError):
@@ -114,7 +114,7 @@ class TestCoverageOauth(RaftTestCase):
         assert job.steps[0].status == "ok"
 
     def test_deploy_fingerprint(self) -> None:
-        runner = GithubDeployRunner(make_stack(self.tmp_path), MagicMock(), DeployJobStore())
+        runner = GithubDeployRunner(StackMakers.make_stack(self.tmp_path), MagicMock(), DeployJobStore())
         fp = runner._fingerprint("ssh-ed25519 " + "A" * 44)
         assert fp.startswith("SHA256:") and "unparsed" not in fp
         assert runner._fingerprint("nospaceblob")

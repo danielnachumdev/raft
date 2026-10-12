@@ -8,14 +8,14 @@ import pytest
 
 from raft.cli import RaftCLI
 
-from ..base import make_app, make_stack, write_demo_inventory
+from ..base import AppMakers, AppliedInventory, StackMakers
 from .base import CliTestCase
 
 
 class TestCliApplyGetDelete(CliTestCase):
     def test_apply_merges_env_file_and_flags_into_single_env_map(self) -> None:
-        write_demo_inventory(self.tmp_path)
-        stack = make_stack(self.tmp_path, (make_app("app"),))
+        AppliedInventory.write_demo_inventory(self.tmp_path)
+        stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("app"),))
         applier = MagicMock()
         applier.apply_file.return_value = "web"
         env_path = self.tmp_path / "vars.env"
@@ -49,8 +49,8 @@ class TestCliApplyGetDelete(CliTestCase):
         assert apply_env["A"] == "1" and apply_env["B"] == "2"
 
     def test_apply_without_env_flags_still_passes_process_env_map(self) -> None:
-        write_demo_inventory(self.tmp_path)
-        stack = make_stack(self.tmp_path, (make_app("app"),))
+        AppliedInventory.write_demo_inventory(self.tmp_path)
+        stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("app"),))
         applier = MagicMock()
         applier.apply_file.return_value = "web"
         with self.patched_deps(stack=stack, AppApply=applier):
@@ -60,8 +60,8 @@ class TestCliApplyGetDelete(CliTestCase):
         assert "env_file" not in call_kwargs and "env_overrides" not in call_kwargs
 
     def test_apply_get_delete_dispatch(self, capsys) -> None:
-        write_demo_inventory(self.tmp_path)
-        stack = make_stack(self.tmp_path, (make_app("app"), make_app("other")))
+        AppliedInventory.write_demo_inventory(self.tmp_path)
+        stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("app"), AppMakers.make_app("other")))
         applier = MagicMock()
         applier.apply_file.return_value = "web"
         applier.apply_git.return_value = "hub"
@@ -91,7 +91,7 @@ class TestCliApplyGetDelete(CliTestCase):
                 RaftCLI()._invoke_fire(["apply"])
 
     def _assert_get_dispatch(self, stack, capsys) -> None:
-        empty = make_stack(self.tmp_path, ())
+        empty = StackMakers.make_stack(self.tmp_path, ())
         with self.patched_deps(stack=empty):
             assert RaftCLI()._invoke_fire(["get", "apps"]) == 0
             assert "No apps applied" in capsys.readouterr().out

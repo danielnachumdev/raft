@@ -8,13 +8,13 @@ from raft.models.stack import load_stack
 from raft.ops.doctor import INFRA
 from tests.shared.compose_ids import RunningServices
 
-from tests.unit.base import RaftTestCase, write_applied_app
+from tests.unit.base import RaftTestCase, AppliedInventory
 from .coverage_fixture import CoverageDoctor
 
 
 class TestDoctorEdgeCoverage(RaftTestCase):
     def _seed_app(self) -> None:
-        write_applied_app(self.tmp_path, "app")
+        AppliedInventory.write_applied_app(self.tmp_path, "app")
         self.ensure_checkouts("app")
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")
 
@@ -83,7 +83,7 @@ class TestDoctorEdgeCoverage(RaftTestCase):
         assert results[("mail", "certs")].status == "ok"
 
     def _seed_mail_origin(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "mail",
             public_host="mail.example.com",

@@ -14,7 +14,7 @@ from raft.ops.status.models import StatusSnapshot
 from raft.serve.actions import ServeActions
 from raft.serve.app import ServeAppFactory
 
-from tests.unit.base import write_applied_app
+from tests.unit.base import AppliedInventory
 from tests.unit.ops.status.fixtures import StatusFixtures
 
 
@@ -73,7 +73,7 @@ class ServeFixtures:
 
     @staticmethod
     def live_registry_client(root):
-        write_applied_app(root, "site")
+        AppliedInventory.write_applied_app(root, "site")
         stack = Stack.load_apps(root)
         status = Status(stack)
         StatusFixtures.mock_docker_idle(status)
@@ -88,8 +88,8 @@ class ServeFixtures:
 
     @staticmethod
     def write_out_of_band_apps(root) -> None:
-        write_applied_app(root, "demo-api")
-        write_applied_app(
+        AppliedInventory.write_applied_app(root, "demo-api")
+        AppliedInventory.write_applied_app(
             root,
             "demo-worker",
             source="docker",

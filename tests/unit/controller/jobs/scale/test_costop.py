@@ -9,7 +9,7 @@ from raft.controller.jobs.scale import Scaler
 from raft.models.scaling_spec import ScalingSpec
 from raft.models.state.scaling_store import ScalingStore
 
-from ....base import write_applied_app
+from ....base import AppliedInventory
 from ...base import ControllerTestCase
 
 
@@ -57,7 +57,7 @@ class TestScalerCostop(ControllerTestCase):
 
     def test_healer_skips_costop_dep_without_scaling(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
-        write_applied_app(home, "api")
+        AppliedInventory.write_applied_app(home, "api")
         ScalingStore(home).mark_scaled_to_zero("api")
         docker = MagicMock()
         docker.service_runtime.return_value = ("exited", "none")
@@ -68,7 +68,7 @@ class TestScalerCostop(ControllerTestCase):
 
     def test_idle_stop_aborts_on_depends_error(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             home,
             self.APP,
             extra={**self.scaling_extra(), "dependsOn": ["missing"]},
@@ -113,8 +113,8 @@ class TestScalerCostop(ControllerTestCase):
 
     def _dep_scaler(self, tmp_path: Path):
         home = self.raft_home(tmp_path)
-        write_applied_app(home, "api")
-        write_applied_app(
+        AppliedInventory.write_applied_app(home, "api")
+        AppliedInventory.write_applied_app(
             home,
             self.APP,
             extra={**self.scaling_extra(), "dependsOn": ["api"]},
@@ -124,9 +124,9 @@ class TestScalerCostop(ControllerTestCase):
 
     def _mixed_dep_scaler(self, tmp_path: Path):
         home = self.raft_home(tmp_path)
-        write_applied_app(home, "api")
-        write_applied_app(home, "sidecar")
-        write_applied_app(
+        AppliedInventory.write_applied_app(home, "api")
+        AppliedInventory.write_applied_app(home, "sidecar")
+        AppliedInventory.write_applied_app(
             home,
             self.APP,
             extra={
@@ -142,8 +142,8 @@ class TestScalerCostop(ControllerTestCase):
 
     def _opt_out_scaler(self, tmp_path: Path):
         home = self.raft_home(tmp_path)
-        write_applied_app(home, "sidecar")
-        write_applied_app(
+        AppliedInventory.write_applied_app(home, "sidecar")
+        AppliedInventory.write_applied_app(
             home,
             self.APP,
             extra={

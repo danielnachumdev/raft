@@ -13,14 +13,14 @@ from raft.apply import AppApply
 from raft.ops.doctor import INFRA, CheckResult, Doctor
 from raft.render import StackRenderer
 
-from tests.unit.base import write_applied_app
+from tests.unit.base import AppliedInventory
 from .base import VolumesTestCase
 
 
 class TestVolumesIntegration(VolumesTestCase):
     def test_get_apps_group_filter_and_spec_errors(self) -> None:
-        write_applied_app(self.tmp_path, "a", extra={"group": "demo"})
-        write_applied_app(self.tmp_path, "b")
+        AppliedInventory.write_applied_app(self.tmp_path, "a", extra={"group": "demo"})
+        AppliedInventory.write_applied_app(self.tmp_path, "b")
         stack = load_stack(self.tmp_path)
         getter = GetCLI(stack)
         getter.apps(group="demo")
@@ -57,8 +57,8 @@ class TestVolumesIntegration(VolumesTestCase):
         (target / ".raft" / "app.yaml").write_text(yaml.safe_dump(git_doc), encoding="utf-8")
 
     def test_doctor_group_banner(self) -> None:
-        write_applied_app(self.tmp_path, "stack-a", extra={"group": "demo"})
-        write_applied_app(self.tmp_path, "solo")
+        AppliedInventory.write_applied_app(self.tmp_path, "stack-a", extra={"group": "demo"})
+        AppliedInventory.write_applied_app(self.tmp_path, "solo")
         text = self._report(
             load_stack(self.tmp_path),
             [
@@ -90,7 +90,7 @@ class TestVolumesIntegration(VolumesTestCase):
     def _assert_doctor_grouped_only_banner(self) -> None:
         only_grouped = self.tmp_path / "grouped-only"
         only_grouped.mkdir()
-        write_applied_app(only_grouped, "stack-b", extra={"group": "demo"})
+        AppliedInventory.write_applied_app(only_grouped, "stack-b", extra={"group": "demo"})
         text3 = self._report(
             load_stack(only_grouped),
             [
@@ -102,7 +102,7 @@ class TestVolumesIntegration(VolumesTestCase):
         assert "  stack-b\n" in text3 and "  demo-stack-b\n" not in text3
 
     def test_render_quoted_env(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "svc",
             source="docker",

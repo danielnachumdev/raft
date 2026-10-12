@@ -11,7 +11,7 @@ from raft.ops.doctor.checks.runtime import RuntimeChecks
 from raft.ops.doctor.context import DoctorContext
 from tests.shared.compose_ids import RunningServices
 
-from tests.unit.base import write_applied_app
+from tests.unit.base import AppliedInventory
 from .base import DoctorTestCase
 
 
@@ -27,7 +27,7 @@ class TestDoctorComposeSnapshot(DoctorTestCase):
         docker.service_runtime.assert_not_called()
 
     def _ctx_with_batch(self):
-        write_applied_app(self.tmp_path, "app")
+        AppliedInventory.write_applied_app(self.tmp_path, "app")
         (self.tmp_path / "settings.yaml").write_text(
             "edge:\n  http: 80\n  https: null\n  streams: []\n",
             encoding="utf-8",

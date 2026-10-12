@@ -9,12 +9,12 @@ from raft.models.stack import load_stack
 from raft.acme.ensure import AcmeEnsure
 from raft.notify.control_events import KIND_ACME_ERROR
 
-from tests.unit.base import RaftTestCase, write_applied_app
+from tests.unit.base import RaftTestCase, AppliedInventory
 
 
 class TestAcmeNotifyError(RaftTestCase):
     def test_missing_email_notifies(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path, "demo-api", public_host="demo.example.invalid", tls="acme"
         )
         notifier = MagicMock()

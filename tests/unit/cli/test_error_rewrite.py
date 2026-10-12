@@ -10,7 +10,7 @@ import yaml
 
 from raft.models.stack import load_stack
 
-from ..base import write_applied_app
+from ..base import AppliedInventory
 from .base import CliTestCase
 
 
@@ -132,7 +132,7 @@ class TestCliErrorRewrite(CliTestCase):
         assert "YAML" in capsys.readouterr().err
 
     def test_run_rewrites_missing_origin_cert_errors(self, capsys) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="origin")
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="origin")
         stack = load_stack(self.tmp_path)
         err = subprocess.CalledProcessError(
             1,

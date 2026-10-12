@@ -8,7 +8,7 @@ from raft.controller.jobs.scale import Scaler
 from raft.errors.cta import OperatorError
 from raft.models.scaling_spec import ScalingSpec
 
-from ....base import write_applied_app
+from ....base import AppliedInventory
 from .base import ScalerTestCase
 
 
@@ -83,7 +83,7 @@ class TestScalerWake(ScalerTestCase):
 
     def test_wake_depends_on_error(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             home,
             self.APP,
             extra={**self.scaling_extra(), "dependsOn": ["missing"]},

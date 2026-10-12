@@ -7,7 +7,7 @@ from raft.models.stack import load_stack
 from raft.ops.doctor import INFRA, CheckResult, Doctor
 from raft.ops.doctor.checks.apps import AppChecks
 
-from tests.unit.base import make_stack, write_applied_app
+from tests.unit.base import AppliedInventory, StackMakers
 from .base import DoctorTestCase
 from .report_cases import NoTty, ReportCases, Tty
 
@@ -81,8 +81,8 @@ class TestDoctorReport(DoctorTestCase):
         assert d.report([CheckResult(INFRA, "docker", "ok", "fine")], out=NoTty()) == 0
 
     def test_report_raft_group_and_orphan_paths(self, capsys) -> None:
-        write_applied_app(self.tmp_path, "raftling", extra={"group": "raft"})
-        write_applied_app(self.tmp_path, "solo")
+        AppliedInventory.write_applied_app(self.tmp_path, "raftling", extra={"group": "raft"})
+        AppliedInventory.write_applied_app(self.tmp_path, "solo")
         d = self.doctor(stack=load_stack(self.tmp_path))
         assert d.report(ReportCases.raft_group_mix(), color=False) == 0
         self._assert_raft_group_out(capsys.readouterr().out)
@@ -98,7 +98,7 @@ class TestDoctorReport(DoctorTestCase):
         assert "ungrouped\n" not in out and "solo\n" in out and "orphan\n" in out
 
     def _assert_custom_ungrouped(self, capsys) -> None:
-        d2 = self.doctor(stack=make_stack(self.tmp_path, apps=()))
+        d2 = self.doctor(stack=StackMakers.make_stack(self.tmp_path, apps=()))
         assert (
             d2.report(
                 [
@@ -113,7 +113,7 @@ class TestDoctorReport(DoctorTestCase):
         assert "ungrouped\n" not in out2 and "custom\n" in out2
 
     def test_report_edge_already_listed_and_raft_group_dedupe(self, capsys) -> None:
-        write_applied_app(self.tmp_path, "gate", extra={"group": "raft"})
+        AppliedInventory.write_applied_app(self.tmp_path, "gate", extra={"group": "raft"})
         d = self.doctor(stack=load_stack(self.tmp_path))
         assert (
             d.report(

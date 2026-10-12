@@ -7,7 +7,7 @@ import pytest
 
 from raft.adapters import Shell
 
-from ...base import RaftTestCase, completed
+from ...base import RaftTestCase, ShellMocks
 
 
 class TestShell(RaftTestCase):
@@ -16,7 +16,7 @@ class TestShell(RaftTestCase):
         self.shell = Shell(self.tmp_path)
 
     def test_run_success_no_capture(self) -> None:
-        done = completed(returncode=0)
+        done = ShellMocks.completed(returncode=0)
         done.stdout = None
         done.stderr = None
         with patch("raft.adapters.shell.shell.subprocess.run", return_value=done) as run:
@@ -40,7 +40,7 @@ class TestShell(RaftTestCase):
     def test_run_check_raises_with_captured_detail(self) -> None:
         with patch(
             "raft.adapters.shell.shell.subprocess.run",
-            return_value=completed(stdout="out", returncode=7, stderr="err detail"),
+            return_value=ShellMocks.completed(stdout="out", returncode=7, stderr="err detail"),
         ):
             with pytest.raises(subprocess.CalledProcessError) as exc:
                 self.shell.run(["false"], check=True, capture=True)
@@ -49,7 +49,7 @@ class TestShell(RaftTestCase):
     def test_run_check_raises_uses_stdout_when_stderr_empty(self) -> None:
         with patch(
             "raft.adapters.shell.shell.subprocess.run",
-            return_value=completed(stdout="stdout only", returncode=2, stderr=""),
+            return_value=ShellMocks.completed(stdout="stdout only", returncode=2, stderr=""),
         ):
             with pytest.raises(subprocess.CalledProcessError) as exc:
                 self.shell.run(["false"], check=True, capture=True)
@@ -58,7 +58,7 @@ class TestShell(RaftTestCase):
     def test_run_check_raises_empty_streams(self) -> None:
         with patch(
             "raft.adapters.shell.shell.subprocess.run",
-            return_value=completed(returncode=2),
+            return_value=ShellMocks.completed(returncode=2),
         ):
             with pytest.raises(subprocess.CalledProcessError) as exc:
                 self.shell.run(["false"], check=True, capture=True)
@@ -67,7 +67,7 @@ class TestShell(RaftTestCase):
     def test_run_check_raises_without_capture(self) -> None:
         with patch(
             "raft.adapters.shell.shell.subprocess.run",
-            return_value=completed(stdout="ignored", returncode=1, stderr="ignored"),
+            return_value=ShellMocks.completed(stdout="ignored", returncode=1, stderr="ignored"),
         ):
             with pytest.raises(subprocess.CalledProcessError) as exc:
                 self.shell.run(["false"], check=True, capture=False)
@@ -77,7 +77,7 @@ class TestShell(RaftTestCase):
     def test_run_no_check_returns_failure(self) -> None:
         with patch(
             "raft.adapters.shell.shell.subprocess.run",
-            return_value=completed(returncode=1),
+            return_value=ShellMocks.completed(returncode=1),
         ):
             assert self.shell.run(["false"], check=False).returncode == 1
 

@@ -21,7 +21,7 @@ from raft.serve.github.oauth import GithubOauth
 from raft.serve.github.strategies.mock import MockGithubProvider
 from raft.serve.paths import ServePaths
 
-from tests.unit.base import RaftTestCase, make_stack
+from tests.unit.base import RaftTestCase, StackMakers
 from tests.unit.ops.status.fixtures import StatusFixtures
 
 
@@ -99,7 +99,7 @@ class TestAccountsCoverage(RaftTestCase):
         assert client.post("/api/github/accounts/nope/logout").status_code == 404
 
     def _client(self) -> TestClient:
-        stack = make_stack(self.tmp_path)
+        stack = StackMakers.make_stack(self.tmp_path)
         (self.tmp_path / "settings.yaml").write_text(
             "github: {mock: true}\n", encoding="utf-8"
         )

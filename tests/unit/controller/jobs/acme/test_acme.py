@@ -13,7 +13,7 @@ from raft.controller.orchestrator import JobOrchestrator
 from raft.controller.schedule import IntervalSchedule
 from raft.models.stack import Stack
 
-from ....base import write_applied_app
+from ....base import AppliedInventory
 from ...base import ControllerTestCase
 
 
@@ -26,9 +26,9 @@ class TestAcmeJobSync(ControllerTestCase):
 
     def test_registers_two_acme_apps(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
-        write_applied_app(home, "shop", public_host="shop.test", tls="acme")
-        write_applied_app(home, "blog", public_host="blog.test", tls="acme")
-        write_applied_app(home, "plain", public_host="plain.test", tls="off")
+        AppliedInventory.write_applied_app(home, "shop", public_host="shop.test", tls="acme")
+        AppliedInventory.write_applied_app(home, "blog", public_host="blog.test", tls="acme")
+        AppliedInventory.write_applied_app(home, "plain", public_host="plain.test", tls="off")
         sync, orch = self._sync(home)
         sync.tick()
         ids = orch.registered_ids()
@@ -39,17 +39,17 @@ class TestAcmeJobSync(ControllerTestCase):
 
     def test_drops_when_tls_leaves_acme(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
-        write_applied_app(home, "shop", public_host="shop.test", tls="acme")
+        AppliedInventory.write_applied_app(home, "shop", public_host="shop.test", tls="acme")
         sync, orch = self._sync(home)
         sync.tick()
         assert JobIds.of(JobType.ACME, "shop") in orch.registered_ids()
-        write_applied_app(home, "shop", public_host="shop.test", tls="off")
+        AppliedInventory.write_applied_app(home, "shop", public_host="shop.test", tls="off")
         sync.tick()
         assert JobIds.of(JobType.ACME, "shop") not in orch.registered_ids()
 
     def test_drops_when_app_deleted(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
-        write_applied_app(home, "shop", public_host="shop.test", tls="acme")
+        AppliedInventory.write_applied_app(home, "shop", public_host="shop.test", tls="acme")
         sync, orch = self._sync(home)
         sync.tick()
         (home / "state" / "apps" / "shop.yaml").unlink()
@@ -58,7 +58,7 @@ class TestAcmeJobSync(ControllerTestCase):
 
     def test_job_policy_hardcoded(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
-        write_applied_app(home, "shop", public_host="shop.test", tls="acme")
+        AppliedInventory.write_applied_app(home, "shop", public_host="shop.test", tls="acme")
         sync, orch = self._sync(home)
         sync.tick()
         spec = orch._specs[JobIds.of(JobType.ACME, "shop")]  # noqa: SLF001
@@ -68,8 +68,8 @@ class TestAcmeJobSync(ControllerTestCase):
 
     def test_one_failing_ensure_does_not_block_sibling(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
-        write_applied_app(home, "a", public_host="a.test", tls="acme")
-        write_applied_app(home, "b", public_host="b.test", tls="acme")
+        AppliedInventory.write_applied_app(home, "a", public_host="a.test", tls="acme")
+        AppliedInventory.write_applied_app(home, "b", public_host="b.test", tls="acme")
         sync, orch = self._sync(home)
         sync.tick()
         calls: list[str] = []
@@ -109,7 +109,7 @@ class TestAcmeJobSync(ControllerTestCase):
 
     def test_ensure_app_invokes_acme_ensure(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
-        write_applied_app(home, "shop", public_host="shop.test", tls="acme")
+        AppliedInventory.write_applied_app(home, "shop", public_host="shop.test", tls="acme")
         sync, orch = self._sync(home)
         sync.tick()
         with patch("raft.controller.jobs.acme.acme.AcmeEnsure") as ensure_cls:
@@ -126,7 +126,7 @@ class TestAcmeJobSync(ControllerTestCase):
 
     def test_ensure_skips_when_tls_changed(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
-        write_applied_app(home, "shop", public_host="shop.test", tls="off")
+        AppliedInventory.write_applied_app(home, "shop", public_host="shop.test", tls="off")
         sync, _orch = self._sync(home)
         with patch("raft.controller.jobs.acme.acme.AcmeEnsure") as ensure_cls:
             sync._ensure_app("shop")  # noqa: SLF001
@@ -134,7 +134,7 @@ class TestAcmeJobSync(ControllerTestCase):
 
     def test_skips_broken_spec_when_listing(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
-        write_applied_app(home, "shop", public_host="shop.test", tls="acme")
+        AppliedInventory.write_applied_app(home, "shop", public_host="shop.test", tls="acme")
         sync, orch = self._sync(home)
         with patch.object(Stack, "spec_for", side_effect=RuntimeError("bad")):
             sync.tick()
@@ -142,7 +142,7 @@ class TestAcmeJobSync(ControllerTestCase):
 
     def test_ignores_non_acme_registered_ids(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
-        write_applied_app(home, "shop", public_host="shop.test", tls="acme")
+        AppliedInventory.write_applied_app(home, "shop", public_host="shop.test", tls="acme")
         orch = JobOrchestrator()
         orch.register(
             JobSpec(
@@ -160,7 +160,7 @@ class TestAcmeJobSync(ControllerTestCase):
 
     def test_noop_when_no_acme_apps(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
-        write_applied_app(home, "plain", public_host="plain.test", tls="off")
+        AppliedInventory.write_applied_app(home, "plain", public_host="plain.test", tls="off")
         sync, orch = self._sync(home)
         sync.tick()
         assert orch.registered_ids() == frozenset()

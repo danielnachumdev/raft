@@ -11,12 +11,12 @@ from raft.adapters.nginx import NginxUpstreams
 from raft.models.ports import PortSpec
 from raft.deploy.readiness import ReadinessStrategy
 
-from ...base import RaftTestCase, make_app, make_stack
+from ...base import RaftTestCase, AppMakers, StackMakers
 
 
 class TestAdapterCoverage(RaftTestCase):
     def test_nginx_fallback_and_docker_ports(self) -> None:
-        stack = make_stack(self.tmp_path, (make_app("lonely"),))
+        stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("lonely"),))
         nginx = NginxUpstreams(stack, MagicMock())
         nginx.ensure_steady_file(stack.apps[0])
         assert (stack.upstreams_dir / "lonely-http.conf").is_file()
@@ -29,8 +29,8 @@ class TestAdapterCoverage(RaftTestCase):
         assert docker.gate_published_ports() == [80]
 
     def test_readiness_wait_predicates(self) -> None:
-        app = make_app()
-        stack = make_stack(self.tmp_path, (app,))
+        app = AppMakers.make_app()
+        stack = StackMakers.make_stack(self.tmp_path, (app,))
         http = MagicMock()
         http.public_host_ok.return_value = True
         http.tcp_port_ok.return_value = True

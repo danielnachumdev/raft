@@ -15,7 +15,7 @@ from raft.models.ports import PortSpec
 from raft.models.scaling_spec import ScalingSpec
 from raft.render.scaling_holding import ScalingHoldingPages
 
-from tests.unit.base import RaftTestCase, write_applied_app
+from tests.unit.base import RaftTestCase, AppliedInventory
 
 _EDGE = EdgeConfig(http=80, https=443, streams=())
 _PORTS = (PortSpec(name="http", container_port=80, expose="http"),)
@@ -60,6 +60,6 @@ class TestScalingHoldingPages(RaftTestCase):
         return self.tmp_path / "generated/nginx/gate-http/holding/web.html"
 
     def _apply_scaling(self, scaling: dict[str, Any]) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path, "web", public_host="web.test", extra={"scaling": scaling}
         )

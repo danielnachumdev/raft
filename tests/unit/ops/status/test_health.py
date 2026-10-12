@@ -8,7 +8,7 @@ from raft.ops.status import Status
 from raft.ops.status.formatters import StatusFormatters
 from raft.ops.status.models import STATUS_STARTING, STATUS_UNHEALTHY
 
-from tests.unit.base import RaftTestCase, make_app, make_stack, write_applied_app
+from tests.unit.base import RaftTestCase, AppMakers, AppliedInventory, StackMakers
 from .fixtures import StatusFixtures
 
 _HOST_PATCH = "raft.ops.status.service.HostGateway.resources"
@@ -24,8 +24,8 @@ class TestStatusHealth(RaftTestCase):
         assert StatusFormatters.container_status("", "none") == "unknown"
 
     def test_collect_marks_unhealthy(self) -> None:
-        write_applied_app(self.tmp_path, "app")
-        status = Status(make_stack(self.tmp_path, (make_app("app"),)))
+        AppliedInventory.write_applied_app(self.tmp_path, "app")
+        status = Status(StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("app"),)))
         self._wire_unhealthy_app(StatusFixtures.mock_containers_idle(status))
         with patch(_HOST_PATCH, return_value=StatusFixtures.host()):
             snap = status.collect()
@@ -35,8 +35,8 @@ class TestStatusHealth(RaftTestCase):
 
     def test_collect_edge_without_healthcheck(self) -> None:
         """nginx edge has no Health key; must still show running + uptime."""
-        write_applied_app(self.tmp_path, "app")
-        status = Status(make_stack(self.tmp_path, (make_app("app"),)))
+        AppliedInventory.write_applied_app(self.tmp_path, "app")
+        status = Status(StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("app"),)))
         self._wire_edge_no_health(StatusFixtures.mock_containers_idle(status))
         with patch(_HOST_PATCH, return_value=StatusFixtures.host()):
             snap = status.collect()

@@ -8,7 +8,7 @@ from raft.models.state.scaling_store import ScalingStore
 from raft.models.stack import load_stack
 from raft.deploy.orchestrator import Orchestrator
 from tests.shared.compose_ids import RunningServices
-from tests.unit.base import write_applied_app
+from tests.unit.base import AppliedInventory
 from tests.unit.controller.base import ControllerTestCase
 
 from .base import OrchestratorTestCase
@@ -16,7 +16,7 @@ from .base import OrchestratorTestCase
 
 class TestOrchUpScale(OrchestratorTestCase, ControllerTestCase):
     def test_start_skips_scaling_app_pulls_and_marks_zero(self) -> None:
-        write_applied_app(self.tmp_path, "app", extra=self.scaling_extra())
+        AppliedInventory.write_applied_app(self.tmp_path, "app", extra=self.scaling_extra())
         orch = self._orch_cold_edge()
         with patch.object(orch, "sync"):
             orch.start()
@@ -30,7 +30,7 @@ class TestOrchUpScale(OrchestratorTestCase, ControllerTestCase):
 
     def test_start_docker_scaling_app_pulls_without_empty_build(self) -> None:
         """Image-only deferred apps must not invoke ``compose build`` (Compose WARN)."""
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "app",
             source="docker",
@@ -47,7 +47,7 @@ class TestOrchUpScale(OrchestratorTestCase, ControllerTestCase):
 
     def test_start_parks_deferred_upstreams_before_router(self) -> None:
         """Awake-then-down scaling apps must be parked before compose starts router."""
-        write_applied_app(self.tmp_path, "app", extra=self.scaling_extra())
+        AppliedInventory.write_applied_app(self.tmp_path, "app", extra=self.scaling_extra())
         orch = self._orch_cold_edge()
         order: list[str] = []
 
@@ -113,16 +113,16 @@ class TestOrchUpScale(OrchestratorTestCase, ControllerTestCase):
         assert not ScalingStore(self.tmp_path).is_scaled_to_zero("sidecar")
 
     def _seed_scaling_with_api(self) -> None:
-        write_applied_app(self.tmp_path, "api")
-        write_applied_app(
+        AppliedInventory.write_applied_app(self.tmp_path, "api")
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "app",
             extra={**self.scaling_extra(), "dependsOn": ["api"]},
         )
 
     def _seed_scaling_with_sidecar(self) -> None:
-        write_applied_app(self.tmp_path, "sidecar", public_host="sidecar.test")
-        write_applied_app(
+        AppliedInventory.write_applied_app(self.tmp_path, "sidecar", public_host="sidecar.test")
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "app",
             extra={

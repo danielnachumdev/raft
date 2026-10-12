@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from raft.models.state.scaling_store import ScalingStore
 
-from tests.unit.base import write_applied_app
+from tests.unit.base import AppliedInventory
 from ..orchestrator.base import OrchestratorTestCase
 
 
@@ -15,7 +15,7 @@ class TestDeploymentMethodSelection(OrchestratorTestCase):
         assert self.orch._method_id(self.orch.stack.app("app")) == "seamless"
 
     def test_inplace_from_manifest(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "app",
             public_host="app.test",
@@ -35,7 +35,7 @@ class TestDeploymentMethodSelection(OrchestratorTestCase):
         self.orch.docker.run_tmp.assert_not_called()
 
     def test_inplace_does_not_start_tmp_when_up(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "app",
             public_host="app.test",
@@ -52,7 +52,7 @@ class TestDeploymentMethodSelection(OrchestratorTestCase):
         orch.docker.remove_container.assert_called_once()
 
     def test_inplace_down_path_single_generation(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "app",
             public_host="app.test",

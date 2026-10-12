@@ -11,7 +11,7 @@ from raft.errors.cta import OperatorError
 from raft.models.state.scaling_store import ScalingStore
 from raft.models.stack import load_stack
 from raft.deploy.up_scale_plan import StackUpScalePlan
-from tests.unit.base import write_applied_app
+from tests.unit.base import AppliedInventory
 from tests.unit.controller.base import ControllerTestCase
 
 
@@ -25,8 +25,8 @@ class TestStackUpScalePlan(ControllerTestCase):
 
     def test_scaling_app_and_costop_dep(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
-        write_applied_app(home, "api")
-        write_applied_app(
+        AppliedInventory.write_applied_app(home, "api")
+        AppliedInventory.write_applied_app(
             home,
             self.APP,
             extra={**self.scaling_extra(), "dependsOn": ["api"]},
@@ -43,8 +43,8 @@ class TestStackUpScalePlan(ControllerTestCase):
 
     def test_scale_with_parent_false_not_deferred(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
-        write_applied_app(home, "sidecar")
-        write_applied_app(
+        AppliedInventory.write_applied_app(home, "sidecar")
+        AppliedInventory.write_applied_app(
             home,
             self.APP,
             extra={
@@ -64,7 +64,7 @@ class TestStackUpScalePlan(ControllerTestCase):
 
     def test_deferred_pull_vs_build_by_source(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             home,
             "api",
             source="docker",
@@ -72,7 +72,7 @@ class TestStackUpScalePlan(ControllerTestCase):
             build_context=None,
             extra=self.scaling_extra(),
         )
-        write_applied_app(home, self.APP, extra=self.scaling_extra())
+        AppliedInventory.write_applied_app(home, self.APP, extra=self.scaling_extra())
         plan = StackUpScalePlan(load_stack(home))
         assert plan.deferred_pull_compose_ids() == ("api",)
         assert plan.deferred_build_compose_ids() == (self.APP,)

@@ -13,14 +13,14 @@ from raft.ops.status.models import StatusSnapshot
 from raft.serve.app import ServeAppFactory
 from raft.serve.notifications.api import ServeNotificationsApi
 
-from tests.unit.base import RaftTestCase, make_stack
+from tests.unit.base import RaftTestCase, StackMakers
 from tests.unit.ops.status.fixtures import StatusFixtures
 from tests.unit.notify.fakes import FakeStrategy
 
 
 class TestServeNotificationsApi(RaftTestCase):
     def _client(self, *, registry: Optional[NotificationRegistry] = None) -> TestClient:
-        stack = make_stack(self.tmp_path)
+        stack = StackMakers.make_stack(self.tmp_path)
         (self.tmp_path / "settings.yaml").write_text(
             "edge: {http: 80, https: null}\n", encoding="utf-8"
         )
@@ -57,7 +57,7 @@ class TestServeNotificationsApi(RaftTestCase):
         assert bad.status_code == 400 and "settings.to" in bad.json()["detail"]
 
     def _default_catalog_client(self) -> TestClient:
-        stack = make_stack(self.tmp_path)
+        stack = StackMakers.make_stack(self.tmp_path)
         (self.tmp_path / "settings.yaml").write_text(
             "edge: {http: 80, https: null}\n", encoding="utf-8"
         )

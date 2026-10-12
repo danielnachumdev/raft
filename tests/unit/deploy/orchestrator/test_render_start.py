@@ -15,9 +15,8 @@ from raft.models.state.graph_event_kinds import (
 )
 from raft.models.state.graph_event_store import GraphEventStore
 from tests.shared.compose_ids import RunningServices
-from tests.unit.base import completed
+from tests.unit.base import AppliedInventory, ShellMocks
 
-from tests.unit.base import write_applied_app
 from .base import OrchestratorTestCase
 
 _EPOCH = datetime(2020, 1, 1, tzinfo=timezone.utc)
@@ -61,7 +60,7 @@ class TestOrchRenderStart(OrchestratorTestCase):
         self.orch.docker.reload_gate_nginx.assert_called_once()
 
     def test_render_blocks_gate_reload_when_origin_certs_missing(self) -> None:
-        write_applied_app(self.tmp_path, "app", public_host="app.test", tls="origin")
+        AppliedInventory.write_applied_app(self.tmp_path, "app", public_host="app.test", tls="origin")
         orch = self.orchestrator()
         self.set_edge_only(orch=orch)
         with self.render_with_gate_stamp(fingerprint="disk-fp", read="stale"):
@@ -129,8 +128,8 @@ class TestOrchRenderStart(OrchestratorTestCase):
         orch = self.orchestrator(mock_deps=False)
         shell = MagicMock()
         orch.docker = DockerStack(orch.stack, shell)
-        shell.compose.return_value = completed("")
-        shell.docker.return_value = completed("", returncode=1)
+        shell.compose.return_value = ShellMocks.completed("")
+        shell.docker.return_value = ShellMocks.completed("", returncode=1)
         orch.stop()
         text = capsys.readouterr().out + capsys.readouterr().err
         assert "stack already stopped" in text

@@ -13,13 +13,13 @@ from raft.ops.doctor.checks.runtime import RuntimeChecks
 from raft.ops.doctor.context import DoctorContext
 from tests.shared.compose_ids import RunningServices
 
-from tests.unit.base import write_applied_app
+from tests.unit.base import AppliedInventory
 from .base import DoctorTestCase
 
 
 class TestDoctorHealth(DoctorTestCase):
     def _ctx(self, docker: MagicMock) -> DoctorContext:
-        write_applied_app(self.tmp_path, "app")
+        AppliedInventory.write_applied_app(self.tmp_path, "app")
         return DoctorContext(
             stack=load_stack(self.tmp_path),
             shell=MagicMock(),

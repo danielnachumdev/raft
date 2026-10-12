@@ -8,7 +8,7 @@ from raft.config.settings.types import EdgeConfig, EdgeStream
 from tests.shared.artifacts import GeneratedArtifacts
 from tests.shared.files import FileText
 
-from ...base import write_applied_app
+from ...base import AppliedInventory
 from .base import ManifestTestCase
 
 MAIL_PORTS_EXTRA = {
@@ -49,7 +49,7 @@ def _front_extra(env_file: str) -> dict:
 
 class TestStackRenderer(ManifestTestCase):
     def test_render_http_only_no_tls_snippets(self) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="off")
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="off")
         gen = GeneratedArtifacts(self.render_applied())
         FileText.contains(gen.path("compose.apps.yaml"), "wget", 'expose:\n      - "80"')
         FileText.contains(gen.path("compose.edge.yaml"), '"80:80"', '"443:443"')
@@ -58,7 +58,7 @@ class TestStackRenderer(ManifestTestCase):
         assert gen.path("nginx", "upstreams", "web-http.conf").is_file()
 
     def test_render_tls_origin_writes_snippet(self) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="origin")
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="origin")
         gen = GeneratedArtifacts(self.render_applied())
         FileText.contains(
             gen.path("nginx", "gate-tls", "web.conf"),
@@ -67,12 +67,12 @@ class TestStackRenderer(ManifestTestCase):
         )
 
     def test_render_tls_acme_without_pems_skips_gate_tls(self) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
         gen = GeneratedArtifacts(self.render_applied())
         assert list(gen.path("nginx", "gate-tls").glob("*.conf")) == []
 
     def test_render_tls_acme_with_pems_writes_acme_paths(self) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
         d = self.tmp_path / "certs" / "web"
         d.mkdir(parents=True)
         (d / "acme.pem").write_text("pem\n", encoding="utf-8")
@@ -86,12 +86,12 @@ class TestStackRenderer(ManifestTestCase):
         assert "origin.pem" not in body
 
     def test_render_tls_acme_requires_edge_http(self) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
         with pytest.raises(Exception, match="edge.http"):
             self.render_applied(edge=EdgeConfig(http=None, https=443, streams=()))
 
     def test_render_rejects_undeclared_stream_port(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "mail",
             public_host="mail.example.com",
@@ -106,7 +106,7 @@ class TestStackRenderer(ManifestTestCase):
             self.render_applied(edge=EdgeConfig(http=80, https=None, streams=()))
 
     def test_render_stream_and_host(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path, "mail", public_host="mail.example.com", extra=MAIL_PORTS_EXTRA
         )
         edge = EdgeConfig(
@@ -126,8 +126,8 @@ class TestStackRenderer(ManifestTestCase):
         FileText.contains(gen.path("compose.apps.yaml"), "services: {}")
 
     def test_render_worker_no_ports(self) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="off")
-        write_applied_app(
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="off")
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "worker",
             source="docker",
@@ -156,7 +156,7 @@ class TestStackRenderer(ManifestTestCase):
         assert "      worker:\n        condition: service_started" in text
 
     def test_validate_requires_build_context(self) -> None:
-        write_applied_app(self.tmp_path, "web", build_context=None, extra={"build": {}})
+        AppliedInventory.write_applied_app(self.tmp_path, "web", build_context=None, extra={"build": {}})
         with pytest.raises(ValueError, match="context is required"):
             self.render_applied()
 
@@ -179,7 +179,7 @@ class TestStackRenderer(ManifestTestCase):
         assert str(env_file) not in text
 
     def test_render_keeps_env_file_outside_data_home(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "api",
             source="docker",
@@ -198,7 +198,7 @@ class TestStackRenderer(ManifestTestCase):
         assert "/tmp/outside-raft.env" in text
 
     def _seed_redis_and_front(self, env_file: str) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "stack-redis",
             source="docker",
@@ -207,7 +207,7 @@ class TestStackRenderer(ManifestTestCase):
             build_context=None,
             extra=_redis_extra(env_file),
         )
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "stack-front",
             source="docker",

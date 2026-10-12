@@ -18,13 +18,13 @@ from raft.serve.github.deploy_models import DeployJob, DeployJobStore
 from raft.serve.github.strategies.mock import MockGithubProvider
 from raft.serve.paths import ServePaths
 
-from tests.unit.base import RaftTestCase, make_stack
+from tests.unit.base import RaftTestCase, StackMakers
 from tests.unit.ops.status.fixtures import StatusFixtures
 
 
 class TestServeGithubApi(RaftTestCase):
     def _client(self, *, settings: Optional[str] = None) -> TestClient:
-        stack = make_stack(self.tmp_path)
+        stack = StackMakers.make_stack(self.tmp_path)
         body = settings or (
             "edge: {http: 80, https: null}\ngithub: {mock: true}\n"
         )
@@ -156,7 +156,7 @@ class TestServeGithubApi(RaftTestCase):
         assert c.get("/api/github/deploy/missing").status_code == 404
 
     def _authed_client(self, jobs: DeployJobStore) -> TestClient:
-        stack = make_stack(self.tmp_path)
+        stack = StackMakers.make_stack(self.tmp_path)
         (self.tmp_path / "settings.yaml").write_text(
             "github: {mock: true}\n", encoding="utf-8"
         )

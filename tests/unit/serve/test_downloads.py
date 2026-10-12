@@ -14,7 +14,7 @@ from raft.ops.status.models import StatusSnapshot
 from raft.serve.app import ServeAppFactory
 from raft.serve.downloads import ServeDownloads
 
-from tests.unit.base import RaftTestCase, make_app, make_stack
+from tests.unit.base import RaftTestCase, AppMakers, StackMakers
 from tests.unit.ops.status.fixtures import StatusFixtures
 
 
@@ -25,7 +25,7 @@ class TestServeDownloads(RaftTestCase):
             host=StatusFixtures.empty_host_status(),
             containers=(),
         )
-        stack = make_stack(self.tmp_path, (make_app("site"),))
+        stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))
         return TestClient(
             ServeAppFactory(stack, status=status, logs=logs).create()
         )
@@ -84,7 +84,7 @@ class TestServeDownloads(RaftTestCase):
         assert logs.snapshot.call_args_list[1].kwargs["tail"] == 5000
 
     def test_metrics_download_csv(self) -> None:
-        stack = make_stack(self.tmp_path)
+        stack = StackMakers.make_stack(self.tmp_path)
         ts = datetime.now(timezone.utc).isoformat()
         self._write_sample(stack, ts=ts)
         status = MagicMock()

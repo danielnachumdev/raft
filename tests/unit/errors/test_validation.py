@@ -15,7 +15,7 @@ from raft.models.port_list_parser import PortListParser
 from raft.deploy.wait import WaitUntil
 from raft.ops.update import SelfUpdate
 
-from ..base import RaftTestCase, make_stack
+from ..base import RaftTestCase, StackMakers
 from ..cta_asserts import assert_cta, assert_operator
 
 SETTINGS_BAD_CASES = [
@@ -72,7 +72,7 @@ class TestValidationCTAs(RaftTestCase):
         assert_operator(caught.value, contains=("never",), fix_label="Fix: retry")
 
     def test_update_failure_cta(self) -> None:
-        stack = make_stack(self.tmp_path, ())
+        stack = StackMakers.make_stack(self.tmp_path, ())
         shell = MagicMock()
         shell.run.side_effect = RuntimeError("curl failed")
         with pytest.raises(OperatorError) as caught:

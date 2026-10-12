@@ -6,7 +6,7 @@ import yaml
 from raft.models.registry import AppRegistry
 from raft.models.stack import load_stack
 
-from ..base import RaftTestCase, make_app, write_inventory
+from ..base import RaftTestCase, AppMakers, AppliedInventory
 
 LOCAL_GIT_INVENTORY = """
 services:
@@ -25,7 +25,7 @@ services:
 
 class TestLoadRegistry(RaftTestCase):
     def test_local_and_git(self) -> None:
-        write_inventory(self.tmp_path, LOCAL_GIT_INVENTORY)
+        AppliedInventory.write_inventory(self.tmp_path, LOCAL_GIT_INVENTORY)
         apps = AppRegistry(self.tmp_path).load()
         assert len(apps) == 2
         assert apps[0].name == "app" and apps[0].source == "local"
@@ -33,7 +33,7 @@ class TestLoadRegistry(RaftTestCase):
         assert apps[1].repo == "git@example.com:org/other.git"
 
     def test_skips_git_without_repo(self) -> None:
-        write_inventory(
+        AppliedInventory.write_inventory(
             self.tmp_path,
             """
 services:
@@ -47,7 +47,7 @@ services:
         assert any("repo is required" in i.error for i in result.issues)
 
     def test_skips_bad_source(self) -> None:
-        write_inventory(
+        AppliedInventory.write_inventory(
             self.tmp_path,
             """
 services:
@@ -61,7 +61,7 @@ services:
         assert any("must be 'local', 'git', or 'docker'" in i.error for i in result.issues)
 
     def test_docker_source(self) -> None:
-        write_inventory(
+        AppliedInventory.write_inventory(
             self.tmp_path,
             """
 services:
@@ -78,15 +78,15 @@ services:
         assert apps[0].compose_pin_image == "ghcr.io/org/hub:main"
 
     def test_image_ref_requires_image_and_tag(self) -> None:
-        app = make_app("x", source="local")
+        app = AppMakers.make_app("x", source="local")
         with pytest.raises(ValueError, match="no image"):
             app.image_ref()
-        docker_app = make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
+        docker_app = AppMakers.make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
         with pytest.raises(ValueError, match="empty image tag"):
             docker_app.image_ref("  ")
 
     def test_skips_docker_without_image(self) -> None:
-        write_inventory(
+        AppliedInventory.write_inventory(
             self.tmp_path,
             """
 services:
@@ -100,7 +100,7 @@ services:
         assert any("image is required" in i.error for i in result.issues)
 
     def test_skips_docker_image_with_tag(self) -> None:
-        write_inventory(
+        AppliedInventory.write_inventory(
             self.tmp_path,
             """
 services:
@@ -128,7 +128,7 @@ services:
         assert any("publicHost is required" in i.error for i in result.issues)
 
     def test_isolates_bad_yaml_from_good_apps(self) -> None:
-        write_inventory(
+        AppliedInventory.write_inventory(
             self.tmp_path,
             """
 services:
@@ -156,7 +156,7 @@ services:
         assert AppRegistry(bare).load() == ()
 
     def test_default_path_and_blank_ref(self) -> None:
-        write_inventory(
+        AppliedInventory.write_inventory(
             self.tmp_path,
             """
 services:

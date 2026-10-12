@@ -8,7 +8,7 @@ import pytest
 
 from raft.sync import SourceSync
 
-from tests.unit.base import make_app, make_stack
+from tests.unit.base import AppMakers, StackMakers
 from .base import SyncTestCase
 
 
@@ -18,14 +18,14 @@ class TestSyncDocker(SyncTestCase):
         self._test_sync_docker_pull_and_pin_p2()
 
     def _test_sync_docker_pull_and_pin_p1(self) -> None:
-        app = make_app(
+        app = AppMakers.make_app(
             "hub",
             source="docker",
             image="ghcr.io/org/hub",
             ref="main",
             public_host="hub.test",
         )
-        self.stack = make_stack(self.tmp_path, (app,))
+        self.stack = StackMakers.make_stack(self.tmp_path, (app,))
         self.syncer = SourceSync(self.stack, self.shell)
 
         def docker(*args, **kwargs):
@@ -51,14 +51,14 @@ class TestSyncDocker(SyncTestCase):
         self._test_sync_docker_pin_equals_pull_p2()
 
     def _test_sync_docker_pin_equals_pull_p1(self) -> None:
-        app = make_app(
+        app = AppMakers.make_app(
             "hub",
             source="docker",
             image="ghcr.io/org/hub",
             ref="main",
             public_host="hub.test",
         )
-        self.stack = make_stack(self.tmp_path, (app,))
+        self.stack = StackMakers.make_stack(self.tmp_path, (app,))
         self.syncer = SourceSync(self.stack, self.shell)
 
         def docker(*args, **kwargs):
@@ -75,14 +75,14 @@ class TestSyncDocker(SyncTestCase):
         assert not any(c.args[:1] == ("tag",) for c in self.shell.docker.call_args_list)
 
     def test_sync_docker_unauthorized_clear_fix(self) -> None:
-        app = make_app(
+        app = AppMakers.make_app(
             "hub",
             source="docker",
             image="ghcr.io/org/hub",
             ref="main",
             public_host="hub.test",
         )
-        self.stack = make_stack(self.tmp_path, (app,))
+        self.stack = StackMakers.make_stack(self.tmp_path, (app,))
         self.syncer = SourceSync(self.stack, self.shell)
         self.shell.docker.return_value = MagicMock(
             returncode=1,
@@ -97,14 +97,14 @@ class TestSyncDocker(SyncTestCase):
         assert "command failed" not in msg.lower()
 
     def test_sync_docker_pull_other_error_reraises(self) -> None:
-        app = make_app(
+        app = AppMakers.make_app(
             "hub",
             source="docker",
             image="ghcr.io/org/hub",
             ref="main",
             public_host="hub.test",
         )
-        self.stack = make_stack(self.tmp_path, (app,))
+        self.stack = StackMakers.make_stack(self.tmp_path, (app,))
         self.syncer = SourceSync(self.stack, self.shell)
         self.shell.docker.return_value = MagicMock(
             returncode=1,

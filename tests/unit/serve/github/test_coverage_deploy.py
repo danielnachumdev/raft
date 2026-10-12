@@ -18,12 +18,12 @@ from raft.serve.github.strategies.real import RealGithubProvider
 from raft.serve.github.accounts import GithubAccountStore
 
 from ._helpers import sample_repo, sample_session, stub_auth
-from tests.unit.base import RaftTestCase, make_stack
+from tests.unit.base import RaftTestCase, StackMakers
 
 
 class TestCoverageDeploy(RaftTestCase):
     def test_deploy_git_path_mocked(self) -> None:
-        runner = GithubDeployRunner(make_stack(self.tmp_path), MagicMock(), DeployJobStore())
+        runner = GithubDeployRunner(StackMakers.make_stack(self.tmp_path), MagicMock(), DeployJobStore())
         runner._provider.fetch_manifest.return_value = (
             "apiVersion: raft/v1\nkind: App\nmetadata:\n  name: web\n"
             "spec:\n  publicHost: w.test\n  source: git\n  repo: git@github.com:o/r.git\n"
@@ -34,7 +34,7 @@ class TestCoverageDeploy(RaftTestCase):
         self._run_git_job(runner)
 
     def test_deploy_git_auth_failure(self) -> None:
-        runner = GithubDeployRunner(make_stack(self.tmp_path), MagicMock(), DeployJobStore())
+        runner = GithubDeployRunner(StackMakers.make_stack(self.tmp_path), MagicMock(), DeployJobStore())
         job = DeployJob(id="z", full_name="o/r", ref="main", app_name="web")
         with patch("raft.serve.github.deploy_job.GitAuthManager") as auth_cls, patch(
             "raft.serve.github.deploy_job.AppApply"
@@ -50,7 +50,7 @@ class TestCoverageDeploy(RaftTestCase):
         (self.tmp_path / "settings.yaml").write_text(
             "github: {mock: false, clientId: id, clientSecret: sec}\n", encoding="utf-8"
         )
-        api = ServeGithubApi(make_stack(self.tmp_path), provider=MagicMock(), port=9999)
+        api = ServeGithubApi(StackMakers.make_stack(self.tmp_path), provider=MagicMock(), port=9999)
         assert api._default_provider().__class__.__name__ == "RealGithubProvider"
         GithubAccountStore(self.tmp_path).set_pending("good")
         with patch.object(api._oauth, "complete_oauth", return_value=sample_session(mock=False)):
@@ -65,7 +65,7 @@ class TestCoverageDeploy(RaftTestCase):
     def test_api_port_and_repos_deploy(self) -> None:
         (self.tmp_path / "settings.yaml").write_text("github: {mock: true}\n", encoding="utf-8")
         provider = MagicMock()
-        api = ServeGithubApi(make_stack(self.tmp_path), provider=provider, jobs=DeployJobStore())
+        api = ServeGithubApi(StackMakers.make_stack(self.tmp_path), provider=provider, jobs=DeployJobStore())
         GithubAccountStore(self.tmp_path).upsert_account(sample_session())
         req = MagicMock()
         req.headers = {"host": "127.0.0.1:8888"}
@@ -115,7 +115,7 @@ class TestCoverageDeploy(RaftTestCase):
         assert RealGithubProvider._next_link("garbage") is None
     def test_run_crash_and_missing_job(self) -> None:
         store = DeployJobStore()
-        runner = GithubDeployRunner(make_stack(self.tmp_path), MagicMock(), store)
+        runner = GithubDeployRunner(StackMakers.make_stack(self.tmp_path), MagicMock(), store)
         job = store.create("o/r", "main")
         with patch.object(runner, "_execute", side_effect=RuntimeError("boom")):
             runner._run(job.id, sample_session(), sample_repo())
@@ -127,7 +127,7 @@ class TestCoverageDeploy(RaftTestCase):
         (self.tmp_path / "settings.yaml").write_text(
             "github: {mock: false, clientId: id, clientSecret: sec}\n", encoding="utf-8"
         )
-        api = ServeGithubApi(make_stack(self.tmp_path), port=8787)
+        api = ServeGithubApi(StackMakers.make_stack(self.tmp_path), port=8787)
         assert api._oauth.mock_enabled is False
         assert "Temporary GitHub" in api._login_hint()
         with patch.object(
@@ -141,11 +141,11 @@ class TestCoverageDeploy(RaftTestCase):
 
     def test_mock_default_provider(self) -> None:
         (self.tmp_path / "settings.yaml").write_text("github: {mock: true}\n", encoding="utf-8")
-        mock_api = ServeGithubApi(make_stack(self.tmp_path), port=8787)
+        mock_api = ServeGithubApi(StackMakers.make_stack(self.tmp_path), port=8787)
         assert mock_api._default_provider().__class__.__name__ == "MockGithubProvider"
 
     def test_remaining_deploy_local(self) -> None:
-        stack = make_stack(self.tmp_path)
+        stack = StackMakers.make_stack(self.tmp_path)
         runner = GithubDeployRunner(stack, MagicMock(), DeployJobStore())
         runner._fill_next_steps(DeployJob(id="1", full_name="o/r", ref="m"), {})
         tree = self._stage_local_tree(stack)

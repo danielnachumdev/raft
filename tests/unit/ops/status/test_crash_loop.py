@@ -12,7 +12,7 @@ from raft.ops.status.formatters import StatusFormatters
 from raft.ops.status.models import STATUS_CRASH_LOOPING, STATUS_UNHEALTHY
 from raft.ops.status.report import StatusReportWriter
 
-from tests.unit.base import RaftTestCase, make_app, make_stack, write_applied_app
+from tests.unit.base import RaftTestCase, AppMakers, AppliedInventory, StackMakers
 from .fixtures import StatusFixtures
 
 _HOST_PATCH = "raft.ops.status.service.HostGateway.resources"
@@ -40,8 +40,8 @@ class TestStatusCrashLoop(RaftTestCase):
         )
 
     def test_collect_marks_controller_crash_looping(self) -> None:
-        write_applied_app(self.tmp_path, "app")
-        status = Status(make_stack(self.tmp_path, (make_app("app"),)))
+        AppliedInventory.write_applied_app(self.tmp_path, "app")
+        status = Status(StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("app"),)))
         gateway = StatusFixtures.mock_containers_idle(status)
         self._wire_controller_churn(gateway)
         with patch(_HOST_PATCH, return_value=StatusFixtures.host()):
@@ -51,8 +51,8 @@ class TestStatusCrashLoop(RaftTestCase):
         assert by_svc["raft-gate"].status == "running"
 
     def test_collect_ignores_recovered_restarts(self) -> None:
-        write_applied_app(self.tmp_path, "app")
-        status = Status(make_stack(self.tmp_path, (make_app("app"),)))
+        AppliedInventory.write_applied_app(self.tmp_path, "app")
+        status = Status(StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("app"),)))
         gateway = StatusFixtures.mock_containers_idle(status)
         gateway.collect.return_value = {
             "raft-controller": StatusFixtures.runtime_row(

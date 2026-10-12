@@ -9,12 +9,12 @@ from raft.deploy.cutover import CutoverSession
 from raft.deploy.orchestrator import Orchestrator
 from tests.shared.compose_ids import RunningServices
 
-from tests.unit.base import RaftTestCase, make_app, make_stack, write_applied_app
+from tests.unit.base import RaftTestCase, AppMakers, AppliedInventory, StackMakers
 
 
 class TestOrchCutoverEdgeCoverage(RaftTestCase):
     def test_orchestrator_none_readiness(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "app",
             extra={"readiness": {"type": "none"}},
@@ -34,7 +34,7 @@ class TestOrchCutoverEdgeCoverage(RaftTestCase):
         orch.http.public_host_ok.assert_not_called()
 
     def test_shift_skips_wait_when_none(self) -> None:
-        write_applied_app(self.tmp_path, "app", extra={"readiness": {"type": "none"}})
+        AppliedInventory.write_applied_app(self.tmp_path, "app", extra={"readiness": {"type": "none"}})
         session = self._none_session()
         session.previous_image = "img:old"
         session.start_tmp_from_previous()
@@ -44,8 +44,8 @@ class TestOrchCutoverEdgeCoverage(RaftTestCase):
             session.rebuild_stable_service()
 
     def _none_session(self) -> CutoverSession:
-        stack = make_stack(
-            self.tmp_path, (make_app(),), drain_seconds=0.0, ready_timeout_seconds=1.0
+        stack = StackMakers.make_stack(
+            self.tmp_path, (AppMakers.make_app(),), drain_seconds=0.0, ready_timeout_seconds=1.0
         )
         return CutoverSession(
             stack=stack,

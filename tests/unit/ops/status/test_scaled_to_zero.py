@@ -10,7 +10,7 @@ from raft.ops.status import Status
 from raft.ops.status.models import STATUS_NOT_RUNNING, STATUS_SCALED_TO_ZERO
 from raft.ops.status.report import StatusReportWriter
 
-from tests.unit.base import RaftTestCase, make_app, make_stack, write_applied_app
+from tests.unit.base import RaftTestCase, AppMakers, AppliedInventory, StackMakers
 from .fixtures import StatusFixtures
 
 _HOST_PATCH = "raft.ops.status.service.HostGateway.resources"
@@ -18,10 +18,10 @@ _HOST_PATCH = "raft.ops.status.service.HostGateway.resources"
 
 class TestStatusScaledToZero(RaftTestCase):
     def _status(self, *names: str) -> Status:
-        apps = tuple(make_app(n) for n in names) or (make_app("app"),)
+        apps = tuple(AppMakers.make_app(n) for n in names) or (AppMakers.make_app("app"),)
         for app in apps:
-            write_applied_app(self.tmp_path, app.name)
-        status = Status(make_stack(self.tmp_path, apps))
+            AppliedInventory.write_applied_app(self.tmp_path, app.name)
+        status = Status(StackMakers.make_stack(self.tmp_path, apps))
         StatusFixtures.mock_docker_idle(status)
         return status
 

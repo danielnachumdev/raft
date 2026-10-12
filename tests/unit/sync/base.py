@@ -6,7 +6,7 @@ import pytest
 
 from raft.sync import SourceSync
 
-from tests.unit.base import make_git_app, make_stack
+from tests.unit.base import AppMakers, StackMakers
 from tests.unit.domain_case import DomainTestCase
 
 
@@ -16,8 +16,8 @@ class SyncTestCase(DomainTestCase):
         self.syncer = SourceSync(self.stack, self.shell)
 
     def git_syncer(self, **app_kwargs) -> SourceSync:
-        app = make_git_app(**app_kwargs)
-        self.stack = make_stack(self.tmp_path, (app,))
+        app = AppMakers.make_git_app(**app_kwargs)
+        self.stack = StackMakers.make_stack(self.tmp_path, (app,))
         self.app = app
         self.syncer = SourceSync(self.stack, self.shell)
         return self.syncer

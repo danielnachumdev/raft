@@ -5,12 +5,12 @@ import pytest
 from raft.errors.certs_msgs import CertMessages
 from raft.ops.certs import CertProbe
 
-from tests.unit.base import RaftTestCase, write_applied_app
+from tests.unit.base import RaftTestCase, AppliedInventory
 
 
 class TestOriginCerts(RaftTestCase):
     def test_missing_and_require(self) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="origin")
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="origin")
         from raft.models.stack import load_stack
 
         stack = load_stack(self.tmp_path)
@@ -29,13 +29,13 @@ class TestOriginCerts(RaftTestCase):
         CertProbe(load_stack(self.tmp_path)).require_origin()
 
     def test_tls_off_ignored(self) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="off")
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="off")
         from raft.models.stack import load_stack
 
         assert CertProbe(load_stack(self.tmp_path)).missing_origin() == []
 
     def test_tls_acme_ignored_by_origin_require(self) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
         from raft.models.stack import load_stack
 
         stack = load_stack(self.tmp_path)

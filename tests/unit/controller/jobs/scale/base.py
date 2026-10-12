@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 from raft.controller.jobs.scale import Scaler
 
-from ....base import write_applied_app
+from ....base import AppliedInventory
 from ...base import ControllerTestCase
 
 
@@ -18,8 +18,8 @@ class ScalerTestCase(ControllerTestCase):
 
     def dep_scaler(self, tmp_path: Path):
         home = self.raft_home(tmp_path)
-        write_applied_app(home, "api")
-        write_applied_app(
+        AppliedInventory.write_applied_app(home, "api")
+        AppliedInventory.write_applied_app(
             home,
             self.APP,
             extra={**self.scaling_extra(), "dependsOn": ["api"]},

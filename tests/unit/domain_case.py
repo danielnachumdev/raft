@@ -3,28 +3,14 @@
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
-
 from raft.auth import GitAuthManager
 from raft.deploy.cutover import CutoverSession
 from raft.deploy.orchestrator import Orchestrator
 
-from .base import (
-    RaftTestCase,
-    make_git_stack,
-    make_local_stack,
-    write_applied_app,
-)
+from .base import AppliedInventory, AppliedStackCase, StackMakers
 
 
-class DomainTestCase(RaftTestCase):
-    @pytest.fixture(autouse=True)
-    def _domain_setup(self, _raft_base) -> None:
-        write_applied_app(self.tmp_path, "app")
-        self.stack = make_local_stack(self.tmp_path, drain_seconds=0.0)
-        self.app = self.stack.apps[0]
-        self.shell = MagicMock()
-
+class DomainTestCase(AppliedStackCase):
     def orchestrator(self, *, mock_deps: bool = True) -> Orchestrator:
         orch = Orchestrator(self.stack)
         if mock_deps:
@@ -46,8 +32,12 @@ class DomainTestCase(RaftTestCase):
         return http
 
     def cutover_session(self) -> CutoverSession:
-        write_applied_app(self.tmp_path, "app", extra=self._short_readiness())
-        stack = make_local_stack(self.tmp_path, drain_seconds=0.0, ready_timeout_seconds=1.0)
+        AppliedInventory.write_applied_app(
+            self.tmp_path, "app", extra=self._short_readiness()
+        )
+        stack = StackMakers.make_local_stack(
+            self.tmp_path, drain_seconds=0.0, ready_timeout_seconds=1.0
+        )
         return CutoverSession(
             stack=stack,
             app=stack.apps[0],
@@ -70,7 +60,7 @@ class DomainTestCase(RaftTestCase):
         }
 
     def auth_manager(self, **git_stack_kwargs) -> GitAuthManager:
-        stack = make_git_stack(self.tmp_path, **git_stack_kwargs)
+        stack = StackMakers.make_git_stack(self.tmp_path, **git_stack_kwargs)
         mgr = GitAuthManager(stack)
         mgr.sh = self.shell
         return mgr
@@ -87,7 +77,9 @@ class DomainTestCase(RaftTestCase):
                 key = Path(args[args.index("-f") + 1])
                 key.parent.mkdir(parents=True, exist_ok=True)
                 key.write_text("PRIVATE", encoding="utf-8")
-                Path(str(key) + ".pub").write_text("ssh-ed25519 AAAA setup\n", encoding="utf-8")
+                Path(str(key) + ".pub").write_text(
+                    "ssh-ed25519 AAAA setup\n", encoding="utf-8"
+                )
             return MagicMock(returncode=0, stdout="", stderr="")
 
         return run

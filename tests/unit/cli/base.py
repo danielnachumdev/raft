@@ -10,7 +10,7 @@ import pytest
 
 from raft.cli import RaftCLI
 
-from ..base import RaftTestCase, make_app, make_stack, write_demo_inventory
+from ..base import RaftTestCase, AppMakers, AppliedInventory, StackMakers
 
 # Where CLI modules bind names imported from ``raft.cli.utils.deps``.
 _DEP_TARGETS = {
@@ -33,12 +33,12 @@ _DEP_TARGETS = {
 class CliTestCase(RaftTestCase):
     @pytest.fixture(autouse=True)
     def _cli_setup(self, _raft_base) -> None:
-        write_demo_inventory(self.tmp_path)
-        self.stack = make_stack(
+        AppliedInventory.write_demo_inventory(self.tmp_path)
+        self.stack = StackMakers.make_stack(
             self.tmp_path,
             (
-                make_app("app"),
-                make_app("other"),
+                AppMakers.make_app("app"),
+                AppMakers.make_app("other"),
             ),
         )
         self.orch = MagicMock()

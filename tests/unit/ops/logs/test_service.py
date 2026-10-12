@@ -10,12 +10,12 @@ import pytest
 from raft.errors.cta import OperatorError
 from raft.ops.logs import Logs
 
-from tests.unit.base import RaftTestCase, make_app, make_stack
+from tests.unit.base import RaftTestCase, AppMakers, StackMakers
 
 
 class TestLogsShow(RaftTestCase):
     def _logs(self) -> Logs:
-        return Logs(make_stack(self.tmp_path, (make_app("app"),)))
+        return Logs(StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("app"),)))
 
     def test_snapshot_prints_compose_logs(self) -> None:
         logs = self._logs()
@@ -95,7 +95,7 @@ class TestLogsShow(RaftTestCase):
 
     def test_bind_stack_updates_docker_and_targets(self) -> None:
         logs = self._logs()
-        refreshed = make_stack(self.tmp_path, (make_app("app"), make_app("demo-api")))
+        refreshed = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("app"), AppMakers.make_app("demo-api")))
         logs.bind_stack(refreshed)
         assert logs.stack is refreshed
         assert logs.docker.stack is refreshed

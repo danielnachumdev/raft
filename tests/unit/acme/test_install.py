@@ -7,12 +7,12 @@ from unittest.mock import MagicMock, patch
 from raft.models.stack import load_stack
 from raft.acme.install import AcmeGateInstall
 
-from tests.unit.base import RaftTestCase, write_applied_app
+from tests.unit.base import RaftTestCase, AppliedInventory
 
 
 class TestAcmeGateInstall(RaftTestCase):
     def test_render_and_reload_when_gate_running(self) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
         d = self.tmp_path / "certs" / "web"
         d.mkdir(parents=True)
         (d / "acme.pem").write_text("pem\n", encoding="utf-8")
@@ -30,7 +30,7 @@ class TestAcmeGateInstall(RaftTestCase):
         stamp.write.assert_called_once_with("abc")
 
     def test_skips_reload_when_gate_down(self) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="off")
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="off")
         stack = load_stack(self.tmp_path)
         docker = MagicMock()
         docker.running_services.return_value = []
@@ -39,7 +39,7 @@ class TestAcmeGateInstall(RaftTestCase):
         docker.reload_gate_nginx.assert_not_called()
 
     def test_render_only_without_docker(self) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="off")
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="off")
         stack = load_stack(self.tmp_path)
         with patch("raft.acme.install.StackRenderer") as renderer_cls:
             AcmeGateInstall(stack).apply()

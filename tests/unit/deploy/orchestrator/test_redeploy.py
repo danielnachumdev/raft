@@ -8,7 +8,7 @@ from raft.models.stack import load_stack
 from raft.deploy.orchestrator import Orchestrator
 from tests.shared.compose_ids import RunningServices
 
-from tests.unit.base import write_applied_app
+from tests.unit.base import AppliedInventory
 from .base import OrchestratorTestCase
 
 
@@ -23,7 +23,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
         self._assert_compose_ready_wait(orch, app, wait)
 
     def _seed_expose_none_tcp(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "app",
             public_host="",
@@ -47,7 +47,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
         orch.docker.diagnostics_for.assert_called_with(app.compose_id)
 
     def test_wait_app_ready_skips_when_readiness_none(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "app",
             extra={"readiness": {"type": "none"}},
@@ -61,7 +61,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
     def test_wait_app_ready_skips_scaled_to_zero_host(self) -> None:
         from raft.models.state.scaling_store import ScalingStore
 
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "app",
             public_host="app.test",
@@ -83,7 +83,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
         assert AppReadyWait(orch)._skip_scaled_host_wait(app) is False
 
     def test_wait_app_ready_label_includes_readiness_path(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "app",
             public_host="app.test",
@@ -101,7 +101,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
         self._test_wait_app_ready_label_for_published_tcp_p2()
 
     def _test_wait_app_ready_label_for_published_tcp_p1(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "app",
             public_host="",
@@ -204,7 +204,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
         self.orch.docker.start_stack.assert_called_once()
 
     def test_ensure_app_deployed_cold_syncs_other_apps(self) -> None:
-        write_applied_app(self.tmp_path, "other", public_host="other.test")
+        AppliedInventory.write_applied_app(self.tmp_path, "other", public_host="other.test")
         stack = load_stack(self.tmp_path)
         orch = Orchestrator(stack)
         orch.docker = MagicMock()

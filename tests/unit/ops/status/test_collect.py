@@ -11,7 +11,7 @@ from raft.ops.status import Status
 from raft.ops.status.allocated import StatusAllocated
 from raft.ops.status.models import EDGE_CPUS_LIMIT
 
-from tests.unit.base import RaftTestCase, make_app, make_stack, write_applied_app
+from tests.unit.base import RaftTestCase, AppMakers, AppliedInventory, StackMakers
 from .fixtures import StatusFixtures
 
 _HOST_PATCH = "raft.ops.status.service.HostGateway.resources"
@@ -19,7 +19,7 @@ _HOST_PATCH = "raft.ops.status.service.HostGateway.resources"
 
 class TestStatusCollect(RaftTestCase):
     def _idle_status(self, *apps):
-        stack = make_stack(self.tmp_path, apps or (make_app("app"),))
+        stack = StackMakers.make_stack(self.tmp_path, apps or (AppMakers.make_app("app"),))
         status = Status(stack)
         StatusFixtures.mock_docker_idle(status)
         return status
@@ -28,8 +28,8 @@ class TestStatusCollect(RaftTestCase):
         return patch(_HOST_PATCH, return_value=StatusFixtures.host())
 
     def test_collect_running_and_stopped(self) -> None:
-        write_applied_app(self.tmp_path, "app")
-        status = self._idle_status(make_app("app"))
+        AppliedInventory.write_applied_app(self.tmp_path, "app")
+        status = self._idle_status(AppMakers.make_app("app"))
         StatusFixtures.wire_gate_router_running(status._containers)
         with self._patch_host():
             snap = status.collect()
@@ -60,8 +60,8 @@ class TestStatusCollect(RaftTestCase):
         assert app.allocated.cpus_limit == "0.50"
 
     def test_collect_app_group(self) -> None:
-        write_applied_app(self.tmp_path, "web")
-        status = self._idle_status(make_app("web", group="demo"))
+        AppliedInventory.write_applied_app(self.tmp_path, "web")
+        status = self._idle_status(AppMakers.make_app("web", group="demo"))
         with self._patch_host():
             snap = status.collect()
         gate, router, controller, app = snap.containers
@@ -70,7 +70,7 @@ class TestStatusCollect(RaftTestCase):
         assert app.group == "demo"
 
     def test_collect_includes_no_port_worker(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "worker",
             source="docker",
@@ -79,24 +79,24 @@ class TestStatusCollect(RaftTestCase):
             build_context=None,
             extra={"ports": [], "readiness": {"type": "none"}},
         )
-        status = self._idle_status(make_app("worker", public_host=""))
+        status = self._idle_status(AppMakers.make_app("worker", public_host=""))
         with self._patch_host():
             snap = status.collect()
         names = [c.service for c in snap.containers]
         assert "worker" in names
 
     def test_app_allocated_fallback(self) -> None:
-        stack = make_stack(self.tmp_path, (make_app("missing"),))
+        stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("missing"),))
         allocated = StatusAllocated.app(stack, stack.apps[0])
         assert allocated.memory_limit == "128M"
         bad = MagicMock()
         bad.spec_for.side_effect = OperatorError("boom")
-        assert StatusAllocated.app(bad, make_app("x")).cpus_limit == "0.50"
+        assert StatusAllocated.app(bad, AppMakers.make_app("x")).cpus_limit == "0.50"
 
     def test_collect_refresh_apps_reloads_registry(self) -> None:
-        write_applied_app(self.tmp_path, "app")
-        status = self._idle_status(make_app("app"))
-        write_applied_app(self.tmp_path, "newbie")
+        AppliedInventory.write_applied_app(self.tmp_path, "app")
+        status = self._idle_status(AppMakers.make_app("app"))
+        AppliedInventory.write_applied_app(self.tmp_path, "newbie")
         with self._patch_host():
             snap = status.collect(refresh_apps=True)
         names = [c.service for c in snap.containers]
@@ -104,9 +104,9 @@ class TestStatusCollect(RaftTestCase):
         assert len(status.stack.apps) == 2
 
     def test_collect_refresh_apps_skips_ensure_raft_home(self) -> None:
-        write_applied_app(self.tmp_path, "app")
-        status = self._idle_status(make_app("app"))
-        reloaded = make_stack(self.tmp_path, (make_app("app"),))
+        AppliedInventory.write_applied_app(self.tmp_path, "app")
+        status = self._idle_status(AppMakers.make_app("app"))
+        reloaded = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("app"),))
         with self._patch_host():
             with patch(
                 "raft.ops.status.service.Stack.load_apps",

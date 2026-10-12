@@ -16,7 +16,7 @@ from raft.models.registry import AppRegistry
 from raft.models.stack import load_stack
 from raft.render import StackRenderer
 
-from ..base import RaftTestCase, write_applied_app
+from ..base import RaftTestCase, AppliedInventory
 
 UNIQ_DOC = {
     "apiVersion": "raft/v1",
@@ -74,7 +74,7 @@ class TestMiscCoverage(RaftTestCase):
         assert app.repo == "git@github.com:org/hub.git"
 
     def test_render_logs_debug_for_docker_build_context(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "web",
             source="docker",
@@ -93,7 +93,7 @@ class TestMiscCoverage(RaftTestCase):
         self._test_render_host_udp_and_none_readiness_p2()
 
     def _test_render_host_udp_and_none_readiness_p1(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "mail",
             public_host="mail.example.com",

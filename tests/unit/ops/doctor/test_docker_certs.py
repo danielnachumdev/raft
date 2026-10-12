@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from tests.unit.base import make_app, make_stack, write_applied_app
+from tests.unit.base import AppMakers, AppliedInventory, StackMakers
 from .base import DoctorTestCase
 
 
@@ -12,14 +12,14 @@ class TestDoctorDockerCerts(DoctorTestCase):
     def _hub_docker_app(self, **kwargs):
         self.seed_compose()
         self.write_certs("hub")
-        return make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main", **kwargs)
+        return AppMakers.make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main", **kwargs)
 
     def _hub_with_repo(self):
         self.seed_generated_apps()
         return self._hub_docker_app(repo="git@github.com:org/hub.git", path="apps/hub")
 
     def test_docker_source_image_checks(self) -> None:
-        stack = make_stack(self.tmp_path, (self._hub_docker_app(),))
+        stack = StackMakers.make_stack(self.tmp_path, (self._hub_docker_app(),))
         results = self.run_keyed(
             stack, shell=self.mock_shell(), docker=self.mock_docker(), auth=MagicMock()
         )
@@ -36,7 +36,7 @@ class TestDoctorDockerCerts(DoctorTestCase):
         auth = MagicMock()
         auth.is_configured.return_value = True
         results = self.run_keyed(
-            make_stack(self.tmp_path, (app,)),
+            StackMakers.make_stack(self.tmp_path, (app,)),
             shell=self.mock_shell(),
             docker=self.mock_docker(),
             auth=auth,
@@ -63,7 +63,7 @@ class TestDoctorDockerCerts(DoctorTestCase):
         auth = MagicMock()
         auth.is_configured.return_value = False
         results = self.run_keyed(
-            make_stack(self.tmp_path, (app,)),
+            StackMakers.make_stack(self.tmp_path, (app,)),
             shell=self.mock_shell(),
             docker=self.mock_docker(),
             auth=auth,
@@ -78,7 +78,7 @@ class TestDoctorDockerCerts(DoctorTestCase):
         self.ensure_checkouts("app")
         self._write_bad_registry()
         results = self.run_keyed(
-            make_stack(self.tmp_path, (make_app("app"),)),
+            StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("app"),)),
             shell=self.mock_shell(),
             docker=self.mock_docker(),
         )
@@ -95,7 +95,7 @@ class TestDoctorDockerCerts(DoctorTestCase):
         )
 
     def test_docker_source_image_missing(self) -> None:
-        stack = make_stack(self.tmp_path, (self._hub_docker_app(),))
+        stack = StackMakers.make_stack(self.tmp_path, (self._hub_docker_app(),))
         results = self.run_keyed(
             stack,
             shell=self.mock_shell(),
@@ -111,7 +111,7 @@ class TestDoctorDockerCerts(DoctorTestCase):
     def test_certs_partial_pair_fails(self) -> None:
         self.seed_compose()
         self.ensure_checkouts("app")
-        write_applied_app(self.tmp_path, "app", tls="origin")
+        AppliedInventory.write_applied_app(self.tmp_path, "app", tls="origin")
         d = self.tmp_path / "certs" / "app"
         d.mkdir(parents=True)
         (d / "origin.pem").write_text("pem\n", encoding="utf-8")
@@ -125,7 +125,7 @@ class TestDoctorDockerCerts(DoctorTestCase):
     def test_certs_acme_missing_fail_cta(self) -> None:
         self.seed_compose()
         self.ensure_checkouts("app")
-        write_applied_app(self.tmp_path, "app", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "app", tls="acme")
         (self.tmp_path / "settings.yaml").write_text(
             "edge:\n  http: 80\n  https: 443\nacme:\n  email: ops@example.com\n",
             encoding="utf-8",
@@ -143,7 +143,7 @@ class TestDoctorDockerCerts(DoctorTestCase):
     def test_certs_acme_ok_when_present(self) -> None:
         self.seed_compose()
         self.ensure_checkouts("app")
-        write_applied_app(self.tmp_path, "app", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "app", tls="acme")
         from tests.unit.acme.cert_helpers import plant_live_acme
 
         plant_live_acme(self.tmp_path, "app", ["app.test"], days=60)
@@ -160,7 +160,7 @@ class TestDoctorDockerCerts(DoctorTestCase):
     def test_certs_acme_fails_without_email(self) -> None:
         self.seed_compose()
         self.ensure_checkouts("app")
-        write_applied_app(self.tmp_path, "app", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "app", tls="acme")
         (self.tmp_path / "settings.yaml").write_text(
             "edge:\n  http: 80\n  https: 443\nacme: {}\n",
             encoding="utf-8",

@@ -11,7 +11,7 @@ from raft.serve.github.strategies.mock import MockGithubProvider
 from raft.serve.paths import ServePaths
 from raft.notify.control_events import KIND_SERVE_DEPLOY_FAILED
 
-from tests.unit.base import RaftTestCase, make_stack
+from tests.unit.base import RaftTestCase, StackMakers
 from ._helpers import sample_account
 
 
@@ -19,7 +19,7 @@ class TestDeployNotify(RaftTestCase):
     def test_missing_manifest_notifies(self) -> None:
         notifier = MagicMock()
         runner = GithubDeployRunner(
-            make_stack(self.tmp_path),
+            StackMakers.make_stack(self.tmp_path),
             MockGithubProvider(ServePaths.mock_github_dir()),
             DeployJobStore(),
             notifier=notifier,

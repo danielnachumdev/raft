@@ -17,7 +17,7 @@ from raft.serve.github.strategies.mock import MockGithubProvider
 from raft.serve.github.account import GithubAccount
 from raft.serve.paths import ServePaths
 
-from tests.unit.base import RaftTestCase, make_stack
+from tests.unit.base import RaftTestCase, StackMakers
 
 
 class TestDeployNextSteps(RaftTestCase):
@@ -60,7 +60,7 @@ class TestGithubDeployRunner(RaftTestCase):
                 return
 
     def test_mock_local_deploy_succeeds(self) -> None:
-        stack = make_stack(self.tmp_path)
+        stack = StackMakers.make_stack(self.tmp_path)
         runner = GithubDeployRunner(
             stack, MockGithubProvider(ServePaths.mock_github_dir()), DeployJobStore()
         )
@@ -80,7 +80,7 @@ class TestGithubDeployRunner(RaftTestCase):
 
     def test_missing_manifest_fails(self) -> None:
         runner = GithubDeployRunner(
-            make_stack(self.tmp_path),
+            StackMakers.make_stack(self.tmp_path),
             MockGithubProvider(ServePaths.mock_github_dir()),
             DeployJobStore(),
         )
@@ -95,7 +95,7 @@ class TestGithubDeployRunner(RaftTestCase):
         assert job.error and ".raft/app.yaml" in job.error
 
     def test_fill_next_steps_from_registry(self) -> None:
-        stack = make_stack(self.tmp_path)
+        stack = StackMakers.make_stack(self.tmp_path)
         manifest = self._write_registry_manifest()
         runner = GithubDeployRunner(
             stack, MockGithubProvider(ServePaths.mock_github_dir()), DeployJobStore()

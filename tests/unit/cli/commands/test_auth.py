@@ -9,17 +9,17 @@ import pytest
 
 from raft.cli import RaftCLI
 
-from ...base import make_git_app, make_stack, write_demo_inventory
+from ...base import AppMakers, AppliedInventory, StackMakers
 from ..base import CliTestCase
 
 
 class TestCliAuth(CliTestCase):
     @pytest.fixture(autouse=True)
     def _cli_auth_setup(self, _raft_base) -> None:
-        write_demo_inventory(self.tmp_path)
-        self.stack = make_stack(
+        AppliedInventory.write_demo_inventory(self.tmp_path)
+        self.stack = StackMakers.make_stack(
             self.tmp_path,
-            (make_git_app("svc"),),
+            (AppMakers.make_git_app("svc"),),
         )
         self.auth = MagicMock()
         self.auth.list_services.return_value = ["svc"]

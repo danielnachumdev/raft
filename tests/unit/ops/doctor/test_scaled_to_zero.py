@@ -14,13 +14,13 @@ from raft.ops.doctor.context import DoctorContext
 from raft.ops.doctor.report import GroupReportWriter
 from tests.shared.compose_ids import RunningServices
 
-from tests.unit.base import write_applied_app
+from tests.unit.base import AppliedInventory
 from .base import DoctorTestCase
 
 
 class TestDoctorScaledToZero(DoctorTestCase):
     def _ctx(self, docker: MagicMock) -> DoctorContext:
-        write_applied_app(self.tmp_path, "app")
+        AppliedInventory.write_applied_app(self.tmp_path, "app")
         return DoctorContext(
             stack=load_stack(self.tmp_path),
             shell=MagicMock(),
@@ -62,7 +62,7 @@ class TestDoctorScaledToZero(DoctorTestCase):
         probe.assert_not_called()
 
     def test_report_shows_scaling_note_on_ok_line(self) -> None:
-        write_applied_app(self.tmp_path, "app")
+        AppliedInventory.write_applied_app(self.tmp_path, "app")
         stack = load_stack(self.tmp_path)
         out = StringIO()
         results = [

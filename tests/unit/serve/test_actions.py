@@ -17,7 +17,7 @@ from raft.models.state.graph_event_store import GraphEventStore
 from raft.models.state.scaling_store import ScalingStore
 from raft.serve.actions import ServeActions
 
-from tests.unit.base import RaftTestCase, make_app, make_stack, write_applied_app
+from tests.unit.base import RaftTestCase, AppMakers, AppliedInventory, StackMakers
 
 _EPOCH = datetime(2020, 1, 1, tzinfo=timezone.utc)
 
@@ -30,7 +30,7 @@ _SCALING = {
 
 class TestServeActions(RaftTestCase):
     def _actions(self, *, apps=None) -> tuple[ServeActions, MagicMock, MagicMock]:
-        stack = make_stack(self.tmp_path, apps or (make_app("site"),))
+        stack = StackMakers.make_stack(self.tmp_path, apps or (AppMakers.make_app("site"),))
         docker = MagicMock()
         orch = MagicMock()
         return ServeActions(stack, orchestrator=orch, docker=docker), docker, orch
@@ -91,9 +91,9 @@ class TestServeActions(RaftTestCase):
         assert events[0].metadata == {}
 
     def test_start_clears_scaled_to_zero(self) -> None:
-        write_applied_app(self.tmp_path, "site", extra={"scaling": _SCALING})
+        AppliedInventory.write_applied_app(self.tmp_path, "site", extra={"scaling": _SCALING})
         ScalingStore(self.tmp_path).mark_scaled_to_zero("site")
-        actions, docker, _orch = self._actions(apps=(make_app("site"),))
+        actions, docker, _orch = self._actions(apps=(AppMakers.make_app("site"),))
         with self._with_app_locks() as locks:
             self._enter(locks)
             actions.start("site")
@@ -102,17 +102,17 @@ class TestServeActions(RaftTestCase):
 
     def test_start_clears_scaled_without_scaling_spec(self) -> None:
         """Store flag can linger; clear with default min_up when no scaling block."""
-        write_applied_app(self.tmp_path, "site")
+        AppliedInventory.write_applied_app(self.tmp_path, "site")
         ScalingStore(self.tmp_path).mark_scaled_to_zero("site")
-        actions, _docker, _orch = self._actions(apps=(make_app("site"),))
+        actions, _docker, _orch = self._actions(apps=(AppMakers.make_app("site"),))
         with self._with_app_locks() as locks:
             self._enter(locks)
             actions.start("site")
         assert not ScalingStore(self.tmp_path).is_scaled_to_zero("site")
 
     def test_stop_marks_scaled_to_zero_when_scaling(self) -> None:
-        write_applied_app(self.tmp_path, "site", extra={"scaling": _SCALING})
-        actions, docker, _orch = self._actions(apps=(make_app("site"),))
+        AppliedInventory.write_applied_app(self.tmp_path, "site", extra={"scaling": _SCALING})
+        actions, docker, _orch = self._actions(apps=(AppMakers.make_app("site"),))
         with self._with_app_locks() as locks:
             self._enter(locks)
             actions.stop("site")
@@ -151,7 +151,7 @@ class TestServeActions(RaftTestCase):
             actions.start("missing")
 
     def test_default_docker_and_orchestrator(self) -> None:
-        stack = make_stack(self.tmp_path, (make_app("site"),))
+        stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))
         actions = ServeActions(stack)
         with patch("raft.serve.actions.DockerStack") as docker_cls:
             with patch("raft.serve.actions.Shell"):
@@ -166,9 +166,9 @@ class TestServeActions(RaftTestCase):
         orch_cls.assert_called_once_with(stack)
 
     def test_bind_stack_updates_targets_and_docker(self) -> None:
-        actions, docker, orch = self._actions(apps=(make_app("site"),))
+        actions, docker, orch = self._actions(apps=(AppMakers.make_app("site"),))
         actions._orch = orch
-        refreshed = make_stack(self.tmp_path, (make_app("site"), make_app("demo-api")))
+        refreshed = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"), AppMakers.make_app("demo-api")))
         actions.bind_stack(refreshed)
         assert actions.stack is refreshed
         assert actions._targets.stack is refreshed
@@ -178,7 +178,7 @@ class TestServeActions(RaftTestCase):
         assert actions._resolve("demo-api")[0] == "demo-api"
 
     def test_purge_returns_reclaim_api(self) -> None:
-        stack = make_stack(self.tmp_path, (make_app("site"),))
+        stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))
         purge = MagicMock()
         purge.execute.return_value = MagicMock(
             as_api=MagicMock(
@@ -197,7 +197,7 @@ class TestServeActions(RaftTestCase):
         purge.execute.assert_called_once()
 
     def test_purge_builds_default_service(self) -> None:
-        stack = make_stack(self.tmp_path, (make_app("site"),))
+        stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))
         actions = ServeActions(stack)
         with patch("raft.serve.actions.Purge") as purge_cls:
             instance = MagicMock()

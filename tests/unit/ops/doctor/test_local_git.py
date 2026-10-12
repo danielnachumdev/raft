@@ -8,7 +8,7 @@ from raft.ops.doctor import INFRA
 from tests.shared.compose_ids import RunningServices
 from tests.shared.nginx import UpstreamFile
 
-from tests.unit.base import make_app, make_git_app, make_stack, write_applied_app
+from tests.unit.base import AppMakers, AppliedInventory, StackMakers
 from .base import DoctorTestCase
 
 
@@ -40,7 +40,7 @@ class TestDoctorLocalGit(DoctorTestCase):
 
     def test_git_app_missing_auth_and_checkout(self) -> None:
         self.seed_compose()
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "svc",
             source="git",
@@ -50,7 +50,7 @@ class TestDoctorLocalGit(DoctorTestCase):
         auth = MagicMock()
         auth.is_configured.return_value = False
         results = self.run_keyed(
-            make_stack(self.tmp_path, (make_git_app("svc"),)),
+            StackMakers.make_stack(self.tmp_path, (AppMakers.make_git_app("svc"),)),
             shell=self.mock_shell(),
             auth=auth,
             docker=self.mock_docker(),
@@ -88,7 +88,7 @@ class TestDoctorLocalGit(DoctorTestCase):
         auth.is_configured.return_value = True
         auth.test.side_effect = RuntimeError("auth test failed")
         results = self.run_keyed(
-            make_stack(self.tmp_path, (make_git_app("svc"),)),
+            StackMakers.make_stack(self.tmp_path, (AppMakers.make_git_app("svc"),)),
             shell=self.mock_shell(),
             auth=auth,
             docker=self.mock_docker(),
@@ -96,7 +96,7 @@ class TestDoctorLocalGit(DoctorTestCase):
         self._assert_git_auth_sync_fail(results)
 
     def _seed_git_svc_app(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "svc",
             source="git",
@@ -112,7 +112,7 @@ class TestDoctorLocalGit(DoctorTestCase):
         assert "settings/keys/new" in (results[("svc", "auth")].fix or "")
 
     def test_missing_compose_and_port_conflict(self) -> None:
-        stack = make_stack(self.tmp_path, (make_app("app"),))
+        stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("app"),))
         self.ensure_checkouts("app")
         for path in (
             self.tmp_path / "compose.yaml",
@@ -142,7 +142,7 @@ class TestDoctorLocalGit(DoctorTestCase):
         auth.is_configured.return_value = True
         auth.test.return_value = None
         results = self.run_keyed(
-            make_stack(self.tmp_path, (make_git_app("svc"),)),
+            StackMakers.make_stack(self.tmp_path, (AppMakers.make_git_app("svc"),)),
             shell=self.mock_shell(),
             auth=auth,
             docker=self.mock_docker(running=["raft-gate"]),

@@ -8,7 +8,7 @@ from raft.controller.jobs.heal import Healer
 from raft.errors.cta import OperatorError
 from raft.models.state.scaling_store import ScalingStore
 
-from ....base import write_applied_app
+from ....base import AppliedInventory
 from ...base import ControllerTestCase
 
 
@@ -44,7 +44,7 @@ class TestHealerDependsOn(ControllerTestCase):
 
     def test_depends_on_error_blocks_restart(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
-        write_applied_app(home, self.APP, extra={"dependsOn": ["missing"]})
+        AppliedInventory.write_applied_app(home, self.APP, extra={"dependsOn": ["missing"]})
         docker = MagicMock()
         docker.service_runtime.return_value = ("exited", "none")
         cfg = HealingConfig(enabled=True, fail_threshold=1, cooldown_seconds=0)
@@ -95,8 +95,8 @@ class TestHealerDependsOn(ControllerTestCase):
 
     def _dep_healer(self, tmp_path: Path, *, api_status: str, api_health: str):
         home = self.raft_home(tmp_path)
-        write_applied_app(home, "api")
-        write_applied_app(home, self.APP, extra={"dependsOn": ["api"]})
+        AppliedInventory.write_applied_app(home, "api")
+        AppliedInventory.write_applied_app(home, self.APP, extra={"dependsOn": ["api"]})
         docker = MagicMock()
         docker.service_runtime.side_effect = lambda sid: (
             (api_status, api_health) if sid == "api" else ("exited", "none")

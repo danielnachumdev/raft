@@ -15,7 +15,7 @@ from raft.render.scaling_gate import ScalingGate
 from raft.render.scaling_holding import ScalingHoldingPages
 from tests.shared.files import FileText
 
-from tests.unit.base import RaftTestCase, write_applied_app
+from tests.unit.base import RaftTestCase, AppliedInventory
 
 _SCALING = {
     "idleSeconds": 60,
@@ -31,7 +31,7 @@ _CUSTOM_HOLDING = (
 
 class TestScalingRender(RaftTestCase):
     def test_gate_http_includes_holding_and_wake(self) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", extra={"scaling": _SCALING})
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", extra={"scaling": _SCALING})
         gen = self.render_applied(edge=_EDGE)
         FileText.contains(
             gen / "nginx/gate-http/listeners.conf",
@@ -49,7 +49,7 @@ class TestScalingRender(RaftTestCase):
 
     def test_custom_holding_page_copied_and_aliased(self) -> None:
         scaling = {**_SCALING, "holdingPage": ".raft/holding.html"}
-        write_applied_app(self.tmp_path, "web", public_host="web.test", extra={"scaling": scaling})
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", extra={"scaling": scaling})
         page = self.tmp_path / "apps" / "web" / ".raft" / "holding.html"
         page.parent.mkdir(parents=True)
         page.write_text(_CUSTOM_HOLDING, encoding="utf-8")
@@ -64,12 +64,12 @@ class TestScalingRender(RaftTestCase):
 
     def test_custom_holding_page_missing_file_errors(self) -> None:
         scaling = {**_SCALING, "holdingPage": ".raft/holding.html"}
-        write_applied_app(self.tmp_path, "web", public_host="web.test", extra={"scaling": scaling})
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", extra={"scaling": scaling})
         with pytest.raises(OperatorError, match="holdingPage"):
             self.render_applied(edge=_EDGE)
 
     def test_timeout_location_enables_ssi_and_diag_alias(self) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", extra={"scaling": _SCALING})
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", extra={"scaling": _SCALING})
         gen = self.render_applied(edge=_EDGE)
         conf = (gen / "nginx/gate-http/listeners.conf").read_text(encoding="utf-8")
         hold_loc = conf[
@@ -96,7 +96,7 @@ class TestScalingRender(RaftTestCase):
         assert "_raft_timeout_diag" not in holding
 
     def test_tls_scaling_snippet(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "web",
             public_host="web.test",
@@ -121,7 +121,7 @@ class TestScalingRender(RaftTestCase):
         assert gate.contribute_http(hosted, spec, edge=EdgeConfig(http=None)).gate_http == []
 
     def test_tls_scaling_requires_https(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "web",
             public_host="web.test",
@@ -132,7 +132,7 @@ class TestScalingRender(RaftTestCase):
             self.render_applied(edge=EdgeConfig(http=80, https=None, streams=()))
 
     def test_acme_challenge_before_location_slash(self) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", extra={"scaling": _SCALING})
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", extra={"scaling": _SCALING})
         gen = self.render_applied(edge=_EDGE)
         conf = (gen / "nginx/gate-http/listeners.conf").read_text(encoding="utf-8")
         assert "acme_challenge.inc" in conf
@@ -143,7 +143,7 @@ class TestScalingRender(RaftTestCase):
         assert text.index("acme_challenge.inc") < text.index("location /")
 
     def test_tls_acme_scaling_redirect_when_certs_present(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "web",
             public_host="web.test",
@@ -161,7 +161,7 @@ class TestScalingRender(RaftTestCase):
         assert "acme-redirect:web" in http and "scaling:web" not in http
 
     def test_tls_acme_scaling_skips_tls_without_pems(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "web",
             public_host="web.test",

@@ -18,7 +18,7 @@ from raft.serve.lease import ServeLease
 from raft.serve.runtime import ServeRuntime
 from raft.serve.service import Serve
 
-from tests.unit.base import RaftTestCase, make_stack
+from tests.unit.base import RaftTestCase, StackMakers
 
 
 def _hold_until_signal(home: str, port: int, ready: "mp.Queue") -> None:
@@ -187,13 +187,13 @@ class TestServeRuntime(RaftTestCase):
 
 class TestServeStopMessages(RaftTestCase):
     def test_stop_when_not_running_message(self, capsys) -> None:
-        Serve(make_stack(self.tmp_path)).stop(port=8787)
+        Serve(StackMakers.make_stack(self.tmp_path)).stop(port=8787)
         assert "not running on 127.0.0.1:8787" in capsys.readouterr().out
 
     def test_stop_when_running_message(self, capsys) -> None:
         proc = _spawn_holder(self.tmp_path, 8792)
         try:
-            Serve(make_stack(self.tmp_path)).stop(port=8792)
+            Serve(StackMakers.make_stack(self.tmp_path)).stop(port=8792)
             assert "stopped raft serve on 127.0.0.1:8792" in capsys.readouterr().out
             proc.join(timeout=5)
             assert not proc.is_alive()
@@ -201,7 +201,7 @@ class TestServeStopMessages(RaftTestCase):
             _ensure_dead(proc)
 
     def test_run_refuses_when_already_running(self) -> None:
-        serve = Serve(make_stack(self.tmp_path))
+        serve = Serve(StackMakers.make_stack(self.tmp_path))
         lease = serve._runtime.acquire(8787)
         try:
             with pytest.raises(OperatorError, match="already running"):
@@ -210,7 +210,7 @@ class TestServeStopMessages(RaftTestCase):
             lease.release()
 
     def test_run_acquires_lease_around_uvicorn(self) -> None:
-        serve = Serve(make_stack(self.tmp_path))
+        serve = Serve(StackMakers.make_stack(self.tmp_path))
         with patch("raft.serve.service.uvicorn.run") as run:
             serve.run(port=8788)
         run.assert_called_once()

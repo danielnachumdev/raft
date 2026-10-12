@@ -9,7 +9,7 @@ import pytest
 from raft.errors.cta import OperatorError
 from tests.shared.nginx import NginxEmerg
 
-from tests.unit.base import write_applied_app
+from tests.unit.base import AppliedInventory
 from tests.unit.cta_asserts import assert_operator
 from .base import CutoverTestCase
 
@@ -59,7 +59,7 @@ class TestCutoverFlow(CutoverTestCase):
     def test_start_tmp_passes_env_file_and_readiness_path(self) -> None:
         env_file = self.tmp_path / "app.env"
         env_file.write_text("A=1\n", encoding="utf-8")
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "app",
             extra={
@@ -75,7 +75,7 @@ class TestCutoverFlow(CutoverTestCase):
     def test_start_tmp_remaps_host_env_file_under_data_home(self) -> None:
         env_file = self.tmp_path / "app.env"
         env_file.write_text("A=1\n", encoding="utf-8")
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "app",
             extra={"envFile": "/home/raft/.raft/app.env"},

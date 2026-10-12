@@ -10,7 +10,7 @@ from raft.ops.acme_health import AcmeCertHealth
 from raft.models.stack import load_stack
 
 from tests.unit.acme.cert_helpers import plant_live_acme
-from tests.unit.base import write_applied_app
+from tests.unit.base import AppliedInventory
 from tests.unit.ops.doctor.base import DoctorTestCase
 
 
@@ -34,7 +34,7 @@ class TestAcmeCertHealth(DoctorTestCase):
 
     def test_fails_when_edge_http_null(self) -> None:
         self._write_settings(http=None)
-        write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="acme")
         stack = load_stack(self.tmp_path)
         result = AcmeCertHealth(stack).check(stack.app("shop"), missing=None)
         assert result.status == "fail"
@@ -42,7 +42,7 @@ class TestAcmeCertHealth(DoctorTestCase):
 
     def test_fails_when_email_missing(self) -> None:
         self._write_settings(email=None)
-        write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="acme")
         stack = load_stack(self.tmp_path)
         result = AcmeCertHealth(stack).check(stack.app("shop"), missing=None)
         assert result.status == "fail"
@@ -50,7 +50,7 @@ class TestAcmeCertHealth(DoctorTestCase):
 
     def test_missing_cert_includes_last_error(self) -> None:
         self._write_settings()
-        write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="acme")
         store = AcmeAppStore(self.tmp_path)
         store.record_error("shop", "DNS not ready")
         from raft.ops.certs import MissingAcmeCerts
@@ -63,7 +63,7 @@ class TestAcmeCertHealth(DoctorTestCase):
 
     def test_ok_with_fresh_cert(self) -> None:
         self._write_settings()
-        write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="acme")
         plant_live_acme(self.tmp_path, "shop", ["shop.test"], days=60)
         stack = load_stack(self.tmp_path)
         result = AcmeCertHealth(stack).check(stack.app("shop"), missing=None)
@@ -72,7 +72,7 @@ class TestAcmeCertHealth(DoctorTestCase):
 
     def test_warn_near_expiry(self) -> None:
         self._write_settings()
-        write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="acme")
         plant_live_acme(self.tmp_path, "shop", ["shop.test"], days=10)
         stack = load_stack(self.tmp_path)
         result = AcmeCertHealth(stack).check(stack.app("shop"), missing=None)
@@ -81,7 +81,7 @@ class TestAcmeCertHealth(DoctorTestCase):
 
     def test_fail_expired(self) -> None:
         self._write_settings()
-        write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="acme")
         plant_live_acme(self.tmp_path, "shop", ["shop.test"], days=-1)
         stack = load_stack(self.tmp_path)
         result = AcmeCertHealth(stack).check(stack.app("shop"), missing=None)
@@ -90,7 +90,7 @@ class TestAcmeCertHealth(DoctorTestCase):
 
     def test_unreadable_pem_fails(self) -> None:
         self._write_settings()
-        write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="acme")
         d = self.tmp_path / "certs" / "shop"
         d.mkdir(parents=True)
         (d / "acme.pem").write_text("not-a-cert\n", encoding="utf-8")
@@ -102,7 +102,7 @@ class TestAcmeCertHealth(DoctorTestCase):
 
     def test_warn_last_error_with_valid_cert(self) -> None:
         self._write_settings()
-        write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="acme")
         plant_live_acme(self.tmp_path, "shop", ["shop.test"], days=60)
         store = AcmeAppStore(self.tmp_path)
         store.record_error("shop", "rateLimited")
@@ -114,7 +114,7 @@ class TestAcmeCertHealth(DoctorTestCase):
 
     def test_near_expiry_includes_last_error(self) -> None:
         self._write_settings()
-        write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="acme")
         plant_live_acme(self.tmp_path, "shop", ["shop.test"], days=10)
         store = AcmeAppStore(self.tmp_path)
         store.record_error("shop", "temporary failure")
@@ -129,8 +129,8 @@ class TestDoctorAppFilter(DoctorTestCase):
     def test_filter_excludes_other_app_failures(self) -> None:
         self.seed_compose()
         self.ensure_checkouts("shop", "other")
-        write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="acme")
-        write_applied_app(self.tmp_path, "other", public_host="other.test", tls="origin")
+        AppliedInventory.write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "other", public_host="other.test", tls="origin")
         plant_live_acme(self.tmp_path, "shop", ["shop.test"], days=60)
         (self.tmp_path / "settings.yaml").write_text(
             "edge:\n  http: 80\n  https: 443\nacme:\n  email: ops@example.com\n",
@@ -150,7 +150,7 @@ class TestDoctorAppFilter(DoctorTestCase):
 
     def test_unknown_app_raises(self) -> None:
         self.seed_compose()
-        write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="off")
+        AppliedInventory.write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="off")
         doctor = self.doctor(
             stack=load_stack(self.tmp_path),
             shell=self.mock_shell(),

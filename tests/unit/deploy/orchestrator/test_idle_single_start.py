@@ -10,7 +10,7 @@ from raft.errors.cta import OperatorError
 from raft.models.state.scaling_store import ScalingStore
 from tests.unit.controller.base import ControllerTestCase
 
-from tests.unit.base import write_applied_app
+from tests.unit.base import AppliedInventory
 from .base import OrchestratorTestCase
 
 
@@ -63,7 +63,7 @@ class TestIdleSingleStart(OrchestratorTestCase):
             self.orch.redeploy_app("app")
 
     def _seed_scaling_app(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "app",
             public_host="app.test",

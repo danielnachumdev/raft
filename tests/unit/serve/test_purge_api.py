@@ -10,13 +10,13 @@ from raft.errors.cta import OperatorError
 from raft.ops.status.models import StatusSnapshot
 from raft.serve.app import ServeAppFactory
 
-from tests.unit.base import RaftTestCase, make_app, make_stack
+from tests.unit.base import RaftTestCase, AppMakers, StackMakers
 from tests.unit.ops.status.fixtures import StatusFixtures
 
 
 class TestServePurgeApi(RaftTestCase):
     def _client(self, actions) -> TestClient:
-        stack = make_stack(self.tmp_path, (make_app("site"),))
+        stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))
         status = MagicMock()
         status.collect.return_value = StatusSnapshot(
             host=StatusFixtures.empty_host_status(),

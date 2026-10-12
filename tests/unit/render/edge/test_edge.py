@@ -18,12 +18,12 @@ from raft.render.edge import (
     TlsEdge,
 )
 
-from tests.unit.base import RaftTestCase, make_app
+from tests.unit.base import RaftTestCase, AppMakers
 
 
 class TestEdgeHandlers(RaftTestCase):
     def test_http_edge(self) -> None:
-        app = make_app("web", public_host="web.example.com")
+        app = AppMakers.make_app("web", public_host="web.example.com")
         spec = AppSpec(
             ports=(PortSpec(name="http", container_port=80, expose="http"),),
         )
@@ -32,7 +32,7 @@ class TestEdgeHandlers(RaftTestCase):
         assert any("server_name web.example.com" in line for line in frag.router_servers)
 
     def test_tls_edge_requires_https(self) -> None:
-        app = make_app("web", public_host="web.example.com")
+        app = AppMakers.make_app("web", public_host="web.example.com")
         home = self.tmp_path
         spec = AppSpec(
             ports=(PortSpec(name="http", container_port=80, expose="http"),),
@@ -44,7 +44,7 @@ class TestEdgeHandlers(RaftTestCase):
         assert "web.conf" in frag.gate_tls
 
     def test_tls_acme_requires_http_and_https(self) -> None:
-        app = make_app("web", public_host="web.example.com")
+        app = AppMakers.make_app("web", public_host="web.example.com")
         home = self.tmp_path
         spec = AppSpec(
             ports=(PortSpec(name="http", container_port=80, expose="http"),),
@@ -76,7 +76,7 @@ class TestEdgeHandlers(RaftTestCase):
         assert "origin.pem" not in frag.gate_tls["web.conf"]
 
     def test_stream_edge_undeclared(self) -> None:
-        app = make_app("mail", public_host="mail.example.com")
+        app = AppMakers.make_app("mail", public_host="mail.example.com")
         port = PortSpec(
             name="smtp",
             container_port=25,
@@ -88,7 +88,7 @@ class TestEdgeHandlers(RaftTestCase):
             StreamEdge().contribute(app, spec, port, edge=EdgeConfig())
 
     def test_stream_and_host(self) -> None:
-        app = make_app("mail", public_host="mail.example.com")
+        app = AppMakers.make_app("mail", public_host="mail.example.com")
         smtp = PortSpec(
             name="smtp",
             container_port=25,
@@ -164,7 +164,7 @@ class TestReadinessStrategy(RaftTestCase):
         assert ReadinessStrategy.from_spec(none).healthcheck_compose_lines() == []
         assert (
             ReadinessStrategy.from_spec(none).wait_predicate(
-                make_app(), self.local_stack(), MagicMock()
+                AppMakers.make_app(), self.local_stack(), MagicMock()
             )
             is None
         )

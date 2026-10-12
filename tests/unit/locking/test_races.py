@@ -11,7 +11,7 @@ from raft.models.ports import PortSpec
 from raft.locking import AppAndStackLocks, LockPaths, StackLock
 from raft.render import StackRenderer
 
-from tests.unit.base import RaftTestCase, make_local_stack, write_applied_app
+from tests.unit.base import RaftTestCase, AppliedInventory, StackMakers
 from tests.unit.cta_asserts import assert_operator
 from .hold import LockHoldThread
 
@@ -21,9 +21,9 @@ class TestUpstreamRaceWithoutLock(RaftTestCase):
 
     @pytest.fixture(autouse=True)
     def _two_apps(self, _raft_base) -> None:
-        write_applied_app(self.tmp_path, "alpha")
-        write_applied_app(self.tmp_path, "beta", public_host="beta.test")
-        self.stack = make_local_stack(self.tmp_path, "alpha", "beta", drain_seconds=0.0)
+        AppliedInventory.write_applied_app(self.tmp_path, "alpha")
+        AppliedInventory.write_applied_app(self.tmp_path, "beta", public_host="beta.test")
+        self.stack = StackMakers.make_local_stack(self.tmp_path, "alpha", "beta", drain_seconds=0.0)
         StackRenderer(self.stack).render()
         self.alpha = self.stack.app("alpha")
         self.port = PortSpec(name="http", container_port=80, expose="http")
@@ -89,8 +89,8 @@ class TestSameAppLastFinisher(RaftTestCase):
 
     @pytest.fixture(autouse=True)
     def _app(self, _raft_base) -> None:
-        write_applied_app(self.tmp_path, "app")
-        self.stack = make_local_stack(self.tmp_path, drain_seconds=0.0)
+        AppliedInventory.write_applied_app(self.tmp_path, "app")
+        self.stack = StackMakers.make_local_stack(self.tmp_path, drain_seconds=0.0)
         self.live: list[str] = []
 
     def test_serialized_deploys_later_started_wins(self) -> None:

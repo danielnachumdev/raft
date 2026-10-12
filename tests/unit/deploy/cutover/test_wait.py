@@ -8,14 +8,14 @@ import pytest
 
 from raft.deploy.cutover import CutoverSession
 
-from tests.unit.base import make_app, make_local_stack, make_stack, write_applied_app
+from tests.unit.base import AppMakers, AppliedInventory, StackMakers
 from tests.unit.cta_asserts import assert_logged, assert_operator
 from .base import CutoverTestCase
 
 
 class TestCutoverWait(CutoverTestCase):
     def test_wait_ready_invokes_compose_ready_for_expose_none(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "app",
             public_host="",
@@ -24,7 +24,7 @@ class TestCutoverWait(CutoverTestCase):
             build_context=None,
             extra=self._expose_none_extra(),
         )
-        app = make_app("app", source="docker", image="redis", public_host="")
+        app = AppMakers.make_app("app", source="docker", image="redis", public_host="")
         docker = MagicMock()
         docker.service_is_ready.return_value = True
         session = self._cutover_session(app, docker)
@@ -41,7 +41,7 @@ class TestCutoverWait(CutoverTestCase):
 
     def _cutover_session(self, app, docker) -> CutoverSession:
         return CutoverSession(
-            stack=make_stack(self.tmp_path, (app,), drain_seconds=0.0),
+            stack=StackMakers.make_stack(self.tmp_path, (app,), drain_seconds=0.0),
             app=app,
             docker=docker,
             nginx=MagicMock(),
@@ -49,12 +49,12 @@ class TestCutoverWait(CutoverTestCase):
         )
 
     def test_wait_ready_uses_app_readiness_timeout(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "app",
             extra={"readiness": {"type": "http", "port": "http", "timeoutSeconds": 90}},
         )
-        stack = make_local_stack(self.tmp_path, drain_seconds=0.0, ready_timeout_seconds=1.0)
+        stack = StackMakers.make_local_stack(self.tmp_path, drain_seconds=0.0, ready_timeout_seconds=1.0)
         s = CutoverSession(
             stack=stack,
             app=stack.apps[0],
@@ -157,7 +157,7 @@ class TestCutoverWait(CutoverTestCase):
         s.docker.remove_container.assert_not_called()
 
     def test_wait_ready_skips_when_readiness_none(self) -> None:
-        write_applied_app(self.tmp_path, "app", extra={"readiness": {"type": "none"}})
+        AppliedInventory.write_applied_app(self.tmp_path, "app", extra={"readiness": {"type": "none"}})
         with patch("raft.deploy.cutover.session.WaitUntil") as wait:
             self.session._wait_ready("noop")
         wait.assert_not_called()

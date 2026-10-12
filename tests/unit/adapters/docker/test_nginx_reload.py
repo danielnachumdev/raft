@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from raft.models.ports import PortSpec
-from ...base import make_app
+from ...base import AppMakers
 from .base import DockerTestCase
 
 

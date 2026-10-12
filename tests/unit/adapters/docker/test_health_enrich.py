@@ -7,7 +7,7 @@ import pytest
 from raft.errors.cta import OperatorError
 from tests.shared.nginx import NginxEmerg
 
-from ...base import make_app
+from ...base import AppMakers
 from .base import DockerTestCase
 
 
@@ -101,7 +101,7 @@ class TestDockerHealthEnrich(DockerTestCase):
                 self.docker.rebuild_service("app")
 
     def _assert_recreate_pulled_enrich(self) -> None:
-        app = make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
+        app = AppMakers.make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
         self.shell.docker.return_value = self.ok()
         with self._enrich_patch("--- hub ---\nbad"):
             self.shell.compose.return_value = self.ok(returncode=1)

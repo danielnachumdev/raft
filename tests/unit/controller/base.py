@@ -9,7 +9,7 @@ from raft.config.paths import RaftHomeBootstrap
 from raft.config.settings.types import HealingConfig
 from raft.controller.jobs.heal import Healer
 
-from ..base import write_applied_app
+from ..base import AppliedInventory
 
 LOCKS_HEAL = "raft.controller.jobs.heal.heal.AppAndStackLocks"
 LOCKS_SCALE_APPS = "raft.controller.jobs.scale.wake.AppsAndStackLocks"
@@ -26,7 +26,7 @@ class ControllerTestCase:
 
     def applied_home(self, tmp_path: Path, **write_kwargs: Any) -> Path:
         home = self.raft_home(tmp_path)
-        write_applied_app(home, self.APP, **write_kwargs)
+        AppliedInventory.write_applied_app(home, self.APP, **write_kwargs)
         return home
 
     @staticmethod

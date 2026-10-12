@@ -10,7 +10,7 @@ from raft.errors.cta import OperatorError
 from raft.models.stack import load_stack
 from raft.apply import AppApply
 
-from tests.unit.base import write_applied_app
+from tests.unit.base import AppliedInventory
 from .base import ApplyTestCase
 
 
@@ -28,7 +28,7 @@ class TestApplyFile(ApplyTestCase):
         assert "applied web" in capsys.readouterr().out
 
     def test_apply_file_rejects_depends_on_cycle(self) -> None:
-        write_applied_app(
+        AppliedInventory.write_applied_app(
             self.tmp_path,
             "alpha",
             public_host="alpha.test",

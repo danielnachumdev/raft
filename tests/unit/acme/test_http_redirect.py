@@ -5,21 +5,21 @@ from __future__ import annotations
 from raft.config.settings.types import EdgeConfig
 from raft.acme.http_redirect import AcmeHttpRedirect
 
-from tests.unit.base import RaftTestCase, write_applied_app
+from tests.unit.base import RaftTestCase, AppliedInventory
 
 _EDGE = EdgeConfig(http=80, https=443, streams=())
 
 
 class TestAcmeHttpRedirect(RaftTestCase):
     def test_no_redirect_without_pems(self) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
         gen = self.render_applied(edge=_EDGE)
         conf = (gen / "nginx/gate-http/listeners.conf").read_text(encoding="utf-8")
         assert "acme-redirect:web" not in conf
         assert "return 301 https://" not in conf
 
     def test_redirect_when_pems_exist(self) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
         d = self.tmp_path / "certs" / "web"
         d.mkdir(parents=True)
         (d / "acme.pem").write_text("pem\n", encoding="utf-8")
@@ -32,13 +32,13 @@ class TestAcmeHttpRedirect(RaftTestCase):
         assert "server_name web.test" in conf
 
     def test_tls_off_never_redirects(self) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="off")
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="off")
         gen = self.render_applied(edge=_EDGE)
         conf = (gen / "nginx/gate-http/listeners.conf").read_text(encoding="utf-8")
         assert "return 301 https://" not in conf
 
     def test_contributor_skips_without_http(self) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
         from raft.models.app import App
         from raft.models.manifest import AppSpec
         from raft.models.ports import PortSpec

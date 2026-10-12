@@ -8,7 +8,7 @@ import pytest
 
 from raft.sync import SourceSync
 
-from tests.unit.base import git_call_args, make_app, make_stack
+from tests.unit.base import AppMakers, ShellMocks, StackMakers
 from .base import SyncTestCase
 
 
@@ -29,7 +29,7 @@ class TestSyncLocalGit(SyncTestCase):
         dest = self.app.abs_path(self.tmp_path)
         self.shell.git.side_effect = self._clone_fetch_git(dest, "abc123def456\n")
         self.syncer.sync([self.app], ref_override="deadbeef")
-        cmds = [c[0] for c in git_call_args(self.shell)]
+        cmds = [c[0] for c in ShellMocks.git_call_args(self.shell)]
         assert "clone" in cmds and "fetch" in cmds and "checkout" in cmds
         state = (self.tmp_path / "deploy" / "svc.ref").read_text(encoding="utf-8")
         assert "abc123def456" in state and "deadbeef" in state
@@ -76,8 +76,8 @@ class TestSyncLocalGit(SyncTestCase):
 
         self.shell.git.side_effect = git
         self.syncer.sync([self.app], force=True)
-        assert any(c[0] == "checkout" for c in git_call_args(self.shell))
-        assert any(c[:2] == ("remote", "set-url") for c in git_call_args(self.shell))
+        assert any(c[0] == "checkout" for c in ShellMocks.git_call_args(self.shell))
+        assert any(c[:2] == ("remote", "set-url") for c in ShellMocks.git_call_args(self.shell))
 
     def test_sync_uses_auth_clone_url(self) -> None:
         self.git_syncer(repo="git@github.com:org/svc.git")
@@ -110,7 +110,7 @@ class TestSyncLocalGit(SyncTestCase):
 
     def test_sync_replaces_contract_stub_then_docker_pull(self) -> None:
         app = self._docker_hub_app()
-        self.stack = make_stack(self.tmp_path, (app,))
+        self.stack = StackMakers.make_stack(self.tmp_path, (app,))
         self.app = app
         self.syncer = SourceSync(self.stack, self.shell)
         dest = app.abs_path(self.tmp_path)
@@ -127,7 +127,7 @@ class TestSyncLocalGit(SyncTestCase):
 
     @staticmethod
     def _docker_hub_app():
-        return make_app(
+        return AppMakers.make_app(
             "hub",
             source="docker",
             image="ghcr.io/org/hub",
@@ -142,7 +142,7 @@ class TestSyncLocalGit(SyncTestCase):
         monkeypatch.setenv("VPS_SYNC_REF", "feature")
         self.shell.git.side_effect = self._origin_fallback_git()
         self.syncer.sync([self.app])
-        checkout = [c for c in git_call_args(self.shell) if c and c[0] == "checkout"][0]
+        checkout = [c for c in ShellMocks.git_call_args(self.shell) if c and c[0] == "checkout"][0]
         assert "feedface0001" in checkout
 
     def _origin_fallback_git(self):
@@ -179,7 +179,7 @@ class TestSyncLocalGit(SyncTestCase):
         (self.tmp_path / "apps" / "a").mkdir(parents=True)
         (self.tmp_path / "apps" / "b").mkdir(parents=True)
         apps = (
-            make_app("a", public_host="a.test", path="apps/a"),
-            make_app("b", public_host="b.test", path="apps/b"),
+            AppMakers.make_app("a", public_host="a.test", path="apps/a"),
+            AppMakers.make_app("b", public_host="b.test", path="apps/b"),
         )
-        SourceSync(make_stack(self.tmp_path, apps), MagicMock()).sync()
+        SourceSync(StackMakers.make_stack(self.tmp_path, apps), MagicMock()).sync()

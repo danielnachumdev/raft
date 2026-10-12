@@ -22,7 +22,7 @@ from raft.acme.paths import AcmePaths
 from raft.ops.certs import MissingAcmeCerts
 
 from .cert_helpers import plant_live_acme
-from tests.unit.base import RaftTestCase, write_applied_app
+from tests.unit.base import RaftTestCase, AppliedInventory
 
 
 class TestAcmeCoverageExtras(RaftTestCase):
@@ -52,13 +52,13 @@ class TestAcmeCoverageExtras(RaftTestCase):
             assert store._load_registration("https://x/dir") is None
 
     def test_ensure_skips_off_mode(self) -> None:
-        write_applied_app(self.tmp_path, "off", public_host="off.test", tls="off")
+        AppliedInventory.write_applied_app(self.tmp_path, "off", public_host="off.test", tls="off")
         stack = load_stack(self.tmp_path)
         ensure = AcmeEnsure(stack, config=AcmeConfig(email="ops@x.com"))
         assert ensure.ensure_app(stack.app("off")) is False
 
     def test_ensure_corrupt_pem_and_san_change(self) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
         ensure = AcmeEnsure(load_stack(self.tmp_path), config=AcmeConfig(email="ops@x.com"))
         d = self.tmp_path / "certs" / "web"
         d.mkdir(parents=True, exist_ok=True)
@@ -69,7 +69,7 @@ class TestAcmeCoverageExtras(RaftTestCase):
         assert ensure._should_skip("web", ["web.test"]) is False
 
     def test_ensure_builds_default_runner(self) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
         ensure = AcmeEnsure(load_stack(self.tmp_path), config=AcmeConfig(email="ops@x.com"))
         with patch("raft.acme.ensure.AcmeAccountStore") as account_cls:
             with patch("raft.acme.ensure.AcmeOrderRunner") as runner_cls:
@@ -78,7 +78,7 @@ class TestAcmeCoverageExtras(RaftTestCase):
         account_cls.assert_called_once()
 
     def test_ensure_is_acme_swallows_errors(self) -> None:
-        write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
+        AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
         stack = load_stack(self.tmp_path)
         ensure = AcmeEnsure(stack, config=AcmeConfig(email="ops@x.com"))
         with patch.object(type(stack), "spec_for", side_effect=RuntimeError("boom")):
