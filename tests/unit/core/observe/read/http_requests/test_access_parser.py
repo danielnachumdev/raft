@@ -26,9 +26,27 @@ class TestHttpAccessLineParser:
         assert row.status == 404
         assert row.method is None
 
-    def test_rejects_junk(self) -> None:
-        assert HttpAccessLineParser().parse("not-a-line") is None
-        assert HttpAccessLineParser().parse("0.1 200 -") is None
+    def test_rejects_junk_and_blank(self) -> None:
+        parser = HttpAccessLineParser()
+        assert parser.parse("not-a-line") is None
+        assert parser.parse("   ") is None
+        assert parser.parse("0.1 200 -") is None
+
+    def test_rejects_bad_duration_or_status(self) -> None:
+        parser = HttpAccessLineParser()
+        assert parser.parse("bad 200 demo-api.test") is None
+        assert parser.parse("0.01 xyz demo-api.test") is None
+        bad = (
+            'bad 200 demo-api.test 2026-10-13T01:00:00+00:00 GET /x '
+            '192.0.2.10 "UA"'
+        )
+        assert parser.parse(bad) is None
+
+    def test_rejects_enriched_dash_host(self) -> None:
+        line = (
+            '0.01 200 - 2026-10-13T01:00:00+00:00 GET /x 192.0.2.10 "UA"'
+        )
+        assert HttpAccessLineParser().parse(line) is None
 
     def test_clips_long_path_and_ua(self) -> None:
         path = "/" + ("a" * 300)

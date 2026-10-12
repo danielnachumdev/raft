@@ -41,6 +41,18 @@ class TestServeHttpRequestsApi(RaftTestCase):
         assert res.status_code == 200
         assert res.json()["eligible"] is False
 
+    def test_api_clamps_limit_low_and_high(self) -> None:
+        stack = self._stack()
+        client, _ = serve_fx.client_and_status(stack, serve_fx.empty_snapshot())
+        low = client.get(
+            "/api/service/demo-api/http-requests", params={"limit": 0}
+        ).json()
+        high = client.get(
+            "/api/service/demo-api/http-requests", params={"limit": 9999}
+        ).json()
+        assert low["limit"] == 1
+        assert high["limit"] == 500
+
     def _stack(self) -> Stack:
         AppliedInventory.write_applied_app(
             self.tmp_path, "demo-api", public_host="demo-api.test"
