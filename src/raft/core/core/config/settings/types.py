@@ -4,7 +4,9 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Tuple
+
+from raft.core.core.models.acl_policy import AclEntry, AclPolicy
 
 from ..paths.constants import LOGS_DIRNAME, SETTINGS_FILENAME
 
@@ -142,6 +144,27 @@ class NotificationsConfig:
 
 
 @dataclass(frozen=True)
+class GateAclConfig:
+    """Gate-wide client IP/CIDR ACL (``settings.yaml`` ``acl.gate``)."""
+
+    mode: str = "off"
+    entries: Tuple[AclEntry, ...] = ()
+
+    def to_policy(self) -> AclPolicy:
+        return AclPolicy(mode=self.mode, entries=self.entries)
+
+    def is_active(self) -> bool:
+        return self.to_policy().is_active()
+
+
+@dataclass(frozen=True)
+class AclConfig:
+    """Access-control settings (gate scope; per-app lives under ``state/acl/``)."""
+
+    gate: GateAclConfig = field(default_factory=GateAclConfig)
+
+
+@dataclass(frozen=True)
 class RaftConfig:
     logging: LoggingConfig = LoggingConfig()
     edge: EdgeConfig = field(default_factory=EdgeConfig)
@@ -150,6 +173,7 @@ class RaftConfig:
     acme: AcmeConfig = field(default_factory=AcmeConfig)
     github: GithubServeConfig = field(default_factory=GithubServeConfig)
     notifications: NotificationsConfig = field(default_factory=NotificationsConfig)
+    acl: AclConfig = field(default_factory=AclConfig)
 
 
 def default_config() -> RaftConfig:

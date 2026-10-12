@@ -24,6 +24,7 @@ class ScalingGate:
         *,
         edge: EdgeConfig,
         data_home: Optional[Path] = None,
+        acl_include: str = "",
     ) -> EdgeFragments:
         if spec.scaling is None or not app.public_host:
             return EdgeFragments()
@@ -34,13 +35,27 @@ class ScalingGate:
             if AcmePaths(data_home).live_material_present(app.name):
                 return EdgeFragments()
         return EdgeFragments(
-            gate_http=[self._server_block(app, spec, listen=edge.http, ssl=False)]
+            gate_http=[
+                self._server_block(
+                    app, spec, listen=edge.http, ssl=False, acl_include=acl_include
+                )
+            ]
         )
 
-    def contribute_tls(self, app: App, spec: AppSpec) -> str:
-        return self._server_block(app, spec, listen=443, ssl=True)
+    def contribute_tls(self, app: App, spec: AppSpec, *, acl_include: str = "") -> str:
+        return self._server_block(
+            app, spec, listen=443, ssl=True, acl_include=acl_include
+        )
 
-    def _server_block(self, app: App, spec: AppSpec, *, listen: int, ssl: bool) -> str:
+    def _server_block(
+        self,
+        app: App,
+        spec: AppSpec,
+        *,
+        listen: int,
+        ssl: bool,
+        acl_include: str = "",
+    ) -> str:
         names = " ".join(spec.server_names(app.public_host))
         listen_line = self._listen_line(listen, ssl=ssl)
         certs = self._tls_certs(app, spec) if ssl else ""
@@ -52,7 +67,7 @@ class ScalingGate:
             f"{certs}"
             "    resolver 127.0.0.11 valid=10s ipv6=off;\n"
             "\n"
-            f"{self._locations.render(app, spec)}"
+            f"{self._locations.render(app, spec, acl_include=acl_include)}"
             "}\n"
         )
 

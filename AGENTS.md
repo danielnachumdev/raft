@@ -73,13 +73,14 @@ Background / worker Apps that only run a long-lived process may **omit `spec.por
 | Path | Role |
 |------|------|
 | `compose.yaml`, `nginx/` (`src/raft/core/platform/share/`) | Product templates; synced into the data home on use |
-| `~/.raft/settings.yaml` | Operator settings (logging + **edge** + optional **healing** / **metrics** / **acme** / **github** / **notifications**); see [`examples/settings.yaml`](examples/settings.yaml) |
+| `~/.raft/settings.yaml` | Operator settings (logging + **edge** + optional **healing** / **metrics** / **acme** / **github** / **notifications** / **acl**); see [`examples/settings.yaml`](examples/settings.yaml) |
 | `~/.raft/state/apps/*.yaml` | Applied desired state (invalid files are skipped at load with `registry_issues`; apply/write still rejects bad YAML) |
 | `~/.raft/generated/` | Compose apps + compose.edge + router hosts + gate-http/stream/tls + **upstreams** |
 | `~/.raft/apps/` | Sync checkouts |
 | `~/.raft/deploy/` | Image/ref pins from sync/cutover |
 | `~/.raft/state/locks/` | `flock` files serializing apply/redeploy/render (`app-<name>.lock`, `stack.lock`) |
 | `~/.raft/state/serve/` | Per-port `raft serve` flock + pid (`port-<port>.lock`); used by start / `--stop` |
+| `~/.raft/state/acl/apps/` | Per-App IP/CIDR ACL JSON from `raft serve` (gate ACL is `settings.yaml` `acl.gate`; see [`docs/serve-acl.md`](docs/serve-acl.md)) |
 | `~/.raft/state/scaling/` | Per-app scale-to-zero JSON + gate marker files (when `spec.scaling` is set) |
 | `~/.raft/state/metrics/` | Controller samples: `resources.jsonl` (host/container) + `http.jsonl` (HTTP edge); `gate-http/` access log for scrape; batched append; daily + size-split rotation (`*.jsonl.YYYY-MM-DD[.N]`); `metrics.retentionMaxAgeDays` / `retentionMaxBytes` |
 | `~/.raft/state/acme/` | ACME account + HTTP-01 webroot + per-app state JSON (when using `tls: acme`) |
