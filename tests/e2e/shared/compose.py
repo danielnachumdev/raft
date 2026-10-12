@@ -11,7 +11,7 @@ from typing import Any, Optional
 
 import yaml
 
-from raft.models.app import ROUTER_COMPOSE_ID
+from raft.core.core.models.app import ROUTER_COMPOSE_ID
 from tests.shared.artifacts import GeneratedArtifacts
 from tests.shared.wait import Wait
 

@@ -5,14 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from raft.adapters.docker import DockerStack
-from raft.adapters.shell import Shell
-from raft.controller.jobs.scale import Scaler
-from raft.controller.wake_http import WakeHttpServer
-from raft.models.scaling_spec import ScalingSpec
-from raft.models.state.scaling_store import ScalingStore
-from raft.models.stack import load_stack
-from raft.render import StackRenderer
+from raft.core.platform.adapters.docker import DockerStack
+from raft.core.platform.adapters.shell import Shell
+from raft.services.controller.jobs.scale import Scaler
+from raft.services.controller.wake_http import WakeHttpServer
+from raft.core.core.models.scaling_spec import ScalingSpec
+from raft.core.core.models.state.scaling_store import ScalingStore
+from raft.core.core.models.stack import load_stack
+from raft.core.lifecycle.render import StackRenderer
 from tests.e2e.shared.compose import new_project_name
 from tests.e2e.shared.runtime import ServiceRuntimeWait
 from tests.e2e.shared.scale_stack import SCALING, ScaleE2EStack

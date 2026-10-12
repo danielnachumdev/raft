@@ -12,14 +12,14 @@ from typing import Optional
 
 import yaml
 
-from raft.adapters.docker import DockerStack
-from raft.adapters.shell import Shell
-from raft.models.stack import load_stack
-from raft.models.state.scaling_store import ScalingStore
-from raft.acme.ensure import AcmeEnsure
-from raft.acme.install import AcmeGateInstall
-from raft.acme.paths import AcmePaths
-from raft.render import StackRenderer
+from raft.core.platform.adapters.docker import DockerStack
+from raft.core.platform.adapters.shell import Shell
+from raft.core.core.models.stack import load_stack
+from raft.core.core.models.state.scaling_store import ScalingStore
+from raft.core.lifecycle.acme.ensure import AcmeEnsure
+from raft.core.lifecycle.acme.install import AcmeGateInstall
+from raft.core.lifecycle.acme.paths import AcmePaths
+from raft.core.lifecycle.render import StackRenderer
 from tests.e2e.shared.compose import new_project_name
 from tests.e2e.shared.pebble_side import PebbleSide, pebble_services
 from tests.e2e.shared.runtime import ServiceRuntimeWait

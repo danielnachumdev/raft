@@ -6,7 +6,7 @@ from typing import Iterator, Optional, Sequence, Union
 
 import pytest
 
-from raft.errors.cta import OperatorError
+from raft.core.core.errors.cta import OperatorError
 
 
 class CtaAsserts:

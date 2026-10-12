@@ -1,0 +1,49 @@
+"""Serve ``POST /api/purge`` route coverage."""
+
+from __future__ import annotations
+
+from unittest.mock import MagicMock
+
+from fastapi.testclient import TestClient
+
+from raft.core.core.errors.cta import OperatorError
+from raft.core.observe.ops.status.models import StatusSnapshot
+from raft.services.serve.app import ServeAppFactory
+
+from tests.unit.base import RaftTestCase, AppMakers, StackMakers
+from tests.unit.core.observe.ops.status import fixtures as status_fx
+
+
+class TestServePurgeApi(RaftTestCase):
+    def _client(self, actions) -> TestClient:
+        stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))
+        status = MagicMock()
+        status.collect.return_value = StatusSnapshot(
+            host=status_fx.empty_host_status(),
+            containers=(),
+        )
+        return TestClient(
+            ServeAppFactory(stack, status=status, actions=actions).create()
+        )
+
+    def test_api_purge_ok(self) -> None:
+        actions = MagicMock()
+        actions.purge.return_value = {
+            "ok": True,
+            "action": "purge",
+            "reclaimed_bytes": 2048,
+            "reclaimed_human": "2.0KiB",
+            "images_bytes": 2048,
+            "builder_bytes": 0,
+        }
+        response = self._client(actions).post("/api/purge")
+        assert response.status_code == 200
+        assert response.json()["reclaimed_human"] == "2.0KiB"
+        actions.purge.assert_called_once_with()
+
+    def test_api_purge_operator_error_is_400(self) -> None:
+        actions = MagicMock()
+        actions.purge.side_effect = OperatorError("failed to prune unused images")
+        response = self._client(actions).post("/api/purge")
+        assert response.status_code == 400
+        assert "prune" in response.json()["detail"]

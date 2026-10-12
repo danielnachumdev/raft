@@ -1,4 +1,4 @@
-from .cli import RaftCLI
+from .services.cli import RaftCLI
 
 
 def main() -> None:

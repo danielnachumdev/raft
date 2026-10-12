@@ -1,0 +1,56 @@
+"""Orchestrator / cutover readiness=none coverage edges."""
+
+from __future__ import annotations
+
+from unittest.mock import MagicMock, patch
+
+from raft.core.core.models.stack import load_stack
+from raft.core.lifecycle.deploy.cutover import CutoverSession
+from raft.core.lifecycle.deploy.orchestrator import Orchestrator
+from tests.shared.compose_ids import RunningServices
+
+from tests.unit.base import AppSpecExtras, RaftTestCase, AppMakers, AppliedInventory, StackMakers
+
+
+class TestOrchCutoverEdgeCoverage(RaftTestCase):
+    def test_orchestrator_none_readiness(self) -> None:
+        AppliedInventory.write_applied_app(
+            self.tmp_path,
+            "app",
+            extra=AppSpecExtras.readiness_none(),
+        )
+        stack = load_stack(self.tmp_path)
+        orch = Orchestrator(stack)
+        orch.docker = MagicMock()
+        orch.nginx = MagicMock()
+        orch.http = MagicMock()
+        orch.syncer = MagicMock()
+        orch.docker.running_services.side_effect = [
+            [],
+            RunningServices.with_apps("app"),
+        ]
+        with patch.object(orch, "sync"):
+            orch.start()
+        orch.http.public_host_ok.assert_not_called()
+
+    def test_shift_skips_wait_when_none(self) -> None:
+        AppliedInventory.write_applied_app(self.tmp_path, "app", extra=AppSpecExtras.readiness_none())
+        session = self._none_session()
+        session.previous_image = "img:old"
+        session.start_tmp_from_previous()
+        session.docker.router_can_fetch.assert_not_called()
+        with patch("raft.core.lifecycle.deploy.cutover.session.time.sleep"):
+            session.shift_traffic_to_tmp()
+            session.rebuild_stable_service()
+
+    def _none_session(self) -> CutoverSession:
+        stack = StackMakers.make_stack(
+            self.tmp_path, (AppMakers.make_app(),), drain_seconds=0.0, ready_timeout_seconds=1.0
+        )
+        return CutoverSession(
+            stack=stack,
+            app=stack.apps[0],
+            docker=MagicMock(),
+            nginx=MagicMock(),
+            http=MagicMock(),
+        )

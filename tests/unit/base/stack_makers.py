@@ -3,8 +3,8 @@
 from pathlib import Path
 from typing import Optional, Sequence
 
-from raft.models.app import App
-from raft.models.stack import Stack
+from raft.core.core.models.app import App
+from raft.core.core.models.stack import Stack
 
 from .app_makers import AppMakers
 

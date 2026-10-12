@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from raft.config.settings.types import EdgeConfig
+from raft.core.core.config.settings.types import EdgeConfig
 from tests.shared.artifacts import GeneratedArtifacts
 from tests.shared.files import FileText
 from tests.shared.raft_home import RaftHomeFixtures

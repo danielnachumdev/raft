@@ -1,0 +1,139 @@
+"""Host resource adapter + docker size parsers + HostGateway."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from raft.core.platform.adapters.host import DockerStatsText, HostGateway, HostProbe
+
+
+class TestParseDockerSize:
+    def test_units(self) -> None:
+        assert DockerStatsText.parse_size("0") == 0
+        assert DockerStatsText.parse_size("1024B") == 1024
+        assert DockerStatsText.parse_size("1.5KiB") == int(1.5 * 1024)
+        assert DockerStatsText.parse_size("2MiB") == 2 * 1024**2
+        assert DockerStatsText.parse_size("1GiB") == 1024**3
+        assert DockerStatsText.parse_size("1MB") == 1000**2
+        assert DockerStatsText.parse_size("--") is None
+        assert DockerStatsText.parse_size("") is None
+        assert DockerStatsText.parse_size("not-a-size") is None
+        assert DockerStatsText.parse_size("1.2xB") is None
+
+    def test_pair_and_percent(self) -> None:
+        assert DockerStatsText.parse_pair("1.5MiB / 64MiB") == (
+            int(1.5 * 1024**2),
+            64 * 1024**2,
+        )
+        assert DockerStatsText.parse_pair("1KiB") == (1024, None)
+        assert DockerStatsText.parse_percent("12.5%") == 12.5
+        assert DockerStatsText.parse_percent("--") is None
+        assert DockerStatsText.parse_percent("nope") is None
+
+
+class TestCollectHostResources:
+    def test_reads_proc_fixture(self, tmp_path: Path) -> None:
+        proc = self._write_proc(tmp_path)
+        disk_root = tmp_path / "disk"
+        disk_root.mkdir()
+        host = HostProbe(disk_path=disk_root, proc=proc).collect()
+        self._assert_proc_host(host, disk_root)
+
+    def _write_proc(self, tmp_path: Path) -> Path:
+        proc = tmp_path / "proc"
+        proc.mkdir()
+        (proc / "meminfo").write_text(
+            "MemTotal:       2048000 kB\n"
+            "MemAvailable:   1024000 kB\n"
+            "MemFree:         512000 kB\n",
+            encoding="utf-8",
+        )
+        (proc / "loadavg").write_text("0.10 0.20 0.30 1/100 1\n", encoding="utf-8")
+        (proc / "uptime").write_text("3661.5 100.0\n", encoding="utf-8")
+        return proc
+
+    def _assert_proc_host(self, host, disk_root) -> None:
+        assert host.cpus is not None and host.cpus >= 1
+        assert host.loadavg == (0.10, 0.20, 0.30)
+        assert host.uptime_seconds == 3661.5
+        assert host.memory is not None
+        assert host.memory.total_bytes == 2048000 * 1024
+        assert host.memory.available_bytes == 1024000 * 1024
+        assert host.memory.used_bytes == host.memory.total_bytes - host.memory.available_bytes
+        assert host.disk is not None and host.disk.path == str(disk_root)
+        assert host.disk.total_bytes > 0
+
+    def test_missing_proc_degrades(self, tmp_path: Path) -> None:
+        proc = tmp_path / "missing-proc"
+        host = HostProbe(disk_path=tmp_path, proc=proc).collect()
+        assert host.loadavg is None
+        assert host.memory is None
+        assert host.uptime_seconds is None
+        assert host.disk is not None
+
+    def test_bad_meminfo_and_load(self, tmp_path: Path) -> None:
+        proc = tmp_path / "proc"
+        proc.mkdir()
+        (proc / "meminfo").write_text("Garbage line\nMemTotal: nope\n", encoding="utf-8")
+        (proc / "loadavg").write_text("x y\n", encoding="utf-8")
+        (proc / "uptime").write_text("nope\n", encoding="utf-8")
+        host = HostProbe(disk_path=tmp_path, proc=proc).collect()
+        assert host.memory is None
+        assert host.loadavg is None
+        assert host.uptime_seconds is None
+
+    def test_loadavg_value_error_and_empty_uptime(self, tmp_path: Path) -> None:
+        proc = tmp_path / "proc"
+        proc.mkdir()
+        (proc / "loadavg").write_text("a b c\n", encoding="utf-8")
+        (proc / "uptime").write_text("\n", encoding="utf-8")
+        (proc / "meminfo").write_text("MemTotal: 1000 kB\n", encoding="utf-8")
+        host = HostProbe(disk_path=tmp_path, proc=proc).collect()
+        assert host.loadavg is None
+        assert host.uptime_seconds is None
+        assert host.memory is None  # MemAvailable missing
+
+    def test_disk_errors(self, tmp_path: Path, monkeypatch) -> None:
+        proc = tmp_path / "proc"
+        proc.mkdir()
+        (proc / "meminfo").write_text("", encoding="utf-8")
+
+        def boom(_path):
+            raise OSError("nope")
+
+        monkeypatch.setattr("raft.core.platform.adapters.host.probe.shutil.disk_usage", boom)
+        host = HostProbe(disk_path=tmp_path, proc=proc).collect()
+        assert host.disk is None
+
+        class Zero:
+            total = 0
+            free = 0
+
+        monkeypatch.setattr(
+            "raft.core.platform.adapters.host.probe.shutil.disk_usage", lambda _p: Zero()
+        )
+        assert HostProbe(disk_path=tmp_path, proc=proc).collect().disk is None
+
+    def test_more_size_units(self) -> None:
+        assert DockerStatsText.parse_size("1TiB") == 1024**4
+        assert DockerStatsText.parse_size("1TB") == 1000**4
+        assert DockerStatsText.parse_size("1.5") == 1
+        assert DockerStatsText.parse_size("1KiBx") is None
+
+
+class TestHostGateway:
+    def test_hostname_and_resources(self, tmp_path: Path) -> None:
+        proc = tmp_path / "proc"
+        proc.mkdir()
+        (proc / "meminfo").write_text(
+            "MemTotal: 2048000 kB\nMemAvailable: 1024000 kB\n", encoding="utf-8"
+        )
+        (proc / "loadavg").write_text("0.10 0.20 0.30 1/100 1\n", encoding="utf-8")
+        (proc / "uptime").write_text("10.0 1.0\n", encoding="utf-8")
+        gateway = HostGateway(
+            disk_path=tmp_path, proc=proc, gethostname=lambda: "raft-vm"
+        )
+        assert gateway.hostname() == "raft-vm"
+        resources = gateway.resources()
+        assert resources.loadavg == (0.10, 0.20, 0.30)
+        assert resources.uptime_seconds == 10.0

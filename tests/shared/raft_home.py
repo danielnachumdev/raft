@@ -7,11 +7,11 @@ from typing import Optional, Sequence
 
 import yaml
 
-from raft.config.paths import RaftHomeBootstrap
-from raft.config.settings.types import EdgeConfig, EdgeStream
-from raft.models.stack import load_stack
-from raft.apply import AppApply
-from raft.render import StackRenderer
+from raft.core.core.config.paths import RaftHomeBootstrap
+from raft.core.core.config.settings.types import EdgeConfig, EdgeStream
+from raft.core.core.models.stack import load_stack
+from raft.core.lifecycle.apply import AppApply
+from raft.core.lifecycle.render import StackRenderer
 
 FIXTURES_ROOT = Path(__file__).resolve().parent.parent / "fixtures"
 

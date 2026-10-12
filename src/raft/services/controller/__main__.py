@@ -1,0 +1,6 @@
+"""``python -m raft.services.controller`` entry."""
+
+from .run import main
+
+if __name__ == "__main__":
+    main()

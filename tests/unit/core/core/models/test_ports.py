@@ -1,0 +1,96 @@
+"""PortSpec parsing and validation."""
+
+from pathlib import Path
+
+import pytest
+
+from raft.core.core.models.port_list_parser import PortListParser
+from raft.core.core.models.ports import PortSpec
+
+from tests.unit.base import RaftTestCase
+
+
+class TestPorts(RaftTestCase):
+    def test_parse_http_default_expose(self) -> None:
+        ports = PortListParser().parse(
+            {"ports": [{"name": "http", "containerPort": 8080}]},
+            Path("app.yaml"),
+        )
+        assert ports[0].expose == "http"
+        assert ports[0].container_port == 8080
+        assert PortSpec.by_name(ports, "http") is ports[0]
+
+    def test_stream_requires_public_port(self) -> None:
+        with pytest.raises(ValueError, match="publicPort is required"):
+            PortListParser().parse(
+                {"ports": [{"name": "smtp", "containerPort": 25, "expose": "stream"}]},
+                Path("app.yaml"),
+            )
+
+    def test_rejects_legacy_port_key(self) -> None:
+        with pytest.raises(ValueError, match="spec.port is not supported"):
+            PortListParser().parse(
+                {"port": 80, "ports": [{"name": "http", "containerPort": 80}]},
+                Path("app.yaml"),
+            )
+        with pytest.raises(ValueError, match="spec.port is not supported"):
+            PortListParser().parse({"port": 80}, Path("app.yaml"))
+
+    def test_empty_or_omitted_ports(self) -> None:
+        assert PortListParser().parse({}, Path("app.yaml")) == ()
+        assert PortListParser().parse({"ports": []}, Path("app.yaml")) == ()
+        with pytest.raises(ValueError, match="spec.ports must be a list"):
+            PortListParser().parse({"ports": {}}, Path("app.yaml"))
+
+    def test_rejects_duplicate_names(self) -> None:
+        with pytest.raises(ValueError, match="duplicate port name"):
+            PortListParser().parse(
+                {
+                    "ports": [
+                        {"name": "http", "containerPort": 80},
+                        {"name": "http", "containerPort": 8080},
+                    ]
+                },
+                Path("app.yaml"),
+            )
+
+    def test_proxy_protocol_only_stream(self) -> None:
+        with pytest.raises(ValueError, match="proxyProtocol only applies"):
+            PortSpec(
+                name="http",
+                container_port=80,
+                expose="http",
+                proxy_protocol=True,
+            ).validate(path=Path("x"))
+
+    def test_parse_expose_none(self) -> None:
+        ports = PortListParser().parse(
+            {
+                "ports": [
+                    {
+                        "name": "redis",
+                        "containerPort": 6379,
+                        "expose": "none",
+                    }
+                ]
+            },
+            Path("app.yaml"),
+        )
+        assert ports[0].expose == "none"
+        assert ports[0].public_port is None
+
+    def test_none_rejects_public_port(self) -> None:
+        with pytest.raises(ValueError, match="publicPort is only valid"):
+            PortListParser().parse(
+                {
+                    "ports": [
+                        {
+                            "name": "redis",
+                            "containerPort": 6379,
+                            "expose": "none",
+                            "publicPort": 6379,
+                        }
+                    ]
+                },
+                Path("app.yaml"),
+            )

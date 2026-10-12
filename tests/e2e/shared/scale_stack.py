@@ -7,13 +7,13 @@ from typing import Optional
 
 import yaml
 
-from raft.adapters.docker import DockerStack
-from raft.adapters.shell import Shell
-from raft.controller.jobs.scale import Scaler
-from raft.models.state.scaling_store import ScalingStore
-from raft.controller.wake_http import WakeHttpServer
-from raft.models.stack import load_stack
-from raft.render import StackRenderer
+from raft.core.platform.adapters.docker import DockerStack
+from raft.core.platform.adapters.shell import Shell
+from raft.services.controller.jobs.scale import Scaler
+from raft.core.core.models.state.scaling_store import ScalingStore
+from raft.services.controller.wake_http import WakeHttpServer
+from raft.core.core.models.stack import load_stack
+from raft.core.lifecycle.render import StackRenderer
 from tests.e2e.shared.compose import new_project_name
 from tests.e2e.shared.runtime import ServiceRuntimeWait
 from tests.shared.artifacts import GeneratedArtifacts

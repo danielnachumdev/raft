@@ -9,10 +9,10 @@ from pathlib import Path
 
 import pytest
 
-from raft.config import SettingsLoader
-from raft.utils import HostLogging, TraceContext
-from raft.models.stack import load_stack
-from raft.ops.doctor import Doctor
+from raft.core.core.config import SettingsLoader
+from raft.core.core.utils import HostLogging, TraceContext
+from raft.core.core.models.stack import load_stack
+from raft.core.observe.ops.doctor import Doctor
 from tests.shared.logging_reset import LoggingReset
 from tests.shared.raft_home import RaftHomeFixtures
 from tests.shared.yaml_doc import YamlDoc

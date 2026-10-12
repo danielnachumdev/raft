@@ -8,7 +8,7 @@ import ssl
 import urllib.request
 from pathlib import Path
 
-from raft.adapters.docker import DockerStack
+from raft.core.platform.adapters.docker import DockerStack
 from tests.shared.http import HttpClient
 from tests.shared.wait import Wait
 
