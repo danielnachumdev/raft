@@ -121,6 +121,35 @@ class TestRealGithubProvider(RaftTestCase):
             with pytest.raises(OperatorError, match="no .raft/app.yaml"):
                 provider.fetch_manifest("tok", "a/b", "main")
 
+    def test_manifest_non_404_api_error(self) -> None:
+        from raft.services.serve.github.gateway import GithubHttpError
+
+        provider = RealGithubProvider()
+        with patch.object(
+            provider._http,
+            "get",
+            side_effect=GithubHttpError(500, "boom"),
+        ):
+            with pytest.raises(OperatorError, match="GitHub API error"):
+                provider.fetch_manifest("tok", "a/b", "main")
+
+    def test_gateway_put_json_extra_and_getcode(self) -> None:
+        from raft.services.serve.github.gateway import GithubApiGateway
+
+        gw = GithubApiGateway()
+        headers = GithubApiGateway.json_headers(extra={"X-Demo": "1"})
+        assert headers["X-Demo"] == "1"
+        resp = MagicMock()
+        resp.read.return_value = b"put-ok"
+        resp.status = "not-int"
+        resp.getcode.return_value = 201
+        resp.headers = {"Content-Type": "text/plain"}
+        resp.__enter__.return_value = resp
+        resp.__exit__.return_value = False
+        with patch(_GATEWAY_URLOPEN, return_value=resp):
+            out = gw.put("https://example.com", headers={}, body=b"{}")
+        assert out.body == "put-ok" and out.status == 201
+
     def test_request_500_and_empty_lists(self) -> None:
         from raft.services.serve.github.gateway import GithubHttpError
 

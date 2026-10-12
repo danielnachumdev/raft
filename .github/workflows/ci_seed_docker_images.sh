@@ -123,12 +123,16 @@ EOF
 build_http_echo() {
   local dir
   dir="$(mktemp -d)"
-  trap 'rm -rf "$dir"' RETURN
+  # Explicit cleanup: bash 5.2 + set -u leaves locals unbound in RETURN traps.
   write_http_echo_sources "$dir"
   echo "build local hashicorp/http-echo stand-in"
-  retry_docker docker build -t hashicorp/http-echo:1.0.0 "$dir"
+  if ! retry_docker docker build -t hashicorp/http-echo:1.0.0 "$dir"; then
+    rm -rf "$dir"
+    return 1
+  fi
   docker tag hashicorp/http-echo:1.0.0 hashicorp/http-echo:latest
   docker tag hashicorp/http-echo:1.0.0 hashicorp/http-echo
+  rm -rf "$dir"
 }
 
 seed_http_echo() {

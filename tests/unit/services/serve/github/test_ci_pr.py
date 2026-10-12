@@ -129,6 +129,28 @@ class TestGithubCiPrSetup(RaftTestCase):
             out = ci._request("t", "https://example.com")
         assert out == '{"ok":true}'
 
+    def test_request_post_put_and_unsupported(self) -> None:
+        from unittest.mock import MagicMock
+
+        from raft.services.serve.github.gateway import GithubHttpResponse
+
+        ci = GithubCiPrSetup()
+        http = MagicMock()
+        http.bearer_headers.return_value = {}
+        http.post.return_value = GithubHttpResponse(body='{"p":1}', headers={}, status=201)
+        http.put.return_value = GithubHttpResponse(body='{"u":1}', headers={}, status=200)
+        ci._http = http
+        assert ci._request("t", "https://example.com/x", method="POST", payload={"a": 1}) == (
+            '{"p":1}'
+        )
+        assert ci._request("t", "https://example.com/x", method="PUT", payload={"a": 1}) == (
+            '{"u":1}'
+        )
+        http.post.assert_called_once()
+        http.put.assert_called_once()
+        with pytest.raises(OperatorError, match="unsupported GitHub HTTP method"):
+            ci._request("t", "https://example.com/x", method="DELETE")
+
 
 class _HappyGithub:
     def __call__(self, token, url, method="GET", payload=None):
