@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List
+from typing import List, Tuple
 
 import pytest
 
@@ -46,22 +46,26 @@ class PackageDataPatterns:
         in_raft_list = False
         for line in lines:
             stripped = line.strip()
-            if stripped == "[tool.setuptools.package-data]":
-                in_section = True
-                in_raft_list = False
-                continue
-            if in_section and stripped.startswith("[") and stripped.endswith("]"):
+            in_section, in_raft_list, done = self._advance(stripped, in_section, in_raft_list)
+            if done:
                 break
-            if not in_section:
-                continue
-            if stripped.startswith("raft") and "[" in stripped:
-                in_raft_list = True
-            if not in_raft_list:
-                continue
-            if stripped == "]":
-                break
-            out.extend(self._quoted(stripped))
+            if in_raft_list:
+                out.extend(self._quoted(stripped))
         return out
+
+    @staticmethod
+    def _advance(stripped: str, in_section: bool, in_raft_list: bool) -> Tuple[bool, bool, bool]:
+        if stripped == "[tool.setuptools.package-data]":
+            return True, False, False
+        if in_section and stripped.startswith("[") and stripped.endswith("]"):
+            return in_section, in_raft_list, True
+        if not in_section:
+            return False, False, False
+        if stripped.startswith("raft") and "[" in stripped:
+            return True, True, False
+        if in_raft_list and stripped == "]":
+            return True, True, True
+        return in_section, in_raft_list, False
 
     @staticmethod
     def _quoted(line: str) -> List[str]:
