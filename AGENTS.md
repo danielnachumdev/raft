@@ -83,8 +83,8 @@ Align with the README table; detail for agents:
 | Metrics JSONL + Trends (resources + HTTP aggregate) | **Shipped** | Controller scrape; `http.jsonl` contract in observe/docs |
 | `raft serve` ops UI | **Shipped** | FastAPI + packaged SPA |
 | HTTP request inspection (per App) | **Shipped** | Gate access log → `/api/service/{name}/http-requests`; [`docs/serve-http-requests.md`](docs/serve-http-requests.md) |
-| Edge / App IP ACL (allow/deny lists) | **Shipped** | Gate nginx; persist `acl.gate` + `state/acl/apps/`; apply = render + **reload**; [`docs/serve-acl.md`](docs/serve-acl.md) |
-| **Ordered firewall rules** (CIDR, port, protocol, service, action) | **Planned** | Epic [#207](https://github.com/danielnachumdev/raft/issues/207), delivery [#211](https://github.com/danielnachumdev/raft/issues/211). Still **on gate**; Save → compile → reload; import/export; optimize at compile time. Supersedes flat lists long-term (migrate #195 data). |
+| Edge / App IP ACL (allow/deny lists) | **Shipped** | Gate nginx; persist `acl.gate` + `state/acl/apps/`; apply = render + **reload**; [`docs/serve-acl.md`](docs/serve-acl.md). Superseded at render once firewall document adopted. |
+| **Ordered firewall rules** (CIDR, port, protocol, service, action) | **Shipped** | Epic [#207](https://github.com/danielnachumdev/raft/issues/207), [#211](https://github.com/danielnachumdev/raft/issues/211). On gate; Save → compile → reload; import/export; ACL v1 migrate/dual-read; [`docs/serve-firewall.md`](docs/serve-firewall.md). |
 | Inspection → add firewall rule | **Planned** | [#198](https://github.com/danielnachumdev/raft/issues/198) (depends on #211) |
 | GitHub add-service assist | **Shipped (v1)** | [`docs/serve-github-deploy.md`](docs/serve-github-deploy.md); known gap [#200](https://github.com/danielnachumdev/raft/issues/200) |
 | Notifications channels | **Shipped** | Strategy catalog + settings UI |
@@ -97,10 +97,10 @@ Align with the README table; detail for agents:
 | Automate SPA bake in CI | **Planned** | [#41](https://github.com/danielnachumdev/raft/issues/41) |
 | Middle nginx firewall hop | **Rejected** | Do not re-open without new engine requirements |
 
-### Firewall / ACL intent (planned evolution)
+### Firewall / ACL
 
-- **v1 (shipped):** mode + CIDR list per gate or App; App ACL replaces gate for that Host.
-- **Target (#211):** ordered rule table — fields **CIDR**, **port**, **protocol** (dropdown + other), **service** (dropdown + any), **action** (`deny` \| `permit` \| `drop`); table order = evaluation order; **Save** → persist → render → **gate nginx reload**; serializable import/export; **compile** for efficient per-request inference (heavy work at Save, not a naïve interpreter on every request).
+- **v1 ACL (shipped):** mode + CIDR list per gate or App; App ACL replaces gate for that Host.
+- **Ordered firewall (#211, shipped):** ordered rule table — **CIDR**, **port**, **protocol** (dropdown + other), **service** (dropdown + any), **action** (`deny` \| `permit` \| `drop`); Save → persist → compile → **gate nginx reload**; import/export; migrate/dual-read from #195 until `state/firewall/rules.yaml` is adopted.
 - **Never** require gate recreate/restart for rule-only changes.
 
 ---
@@ -114,6 +114,7 @@ Align with the README table; detail for agents:
 | `generated/` | Compose + nginx (+ ACL includes under gate-http) — **do not hand-edit as source of truth** |
 | `state/locks/` | flock files |
 | `state/acl/apps/` | Per-App ACL JSON (v1) |
+| `state/firewall/rules.yaml` | Ordered firewall document (#211); when present, render uses compiled firewall includes |
 | `state/scaling/`, `state/metrics/`, `state/acme/`, `state/serve/` | Feature state |
 | `certs/`, `secrets/`, `apps/`, `deploy/`, `logs/` | TLS material, env files, checkouts, pins, host log |
 
@@ -134,6 +135,7 @@ Product templates sync from `src/raft/core/platform/share/` into the data home o
 | Doctor, status, logs, update | `src/raft/core/observe/` |
 | Dashboard UI | `src/spa/` then **rebuild** share SPA |
 | ACL render (v1) | `lifecycle/render/acl/` + `services/serve/acl/` |
+| Ordered firewall | `lifecycle/render/firewall/` + `services/serve/firewall/` + SPA `src/spa/src/firewall/` |
 | Operator docs for serve features | `docs/serve-*.md` |
 
 Upstream files: `generated/nginx/upstreams/<app>-<port>.conf` mounted into the router.

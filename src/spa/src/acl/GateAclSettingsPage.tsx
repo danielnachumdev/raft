@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "../chrome/toast";
+import { FirewallPanel } from "../firewall/FirewallPanel";
+import {
+  clearFirewall,
+  exportFirewall,
+  fetchFirewall,
+  fetchFirewallServices,
+  importFirewall,
+  putFirewall,
+  type FirewallDocument,
+  type FirewallServiceOption,
+} from "../firewall/firewallApi";
 import {
   clearGateAcl,
   fetchGateAcl,
@@ -11,8 +22,13 @@ import { AclPanel } from "./AclPanel";
 import "../deploy/DeployPage.css";
 import "./GateAclSettingsPage.css";
 
-/** Settings page: gate-wide IP/CIDR whitelist/blacklist. */
+/** Settings page: ordered firewall + legacy gate ACL. */
 export function GateAclSettingsPage() {
+  const [document, setDocument] = useState<FirewallDocument>({
+    version: 1,
+    rules: [],
+  });
+  const [services, setServices] = useState<FirewallServiceOption[]>([]);
   const [policy, setPolicy] = useState<AclPolicy>({ mode: "off", entries: [] });
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,9 +37,18 @@ export function GateAclSettingsPage() {
     setBusy(true);
     setError(null);
     try {
-      setPolicy(await fetchGateAcl());
+      const [fw, svc, acl] = await Promise.all([
+        fetchFirewall(),
+        fetchFirewallServices(),
+        fetchGateAcl(),
+      ]);
+      setDocument(fw);
+      setServices(svc);
+      setPolicy(acl);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load gate ACL");
+      setError(
+        err instanceof Error ? err.message : "Failed to load edge access",
+      );
     } finally {
       setBusy(false);
     }
@@ -40,8 +65,8 @@ export function GateAclSettingsPage() {
           <p className="brand">raft</p>
           <h1>Edge access</h1>
           <p className="muted header-updating">
-            Gate-wide client IP/CIDR rules. Denied clients see a Forbidden page.
-            Changes reload gate nginx (not recreate).
+            Ordered firewall on the gate (Save → render → nginx reload). Legacy
+            ACL remains until you adopt the firewall table.
           </p>
         </div>
         <Link className="refresh" to="/" id="acl-gate-back">
@@ -63,26 +88,54 @@ export function GateAclSettingsPage() {
       ) : null}
 
       {!busy && !error ? (
-        <AclPanel
-          title="Gate ACL"
-          description="Applies to the default edge listener and Host servers that inherit gate rules. Per-App ACL overrides gate when set."
-          policy={policy}
-          busy={busy}
-          idPrefix="acl-gate"
-          onSave={async (next) => {
-            setPolicy(await putGateAcl(next));
-          }}
-          onClear={async () => {
-            try {
-              setPolicy(await clearGateAcl());
-              toast.good("Gate ACL cleared");
-            } catch (err) {
-              toast.bad(
-                err instanceof Error ? err.message : "Failed to clear gate ACL",
-              );
-            }
-          }}
-        />
+        <>
+          <FirewallPanel
+            document={document}
+            services={services}
+            busy={busy}
+            onSave={async (next) => {
+              setDocument(await putFirewall(next));
+            }}
+            onExport={exportFirewall}
+            onImport={async (body) => {
+              setDocument(await importFirewall(body));
+            }}
+            onClear={async () => {
+              try {
+                setDocument(await clearFirewall());
+                toast.good("Firewall cleared");
+              } catch (err) {
+                toast.bad(
+                  err instanceof Error
+                    ? err.message
+                    : "Failed to clear firewall",
+                );
+              }
+            }}
+          />
+          <AclPanel
+            title="Legacy gate ACL"
+            description="Flat whitelist/blacklist (#195). Still applied until you Save a firewall document (which supersedes ACL at render)."
+            policy={policy}
+            busy={busy}
+            idPrefix="acl-gate"
+            onSave={async (next) => {
+              setPolicy(await putGateAcl(next));
+            }}
+            onClear={async () => {
+              try {
+                setPolicy(await clearGateAcl());
+                toast.good("Gate ACL cleared");
+              } catch (err) {
+                toast.bad(
+                  err instanceof Error
+                    ? err.message
+                    : "Failed to clear gate ACL",
+                );
+              }
+            }}
+          />
+        </>
       ) : null}
     </div>
   );

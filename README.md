@@ -47,7 +47,7 @@ You keep services in their own repos. On the VPS you `apply` a manifest. raft sy
 | Edge access control (IP allow/deny on the gate) | ✅ |
 | GitHub-assisted add service | ✅ |
 | Operator notifications | ✅ |
-| Ordered edge firewall (rich rules, import/export) | 🚧 |
+| Ordered edge firewall (rich rules, import/export) | ✅ |
 | Alerts from firewall + graph metrics (via notifications) | 📋 |
 | Deeper secrets isolation (external stores → per-App materialization) | 📋 |
 | Richer ops console (saved views, history when services are off) | 📋 |

@@ -1,8 +1,10 @@
 # Serve access control (IP/CIDR ACL)
 
+> **Superseded long-term by ordered firewall (#211).** See [`docs/serve-firewall.md`](serve-firewall.md). Flat ACL still works until a firewall document is saved under `state/firewall/rules.yaml`.
+
 `raft serve` can manage **whitelist** or **blacklist** rules for:
 
-- **Gate (edge-wide)** — Settings → **Edge access** (`/settings/edge-access`)
+- **Gate (edge-wide)** — Settings → **Firewall** (`/settings/edge-access`) — legacy panel below the ordered table
 - **Per-App** — service detail → **Access control** (Host-routed HTTP Apps only)
 
 ## Design (v1)

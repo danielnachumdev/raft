@@ -92,7 +92,7 @@ export function Dashboard() {
             to="/settings/edge-access"
             id="nav-edge-access"
           >
-            Edge access
+            Firewall
           </Link>
           <Link
             className="refresh"
