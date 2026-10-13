@@ -8,6 +8,8 @@ from raft.core.core.config.paths import GENERATED_DIRNAME
 from raft.core.core.config.settings.types import EdgeConfig
 from raft.core.core.models.manifest import AppSpec
 from raft.core.core.models.stack import Stack
+from .acl import AclEffective, AclIncWriter
+from .acl.proxy_location import AclProxyLocation
 from .compose_apps import ComposeAppsYaml
 from .edge.fragments import EdgeFragments
 
@@ -21,6 +23,8 @@ class GeneratedWriter:
         self._stack = stack
         self._edge = edge
         self._root = stack.root / GENERATED_DIRNAME
+        self._acl = AclEffective(stack.root)
+        self._acl_incs = AclIncWriter(self._root / "nginx" / "gate-http", self._acl)
 
     def write_all(
         self, resolved: dict[str, AppSpec], fragments: EdgeFragments
@@ -89,13 +93,22 @@ class GeneratedWriter:
         return parts
 
     def _default_http_server(self) -> str:
-        return (
+        acl = self._acl_incs.gate_include()
+        head = (
             "server {\n"
             f"    listen {self._edge.http} default_server;\n"
             "    server_name _;\n"
-            "\n"
-            "    include /etc/nginx/gate/proxy_router.inc;\n"
-            "}\n"
+        )
+        if not acl:
+            return head + "\n    include /etc/nginx/gate/proxy_router.inc;\n}\n"
+        return (
+            head
+            + "    resolver 127.0.0.11 valid=10s ipv6=off;\n\n"
+            + "    include /etc/nginx/gate/acme_challenge.inc;\n\n"
+            + AclProxyLocation.location_slash(acl_include=acl)
+            + "\n"
+            + AclProxyLocation.offline_and_forbidden(acl_include=acl)
+            + "}\n"
         )
 
     def _default_https_server(self) -> str:

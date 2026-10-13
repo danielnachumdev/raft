@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from raft.core.core.models.stack import Stack
 from raft.core.observe.ops.logs import Logs
 from raft.core.observe.ops.status import Status
+from ..acl import ServeAclApi
 from ..actions import ServeActions
 from ..github import ServeGithubApi
 from ..notifications import ServeNotificationsApi
@@ -31,6 +32,7 @@ class ServeAppFactory:
         downloads: Optional[ServeDownloads] = None,
         github: Optional[ServeGithubApi] = None,
         notifications: Optional[ServeNotificationsApi] = None,
+        acl: Optional[ServeAclApi] = None,
         port: int = _DEFAULT_PORT,
     ) -> None:
         self.stack = stack
@@ -40,6 +42,7 @@ class ServeAppFactory:
         self._downloads = downloads
         self._github = github
         self._notifications = notifications
+        self._acl = acl
         self._port = port
 
     def create(self) -> FastAPI:
@@ -53,7 +56,8 @@ class ServeAppFactory:
         downloads = self._downloads or ServeDownloads(self.stack, logs=self._logs)
         github = self._github or ServeGithubApi(self.stack, port=self._port)
         notifications = self._notifications or ServeNotificationsApi(self.stack)
-        self._register_api(app, page, downloads, github, notifications)
+        acl = self._acl or ServeAclApi(self.stack)
+        self._register_api(app, page, downloads, github, notifications, acl)
         app.mount(
             "/assets",
             StaticFiles(directory=str(ServePaths.spa_assets_dir())),
@@ -69,12 +73,14 @@ class ServeAppFactory:
         downloads: ServeDownloads,
         github: ServeGithubApi,
         notifications: ServeNotificationsApi,
+        acl: ServeAclApi,
     ) -> None:
         ServeAppFactory._register_read_api(app, page)
         ServeAppFactory._register_action_api(app, page)
         ServeAppFactory._register_download_api(app, downloads)
         github.register(app)
         notifications.register(app)
+        acl.register(app)
 
     @staticmethod
     def _register_read_api(app: FastAPI, page: ServePage) -> None:

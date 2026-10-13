@@ -1,0 +1,96 @@
+"""ACL includes on TLS + scaling Host servers."""
+
+from raft.core.core.config.settings.types import EdgeConfig
+from raft.core.core.models.acl_policy import AclPolicy
+from raft.core.core.models.state.acl_store import AppAclStore
+from raft.core.lifecycle.acme.paths import AcmePaths
+from tests.unit.base import AppliedInventory, RaftTestCase
+
+_EDGE = EdgeConfig(http=80, https=443, streams=())
+_SCALING = {
+    "idleSeconds": 60,
+    "wakeTimeoutSeconds": 120,
+    "minUpSeconds": 30,
+}
+_LAB_POLICY = {
+    "mode": "whitelist",
+    "entries": [{"id": "lab", "cidr": "192.0.2.0/24"}],
+}
+
+
+class TestAclTlsScalingRender(RaftTestCase):
+    def test_scaling_host_includes_app_acl(self) -> None:
+        self._write_edge_settings()
+        AppliedInventory.write_applied_app(
+            self.tmp_path,
+            "demo-api",
+            public_host="demo-api.test",
+            extra={"scaling": _SCALING},
+        )
+        self._save_lab_acl()
+        conf = self._listeners()
+        assert "http-generated/acl/demo-api.inc" in conf
+        assert "scaling:demo-api" in conf
+
+    def test_origin_tls_inlines_acl(self) -> None:
+        (self.tmp_path / "settings.yaml").write_text(
+            "edge: {http: 80, https: 443}\n"
+            "acl:\n"
+            "  gate:\n"
+            "    mode: blacklist\n"
+            "    entries:\n"
+            "      - id: bad\n"
+            "        cidr: 198.51.100.10\n",
+            encoding="utf-8",
+        )
+        AppliedInventory.write_applied_app(
+            self.tmp_path, "demo-api", public_host="demo-api.test", tls="origin"
+        )
+        self._write_origin_pems()
+        tls = (
+            self.render_applied(edge=_EDGE) / "nginx/gate-tls/demo-api.conf"
+        ).read_text(encoding="utf-8")
+        assert "http-generated/acl/demo-api.inc" in tls
+        assert "proxy_router.inc" not in tls
+
+    def test_acme_redirect_skips_plain_acl_host(self) -> None:
+        (self.tmp_path / "settings.yaml").write_text(
+            "edge: {http: 80, https: 443}\n"
+            "acme: {email: ops@example.com}\n",
+            encoding="utf-8",
+        )
+        AppliedInventory.write_applied_app(
+            self.tmp_path, "demo-api", public_host="demo-api.test", tls="acme"
+        )
+        self._save_lab_acl()
+        self._write_acme_pems()
+        listeners = self._listeners()
+        assert "acme-redirect:demo-api" in listeners
+        assert "acl-host:demo-api" not in listeners
+        assert "http-generated/acl/demo-api.inc" in listeners
+
+    def _write_edge_settings(self) -> None:
+        (self.tmp_path / "settings.yaml").write_text(
+            "edge: {http: 80, https: 443}\n", encoding="utf-8"
+        )
+
+    def _save_lab_acl(self) -> None:
+        AppAclStore(self.tmp_path).save(
+            "demo-api", AclPolicy.from_mapping(_LAB_POLICY, path="app")
+        )
+
+    def _listeners(self) -> str:
+        gen = self.render_applied(edge=_EDGE)
+        return (gen / "nginx/gate-http/listeners.conf").read_text(encoding="utf-8")
+
+    def _write_origin_pems(self) -> None:
+        certs = self.tmp_path / "certs" / "demo-api"
+        certs.mkdir(parents=True)
+        (certs / "origin.pem").write_text("pem", encoding="utf-8")
+        (certs / "origin.key").write_text("key", encoding="utf-8")
+
+    def _write_acme_pems(self) -> None:
+        pem, key = AcmePaths(self.tmp_path).cert_files("demo-api")
+        pem.parent.mkdir(parents=True, exist_ok=True)
+        pem.write_text("pem", encoding="utf-8")
+        key.write_text("key", encoding="utf-8")

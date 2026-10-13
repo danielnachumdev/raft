@@ -170,3 +170,18 @@ edge:
 #         # password: …              # redacted in serve API
 #         # useStartTls: true
 #         # timeoutSeconds: 10
+
+# ---------------------------------------------------------------------------
+# acl — gate-wide client IP/CIDR access control (raft serve Edge access).
+# Per-App ACL lives under state/acl/apps/<name>.json (not here).
+# Changes apply via render + gate nginx reload (not gate recreate).
+# See docs/serve-acl.md.
+# ---------------------------------------------------------------------------
+# acl:
+#   gate:
+#     mode: whitelist            # off | whitelist | blacklist
+#     entries:
+#       - id: lab
+#         cidr: 192.0.2.0/24
+#         comment: TEST-NET
+

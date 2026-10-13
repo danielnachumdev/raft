@@ -13,6 +13,7 @@ from raft.core.platform.locking import (
     AppsAndStackLocks,
     ExclusiveLock,
     LockPaths,
+    AclLock,
     NotificationsLock,
     StackLock,
 )
@@ -102,6 +103,11 @@ class TestExclusiveLock(RaftTestCase):
         with NotificationsLock(self.root, timeout=1):
             assert self.paths.notifications().name == "notifications.lock"
             assert self.paths.notifications().is_file()
+
+    def test_acl_lock_helper(self) -> None:
+        with AclLock(self.root, timeout=1):
+            assert self.paths.acl().name == "acl.lock"
+            assert self.paths.acl().is_file()
 
     def test_close_errors_during_busy_and_release_are_swallowed(
         self, monkeypatch: pytest.MonkeyPatch

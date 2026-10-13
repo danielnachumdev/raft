@@ -39,3 +39,14 @@ class TestServeMain(RaftTestCase):
 
         main_mod = importlib.import_module("raft.services.serve.__main__")
         assert main_mod.main is main
+
+    def test_main_delegates_to_serve_main(self) -> None:
+        with patch("raft.services.serve.entry.ServeMain.run") as run:
+            main()
+        run.assert_called_once_with()
+
+    def test_parse_defaults_to_sys_argv(self) -> None:
+        with patch("raft.services.serve.entry.sys.argv", ["prog", "--port", "9010"]):
+            args = ServeMain()._parse(None)
+        assert args.port == 9010
+        assert args.stop is False

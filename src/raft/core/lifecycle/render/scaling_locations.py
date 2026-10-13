@@ -2,6 +2,7 @@
 
 from raft.core.core.models.app import App
 from raft.core.core.models.manifest import AppSpec
+from .acl.nginx_text import AclNginxText
 from .scaling_holding import ScalingHoldingPages
 
 CONTROLLER_WAKE_UPSTREAM = "http://raft-controller:8090"
@@ -13,21 +14,24 @@ DEFAULT_TIMEOUT_ALIAS = "/usr/share/nginx/errors/holding-timeout.html"
 class ScalingGateLocations:
     """Compose the location{} tree inside a scaling Host server."""
 
-    def render(self, app: App, spec: AppSpec) -> str:
+    def render(self, app: App, spec: AppSpec, *, acl_include: str = "") -> str:
         zero = f"{MARKERS_DIR}/{app.name}.zero"
         timeout = f"{MARKERS_DIR}/{app.name}.timeout"
         return (
             self._acme_challenge_include()
-            + self._live_location(app, zero, timeout)
+            + self._live_location(app, zero, timeout, acl_include=acl_include)
             + self._internal_mirrors(app)
             + self._holding_locations(app, spec)
+            + self._forbidden_location(acl_include)
         )
 
     @staticmethod
     def _acme_challenge_include() -> str:
         return "    include /etc/nginx/gate/acme_challenge.inc;\n\n"
 
-    def _live_location(self, app: App, zero: str, timeout: str) -> str:
+    def _live_location(
+        self, app: App, zero: str, timeout: str, *, acl_include: str
+    ) -> str:
         hold = f"/_raft_hold_{app.name}"
         timed = f"/_raft_timeout_{app.name}"
         # Prefer holding (``.zero``) over timeout so a scaled app always wakes
@@ -35,12 +39,19 @@ class ScalingGateLocations:
         # keeps only one marker at a time.
         head = (
             "    location / {\n"
+            f"{acl_include}"
             f"        if (-f {zero}) {{ rewrite ^ {hold} last; }}\n"
             f"        if (-f {timeout}) {{ rewrite ^ {timed} last; }}\n"
             f"        mirror /_raft_activity_{app.name};\n"
             "        mirror_request_body off;\n"
         )
         return head + self._proxy_headers() + "    }\n\n"
+
+    @staticmethod
+    def _forbidden_location(acl_include: str) -> str:
+        if not acl_include:
+            return ""
+        return AclNginxText.forbidden_location() + "\n"
 
     @staticmethod
     def _proxy_headers() -> str:

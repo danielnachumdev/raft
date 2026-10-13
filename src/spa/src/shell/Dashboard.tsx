@@ -89,6 +89,13 @@ export function Dashboard() {
           <ThemeToggle />
           <Link
             className="refresh"
+            to="/settings/edge-access"
+            id="nav-edge-access"
+          >
+            Edge access
+          </Link>
+          <Link
+            className="refresh"
             to="/settings/notifications"
             id="nav-notifications"
           >

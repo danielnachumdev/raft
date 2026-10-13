@@ -9,6 +9,7 @@ from raft.core.core.errors.cta import OperatorError
 from ..paths.home import RaftHome
 from .strategies import (
     AcmeSettingsParser,
+    AclSettingsParser,
     EdgeSettingsParser,
     GithubSettingsParser,
     HealingSettingsParser,
@@ -30,6 +31,7 @@ class SettingsLoader:
         self._acme = AcmeSettingsParser()
         self._github = GithubSettingsParser()
         self._notifications = NotificationsSettingsParser()
+        self._acl = AclSettingsParser()
 
     def load(self, data_home: Path, *, path: Optional[Path] = None) -> RaftConfig:
         config_path = path or RaftHome().settings_path(data_home)
@@ -42,6 +44,7 @@ class SettingsLoader:
             return RaftConfig(
                 github=self._github.parse(None),
                 notifications=self._notifications.parse(None),
+                acl=self._acl.parse(None),
             )
         return RaftConfig(
             logging=self._logging.parse(data.get("logging") or {}),
@@ -51,6 +54,7 @@ class SettingsLoader:
             acme=self._acme.parse(data.get("acme")),
             github=self._github.parse(data.get("github")),
             notifications=self._notifications.parse(data.get("notifications")),
+            acl=self._acl.parse(data.get("acl")),
         )
 
     def _read_mapping(self, config_path: Path) -> dict[str, Any]:
