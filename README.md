@@ -5,12 +5,12 @@
 raft sits between a full cluster and hand-rolled Docker Compose + nginx. You describe each service in `.raft/app.yaml`; raft turns that desired state into Compose and nginx artifacts, then deploys and cutovers them on a single VPS — light on resources, heavy on operator UX.
 
 <p align="center">
-  <video src="assets/raft-promo.mp4" controls width="900">
-    <a href="assets/raft-promo.mp4">Watch the raft promo video</a>
+  <video src="https://github.com/user-attachments/assets/c0f96eeb-8654-469e-8981-cfa7e0fb067e" controls width="900">
+    <a href="assets/raft-demo.mp4">Watch the raft demo video</a>
   </video>
 </p>
 
-<p align="center"><em><a href="assets/raft-promo.mp4">Promo — what raft feels like on a single VPS.</a></em></p>
+<p align="center"><em><a href="assets/raft-demo.mp4">Demo — what raft feels like on a single VPS.</a></em></p>
 
 <p align="center">
   <img src="media/dashboard.png" alt="raft serve dashboard: control plane, apps, and resource trends" width="900" />
