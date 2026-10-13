@@ -99,4 +99,7 @@ jobs:
       - name: Seed images (ECR Public + local http-echo)
         run: bash "${GITHUB_WORKSPACE}/.github/workflows/ci_seed_docker_images.sh"
       - name: E2E Compose tests
+        env:
+          # Fresh-install image: uv tool install from this SHA (default in Dockerfile is main).
+          RAFT_E2E_REF: ${{ github.sha }}
         run: uv run pytest tests/e2e -m e2e -q --tb=short --no-cov -n0

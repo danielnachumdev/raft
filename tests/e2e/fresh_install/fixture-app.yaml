@@ -1,0 +1,12 @@
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: fresh-install-smoke
+spec:
+  source: local
+  path: /opt/raft-fresh-fixture
+  tls: off
+  ports:
+    - name: http
+      containerPort: 8080
+      expose: none
