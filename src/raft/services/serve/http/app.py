@@ -9,7 +9,6 @@ from fastapi.staticfiles import StaticFiles
 from raft.core.core.models.stack import Stack
 from raft.core.observe.ops.logs import Logs
 from raft.core.observe.ops.status import Status
-from ..acl import ServeAclApi
 from ..actions import ServeActions
 from ..firewall import ServeFirewallApi
 from ..github import ServeGithubApi
@@ -33,7 +32,6 @@ class ServeAppFactory:
         downloads: Optional[ServeDownloads] = None,
         github: Optional[ServeGithubApi] = None,
         notifications: Optional[ServeNotificationsApi] = None,
-        acl: Optional[ServeAclApi] = None,
         firewall: Optional[ServeFirewallApi] = None,
         port: int = _DEFAULT_PORT,
     ) -> None:
@@ -44,7 +42,6 @@ class ServeAppFactory:
         self._downloads = downloads
         self._github = github
         self._notifications = notifications
-        self._acl = acl
         self._firewall = firewall
         self._port = port
 
@@ -59,9 +56,8 @@ class ServeAppFactory:
         downloads = self._downloads or ServeDownloads(self.stack, logs=self._logs)
         github = self._github or ServeGithubApi(self.stack, port=self._port)
         notifications = self._notifications or ServeNotificationsApi(self.stack)
-        acl = self._acl or ServeAclApi(self.stack)
         firewall = self._firewall or ServeFirewallApi(self.stack)
-        self._register_api(app, page, downloads, github, notifications, acl, firewall)
+        self._register_api(app, page, downloads, github, notifications, firewall)
         app.mount(
             "/assets",
             StaticFiles(directory=str(ServePaths.spa_assets_dir())),
@@ -77,7 +73,6 @@ class ServeAppFactory:
         downloads: ServeDownloads,
         github: ServeGithubApi,
         notifications: ServeNotificationsApi,
-        acl: ServeAclApi,
         firewall: ServeFirewallApi,
     ) -> None:
         ServeAppFactory._register_read_api(app, page)
@@ -85,7 +80,6 @@ class ServeAppFactory:
         ServeAppFactory._register_download_api(app, downloads)
         github.register(app)
         notifications.register(app)
-        acl.register(app)
         firewall.register(app)
 
     @staticmethod

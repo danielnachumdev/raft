@@ -1,4 +1,4 @@
-"""Branch coverage for firewall store, writer, and effective dual-read."""
+"""Branch coverage for firewall store, writer, and effective migration."""
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.firewall import FirewallDocument, FirewallRule
@@ -7,7 +7,7 @@ from raft.core.lifecycle.render.firewall import FirewallCompiler, FirewallEffect
 from raft.core.lifecycle.render.firewall.compiler import CompiledFragment
 from raft.services.serve.firewall.store_write import FirewallDocumentWriter
 from tests.unit.base import RaftTestCase
-from tests.unit.services.serve.firewall.helpers import document, rule, rule_dict
+from tests.unit.services.serve.firewall.helpers import document, rule_dict
 
 
 class TestFirewallCoverage(RaftTestCase):
@@ -53,10 +53,15 @@ class TestFirewallCoverage(RaftTestCase):
             assert "cannot read" in str(exc)
 
     def test_rule_validation_edges(self) -> None:
+        any_rule = FirewallRule.from_mapping(rule_dict(port="any"), path="r")
+        assert any_rule.is_port_any() and any_rule.applies_to_port(443)
+        assert any_rule.to_public()["port"] == "any"
+        zero = FirewallRule.from_mapping(rule_dict(port=0), path="r")
+        assert zero.is_port_any()
         for raw in (
             None,
             rule_dict(id=""),
-            rule_dict(port=0),
+            rule_dict(port=-1),
             rule_dict(port="x"),
             rule_dict(protocol=""),
             rule_dict(service=""),
@@ -66,3 +71,4 @@ class TestFirewallCoverage(RaftTestCase):
                 raise AssertionError(f"expected error for {raw!r}")
             except OperatorError:
                 pass
+        assert FirewallDocument() is not None

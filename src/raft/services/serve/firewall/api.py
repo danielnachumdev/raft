@@ -28,10 +28,13 @@ class ServeFirewallApi:
     def register(self, app) -> None:
         app.get("/api/firewall")(self.api_get)
         app.put("/api/firewall")(self.api_put)
-        app.delete("/api/firewall")(self.api_delete)
         app.get("/api/firewall/export")(self.api_export)
         app.post("/api/firewall/import")(self.api_import)
         app.get("/api/firewall/services")(self.api_services)
+        app.get("/api/firewall/recommendations")(self.api_recommendations)
+        app.post("/api/firewall/recommendations/{recommendation_id}/dismiss")(
+            self.api_dismiss
+        )
 
     def api_get(self) -> Dict[str, Any]:
         return self._service.get()
@@ -39,12 +42,6 @@ class ServeFirewallApi:
     def api_put(self, body: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
         try:
             return self._service.put(body)
-        except OperatorError as exc:
-            raise self._bad(exc) from exc
-
-    def api_delete(self) -> Dict[str, Any]:
-        try:
-            return self._service.clear()
         except OperatorError as exc:
             raise self._bad(exc) from exc
 
@@ -59,6 +56,12 @@ class ServeFirewallApi:
 
     def api_services(self) -> Dict[str, Any]:
         return self._service.services()
+
+    def api_recommendations(self) -> Dict[str, Any]:
+        return self._service.recommendations()
+
+    def api_dismiss(self, recommendation_id: str) -> Dict[str, Any]:
+        return self._service.dismiss_recommendation(recommendation_id)
 
     @staticmethod
     def _bad(exc: OperatorError) -> HTTPException:

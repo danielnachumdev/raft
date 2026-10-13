@@ -1,4 +1,4 @@
-"""Serve firewall API: save/import/export with mocked render."""
+"""Serve firewall API: save/import/export/recommendations with mocked render."""
 
 from unittest.mock import MagicMock
 
@@ -34,7 +34,7 @@ class TestServeFirewallApi(RaftTestCase):
         self._orch = orch
         return TestClient(ServeAppFactory(stack, status=status, firewall=api).create())
 
-    def test_put_get_export_import_delete(self) -> None:
+    def test_put_get_export_import(self) -> None:
         client = self._client()
         assert client.get("/api/firewall").json()["rules"] == []
         put = client.put("/api/firewall", json={"version": 1, "rules": [rule_dict()]})
@@ -54,7 +54,6 @@ class TestServeFirewallApi(RaftTestCase):
         services = client.get("/api/firewall/services").json()["services"]
         assert services[0]["name"] == "any"
         assert any(s["name"] == "demo-api" for s in services)
-        assert client.delete("/api/firewall").json()["rules"] == []
 
     def test_put_validation_error(self) -> None:
         client = self._client()
@@ -62,11 +61,26 @@ class TestServeFirewallApi(RaftTestCase):
         assert bad.status_code == 400
         assert "deny, permit, or drop" in bad.json()["detail"]
 
-    def test_import_and_delete_validation_errors(self) -> None:
+    def test_import_port_any_and_recommendations(self) -> None:
         client = self._client()
-        bad_import = client.post(
-            "/api/firewall/import", json={"rules": [rule_dict(port=0)]}
+        bad = client.post("/api/firewall/import", json={"rules": [rule_dict(port=-1)]})
+        assert bad.status_code == 400
+        ok = client.post(
+            "/api/firewall/import",
+            json={
+                "version": 1,
+                "rules": [rule_dict("anyport", port="any", action="deny")],
+            },
         )
-        assert bad_import.status_code == 400
-        client.put("/api/firewall", json={"version": 1, "rules": [rule_dict()]})
-        assert client.delete("/api/firewall").status_code == 200
+        assert ok.status_code == 200 and ok.json()["rules"][0]["port"] == "any"
+        self._assert_recommendations(client)
+
+    def _assert_recommendations(self, client: TestClient) -> None:
+        recs = client.get("/api/firewall/recommendations").json()["recommendations"]
+        ids = {item["id"] for item in recs}
+        assert "permit-port-80" in ids
+        assert "default-deny" in ids
+        dismissed = client.post(
+            "/api/firewall/recommendations/permit-port-80/dismiss"
+        ).json()["recommendations"]
+        assert all(item["id"] != "permit-port-80" for item in dismissed)

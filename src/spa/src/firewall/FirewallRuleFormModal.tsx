@@ -2,12 +2,13 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Modal } from "../chrome/Modal";
 import type {
   FirewallAction,
+  FirewallPort,
   FirewallRule,
   FirewallServiceOption,
 } from "./firewallApi";
-import "../acl/AclPanel.css";
+import "./FirewallPanel.css";
 
-const PROTOCOLS = ["tcp", "udp", "http", "https", "icmp", "other"] as const;
+const PROTOCOLS = ["tcp", "udp", "http", "https", "icmp", "any", "other"] as const;
 const ACTIONS: FirewallAction[] = ["permit", "deny", "drop"];
 
 export type FirewallRuleFormSubmit = FirewallRule;
@@ -27,6 +28,7 @@ export function FirewallRuleFormModal(props: Props) {
   const [id, setId] = useState("");
   const [cidr, setCidr] = useState("");
   const [port, setPort] = useState("443");
+  const [portAny, setPortAny] = useState(false);
   const [protocol, setProtocol] = useState("tcp");
   const [protocolOther, setProtocolOther] = useState("");
   const [service, setService] = useState("any");
@@ -37,9 +39,12 @@ export function FirewallRuleFormModal(props: Props) {
     const known = new Set<string>(PROTOCOLS.filter((p) => p !== "other"));
     const proto = props.rule?.protocol ?? "tcp";
     const isOther = proto !== "" && !known.has(proto);
+    const rulePort = props.rule?.port;
+    const anyPort = rulePort === "any" || rulePort === 0;
     setId(props.rule?.id ?? "");
     setCidr(props.rule?.cidr ?? "");
-    setPort(String(props.rule?.port ?? 443));
+    setPortAny(anyPort);
+    setPort(anyPort ? "443" : String(rulePort ?? 443));
     setProtocol(isOther ? "other" : proto);
     setProtocolOther(isOther ? proto : "");
     setService(props.rule?.service ?? "any");
@@ -49,12 +54,11 @@ export function FirewallRuleFormModal(props: Props) {
   const resolvedProtocol =
     protocol === "other" ? protocolOther.trim().toLowerCase() : protocol;
   const portNum = Number(port);
+  const portOk = portAny || (Number.isInteger(portNum) && portNum >= 1 && portNum <= 65535);
   const canSave =
     id.trim() !== "" &&
     cidr.trim() !== "" &&
-    Number.isInteger(portNum) &&
-    portNum >= 1 &&
-    portNum <= 65535 &&
+    portOk &&
     resolvedProtocol !== "" &&
     service.trim() !== "" &&
     !props.busy;
@@ -62,10 +66,11 @@ export function FirewallRuleFormModal(props: Props) {
   function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (!canSave) return;
+    const resolvedPort: FirewallPort = portAny ? "any" : portNum;
     props.onSubmit({
       id: id.trim(),
       cidr: cidr.trim(),
-      port: portNum,
+      port: resolvedPort,
       protocol: resolvedProtocol,
       service: service.trim(),
       action,
@@ -108,7 +113,7 @@ export function FirewallRuleFormModal(props: Props) {
     >
       <form
         id="firewall-rule-form"
-        className="acl-entry-form"
+        className="fw-entry-form"
         onSubmit={(e) => void onSubmit(e)}
       >
         <label className="deploy-label">
@@ -132,18 +137,30 @@ export function FirewallRuleFormModal(props: Props) {
             autoComplete="off"
           />
         </label>
-        <label className="deploy-label">
-          Port
+        <label className="deploy-label fw-check">
           <input
-            id="firewall-rule-port"
-            type="number"
-            min={1}
-            max={65535}
-            value={port}
+            type="checkbox"
+            id="firewall-rule-port-any"
+            checked={portAny}
             disabled={props.busy}
-            onChange={(e) => setPort(e.target.value)}
+            onChange={(e) => setPortAny(e.target.checked)}
           />
+          Port any
         </label>
+        {!portAny ? (
+          <label className="deploy-label">
+            Port
+            <input
+              id="firewall-rule-port"
+              type="number"
+              min={1}
+              max={65535}
+              value={port}
+              disabled={props.busy}
+              onChange={(e) => setPort(e.target.value)}
+            />
+          </label>
+        ) : null}
         <label className="deploy-label">
           Protocol
           <select

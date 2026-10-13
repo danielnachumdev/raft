@@ -2,10 +2,12 @@
 
 export type FirewallAction = "deny" | "permit" | "drop";
 
+export type FirewallPort = number | "any";
+
 export type FirewallRule = {
   id: string;
   cidr: string;
-  port: number;
+  port: FirewallPort;
   protocol: string;
   service: string;
   action: FirewallAction;
@@ -22,6 +24,15 @@ export type FirewallServiceOption = {
   name: string;
   label?: string;
   publicHost?: string;
+};
+
+export type FirewallRecommendation = {
+  id: string;
+  kind: string;
+  title: string;
+  summary: string;
+  rule: FirewallRule;
+  append?: boolean;
 };
 
 async function readJson(res: Response): Promise<unknown> {
@@ -70,10 +81,6 @@ export async function putFirewall(
   );
 }
 
-export async function clearFirewall(): Promise<FirewallDocument> {
-  return jsonRequest("/api/firewall", { method: "DELETE" }, "clear firewall");
-}
-
 export async function exportFirewall(): Promise<FirewallDocument> {
   return jsonRequest("/api/firewall/export", undefined, "export firewall");
 }
@@ -99,4 +106,30 @@ export async function fetchFirewallServices(): Promise<FirewallServiceOption[]> 
     "firewall services",
   );
   return body.services;
+}
+
+export async function fetchFirewallRecommendations(): Promise<
+  FirewallRecommendation[]
+> {
+  const body = await jsonRequest<{ recommendations: FirewallRecommendation[] }>(
+    "/api/firewall/recommendations",
+    undefined,
+    "firewall recommendations",
+  );
+  return body.recommendations;
+}
+
+export async function dismissFirewallRecommendation(
+  id: string,
+): Promise<FirewallRecommendation[]> {
+  const body = await jsonRequest<{ recommendations: FirewallRecommendation[] }>(
+    `/api/firewall/recommendations/${encodeURIComponent(id)}/dismiss`,
+    { method: "POST" },
+    "dismiss recommendation",
+  );
+  return body.recommendations;
+}
+
+export function formatFirewallPort(port: FirewallPort): string {
+  return port === "any" || port === 0 ? "any" : String(port);
 }

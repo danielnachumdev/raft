@@ -1,12 +1,29 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type DragEvent,
+  type ReactNode,
+} from "react";
 import { ConfirmPopup } from "../chrome/ConfirmPopup";
 import { Modal } from "../chrome/Modal";
 import { toast } from "../chrome/toast";
 import type {
   FirewallDocument,
+  FirewallRecommendation,
   FirewallRule,
   FirewallServiceOption,
 } from "./firewallApi";
+import { formatFirewallPort } from "./firewallApi";
+import {
+  IconChevronDown,
+  IconChevronUp,
+  IconGrip,
+  IconPencil,
+  IconPlus,
+  IconTrash,
+} from "./FirewallIcons";
+import { FirewallRecommendations } from "./FirewallRecommendations";
 import {
   FirewallRuleFormModal,
   type FirewallRuleFormSubmit,
@@ -16,14 +33,15 @@ import "./FirewallPanel.css";
 type Props = {
   document: FirewallDocument;
   services: FirewallServiceOption[];
+  recommendations: FirewallRecommendation[];
   busy: boolean;
   onSave: (doc: Pick<FirewallDocument, "version" | "rules">) => Promise<void>;
   onExport: () => Promise<FirewallDocument>;
   onImport: (body: unknown) => Promise<void>;
-  onClear: () => Promise<void>;
+  onDismissRecommendation: (id: string) => Promise<void>;
 };
 
-/** Ordered firewall table with Save / import / export. */
+/** Ordered firewall table with icon actions, drag reorder, recommendations. */
 export function FirewallPanel(props: Props) {
   const [rules, setRules] = useState<FirewallRule[]>(props.document.rules);
   const [saved, setSaved] = useState<FirewallRule[]>(props.document.rules);
@@ -36,6 +54,7 @@ export function FirewallPanel(props: Props) {
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState("");
   const [importBusy, setImportBusy] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   useEffect(() => {
     setRules(props.document.rules);
@@ -46,6 +65,7 @@ export function FirewallPanel(props: Props) {
     () => JSON.stringify(rules) !== JSON.stringify(saved),
     [rules, saved],
   );
+  const locked = props.busy || saving;
 
   async function persist(next: FirewallRule[]) {
     setSaving(true);
@@ -61,7 +81,7 @@ export function FirewallPanel(props: Props) {
     }
   }
 
-  async function onFormSubmit(body: FirewallRuleFormSubmit) {
+  function onFormSubmit(body: FirewallRuleFormSubmit) {
     setFormBusy(true);
     try {
       const next =
@@ -83,6 +103,26 @@ export function FirewallPanel(props: Props) {
     const [row] = next.splice(index, 1);
     next.splice(target, 0, row);
     setRules(next);
+  }
+
+  function onDrop(target: number) {
+    if (dragIndex === null || dragIndex === target) return;
+    const next = [...rules];
+    const [row] = next.splice(dragIndex, 1);
+    next.splice(target, 0, row);
+    setRules(next);
+    setDragIndex(null);
+  }
+
+  function applyRecommendation(item: FirewallRecommendation) {
+    if (rules.some((r) => r.id === item.rule.id)) {
+      toast.bad(`Rule id ${item.rule.id} already exists`);
+      return;
+    }
+    setRules(
+      item.append ? [...rules, item.rule] : [item.rule, ...rules],
+    );
+    toast.good("Recommendation added — Save to apply");
   }
 
   async function onExportClick() {
@@ -124,10 +164,10 @@ export function FirewallPanel(props: Props) {
         <div>
           <h2>Firewall rules</h2>
           <p className="muted">
-            Ordered table (first match wins). Save compiles to gate nginx and
-            reloads — never recreate.{" "}
+            Ordered table (first match wins). Drag the grip or use chevrons to
+            reorder. Save compiles to gate nginx and reloads.
             {props.document.source === "acl-v1-migrated"
-              ? "Showing migrated ACL v1 rules until you Save."
+              ? " Showing migrated ACL v1 rules until you Save."
               : null}
           </p>
           {dirty ? (
@@ -139,22 +179,24 @@ export function FirewallPanel(props: Props) {
         <div className="fw-panel-actions">
           <button
             type="button"
-            className="action-btn"
+            className="fw-icon-btn"
             id="firewall-add"
-            disabled={props.busy || saving}
+            title="Add rule"
+            aria-label="Add rule"
+            disabled={locked}
             onClick={() => {
               setFormMode("create");
               setEditing(null);
               setFormOpen(true);
             }}
           >
-            Add rule
+            <IconPlus />
           </button>
           <button
             type="button"
             className="action-btn"
             id="firewall-save"
-            disabled={props.busy || saving || !dirty}
+            disabled={locked || !dirty}
             onClick={() => void persist(rules)}
           >
             Save
@@ -163,7 +205,7 @@ export function FirewallPanel(props: Props) {
             type="button"
             className="action-btn"
             id="firewall-export"
-            disabled={props.busy || saving}
+            disabled={locked}
             onClick={() => void onExportClick()}
           >
             Export
@@ -172,32 +214,32 @@ export function FirewallPanel(props: Props) {
             type="button"
             className="action-btn"
             id="firewall-import"
-            disabled={props.busy || saving}
+            disabled={locked}
             onClick={() => setImportOpen(true)}
           >
             Import
           </button>
-          <button
-            type="button"
-            className="action-btn"
-            id="firewall-clear"
-            disabled={props.busy || saving || rules.length === 0}
-            onClick={() => void props.onClear()}
-          >
-            Clear all
-          </button>
         </div>
       </div>
 
+      <FirewallRecommendations
+        items={props.recommendations}
+        busy={locked}
+        onApply={applyRecommendation}
+        onDismiss={props.onDismissRecommendation}
+      />
+
       {rules.length === 0 ? (
         <p className="muted" id="firewall-empty">
-          No firewall rules. Add a row or import a document, then Save.
+          No firewall rules. Apply a recommendation, add a row, or import — then
+          Save.
         </p>
       ) : (
         <div className="fw-table-wrap">
           <table className="fw-table" id="firewall-table">
             <thead>
               <tr>
+                <th className="fw-col-grip" aria-label="Reorder" />
                 <th>#</th>
                 <th>CIDR</th>
                 <th>Port</th>
@@ -210,56 +252,65 @@ export function FirewallPanel(props: Props) {
             </thead>
             <tbody>
               {rules.map((rule, index) => (
-                <tr key={rule.id} data-fw-rule-id={rule.id}>
+                <tr
+                  key={rule.id}
+                  data-fw-rule-id={rule.id}
+                  draggable={!locked}
+                  onDragStart={() => setDragIndex(index)}
+                  onDragOver={(e: DragEvent) => e.preventDefault()}
+                  onDrop={() => onDrop(index)}
+                  onDragEnd={() => setDragIndex(null)}
+                  className={dragIndex === index ? "fw-row-dragging" : undefined}
+                >
+                  <td className="fw-col-grip">
+                    <span className="fw-grip" title="Drag to reorder">
+                      <IconGrip />
+                    </span>
+                  </td>
                   <td>{index + 1}</td>
                   <td>
                     <code>{rule.cidr}</code>
                   </td>
-                  <td>{rule.port}</td>
+                  <td>{formatFirewallPort(rule.port)}</td>
                   <td>{rule.protocol}</td>
                   <td>{rule.service}</td>
                   <td>{rule.action}</td>
                   <td>{rule.id}</td>
                   <td>
                     <div className="fw-row-actions">
-                      <button
-                        type="button"
-                        className="action-btn"
-                        disabled={props.busy || saving || index === 0}
+                      <IconAction
+                        label="Move up"
+                        disabled={locked || index === 0}
                         onClick={() => move(index, -1)}
                       >
-                        Up
-                      </button>
-                      <button
-                        type="button"
-                        className="action-btn"
-                        disabled={
-                          props.busy || saving || index === rules.length - 1
-                        }
+                        <IconChevronUp />
+                      </IconAction>
+                      <IconAction
+                        label="Move down"
+                        disabled={locked || index === rules.length - 1}
                         onClick={() => move(index, 1)}
                       >
-                        Down
-                      </button>
-                      <button
-                        type="button"
-                        className="action-btn"
-                        disabled={props.busy || saving}
+                        <IconChevronDown />
+                      </IconAction>
+                      <IconAction
+                        label="Edit"
+                        disabled={locked}
                         onClick={() => {
                           setFormMode("edit");
                           setEditing(rule);
                           setFormOpen(true);
                         }}
                       >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        className="action-btn"
-                        disabled={props.busy || saving}
+                        <IconPencil />
+                      </IconAction>
+                      <IconAction
+                        label="Remove"
+                        disabled={locked}
+                        danger
                         onClick={() => setPendingDelete(rule)}
                       >
-                        Remove
-                      </button>
+                        <IconTrash />
+                      </IconAction>
                     </div>
                   </td>
                 </tr>
@@ -276,7 +327,7 @@ export function FirewallPanel(props: Props) {
         services={props.services}
         busy={formBusy}
         onClose={() => setFormOpen(false)}
-        onSubmit={(body) => void onFormSubmit(body)}
+        onSubmit={onFormSubmit}
       />
 
       <ConfirmPopup
@@ -338,5 +389,26 @@ export function FirewallPanel(props: Props) {
         />
       </Modal>
     </section>
+  );
+}
+
+function IconAction(props: {
+  label: string;
+  disabled?: boolean;
+  danger?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      className={props.danger ? "fw-icon-btn fw-icon-danger" : "fw-icon-btn"}
+      title={props.label}
+      aria-label={props.label}
+      disabled={props.disabled}
+      onClick={props.onClick}
+    >
+      {props.children}
+    </button>
   );
 }

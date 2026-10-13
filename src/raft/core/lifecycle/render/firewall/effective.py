@@ -8,7 +8,7 @@ from raft.core.core.models.state.firewall_store import FirewallStore
 
 
 class FirewallEffective:
-    """Durable firewall wins; otherwise migrate #195 ACL for dual-read."""
+    """Durable firewall document, or one-time #195 ACL migration when absent."""
 
     def __init__(self, root: Path) -> None:
         self._root = root
@@ -21,7 +21,7 @@ class FirewallEffective:
 
     @property
     def adopted(self) -> bool:
-        """True when operators saved a firewall document (supersedes ACL render)."""
+        """True when a durable firewall file exists (legacy dual-path removed)."""
         return self._store.exists()
 
     def is_active(self) -> bool:
@@ -38,7 +38,10 @@ class FirewallEffective:
         if loaded is not None:
             return loaded
         ports = self._edge_ports()
-        return AclV1Migrator(self._root, ports=ports).migrate()
+        migrated = AclV1Migrator(self._root, ports=ports).migrate()
+        if migrated.rules:
+            return migrated
+        return FirewallDocument()
 
     def _edge_ports(self) -> tuple[int, ...]:
         edge = SettingsLoader().load(self._root).edge

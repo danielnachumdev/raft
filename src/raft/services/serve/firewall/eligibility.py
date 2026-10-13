@@ -1,4 +1,4 @@
-"""Decide whether an App can use Host-routed HTTP ACL in v1."""
+"""Decide whether an App is eligible for Host-routed firewall service scope."""
 
 from typing import Any, Optional
 
@@ -10,23 +10,11 @@ from raft.core.core.models.registry import AppRegistry
 from raft.core.core.models.stack import Stack
 
 
-class AclEligibility:
-    """v1: only ``expose: http`` + ``publicHost`` Apps (Host-routed)."""
+class FirewallEligibility:
+    """Only ``expose: http`` + ``publicHost`` Apps (Host-routed)."""
 
     def __init__(self, stack: Stack) -> None:
         self._stack = stack
-
-    def require_app(self, name: str) -> tuple[App, AppSpec]:
-        app = self._find_app(name)
-        if app is None:
-            raise OperatorError(
-                f"app '{name}' is not applied.\n"
-                f"Fix: raft apply --file … (or --git …) then retry ACL",
-                has_fix=False,
-            )
-        _, spec = self._load_spec(app)
-        self._require_http_host(app, spec)
-        return app, spec
 
     def meta(self, name: str) -> dict[str, Any]:
         app = self._find_app(name)
@@ -34,7 +22,7 @@ class AclEligibility:
             return {
                 "supported": False,
                 "reason": f"app '{name}' is not applied",
-                "fix": "raft apply --file … then open Access control again",
+                "fix": "raft apply --file … then open Firewall again",
             }
         _, spec = self._load_spec(app)
         return self._meta_for_spec(app, spec)
@@ -71,16 +59,16 @@ class AclEligibility:
         http_ports = [p for p in spec.ports if p.expose == "http"]
         if not http_ports:
             raise OperatorError(
-                f"{app.name}: ACL v1 supports only Host-routed HTTP Apps "
-                f"(expose: http + publicHost). "
+                f"{app.name}: firewall service scope supports only Host-routed "
+                f"HTTP Apps (expose: http + publicHost). "
                 f"stream/host/none/worker Apps are out of scope.\n"
-                f"Fix: add an expose: http port and publicHost, or manage "
-                f"access outside raft serve ACL",
+                f"Fix: add an expose: http port and publicHost, or use "
+                f"service: any for edge-wide rules",
                 has_fix=False,
             )
         if not app.public_host:
             raise OperatorError(
-                f"{app.name}: ACL v1 requires publicHost for Host-routed HTTP.\n"
+                f"{app.name}: firewall service scope requires publicHost.\n"
                 f"Fix: set spec.publicHost on the App manifest and re-apply",
                 has_fix=False,
             )

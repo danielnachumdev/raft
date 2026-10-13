@@ -6,7 +6,7 @@ Locks live under ``~/.raft/state/locks/`` (``RAFT_DATA_HOME``):
 * ``stack.lock`` — render, nginx reload, cutover, compose up/recreate, gate,
   ``raft purge`` (Docker image/build-cache prune)
 * ``notifications.lock`` — serve API rewrites of ``settings.yaml`` ``notifications:``
-* ``acl.lock`` — serve API rewrites of gate/app IP ACL before render/reload
+* ``acl.lock`` — serve API rewrites of ordered firewall before render/reload
 
 Wait (with timeout) so a later-started deploy still runs after an earlier one
 and becomes the final live state. Contended waiters log ``waiting for … lock``

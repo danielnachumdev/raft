@@ -54,5 +54,5 @@ Fixtures and docs use dummy names only (`demo-api`, `demo-api.test`, `192.0.2.10
 
 ## Out of scope
 
-- ACL whitelist/blacklist management (#195)
+- Ordered firewall management (Settings → Firewall; #211)
 - Add/remove client IP actions from a request row (#198)

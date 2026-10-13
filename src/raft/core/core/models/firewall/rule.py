@@ -9,6 +9,8 @@ from raft.core.core.models.acl_policy import AclCidr
 FIREWALL_ACTIONS = frozenset({"deny", "permit", "drop"})
 HTTP_EDGE_PROTOCOLS = frozenset({"", "any", "tcp", "http", "https"})
 SERVICE_ANY = "any"
+PORT_ANY = 0
+ANY_CIDR = "0.0.0.0/0"
 
 
 @dataclass(frozen=True)
@@ -26,7 +28,7 @@ class FirewallRule:
         return {
             "id": self.id,
             "cidr": self.cidr,
-            "port": self.port,
+            "port": "any" if self.is_port_any() else self.port,
             "protocol": self.protocol,
             "service": self.service,
             "action": self.action,
@@ -42,7 +44,10 @@ class FirewallRule:
         return target == service.strip().lower()
 
     def applies_to_port(self, port: int) -> bool:
-        return self.port == port
+        return self.port == PORT_ANY or self.port == port
+
+    def is_port_any(self) -> bool:
+        return self.port == PORT_ANY
 
     @classmethod
     def from_mapping(cls, raw: Any, *, path: str) -> "FirewallRule":
@@ -73,18 +78,22 @@ class FirewallRule:
 
     @staticmethod
     def _parse_port(raw: Any, *, path: str) -> int:
+        if isinstance(raw, str) and raw.strip().lower() == "any":
+            return PORT_ANY
         try:
             port = int(raw)
         except (TypeError, ValueError) as exc:
             raise OperatorError(
-                f"{path} must be an integer port (1-65535).\n"
-                f"Fix: set port: 443",
+                f"{path} must be an integer port (1-65535) or any.\n"
+                f"Fix: set port: 443 or port: any",
                 has_fix=False,
             ) from exc
+        if port == PORT_ANY:
+            return PORT_ANY
         if port < 1 or port > 65535:
             raise OperatorError(
-                f"{path} must be between 1 and 65535 (got {port}).\n"
-                f"Fix: set a valid TCP/UDP port",
+                f"{path} must be between 1 and 65535 or any (got {port}).\n"
+                f"Fix: set a valid TCP/UDP port or any",
                 has_fix=False,
             )
         return port

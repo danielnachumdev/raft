@@ -1,6 +1,5 @@
 import type { ServiceDetailPayload } from "../shared/api";
 import { ExternalUrlLinks } from "../shared/ExternalUrlLinks";
-import { ServiceAclPanel } from "../acl/ServiceAclPanel";
 import { ServiceActions } from "./ServiceActions";
 import { ServiceLogs } from "../logs/ServiceLogs";
 import { ServiceRuntimeTrends } from "../trends/runtime/ServiceRuntimeTrends";
@@ -16,7 +15,6 @@ export function ServiceDetail(props: {
     <>
       <ServiceActions service={c.service} onDone={props.onActionDone} />
       <ServiceLogs service={c.service} />
-      <ServiceAclPanel service={c.service} appName={c.app} />
 
       <section className="panel">
         <h2>Overview</h2>

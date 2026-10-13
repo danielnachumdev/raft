@@ -90,7 +90,7 @@ class TestFirewallCoverageExtra(RaftTestCase):
             store.save(FirewallDocument())
             assert unlink.called
 
-    def test_acl_clear_all_and_api_delete_error(self) -> None:
+    def test_acl_clear_all_and_api_put_error(self) -> None:
         self._settings("edge: {http: 80}\n")
         writer = AclIncWriter(
             self.tmp_path / "generated/nginx/gate-http", AclEffective(self.tmp_path)
@@ -100,16 +100,17 @@ class TestFirewallCoverageExtra(RaftTestCase):
         (writer._dir / "x.inc").write_text("y", encoding="utf-8")
         writer.clear_all()
         assert list(writer._dir.glob("*.inc")) == []
-        assert self._delete_client().delete("/api/firewall").status_code == 400
+        bad = self._put_client().put("/api/firewall", json={"rules": [rule_dict()]})
+        assert bad.status_code == 400
 
-    def _delete_client(self) -> TestClient:
+    def _put_client(self) -> TestClient:
         stack = load_stack(self.tmp_path)
         status = MagicMock()
         status.collect.return_value = StatusSnapshot(
             host=status_fx.empty_host_status(), containers=()
         )
         service = ServeFirewallService(stack, orchestrator=MagicMock())
-        service._writer.clear = MagicMock(
+        service._writer.put = MagicMock(
             side_effect=OperatorError("boom\nFix: x", has_fix=False)
         )
         api = ServeFirewallApi(stack, service=service)
@@ -143,6 +144,16 @@ class TestFirewallCoverageExtra(RaftTestCase):
         writer = FirewallIncWriter(gate, FirewallEffective(self.tmp_path), ports=(443,))
         self._exercise_writer(writer, gate)
         self._unsupported_service_excluded()
+        policy = PolicyIncludes(
+            self.tmp_path, EdgeConfig(http=80, https=443), gate
+        )
+        assert policy._listen_ports(EdgeConfig(http=None, https=None)) == (80,)
+        assert policy._listen_ports(EdgeConfig(http=80, https=443)) == (80, 443)
+        fresh = self.tmp_path / "generated/nginx/empty-gate"
+        fresh.mkdir(parents=True)
+        FirewallIncWriter(
+            fresh, FirewallEffective(self.tmp_path), ports=(80,)
+        ).clear_all()
 
     def _exercise_writer(self, writer: FirewallIncWriter, gate) -> None:
         writer.write_all([])
