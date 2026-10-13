@@ -13,11 +13,22 @@ export function OauthSetupPanel(props: {
   session: GithubSession | null;
   config: GithubOauthConfig | null;
   busy: boolean;
+  alreadyConfigured?: boolean;
   onBusy: (busy: boolean) => void;
   onSaved: () => void;
+  onContinue?: () => void;
   onError: (message: string) => void;
 }) {
-  const { session, config, busy, onBusy, onSaved, onError } = props;
+  const {
+    session,
+    config,
+    busy,
+    alreadyConfigured = false,
+    onBusy,
+    onSaved,
+    onContinue,
+    onError,
+  } = props;
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const hints = resolveOauthSetupHints(config, session);
@@ -100,41 +111,59 @@ export function OauthSetupPanel(props: {
           Client Secret below.
         </li>
       </ol>
-      <form className="oauth-setup-form" onSubmit={(e) => void onSubmit(e)}>
-        <label className="deploy-label">
-          Client ID
-          <input
-            id="oauth-client-id"
-            autoComplete="off"
-            value={clientId}
+      {alreadyConfigured ? (
+        <div className="oauth-setup-configured" id="oauth-already-configured">
+          <p className="muted">
+            OAuth App credentials are already configured on this host. Continue
+            to connect or manage GitHub accounts.
+          </p>
+          <button
+            type="button"
+            className="refresh"
             disabled={busy}
-            onChange={(e) => setClientId(e.target.value)}
-            placeholder="Iv1.…"
-            required
-          />
-        </label>
-        <label className="deploy-label">
-          Client secret
-          <input
-            id="oauth-client-secret"
-            type="password"
-            autoComplete="off"
-            value={clientSecret}
+            id="oauth-continue-configured"
+            onClick={() => onContinue?.()}
+          >
+            Continue
+          </button>
+        </div>
+      ) : (
+        <form className="oauth-setup-form" onSubmit={(e) => void onSubmit(e)}>
+          <label className="deploy-label">
+            Client ID
+            <input
+              id="oauth-client-id"
+              autoComplete="off"
+              value={clientId}
+              disabled={busy}
+              onChange={(e) => setClientId(e.target.value)}
+              placeholder="Iv1.…"
+              required
+            />
+          </label>
+          <label className="deploy-label">
+            Client secret
+            <input
+              id="oauth-client-secret"
+              type="password"
+              autoComplete="off"
+              value={clientSecret}
+              disabled={busy}
+              onChange={(e) => setClientSecret(e.target.value)}
+              placeholder="Paste client secret"
+              required
+            />
+          </label>
+          <button
+            type="submit"
+            className="refresh"
             disabled={busy}
-            onChange={(e) => setClientSecret(e.target.value)}
-            placeholder="Paste client secret"
-            required
-          />
-        </label>
-        <button
-          type="submit"
-          className="refresh"
-          disabled={busy}
-          id="oauth-save-config"
-        >
-          {busy ? "Saving…" : "Save and continue"}
-        </button>
-      </form>
+            id="oauth-save-config"
+          >
+            {busy ? "Saving…" : "Save and continue"}
+          </button>
+        </form>
+      )}
     </section>
   );
 }

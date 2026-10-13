@@ -8,10 +8,12 @@ export function DeploySession(props: {
   config: GithubOauthConfig | null;
   oauthError: string | null;
   needsSetup: boolean;
+  forceInstructions: boolean;
   busy: boolean;
-  onLogoutOne: (accountId: string) => void;
+  onDeleteOne: (accountId: string) => void;
   onBusy: (busy: boolean) => void;
   onSaved: () => void;
+  onContinueConfigured: () => void;
   onError: (message: string) => void;
 }) {
   const {
@@ -19,13 +21,15 @@ export function DeploySession(props: {
     config,
     oauthError,
     needsSetup,
+    forceInstructions,
     busy,
-    onLogoutOne,
+    onDeleteOne,
     onBusy,
     onSaved,
+    onContinueConfigured,
     onError,
   } = props;
-  if (needsSetup) {
+  if (needsSetup || forceInstructions) {
     return (
       <>
         {oauthError ? (
@@ -37,8 +41,12 @@ export function DeploySession(props: {
           session={session}
           config={config}
           busy={busy}
+          alreadyConfigured={
+            !needsSetup && session?.oauth_configured === true
+          }
           onBusy={onBusy}
           onSaved={onSaved}
+          onContinue={onContinueConfigured}
           onError={onError}
         />
       </>
@@ -73,13 +81,13 @@ export function DeploySession(props: {
       <GithubAccountSwitcher
         session={session}
         busy={busy}
-        onLogoutOne={onLogoutOne}
+        onDeleteOne={onDeleteOne}
       />
     );
   }
   return (
     <section className="deploy-panel" id="github-login">
-      <h2>Connecting to GitHub…</h2>
+      <h2>Connect GitHub</h2>
       <p className="muted">{session.hint}</p>
       <p className="muted">
         Scopes: <code>{session.scopes || "read:user repo workflow"}</code>

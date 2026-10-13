@@ -25,7 +25,7 @@ export function AddServicePage() {
           <li>
             <Link
               className="add-service-option"
-              to="/deploy"
+              to="/deploy?instructions=1"
               id="add-from-github"
             >
               <GithubMark />

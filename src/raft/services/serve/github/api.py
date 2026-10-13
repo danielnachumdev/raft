@@ -50,7 +50,9 @@ class ServeGithubApi:
         app.get("/api/github/callback")(self.api_callback)
         app.post("/api/github/logout")(self.api_logout)
         app.post("/api/github/accounts/select")(self.api_select_account)
-        app.post("/api/github/accounts/{account_id}/logout")(self.api_logout_account)
+        app.delete("/api/github/accounts/{account_id}")(self.api_delete_account)
+        app.post("/api/github/accounts/{account_id}/delete")(self.api_delete_account)
+        app.post("/api/github/accounts/{account_id}/logout")(self.api_delete_account)
         app.get("/api/github/repos")(self.api_repos)
         app.post("/api/github/deploy")(self.api_deploy)
         app.get("/api/github/deploy/{job_id}")(self.api_deploy_status)
@@ -145,7 +147,8 @@ class ServeGithubApi:
         return str(value or "").strip().lower() in {"1", "true", "yes"}
 
     def api_logout(self) -> Dict[str, Any]:
-        self._accounts.logout_active()
+        """Compat: delete the active browsing account from durable storage."""
+        self._accounts.delete_active()
         return self.api_session()
 
     def api_select_account(self, body: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
@@ -160,9 +163,10 @@ class ServeGithubApi:
             ) from exc
         return self.api_session()
 
-    def api_logout_account(self, account_id: str) -> Dict[str, Any]:
+    def api_delete_account(self, account_id: str) -> Dict[str, Any]:
+        """Hard-delete one account id from durable storage (tokens + row)."""
         try:
-            self._accounts.logout(account_id)
+            self._accounts.delete(account_id)
         except KeyError as exc:
             raise HTTPException(
                 status_code=404, detail=f"GitHub account '{account_id}' not found"

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  forceOauthInstructions,
   needsOauthSetup,
   oauthErrorFromSearch,
   type GithubSession,
@@ -33,6 +34,12 @@ describe("needsOauthSetup", () => {
       oauth_configured: true,
     };
     assert.equal(needsOauthSetup(session, "state mismatch"), false);
+  });
+});
+
+describe("forceOauthInstructions", () => {
+  it("lets add-service re-show the checklist when configured", () => {
+    assert.equal(forceOauthInstructions("?instructions=1"), true);
   });
 });
 

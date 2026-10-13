@@ -1,13 +1,13 @@
 import { githubLoginHref, type GithubSession } from "./index.ts";
 import "./GithubAccountSwitcher.css";
 
-/** Connected GitHub identities: per-row logout and + to add another. */
+/** Connected GitHub identities: per-row delete and + to add another. */
 export function GithubAccountSwitcher(props: {
   session: GithubSession;
   busy: boolean;
-  onLogoutOne: (accountId: string) => void;
+  onDeleteOne: (accountId: string) => void;
 }) {
-  const { session, busy, onLogoutOne } = props;
+  const { session, busy, onDeleteOne } = props;
   const accounts = session.accounts ?? [];
   const hasExpired = accounts.some((a) => a.expired);
 
@@ -28,7 +28,7 @@ export function GithubAccountSwitcher(props: {
       <p className="muted">{session.hint}</p>
       {hasExpired ? (
         <p className="muted" id="github-reauth-hint">
-          An account session expired. Log it out or add the account again, then
+          An account session expired. Delete it or add the account again, then
           pick which account to browse repos as.
         </p>
       ) : null}
@@ -46,16 +46,35 @@ export function GithubAccountSwitcher(props: {
             </div>
             <button
               type="button"
-              className="refresh gh-account-logout"
+              className="gh-account-delete"
               disabled={busy}
-              onClick={() => onLogoutOne(account.id)}
-              id={`github-logout-${account.id}`}
+              onClick={() => onDeleteOne(account.id)}
+              id={`github-delete-${account.id}`}
+              title={`Delete ${account.login}`}
+              aria-label={`Delete ${account.login}`}
             >
-              Log out
+              <TrashIcon />
             </button>
           </li>
         ))}
       </ul>
     </section>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      className="gh-account-trash"
+      viewBox="0 0 16 16"
+      width="16"
+      height="16"
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="M6.5 1a.5.5 0 0 0-.5.5V2H2.5a.5.5 0 0 0 0 1H3v10a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 13 13V3h.5a.5.5 0 0 0 0-1H10v-.5a.5.5 0 0 0-.5-.5h-3zM5 3h6v10a.5.5 0 0 1-.5.5h-5A.5.5 0 0 1 5 13V3zm1.5 2a.5.5 0 0 0-.5.5v6a.5.5 0 0 0 1 0v-6a.5.5 0 0 0-.5-.5zm3 0a.5.5 0 0 0-.5.5v6a.5.5 0 0 0 1 0v-6a.5.5 0 0 0-.5-.5z"
+      />
+    </svg>
   );
 }

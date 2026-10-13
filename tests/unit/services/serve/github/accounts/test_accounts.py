@@ -13,7 +13,7 @@ from tests.unit.base import RaftTestCase
 
 
 class TestGithubAccountStore(RaftTestCase):
-    def test_upsert_select_logout_and_public(self) -> None:
+    def test_upsert_select_delete_and_public(self) -> None:
         store = GithubAccountStore(self.tmp_path)
         first = store.upsert_account(self._acct("a1", "alice", "tok-a"))
         second = store.upsert_account(self._acct("a2", "bob", "tok-b", uid="2"))
@@ -25,9 +25,9 @@ class TestGithubAccountStore(RaftTestCase):
         assert "access_token" not in json.dumps(snap)
         store.select(first.id)
         assert store.active_usable().access_token == "tok-a"
-        store.logout(first.id)
+        store.delete(first.id)
         assert store.public_snapshot()["active_account_id"] == second.id
-        store.logout_active()
+        store.delete_active()
         assert store.public_snapshot()["accounts"] == []
 
     def test_pending_preserves_accounts(self) -> None:
