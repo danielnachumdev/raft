@@ -84,9 +84,15 @@
 
 .http-requests-path,
 .http-requests-ua {
-  max-width: 14rem;
+  max-width: min(14rem, 40vw);
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+@media (max-width: 719px) {
+  .http-requests-table {
+    min-width: 36rem;
+  }
 }
 
 .http-requests-status {

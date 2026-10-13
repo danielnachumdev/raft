@@ -181,3 +181,11 @@
     transform: scaleX(1);
   }
 }
+
+@media (max-width: 519px) {
+  .toast-host {
+    inset-inline: 0.65rem;
+    inset-block-end: 0.65rem;
+    width: auto;
+  }
+}

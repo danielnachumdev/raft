@@ -23,8 +23,18 @@
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-  min-width: 12rem;
-  flex: 1 1 14rem;
+  min-width: 0;
+  flex: 1 1 12rem;
+}
+
+@media (max-width: 519px) {
+  .channel-row-actions {
+    width: 100%;
+  }
+
+  .channel-row-actions .action-btn {
+    flex: 1 1 auto;
+  }
 }
 
 .channel-id {

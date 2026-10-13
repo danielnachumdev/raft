@@ -1,17 +1,26 @@
-table {
+.status-table-wrap {
   width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.status-table {
+  width: 100%;
+  min-width: 42rem;
   border-collapse: collapse;
   font-size: 0.86rem;
 }
 
-th,
-td {
+.status-table th,
+.status-table td {
   text-align: left;
   padding: 0.22rem 0.4rem;
   border-bottom: 1px solid var(--line);
 }
 
-th {
+.status-table th {
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -127,4 +136,17 @@ th {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+  min-width: 0;
+}
+
+@media (max-width: 719px) {
+  .status-table {
+    min-width: 36rem;
+    font-size: 0.82rem;
+  }
+
+  .status-table th,
+  .status-table td {
+    padding: 0.28rem 0.35rem;
+  }
 }
