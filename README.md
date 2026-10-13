@@ -5,12 +5,8 @@
 raft sits between a full cluster and hand-rolled Docker Compose + nginx. You describe each service in `.raft/app.yaml`; raft turns that desired state into Compose and nginx artifacts, then deploys and cutovers them on a single VPS — light on resources, heavy on operator UX.
 
 <p align="center">
-  <video src="https://github.com/user-attachments/assets/c0f96eeb-8654-469e-8981-cfa7e0fb067e" controls width="900">
-    <a href="assets/raft-demo.mp4">Watch the raft demo video</a>
-  </video>
+  <video src="https://github.com/user-attachments/assets/c0f96eeb-8654-469e-8981-cfa7e0fb067e" controls width="900"></video>
 </p>
-
-<p align="center"><em><a href="assets/raft-demo.mp4">Demo — what raft feels like on a single VPS.</a></em></p>
 
 <p align="center">
   <img src="media/dashboard.png" alt="raft serve dashboard: control plane, apps, and resource trends" width="900" />
@@ -37,8 +33,26 @@ You keep services in their own repos. On the VPS you `apply` a manifest. raft sy
 - **Adaptive manifests** — apply-time `${VAR}` / `${{ if }}` and `--env` so one `.raft/app.yaml` can serve stages (see [`docs/app-manifest.md`](docs/app-manifest.md))
 - **Safer cutovers** — tmp cutover + router reload; published edge ports only need `raft gate recreate`
 - **Operator feedback** — `raft doctor` with fix hints; `raft status` / `raft logs` for the live plane
-- **Localhost ops UI** — `raft serve` for tables, actions, logs, and trends (never on the public gate)
+- **Localhost ops UI** — `raft serve` for tables, actions, logs, trends, and edge access control (never on the public gate)
 - **Optional scale-to-zero and healing** — idle-stop/wake when you declare `spec.scaling`; healing stays in settings
+
+## Features
+
+| Capability | Status |
+|------------|--------|
+| Desired-state deploys from App manifests (safe cutovers on one VPS) | ✅ |
+| Managed public edge (TLS, Host routing, multi-app stacks) | ✅ |
+| Scale-to-zero and healing | ✅ |
+| Localhost ops console (status, actions, logs, trends, request inspection) | ✅ |
+| Edge access control (IP allow/deny on the gate) | ✅ |
+| GitHub-assisted add service | ✅ |
+| Operator notifications | ✅ |
+| Ordered edge firewall (rich rules, import/export) | 🚧 |
+| Alerts from firewall + graph metrics (via notifications) | 📋 |
+| Deeper secrets isolation (external stores → per-App materialization) | 📋 |
+| Richer ops console (saved views, history when services are off) | 📋 |
+
+✅ shipped · 🚧 in progress · 📋 planned
 
 ## Try it
 
@@ -110,7 +124,9 @@ uv run pytest
 uv run raft -- --help
 ```
 
-CI runs the suite across Python 3.9–3.13. Dashboard source is in **`src/spa/`** (build writes `src/raft/core/platform/share/serve/spa/`). Working on the codebase? See **[AGENTS.md](AGENTS.md)**.
+CI runs the suite across Python 3.9–3.13. Dashboard source is in **`src/spa/`** (build writes `src/raft/core/platform/share/serve/spa/`).
+
+Changing the product? **[AGENTS.md](AGENTS.md)** is the implementation guide (architecture invariants, packaging pitfalls, planned vs shipped detail). Manifest contract: [`docs/app-manifest.md`](docs/app-manifest.md).
 
 ## License
 

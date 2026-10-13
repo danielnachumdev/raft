@@ -1,472 +1,184 @@
 # AGENTS.md
 
-Instructions for coding agents (and humans) changing **raft**. The GitHub-facing pitch is [`README.md`](README.md).
+Implementation guide for coding agents changing **raft**. Operator pitch and feature status table: [`README.md`](README.md). Exhaustive App manifest / preprocess contract: [`docs/app-manifest.md`](docs/app-manifest.md) (do not duplicate that schema here).
 
 ---
 
-## What this repo is
+## Orientation (read this first)
 
-Public product: CLI + Compose/nginx templates + tests. Operators typically run [`install.sh`](install.sh) (`uv tool install` from GitHub; no lasting clone by default) so `raft` is on `PATH`. **Durable operator data lives under `~/.raft/`** (override with `RAFT_DATA_HOME`), not in an install checkout.
+| Question | Answer |
+|----------|--------|
+| What ships to operators? | CLI + Compose/nginx templates + tests. Install via [`install.sh`](install.sh) / `uv tool install` from GitHub — **no lasting clone** by default. |
+| Where is durable state? | **`~/.raft/`** (`RAFT_DATA_HOME`). Never put operator inventory, upstreams, or PEMs in this git repo. |
+| Where is product code? | `src/raft/services/` = runnable fronts (cli, serve, controller). `src/raft/core/` = libraries (models, lifecycle, platform, observe). |
+| Where is the SPA? | Source `src/spa/` → **must** `npm run build` into `src/raft/core/platform/share/serve/spa/` before commit/release. Packaged assets are what `raft serve` ships. |
+| Human samples? | [`examples/`](examples/) + docs under [`docs/`](docs/). |
+| Package layout convention? | Class-first, ~200-line files, ≤20-line methods; see **Code style** and the writing-python skill. |
 
-Desired apps are **not** a committed inventory. Operators `apply` App manifests; registry files live in `~/.raft/state/apps/*.yaml`.
-
-User-facing samples live under **[`examples/`](examples/)**: operator settings (`examples/settings.yaml`) and named service scenarios (`http-only-site`, `https-origin-site`, `http-plus-stream`, `host-published-ports`, `grouped-volume-app`). Human-oriented App manifest + preprocess overview: [`docs/app-manifest.md`](docs/app-manifest.md) (this file stays the exhaustive contract).
-
-**Shipped:** App `volumes` / `envFile` / `group` / `expose: none` (required for multi-App stacks).
-
-**Shipped:** App-manifest apply preprocess (`ManifestPreprocessor`): resolve `${{ if … }}` / `${{ endif }}` (`==` `!=` `&&` `||`, nesting allowed; operands are quoted strings or `${VAR}` / `${VAR:-default}`), then expand remaining `${VAR}` in the kept text, then YAML parse. Full-line `#` comments are ignored by preprocess (so demos may use a single `$` under `#`). `--env*` supply **string values** only (any shape). Bridge CI values into the container via `spec.env` / `spec.envFile` placeholders (`DATABASE_URL: ${CI_DATABASE_URL}`).
-
-**Shipped:** Per-app scale-to-zero via `spec.scaling` (`idleSeconds` + `minUpSeconds` required; `wakeTimeoutSeconds` defaults to **60**; omit the block = off). HTTP + `publicHost` only. Gate holding page + wake; controller idle-stop (co-stops `dependsOn` with `scaleWithParent` default true); healer skips intentional `scaledToZero`. Healing stays separate (`healing:` in settings). After the wake budget, the product timeout page shows an admin CTA plus a server-minted diagnostic id (same `id=` on controller wake/timeout logs).
-
-**Shipped:** Per-app `spec.deployment.method` (`seamless` default dual-run cutover; `inplace` stop-then-start for small hosts).
-
-**Shipped:** `raft serve` localhost ops UI — packaged React SPA (`share/serve/spa/`) + FastAPI JSON/actions/logs APIs; shared `StatusRead` / `MetricsRead` / `HttpMetricsRead` with CLI; Trends from controller `resources.jsonl` + HTTP edge `http.jsonl`. Source in `src/spa/`; not an edge listener.
+**CI order:** Meta → Unit+Integration → E2E (SPA job parallel). Fresh-install e2e builds a Docker image that `uv tool install`s from git (`RAFT_E2E_REF`, default `main`; CI passes `github.sha`).
 
 ---
 
-## Architecture (hard rules)
+## Hard architecture (do not “simplify” away)
 
 ```text
-gate (public edge listeners from settings) → router (Host routing) → apps
+gate → router → apps
 ```
 
-| Layer | Role | Redeploy |
-|-------|------|----------|
-| **gate** | Outer nginx; http + stream; offline page when router/apps fail; holding page + wake for `spec.scaling` apps at zero | **`raft redeploy gate` refuses**; **reload** on generated TLS/http/stream change; **`raft gate recreate`** only for published edge ports |
-| **router** | Inner nginx; Host → upstream | `raft redeploy router` |
-| **apps** | One Compose service per applied App | `raft redeploy <name>` (tmp cutover) |
+| Layer | Compose id (typical) | Role | Mutative ops |
+|-------|----------------------|------|----------------|
+| **gate** | `raft-gate` | Public listeners from settings; TLS; ACME HTTP-01; offline; scale holding/wake; **edge policy (ACL today)**; HTTP access log + stub_status | **reload** when generated gate nginx changes; **`raft gate recreate`** only for published ports; **`redeploy gate` refused** |
+| **router** | `raft-router` | Host → upstream | `raft redeploy router` / reload on cutover |
+| **apps** | `GROUP-NAME` / name | One Compose service per applied App | `apply` / `redeploy <name>` |
 
-Cutover reloads **router** nginx. Render reloads **gate** nginx when on-disk `gate-{tls,http,stream}` differs from the last reload stamp (`state/gate-nginx.fingerprint`) and gate is running — so stale nginx (files already written, process never reloaded) is recovered on the next apply/render. Never use `redeploy` for gate — published-port changes need `gate recreate` (brief edge downtime).
+- **Stream** / **host** / **workers** do not use Host→router the same way (stream: gate→app; host: app publishes; workers: no ports). Do not invent dummy ports for workers.
+- **No middle `raft-firewall` hop.** Edge firewall/ACL is **policy-on-gate** (design lock #208 / epic #207). A dedicated hop was explicitly rejected.
+- Cutover reloads **router**. Render reloads **gate** when `state/gate-nginx.fingerprint` ≠ on-disk generated gate fragments and gate is running.
+- Rule / ACL / TLS fragment changes: **render + nginx reload**, never gate container restart for policy-only edits.
 
-### Concurrent apply / redeploy
+### Locks (correctness, not optional)
 
-nginx reload and `docker compose up` alone are **not** enough for correctness. Overlapping cutovers share tmp container names, upstream files, and `generated/` compose/nginx. A slow older deploy that finishes last can overwrite a newer one's image/upstream (last-finisher wins incorrectly). A second app's `render` mid-cutover rewrites all upstreams back to steady Compose names and tears live traffic.
-
-**Intended behavior:** serialize mutative work with `flock` under `~/.raft/state/locks/`:
+Overlapping apply/redeploy/render tears tmp names, upstreams, and `generated/`. Serialize under `~/.raft/state/locks/`:
 
 | Lock | Held by | Guarantees |
 |------|---------|------------|
-| `app-<name>.lock` | `apply` (registry + deploy), `redeploy` / `ensure_app_deployed`, `delete app` | One mutative pipeline per app; later-started waits then runs → newer deploy wins |
-| `stack.lock` | render, sync, cutover, compose up/recreate, gate recreate, up/down, purge | No torn `generated/` or mid-cutover upstream reset across apps; purge does not race cutover |
+| `app-<name>.lock` | apply, redeploy / `ensure_app_deployed`, delete app | One mutative pipeline per app; later waiter wins after wait |
+| `stack.lock` | render, sync, cutover, compose up/recreate, gate recreate, up/down, purge | No torn `generated/` / mid-cutover upstream reset |
+| `acl.lock` | serve ACL writes (before render/reload) | ACL persist does not race another ACL writer |
 
-Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**), then `OperatorError` with a Fix CTA. Contended waiters log `waiting for … lock`, then `acquired … lock`. Same-process nesting (redeploy → sync → render) re-enters safely. `doctor` / `status` do not take these locks.
+Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**). Nesting in-process re-enters. `doctor` / `status` do not take these locks.
 
-### Ports and TLS
+---
 
-- Each app declares `spec.ports[]` with `expose: http | stream | host | none`. Omit `ports` or use `ports: []` for **worker** Apps with no listeners (see below).
-- `expose: http` → Host routing via router (needs `publicHost`).
-- `expose: stream` → gate `stream {}` (port must be declared in settings `edge.streams`).
-- `expose: host` → app publishes the host port itself (gate not involved).
-- `expose: none` → Compose `expose` only (internal); no host publish; no router; no `publicHost` required.
-- Optional multi-app stacks: `spec.group`, `spec.dependsOn`, `spec.envFile` / `spec.env`, `spec.volumes`.
-- `spec.tls`: **`off` (default)**, **`origin`**, or **`acme`**. HTTP-only apps need no PEMs. `tls: origin` requires `~/.raft/certs/<app>/origin.{pem,key}` and `edge.https`. `tls: acme` requires `publicHost`, ≥1 `expose: http`, `edge.http` + `edge.https`, and `acme.email` in settings; live material is `~/.raft/certs/<app>/acme.{pem,key}` (never `origin.*`). Apply/`up` best-effort HTTP-01 after the gate is up (failures persist `lastError` under `state/acme/` and do **not** fail deploy). When live PEMs exist: gate SNI + HTTP→HTTPS redirect (challenge path carved out).
-- Gate published ports come from `~/.raft/settings.yaml` `edge:` (`http`, `https`, `streams[]`), rendered into `generated/compose.edge.yaml`.
+## Invariants you cannot infer from a quick skim
 
-### Worker Apps (no listeners)
+1. **Ship path:** default `raft apply` **deploys**. Do not teach `--no-deploy` + `redeploy` as the happy path — `redeploy` fails if the service is not already running.
+2. **Gate recreate ≠ reload:** published `edge:` ports → `raft gate recreate` (brief downtime). Everything else gate-related that only changes generated nginx → **reload**.
+3. **Packaged templates path:** product share lives at `src/raft/core/platform/share/`. `[tool.setuptools.package-data]` **must** list `core/platform/share/**` (not legacy `raft/share/`). Wrong globs → wheels without `compose.yaml` → every CLI command dies (including `raft update`). Meta guard: `tests/meta/test_package_data.py`. Recovery on a broken host: `curl …/install.sh | bash` (update cannot self-heal if stack load fails).
+4. **Console entry:** `raft` → `raft.services.cli.__main__:main`. Also `python -m raft.services.serve` / controller `__main__` where present.
+5. **Registry load is lenient; apply write is strict:** invalid `state/apps/*.yaml` skipped at load (`registry_issues`); apply still rejects bad manifests.
+6. **ACME failures do not fail deploy:** best-effort HTTP-01; errors under `state/acme/`.
+7. **Healing ≠ scaling:** `healing:` in settings; `spec.scaling` is per-App. Healer skips intentional `scaledToZero`.
+8. **Serve binds localhost only** (`127.0.0.1`). Not an edge listener. Mutative serve actions use the same flock rules as CLI; refuse gate redeploy where CLI refuses.
+9. **SPA poll:** status ~2s while tab visible; `/api/status` reloads registry every call (`refresh_apps=True`).
+10. **No PII / no live inventory in fixtures, screenshots, or PR bodies** — use `demo-api`, `192.0.2.0/24`, etc.
+11. **UI PRs need screenshots** (agent-browser + `gh pr edit --attach`) — unit tests alone are not Proof for visible SPA changes.
+12. **Desired apps are not in git** — only examples under `examples/`.
 
-Background / worker Apps that only run a long-lived process may **omit `spec.ports`** or set `ports: []`. Happy path: `readiness.type: none` (default when ports are empty), `tls: off` (or omitted), no `scaling`. Do **not** invent a dummy port.
+---
 
-**Health model:** no Host / TCP probe and no edge exposure. Health is Docker process liveness + the always-on healer + doctor runtime checks. `raft status` / metrics / `raft serve` still sample the Compose service like any other app. Deploy does **not** wait-until-running for `readiness: none`. Scale-to-zero and `tls: origin|acme` are not eligible (need `expose: http` / ports).
+## Feature status (implementation)
 
-### Data home vs product templates
+Align with the README table; detail for agents:
+
+| Area | Status | Notes for implementers |
+|------|--------|------------------------|
+| Manifest apply + deploy / cutover | **Shipped** | `seamless` default; `inplace` optional |
+| Manifest preprocess `${VAR}` / `${{ if }}` | **Shipped** | Apply-time only; not re-run on render |
+| TLS `off` / `origin` / `acme` | **Shipped** | ACME = HTTP-01 only; no DNS-01/wildcards |
+| Scale-to-zero | **Shipped** | HTTP + `publicHost`; holding on gate; wake diagnostic id |
+| Multi-app `group` / `dependsOn` / volumes / `envFile` / `expose: none` | **Shipped** | |
+| Worker Apps (`ports: []`) | **Shipped** | `readiness: none`; no scaling/TLS origin\|acme |
+| Doctor / status / logs / purge | **Shipped** | |
+| Metrics JSONL + Trends (resources + HTTP aggregate) | **Shipped** | Controller scrape; `http.jsonl` contract in observe/docs |
+| `raft serve` ops UI | **Shipped** | FastAPI + packaged SPA |
+| HTTP request inspection (per App) | **Shipped** | Gate access log → `/api/service/{name}/http-requests`; [`docs/serve-http-requests.md`](docs/serve-http-requests.md) |
+| Edge / App IP ACL (allow/deny lists) | **Shipped** | Gate nginx; persist `acl.gate` + `state/acl/apps/`; apply = render + **reload**; [`docs/serve-acl.md`](docs/serve-acl.md) |
+| **Ordered firewall rules** (CIDR, port, protocol, service, action) | **Planned** | Epic [#207](https://github.com/danielnachumdev/raft/issues/207), delivery [#211](https://github.com/danielnachumdev/raft/issues/211). Still **on gate**; Save → compile → reload; import/export; optimize at compile time. Supersedes flat lists long-term (migrate #195 data). |
+| Inspection → add firewall rule | **Planned** | [#198](https://github.com/danielnachumdev/raft/issues/198) (depends on #211) |
+| GitHub add-service assist | **Shipped (v1)** | [`docs/serve-github-deploy.md`](docs/serve-github-deploy.md); known gap [#200](https://github.com/danielnachumdev/raft/issues/200) |
+| Notifications channels | **Shipped** | Strategy catalog + settings UI |
+| Healing | **Shipped** | Settings `healing:`; separate from scaling |
+| Secrets baseline (`~/.raft/secrets/<app>/env`) | **Shipped** | Guidance [`docs/secrets.md`](docs/secrets.md); external materialization epic [#143](https://github.com/danielnachumdev/raft/issues/143) / [#176](https://github.com/danielnachumdev/raft/issues/176) |
+| Past logs when container off | **Planned** | [#196](https://github.com/danielnachumdev/raft/issues/196) |
+| Named Trends views | **Planned** | [#202](https://github.com/danielnachumdev/raft/issues/202) |
+| Alerts from firewall + graph/metrics → notifications | **Planned** | Wire firewall signals + resources/`http.jsonl` metrics into shipped notification strategies; scope under epic #207 or observe/notify when filed |
+| Always-on Compose dashboard service | **Planned** | [#36](https://github.com/danielnachumdev/raft/issues/36) — not `raft serve` replacement without design |
+| Automate SPA bake in CI | **Planned** | [#41](https://github.com/danielnachumdev/raft/issues/41) |
+| Middle nginx firewall hop | **Rejected** | Do not re-open without new engine requirements |
+
+### Firewall / ACL intent (planned evolution)
+
+- **v1 (shipped):** mode + CIDR list per gate or App; App ACL replaces gate for that Host.
+- **Target (#211):** ordered rule table — fields **CIDR**, **port**, **protocol** (dropdown + other), **service** (dropdown + any), **action** (`deny` \| `permit` \| `drop`); table order = evaluation order; **Save** → persist → render → **gate nginx reload**; serializable import/export; **compile** for efficient per-request inference (heavy work at Save, not a naïve interpreter on every request).
+- **Never** require gate recreate/restart for rule-only changes.
+
+---
+
+## Data home (roles)
 
 | Path | Role |
 |------|------|
-| `compose.yaml`, `nginx/` (`src/raft/core/platform/share/`) | Product templates; synced into the data home on use |
-| `~/.raft/settings.yaml` | Operator settings (logging + **edge** + optional **healing** / **metrics** / **acme** / **github** / **notifications** / **acl**); see [`examples/settings.yaml`](examples/settings.yaml) |
-| `~/.raft/state/apps/*.yaml` | Applied desired state (invalid files are skipped at load with `registry_issues`; apply/write still rejects bad YAML) |
-| `~/.raft/generated/` | Compose apps + compose.edge + router hosts + gate-http/stream/tls + **upstreams** |
-| `~/.raft/apps/` | Sync checkouts |
-| `~/.raft/deploy/` | Image/ref pins from sync/cutover |
-| `~/.raft/state/locks/` | `flock` files serializing apply/redeploy/render (`app-<name>.lock`, `stack.lock`) |
-| `~/.raft/state/serve/` | Per-port `raft serve` flock + pid (`port-<port>.lock`); used by start / `--stop` |
-| `~/.raft/state/acl/apps/` | Per-App IP/CIDR ACL JSON from `raft serve` (gate ACL is `settings.yaml` `acl.gate`; see [`docs/serve-acl.md`](docs/serve-acl.md)) |
-| `~/.raft/state/scaling/` | Per-app scale-to-zero JSON + gate marker files (when `spec.scaling` is set) |
-| `~/.raft/state/metrics/` | Controller samples: `resources.jsonl` (host/container) + `http.jsonl` (HTTP edge); `gate-http/` access log for scrape; batched append; daily + size-split rotation (`*.jsonl.YYYY-MM-DD[.N]`); `metrics.retentionMaxAgeDays` / `retentionMaxBytes` |
-| `~/.raft/state/acme/` | ACME account + HTTP-01 webroot + per-app state JSON (when using `tls: acme`) |
-| `~/.raft/certs/` | Origin PEMs (`origin.*` for `tls: origin`) and ACME live material (`acme.*` for `tls: acme`) |
-| `~/.raft/secrets/<app>/` | Recommended per-App secret dir (`0700`); operator-written `env` file (`0600`) for `spec.envFile` — see [`docs/secrets.md`](docs/secrets.md) |
-| `~/.raft/logs/` | Structured log file (default); daily + size-split rotation via `logging.retentionMaxAgeDays` / `retentionMaxBytes` (at CLI `HostLogging`) |
+| `settings.yaml` | logging, edge, healing, metrics, acme, github, notifications, **`acl.gate`** |
+| `state/apps/*.yaml` | Applied App registry |
+| `generated/` | Compose + nginx (+ ACL includes under gate-http) — **do not hand-edit as source of truth** |
+| `state/locks/` | flock files |
+| `state/acl/apps/` | Per-App ACL JSON (v1) |
+| `state/scaling/`, `state/metrics/`, `state/acme/`, `state/serve/` | Feature state |
+| `certs/`, `secrets/`, `apps/`, `deploy/`, `logs/` | TLS material, env files, checkouts, pins, host log |
 
-Do not commit consumer-specific upstreams, hosts, or manifests into this repo.
+Product templates sync from `src/raft/core/platform/share/` into the data home on bootstrap/use.
 
 ---
 
-## Operator loop
+## Where to change what
 
-1. `install.sh` (or `uv sync` in a clone; Python **3.9+**).
-2. Private git apps: `raft auth setup <name> --repo git@host:owner/repo.git` (works before apply) → paste pubkey as read-only deploy key (`~/.ssh/raft/`). Then `raft auth test <name> --repo …` and `raft apply --git …`.
-3. **Recommended ship path:** `raft apply --file …` or `raft apply --git …` with deploy **on** (default). Writes `~/.raft/state/apps/<name>.yaml`, then `ensure_app_deployed`: cutover if the Compose service is already running, start that service if the gate is up, else full stack `up`. Pass `--ref SHA` (and optional `--env-file` / `--env`) so CI first-boot and later cutovers share one command. Do **not** default to `--no-deploy` + `sync` + `redeploy` — `redeploy` requires the app service to already be running and fails on a new App with `service '…' is not running — bring the stack up first`.
-4. **TLS before trusting HTTPS:**
-   - `tls: acme` (direct browser → VPS): DNS A/AAAA for `publicHost` + each `extraHosts` name; TCP 80 + 443 open; set `acme.email` in settings; then apply. **Do not paste PEMs** — live material is written under `certs/<name>/acme.*` by apply/controller. Staging directory for labs; production is the settings default. DNS-01 / wildcards are **not** shipped.
-   - `tls: origin` (Cloudflare Origin / upstream proxy): install `~/.raft/certs/<name>/origin.{pem,key}` **before** first deploy.
-5. `--no-deploy` only when you intentionally register desired state without bringing the app live (e.g. apply several manifests, then one `raft up`; or register before Origin PEMs exist). After that, deploy with `raft apply …` again (deploy on) or `raft up` / `raft redeploy` as appropriate.
-6. Manual cold start when apps are already applied: `raft up` (refuses if stack already up; `down` first).
-7. `raft doctor` before trusting the site (certs for `tls: origin` / `tls: acme`; gate drift → `raft gate recreate`). Doctor is group-first: built-in **`raft`** (edge services; healthy docker/compose/generated/stack/port probes stay hidden), then App `spec.group` (at most one); ungrouped apps appear without a heading. Member labels drop the `{group}-` prefix under a group heading (Compose ids stay `raft-gate` / `raft-router` / `GROUP-NAME` for Docker; doctor shows `gate` / `router` under `raft`). Healthy OK lines append ports in use (gate: published host ports; apps/router: contract / listen ports). File log records per-suite start/done with `elapsed_ms` plus a compose-call summary (`total` / `ps`) for diagnosing slow doctor runs.
-8. `raft status` (optional `--json`, or `--live` to refresh the human table until Ctrl+C) for a point-in-time host + container CPU/memory/uptime/started snapshot — declared Compose limits vs live usage via `ContainerRuntimeGateway`. Human NAME column drops `{group}-` (edge: `gate` / `router` with GROUP `raft`); JSON keeps Compose service ids. The always-on **controller** also samples on a metrics job interval (default 60s; settings `metrics:`) and **batch-appends** JSONL under `~/.raft/state/metrics/` — `resources.jsonl` (Docker/host) and sibling `http.jsonl` (gate HTTP request plane); flush every 10 samples or 60s; seals on day change / `retentionMaxBytes` like `raft.log`; defaults 30 days / 100 MiB. `raft serve` Trends reads resources via `/api/metrics` and HTTP edge via `/api/metrics/http`.
-9. `raft serve` (optional `--port`, default **8787**) — localhost-only ops UI (`127.0.0.1`) for applied apps + gate/router/controller. One FastAPI process: packaged SPA + status/metrics/service/actions/logs APIs. Prints bind URL + a generic SSH port-forward example on start; Ctrl+C or `raft serve --stop` stops. A second start on the same port fails fast with an already-running CTA. **Not** an edge listener. See **Serve / ops UI** below.
-10. `raft logs [name…]` for container stdout/stderr (not `~/.raft/logs/raft.log`). Snapshot by default (`--tail N`, default 100); `-f` / `--follow` streams until Ctrl+C. Names: applied app, `gate` / `router` / `controller`, or Compose ids (`raft-gate`, `GROUP-NAME`); omit names for all core services. Unknown / missing containers → OperatorError with Fix CTA. Serve detail reuses the same `Logs` path (snapshot + SSE follow).
-11. Updates: prefer `raft apply … --ref …` again (handles first-boot and cutover). Use `raft redeploy <app>` only when the app Compose service is **already running** and you want cutover without re-writing the registry (optional `--ref` / `--force-sync`). `raft redeploy router` for the inner nginx. New edge listeners: `raft gate recreate`.
-12. Tear down: `raft down`.
+| Change | Start here |
+|--------|------------|
+| CLI commands | `src/raft/services/cli/` |
+| Serve API / actions | `src/raft/services/serve/` |
+| Controller jobs / wake | `src/raft/services/controller/` |
+| Manifest parse / registry | `src/raft/core/core/models/` |
+| Apply / sync / render / deploy / ACME | `src/raft/core/lifecycle/` |
+| Docker / nginx adapters, share templates | `src/raft/core/platform/` |
+| Doctor, status, logs, update | `src/raft/core/observe/` |
+| Dashboard UI | `src/spa/` then **rebuild** share SPA |
+| ACL render (v1) | `lifecycle/render/acl/` + `services/serve/acl/` |
+| Operator docs for serve features | `docs/serve-*.md` |
 
-Useful checks: `curl -H 'Host: <publicHost>' http://127.0.0.1/`. Optional local hosts: `sudo python3 scripts/hosts.py hold` (reads applied `publicHost` values; errors if none applied). See [`scripts/README.md`](scripts/README.md).
-
-Logging: `~/.raft/settings.yaml` `logging:`; default active file `~/.raft/logs/raft.log`; override dir with `RAFT_LOG_DIR`. Terminal stays plain; file is structured and includes a per-invocation `tid` (UUID) via `TraceContext` so one `raft …` run correlates in the log file (`-` when no scope). Rotation (not a full-file rewrite): at local day boundary the active file is sealed as `raft.log.YYYY-MM-DD`; if a single day's active segment reaches `retentionMaxBytes` (default 100 MiB), further same-day parts are `raft.log.YYYY-MM-DD.2`, `.3`, …. `retentionMaxAgeDays` (default 30) deletes sealed archives older than that many calendar days (by the date suffix). Cheap prepare + rollover run when the host CLI configures logging (not the controller — it logs to stdout only).
+Upstream files: `generated/nginx/upstreams/<app>-<port>.conf` mounted into the router.
 
 ---
 
-## App manifest model
+## Packaging & install pitfalls
 
-Canonical path in a service repo: **`.raft/app.yaml`** only. Shape: `apiVersion: raft/v1`, `kind: App`, `metadata`, `spec`.
+- **`package-data`** must track `core/platform/share/…` (see `pyproject.toml`). Meta test fails if globs match nothing.
+- **`raft update`** curls `install.sh` and `uv tool install`s from GitHub. Broken package-data on `main` bricks installs.
+- Fresh-install e2e: `tests/e2e/fresh_install/` — `RAFT_REF=workspace` locally; CI sets `RAFT_E2E_REF` to the SHA.
+- README demo video: GitHub only plays `<video>` when `src` is a **user-attachments** URL; keep `assets/raft-demo.mp4` as clone fallback. Do not call it “promo” in user-facing copy.
 
-Unknown `spec` / `metadata` keys fail parse (`OperatorError` with Fix CTA). Host aliases use `extraHosts` (not a separate www flag).
+---
 
-### `spec.source`
+## Operator ship path (CI / service repos)
 
-| `source` | Meaning |
-|----------|---------|
-| `local` | Tree under `spec.path`; already on disk |
-| `git` | `spec.repo` + `spec.ref` → clone/fetch; Compose `build:` from manifest |
-| `docker` | `spec.image` (no tag) + `spec.ref` as pin/tag; still set `repo`/`path` so apply can refresh the manifest from git |
+Service CI should:
 
-### Ports / TLS / readiness (canonical)
-
-```yaml
-spec:
-  publicHost: app.example.com   # required when any port uses expose=http
-  # extraHosts:                   # optional Host aliases (routed + ACME SANs)
-  #   - www.app.example.com       # www is not automatic — list it when you need it
-  #   - api.app.example.com
-  tls: off                      # off | origin | acme
-  # acme → gate HTTP-01 + live certs/<name>/acme.*; needs DNS, :80/:443, acme.email
-  # origin → paste Origin PEMs at certs/<name>/origin.*; acme never uses origin.*
-  group: demo               # optional; at most one group
-  # dependsOn: optional. Strings or { name, scaleWithParent? }.
-  # Compose / wake / heal use names only. When this app has spec.scaling,
-  # idle-stop also stops transitive deps with scaleWithParent true (default).
-  dependsOn:
-    - other-app                   # ≡ { name: other-app, scaleWithParent: true }
-    - name: some-sidecar
-      scaleWithParent: false      # stay up when parent idle-stops
-  envFile: /home/raft/.raft/secrets/demo-api/env  # per-App secrets; mode 0600
-  env: { KEY: value }           # non-secret overrides; never bake DB passwords here
-  volumes:
-    - hostPath: /mnt/data/x
-      containerPath: /data
-      readOnly: false
-  # ports: omit or [] for worker Apps (no listeners; readiness defaults to none)
-  ports:
-    - name: http
-      containerPort: 80
-      expose: http
-    - name: smtp
-      containerPort: 25
-      expose: stream            # or host | none
-      publicPort: 25
-      protocol: tcp
-  readiness:
-    type: http                  # http | tcp | none
-    port: http                  # port name
-    path: /
-    # Optional timing (defaults shown). timeoutSeconds must cover
-    # startPeriodSeconds + retries×intervalSeconds (+ buffer).
-    # timeoutSeconds: 120
-    # startPeriodSeconds: 45
-    # intervalSeconds: 2
-    # probeTimeoutSeconds: 2
-    # retries: 15
-  resources:                    # optional; rendered as Compose deploy.resources
-    limits:                     # ceiling (cpus / memory)
-      cpu: "0.50"               # → deploy.resources.limits.cpus
-      memory: 128M              # → deploy.resources.limits.memory
-    reservations:               # floor / alias: requests
-      cpu: "0.10"               # → deploy.resources.reservations.cpus
-      memory: 32M               # → deploy.resources.reservations.memory
-  # Optional deploy transition (omit = seamless dual-run when live).
-  # deployment:
-  #   method: seamless   # seamless | inplace (default seamless)
-  # Optional scale-to-zero (omit = no scaling). When present, idleSeconds and
-  # minUpSeconds are required; wakeTimeoutSeconds defaults to 60 if omitted.
-  # scaling:
-  #   idleSeconds: 300          # stop after this much idle (HTTP activity via gate)
-  #   wakeTimeoutSeconds: 60    # holding page → timeout page if wake exceeds this (default 60)
-  #   minUpSeconds: 60          # do not idle-stop until this long after wake/start
-  #   holdingPage: .raft/holding.html  # optional; HTML relative to app root (omit = product default)
-  # Requires at least one expose: http + publicHost (not stream/host/none alone).
-  # Idle stop + gate holding/wake ship together. Holding hits do not count as
-  # activity. After wakeTimeoutSeconds the product timeout page includes an
-  # admin CTA and a diagnostic id (grep controller logs for `id=`). Healing is
-  # separate (settings healing:); see examples/settings.yaml.
+```bash
+raft apply --file .raft/app.yaml --ref "$SHA" --env …
 ```
 
-### Apply-time preprocess (`ManifestPreprocessor`)
+(deploy on). Gate is **never** auto-recreated by service CI. Private git: `raft auth setup` before apply. Secrets: `spec.envFile` → `~/.raft/secrets/<app>/env` (0600); never bake DB passwords into manifests or `generated/`.
 
-`raft apply` runs on the raw manifest text **before** YAML parse:
+---
 
-1. Resolve `${{ if expr }}` … `${{ endif }}` (full-line `#` comments skipped).
-2. Expand remaining `${NAME}` / `${NAME:-default}` in non-comment text.
-3. `yaml.safe_load` → `AppDocument` → registry (concrete; no placeholders/directives left).
+## Code style (enforceable)
 
-In `expr`, operands are only quoted strings (`'…'` / `"…"`) or env refs (`${NAME}` / `${NAME:-default}` — same rules as body placeholders). No barewords. After resolve, comparisons are **string** equality (`==` / `!=`); combine with `&&` / `||` (`&&` binds tighter); parentheses group. Nested `${{ if }}` is supported. Env values may be any string (spaces, punctuation, etc.). Unmatched `if`/`endif`, leftover `${{`, undefined variables, or bad expressions → `OperatorError` with a Fix CTA. Render / redeploy / doctor never re-run the pipeline.
+Under `src/raft/`:
 
-Optional keys (omit the whole mapping when the predicate is false):
+- ~200-line files; **300+** = split smell; methods **≤ ~20** lines (delegate to `_…` helpers).
+- Class-first; package `__init__.__all__` eager exports; **no** lazy `__getattr__` barrels; **no** thin stub forwards.
+- Imports at module scope only; `git mv` for renames.
+- Tests: 100% unit branch coverage; meta size guards; e2e needs Docker (`-n0`).
 
-```yaml
-${{ if ${INCLUDE_SCALING} == 'true' }}
-scaling:
-  idleSeconds: ${SCALE_IDLE_SECONDS}
-  wakeTimeoutSeconds: ${SCALE_WAKE_TIMEOUT_SECONDS}
-  minUpSeconds: ${SCALE_MIN_UP_SECONDS}
-${{ endif }}
+---
+
+## Tests (commands)
+
+```bash
+uv sync --extra dev
+uv run pytest tests/unit          # 100% cov
+uv run pytest tests/meta --no-cov
+uv run pytest tests/e2e -m e2e --no-cov -n0
 ```
 
-`apply --git` clones briefly, reads `.raft/app.yaml`, copies into `~/.raft/state/apps/`. `sync` refreshes sources then `render` regenerates `~/.raft/generated/`.
-
-### `spec.deployment` (deploy transition)
-
-Omit `spec.deployment` → **`method: seamless`** (backwards compatible). When present, `method` selects a pluggable `DeploymentMethod`:
-
-| `method` | When the app is **up** (live replica) | When **down** / idle / not running |
-|----------|----------------------------------------|-------------------------------------|
-| `seamless` (default) | Dual-run `*_tmp` cutover (current behavior) | Single-generation start (no `*_tmp`; same as #187 idle skip) |
-| `inplace` | Stop old generation, rebuild/start on the steady Compose name (brief downtime OK; never holds two generations) | Same single-generation start |
-
-Invalid `method` values raise `OperatorError` with a Fix CTA. Same locks as today (`app-<name>.lock`, `stack.lock`).
-
-### `spec.scaling` (scale-to-zero)
-
-Omit `spec.scaling` → no scaling. When present, **`idleSeconds` and `minUpSeconds` are required**. **`wakeTimeoutSeconds` is optional** (omit → **60**; set on the App → that value). Same scaler, `.timeout` marker, and product `holding-timeout.html` swap.
-
-| Field | Role |
-|-------|------|
-| `idleSeconds` | Stop the Compose service after this much idle (activity recorded via gate on real proxied traffic) |
-| `wakeTimeoutSeconds` | Holding page → timeout page if wake exceeds this (default **60**) |
-| `minUpSeconds` | Do not idle-stop until this long after wake/start |
-| `holdingPage` | Optional path (relative to app root) to a custom wake holding HTML file shipped with the app; omit → product default. Timeout page stays product-default. |
-
-Eligible only with ≥1 `expose: http` port and `publicHost`. Not for stream/host/none-only apps. Controller idle-stops and wakes; gate serves a holding page (meta-refresh) and calls an internal wake API; holding-page reloads do not reset the idle timer. On wake, the controller starts the app’s full transitive `spec.dependsOn` chain (names only — ignore `scaleWithParent`), waits until each service is Compose `running` within `wakeTimeoutSeconds`, then marks the scaled app awake. On idle-stop, the controller also stops the **co-stop set**: transitive deps of the parent reached only via edges whose effective `scaleWithParent` is true (default; string form ≡ true). Stop order is deps-before-parent; co-stopped deps are marked intentional `scaledToZero` for healer skip even without their own `spec.scaling` (cleared when wake starts them). Opt out per dep with `scaleWithParent: false`. Activity is still recorded only on the edge app’s Host. State under `~/.raft/state/scaling/`. Independent of `healing:` in settings — healer skips apps marked `scaledToZero`. Before restart/escalate, healer starts transitive `spec.dependsOn` (same graph as Compose); defers if a dep is intentionally scaled to zero.
-
-Wake requests mint an opaque diagnostic id (scaling JSON + `{app}.id` marker). Successful wakes within budget never show it. After the wake budget, the product timeout page shows “contact the administrator” plus that id (SSI). The same id is on controller log lines (`scale wake request` / `scale wake` / `scale wake timeout` … `id=`). Incomplete/timeout lines also include the last wake **stage** (`wait_running` / `wait_fetch` / `wait_host`, plus `service=` / `detail=` when known) so an operator can see where the chain stopped. Grep controller logs for `id=<code-from-page>`. The holding page stays “Just a moment” + auto-refresh (no admin CTA) unless the App sets `holdingPage`.
-
-#### Custom holding page (`spec.scaling.holdingPage`)
-
-One optional string: a path **relative to the app root** (same checkout as `.raft/app.yaml` for git/local; docker Apps still need that checkout so apply/sync can read the file). Example: `holdingPage: .raft/holding.html`.
-
-- Omit the field → product default holding + timeout pages.
-- Ship the HTML in the app tree (not under `~/.raft/` by hand). On `render`, raft copies it into `generated/nginx/gate-http/holding/<app>.html` (already bind-mounted into the gate) and points the Host holding location at it — **reload/render only**, no `gate recreate`.
-- The HTML should auto-refresh (e.g. `<meta http-equiv="refresh" content="2">`) so wake keeps retrying; raft does not inject refresh or SSI into custom holding pages.
-- The wake-timeout page stays the product `holding-timeout.html` (SSI diagnostic id). Only the in-progress holding page is overridable.
-
-### `spec.resources` → Compose
-
-App manifests declare CPU/memory under `spec.resources`. `raft render` emits Compose Swarm-style `deploy.resources` (same shape as Compose `limits` / `reservations`):
-
-| App (`spec.resources`) | Compose (`deploy.resources`) | Role | Defaults |
-|------------------------|------------------------------|------|----------|
-| `limits.cpu` | `limits.cpus` | Ceiling — max CPU cores | `"0.50"` |
-| `limits.memory` | `limits.memory` | Ceiling — max RAM | `128M` |
-| `reservations.cpu` (or `requests.cpu`) | `reservations.cpus` | Floor — guaranteed CPU share | `"0.10"` |
-| `reservations.memory` (or `requests.memory`) | `reservations.memory` | Floor — guaranteed RAM | `32M` |
-
-Omit `resources` to get the defaults. Flat keys `cpus_limit` / `memory_limit` / `cpus_reservation` / `memory_reservation` under `resources` are also accepted. `raft status` shows these allocated limits next to live usage.
-
-Private remotes stay as `git@github.com:…` in the manifest; auth rewrites clone URLs to `Host` aliases (`github.com-raft-<service>`).
-
----
-
-## Serve / ops UI
-
-Localhost dashboard for operators (`raft serve`). **Hard rules:** bind `127.0.0.1` only; one process (FastAPI + static SPA); no WebSocket — status/metrics use HTTP poll; FE changes must rebuild into `src/raft/core/platform/share/serve/spa/` before commit/release; mutative actions take the same `flock` locks as CLI deploy; gate start/stop/redeploy still refused where CLI refuses.
-
-**Freshness:** `GET /api/status` and `GET /api/service/{name}` re-read `state/apps/` on every call (`refresh_apps=True`) and adopt the reloaded Stack into serve actions/logs. The SPA polls status every **2s** while the tab is visible (pauses when hidden; refetches on focus). Expected lag after out-of-band apply/delete is about one poll interval (≤ ~2s), not minutes; no serve restart or hard reload required. No-port / worker Apps are listed like any other App (status path does not filter on ports). Applied-but-not-up shows as `not running`.
-
-### Backend map
-
-| Piece | Path / type | Role |
-|-------|-------------|------|
-| CLI entry | `raft serve` → `serve/service.py` (`http/` FastAPI, `runtime/` lease) | uvicorn on `--port` (default **8787**); prints tunnel CTAs; flock lease under `state/serve/`; `--stop` |
-| App factory | `ServeAppFactory` | mounts `/assets`, SPA catch-all, registers `/api/*` |
-| Page / routes | `ServePage` | status, metrics, service detail, logs, start/stop/redeploy, purge |
-| Downloads | `ServeDownloads` + `export/` | catalog-driven log/metrics file export (register an `Exporter`) |
-| Actions | `ServeActions` | Compose start/stop; redeploy via `Orchestrator`; scaling mark/clear on stop/start; purge unused images |
-| Logs bridge | `LogSseStream` + `ops/logs.Logs` | snapshot JSON + SSE follow (same follow path as CLI `-f`) |
-| Read contracts | `read/` | `StatusRead`, `MetricsRead`, `ServeSnapshotView`, `ExternalUrlBuilder` |
-| Runtime gather | `ContainerRuntimeGateway` (`adapters/docker/runtime.py`) | batched Engine `ps`/`inspect`/`stats` for status + controller metrics (not `compose ps`) |
-| Packaged SPA | `src/raft/core/platform/share/serve/spa/` | Vite build output shipped with the Python package |
-
-### HTTP API
-
-| Method | Path | Backing |
-|--------|------|---------|
-| `GET` | `/api/status` | `StatusRead` snapshot + `control_plane` / `apps` presentation (labels, started, external_urls); reloads registry each call |
-| `GET` | `/api/metrics` | `MetricsRead` over `state/metrics/resources.jsonl` (`window`, optional `since`, optional `services`) |
-| `GET` | `/api/metrics/http` | `HttpMetricsRead` over `state/metrics/http.jsonl` (edge RPS / latency / status classes; same window query shape) |
-| `GET` | `/api/service/{name}` | one container + presentation row (404 if unknown); reloads registry each call |
-| `GET` | `/api/service/{name}/logs` | log snapshot (`tail`) |
-| `GET` | `/api/service/{name}/logs/follow` | SSE live follow |
-| `GET` | `/api/service/{name}/http-requests` | recent per-request HTTP rows for Host-routed Apps (`expose: http` + `publicHost`); Trends HTTP stays aggregate — see [`docs/serve-http-requests.md`](docs/serve-http-requests.md) |
-| `GET` | `/api/exports` | download format catalog (`logs` / `metrics` exporter ids) |
-| `GET` | `/api/service/{name}/logs/download` | log snapshot file (`format`, `tail`) via export registry |
-| `GET` | `/api/metrics/download` | metrics table file (`format`, `window`, optional `services`) |
-| `POST` | `/api/service/{name}/start\|stop\|redeploy` | `ServeActions` |
-| `POST` | `/api/purge` | `ServeActions.purge` → unused images + build cache; reclaim summary (no volumes) |
-| `GET` | `/api/github/session\|login\|callback` | Temporary GitHub OAuth / mock login (multi-account) |
-| `GET` / `POST` | `/api/github/config` | OAuth setup status; paste client id/secret → settings.yaml + reload |
-| `POST` | `/api/github/logout` | Logout active account (`state/serve/github-accounts.json`) |
-| `POST` | `/api/github/accounts/select` | `{account_id}` set active connected account |
-| `POST` | `/api/github/accounts/{id}/logout` | Logout one connected account |
-| `GET` | `/api/github/repos` | List active account’s owned/member repos (`q` filters locally) |
-| `POST` / `GET` | `/api/github/deploy` / `/api/github/deploy/{id}` | Trigger + poll apply/deploy + CI PR + next steps |
-
-GitHub add-service assist (v1): dashboard Apps **`+`** → `/add-service` → `/deploy` (auto OAuth when zero accounts); one OAuth App in settings, many connected accounts; settings `github:` / `RAFT_GITHUB_*` scopes `read:user repo workflow`; CI PR adds `.github/workflows/raft-apply.yml`; see [`docs/serve-github-deploy.md`](docs/serve-github-deploy.md).
-
-Doctor JSON for the SPA is deferred (`DoctorRead.intended_payload_shape`).
-
-### SPA source (`src/spa/`)
-
-Feature folders under `src/spa/src/` (`main.tsx` + lean `styles.css` for tokens/resets/shared primitives; each UI component co-locates `ComponentName.css`; shell under `shell/`):
-
-| Area | Path | Notes |
-|------|------|-------|
-| Shell / routes | `shell/` (`App`, `Dashboard` + section/poll/meta helpers, `PurgeButton`), `main.tsx` | client routes; FastAPI serves `index.html` for non-`/api` paths; dashboard Purge confirm → `/api/purge` |
-| Shared | `shared/api/` (eager `index` + `http` / `status` / `service` / `logs` / `metrics`), `dashboardCache`, `ExternalUrlLinks` | typed `/api` client + status/metrics cache |
-| Status tables | `status/` UI + `status/model/` (filters, tree, tones, panel view) | compact-only; Started column; row quick actions |
-| Live chrome | `chrome/` (`LiveIndicator`, `Modal`, `ConfirmPopup`, `toast/` store + API) | auto-refresh while tab visible; **no** native `alert`/`confirm` |
-| Service detail | `service/` (`ServicePage`, detail, actions, `httpRequests/`) | lifecycle buttons; Runtime charts under `trends/runtime/`; per-request HTTP inspection for Host-routed Apps |
-| Logs | `logs/` UI + `logs/model/` (`logFilter`, `logParse`) | follow / expand / severity filter; catalog download |
-| Deploy | `deploy/` pages + `deploy/github/` (`client` / `helpers` / `types`) + `deploy/oauth/` | GitHub add-service assist |
-| Notifications | `notifications/` | channel settings UI (strategy catalog from API) |
-| Trends | `trends/panel/`, `trends/chart/`, `trends/runtime/`, `trends/range/`, `trends/strategies/` (+ root `metricTypes` / `runtimeMetrics` registries, range controls) | historical series; concretes under `strategies/`; poll `/api/metrics` or `/api/metrics/http`; per-service Runtime (resources) |
-| Export | `export/` (`DownloadMenu`, catalog/urls) | generic download links from `/api/exports` |
-
-Develop: `cd src/spa && npm ci && npm run dev` (Vite `:5173`, proxies `/api` → `raft serve :8787`). Release FE: `npm run build` → updates `share/serve/spa/`. See [`src/spa/README.md`](src/spa/README.md).
-
-### Metrics pipeline (CLI + serve + controller)
-
-```text
-ContainerRuntimeGateway / Status.collect
-  → raft status (point-in-time)
-  → raft serve /api/status (live tables)
-  → controller metrics job → batch-append resources.jsonl
-       → MetricsRead → /api/metrics → Trends (Resources) + service Runtime
-
-Gate access_log + stub_status (internal :8081)
-  → controller scrape on same metrics interval → batch-append http.jsonl
-       → HttpMetricsRead → /api/metrics/http → Trends (HTTP edge)
-```
-
-**HTTP edge contract (`http.jsonl`):** one sample per metrics interval. Fields include `requests`, `rps`, `in_flight` (nginx `stub_status` **Writing** — documented concurrency proxy; also `active_connections`), `duration_ms.{avg,p50,p95,p99}` over the sample window, `status_class` counts (2xx–5xx), plus `by_host` / `by_service` (Host → Compose id via `publicHost` / `extraHosts`). Aggregate series id `edge`; per-app series use Compose service ids. Gate access log first fields stay `request_time status host` for scrape; enriched lines also carry ISO time / method / `$uri` (no query) / client IP / user-agent for serve per-request inspection (`GET /api/service/{name}/http-requests` — see [`docs/serve-http-requests.md`](docs/serve-http-requests.md)). No cookies, `Authorization`, or bodies.
-
-**Deferred:** stream/host/none request metrics; TLS handshake failures; holding-vs-proxied share; charting upstream vs total time; Prometheus remote_write; autoscaling from RPS; edge-wide request browser.
-
-Retention: settings `metrics.retentionMaxAgeDays` / `retentionMaxBytes` (seal each active segment like `raft.log`; age-delete sealed archives — no full-file rewrite). Host CPU in charts: load average ÷ CPU count; containers: sampled `cpu_percent` / memory percent. HTTP percentiles use the scrape window (`metrics.intervalSeconds`), not the Trends lookback.
-
----
-
-## CLI surface (Fire)
-
-Top-level **commands** (not nested groups, except `auth` and `gate`):
-
-| Command | Purpose |
-|---------|---------|
-| `apply` | `--file` or `--git` (+ `--ref`, `--no-deploy`, `--force-sync`, `--env-file`, repeatable `--env`) — default **deploys** via `ensure_app_deployed`; `--no-deploy` registers only; `--env*` feed `ManifestPreprocessor` (`${VAR}` + `${{ if }}`; full-line `#` comments skipped) |
-| `get` | `get apps` / `get app NAME` |
-| `delete` | `delete app NAME` |
-| `up` / `down` | Stack bring-up / tear-down (when apps already applied; not the usual CI path) |
-| `sync` / `render` | Sources / regenerate `~/.raft/generated/` |
-| `redeploy` | Cutover for an **already-running** app, or recreate `router` (`gate` refused). Fails if the app service is not up — use apply-with-deploy (or `raft up`) for first boot |
-| `gate recreate` | Recreate gate for new published edge ports |
-| `doctor` | Health + fix hints; optional `raft doctor [name]` filters to one App |
-| `status` | Host + container resource usage (point-in-time; `--json` or `--live`; Started column beside Uptime) |
-| `serve` | Localhost ops UI (`127.0.0.1`, default **8787**; optional `--port` / `--stop`); SPA + status/metrics/service/actions/logs APIs; SSH tunnel; Ctrl+C or `--stop` |
-| `logs` | Container stdout/stderr (`--tail N` snapshot; `-f` / `--follow` until Ctrl+C). Names: app, `gate`/`router`/`controller`, or Compose ids; omit = all |
-| `purge` | Remove Docker images unused by any container + unused build cache; print reclaimed space. Holds `stack.lock`. Does **not** prune volumes |
-| `update` | Re-install CLI from GitHub (`install.sh`) |
-| `uninstall` | Full removal (`--yes`; optional `--uv` to remove uv too) |
-| `auth` | `setup` / `list` / `show` / `test` / `remove` |
-
-Entry: `raft` console script → `raft.services.cli.__main__:main` (`RaftCLI().run()`). Prefer `install.sh` / `uv tool install` so `raft` is on `PATH`; in a bare checkout `uv run raft …` still works.
-
----
-
-## Package map
-
-| Path | Notes |
-|------|-------|
-| `src/raft/services/cli/` | `RaftCLI` entry; `CliExitMapper`; `RaftCLICommands` (`commands/`); auth/gate/get; CLI `utils/` argv + deps/Fire helpers |
-| `src/raft/services/serve/` | `raft serve`: `service`/`entry`/`actions`, `http/`, `runtime/`; `github/` (`accounts`/`oauth`/`deploy`/`providers`) + `notifications/` |
-| `src/raft/services/controller/` | Always-on Compose `raft-controller` (`run/` + `engine/` + `jobs/` + `wake_http/`) |
-| `src/raft/core/core/models/` | Types + parse/registry: `App`, `AppSpec`, `AppDocument`, `AppRegistry`, `Stack`, scaling/deployment specs; `models/state/` stores |
-| `src/raft/core/core/config/` | `~/.raft` paths, `settings.yaml` (logging + edge + healing + metrics + notifications / acme / github) |
-| `src/raft/core/core/errors/` | Operator errors + CTAs; package `__init__` lists public exports |
-| `src/raft/core/core/utils/` | Cross-cutting helpers: `utils/trace/` (`TraceContext`); `utils/logging/` (`HostLogging`, `ControllerLogging`, rotation) |
-| `src/raft/core/core/ui/` | Operator terminal output (`say`) + TTY `TerminalProgress` |
-| `src/raft/core/lifecycle/apply/` | `AppApply`, manifest preprocess/env/expr/comments |
-| `src/raft/core/lifecycle/sync/` | `SourceSync` |
-| `src/raft/core/lifecycle/render/` | `StackRenderer`, compose/nginx fragments, scaling holding/gate |
-| `src/raft/core/lifecycle/deploy/` | orchestrator, cutover, readiness; `methods/` + `methods/strategies/` |
-| `src/raft/core/lifecycle/acme/` | HTTP-01 ACME ensure/install/redirect |
-| `src/raft/core/platform/adapters/` | shell; docker/; nginx upstreams; HTTP probe; host |
-| `src/raft/core/platform/share/` | Product Compose + nginx templates; `share/serve/spa/` packaged dashboard assets |
-| `src/raft/core/platform/auth/` | `GitAuthManager` + ssh/urls helpers |
-| `src/raft/core/platform/locking/` | `flock` app/stack locks |
-| `src/raft/core/platform/secrets/` | secrets path helpers / guidance integration |
-| `src/raft/core/observe/ops/` | doctor, status, logs, purge, uninstall, update, certs |
-| `src/raft/core/observe/read/` | CLI+serve contracts (`StatusRead`, `MetricsRead`, …) over ops collectors |
-| `src/raft/core/observe/export/` | download encoders (`ExportRegistry` + `strategies/`) |
-| `src/raft/core/observe/notify/` | notification framework + `strategies/` (webhook/email) |
-| `src/spa/` | Dashboard SPA source; build output → `core/platform/share/serve/spa/` |
-| `tests/` | `unit/` mirrors `src/raft/` (`services/` + `core/…`); plus integration/meta/e2e |
-
-Layout: **`services/`** = runnable fronts; **`core/`** = libraries (`core.core` kernel, `lifecycle`, `platform`, `observe`).
-
-
-Compose mounts `generated/nginx/upstreams` into the router. Upstream files are keyed by app + port name (`<app>-<port>.conf`).
-
----
-
-## Multi-repo responsibilities
-
-| Repo | Role |
-|------|------|
-| **raft** (this) | Product + **Test** CI (Py 3.9–3.13). No Terraform here. |
-| **Private ops** | Host/VM + SSH job that pulls this repo onto the VPS |
-| **Service repos** | Own `.raft/app.yaml` + their CI. **CI should** `raft apply --file .raft/app.yaml --ref $SHA --env …` (deploy on). Avoid `--no-deploy` + `raft redeploy` as the default pipeline — that breaks on a new App. |
-
-Gate is never auto-recreated by service CI.
-
----
-
-## Secrets on a VPS
-
-If the host is rooted, container-readable secrets are burned. Prefer external store → inject on redeploy into **tmpfs** mounted only by the app. Avoid `.env` next to Compose, secrets in git/images. Gate/router must not receive DB secrets.
-
-**Baseline layout:** `~/.raft/secrets/<app>/env` (dir `0700`, file `0600`) via `spec.envFile`. Do not put secret values in git, `spec.env`, `state/apps`, or `generated/`. Apply `--env*` is for non-secret preprocess/CI strings. Doctor warns on missing or group/world-readable envFile paths. Full guidance + migration from a flat shared `.env`: [`docs/secrets.md`](docs/secrets.md).
-
----
-
-## Code style / structure
-
-Enforceable defaults when adding or reshaping code under `src/raft/`:
-
-- **File size:** aim for **~200 lines**; treat **300+** as a smell — split by responsibility before growing further.
-- **Method size:** methods/functions **max ~20 lines**. Longer bodies **must delegate** to private helpers (`_…`) with **declarative names**.
-- **Class-first:** prefer **almost no module-level functions**. Behavior lives on classes with a small, declarative public surface; helpers are **private** methods or composed collaborators.
-- **SRP:** one class, one reason to change. Prefer inherit or **compose** over god-objects; extract when a module mixes parse/I/O/orchestration/diagnostics.
-- **Package exports:** each package `__init__.py` defines the public surface via normal eager imports and `__all__`. Callers import public names from the package (`from raft.services.controller.jobs import HealJob`). Do **not** add lazy `__getattr__` export helpers or thin function stubs that only forward to a class method (inline the class call instead). Internal helpers stay unexported (import from owning modules only inside the package / tests). Fix import cycles in the DAG (owning-module imports, slimmer package surfaces, split modules) — never paper over them with lazy package exports.
-- **Imports:** all `import` / `from … import` at **module scope** (no function-local imports; fix cycles by restructuring).
-- **Renames:** `git mv` when the path is already in git.
-
-Exceptions: tiny pure helpers (e.g. path constants) and `@dataclass` field types — not compatibility wrappers.
-
----
-
-## Tests & commits
-
-- `uv sync --extra dev` (or `--group dev`) then:
- - `uv run pytest tests/unit` — **100%** branch coverage (`-n auto` + cov via pyproject)
- - `uv run pytest` — unit + integration + **meta** (default)
- - `uv run pytest tests/meta --no-cov` — codebase-as-artifact guards only (`@pytest.mark.meta`; file < 300 lines, bodies ≤ 20)
- - `uv run pytest tests/e2e -m e2e --no-cov -n0` — Docker required; serial; all CI Py versions
-- Only commit when asked. Prefer `git mv` for renames.
-- Do not reintroduce committed consumer app names, upstreams, or PEMs.
+Only commit when asked. No consumer app names, upstreams, or PEMs in the repo.
