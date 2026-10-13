@@ -13,18 +13,7 @@ export function GithubAccountSwitcher(props: {
 
   return (
     <section className="deploy-panel" id="github-session">
-      <div className="gh-accounts-header">
-        <h2>Connected accounts</h2>
-        <a
-          className="gh-account-add"
-          href={githubLoginHref({ add: true })}
-          id="github-add-account"
-          title="Add GitHub account"
-          aria-label="Add GitHub account"
-        >
-          +
-        </a>
-      </div>
+      <h2>Connected accounts</h2>
       <p className="muted">{session.hint}</p>
       {hasExpired ? (
         <p className="muted" id="github-reauth-hint">
@@ -57,8 +46,36 @@ export function GithubAccountSwitcher(props: {
             </button>
           </li>
         ))}
+        <li className="gh-account-item gh-account-add-row">
+          <a
+            className="gh-account-add"
+            href={githubLoginHref({ add: true })}
+            id="github-add-account"
+            title="Add GitHub account"
+            aria-label="Add GitHub account"
+          >
+            <PlusIcon />
+          </a>
+        </li>
       </ul>
     </section>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg
+      className="gh-account-plus"
+      viewBox="0 0 16 16"
+      width="16"
+      height="16"
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2z"
+      />
+    </svg>
   );
 }
 

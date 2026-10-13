@@ -1,34 +1,3 @@
-.gh-accounts-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.35rem;
-}
-
-.gh-accounts-header h2 {
-  margin: 0;
-}
-
-.gh-account-add {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.85rem;
-  height: 1.85rem;
-  border: 1px solid var(--line);
-  background: var(--muted-bg);
-  color: inherit;
-  font: inherit;
-  font-size: 1.25rem;
-  line-height: 1;
-  text-decoration: none;
-}
-
-.gh-account-add:hover {
-  background: var(--panel);
-}
-
 .gh-account-list {
   list-style: none;
   margin: 0.75rem 0 0;
@@ -69,7 +38,8 @@
   color: var(--danger, #b42318);
 }
 
-.gh-account-delete {
+.gh-account-delete,
+.gh-account-add {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -80,6 +50,7 @@
   border: 1px solid transparent;
   background: transparent;
   color: var(--muted);
+  text-decoration: none;
   cursor: pointer;
 }
 
@@ -94,6 +65,21 @@
   cursor: not-allowed;
 }
 
+.gh-account-add-row {
+  justify-content: flex-start;
+}
+
+.gh-account-add {
+  margin: 0.35rem 0.45rem;
+}
+
+.gh-account-add:hover {
+  border-color: var(--line);
+  color: inherit;
+  background: var(--muted-bg);
+}
+
+.gh-account-plus,
 .gh-account-trash {
   display: block;
 }
