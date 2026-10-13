@@ -1,0 +1,120 @@
+.http-requests-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.http-requests-head h2 {
+  margin: 0;
+}
+
+.http-requests-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.http-requests-live,
+.http-requests-limit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.http-requests-limit select {
+  margin-left: 0.25rem;
+}
+
+.http-requests-note,
+.http-requests-hint,
+.http-requests-empty {
+  margin: 0.55rem 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.http-requests-hint {
+  color: var(--idle);
+}
+
+.http-requests-scroll {
+  margin-top: 0.75rem;
+  max-height: 22rem;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+}
+
+.http-requests-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.http-requests-table th,
+.http-requests-table td {
+  padding: 0.4rem 0.55rem;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+.http-requests-table th {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  z-index: 1;
+}
+
+.http-requests-table tbody tr:hover {
+  background: var(--row-hover);
+}
+
+.http-requests-path,
+.http-requests-ua {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.http-requests-status {
+  display: inline-block;
+  min-width: 2.4rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.http-requests-status.tone-ok {
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+
+.http-requests-status.tone-warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.http-requests-status.tone-bad {
+  background: var(--bad-bg);
+  color: var(--danger);
+}
+
+.http-requests-status.tone-muted {
+  background: var(--muted-bg);
+  color: var(--muted);
+}

@@ -43,6 +43,11 @@ and durable for one FastAPI process than WebSockets. Serve status endpoints
 reload ``state/apps/`` on each call so out-of-band apply/delete is visible on
 the next SPA poll (~2s when the tab is visible).
 
+Serve ``GET /api/service/{name}/http-requests`` returns recent **per-request**
+rows for Host-routed Apps (``expose: http`` + ``publicHost``) via
+``HttpRequestsRead`` (tail of ``state/metrics/gate-http/access.log``). Trends
+HTTP stays aggregate-only; see ``docs/serve-http-requests.md``.
+
 Doctor JSON is deferred for a full dashboard health view; see
 ``DoctorRead.intended_payload_shape`` and ``DoctorRead.from_results``.
 """
@@ -50,6 +55,7 @@ Doctor JSON is deferred for a full dashboard health view; see
 from .depends import ServeDependsMap
 from .doctor import DoctorRead
 from .external_urls import ExternalUrlBuilder
+from .http_requests import HttpRequestsRead
 from .metrics import HttpMetricsRead, MetricsRead
 from .serve_row import ServeRow
 from .snapshot_view import ServeSnapshotView
@@ -59,6 +65,7 @@ __all__ = [
     "DoctorRead",
     "ExternalUrlBuilder",
     "HttpMetricsRead",
+    "HttpRequestsRead",
     "MetricsRead",
     "ServeDependsMap",
     "ServeRow",

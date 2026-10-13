@@ -303,6 +303,7 @@ Localhost dashboard for operators (`raft serve`). **Hard rules:** bind `127.0.0.
 | `GET` | `/api/service/{name}` | one container + presentation row (404 if unknown); reloads registry each call |
 | `GET` | `/api/service/{name}/logs` | log snapshot (`tail`) |
 | `GET` | `/api/service/{name}/logs/follow` | SSE live follow |
+| `GET` | `/api/service/{name}/http-requests` | recent per-request HTTP rows for Host-routed Apps (`expose: http` + `publicHost`); Trends HTTP stays aggregate — see [`docs/serve-http-requests.md`](docs/serve-http-requests.md) |
 | `GET` | `/api/exports` | download format catalog (`logs` / `metrics` exporter ids) |
 | `GET` | `/api/service/{name}/logs/download` | log snapshot file (`format`, `tail`) via export registry |
 | `GET` | `/api/metrics/download` | metrics table file (`format`, `window`, optional `services`) |
@@ -330,7 +331,7 @@ Feature folders under `src/spa/src/` (`main.tsx` + lean `styles.css` for tokens/
 | Shared | `shared/api/` (eager `index` + `http` / `status` / `service` / `logs` / `metrics`), `dashboardCache`, `ExternalUrlLinks` | typed `/api` client + status/metrics cache |
 | Status tables | `status/` UI + `status/model/` (filters, tree, tones, panel view) | compact-only; Started column; row quick actions |
 | Live chrome | `chrome/` (`LiveIndicator`, `Modal`, `ConfirmPopup`, `toast/` store + API) | auto-refresh while tab visible; **no** native `alert`/`confirm` |
-| Service detail | `service/` (`ServicePage`, detail, actions) | lifecycle buttons; Runtime charts live under `trends/runtime/` |
+| Service detail | `service/` (`ServicePage`, detail, actions, `httpRequests/`) | lifecycle buttons; Runtime charts under `trends/runtime/`; per-request HTTP inspection for Host-routed Apps |
 | Logs | `logs/` UI + `logs/model/` (`logFilter`, `logParse`) | follow / expand / severity filter; catalog download |
 | Deploy | `deploy/` pages + `deploy/github/` (`client` / `helpers` / `types`) + `deploy/oauth/` | GitHub add-service assist |
 | Notifications | `notifications/` | channel settings UI (strategy catalog from API) |
@@ -353,9 +354,9 @@ Gate access_log + stub_status (internal :8081)
        → HttpMetricsRead → /api/metrics/http → Trends (HTTP edge)
 ```
 
-**HTTP edge contract (`http.jsonl`):** one sample per metrics interval. Fields include `requests`, `rps`, `in_flight` (nginx `stub_status` **Writing** — documented concurrency proxy; also `active_connections`), `duration_ms.{avg,p50,p95,p99}` over the sample window, `status_class` counts (2xx–5xx), plus `by_host` / `by_service` (Host → Compose id via `publicHost` / `extraHosts`). Aggregate series id `edge`; per-app series use Compose service ids. No app secrets in the access log (time / status / host only).
+**HTTP edge contract (`http.jsonl`):** one sample per metrics interval. Fields include `requests`, `rps`, `in_flight` (nginx `stub_status` **Writing** — documented concurrency proxy; also `active_connections`), `duration_ms.{avg,p50,p95,p99}` over the sample window, `status_class` counts (2xx–5xx), plus `by_host` / `by_service` (Host → Compose id via `publicHost` / `extraHosts`). Aggregate series id `edge`; per-app series use Compose service ids. Gate access log first fields stay `request_time status host` for scrape; enriched lines also carry ISO time / method / `$uri` (no query) / client IP / user-agent for serve per-request inspection (`GET /api/service/{name}/http-requests` — see [`docs/serve-http-requests.md`](docs/serve-http-requests.md)). No cookies, `Authorization`, or bodies.
 
-**Deferred:** stream/host/none request metrics; TLS handshake failures; holding-vs-proxied share; charting upstream vs total time; Prometheus remote_write; autoscaling from RPS.
+**Deferred:** stream/host/none request metrics; TLS handshake failures; holding-vs-proxied share; charting upstream vs total time; Prometheus remote_write; autoscaling from RPS; edge-wide request browser.
 
 Retention: settings `metrics.retentionMaxAgeDays` / `retentionMaxBytes` (seal each active segment like `raft.log`; age-delete sealed archives — no full-file rewrite). Host CPU in charts: load average ÷ CPU count; containers: sampled `cpu_percent` / memory percent. HTTP percentiles use the scrape window (`metrics.intervalSeconds`), not the Trends lookback.
 
