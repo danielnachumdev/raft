@@ -13,6 +13,15 @@ export function needsOauthSetup(
   return /oauth is not configured/i.test(oauthError);
 }
 
+/** Add-service entry always surfaces the OAuth instructions checklist. */
+export function forceOauthInstructions(search: string): boolean {
+  const params = new URLSearchParams(search);
+  const raw = params.get("instructions") || params.get("setup");
+  if (raw === null) return false;
+  const value = raw.trim().toLowerCase();
+  return value === "" || value === "1" || value === "true" || value === "yes";
+}
+
 export function accountCount(session: GithubSession | null): number {
   return session?.accounts?.length ?? 0;
 }
@@ -22,25 +31,18 @@ export function githubLoginHref(options?: { add?: boolean }): string {
   return options?.add ? "/api/github/login?add=1" : "/api/github/login";
 }
 
-/** Zero-account auto-redirect; never after explicit logout or when rows exist. */
-export function shouldAutoLoginGithub(input: {
+/**
+ * Zero-account auto-redirect is disabled: delete must stick across refresh /
+ * serve restart, and add-service must show instructions instead of skipping.
+ */
+export function shouldAutoLoginGithub(_input: {
   session: GithubSession | null;
   oauthError: string | null;
   needsSetup: boolean;
-  suppressAfterLogout: boolean;
-  redirecting: boolean;
+  suppressAfterLogout?: boolean;
+  redirecting?: boolean;
 }): boolean {
-  if (
-    input.oauthError ||
-    input.needsSetup ||
-    !input.session ||
-    input.suppressAfterLogout ||
-    input.redirecting ||
-    accountCount(input.session) > 0
-  ) {
-    return false;
-  }
-  return true;
+  return false;
 }
 
 /** Non-expired connected accounts available for repo browse / deploy. */

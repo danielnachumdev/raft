@@ -1,12 +1,12 @@
 /** Eager public surface for GitHub deploy assist API + helpers. */
 
 export {
+  deleteGithubAccount,
   fetchDeployJob,
   fetchGithubConfig,
   fetchGithubRepos,
   fetchGithubSession,
   logoutGithub,
-  logoutGithubAccount,
   saveGithubConfig,
   selectGithubAccount,
   startGithubDeploy,
@@ -14,6 +14,7 @@ export {
 export {
   accountCount,
   filterGithubRepos,
+  forceOauthInstructions,
   githubLoginHref,
   needsOauthSetup,
   oauthErrorFromSearch,

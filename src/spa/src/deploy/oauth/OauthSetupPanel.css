@@ -41,8 +41,13 @@
   border-color: var(--text);
 }
 
-.oauth-setup-form {
+.oauth-setup-form,
+.oauth-setup-configured {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--line);
+}
+
+.oauth-setup-configured .refresh {
+  margin-top: 0.5rem;
 }

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   accountCount,
+  forceOauthInstructions,
   githubLoginHref,
   shouldAutoLoginGithub,
   usableAccounts,
@@ -83,17 +84,24 @@ describe("githubLoginHref", () => {
   });
 });
 
+describe("forceOauthInstructions", () => {
+  it("detects add-service instructions query", () => {
+    assert.equal(forceOauthInstructions("?instructions=1"), true);
+    assert.equal(forceOauthInstructions("?setup=true"), true);
+    assert.equal(forceOauthInstructions(""), false);
+    assert.equal(forceOauthInstructions("?oauth_error=x"), false);
+  });
+});
+
 describe("shouldAutoLoginGithub", () => {
-  it("auto-logins only when zero accounts and not suppressed", () => {
+  it("never auto-logins so delete sticks across refresh", () => {
     assert.equal(
       shouldAutoLoginGithub({
         session: sessionWith([]),
         oauthError: null,
         needsSetup: false,
-        suppressAfterLogout: false,
-        redirecting: false,
       }),
-      true,
+      false,
     );
   });
 
@@ -111,21 +119,6 @@ describe("shouldAutoLoginGithub", () => {
         ]),
         oauthError: null,
         needsSetup: false,
-        suppressAfterLogout: false,
-        redirecting: false,
-      }),
-      false,
-    );
-  });
-
-  it("does not auto-login after explicit logout cleared the list", () => {
-    assert.equal(
-      shouldAutoLoginGithub({
-        session: sessionWith([]),
-        oauthError: null,
-        needsSetup: false,
-        suppressAfterLogout: true,
-        redirecting: false,
       }),
       false,
     );

@@ -1,21 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { DeployProgress } from "./DeployProgress";
 import { DeployRepoPicker } from "./DeployRepoPicker";
 import { DeploySession } from "./DeploySession";
 import {
   accountCount,
+  deleteGithubAccount,
   fetchDeployJob,
   fetchGithubConfig,
   fetchGithubRepos,
   fetchGithubSession,
   filterGithubRepos,
+  forceOauthInstructions,
   githubLoginHref,
-  logoutGithubAccount,
   needsOauthSetup,
   oauthErrorFromSearch,
   selectGithubAccount,
-  shouldAutoLoginGithub,
   startGithubDeploy,
   usableAccounts,
   type DeployJob,
@@ -33,6 +33,7 @@ export function DeployPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const oauthError = oauthErrorFromSearch(location.search);
+  const showInstructions = forceOauthInstructions(location.search);
   const [session, setSession] = useState<GithubSession | null>(null);
   const [config, setConfig] = useState<GithubOauthConfig | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,8 +44,6 @@ export function DeployPage() {
   const [job, setJob] = useState<DeployJob | null>(null);
   const [busy, setBusy] = useState(false);
   const [viewAsId, setViewAsId] = useState("");
-  const redirecting = useRef(false);
-  const suppressAutoLogin = useRef(false);
   const needsSetup = needsOauthSetup(session, oauthError);
   const browseAccounts = usableAccounts(session);
   const browseIdsKey = browseAccounts.map((a) => a.id).join(",");
@@ -73,24 +72,6 @@ export function DeployPage() {
   useEffect(() => {
     void refreshSession();
   }, [refreshSession]);
-
-  useEffect(() => {
-    // Auto-login only when zero connected accounts (not when expired rows exist).
-    // Explicit logout suppresses this so the row stays gone until Continue / +.
-    if (
-      !shouldAutoLoginGithub({
-        session,
-        oauthError,
-        needsSetup,
-        suppressAfterLogout: suppressAutoLogin.current,
-        redirecting: redirecting.current,
-      })
-    ) {
-      return;
-    }
-    redirecting.current = true;
-    window.location.assign(githubLoginHref());
-  }, [session, oauthError, needsSetup]);
 
   useEffect(() => {
     const ids = new Set(browseIdsKey ? browseIdsKey.split(",") : []);
@@ -158,19 +139,17 @@ export function DeployPage() {
     }
   };
 
-  const onLogoutOne = async (accountId: string) => {
+  const onDeleteOne = async (accountId: string) => {
     setBusy(true);
     try {
-      const next = await logoutGithubAccount(accountId);
+      const next = await deleteGithubAccount(accountId);
       setSession(next);
       if (viewAsId === accountId) {
         setViewAsId("");
       }
       clearRepoSelection();
-      redirecting.current = false;
-      suppressAutoLogin.current = true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Logout failed");
+      setError(err instanceof Error ? err.message : "Delete failed");
     } finally {
       setBusy(false);
     }
@@ -193,15 +172,20 @@ export function DeployPage() {
   };
 
   const onOauthSaved = async () => {
-    redirecting.current = false;
-    suppressAutoLogin.current = false;
     navigate("/deploy", { replace: true });
     await refreshSession();
     window.location.assign(githubLoginHref());
   };
 
+  const onContinueConfigured = () => {
+    navigate("/deploy", { replace: true });
+  };
+
   const showRepos = Boolean(
-    accountCount(session) > 0 && !oauthError && !needsSetup,
+    accountCount(session) > 0 &&
+      !oauthError &&
+      !needsSetup &&
+      !showInstructions,
   );
 
   return (
@@ -236,10 +220,12 @@ export function DeployPage() {
         config={config}
         oauthError={oauthError}
         needsSetup={needsSetup}
+        forceInstructions={showInstructions}
         busy={busy}
-        onLogoutOne={(id) => void onLogoutOne(id)}
+        onDeleteOne={(id) => void onDeleteOne(id)}
         onBusy={setBusy}
         onSaved={() => void onOauthSaved()}
+        onContinueConfigured={onContinueConfigured}
         onError={(message) => setError(message || null)}
       />
 

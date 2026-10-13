@@ -24,16 +24,17 @@ export async function logoutGithub(): Promise<GithubSession> {
   return body as GithubSession;
 }
 
-export async function logoutGithubAccount(
+/** Hard-delete one connected account from durable serve state. */
+export async function deleteGithubAccount(
   accountId: string,
 ): Promise<GithubSession> {
   const res = await fetch(
-    `/api/github/accounts/${encodeURIComponent(accountId)}/logout`,
-    { method: "POST" },
+    `/api/github/accounts/${encodeURIComponent(accountId)}`,
+    { method: "DELETE" },
   );
   const body = await readJsonBody(res);
   if (!res.ok) {
-    throw new Error(detailFromBody(body) || `logout account ${res.status}`);
+    throw new Error(detailFromBody(body) || `delete account ${res.status}`);
   }
   return body as GithubSession;
 }

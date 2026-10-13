@@ -1,4 +1,4 @@
-"""TDD: logout removes accounts; add-account login keeps peers + shows picker."""
+"""TDD: delete purges durable accounts; add-account login keeps peers + picker."""
 
 import json
 import time
@@ -20,19 +20,31 @@ from tests.unit.core.observe.ops.status import fixtures as status_fx
 from tests.unit.services.serve.github import fixtures as github_fx
 
 
-class TestLogoutAndAddAccount(RaftTestCase):
-    def test_logout_expired_account_removed_from_disk(self) -> None:
+class TestDeleteAndAddAccount(RaftTestCase):
+    def test_delete_expired_account_purged_from_disk(self) -> None:
         store = GithubAccountStore(self.tmp_path)
         expired = store.upsert_account(self._expired_sample())
-        out = self._client().post(f"/api/github/accounts/{expired.id}/logout").json()
+        out = self._client().delete(f"/api/github/accounts/{expired.id}").json()
         self._assert_empty_session(out)
         self._assert_empty_disk_ledger()
         assert store.public_snapshot()["accounts"] == []
 
-    def test_logout_one_of_two_falls_back_active(self) -> None:
+    def test_delete_survives_new_store_instance(self) -> None:
+        """Serve restart must not resurrect a deleted account (issue #200)."""
+        store = GithubAccountStore(self.tmp_path)
+        expired = store.upsert_account(self._expired_sample())
+        self._client().post(f"/api/github/accounts/{expired.id}/delete")
+        restarted = GithubAccountStore(self.tmp_path)
+        snap = restarted.public_snapshot()
+        assert snap["accounts"] == []
+        assert snap["active_account_id"] is None
+        assert restarted.active_usable() is None
+        self._assert_empty_disk_ledger()
+
+    def test_delete_one_of_two_falls_back_active(self) -> None:
         store = GithubAccountStore(self.tmp_path)
         first = self._seed_two_accounts(store)
-        out = self._client().post(f"/api/github/accounts/{first.id}/logout").json()
+        out = self._client().delete(f"/api/github/accounts/{first.id}").json()
         assert [a["login"] for a in out["accounts"]] == ["demo-bob"]
         assert out["active_account_id"] == "a2"
         assert store.active_usable() is not None

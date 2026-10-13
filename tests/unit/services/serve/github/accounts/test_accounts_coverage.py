@@ -35,18 +35,18 @@ class TestAccountsCoverage(RaftTestCase):
         with pytest.raises(OperatorError, match="login"):
             GithubOauth._user_from_payload(["no"])
 
-    def test_store_select_logout_edges(self) -> None:
+    def test_store_select_delete_edges(self) -> None:
         store = GithubAccountStore(self.tmp_path)
         store.touch_active()
-        store.logout_active()
+        store.delete_active()
         with pytest.raises(KeyError):
             store.select("missing")
         with pytest.raises(KeyError):
-            store.logout("missing")
+            store.delete("missing")
         a = store.upsert_account(self._acct("a", "alice", "t1", uid="1"))
         b = store.upsert_account(self._acct("b", "bob", "t2", uid="2"))
         store.select(a.id)
-        store.logout(b.id)
+        store.delete(b.id)
         assert store.public_snapshot()["active_account_id"] == a.id
         store._unlink(self.tmp_path / "state" / "serve" / "missing.json")
 
@@ -54,7 +54,7 @@ class TestAccountsCoverage(RaftTestCase):
         store = GithubAccountStore(self.tmp_path)
         a = store.upsert_account(self._acct("a", "alice", "t1", uid="1"))
         store.upsert_account(self._acct("b2", "bob", "t2b", uid="2"))
-        store.logout_active()
+        store.delete_active()
         again = store.upsert_account(self._acct("a2", "alice", "t3", uid="1"))
         assert again.id == a.id and again.access_token == "t3"
         by_login = store.upsert_account(self._acct("c", "alice", "t4"))
@@ -91,12 +91,13 @@ class TestAccountsCoverage(RaftTestCase):
         accounts.write_text(json.dumps(self._orphan_payload()), encoding="utf-8")
         assert store.public_snapshot()["active_account_id"] == "alive"
 
-    def test_api_select_logout_errors(self) -> None:
+    def test_api_select_delete_errors(self) -> None:
         client = self._client()
         assert client.post("/api/github/accounts/select", json={}).status_code == 400
         bad = client.post("/api/github/accounts/select", json={"account_id": "nope"})
         assert bad.status_code == 404
-        assert client.post("/api/github/accounts/nope/logout").status_code == 404
+        assert client.delete("/api/github/accounts/nope").status_code == 404
+        assert client.post("/api/github/accounts/nope/delete").status_code == 404
 
     def _client(self) -> TestClient:
         stack = StackMakers.make_stack(self.tmp_path)

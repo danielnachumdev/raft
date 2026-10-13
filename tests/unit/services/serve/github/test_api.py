@@ -77,7 +77,7 @@ class TestServeGithubApi(RaftTestCase):
         ).json()
         assert selected["login"] == "alice"
         assert store.active_usable().access_token == "tok-a"
-        gone = client.post(f"/api/github/accounts/{first.id}/logout").json()
+        gone = client.delete(f"/api/github/accounts/{first.id}").json()
         assert gone["login"] == "mock-operator"
         assert len(gone["accounts"]) == 1
 

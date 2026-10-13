@@ -105,7 +105,8 @@ class GithubAccountStore:
         self._write_ledger(ledger)
         return account
 
-    def logout(self, account_id: str) -> None:
+    def delete(self, account_id: str) -> None:
+        """Hard-remove one account (token + row) from the durable ledger."""
         ledger = self._load_ledger()
         before = ledger["accounts"]
         ledger["accounts"] = [a for a in before if a.id != account_id]
@@ -115,11 +116,11 @@ class GithubAccountStore:
             ledger["active_account_id"] = self._fallback_active(ledger["accounts"])
         self._write_ledger(ledger)
 
-    def logout_active(self) -> None:
+    def delete_active(self) -> None:
         active_id = self._load_ledger().get("active_account_id")
         if not active_id:
             return
-        self.logout(str(active_id))
+        self.delete(str(active_id))
 
     def mint_oauth_state(self) -> str:
         return secrets.token_urlsafe(24)
