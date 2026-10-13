@@ -2,12 +2,18 @@
 # SPA (src/spa) is tested/built once — not per Python version. Packaged assets
 # under src/raft/share/serve/spa/ are committed; unit/integration/e2e use those.
 # Order: Meta → Unit+Integration → E2E (SPA stays independent).
+#
+# CI cost / abuse controls (also set via gh API, not only this file):
+# - Fork PR workflows: approval_policy=all_external_contributors
+# - E2E job uses GitHub Environment "e2e" (required reviewer) before runners start
+# - CODEOWNERS + main branch protection for merge review
 name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -77,6 +83,8 @@ jobs:
     name: E2E (Py ${{ matrix.python-version }})
     needs: [test]
     runs-on: ubuntu-latest
+    # Requires a human Approve/Reject on Environment "e2e" before the matrix runs.
+    environment: e2e
     # Cap concurrency so five Py versions do not burst ECR Public pulls together.
     # Seed script retries absorb transient rate limits; cancel-in-progress drops stale runs.
     strategy:
