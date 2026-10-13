@@ -1,0 +1,3 @@
+# Default owner for all paths — required on PRs when branch protection
+# asks for code-owner review (see repo branch protection on main).
+* @danielnachumdev
