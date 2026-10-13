@@ -34,11 +34,11 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 raft = [
-    "share/compose.yaml",
-    "share/nginx/**/*",
-    "share/controller/**/*",
-    "share/serve/**/*",
-    "share/serve/mock-github/**/*",
+    "core/platform/share/compose.yaml",
+    "core/platform/share/nginx/**/*",
+    "core/platform/share/controller/**/*",
+    "core/platform/share/serve/**/*",
+    "core/platform/share/serve/mock-github/**/*",
 ]
 
 [tool.pytest.ini_options]
