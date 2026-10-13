@@ -1,55 +1,8 @@
-# Serve access control (IP/CIDR ACL)
+# Serve access control (IP/CIDR ACL) — retired
 
-`raft serve` can manage **whitelist** or **blacklist** rules for:
+> **Removed as an operator path.** Edge policy is the ordered firewall only.
+> See [`docs/serve-firewall.md`](serve-firewall.md).
 
-- **Gate (edge-wide)** — Settings → **Edge access** (`/settings/edge-access`)
-- **Per-App** — service detail → **Access control** (Host-routed HTTP Apps only)
+The flat gate / per-App allow/deny lists (`acl.gate`, `state/acl/apps/`, `/api/acl/*`, Settings legacy panel, service **Access control**) are no longer exposed.
 
-## Design (v1)
-
-| Decision | Choice |
-|----------|--------|
-| Enforcement | **Gate nginx** (`$remote_addr` is the real client; router sees the gate) |
-| Match | Client **IP / CIDR** only |
-| Modes | One mode per scope: `off` \| `whitelist` \| `blacklist` |
-| Host override | Active **App ACL replaces gate** for that Host; otherwise the Host inherits gate |
-| Persist | Gate → `~/.raft/settings.yaml` `acl.gate`; Apps → `~/.raft/state/acl/apps/<name>.json` |
-| Apply | `raft render` + **gate nginx reload** (not `gate recreate`) |
-| Deny UX | HTTP **403** + product `forbidden.html` |
-
-### Supported Apps
-
-- **Supported:** `expose: http` + `publicHost` (including TLS origin/acme and scaling Host servers).
-- **Out of scope / rejected with Fix CTA:** `stream`, `host`, `none`, worker Apps (no HTTP Host), and edge services other than configuring **gate** ACL.
-
-## Operator API
-
-| Method | Path | Role |
-|--------|------|------|
-| `GET`/`PUT`/`DELETE` | `/api/acl/gate` | Gate policy |
-| `GET`/`PUT`/`DELETE` | `/api/acl/apps/{name}` | Per-App policy |
-| `GET` | `/api/acl/apps/{name}/meta` | Eligibility for the SPA |
-
-Example gate body:
-
-```json
-{
-  "mode": "whitelist",
-  "entries": [
-    { "id": "lab", "cidr": "192.0.2.0/24", "comment": "TEST-NET" }
-  ]
-}
-```
-
-## Settings sketch
-
-```yaml
-# ~/.raft/settings.yaml
-acl:
-  gate:
-    mode: whitelist          # off | whitelist | blacklist
-    entries:
-      - id: lab
-        cidr: 192.0.2.0/24
-        comment: TEST-NET
-```
+If leftover `#195` data remains on disk and no `state/firewall/rules.yaml` exists yet, `GET /api/firewall` still shows an in-memory migration (`source: acl-v1-migrated`) until Save. Render always uses firewall includes.

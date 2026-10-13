@@ -1,35 +1,24 @@
-"""Coverage for ACL edge paths (validation, eligibility, writers)."""
+"""Coverage for leftover ACL helpers (migrate/clear/nginx text only)."""
 
 import os
-from unittest.mock import MagicMock
 
 import pytest
-from fastapi.testclient import TestClient
 
 from raft.core.core.config.settings.strategies.acl import AclSettingsParser
 from raft.core.core.config.settings.types import EdgeConfig
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.acl_policy import AclPolicy
-from raft.core.core.models.app import App
 from raft.core.core.models.app_document import AppDocument
 from raft.core.core.models.registry import AppRegistry
 from raft.core.core.models.state.acl_store import AppAclStore
-from raft.core.core.models.stack import load_stack
 from raft.core.lifecycle.render.acl.effective import AclEffective
 from raft.core.lifecycle.render.acl.http_gate_host import HttpGateHost
 from raft.core.lifecycle.render.acl.inc_writer import AclIncWriter
 from raft.core.lifecycle.render.acl.nginx_text import AclNginxText
-from raft.core.observe.ops.status.models import StatusSnapshot
-from raft.services.serve.acl.api import ServeAclApi
-from raft.services.serve.acl.apply import ServeAclService
-from raft.services.serve.acl.eligibility import AclEligibility
-from raft.services.serve.acl.settings_write import GateAclSettingsWriter
-from raft.services.serve.http.app import ServeAppFactory
 from tests.unit.base import AppliedInventory, RaftTestCase, StackMakers
-from tests.unit.core.observe.ops.status import fixtures as status_fx
 
 
-class TestAclCoverage(RaftTestCase):
+class TestAclHelpersCoverage(RaftTestCase):
     def test_settings_parser_rejects_non_mapping(self) -> None:
         with pytest.raises(OperatorError, match="acl must be a mapping"):
             AclSettingsParser().parse([])
@@ -45,25 +34,56 @@ class TestAclCoverage(RaftTestCase):
 
     def test_store_list_and_corrupt_json(self) -> None:
         store = AppAclStore(self.tmp_path)
-        store.save("demo-api", AclPolicy())
-        assert store.list_names() == []
+        assert store.load("missing").mode == "off"
+        store.save("demo-api", self._lab_policy())
+        assert "demo-api" in store.list_names()
+        store.delete("demo-api")
         path = store.path_for("broken")
         store.ensure_dirs()
         path.write_text("{not-json", encoding="utf-8")
         assert store.load("broken").mode == "off"
         store.delete("missing")
 
-    def test_nginx_inactive_and_prune(self) -> None:
+    def test_inactive_includes(self) -> None:
         assert AclNginxText.location_rules(AclPolicy()) == ""
         (self.tmp_path / "settings.yaml").write_text("edge: {}\n", encoding="utf-8")
+        empty = AclIncWriter(
+            self.tmp_path / "generated/nginx/gate-http", AclEffective(self.tmp_path)
+        )
+        assert empty.gate_include() == ""
+        assert empty.host_include("missing") == ""
+        assert AclEffective(self.tmp_path).host_policy("missing").mode == "off"
+
+    def test_nginx_write_prune_and_host(self) -> None:
+        (self.tmp_path / "settings.yaml").write_text(
+            "edge: {}\n"
+            "acl:\n  gate:\n    mode: blacklist\n"
+            "    entries:\n      - {id: bad, cidr: 198.51.100.10}\n",
+            encoding="utf-8",
+        )
         writer = AclIncWriter(
             self.tmp_path / "generated/nginx/gate-http", AclEffective(self.tmp_path)
         )
         writer.write_all([])
+        assert writer.gate_include()
         stale = self.tmp_path / "generated/nginx/gate-http/acl/stale.inc"
         stale.write_text("x", encoding="utf-8")
         writer.write_all([])
         assert not stale.exists()
+        self._assert_host_policy_include()
+
+    def _assert_host_policy_include(self) -> None:
+        AppAclStore(self.tmp_path).save("demo-api", self._lab_policy())
+        AppliedInventory.write_applied_app(
+            self.tmp_path, "demo-api", public_host="demo-api.test"
+        )
+        writer = AclIncWriter(
+            self.tmp_path / "generated/nginx/gate-http", AclEffective(self.tmp_path)
+        )
+        app = StackMakers.make_app("demo-api", public_host="demo-api.test")
+        writer.write_all([app])
+        assert writer.host_include("demo-api")
+        assert AclEffective(self.tmp_path).needs_host_gate_server("demo-api")
 
     def test_http_gate_host_skips(self) -> None:
         self._write_demo_and_worker()
@@ -83,55 +103,29 @@ class TestAclCoverage(RaftTestCase):
             == []
         )
 
-    def test_eligibility_missing_and_no_public_host(self) -> None:
-        AppliedInventory.write_applied_app(
-            self.tmp_path, "demo-api", public_host="demo-api.test"
-        )
-        elig = AclEligibility(load_stack(self.tmp_path))
-        assert elig.meta("missing")["supported"] is False
-        with pytest.raises(OperatorError, match="not applied"):
-            elig.require_app("missing")
-        self._assert_public_host_required()
-
-    def test_settings_write_clear_and_errors(self) -> None:
-        writer = GateAclSettingsWriter(self.tmp_path)
-        path = self.tmp_path / "settings.yaml"
-        path.unlink()
-        assert writer.put({"mode": "off", "entries": []})["mode"] == "off"
-        assert writer.get_public()["mode"] == "off"
-        assert writer.clear()["mode"] == "off"
-        self._assert_settings_write_errors(writer, path)
-
     def test_store_write_cleanup_on_replace_failure(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         store = AppAclStore(self.tmp_path)
         store.ensure_dirs()
-
-        def boom(*_args, **_kwargs):
-            raise OSError("replace failed")
-
-        monkeypatch.setattr(os, "replace", boom)
+        monkeypatch.setattr(os, "replace", self._boom_replace)
         with pytest.raises(OSError, match="replace failed"):
-            store.save(
-                "demo-api",
-                AclPolicy.from_mapping(
-                    {
-                        "mode": "whitelist",
-                        "entries": [{"id": "lab", "cidr": "192.0.2.0/24"}],
-                    },
-                    path="t",
-                ),
-            )
+            store.save("demo-api", self._lab_policy())
         assert list((self.tmp_path / "state/acl/apps").glob("*.tmp")) == []
 
-    def test_api_operator_errors(self) -> None:
-        client = self._acl_client_with_gate_clear_error()
-        bad = client.put("/api/acl/gate", json={"mode": "whitelist", "entries": []})
-        assert bad.status_code == 400
-        assert client.delete("/api/acl/gate").status_code == 400
-        assert client.get("/api/acl/apps/missing").status_code == 400
-        assert client.delete("/api/acl/apps/missing").status_code == 400
+    @staticmethod
+    def _boom_replace(*_args, **_kwargs):
+        raise OSError("replace failed")
+
+    @staticmethod
+    def _lab_policy() -> AclPolicy:
+        return AclPolicy.from_mapping(
+            {
+                "mode": "whitelist",
+                "entries": [{"id": "lab", "cidr": "192.0.2.0/24"}],
+            },
+            path="t",
+        )
 
     def _assert_entry_shape_errors(self) -> None:
         with pytest.raises(OperatorError, match="must be a mapping"):
@@ -168,49 +162,3 @@ class TestAclCoverage(RaftTestCase):
             AppRegistry(self.tmp_path).path_for(name), expect_name=name
         )
         return app, spec
-
-    def _assert_public_host_required(self) -> None:
-        _, spec = AppDocument.load(
-            AppRegistry(self.tmp_path).path_for("demo-api"), expect_name="demo-api"
-        )
-        bare = App(
-            name="demo-api",
-            public_host="",
-            source="local",
-            path="apps/demo-api",
-            repo=None,
-            ref="main",
-            image=None,
-        )
-        with pytest.raises(OperatorError, match="publicHost"):
-            AclEligibility._require_http_host(bare, spec)
-        assert "expose: http" in AclEligibility._fix_line("no Fix line")
-
-    def _assert_settings_write_errors(
-        self, writer: GateAclSettingsWriter, path
-    ) -> None:
-        path.write_text("- not a mapping\n", encoding="utf-8")
-        with pytest.raises(OperatorError, match="YAML mapping"):
-            writer.put({"mode": "off", "entries": []})
-        path.write_text("edge: {\n", encoding="utf-8")
-        with pytest.raises(OperatorError, match="cannot read"):
-            writer.put({"mode": "off", "entries": []})
-
-    def _acl_client_with_gate_clear_error(self) -> TestClient:
-        (self.tmp_path / "settings.yaml").write_text(
-            "edge: {http: 80}\n", encoding="utf-8"
-        )
-        AppliedInventory.write_applied_app(
-            self.tmp_path, "demo-api", public_host="demo-api.test"
-        )
-        stack = load_stack(self.tmp_path)
-        status = MagicMock()
-        status.collect.return_value = StatusSnapshot(
-            host=status_fx.empty_host_status(), containers=()
-        )
-        service = ServeAclService(stack, orchestrator=MagicMock())
-        service.gate_clear = MagicMock(  # type: ignore[method-assign]
-            side_effect=OperatorError("boom\nFix: retry", has_fix=False)
-        )
-        api = ServeAclApi(stack, service=service)
-        return TestClient(ServeAppFactory(stack, status=status, acl=api).create())

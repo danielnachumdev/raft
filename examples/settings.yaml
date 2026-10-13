@@ -172,16 +172,8 @@ edge:
 #         # timeoutSeconds: 10
 
 # ---------------------------------------------------------------------------
-# acl — gate-wide client IP/CIDR access control (raft serve Edge access).
-# Per-App ACL lives under state/acl/apps/<name>.json (not here).
-# Changes apply via render + gate nginx reload (not gate recreate).
-# See docs/serve-acl.md.
+# Edge firewall is ordered rules under state/firewall/rules.yaml (raft serve
+# Settings → Firewall). Not configured here. See docs/serve-firewall.md.
+# Legacy acl.gate / state/acl/apps are retired (read only for one-time migrate).
 # ---------------------------------------------------------------------------
-# acl:
-#   gate:
-#     mode: whitelist            # off | whitelist | blacklist
-#     entries:
-#       - id: lab
-#         cidr: 192.0.2.0/24
-#         comment: TEST-NET
 

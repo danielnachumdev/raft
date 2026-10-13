@@ -1,8 +1,8 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Dashboard } from "./Dashboard";
-import { GateAclSettingsPage } from "../acl/GateAclSettingsPage";
 import { AddServicePage } from "../deploy/AddServicePage";
 import { DeployPage } from "../deploy/DeployPage";
+import { FirewallSettingsPage } from "../firewall/FirewallSettingsPage";
 import { NotificationsSettingsPage } from "../notifications/NotificationsSettingsPage";
 import { ServicePage } from "../service/ServicePage";
 import { ToastHost } from "../chrome/ToastHost";
@@ -18,7 +18,7 @@ export function App() {
           path="/settings/notifications"
           element={<NotificationsSettingsPage />}
         />
-        <Route path="/settings/edge-access" element={<GateAclSettingsPage />} />
+        <Route path="/settings/edge-access" element={<FirewallSettingsPage />} />
         <Route path="/service/:service" element={<ServicePage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

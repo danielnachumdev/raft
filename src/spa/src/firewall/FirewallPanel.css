@@ -1,0 +1,168 @@
+.fw-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.fw-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.fw-dirty {
+  color: var(--warn, #b45309);
+  font-size: 0.9rem;
+}
+
+.fw-table-wrap {
+  overflow-x: auto;
+}
+
+.fw-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.fw-table th,
+.fw-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 0.55rem 0.45rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.fw-table th {
+  font-weight: 600;
+  color: var(--muted, inherit);
+}
+
+.fw-col-grip {
+  width: 1.75rem;
+  padding-right: 0.15rem;
+}
+
+.fw-grip {
+  display: inline-flex;
+  color: var(--muted, inherit);
+  cursor: grab;
+  user-select: none;
+}
+
+.fw-row-dragging {
+  opacity: 0.55;
+}
+
+.fw-row-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.25rem;
+}
+
+.fw-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.fw-icon-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.fw-icon-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.fw-icon-danger {
+  color: var(--danger);
+  border-color: var(--bad-border);
+}
+
+.fw-icon-danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.fw-import-area {
+  width: 100%;
+  min-height: 8rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+}
+
+.fw-import-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  justify-content: flex-end;
+}
+
+.fw-entry-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.fw-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fw-recs {
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  background: var(--panel);
+}
+
+.fw-recs h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+}
+
+.fw-rec-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.fw-rec-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.fw-rec-preview {
+  display: inline-block;
+  margin-top: 0.35rem;
+  font-size: 0.85em;
+}
+
+.fw-rec-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}

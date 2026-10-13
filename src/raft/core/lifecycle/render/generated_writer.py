@@ -8,10 +8,10 @@ from raft.core.core.config.paths import GENERATED_DIRNAME
 from raft.core.core.config.settings.types import EdgeConfig
 from raft.core.core.models.manifest import AppSpec
 from raft.core.core.models.stack import Stack
-from .acl import AclEffective, AclIncWriter
 from .acl.proxy_location import AclProxyLocation
 from .compose_apps import ComposeAppsYaml
 from .edge.fragments import EdgeFragments
+from .firewall.policy_includes import PolicyIncludes
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +23,8 @@ class GeneratedWriter:
         self._stack = stack
         self._edge = edge
         self._root = stack.root / GENERATED_DIRNAME
-        self._acl = AclEffective(stack.root)
-        self._acl_incs = AclIncWriter(self._root / "nginx" / "gate-http", self._acl)
+        gate_http = self._root / "nginx" / "gate-http"
+        self._policy = PolicyIncludes(stack.root, edge, gate_http)
 
     def write_all(
         self, resolved: dict[str, AppSpec], fragments: EdgeFragments
@@ -82,7 +82,10 @@ class GeneratedWriter:
             parts.append("\n")
         parts.extend(self._gate_http_servers())
         (directory / "listeners.conf").write_text("".join(parts), encoding="utf-8")
-        self._prune_conf_dir(directory, keep={"listeners.conf"}, label="gate-http")
+        keep = {"listeners.conf"}
+        if (directory / "firewall-maps.conf").is_file():
+            keep.add("firewall-maps.conf")
+        self._prune_conf_dir(directory, keep=keep, label="gate-http")
 
     def _gate_http_servers(self) -> list[str]:
         parts: list[str] = []
@@ -93,7 +96,8 @@ class GeneratedWriter:
         return parts
 
     def _default_http_server(self) -> str:
-        acl = self._acl_incs.gate_include()
+        assert self._edge.http is not None
+        acl = self._policy.gate_include(self._edge.http)
         head = (
             "server {\n"
             f"    listen {self._edge.http} default_server;\n"

@@ -27,6 +27,13 @@ class AclIncWriter:
             keep.add(rel)
         self._prune(keep)
 
+    def clear_all(self) -> None:
+        """Remove generated ACL includes (ordered firewall adopted)."""
+        if not self._dir.is_dir():
+            return
+        for path in self._dir.glob("*.inc"):
+            path.unlink()
+
     @staticmethod
     def app_rel(name: str) -> str:
         safe = name.replace("/", "_").replace("\\", "_")

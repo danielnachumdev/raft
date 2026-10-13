@@ -12,11 +12,11 @@ from raft.core.core.models.app import App
 from raft.core.core.models.manifest import AppSpec
 from raft.core.core.models.ports import PortSpec
 from raft.core.core.models.state.scaling_store import ScalingStore
-from .acl import AclEffective, AclIncWriter
 from .acl.http_gate_host import HttpGateHost
 from .edge.fragments import EdgeFragments
 from .edge.handlers import EDGE_HANDLERS
 from .edge.tls import TlsEdge
+from .firewall.policy_includes import PolicyIncludes
 from .scaling_gate import ScalingGate
 
 
@@ -30,28 +30,34 @@ class FragmentCollector:
         self._scaling = ScalingGate()
         self._redirect = AcmeHttpRedirect()
         self._store = ScalingStore(root)
-        self._acl = AclEffective(root)
         self._http_acl_host = HttpGateHost()
-        self._acl_writer: Optional[AclIncWriter] = None
+        self._policy: Optional[PolicyIncludes] = None
 
     def collect(self, apps: list[App], resolved: dict[str, AppSpec]) -> EdgeFragments:
         gate_http_dir = self._root / "generated" / "nginx" / "gate-http"
-        self._acl_writer = AclIncWriter(gate_http_dir, self._acl)
-        self._acl_writer.write_all(apps)
+        self._policy = PolicyIncludes(self._root, self._edge, gate_http_dir)
+        self._policy.write_all(apps)
         fragments = EdgeFragments()
         for app in apps:
             fragments.merge(self._for_app(app, resolved[app.name]))
         return fragments
 
     def _for_app(self, app: App, app_spec: AppSpec) -> EdgeFragments:
-        acl_include = self._host_acl_include(app.name)
+        http_inc = self._include(app.name, self._edge.http)
+        https_inc = self._include(app.name, self._edge.https)
         frag = EdgeFragments()
-        frag.merge(self._tls_fragment(app, app_spec, acl_include=acl_include))
+        frag.merge(self._tls_fragment(app, app_spec, acl_include=https_inc))
         absent = self._store.is_scaled_to_zero(app.name)
         frag.merge(self._port_fragments(app, app_spec, absent=absent))
-        frag.merge(self._scaling_and_redirect(app, app_spec, acl_include))
-        frag.merge(self._plain_http_acl_host(app, app_spec, acl_include=acl_include))
+        frag.merge(self._scaling_and_redirect(app, app_spec, http_inc))
+        frag.merge(self._plain_http_acl_host(app, app_spec, acl_include=http_inc))
         return frag
+
+    def _include(self, name: str, port: Optional[int]) -> str:
+        assert self._policy is not None
+        if port is None:
+            return ""
+        return self._policy.host_include(name, port)
 
     def _scaling_and_redirect(
         self, app: App, app_spec: AppSpec, acl_include: str
@@ -66,7 +72,8 @@ class FragmentCollector:
     def _plain_http_acl_host(
         self, app: App, app_spec: AppSpec, *, acl_include: str
     ) -> EdgeFragments:
-        if not self._acl.needs_host_gate_server(app.name):
+        assert self._policy is not None
+        if not self._policy.needs_host_gate_server(app.name):
             return EdgeFragments()
         if app_spec.scaling is not None:
             return EdgeFragments()
@@ -80,10 +87,6 @@ class FragmentCollector:
         if app_spec.tls != "acme":
             return False
         return AcmePaths(self._root).live_material_present(app.name)
-
-    def _host_acl_include(self, name: str) -> str:
-        assert self._acl_writer is not None
-        return self._acl_writer.host_include(name)
 
     def _port_fragments(
         self, app: App, app_spec: AppSpec, *, absent: bool
