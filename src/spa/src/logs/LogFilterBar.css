@@ -1,9 +1,11 @@
 .logs-filter {
   display: flex;
   align-items: flex-start;
-  gap: 0.65rem;
+  gap: 0.55rem 0.65rem;
   flex-wrap: wrap;
   margin: 0.15rem 0 0.55rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .logs-filter-label {
@@ -78,4 +80,18 @@
   font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
   align-self: center;
+}
+
+@media (max-width: 519px) {
+  .logs-filter-op {
+    flex: 1 1 100%;
+  }
+
+  .logs-filter-values {
+    flex: 1 1 100%;
+  }
+
+  .logs-match-count {
+    width: 100%;
+  }
 }

@@ -84,6 +84,8 @@
 .logs-msg {
   flex: 1 1 12rem;
   min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .logs-mark {

@@ -46,7 +46,9 @@
 .http-requests-scroll {
   margin-top: 0.75rem;
   max-height: 22rem;
+  max-width: 100%;
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--line);
   border-radius: 0.4rem;
 }
@@ -92,6 +94,22 @@
 @media (max-width: 719px) {
   .http-requests-table {
     min-width: 36rem;
+  }
+
+  .http-requests-path,
+  .http-requests-ua {
+    max-width: 10rem;
+  }
+}
+
+@media (max-width: 519px) {
+  .http-requests-controls {
+    width: 100%;
+  }
+
+  .http-requests-table {
+    min-width: 32rem;
+    font-size: 0.75rem;
   }
 }
 

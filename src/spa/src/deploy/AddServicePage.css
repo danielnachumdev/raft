@@ -13,6 +13,8 @@
   background: var(--input);
   color: inherit;
   text-decoration: none;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .add-service-option:hover {
@@ -27,10 +29,22 @@
 .add-service-option .muted {
   display: block;
   font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+
+.add-service-option > span:last-child {
+  min-width: 0;
 }
 
 .github-mark {
   flex: 0 0 auto;
   margin-top: 0.1rem;
   color: var(--text);
+}
+
+@media (max-width: 519px) {
+  .add-service-option {
+    padding: 0.75rem 0.8rem;
+    gap: 0.65rem;
+  }
 }

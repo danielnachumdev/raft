@@ -8,6 +8,7 @@
   letter-spacing: 0.04em;
   cursor: pointer;
   user-select: none;
+  white-space: nowrap;
 }
 
 .logs-follow input {
@@ -23,6 +24,7 @@
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  min-width: 0;
 }
 
 .logs-tail select {
@@ -34,4 +36,5 @@
   background: var(--input);
   border-radius: 0.35rem;
   padding: 0.3rem 0.45rem;
+  max-width: 100%;
 }

@@ -19,11 +19,14 @@
   align-items: center;
   gap: 0.35rem;
   max-width: 100%;
+  min-width: 0;
   vertical-align: middle;
 }
 
 .oauth-setup-value code {
   word-break: break-all;
+  overflow-wrap: anywhere;
+  max-width: 100%;
 }
 
 .oauth-copy {
@@ -46,8 +49,22 @@
   margin-top: 0.75rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--line);
+  min-width: 0;
+}
+
+.oauth-setup-form .deploy-label input,
+.oauth-setup-form .deploy-label select {
+  width: 100%;
+  max-width: 100%;
 }
 
 .oauth-setup-configured .refresh {
   margin-top: 0.5rem;
+}
+
+@media (max-width: 519px) {
+  .oauth-setup-configured .refresh,
+  .oauth-setup-form .refresh {
+    width: 100%;
+  }
 }
