@@ -1,12 +1,3 @@
-# Test matrix: Python 3.9+ (runtime config is YAML via PyYAML; no tomllib).
-# SPA (src/spa) is tested/built once — not per Python version. Packaged assets
-# under src/raft/share/serve/spa/ are committed; unit/integration/e2e use those.
-# Order: Meta → Unit+Integration → E2E (SPA stays independent).
-#
-# CI cost / abuse controls (also set via gh API, not only this file):
-# - Fork PR workflows: approval_policy=all_external_contributors
-# - E2E Environment "e2e" (required reviewer) only for fork PRs; same-repo runs free
-# - CODEOWNERS + main branch protection for merge review
 name: CI
 
 on:
@@ -80,8 +71,6 @@ jobs:
         run: uv run pytest tests/integration -q --no-cov
 
   e2e:
-    # Single lowest supported runtime (3.9). Unit+Integration still cover 3.9–3.13.
-    # Fork PRs: Environment "e2e" required-reviewer gate. Same-repo / push / dispatch: no env.
     name: E2E (Py 3.9)
     needs: [test]
     runs-on: ubuntu-latest
@@ -97,6 +86,5 @@ jobs:
         run: bash "${GITHUB_WORKSPACE}/.github/workflows/ci_seed_docker_images.sh"
       - name: E2E Compose tests
         env:
-          # Fresh-install image: uv tool install from this SHA (default in Dockerfile is main).
           RAFT_E2E_REF: ${{ github.sha }}
         run: uv run pytest tests/e2e -m e2e -q --tb=short --no-cov -n0
