@@ -15,7 +15,7 @@ Implementation guide for coding agents changing **raft**. Operator pitch and fea
 | Human samples? | [`examples/`](examples/) + docs under [`docs/`](docs/). |
 | Package layout convention? | Class-first, ~200-line files, ≤20-line methods; see **Code style** and the writing-python skill. |
 
-**CI order:** Meta → Unit+Integration → E2E (SPA job parallel). Fresh-install e2e builds a Docker image that `uv tool install`s from git (`RAFT_E2E_REF`, default `main`; CI passes `github.sha`).
+**CI order:** Meta → Unit+Integration (Py 3.9–3.13) → E2E **Py 3.9 only** (SPA job parallel). Fresh-install e2e builds a Docker image that `uv tool install`s from git (`RAFT_E2E_REF`, default `main`; CI passes `github.sha`).
 
 ---
 

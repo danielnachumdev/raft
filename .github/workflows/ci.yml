@@ -80,28 +80,17 @@ jobs:
         run: uv run pytest tests/integration -q --no-cov
 
   e2e:
-    name: E2E (Py ${{ matrix.python-version }})
+    # Single lowest supported runtime (3.9). Unit+Integration still cover 3.9–3.13.
+    # Requires Approve/Reject on Environment "e2e" before the job runs.
+    name: E2E (Py 3.9)
     needs: [test]
     runs-on: ubuntu-latest
-    # Requires a human Approve/Reject on Environment "e2e" before the matrix runs.
     environment: e2e
-    # Cap concurrency so five Py versions do not burst ECR Public pulls together.
-    # Seed script retries absorb transient rate limits; cancel-in-progress drops stale runs.
-    strategy:
-      fail-fast: false
-      max-parallel: 2
-      matrix:
-        python-version:
-          - "3.9"
-          - "3.10"
-          - "3.11"
-          - "3.12"
-          - "3.13"
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.0.0
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.9"
       - name: Install package + test deps
         run: uv sync --extra dev
       - name: Seed images (ECR Public + local http-echo)
