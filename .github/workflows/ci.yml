@@ -5,7 +5,7 @@
 #
 # CI cost / abuse controls (also set via gh API, not only this file):
 # - Fork PR workflows: approval_policy=all_external_contributors
-# - E2E job uses GitHub Environment "e2e" (required reviewer) before runners start
+# - E2E Environment "e2e" (required reviewer) only for fork PRs; same-repo runs free
 # - CODEOWNERS + main branch protection for merge review
 name: CI
 
@@ -81,11 +81,11 @@ jobs:
 
   e2e:
     # Single lowest supported runtime (3.9). Unit+Integration still cover 3.9–3.13.
-    # Requires Approve/Reject on Environment "e2e" before the job runs.
+    # Fork PRs: Environment "e2e" required-reviewer gate. Same-repo / push / dispatch: no env.
     name: E2E (Py 3.9)
     needs: [test]
     runs-on: ubuntu-latest
-    environment: e2e
+    environment: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork && 'e2e' || fromJSON('null') }}
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.0.0
