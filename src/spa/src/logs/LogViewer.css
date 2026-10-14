@@ -1,8 +1,13 @@
 .logs-controls {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.55rem 0.65rem;
   flex-wrap: wrap;
+  min-width: 0;
+}
+
+.logs-panel .panel-head {
+  min-width: 0;
 }
 
 .logs-loading {
@@ -12,12 +17,14 @@
   color: var(--muted);
   font-size: 0.9rem;
   margin: 0.25rem 0 0.5rem;
+  flex-wrap: wrap;
 }
 
 .logs-view {
   margin: 0;
   max-height: 28rem;
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 0.55rem 0.65rem;
   border: 1px solid var(--line);
   border-radius: 0.4rem;
@@ -26,6 +33,7 @@
   font-family: var(--font-mono);
   font-size: 0.78rem;
   line-height: 1.5;
+  max-width: 100%;
 }
 
 .logs-panel-placeholder {
@@ -40,7 +48,7 @@
   display: flex;
   align-items: stretch;
   justify-content: center;
-  padding: 1rem;
+  padding: 0.75rem;
   background: var(--overlay-strong);
 }
 
@@ -48,13 +56,16 @@
   display: flex;
   flex-direction: column;
   width: min(96vw, 1200px);
-  height: min(94vh, 920px);
+  height: min(94dvh, 94vh, 920px);
+  max-width: 100%;
   margin: auto;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 0.55rem;
-  padding: 1rem 1.1rem 0.85rem;
+  padding: 0.85rem 0.95rem 0.75rem;
   box-shadow: 0 12px 40px var(--shadow-strong);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .logs-overlay-panel .logs-view {
@@ -68,4 +79,26 @@
 .logs-overlay-hint {
   margin: 0.55rem 0 0;
   font-size: 0.78rem;
+}
+
+@media (max-width: 519px) {
+  .logs-overlay {
+    padding: 0.35rem;
+  }
+
+  .logs-overlay-panel {
+    width: 100%;
+    height: min(98dvh, 98vh);
+    border-radius: 0.4rem;
+    padding: 0.7rem 0.7rem 0.6rem;
+  }
+
+  .logs-overlay-panel .logs-view {
+    font-size: 0.82rem;
+  }
+
+  .logs-view {
+    max-height: 18rem;
+    padding: 0.45rem 0.5rem;
+  }
 }

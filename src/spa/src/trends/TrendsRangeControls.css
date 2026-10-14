@@ -4,6 +4,21 @@
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.trends-range .trends-field,
+.trends-range-custom .trends-field,
+.trends-range-absolute .trends-field {
+  min-width: 0;
+  width: 100%;
+}
+
+.trends-range input,
+.trends-range select {
+  max-width: 100%;
+  min-width: 0;
 }
 
 .trends-range-hint,
@@ -13,8 +28,18 @@
   text-transform: none;
   letter-spacing: normal;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .trends-range-limit {
   color: var(--warn, #9a3412);
+}
+
+@media (min-width: 520px) {
+  .trends-range-custom,
+  .trends-range-absolute {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
 }

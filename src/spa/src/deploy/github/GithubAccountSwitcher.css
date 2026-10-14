@@ -7,9 +7,11 @@
 
 .gh-account-item {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.35rem 0.5rem;
   border-bottom: 1px solid var(--line);
+  min-width: 0;
 }
 
 .gh-account-item:last-child {
@@ -18,15 +20,18 @@
 
 .gh-account-meta {
   display: flex;
-  flex: 1;
+  flex: 1 1 8rem;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem;
   padding: 0.55rem 0.65rem;
+  min-width: 0;
 }
 
 .gh-account-login {
   font-weight: 600;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .gh-account-tag {

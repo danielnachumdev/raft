@@ -24,6 +24,7 @@
 .trends-main {
   flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
 }
 
 .trends-loading {
@@ -40,6 +41,10 @@
   margin: 0;
 }
 
+.trends .panel-head {
+  min-width: 0;
+}
+
 @media (max-width: 719px) {
   .trends-layout {
     flex-direction: column;
@@ -52,5 +57,9 @@
 
   .trends-services-list {
     max-height: 10rem;
+  }
+
+  .trends-loading {
+    min-height: 12rem;
   }
 }
