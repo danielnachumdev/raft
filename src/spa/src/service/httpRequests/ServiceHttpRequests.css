@@ -190,3 +190,32 @@
   background: var(--muted-bg);
   color: var(--muted);
 }
+
+.http-requests-fw {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.http-requests-fw-btn {
+  margin: 0;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 0.3rem;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.http-requests-fw-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.http-requests-fw-btn.danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}

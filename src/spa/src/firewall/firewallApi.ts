@@ -130,6 +130,60 @@ export async function dismissFirewallRecommendation(
   return body.recommendations;
 }
 
+export type InspectionFirewallDraft = {
+  cidr: string;
+  rule: FirewallRule;
+  matches: FirewallRule[];
+  insert: "prepend";
+};
+
+export async function fetchInspectionFirewallDraft(opts: {
+  clientIp: string;
+  service?: string;
+  action?: FirewallAction;
+}): Promise<InspectionFirewallDraft> {
+  const params = new URLSearchParams({ client_ip: opts.clientIp });
+  if (opts.service) params.set("service", opts.service);
+  if (opts.action) params.set("action", opts.action);
+  return jsonRequest(
+    `/api/firewall/from-inspection?${params}`,
+    undefined,
+    "firewall inspection draft",
+  );
+}
+
+export async function applyInspectionFirewallRule(
+  rule: FirewallRule,
+): Promise<FirewallDocument> {
+  return jsonRequest(
+    "/api/firewall/from-inspection",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rule }),
+    },
+    "apply inspection firewall rule",
+  );
+}
+
+export async function removeInspectionFirewallRule(opts: {
+  clientIp: string;
+  ruleId?: string;
+}): Promise<FirewallDocument> {
+  return jsonRequest(
+    "/api/firewall/from-inspection/remove",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_ip: opts.clientIp,
+        rule_id: opts.ruleId ?? "",
+      }),
+    },
+    "remove inspection firewall rule",
+  );
+}
+
 export function formatFirewallPort(port: FirewallPort): string {
   return port === "any" || port === 0 ? "any" : String(port);
 }

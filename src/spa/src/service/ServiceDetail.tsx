@@ -69,7 +69,11 @@ export function ServiceDetail(props: {
       </section>
 
       <ServiceRuntimeTrends service={c.service} />
-      <ServiceHttpRequests service={c.service} containerStatus={c.status} />
+      <ServiceHttpRequests
+        service={c.service}
+        appName={c.app}
+        containerStatus={c.status}
+      />
 
       <section className="panel">
         <h2>Host context</h2>

@@ -13,6 +13,8 @@ const LIMIT_CHOICES = [50, 100, 200] as const;
 /** Recent per-request HTTP rows for Host-routed Apps (not Trends aggregates). */
 export function ServiceHttpRequests(props: {
   service: string;
+  /** App name for firewall service prefill (Host-routed). */
+  appName?: string | null;
   containerStatus: string;
 }) {
   const [limit, setLimit] = useState<number>(DEFAULT_HTTP_REQUESTS_LIMIT);
@@ -85,7 +87,12 @@ export function ServiceHttpRequests(props: {
       {busy && !data ? (
         <p className="http-requests-empty">Loading requests…</p>
       ) : null}
-      {data && data.eligible ? <HttpRequestsTable rows={data.requests} /> : null}
+      {data && data.eligible ? (
+        <HttpRequestsTable
+          rows={data.requests}
+          appName={props.appName ?? null}
+        />
+      ) : null}
     </section>
   );
 }
