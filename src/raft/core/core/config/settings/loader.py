@@ -16,6 +16,7 @@ from .strategies import (
     LoggingSettingsParser,
     MetricsSettingsParser,
     NotificationsSettingsParser,
+    ServiceLogsSettingsParser,
 )
 from .types import RaftConfig
 
@@ -28,6 +29,7 @@ class SettingsLoader:
         self._edge = EdgeSettingsParser()
         self._healing = HealingSettingsParser()
         self._metrics = MetricsSettingsParser()
+        self._service_logs = ServiceLogsSettingsParser()
         self._acme = AcmeSettingsParser()
         self._github = GithubSettingsParser()
         self._notifications = NotificationsSettingsParser()
@@ -51,6 +53,7 @@ class SettingsLoader:
             edge=self._edge.parse(data.get("edge")),
             healing=self._healing.parse(data.get("healing")),
             metrics=self._metrics.parse(data.get("metrics")),
+            service_logs=self._service_logs.parse(data.get("serviceLogs")),
             acme=self._acme.parse(data.get("acme")),
             github=self._github.parse(data.get("github")),
             notifications=self._notifications.parse(data.get("notifications")),

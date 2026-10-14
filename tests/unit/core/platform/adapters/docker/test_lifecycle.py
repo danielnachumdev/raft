@@ -46,14 +46,18 @@ class TestDockerLifecycle(DockerTestCase):
 
     def test_stop_stack_clears_labeled_leftovers(self) -> None:
         self.shell.compose.return_value = self.ok()
-        # stop_stack removes each app tmp container before labeled cleanup.
-        self.shell.docker.side_effect = [
-            self.ok(""),  # rm -f app tmp
-            self.ok("cid1\n"),  # ps -aq labeled
-            self.ok("/raft-orphan\n"),  # inspect name
-            self.ok(""),  # rm -f leftover
-        ]
-        self.docker.stop_stack()
+
+        def docker_cmd(*args, **_kwargs):
+            # Drain hooks + tmp rm may call docker logs/rm first; labeled cleanup last.
+            if args[:2] == ("ps", "-aq"):
+                return self.ok("cid1\n")
+            if len(args) >= 2 and args[0] == "inspect":
+                return self.ok("/raft-orphan\n")
+            return self.ok("")
+
+        self.shell.docker.side_effect = docker_cmd
+        with patch("raft.core.observe.ops.logs.hooks.ServiceLogsHooks.before_stack_down"):
+            self.docker.stop_stack()
         labeled_rms = [
             call
             for call in self.shell.docker.call_args_list

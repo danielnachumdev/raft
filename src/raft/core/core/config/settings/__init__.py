@@ -10,6 +10,7 @@ from .strategies import (
     LoggingSettingsParser,
     MetricsSettingsParser,
     NotificationsSettingsParser,
+    ServiceLogsSettingsParser,
 )
 from .types import (
     CONFIG_FILENAME,
@@ -27,6 +28,10 @@ from .types import (
     DEFAULT_METRICS_RETENTION_MAX_AGE_DAYS,
     DEFAULT_METRICS_RETENTION_MAX_BYTES,
     DEFAULT_METRICS_TIMEOUT_SECONDS,
+    DEFAULT_SERVICE_LOGS_INTERVAL_SECONDS,
+    DEFAULT_SERVICE_LOGS_RETENTION_MAX_AGE_DAYS,
+    DEFAULT_SERVICE_LOGS_RETENTION_MAX_BYTES,
+    DEFAULT_SERVICE_LOGS_TIMEOUT_SECONDS,
     STREAM_PROTOCOLS,
     AcmeConfig,
     AclConfig,
@@ -40,6 +45,7 @@ from .types import (
     NotificationChannelConfig,
     NotificationsConfig,
     RaftConfig,
+    ServiceLogsConfig,
     default_config,
 )
 
@@ -59,6 +65,10 @@ __all__ = [
     "DEFAULT_METRICS_RETENTION_MAX_AGE_DAYS",
     "DEFAULT_METRICS_RETENTION_MAX_BYTES",
     "DEFAULT_METRICS_TIMEOUT_SECONDS",
+    "DEFAULT_SERVICE_LOGS_INTERVAL_SECONDS",
+    "DEFAULT_SERVICE_LOGS_RETENTION_MAX_AGE_DAYS",
+    "DEFAULT_SERVICE_LOGS_RETENTION_MAX_BYTES",
+    "DEFAULT_SERVICE_LOGS_TIMEOUT_SECONDS",
     "STREAM_PROTOCOLS",
     "AcmeConfig",
     "AcmeSettingsParser",
@@ -80,6 +90,8 @@ __all__ = [
     "NotificationsConfig",
     "NotificationsSettingsParser",
     "RaftConfig",
+    "ServiceLogsConfig",
+    "ServiceLogsSettingsParser",
     "SettingsLoader",
     "default_config",
     "load_config",

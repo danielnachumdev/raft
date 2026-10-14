@@ -47,6 +47,9 @@ HEALING_ERROR_CASES = [
     ("metrics:\n  flushSeconds: -1\n", "flushSeconds"),
     ("metrics:\n  retentionMaxAgeDays: 0\n", "retentionMaxAgeDays"),
     ("metrics:\n  retentionMaxBytes: abc\n", "retentionMaxBytes"),
+    ("serviceLogs: []\n", "serviceLogs must be a mapping"),
+    ("serviceLogs:\n  intervalSeconds: 0\n", "intervalSeconds"),
+    ("serviceLogs:\n  retentionMaxAgeDays: 0\n", "retentionMaxAgeDays"),
     ("logging:\n  retentionMaxAgeDays: 0\n", "retentionMaxAgeDays"),
     ("logging:\n  retentionMaxBytes: abc\n", "retentionMaxBytes"),
     ("acme: []\n", "acme must be a mapping"),
@@ -59,11 +62,19 @@ HEALING_ERROR_CASES = [
 class TestConfig(RaftTestCase):
     def test_default_config(self) -> None:
         cfg = default_config()
+        self._assert_logging_defaults(cfg)
+        self._assert_healing_metrics_defaults(cfg)
+        self._assert_service_logs_defaults(cfg)
+        self._assert_acme_defaults(cfg)
+
+    def _assert_logging_defaults(self, cfg) -> None:
         assert cfg.logging.dir == "logs"
         assert cfg.logging.file == "raft.log"
         assert cfg.logging.level == "INFO"
         assert cfg.logging.retention_max_age_days == 30
         assert cfg.logging.retention_max_bytes == 100 * 1024 * 1024
+
+    def _assert_healing_metrics_defaults(self, cfg) -> None:
         assert cfg.healing.enabled is False
         assert cfg.healing.fail_threshold == 3
         assert cfg.healing.max_restarts == 1
@@ -75,7 +86,13 @@ class TestConfig(RaftTestCase):
         assert cfg.metrics.flush_seconds == 60.0
         assert cfg.metrics.retention_max_age_days == 30
         assert cfg.metrics.retention_max_bytes == 100 * 1024 * 1024
-        self._assert_acme_defaults(cfg)
+
+    def _assert_service_logs_defaults(self, cfg) -> None:
+        assert cfg.service_logs.enabled is True
+        assert cfg.service_logs.interval_seconds == 5.0
+        assert cfg.service_logs.retention_max_age_days == 14
+        assert cfg.service_logs.retention_max_bytes == 50 * 1024 * 1024
+        assert cfg.service_logs.include_edge is True
 
     def _assert_acme_defaults(self, cfg) -> None:
         assert cfg.acme.email is None
@@ -103,6 +120,24 @@ class TestConfig(RaftTestCase):
         assert cfg.acme.email == "ops@example.com"
         assert cfg.acme.challenge == "http-01"
         assert cfg.acme.directory.startswith("https://acme-v02")
+
+    def test_load_service_logs_section(self) -> None:
+        self.write_home_settings(
+            "serviceLogs:\n"
+            "  enabled: false\n"
+            "  intervalSeconds: 8\n"
+            "  timeoutSeconds: 15\n"
+            "  retentionMaxAgeDays: 7\n"
+            "  retentionMaxBytes: 1024\n"
+            "  includeEdge: false\n"
+        )
+        cfg = load_config(self.tmp_path)
+        assert cfg.service_logs.enabled is False
+        assert cfg.service_logs.interval_seconds == 8
+        assert cfg.service_logs.timeout_seconds == 15
+        assert cfg.service_logs.retention_max_age_days == 7
+        assert cfg.service_logs.retention_max_bytes == 1024
+        assert cfg.service_logs.include_edge is False
 
     def test_load_healing_section(self) -> None:
         self.write_home_settings(HEALING_OK_YAML)

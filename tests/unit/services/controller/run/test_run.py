@@ -7,7 +7,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from raft.core.core.config.settings.types import HealingConfig, MetricsConfig, RaftConfig, default_config
+from raft.core.core.config.settings.types import (
+    HealingConfig,
+    MetricsConfig,
+    RaftConfig,
+    ServiceLogsConfig,
+    default_config,
+)
 from raft.services.controller import PrereqSmoke, main
 from raft.services.controller.engine.job import JobIds, QueuePolicy
 from raft.services.controller.jobs import ControllerJob
@@ -92,15 +98,17 @@ class TestControllerPrereq(ControllerTestCase):
 
     @staticmethod
     def _assert_core_jobs(orch: MagicMock) -> None:
-        assert orch.register.call_count == 2
+        assert orch.register.call_count == 3
         assert orch.append_side_tick.call_count == 2
         specs = [c.args[0] for c in orch.register.call_args_list]
         by_id = {s.job_id: s for s in specs}
         assert by_id[JobIds.HEAL].timeout_seconds == 120.0
         assert by_id[JobIds.HEAL].queue_policy == QueuePolicy.SKIP_IF_RUNNING
         assert by_id[JobIds.METRICS].timeout_seconds == 30.0
+        assert by_id[JobIds.SERVICE_LOGS].timeout_seconds == 30.0
         assert by_id[JobIds.HEAL].schedule.interval_seconds == 15.0
         assert by_id[JobIds.METRICS].schedule.interval_seconds == 60.0
+        assert by_id[JobIds.SERVICE_LOGS].schedule.interval_seconds == 5.0
 
     def test_loop_builds_default_orchestrator(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
@@ -115,7 +123,7 @@ class TestControllerPrereq(ControllerTestCase):
                 ControllerLoop(home, cfg, MagicMock(), scaler).run()
         assert orch_cls.call_count == 1
         assert orch.append_side_tick.call_count == 2
-        assert orch.register.call_count == 2
+        assert orch.register.call_count == 3
 
     def test_loop_passes_sleep_and_clock(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
@@ -166,13 +174,14 @@ class TestControllerPrereq(ControllerTestCase):
         jobs = ControllerLoop(
             home, RaftConfig(), MagicMock(), MagicMock()
         )._jobs(orch)
-        assert len(jobs) == 4
+        assert len(jobs) == 5
         assert all(isinstance(j, ControllerJob) for j in jobs)
 
     def test_log_startup_disabled(self, tmp_path: Path) -> None:
         cfg = RaftConfig(
             healing=HealingConfig(enabled=False),
             metrics=MetricsConfig(),
+            service_logs=ServiceLogsConfig(enabled=False),
         )
         ControllerLoop(
             self.raft_home(tmp_path), cfg, MagicMock(), MagicMock()
@@ -182,6 +191,7 @@ class TestControllerPrereq(ControllerTestCase):
         cfg = RaftConfig(
             healing=HealingConfig(enabled=True),
             metrics=MetricsConfig(),
+            service_logs=ServiceLogsConfig(enabled=True),
         )
         ControllerLoop(
             self.raft_home(tmp_path), cfg, MagicMock(), MagicMock()

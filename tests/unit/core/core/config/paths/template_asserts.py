@@ -44,6 +44,7 @@ class TemplateAsserts:
         assert "/var/run/docker.sock:/var/run/docker.sock" in compose
         assert ".:/raft:ro" in compose and "./state/locks:/raft/state/locks" in compose
         assert "./state/metrics:/raft/state/metrics" in compose
+        assert "./state/service-logs:/raft/state/service-logs" in compose
         assert "./state/events:/raft/state/events" in compose
         assert "./certs:/raft/certs" in compose
         assert "./state/acme:/raft/state/acme" in compose

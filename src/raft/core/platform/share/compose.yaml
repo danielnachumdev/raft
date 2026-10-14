@@ -83,6 +83,7 @@ services:
       - ./state/locks:/raft/state/locks
       - ./state/scaling:/raft/state/scaling
       - ./state/metrics:/raft/state/metrics
+      - ./state/service-logs:/raft/state/service-logs
       - ./state/events:/raft/state/events
       - ./certs:/raft/certs
       - ./state/acme:/raft/state/acme

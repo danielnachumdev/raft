@@ -11,18 +11,41 @@ import "./ServiceLogs.css";
 
 const TAIL_CHOICES = [50, 100, 200, 500] as const;
 
+function isNotRunningMessage(msg: string): boolean {
+  return /is not running/i.test(msg);
+}
+
 /** Service log stream adapter — follow/snapshot feed into shared LogViewer. */
-export function ServiceLogs(props: { service: string }) {
+export function ServiceLogs(props: {
+  service: string;
+  /** When false, default to snapshot (retained / empty) instead of live follow. */
+  running?: boolean;
+}) {
   const [tail, setTail] = useState<number>(DEFAULT_LOG_TAIL);
-  const [follow, setFollow] = useState(true);
+  const [follow, setFollow] = useState(props.running !== false);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [epoch, setEpoch] = useState(0);
   const resubscribe = useCallback(() => setEpoch((n) => n + 1), []);
 
+  useEffect(() => {
+    if (props.running === false && follow) {
+      setFollow(false);
+    }
+  }, [props.running, follow]);
+
   useSnapshot(props.service, tail, follow, epoch, setText, setBusy, setError);
-  useFollow(props.service, tail, follow, epoch, setText, setBusy, setError);
+  useFollow(
+    props.service,
+    tail,
+    follow,
+    epoch,
+    setText,
+    setBusy,
+    setError,
+    setFollow,
+  );
 
   return (
     <LogViewer
@@ -32,6 +55,9 @@ export function ServiceLogs(props: { service: string }) {
       busy={busy}
       error={error}
       connectingLabel={follow ? "Connecting…" : "Loading logs…"}
+      emptyLabel={
+        follow ? "(no log output)" : "No retained logs yet."
+      }
       controls={
         <ServiceLogControls
           follow={follow}
@@ -149,6 +175,7 @@ function useFollow(
   setText: (updater: string | ((prev: string) => string)) => void,
   setBusy: (b: boolean) => void,
   setError: (e: string | null) => void,
+  setFollow: (v: boolean) => void,
 ): void {
   useEffect(() => {
     if (!follow) return;
@@ -160,12 +187,18 @@ function useFollow(
       onLine: (line) => setText((prev) => (prev ? `${prev}\n${line}` : line)),
       onReady: () => setBusy(false),
       onError: (msg) => {
+        if (isNotRunningMessage(msg)) {
+          setFollow(false);
+          setError(null);
+          setBusy(false);
+          return;
+        }
         setError(msg);
         setBusy(false);
       },
     });
     return () => ac.abort();
-  }, [follow, service, tail, epoch, setText, setBusy, setError]);
+  }, [follow, service, tail, epoch, setText, setBusy, setError, setFollow]);
 }
 
 async function runFollow(

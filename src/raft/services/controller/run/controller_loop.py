@@ -13,6 +13,7 @@ from ..jobs import (
     MetricsJob,
     ScaleJob,
     Scaler,
+    ServiceLogsJob,
 )
 from ..engine import ClockFn, JobOrchestrator, SleepFn
 
@@ -51,13 +52,19 @@ class ControllerLoop:
         return [
             HealJob(self._home, self._config.healing, self._docker),
             MetricsJob(self._home, self._config.metrics),
+            ServiceLogsJob(self._home, self._config.service_logs, self._docker),
             ScaleJob(self._scaler),
             AcmeJobSync(self._home, self._docker, orch),
         ]
 
     def _log_startup(self) -> None:
+        self._log_healing()
+        logger.info("scale-to-zero enabled for apps with spec.scaling")
+        self._log_metrics()
+        self._log_service_logs()
+
+    def _log_healing(self) -> None:
         healing = self._config.healing
-        metrics_cfg = self._config.metrics
         if healing.enabled:
             logger.info(
                 "healing enabled interval=%ss timeout=%ss failThreshold=%s",
@@ -65,15 +72,27 @@ class ControllerLoop:
                 healing.timeout_seconds,
                 healing.fail_threshold,
             )
-        else:
-            logger.info("healing disabled; scale + idle wake loop active")
-        logger.info("scale-to-zero enabled for apps with spec.scaling")
+            return
+        logger.info("healing disabled; scale + idle wake loop active")
+
+    def _log_metrics(self) -> None:
+        metrics_cfg = self._config.metrics
         logger.info(
             "metrics enabled interval=%ss timeout=%ss "
             "path=state/metrics/resources.jsonl+http.jsonl",
             metrics_cfg.interval_seconds,
             metrics_cfg.timeout_seconds,
         )
+
+    def _log_service_logs(self) -> None:
+        logs_cfg = self._config.service_logs
+        if logs_cfg.enabled:
+            logger.info(
+                "service-logs enabled interval=%ss path=state/service-logs/",
+                logs_cfg.interval_seconds,
+            )
+            return
+        logger.info("service-logs disabled")
 
     def _run_orchestrator(
         self,

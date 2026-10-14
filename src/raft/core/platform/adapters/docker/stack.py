@@ -54,6 +54,7 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
 
     def recreate_router(self) -> None:
         logger.info("force-recreate router")
+        self._drain_compose(self.stack.router)
         CheckedCommands.run_compose(
             self.sh,
             ("up", "-d", "--no-deps", "--force-recreate", self.stack.router),
@@ -63,6 +64,7 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
 
     def recreate_gate(self) -> None:
         logger.info("force-recreate gate (published edge ports)")
+        self._drain_compose(self.stack.gate)
         CheckedCommands.run_compose(
             self.sh,
             ("up", "-d", "--no-deps", "--force-recreate", self.stack.gate),
@@ -73,6 +75,7 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
 
     def rebuild_service(self, service: str) -> None:
         logger.info("rebuild service %s", service)
+        self._drain_compose(service)
         try:
             CheckedCommands.run_compose(
                 self.sh,
@@ -95,6 +98,7 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
         self._force_recreate_service(app.compose_id)
 
     def _force_recreate_service(self, compose_id: str) -> None:
+        self._drain_compose(compose_id)
         try:
             CheckedCommands.run_compose(
                 self.sh,
@@ -111,6 +115,11 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
             )
         except OperatorError as exc:
             raise self.enrich_compose_failure(exc, services=(compose_id,)) from exc
+
+    def _drain_compose(self, compose_id: str) -> None:
+        from raft.core.observe.ops.logs.hooks import ServiceLogsHooks
+
+        ServiceLogsHooks.before_compose_recreate(self.stack, compose_id, self)
 
     def _pull_and_tag(self, app: App, *, pull_ref: str, pin: str) -> None:
         result = self.sh.docker("pull", pull_ref, capture=True, check=False)
@@ -165,7 +174,14 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
 
     def remove_container(self, name: str) -> None:
         logger.debug("remove container %s", name)
+        from raft.core.observe.ops.logs.hooks import ServiceLogsHooks
+
+        ServiceLogsHooks.before_container_remove(self.stack, name, self)
         self.sh.docker("rm", "-f", name, check=False, capture=True)
+
+    def container_logs_since(self, name: str, *, since: str = "") -> str:
+        """Timestamped ``docker logs`` for shipper / final drain."""
+        return self._diagnostics.container_logs_since(name, since=since)
 
     def run_tmp(
         self,

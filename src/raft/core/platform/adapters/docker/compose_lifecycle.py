@@ -39,6 +39,9 @@ class DockerComposeLifecycle:
 
     def stop_stack(self) -> None:
         logger.info("compose down --remove-orphans")
+        from raft.core.observe.ops.logs.hooks import ServiceLogsHooks
+
+        ServiceLogsHooks.before_stack_down(self.stack, self)  # type: ignore[arg-type]
         CheckedCommands.run_compose(
             self.sh,
             ("down", "--remove-orphans"),

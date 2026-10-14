@@ -91,7 +91,7 @@ Align with the README table; detail for agents:
 | Notifications channels | **Shipped** | Strategy catalog + settings UI |
 | Healing | **Shipped** | Settings `healing:`; separate from scaling |
 | Secrets baseline (`~/.raft/secrets/<app>/env`) | **Shipped** | Guidance [`docs/secrets.md`](docs/secrets.md); external materialization epic [#143](https://github.com/danielnachumdev/raft/issues/143) / [#176](https://github.com/danielnachumdev/raft/issues/176) |
-| Past logs when container off | **Planned** | [#196](https://github.com/danielnachumdev/raft/issues/196) |
+| Past logs when container off | **Shipped** | Retained under `state/service-logs/`; shipper + drain-before-rm; [`docs/serve-logs.md`](docs/serve-logs.md) |
 | Named Trends views | **Planned** | [#202](https://github.com/danielnachumdev/raft/issues/202) |
 | Alerts from firewall + graph/metrics → notifications | **Planned** | Wire firewall signals + resources/`http.jsonl` metrics into shipped notification strategies; scope under epic #207 or observe/notify when filed |
 | Always-on Compose dashboard service | **Planned** | [#36](https://github.com/danielnachumdev/raft/issues/36) — not `raft serve` replacement without design |
