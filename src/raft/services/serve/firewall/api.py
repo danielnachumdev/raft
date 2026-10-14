@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, Optional
 
-from fastapi import Body, HTTPException
+from fastapi import Body, HTTPException, Query
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.stack import Stack
@@ -35,6 +35,11 @@ class ServeFirewallApi:
         app.post("/api/firewall/recommendations/{recommendation_id}/dismiss")(
             self.api_dismiss
         )
+        app.get("/api/firewall/from-inspection")(self.api_inspection_draft)
+        app.post("/api/firewall/from-inspection")(self.api_from_inspection)
+        app.post("/api/firewall/from-inspection/remove")(
+            self.api_remove_inspection
+        )
 
     def api_get(self) -> Dict[str, Any]:
         return self._service.get()
@@ -62,6 +67,35 @@ class ServeFirewallApi:
 
     def api_dismiss(self, recommendation_id: str) -> Dict[str, Any]:
         return self._service.dismiss_recommendation(recommendation_id)
+
+    def api_inspection_draft(
+        self,
+        client_ip: str = Query(...),
+        service: str = Query(""),
+        action: str = Query("deny"),
+    ) -> Dict[str, Any]:
+        try:
+            return self._service.inspection_draft(
+                client_ip=client_ip, service=service, action=action
+            )
+        except OperatorError as exc:
+            raise self._bad(exc) from exc
+
+    def api_from_inspection(
+        self, body: Dict[str, Any] = Body(...)
+    ) -> Dict[str, Any]:
+        try:
+            return self._service.apply_from_inspection(body)
+        except OperatorError as exc:
+            raise self._bad(exc) from exc
+
+    def api_remove_inspection(
+        self, body: Dict[str, Any] = Body(...)
+    ) -> Dict[str, Any]:
+        try:
+            return self._service.remove_from_inspection(body)
+        except OperatorError as exc:
+            raise self._bad(exc) from exc
 
     @staticmethod
     def _bad(exc: OperatorError) -> HTTPException:

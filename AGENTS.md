@@ -85,7 +85,7 @@ Align with the README table; detail for agents:
 | HTTP request inspection (per App) | **Shipped** | Gate access log → `/api/service/{name}/http-requests`; [`docs/serve-http-requests.md`](docs/serve-http-requests.md) |
 | Flat gate / App IP ACL (allow/deny lists) | **Retired** | Removed as operator path; leftover `#195` data migrates into firewall GET until Save; [`docs/serve-acl.md`](docs/serve-acl.md) |
 | **Ordered firewall rules** (CIDR, port, protocol, service, action) | **Shipped** | Epic [#207](https://github.com/danielnachumdev/raft/issues/207), [#211](https://github.com/danielnachumdev/raft/issues/211). On gate; Save → compile → reload; import/export; recommendations; [`docs/serve-firewall.md`](docs/serve-firewall.md). |
-| Inspection → add firewall rule | **Planned** | [#198](https://github.com/danielnachumdev/raft/issues/198) (depends on #211) |
+| Inspection → add firewall rule | **Shipped** | [#198](https://github.com/danielnachumdev/raft/issues/198); row actions → `#211` model; prepend + reload |
 | GitHub add-service assist | **Shipped (v1)** | [`docs/serve-github-deploy.md`](docs/serve-github-deploy.md); known gap [#200](https://github.com/danielnachumdev/raft/issues/200) |
 | Notifications channels | **Shipped** | Strategy catalog + settings UI |
 | Healing | **Shipped** | Settings `healing:`; separate from scaling |

@@ -52,7 +52,17 @@ Fixtures and docs use dummy names only (`demo-api`, `demo-api.test`, `192.0.2.10
 | Not running | Panel still shown for leftover log rows |
 | Ineligible | Panel hidden |
 
-## Out of scope
+## Firewall from a request row (#198)
 
-- Ordered firewall management (Settings → Firewall; #211)
-- Add/remove client IP actions from a request row (#198)
+When a row has `client_ip`, operators can **Firewall** (add/update) or **Remove** an ordered edge rule for that client:
+
+| Prefill | Source |
+|---------|--------|
+| CIDR | Client IP as host `/32` or `/128` (expandable in the form) |
+| Service | App name for this Host-routed service |
+| Port / protocol | Preferred edge listen (`https` then `http`) / `tcp` |
+| Action | Operator chooses `deny` \| `permit` \| `drop` |
+
+**Insert order:** new/updated rules are **prepended** (top of the ordered table) so they evaluate before broad `permit any` / default-deny. Apply uses the same #211 persist → render → gate nginx reload path (`POST /api/firewall/from-inspection`). Remove deletes rules whose CIDR equals that host network (`POST /api/firewall/from-inspection/remove`).
+
+Full firewall table UX: Settings → Firewall ([`serve-firewall.md`](serve-firewall.md)).

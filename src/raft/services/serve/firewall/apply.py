@@ -7,6 +7,7 @@ from raft.core.core.models.stack import Stack
 from raft.core.lifecycle.deploy.orchestrator import Orchestrator
 from raft.core.lifecycle.render.firewall import FirewallEffective
 from .eligibility import FirewallEligibility
+from .from_inspection import InspectionFirewall
 from .recommendations import FirewallRecommendations
 from .store_write import FirewallDocumentWriter
 
@@ -25,6 +26,7 @@ class ServeFirewallService:
         self._writer = FirewallDocumentWriter(stack.root)
         self._eligibility = FirewallEligibility(stack)
         self._recommendations = FirewallRecommendations(stack.root)
+        self._inspection = InspectionFirewall(stack)
 
     def get(self) -> Dict[str, Any]:
         return FirewallEffective(self._stack.root).document.to_public()
@@ -58,6 +60,24 @@ class ServeFirewallService:
 
     def dismiss_recommendation(self, recommendation_id: str) -> Dict[str, Any]:
         return self._recommendations.dismiss(recommendation_id)
+
+    def inspection_draft(
+        self, *, client_ip: str, service: str = "", action: str = "deny"
+    ) -> Dict[str, Any]:
+        return self._inspection.draft(
+            client_ip=client_ip, service=service, action=action
+        )
+
+    def apply_from_inspection(self, body: Mapping[str, Any]) -> Dict[str, Any]:
+        document = self._inspection.apply_rule(body.get("rule") or body)
+        return self.put(document.to_export())
+
+    def remove_from_inspection(self, body: Mapping[str, Any]) -> Dict[str, Any]:
+        document = self._inspection.remove_for_client(
+            client_ip=str(body.get("client_ip") or ""),
+            rule_id=str(body.get("rule_id") or ""),
+        )
+        return self.put(document.to_export())
 
     def _apply(self) -> None:
         self._orch.render()

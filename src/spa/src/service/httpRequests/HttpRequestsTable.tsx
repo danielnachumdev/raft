@@ -5,6 +5,7 @@ import {
   tableMinWidth,
   type HttpRequestColumnKey,
 } from "./columnResize";
+import { InspectionFirewallActions } from "./InspectionFirewallActions";
 import {
   formatLatencyMs,
   formatRequestTime,
@@ -13,7 +14,11 @@ import {
 import { useColumnResize } from "./useColumnResize";
 
 /** Scrollable request table with resizable columns and expandable rows. */
-export function HttpRequestsTable(props: { rows: HttpRequestRow[] }) {
+export function HttpRequestsTable(props: {
+  rows: HttpRequestRow[];
+  /** App name for firewall service prefill (Host-routed). */
+  appName: string | null;
+}) {
   const resize = useColumnResize();
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -59,6 +64,7 @@ export function HttpRequestsTable(props: { rows: HttpRequestRow[] }) {
                 key={rowKey}
                 row={row}
                 rowKey={rowKey}
+                appName={props.appName}
                 expanded={expanded === rowKey}
                 onToggle={() =>
                   setExpanded((cur) => (cur === rowKey ? null : rowKey))
@@ -111,6 +117,7 @@ function ResizableTh(props: {
 function HttpRequestRowView(props: {
   row: HttpRequestRow;
   rowKey: string;
+  appName: string | null;
   expanded: boolean;
   onToggle: () => void;
 }) {
@@ -155,6 +162,19 @@ function HttpRequestRowView(props: {
       </td>
       <td className="http-requests-ua" title={ua}>
         {ua}
+      </td>
+      <td
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
+        {row.client_ip ? (
+          <InspectionFirewallActions
+            clientIp={row.client_ip}
+            appName={props.appName}
+          />
+        ) : (
+          <span className="muted">—</span>
+        )}
       </td>
     </tr>
   );

@@ -57,6 +57,13 @@ Apply inserts into the local table (Save still required). Dismiss persists under
 | `GET` | `/api/firewall/services` | Dropdown: `any` + eligible Apps |
 | `GET` | `/api/firewall/recommendations` | Open baseline suggestions |
 | `POST` | `/api/firewall/recommendations/{id}/dismiss` | Hide a suggestion |
+| `GET` | `/api/firewall/from-inspection` | Prefill draft + matching host-CIDR rules (from HTTP inspection) |
+| `POST` | `/api/firewall/from-inspection` | Upsert rule and **prepend** + apply (reload) |
+| `POST` | `/api/firewall/from-inspection/remove` | Remove rules matching client host CIDR + apply |
+
+### Inspection → rule (#198)
+
+From a service HTTP request row, **Firewall** / **Remove** call the `from-inspection` endpoints. Rules are **prepended** (not appended) so a client-specific deny/permit is not shadowed by an earlier broad permit. Operators may widen the CIDR in the form before apply.
 
 There is **no** clear-all / DELETE endpoint in the operator UI path (mass wipe is intentionally hard).
 
