@@ -1,6 +1,6 @@
 .detail-grid {
   display: grid;
-  grid-template-columns: minmax(8rem, 12rem) 1fr;
+  grid-template-columns: minmax(7rem, 12rem) minmax(0, 1fr);
   gap: 0.45rem 1rem;
   margin: 0;
 }
@@ -15,4 +15,21 @@
 
 .detail-grid dd {
   margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 559px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+    gap: 0.2rem 0;
+  }
+
+  .detail-grid dt {
+    margin-top: 0.45rem;
+  }
+
+  .detail-grid dt:first-child {
+    margin-top: 0;
+  }
 }

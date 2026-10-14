@@ -11,3 +11,13 @@
   justify-content: flex-end;
   gap: 0.55rem;
 }
+
+@media (max-width: 519px) {
+  .modal-actions {
+    justify-content: stretch;
+  }
+
+  .modal-actions .action-btn {
+    flex: 1 1 auto;
+  }
+}

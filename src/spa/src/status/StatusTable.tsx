@@ -56,40 +56,42 @@ export function StatusTable(props: {
       {!view.visible.length ? (
         <p className="muted">No rows match the current filters.</p>
       ) : (
-        <table className="status-table">
-          <thead>
-            <tr>
-              {COLUMNS.map((col) => (
-                <ColumnHeaderMenu
-                  key={col.key}
-                  label={col.label}
-                  columnKey={col.key}
-                  sortKey={view.prefs.sortKey}
-                  sortDir={view.prefs.sortDir}
-                  filter={view.prefs.columnFilters[col.key]}
-                  open={openKey === col.key}
-                  onToggle={() =>
-                    setOpenKey((cur) => (cur === col.key ? null : col.key))
-                  }
-                  onClose={closeMenu}
-                  onSort={view.setSort}
-                  onFilter={view.setColumnFilter}
+        <div className="status-table-wrap">
+          <table className="status-table">
+            <thead>
+              <tr>
+                {COLUMNS.map((col) => (
+                  <ColumnHeaderMenu
+                    key={col.key}
+                    label={col.label}
+                    columnKey={col.key}
+                    sortKey={view.prefs.sortKey}
+                    sortDir={view.prefs.sortDir}
+                    filter={view.prefs.columnFilters[col.key]}
+                    open={openKey === col.key}
+                    onToggle={() =>
+                      setOpenKey((cur) => (cur === col.key ? null : col.key))
+                    }
+                    onClose={closeMenu}
+                    onSort={view.setSort}
+                    onFilter={view.setColumnFilter}
+                  />
+                ))}
+                <th className="actions-col">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {view.visible.map((row) => (
+                <StatusRowLink
+                  key={`${row.role}-${row.service}`}
+                  row={row}
+                  onOpen={() => navigate(servicePath(row.service))}
+                  onActionDone={props.onActionDone}
                 />
               ))}
-              <th className="actions-col">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {view.visible.map((row) => (
-              <StatusRowLink
-                key={`${row.role}-${row.service}`}
-                row={row}
-                onOpen={() => navigate(servicePath(row.service))}
-                onActionDone={props.onActionDone}
-              />
-            ))}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

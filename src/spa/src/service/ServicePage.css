@@ -1,4 +1,8 @@
 .back-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.25rem;
   color: var(--accent);
   text-decoration: none;
   font: inherit;
@@ -10,4 +14,10 @@
 
 .back-link:hover {
   border-color: var(--accent);
+}
+
+@media (max-width: 719px) {
+  .back-link {
+    flex: 1 1 auto;
+  }
 }
