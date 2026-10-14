@@ -170,6 +170,15 @@ only (at most one mock account). Token refresh is not shipped in this version.
 
 Manifest path for v1: **`.raft/app.yaml` only**.
 
+## Name already applied from another source
+
+If `metadata.name` is already owned by a different durable source (see
+[`docs/app-manifest.md`](app-manifest.md) — Name ownership), deploy fails with
+the same `OperatorError` Fix CTA as CLI apply. The job status is `failed` and
+`error` / Deploy progress shows the existing vs incoming sources. Reclaim with
+`raft delete <name>` (or rename the manifest), then retry — there is no
+`--force` / `--replace` in v1.
+
 ## Invalid App YAML
 
 Bad manifests are **rejected at deploy/apply** with a clear error (job step /

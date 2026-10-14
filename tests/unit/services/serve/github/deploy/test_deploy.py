@@ -17,7 +17,7 @@ from raft.services.serve.github.providers import MockGithubProvider
 from raft.services.serve.github.accounts import GithubAccount
 from raft.services.serve.http.paths import ServePaths
 
-from tests.unit.base import RaftTestCase, StackMakers
+from tests.unit.base import AppliedInventory, RaftTestCase, StackMakers
 
 
 class TestDeployNextSteps(RaftTestCase):
@@ -93,6 +93,34 @@ class TestGithubDeployRunner(RaftTestCase):
         self._wait(job)
         assert job.status == "failed"
         assert job.error and ".raft/app.yaml" in job.error
+
+    def test_source_conflict_surfaces_on_job(self) -> None:
+        AppliedInventory.write_applied_app(
+            self.tmp_path,
+            "http-only-site",
+            source="git",
+            repo="git@github.com:other-org/other-api.git",
+            public_host="other.test",
+        )
+        job = self._start_mock_deploy("demo/http-only-site")
+        self._wait(job)
+        assert job.status == "failed"
+        assert job.error and "different source" in job.error
+        assert "raft delete http-only-site" in job.error
+        assert "Fix:" in job.error
+
+    def _start_mock_deploy(self, full_name: str) -> DeployJob:
+        runner = GithubDeployRunner(
+            StackMakers.make_stack(self.tmp_path),
+            MockGithubProvider(ServePaths.mock_github_dir()),
+            DeployJobStore(),
+        )
+        repo = next(
+            r
+            for r in MockGithubProvider(ServePaths.mock_github_dir()).list_repos("t")
+            if r.full_name == full_name
+        )
+        return runner.start(self._session(), repo, "main")
 
     def test_fill_next_steps_from_registry(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path)

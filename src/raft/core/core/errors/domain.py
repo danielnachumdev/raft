@@ -141,6 +141,19 @@ class DomainErrors:
         )
 
     @staticmethod
+    def app_name_source_conflict(
+        name: str, *, existing: str, incoming: str
+    ) -> OperatorError:
+        return OperatorError(
+            f"app name {name!r} is already applied from a different source.\n"
+            f"  existing: {existing}\n"
+            f"  incoming: {incoming}\n"
+            f"Fix: rename metadata.name in the incoming manifest, or:\n"
+            f"     raft delete {name}   # frees the name; then re-apply from the new source\n"
+            f"     # v1 has no --force/--replace — delete + re-apply is the reclaim path"
+        )
+
+    @staticmethod
     def invalid_yaml(path: Union[Path, str], exc: BaseException) -> OperatorError:
         return OperatorError(f"invalid YAML in {path}: {exc}\n" f"Fix: repair the YAML file")
 

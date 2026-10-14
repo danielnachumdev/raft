@@ -11,6 +11,7 @@ from .app import App
 from .app_document import AppDocument
 from .manifest import REGISTRY_DIR
 from .registry_issue import RegistryIssue, RegistryLoadResult
+from .source_identity import AppSourceIdentity
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,7 @@ class AppRegistry:
         directory = self.directory()
         directory.mkdir(parents=True, exist_ok=True)
         dest = self.path_for(app.name)
+        self._assert_source_owned(app, dest)
         self._assert_host_available(app, directory)
         payload = self._canonical_for_dump(document, tls=app_spec.tls)
         dest.write_text(
@@ -92,6 +94,15 @@ class AppRegistry:
                 f"metadata.name {app.name!r}"
             )
         return app
+
+    @staticmethod
+    def _assert_source_owned(app: App, dest: Path) -> None:
+        if not dest.is_file():
+            return
+        existing = AppRegistry._peek_app(dest)
+        if existing is None:
+            return
+        AppSourceIdentity.reject_takeover(existing, app)
 
     @staticmethod
     def _assert_unique_hosts(apps: list[App]) -> None:

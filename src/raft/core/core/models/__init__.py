@@ -15,6 +15,7 @@ from .ports import PortSpec
 from .readiness_spec import ReadinessSpec
 from .registry import AppRegistry, RegistryIssue
 from .scaling_spec import ScalingSpec
+from .source_identity import AppSourceIdentity
 from .stack import Stack, load_stack
 from .state import (
     AppScalingState,
@@ -29,6 +30,7 @@ __all__ = [
     "AppDocument",
     "AppRegistry",
     "AppScalingState",
+    "AppSourceIdentity",
     "AppSpec",
     "CONTROLLER_COMPOSE_ID",
     "DependsOnError",
