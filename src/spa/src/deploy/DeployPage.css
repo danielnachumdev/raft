@@ -1,8 +1,9 @@
 .deploy-panel {
-  margin: 1.25rem 0;
-  padding: 1.1rem 1.15rem;
+  margin: 0 0 1rem;
+  padding: 1rem 1.1rem 1.15rem;
   background: var(--panel);
   border: 1px solid var(--line);
+  border-radius: 0.55rem;
   min-width: 0;
   max-width: 100%;
   overflow-wrap: anywhere;
@@ -35,8 +36,9 @@
   min-width: 0;
   padding: 0.45rem 0.55rem;
   border: 1px solid var(--line);
+  border-radius: 0.35rem;
   background: var(--input);
-  color: var(--text);
+  color: var(--ink);
   font: inherit;
 }
 
@@ -55,6 +57,10 @@
   margin-top: 1rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--line);
+}
+
+.deploy-confirm .muted {
+  margin: 0 0 0.75rem;
 }
 
 .deploy-steps {
@@ -82,6 +88,7 @@
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   border: 1px solid var(--line);
+  border-radius: 0.45rem;
   max-width: 100%;
 }
 
@@ -108,9 +115,18 @@
   border-bottom: 0;
 }
 
-.repo-item.is-selected,
 .repo-item:hover {
+  background: var(--row-hover);
+}
+
+.repo-item.is-selected {
   background: var(--muted-bg);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.repo-empty {
+  padding: 0.75rem;
+  margin: 0;
 }
 
 .deploy-logs {

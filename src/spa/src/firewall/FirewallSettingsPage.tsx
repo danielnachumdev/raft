@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { PageHeader } from "../shell/PageHeader";
 import { FirewallPanel } from "./FirewallPanel";
 import {
   dismissFirewallRecommendation,
@@ -55,20 +55,11 @@ export function FirewallSettingsPage() {
   }, [load]);
 
   return (
-    <div className="page fw-settings-page">
-      <header className="header">
-        <div>
-          <p className="brand">raft</p>
-          <h1>Firewall</h1>
-          <p className="muted header-updating">
-            Ordered rules on the gate. Save compiles and reloads nginx — never
-            recreate.
-          </p>
-        </div>
-        <Link className="refresh" to="/" id="firewall-back">
-          Stack status
-        </Link>
-      </header>
+    <div className="fw-settings-page">
+      <PageHeader
+        title="Firewall"
+        subtitle="Ordered edge rules on the gate. Saving compiles them and reloads gate nginx — the gate is never recreated."
+      />
 
       {busy ? (
         <div className="loading" role="status" aria-busy="true">

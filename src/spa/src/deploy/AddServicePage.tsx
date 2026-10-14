@@ -1,26 +1,20 @@
 import { Link } from "react-router-dom";
+import { PageHeader } from "../shell/PageHeader";
 import "./DeployPage.css";
 import "./AddServicePage.css";
 
 /** Choose how to add a service; v1 offers GitHub only. */
 export function AddServicePage() {
   return (
-    <div className="page add-service-page">
-      <header className="header">
-        <div>
-          <p className="brand">raft</p>
-          <h1>Add new service</h1>
-          <p className="muted header-updating">
-            Pick a source. Serve stays localhost / SSH tunnel admin.
-          </p>
-        </div>
-        <Link className="refresh" to="/">
-          Stack status
-        </Link>
-      </header>
+    <div className="add-service-page">
+      <PageHeader
+        crumbs={[{ label: "Status", to: "/" }]}
+        title="Add a service"
+        subtitle="Pick where the service comes from. raft deploys it and keeps it running."
+      />
 
-      <section className="deploy-panel" id="add-service-options">
-        <h2>Options</h2>
+      <section className="panel" id="add-service-options">
+        <h2>Sources</h2>
         <ul className="add-service-options">
           <li>
             <Link
@@ -38,6 +32,10 @@ export function AddServicePage() {
             </Link>
           </li>
         </ul>
+        <p className="muted add-service-cli">
+          Prefer the CLI or CI? From a service repo run{" "}
+          <code>raft apply --file .raft/app.yaml --ref "$SHA"</code>.
+        </p>
       </section>
     </div>
   );

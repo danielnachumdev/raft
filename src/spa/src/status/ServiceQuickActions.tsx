@@ -1,12 +1,14 @@
 import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { serviceLogsPath, type ServiceAction } from "../shared/api";
+import { actionAvailability } from "../service/actionAvailability";
 import { ServiceActionConfirm } from "../service/ServiceActionConfirm";
 import { useServiceActionRunner } from "../service/useServiceActionRunner";
 import "./ServiceQuickActions.css";
 type Props = {
   service: string;
   name: string;
+  status: string;
   onDone: () => void;
 };
 
@@ -14,6 +16,7 @@ type Props = {
 export function ServiceQuickActions(props: Props) {
   const runner = useServiceActionRunner(props.service, props.onDone);
   const { busy, locked, run } = runner;
+  const avail = actionAvailability(props.status);
 
   return (
     <div className="quick-actions" onClick={stopRowNav} onKeyDown={stopRowNav}>
@@ -29,9 +32,9 @@ export function ServiceQuickActions(props: Props) {
       <QuickActionButton
         action="start"
         label={`Start ${props.name}`}
-        title="Start"
+        title={avail.start.enabled ? "Start" : avail.start.hint}
         busy={busy}
-        disabled={locked}
+        disabled={locked || !avail.start.enabled}
         onClick={() => void run("start")}
       >
         <IconPlay />
@@ -39,9 +42,9 @@ export function ServiceQuickActions(props: Props) {
       <QuickActionButton
         action="stop"
         label={`Stop ${props.name}`}
-        title="Stop"
+        title={avail.stop.enabled ? "Stop" : avail.stop.hint}
         busy={busy}
-        disabled={locked}
+        disabled={locked || !avail.stop.enabled}
         danger
         onClick={() => void run("stop")}
       >

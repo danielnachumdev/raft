@@ -5,10 +5,13 @@ import {
   type StatusPayload,
 } from "../shared/api/index.ts";
 import { peekStatus, refreshStatus } from "../shared/dashboardCache";
-import { ThemeToggle } from "../chrome/ThemeToggle";
+import { LiveIndicator } from "../chrome/LiveIndicator";
 import { TrendsPanel } from "../trends/panel/TrendsPanel";
 import { DashboardSection } from "./DashboardSection";
+import { PageHeader } from "./PageHeader";
 import { PurgeButton } from "./PurgeButton";
+import { RegistryIssues } from "./RegistryIssues";
+import { StatusSummary } from "./StatusSummary";
 import { statusMetaLabel } from "./statusMeta";
 import { bindStatusPolling, tabIsVisible } from "./statusPolling";
 
@@ -72,117 +75,112 @@ export function Dashboard() {
   }, [data]);
 
   const metaLabel = statusMetaLabel({ updating, fetchedAt, now });
+  const hostname = data?.host?.hostname;
+  const quietReload = () => void load({ quiet: true });
 
   return (
-    <div className="page">
-      <header className="header">
-        <div>
-          <p className="brand">raft</p>
-          <h1>Stack status</h1>
-          {metaLabel ? (
-            <p className="muted header-updating" aria-live="polite">
-              {metaLabel}
-            </p>
-          ) : null}
-        </div>
-        <div className="header-actions">
-          <ThemeToggle />
-          <Link
-            className="refresh"
-            to="/settings/edge-access"
-            id="nav-edge-access"
-          >
-            Firewall
-          </Link>
-          <Link
-            className="refresh"
-            to="/settings/notifications"
-            id="nav-notifications"
-          >
-            Notifications
-          </Link>
-          <PurgeButton />
-          <button
-            type="button"
-            className={busy ? "refresh is-loading" : "refresh"}
-            onClick={() => void load()}
-            disabled={busy || updating}
-            aria-busy={busy || updating}
-            aria-label="Refresh status"
-            id="status-refresh"
-          >
-            {busy ? (
-              <span className="spinner refresh-spinner" aria-hidden="true" />
+    <>
+      <PageHeader
+        title="Stack status"
+        subtitle={
+          typeof hostname === "string" && hostname ? (
+            <>
+              Host <code>{hostname}</code>
+            </>
+          ) : undefined
+        }
+        meta={
+          <>
+            <LiveIndicator
+              isLive={statusLive}
+              label={statusLive ? "Live" : "Paused · tab hidden"}
+            />
+            {metaLabel ? (
+              <span className="muted" aria-live="polite">
+                {metaLabel}
+              </span>
             ) : null}
-            Refresh
-          </button>
-        </div>
-      </header>
+          </>
+        }
+        actions={
+          <>
+            <button
+              type="button"
+              className={busy ? "refresh is-loading" : "refresh"}
+              onClick={() => void load()}
+              disabled={busy || updating}
+              aria-busy={busy || updating}
+              aria-label="Refresh status"
+              id="status-refresh"
+            >
+              {busy ? (
+                <span className="spinner refresh-spinner" aria-hidden="true" />
+              ) : null}
+              Refresh
+            </button>
+            <PurgeButton />
+            <Link className="refresh btn-primary" to="/add-service" id="add-service">
+              Add service
+            </Link>
+          </>
+        }
+      />
 
       {busy && data === null ? (
-        <div
-          className="loading"
-          role="status"
-          aria-busy="true"
-          id="status-loading"
-        >
+        <div className="loading" role="status" aria-busy="true" id="status-loading">
           <span className="spinner" aria-hidden="true" />
           <p>Loading status…</p>
         </div>
       ) : null}
 
       {error ? (
-        <p className="error" role="alert" id="status-error">
+        <p className="callout callout-bad error" role="alert" id="status-error">
           {error}
         </p>
       ) : null}
 
-      {data?.registry_issues && data.registry_issues.length > 0 ? (
-        <section className="panel registry-issues" id="registry-issues">
-          <div className="panel-head">
-            <h2>Invalid App manifests</h2>
-          </div>
-          <p className="muted">
-            These files under <code>state/apps/</code> were skipped so other
-            services keep working. Fix or remove them, then refresh. Apply/deploy
-            still rejects bad YAML with a clear error.
-          </p>
-          <ul className="registry-issue-list">
-            {data.registry_issues.map((issue) => (
-              <li key={issue.file}>
-                <code>{issue.file}</code>
-                <p className="error" role="alert">
-                  {issue.error}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      <RegistryIssues issues={data?.registry_issues ?? []} />
 
       {data ? (
         <>
+          <StatusSummary rows={[...data.control_plane, ...data.apps]} />
+          <DashboardSection
+            title="Apps"
+            id="status-apps"
+            rows={data.apps}
+            empty={<AppsEmpty />}
+            storageKey="raft-serve-status-apps"
+            onActionDone={quietReload}
+          />
           <DashboardSection
             title="Control plane"
+            id="status-control-plane"
             rows={data.control_plane}
             empty="No control-plane services."
             storageKey="raft-serve-status-control-plane"
-            isLive={statusLive}
-            onActionDone={() => void load({ quiet: true })}
-          />
-          <DashboardSection
-            title="Apps"
-            rows={data.apps}
-            empty="No applied apps."
-            storageKey="raft-serve-status-apps"
-            isLive={statusLive}
-            onActionDone={() => void load({ quiet: true })}
-            addHref="/add-service"
+            onActionDone={quietReload}
           />
         </>
       ) : null}
 
       <TrendsPanel />
+    </>
+  );
+}
+
+function AppsEmpty() {
+  return (
+    <div className="empty-state" id="apps-empty">
+      <p>
+        <strong>No apps applied yet.</strong>
+      </p>
+      <p className="muted">
+        Deploy one from GitHub here, or from a service repo run{" "}
+        <code>raft apply --file .raft/app.yaml</code>.
+      </p>
+      <Link className="refresh btn-primary" to="/add-service">
+        Add your first service
+      </Link>
     </div>
   );
 }

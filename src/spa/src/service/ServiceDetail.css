@@ -1,16 +1,31 @@
+.service-section {
+  scroll-margin-top: 7.5rem;
+}
+
+.detail-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 1rem 1.75rem;
+}
+
+.detail-group h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .detail-grid {
   display: grid;
-  grid-template-columns: minmax(7rem, 12rem) minmax(0, 1fr);
-  gap: 0.45rem 1rem;
+  grid-template-columns: minmax(7rem, 10rem) minmax(0, 1fr);
+  gap: 0.4rem 0.85rem;
   margin: 0;
 }
 
 .detail-grid dt {
   margin: 0;
   color: var(--muted);
-  font-size: 0.82rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 0.85rem;
 }
 
 .detail-grid dd {
@@ -22,7 +37,7 @@
 @media (max-width: 559px) {
   .detail-grid {
     grid-template-columns: 1fr;
-    gap: 0.2rem 0;
+    gap: 0.15rem 0;
   }
 
   .detail-grid dt {

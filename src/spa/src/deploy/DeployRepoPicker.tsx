@@ -70,6 +70,9 @@ export function DeployRepoPicker(props: {
         />
       </label>
       <ul className="repo-list" id="repo-list">
+        {accountReady && query && repos.length === 0 ? (
+          <li className="muted repo-empty">No repositories match “{query}”.</li>
+        ) : null}
         {accountReady
           ? repos.map((repo) => (
               <li key={repo.full_name}>
@@ -107,7 +110,7 @@ export function DeployRepoPicker(props: {
           </p>
           <button
             type="button"
-            className="refresh deploy-cta"
+            className="refresh btn-primary deploy-cta"
             disabled={busy}
             onClick={onDeploy}
             id="deploy-confirm-btn"

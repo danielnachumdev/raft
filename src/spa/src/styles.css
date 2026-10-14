@@ -10,6 +10,8 @@
   --input: #fff;
   --line: #d9d0c0;
   --accent: #0f6b5c;
+  --accent-hover: #0b5a4d;
+  --on-accent: #fff;
   --danger: #8b2e1f;
   --ok: #1a6b45;
   --warn: #8a6412;
@@ -48,6 +50,8 @@
   --input: #2a2620;
   --line: #3d3830;
   --accent: #4aaf9a;
+  --accent-hover: #5cc2ac;
+  --on-accent: #0e1a17;
   --danger: #d4725f;
   --ok: #5cb88a;
   --warn: #d4a84b;
@@ -95,47 +99,20 @@ code {
   font-size: 0.9em;
 }
 
+:where(a, button, select, input, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+a {
+  color: var(--accent);
+}
+
 .page {
   width: 100%;
   max-width: 960px;
   margin: 0 auto;
   padding: 1.25rem 0.85rem 2.5rem;
-}
-
-.header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 0.85rem 1rem;
-  margin-bottom: 1.25rem;
-}
-
-.header-actions {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.55rem;
-  min-width: 0;
-}
-
-.brand {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.75rem;
-  letter-spacing: 0.02em;
-  color: var(--accent);
-}
-
-.header h1 {
-  margin: 0.15rem 0 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.header-updating {
-  margin: 0.35rem 0 0;
-  font-size: 0.82rem;
 }
 
 .refresh {
@@ -154,9 +131,90 @@ code {
   text-decoration: none;
 }
 
+.refresh:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
 .refresh:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+/* Primary call-to-action; pairs with .refresh or .action-btn. */
+.btn-primary,
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.btn-primary .spinner {
+  border-color: color-mix(in srgb, var(--on-accent) 35%, transparent);
+  border-top-color: var(--on-accent);
+}
+
+.callout {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: 0.55rem;
+  background: var(--panel);
+}
+
+.callout h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+}
+
+.callout-warn {
+  border-color: var(--warn-border);
+  border-left-color: var(--warn);
+  background: var(--warn-bg);
+}
+
+.callout-bad {
+  border-color: var(--bad-border);
+  border-left-color: var(--danger);
+  background: var(--bad-bg);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--muted-bg);
+  color: var(--muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.chip-ok {
+  color: var(--ok);
+  background: var(--ok-bg);
+  border-color: var(--ok-border);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 1.1rem 1rem;
+  border: 1px dashed var(--line);
+  border-radius: 0.45rem;
+}
+
+.empty-state p {
+  margin: 0;
 }
 
 .refresh.is-loading {
@@ -202,22 +260,12 @@ code {
   gap: 0.65rem;
 }
 
-.panel-add {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.85rem;
-  height: 1.85rem;
-  border: 1px solid var(--line);
-  background: var(--input);
-  color: var(--ink);
-  text-decoration: none;
-  font-size: 1.25rem;
-  line-height: 1;
-}
-
-.panel-add:hover {
-  border-color: var(--muted);
+.panel-count {
+  margin-left: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .registry-issues .registry-issue-list {
@@ -356,27 +404,11 @@ code {
 @media (min-width: 720px) {
   .page {
     max-width: 1180px;
-    padding: 2rem 1.25rem 3rem;
-  }
-
-  .header {
-    margin-bottom: 1.5rem;
+    padding: 1.75rem 1.25rem 3rem;
   }
 }
 
 @media (max-width: 719px) {
-  .brand {
-    font-size: 1.5rem;
-  }
-
-  .header h1 {
-    font-size: 1rem;
-  }
-
-  .header-actions {
-    width: 100%;
-  }
-
   .panel {
     padding: 0.85rem 0.85rem 1rem;
   }

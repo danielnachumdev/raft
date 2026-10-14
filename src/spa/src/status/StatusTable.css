@@ -16,8 +16,17 @@
 .status-table th,
 .status-table td {
   text-align: left;
-  padding: 0.22rem 0.4rem;
+  padding: 0.4rem 0.5rem;
   border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.status-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.status-name-body > span:first-child {
+  font-weight: 600;
 }
 
 .status-table th {
@@ -25,48 +34,6 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--muted);
-}
-
-.status-badge {
-  display: inline-block;
-  font-size: 0.84rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  padding: 0.12rem 0.45rem;
-  border-radius: 0.3rem;
-  border: 1px solid transparent;
-  line-height: 1.35;
-  white-space: nowrap;
-}
-
-.status-badge.tone-ok {
-  color: var(--ok);
-  background: var(--ok-bg);
-  border-color: var(--ok-border);
-}
-
-.status-badge.tone-warn {
-  color: var(--warn);
-  background: var(--warn-bg);
-  border-color: var(--warn-border);
-}
-
-.status-badge.tone-bad {
-  color: var(--danger);
-  background: var(--bad-bg);
-  border-color: var(--bad-border);
-}
-
-.status-badge.tone-idle {
-  color: var(--idle);
-  background: var(--idle-bg);
-  border-color: var(--idle-border);
-}
-
-.status-badge.tone-muted {
-  color: var(--muted);
-  background: var(--muted-bg);
-  border-color: var(--line);
 }
 
 .util-value {

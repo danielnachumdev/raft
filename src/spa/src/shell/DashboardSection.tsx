@@ -1,38 +1,24 @@
-import { Link } from "react-router-dom";
-import { LiveIndicator } from "../chrome/LiveIndicator";
+import type { ReactNode } from "react";
 import type { StatusRow } from "../shared/api/index.ts";
 import { StatusTable } from "../status/StatusTable";
 
 export function DashboardSection(props: {
   title: string;
   rows: StatusRow[];
-  empty: string;
+  empty: ReactNode;
   storageKey: string;
-  isLive: boolean;
   onActionDone: () => void;
-  addHref?: string;
+  id?: string;
 }) {
   return (
-    <section className="panel">
+    <section className="panel" id={props.id}>
       <div className="panel-head">
-        <h2>{props.title}</h2>
-        <div className="panel-head-actions">
-          {props.addHref ? (
-            <Link
-              className="panel-add"
-              to={props.addHref}
-              aria-label="Add new service"
-              id="add-service"
-              title="Add new service"
-            >
-              +
-            </Link>
+        <h2>
+          {props.title}
+          {props.rows.length ? (
+            <span className="panel-count">{props.rows.length}</span>
           ) : null}
-          <LiveIndicator
-            isLive={props.isLive}
-            label={props.isLive ? undefined : "Paused · tab hidden"}
-          />
-        </div>
+        </h2>
       </div>
       <StatusTable
         rows={props.rows}

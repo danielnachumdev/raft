@@ -52,9 +52,9 @@ export function GithubAccountSwitcher(props: {
             href={githubLoginHref({ add: true })}
             id="github-add-account"
             title="Add GitHub account"
-            aria-label="Add GitHub account"
           >
             <PlusIcon />
+            <span>Add another account</span>
           </a>
         </li>
       </ul>

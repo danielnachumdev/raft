@@ -19,9 +19,14 @@ type Props = {
 export function ChannelList(props: Props) {
   if (props.channels.length === 0) {
     return (
-      <p className="muted" id="channels-empty">
-        No notification channels configured.
-      </p>
+      <div className="empty-state" id="channels-empty">
+        <p>
+          <strong>No notification channels configured.</strong>
+        </p>
+        <p className="muted">
+          Use <em>Add channel</em> so raft alerts for this host reach you.
+        </p>
+      </div>
     );
   }
 
@@ -59,11 +64,14 @@ function ChannelRow(props: {
   return (
     <li className="channel-row" data-channel-id={channel.id}>
       <div className="channel-row-main">
-        <strong className="channel-id">{channel.id}</strong>
+        <span className="channel-title">
+          <strong className="channel-id">{channel.id}</strong>
+          <span className={channel.enabled ? "chip chip-ok" : "chip"}>
+            {channel.enabled ? "Enabled" : "Disabled"}
+          </span>
+        </span>
         <span className="muted channel-meta">
           type <code>{channel.type}</code>
-          {" · "}
-          {channel.enabled ? "enabled" : "disabled"}
         </span>
         <SettingsPreview settings={channel.settings} />
       </div>

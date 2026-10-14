@@ -1,8 +1,16 @@
 .channel-list {
   list-style: none;
-  margin: 0.75rem 0 0;
+  margin: 0;
   padding: 0;
   border: 1px solid var(--line);
+  border-radius: 0.45rem;
+}
+
+.channel-title {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .channel-row {

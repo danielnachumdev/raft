@@ -6,7 +6,7 @@ Source for the `raft serve` UI (React + Vite + TypeScript).
 
 **Status freshness:** the dashboard polls `GET /api/status` every `STATUS_POLL_MS` (**2s**) while the tab is visible. The API re-reads applied Apps from `state/apps/` on each request, so CLI/CI apply/update/delete (including no-port workers) appears within about one poll interval without restarting `raft serve` or hard-refreshing the browser.
 
-Source layout under `src/`: `main.tsx` + lean `styles.css` (tokens, resets, shared primitives) at the root; each UI component imports a co-located `ComponentName.css`. Feature folders: `shell/`, `shared/api/` (eager package surface), `chrome/toast/`, `status/` (+ `model/`), `service/`, `logs/` (+ `model/`), `export/`, `deploy/` (`github/`, `oauth/`), `notifications/`, and `trends/` with `panel/`, `chart/`, `runtime/`, `range/`, and `strategies/` (metric type + resource/HTTP catalogs next to root registries). SPA unit tests under `test/` mirror those folders; shared arrange helpers live in `test/fixtures.ts`.
+Source layout under `src/`: `main.tsx` + lean `styles.css` (tokens, resets, shared primitives) at the root; each UI component imports a co-located `ComponentName.css`. Feature folders: `shell/` (`AppShell` top bar + `PageHeader` used by every route), `shared/api/` (eager package surface), `chrome/` (toast, modal, stat tiles), `status/` (+ `model/`), `service/`, `logs/` (+ `model/`), `export/`, `deploy/` (`github/`, `oauth/`, `model/`), `notifications/`, and `trends/` with `panel/`, `chart/`, `runtime/`, `range/`, and `strategies/` (metric type + resource/HTTP catalogs next to root registries). SPA unit tests under `test/` mirror those folders; shared arrange helpers live in `test/fixtures.ts`.
 
 ## Develop
 

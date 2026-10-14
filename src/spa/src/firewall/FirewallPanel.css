@@ -15,8 +15,39 @@
 }
 
 .fw-dirty {
-  color: var(--warn, #b45309);
-  font-size: 0.9rem;
+  display: inline-block;
+  margin: 0.5rem 0 0;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--warn-border);
+  border-radius: 999px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.fw-action {
+  display: inline-block;
+  padding: 0.05rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.fw-action--permit {
+  color: var(--ok);
+  background: var(--ok-bg);
+  border-color: var(--ok-border);
+}
+
+.fw-action--deny,
+.fw-action--drop {
+  color: var(--danger);
+  background: var(--bad-bg);
+  border-color: var(--bad-border);
 }
 
 .fw-table-wrap {

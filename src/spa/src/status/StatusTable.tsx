@@ -1,19 +1,18 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import type { StatusRow } from "../shared/api";
 import { servicePath } from "../shared/api";
 import { ColumnHeaderMenu } from "./ColumnHeaderMenu";
 import { ExternalUrlLinks } from "../shared/ExternalUrlLinks";
 import { ServiceQuickActions } from "./ServiceQuickActions";
+import { StatusBadge } from "./StatusBadge";
 import { StatusPanelControls } from "./StatusPanelControls";
 import { COLUMN_LABELS, type SortKey } from "./model/statusColumnFilter";
 import { useStatusPanelView, type StatusTreeRow } from "./model/statusPanelView";
 import {
   parseMemoryRatioPercent,
   parsePercent,
-  statusTone,
   utilTone,
-  type StatusTone,
   type UtilTone,
 } from "./model/statusTone";
 import "./StatusTable.css";
@@ -30,7 +29,7 @@ const COLUMNS: { key: SortKey; label: string }[] = [
 
 export function StatusTable(props: {
   rows: StatusRow[];
-  empty: string;
+  empty: ReactNode;
   storageKey: string;
   onActionDone: () => void;
 }) {
@@ -40,7 +39,11 @@ export function StatusTable(props: {
   const closeMenu = useCallback(() => setOpenKey(null), []);
 
   if (!props.rows.length) {
-    return <p className="muted">{props.empty}</p>;
+    return typeof props.empty === "string" ? (
+      <p className="muted">{props.empty}</p>
+    ) : (
+      props.empty
+    );
   }
 
   return (
@@ -124,6 +127,7 @@ function StatusRowLink(props: {
         <ServiceQuickActions
           service={row.service}
           name={row.name}
+          status={row.status}
           onDone={onActionDone}
         />
       </td>
@@ -166,15 +170,6 @@ function NameCell(props: { row: StatusTreeRow }) {
         <span>{props.row.name}</span>
         <ExternalUrlLinks urls={props.row.external_urls ?? []} compact />
       </span>
-    </span>
-  );
-}
-
-function StatusBadge(props: { value: string }) {
-  const tone: StatusTone = statusTone(props.value);
-  return (
-    <span className={`status-badge tone-${tone}`} title={`Status: ${props.value}`}>
-      {props.value}
     </span>
   );
 }

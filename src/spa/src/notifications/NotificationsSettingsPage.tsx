@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { ConfirmPopup } from "../chrome/ConfirmPopup";
+import { PageHeader } from "../shell/PageHeader";
 import { toast } from "../chrome/toast";
 import { ChannelFormModal, type ChannelFormSubmit } from "./ChannelFormModal";
 import { ChannelList } from "./ChannelList";
@@ -14,7 +14,6 @@ import {
   type NotificationStrategyInfo,
 } from "./notificationsApi";
 import { isEmptyStrategyCatalog } from "./notificationsHelpers";
-import "../deploy/DeployPage.css";
 import "./NotificationsSettingsPage.css";
 
 /** Settings page: list / add / edit / enable notification channels. */
@@ -58,19 +57,38 @@ export function NotificationsSettingsPage() {
   const catalogEmpty = isEmptyStrategyCatalog(strategies);
 
   return (
-    <div className="page notifications-page">
-      <header className="header">
-        <div>
-          <p className="brand">raft</p>
-          <h1>Notifications</h1>
-          <p className="muted header-updating">
-            Manage notification channels for this host. Secrets stay redacted.
-          </p>
-        </div>
-        <Link className="refresh" to="/" id="notifications-back">
-          Stack status
-        </Link>
-      </header>
+    <div className="notifications-page">
+      <PageHeader
+        title="Notifications"
+        subtitle="Where raft sends alerts for this host. Secrets stay redacted."
+        meta={
+          !busy && !error ? (
+            <span
+              className={globalEnabled ? "chip chip-ok" : "chip"}
+              id="notifications-global"
+              title="Global switch in settings.yaml"
+            >
+              Global notifications {globalEnabled ? "on" : "off"}
+            </span>
+          ) : undefined
+        }
+        actions={
+          <button
+            type="button"
+            className="refresh btn-primary"
+            id="notifications-add"
+            disabled={busy || catalogEmpty}
+            title={
+              catalogEmpty
+                ? "Register a strategy before adding a channel"
+                : "Add channel"
+            }
+            onClick={openCreate}
+          >
+            Add channel
+          </button>
+        }
+      />
 
       {busy ? (
         <div className="loading" role="status" aria-busy="true">
@@ -89,7 +107,7 @@ export function NotificationsSettingsPage() {
         <>
           {catalogEmpty ? (
             <section
-              className="deploy-panel notifications-empty-catalog"
+              className="callout callout-warn notifications-empty-catalog"
               id="notifications-empty-catalog"
             >
               <h2>No strategies registered</h2>
@@ -101,29 +119,14 @@ export function NotificationsSettingsPage() {
             </section>
           ) : null}
 
-          <section className="deploy-panel" id="notifications-channels">
-            <div className="notifications-panel-head">
-              <div>
-                <h2>Channels</h2>
-                <p className="muted notifications-global">
-                  Global notifications: {globalEnabled ? "on" : "off"}{" "}
-                  <span className="muted">(settings.yaml)</span>
-                </p>
-              </div>
-              <button
-                type="button"
-                className="refresh"
-                id="notifications-add"
-                disabled={catalogEmpty}
-                title={
-                  catalogEmpty
-                    ? "Register a strategy before adding a channel"
-                    : "Add channel"
-                }
-                onClick={openCreate}
-              >
-                Add channel
-              </button>
+          <section className="panel" id="notifications-channels">
+            <div className="panel-head">
+              <h2>
+                Channels
+                {channels.length ? (
+                  <span className="panel-count">{channels.length}</span>
+                ) : null}
+              </h2>
             </div>
             <ChannelList
               channels={channels}

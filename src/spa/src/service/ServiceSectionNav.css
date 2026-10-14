@@ -1,0 +1,39 @@
+.section-nav {
+  position: sticky;
+  top: 3.3rem;
+  z-index: 20;
+  display: flex;
+  gap: 0.25rem;
+  margin: 0 0 1rem;
+  padding: 0.3rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+}
+
+.section-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.section-nav a {
+  padding: 0.3rem 0.7rem;
+  border-radius: 0.35rem;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+.section-nav a:hover {
+  color: var(--accent);
+  background: var(--row-hover);
+}
+
+@media (max-width: 719px) {
+  .section-nav {
+    top: 5.6rem;
+  }
+}
