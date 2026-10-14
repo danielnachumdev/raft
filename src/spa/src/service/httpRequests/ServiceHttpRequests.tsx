@@ -16,7 +16,9 @@ export function ServiceHttpRequests(props: {
   /** App name for firewall service prefill (Host-routed). */
   appName?: string | null;
   containerStatus: string;
+  onEligibleChange?: (eligible: boolean) => void;
 }) {
+  const { onEligibleChange } = props;
   const [limit, setLimit] = useState<number>(DEFAULT_HTTP_REQUESTS_LIMIT);
   const [live, setLive] = useState(true);
   const [data, setData] = useState<HttpRequestsPayload | null>(null);
@@ -39,6 +41,10 @@ export function ServiceHttpRequests(props: {
     setBusy(true);
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (data) onEligibleChange?.(data.eligible);
+  }, [data, onEligibleChange]);
 
   useEffect(() => {
     if (!live || !data?.eligible) return;

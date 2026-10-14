@@ -1,0 +1,84 @@
+.stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  padding: 0.75rem 0.95rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+}
+
+.stat-tile-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.stat-tile-value {
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.stat-tile-hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stat-tile--ok .stat-tile-value {
+  color: var(--ok);
+}
+
+.stat-tile--bad {
+  border-color: var(--bad-border);
+  background: var(--bad-bg);
+}
+
+.stat-tile--bad .stat-tile-value,
+.stat-tile--bad .stat-tile-hint {
+  color: var(--danger);
+}
+
+.stat-tile--idle .stat-tile-value {
+  color: var(--idle);
+}
+
+.stat-tile--warn .stat-tile-value {
+  color: var(--warn);
+}
+
+.stat-tile-value .status-badge {
+  font-size: 1rem;
+  margin-top: 0.2rem;
+}
+
+@media (max-width: 519px) {
+  .stat-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .stat-tile {
+    padding: 0.6rem 0.7rem;
+  }
+
+  .stat-tile-value {
+    font-size: 1.35rem;
+  }
+}

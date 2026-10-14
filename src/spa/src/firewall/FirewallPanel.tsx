@@ -66,6 +66,7 @@ export function FirewallPanel(props: Props) {
     [rules, saved],
   );
   const locked = props.busy || saving;
+  useUnsavedGuard(dirty);
 
   async function persist(next: FirewallRule[]) {
     setSaving(true);
@@ -164,25 +165,22 @@ export function FirewallPanel(props: Props) {
         <div>
           <h2>Firewall rules</h2>
           <p className="muted">
-            Ordered table (first match wins). Drag the grip or use chevrons to
-            reorder. Save compiles to gate nginx and reloads.
+            First match wins. Drag the grip or use the arrows to reorder.
             {props.document.source === "acl-v1-migrated"
               ? " Showing migrated ACL v1 rules until you Save."
               : null}
           </p>
           {dirty ? (
-            <p className="fw-dirty" id="firewall-dirty">
-              Unsaved changes
+            <p className="fw-dirty" id="firewall-dirty" role="status">
+              Unsaved changes — not live until you Save &amp; apply.
             </p>
           ) : null}
         </div>
         <div className="fw-panel-actions">
           <button
             type="button"
-            className="fw-icon-btn"
+            className="action-btn"
             id="firewall-add"
-            title="Add rule"
-            aria-label="Add rule"
             disabled={locked}
             onClick={() => {
               setFormMode("create");
@@ -191,15 +189,16 @@ export function FirewallPanel(props: Props) {
             }}
           >
             <IconPlus />
+            Add rule
           </button>
           <button
             type="button"
             className="action-btn"
-            id="firewall-save"
-            disabled={locked || !dirty}
-            onClick={() => void persist(rules)}
+            id="firewall-import"
+            disabled={locked}
+            onClick={() => setImportOpen(true)}
           >
-            Save
+            Import
           </button>
           <button
             type="button"
@@ -212,12 +211,16 @@ export function FirewallPanel(props: Props) {
           </button>
           <button
             type="button"
-            className="action-btn"
-            id="firewall-import"
-            disabled={locked}
-            onClick={() => setImportOpen(true)}
+            className={saving ? "action-btn btn-primary is-loading" : "action-btn btn-primary"}
+            id="firewall-save"
+            disabled={locked || !dirty}
+            aria-busy={saving}
+            onClick={() => void persist(rules)}
           >
-            Import
+            {saving ? (
+              <span className="spinner refresh-spinner" aria-hidden="true" />
+            ) : null}
+            Save &amp; apply
           </button>
         </div>
       </div>
@@ -274,7 +277,11 @@ export function FirewallPanel(props: Props) {
                   <td>{formatFirewallPort(rule.port)}</td>
                   <td>{rule.protocol}</td>
                   <td>{rule.service}</td>
-                  <td>{rule.action}</td>
+                  <td>
+                    <span className={`fw-action fw-action--${rule.action}`}>
+                      {rule.action}
+                    </span>
+                  </td>
                   <td>{rule.id}</td>
                   <td>
                     <div className="fw-row-actions">
@@ -390,6 +397,17 @@ export function FirewallPanel(props: Props) {
       </Modal>
     </section>
   );
+}
+
+function useUnsavedGuard(dirty: boolean): void {
+  useEffect(() => {
+    if (!dirty) return;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
 }
 
 function IconAction(props: {

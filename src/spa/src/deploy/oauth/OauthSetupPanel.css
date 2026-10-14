@@ -41,7 +41,7 @@
 }
 
 .oauth-copy:hover {
-  border-color: var(--text);
+  border-color: var(--accent);
 }
 
 .oauth-setup-form,

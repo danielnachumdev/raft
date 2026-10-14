@@ -64,7 +64,7 @@ export function DeploySession(props: {
           scopes, then try again.
         </p>
         <a
-          className="refresh deploy-cta"
+          className="refresh btn-primary deploy-cta"
           href={githubLoginHref()}
           id="oauth-retry"
         >
@@ -93,7 +93,7 @@ export function DeploySession(props: {
         Scopes: <code>{session.scopes || "read:user repo workflow"}</code>
       </p>
       <a
-        className="refresh deploy-cta"
+        className="refresh btn-primary deploy-cta"
         href={githubLoginHref()}
         id="github-continue"
       >

@@ -75,7 +75,13 @@
 }
 
 .gh-account-add {
+  width: auto;
+  gap: 0.4rem;
   margin: 0.35rem 0.45rem;
+  padding: 0 0.55rem;
+  border-radius: 0.35rem;
+  color: var(--accent);
+  font-size: 0.9rem;
 }
 
 .gh-account-add:hover {

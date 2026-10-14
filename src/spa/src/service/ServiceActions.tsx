@@ -1,14 +1,16 @@
 import type { ServiceAction } from "../shared/api";
+import { actionAvailability } from "./actionAvailability";
 import { ServiceActionConfirm } from "./ServiceActionConfirm";
 import { useServiceActionRunner } from "./useServiceActionRunner";
 import "./ServiceActions.css";
 type Props = {
   service: string;
+  status: string;
   disabled?: boolean;
   onDone: () => void;
 };
 
-/** Start / Stop / Redeploy controls for one Compose service. */
+/** Start / Stop / Redeploy toolbar for one Compose service (page header). */
 export function ServiceActions(props: Props) {
   const runner = useServiceActionRunner(
     props.service,
@@ -16,41 +18,37 @@ export function ServiceActions(props: Props) {
     props.disabled,
   );
   const { busy, locked, run } = runner;
+  const avail = actionAvailability(props.status);
 
   return (
-    <section className="panel">
-      <h2>Actions</h2>
-      <p className="muted actions-hint">
-        Start and stop use Compose for this service only. Redeploy re-renders
-        and cutovers a running app (or recreates the router). Gate redeploy is
-        refused. Apps with scale-to-zero: stop marks idle-zero; start clears it.
-      </p>
-      <div className="actions-row">
-        <ActionButton
-          label="Start"
-          action="start"
-          busy={busy}
-          disabled={locked}
-          onClick={() => void run("start")}
-        />
-        <ActionButton
-          label="Stop"
-          action="stop"
-          busy={busy}
-          disabled={locked}
-          danger
-          onClick={() => void run("stop")}
-        />
-        <ActionButton
-          label="Redeploy"
-          action="redeploy"
-          busy={busy}
-          disabled={locked}
-          onClick={() => void run("redeploy")}
-        />
-      </div>
+    <div className="actions-row" role="group" aria-label="Service actions">
+      <ActionButton
+        label="Start"
+        action="start"
+        busy={busy}
+        disabled={locked || !avail.start.enabled}
+        hint={avail.start.hint}
+        onClick={() => void run("start")}
+      />
+      <ActionButton
+        label="Stop"
+        action="stop"
+        busy={busy}
+        disabled={locked || !avail.stop.enabled}
+        hint={avail.stop.hint}
+        danger
+        onClick={() => void run("stop")}
+      />
+      <ActionButton
+        label="Redeploy"
+        action="redeploy"
+        busy={busy}
+        disabled={locked || !avail.redeploy.enabled}
+        hint={avail.redeploy.hint}
+        onClick={() => void run("redeploy")}
+      />
       <ServiceActionConfirm runner={runner} />
-    </section>
+    </div>
   );
 }
 
@@ -59,6 +57,7 @@ function ActionButton(props: {
   action: ServiceAction;
   busy: ServiceAction | null;
   disabled: boolean;
+  hint: string;
   danger?: boolean;
   onClick: () => void;
 }) {
@@ -76,6 +75,8 @@ function ActionButton(props: {
       className={className}
       disabled={props.disabled}
       aria-busy={loading}
+      title={props.hint}
+      id={`service-${props.action}`}
       onClick={props.onClick}
     >
       {loading ? (

@@ -17,7 +17,7 @@
   padding: 0.5rem 0.55rem;
   border: 1px solid var(--line);
   background: var(--input);
-  color: var(--text);
+  color: var(--ink);
   resize: vertical;
   min-height: 8rem;
 }

@@ -13,22 +13,20 @@ export function StatusPanelControls(props: {
   onClear: () => void;
   onClearColumnFilter: (key: SortKey) => void;
 }) {
+  if (!props.filtersActive) return null;
   return (
     <div className="status-controls-wrap">
       <div className="status-controls">
         <div className="status-controls-meta">
           <span className="muted status-count" aria-live="polite">
-            {props.shown === props.total
-              ? `${props.total}`
-              : `${props.shown} / ${props.total}`}
+            Showing {props.shown} of {props.total}
           </span>
           <button
             type="button"
             className="status-clear"
             onClick={props.onClear}
-            disabled={!props.filtersActive}
           >
-            Clear
+            Clear filters
           </button>
         </div>
       </div>

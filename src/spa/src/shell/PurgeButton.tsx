@@ -18,12 +18,13 @@ export function PurgeButton() {
         disabled={busy}
         aria-busy={busy}
         aria-label="Purge unused Docker images"
+        title="Remove unused Docker images and build cache"
         id="stack-purge"
       >
         {busy ? (
           <span className="spinner refresh-spinner" aria-hidden="true" />
         ) : null}
-        Purge
+        Purge images
       </button>
       <ConfirmPopup
         open={open}

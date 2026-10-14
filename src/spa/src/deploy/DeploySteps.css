@@ -1,0 +1,47 @@
+.deploy-steps-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+}
+
+.deploy-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted);
+}
+
+.deploy-step-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.deploy-step--current {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.deploy-step--current .deploy-step-dot {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.deploy-step--done .deploy-step-dot {
+  background: var(--ok-bg);
+  border-color: var(--ok-border);
+  color: var(--ok);
+}

@@ -6,12 +6,12 @@
   min-width: 0;
 }
 
-.service-runtime-controls .trends-field {
+.service-runtime-controls > .trends-field {
   flex: 1 1 8rem;
   min-width: 0;
 }
 
-.service-runtime-controls .trends-range {
+.service-runtime-controls > .trends-range {
   flex: 1 1 12rem;
   min-width: 0;
 }
@@ -22,8 +22,8 @@
     gap: 0.75rem;
   }
 
-  .service-runtime-controls .trends-field,
-  .service-runtime-controls .trends-range {
+  .service-runtime-controls > .trends-field,
+  .service-runtime-controls > .trends-range {
     flex: none;
     width: 100%;
   }

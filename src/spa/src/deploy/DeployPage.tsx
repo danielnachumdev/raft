@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { PageHeader } from "../shell/PageHeader";
 import { DeployProgress } from "./DeployProgress";
 import { DeployRepoPicker } from "./DeployRepoPicker";
 import { DeploySession } from "./DeploySession";
+import { DeploySteps } from "./DeploySteps";
+import { currentStep } from "./model/wizardSteps";
 import {
   accountCount,
   deleteGithubAccount,
@@ -171,6 +174,14 @@ export function DeployPage() {
     }
   };
 
+  const autoPickedRef = useRef("");
+  useEffect(() => {
+    const ids = browseIdsKey ? browseIdsKey.split(",") : [];
+    if (viewAsId || ids.length !== 1 || autoPickedRef.current === ids[0]) return;
+    autoPickedRef.current = ids[0];
+    void onViewAs(ids[0]);
+  });
+
   const onOauthSaved = async () => {
     navigate("/deploy", { replace: true });
     await refreshSession();
@@ -189,28 +200,20 @@ export function DeployPage() {
   );
 
   return (
-    <div className="page deploy-page">
-      <header className="header">
-        <div>
-          <p className="brand">raft</p>
-          <h1>Add from GitHub</h1>
-          <p className="muted header-updating">
-            Temporary login for repo selection, deploy, and CI setup. Serve stays
-            localhost / SSH tunnel.
-          </p>
-        </div>
-        <div className="header-actions">
-          <Link className="refresh" to="/add-service">
-            Add new service
-          </Link>
-          <Link className="refresh" to="/">
-            Stack status
-          </Link>
-        </div>
-      </header>
+    <div className="deploy-page">
+      <PageHeader
+        crumbs={[
+          { label: "Status", to: "/" },
+          { label: "Add a service", to: "/add-service" },
+        ]}
+        title="Add from GitHub"
+        subtitle="Connect GitHub, pick a repository, and raft deploys it and opens a CI PR."
+      />
+
+      <DeploySteps current={currentStep(accountCount(session) > 0, selected, job)} />
 
       {error ? (
-        <p className="error" role="alert" id="deploy-error">
+        <p className="callout callout-bad error" role="alert" id="deploy-error">
           {error}
         </p>
       ) : null}

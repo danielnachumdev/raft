@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import {
   documentTitleForHost,
   fetchService,
@@ -10,13 +10,17 @@ import {
   invalidateStatus,
   refreshStatus,
 } from "../shared/dashboardCache";
-import { ThemeToggle } from "../chrome/ThemeToggle";
+import { ExternalUrlLinks } from "../shared/ExternalUrlLinks";
+import { PageHeader } from "../shell/PageHeader";
+import { StatusBadge } from "../status/StatusBadge";
+import { ServiceActions } from "./ServiceActions";
 import { ServiceDetail } from "./ServiceDetail";
 import "./ServicePage.css";
 /** Deep-linked service page: `/service/:service`. */
 export function ServicePage() {
   const { service: raw } = useParams<{ service: string }>();
   const service = raw ? decodeURIComponent(raw) : "";
+  const { hash } = useLocation();
   const [data, setData] = useState<ServiceDetailPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
@@ -64,20 +68,25 @@ export function ServicePage() {
       : documentTitleForHost(data?.host?.hostname);
   }, [data, service]);
 
+  useHashScroll(hash, data !== null);
+
+  const p = data?.presentation;
   return (
-    <div className="page">
-      <header className="header">
-        <div>
-          <p className="brand">raft</p>
-          <h1>{(data?.presentation.name ?? service) || "Service"}</h1>
-        </div>
-        <div className="header-actions">
-          <ThemeToggle />
-          <Link className="back-link" to="/">
-            ← Back to status
-          </Link>
-        </div>
-      </header>
+    <>
+      <PageHeader
+        crumbs={[{ label: "Status", to: "/" }]}
+        title={(p?.name ?? service) || "Service"}
+        meta={p ? <ServiceMeta data={data!} /> : undefined}
+        actions={
+          data ? (
+            <ServiceActions
+              service={data.container.service}
+              status={data.container.status}
+              onDone={() => void onActionDone()}
+            />
+          ) : undefined
+        }
+      />
 
       {busy && data === null && !error ? (
         <div className="loading" role="status" aria-busy="true">
@@ -87,18 +96,38 @@ export function ServicePage() {
       ) : null}
 
       {error ? (
-        <p className="error" role="alert">
-          {error}
-        </p>
+        <div className="callout callout-bad" role="alert">
+          <p className="error">{error}</p>
+          <Link to="/">Back to stack status</Link>
+        </div>
       ) : null}
 
-      {data ? (
-        <ServiceDetail
-          key={trendsKey}
-          data={data}
-          onActionDone={() => void onActionDone()}
-        />
-      ) : null}
-    </div>
+      {data ? <ServiceDetail key={trendsKey} data={data} /> : null}
+    </>
   );
+}
+
+function ServiceMeta(props: { data: ServiceDetailPayload }) {
+  const { container: c, presentation: p } = props.data;
+  return (
+    <>
+      <StatusBadge value={c.status} />
+      <span className="chip">{c.role}</span>
+      {c.group ? <span className="chip">group {c.group}</span> : null}
+      {c.service !== p.name ? (
+        <code className="muted">{c.service}</code>
+      ) : null}
+      {p.external_urls?.length ? (
+        <ExternalUrlLinks urls={p.external_urls} />
+      ) : null}
+    </>
+  );
+}
+
+function useHashScroll(hash: string, ready: boolean): void {
+  useEffect(() => {
+    if (!ready || !hash) return;
+    const el = document.getElementById(decodeURIComponent(hash.slice(1)));
+    el?.scrollIntoView({ block: "start" });
+  }, [hash, ready]);
 }
