@@ -17,6 +17,8 @@ export function LogViewer(props: {
   error: string | null;
   connectingLabel: string;
   controls: ReactNode;
+  /** Empty-stream copy when no filter is active (default: no log output). */
+  emptyLabel?: string;
 }) {
   const [filter, setFilter] = useState(defaultLogFilter);
   const [expanded, setExpanded] = useState(false);
@@ -51,7 +53,7 @@ export function LogViewer(props: {
       emptyLabel={
         isLogFilterActive(filter)
           ? "No lines match this filter."
-          : "(no log output)"
+          : (props.emptyLabel ?? "(no log output)")
       }
     />
   );

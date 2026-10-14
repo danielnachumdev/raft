@@ -64,15 +64,19 @@ class TestServeServiceLogs(RaftTestCase):
         assert response.status_code == 404
         assert "missing" in response.json()["detail"]
 
-    def test_api_service_logs_not_running_is_400(self) -> None:
+    def test_api_service_logs_offline_empty_is_200(self) -> None:
         logs = MagicMock()
-        logs.snapshot.side_effect = OperatorError(
-            "service 'site' is not running — bring the stack up first",
-            has_fix=False,
-        )
+        logs.snapshot.return_value = ""
         response = self._client(logs).get("/api/service/site/logs")
-        assert response.status_code == 400
-        assert "not running" in response.json()["detail"]
+        assert response.status_code == 200
+        assert response.json() == {"service": "site", "tail": 100, "text": ""}
+
+    def test_api_service_logs_retained_text_is_200(self) -> None:
+        logs = MagicMock()
+        logs.snapshot.return_value = "retained-line"
+        response = self._client(logs).get("/api/service/site/logs", params={"tail": 50})
+        assert response.status_code == 200
+        assert response.json()["text"] == "retained-line"
 
     def test_api_service_logs_follow_streams_sse(self) -> None:
         logs = MagicMock()

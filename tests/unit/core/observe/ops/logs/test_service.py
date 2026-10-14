@@ -9,6 +9,7 @@ import pytest
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.observe.ops.logs import Logs
+from raft.core.observe.ops.logs.store import ServiceLogsStore
 
 from tests.unit.base import RaftTestCase, AppMakers, StackMakers
 
@@ -16,6 +17,32 @@ from tests.unit.base import RaftTestCase, AppMakers, StackMakers
 class TestLogsShow(RaftTestCase):
     def _logs(self) -> Logs:
         return Logs(StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("app"),)))
+
+    def test_snapshot_reads_retained_when_offline(self) -> None:
+        logs = self._logs()
+        store = ServiceLogsStore(self.tmp_path, max_age_days=14, max_bytes=1024)
+        store.append_lines("app", ["retained-1", "retained-2"])
+        out = StringIO()
+        with patch.object(logs.docker, "try_service_container_id", return_value=None):
+            with patch.object(logs.docker, "compose_logs") as compose:
+                logs.show("app", tail=20, out=out)
+        compose.assert_not_called()
+        assert out.getvalue() == "retained-1\nretained-2\n"
+
+    def test_snapshot_empty_when_offline_and_no_retained(self) -> None:
+        logs = self._logs()
+        with patch.object(logs.docker, "try_service_container_id", return_value=None):
+            assert logs.snapshot("app") == ""
+
+    def test_snapshot_falls_back_to_docker_when_no_retained(self) -> None:
+        logs = self._logs()
+        with patch.object(logs.docker, "try_service_container_id", return_value="cid"):
+            with patch.object(
+                logs.docker, "compose_logs", return_value="line1\nline2"
+            ) as compose:
+                text = logs.snapshot("app", tail=20)
+        compose.assert_called_once_with("app", tail=20)
+        assert text == "line1\nline2"
 
     def test_snapshot_prints_compose_logs(self) -> None:
         logs = self._logs()
@@ -63,11 +90,11 @@ class TestLogsShow(RaftTestCase):
             with patch.object(logs.docker, "iter_follow_compose_logs", side_effect=boom):
                 logs.show("app", follow=True, out=StringIO())
 
-    def test_missing_container_raises(self) -> None:
+    def test_follow_missing_container_raises(self) -> None:
         logs = self._logs()
         with patch.object(logs.docker, "try_service_container_id", return_value=None):
             with pytest.raises(OperatorError, match="is not running"):
-                logs.show("app")
+                list(logs.follow("app"))
 
     def test_empty_snapshot_prints_nothing(self) -> None:
         logs = self._logs()
@@ -77,16 +104,6 @@ class TestLogsShow(RaftTestCase):
                 logs.show("app", out=out)
         assert out.getvalue() == ""
 
-    def test_snapshot_returns_compose_logs_text(self) -> None:
-        logs = self._logs()
-        with patch.object(logs.docker, "try_service_container_id", return_value="cid"):
-            with patch.object(
-                logs.docker, "compose_logs", return_value="line1\nline2"
-            ) as compose:
-                text = logs.snapshot("app", tail=20)
-        compose.assert_called_once_with("app", tail=20)
-        assert text == "line1\nline2"
-
     def test_snapshot_empty_returns_empty_string(self) -> None:
         logs = self._logs()
         with patch.object(logs.docker, "try_service_container_id", return_value="cid"):
@@ -95,9 +112,16 @@ class TestLogsShow(RaftTestCase):
 
     def test_bind_stack_updates_docker_and_targets(self) -> None:
         logs = self._logs()
-        refreshed = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("app"), AppMakers.make_app("demo-api")))
+        refreshed = StackMakers.make_stack(
+            self.tmp_path, (AppMakers.make_app("app"), AppMakers.make_app("demo-api"))
+        )
         logs.bind_stack(refreshed)
         assert logs.stack is refreshed
         assert logs.docker.stack is refreshed
         assert logs._targets.stack is refreshed
         assert logs._targets.resolve("demo-api") == ("demo-api",)
+
+    def test_unknown_target_still_raises(self) -> None:
+        logs = self._logs()
+        with pytest.raises(OperatorError, match="unknown logs target"):
+            logs.snapshot("never-applied")

@@ -23,6 +23,10 @@ DEFAULT_METRICS_RETENTION_MAX_AGE_DAYS = 30
 DEFAULT_METRICS_RETENTION_MAX_BYTES = 100 * 1024 * 1024
 DEFAULT_LOGGING_RETENTION_MAX_AGE_DAYS = 30
 DEFAULT_LOGGING_RETENTION_MAX_BYTES = 100 * 1024 * 1024
+DEFAULT_SERVICE_LOGS_INTERVAL_SECONDS = 5.0
+DEFAULT_SERVICE_LOGS_TIMEOUT_SECONDS = 30.0
+DEFAULT_SERVICE_LOGS_RETENTION_MAX_AGE_DAYS = 14
+DEFAULT_SERVICE_LOGS_RETENTION_MAX_BYTES = 50 * 1024 * 1024
 DEFAULT_ACME_DIRECTORY = "https://acme-v02.api.letsencrypt.org/directory"
 DEFAULT_ACME_RENEW_DAYS_BEFORE_EXPIRY = 30
 DEFAULT_ACME_CHALLENGE = "http-01"
@@ -103,6 +107,18 @@ class MetricsConfig:
 
 
 @dataclass(frozen=True)
+class ServiceLogsConfig:
+    """Retained container stdout under ``state/service-logs/`` (issue #196)."""
+
+    enabled: bool = True
+    interval_seconds: float = DEFAULT_SERVICE_LOGS_INTERVAL_SECONDS
+    timeout_seconds: float = DEFAULT_SERVICE_LOGS_TIMEOUT_SECONDS
+    retention_max_age_days: int = DEFAULT_SERVICE_LOGS_RETENTION_MAX_AGE_DAYS
+    retention_max_bytes: int = DEFAULT_SERVICE_LOGS_RETENTION_MAX_BYTES
+    include_edge: bool = True
+
+
+@dataclass(frozen=True)
 class AcmeConfig:
     """Public ACME TLS (``tls: acme``). Email required when any such app is applied."""
 
@@ -170,6 +186,7 @@ class RaftConfig:
     edge: EdgeConfig = field(default_factory=EdgeConfig)
     healing: HealingConfig = field(default_factory=HealingConfig)
     metrics: MetricsConfig = field(default_factory=MetricsConfig)
+    service_logs: ServiceLogsConfig = field(default_factory=ServiceLogsConfig)
     acme: AcmeConfig = field(default_factory=AcmeConfig)
     github: GithubServeConfig = field(default_factory=GithubServeConfig)
     notifications: NotificationsConfig = field(default_factory=NotificationsConfig)

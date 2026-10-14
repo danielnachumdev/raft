@@ -10,6 +10,7 @@ class JobIds:
 
     HEAL = JobType.HEAL.value
     METRICS = JobType.METRICS.value
+    SERVICE_LOGS = JobType.SERVICE_LOGS.value
 
     @staticmethod
     def of(job_type: JobType, subject: Optional[str] = None) -> str:

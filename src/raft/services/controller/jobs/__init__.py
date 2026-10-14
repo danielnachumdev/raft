@@ -1,4 +1,4 @@
-"""Controller job implementations (heal, metrics, acme, scale)."""
+"""Controller job implementations (heal, metrics, service-logs, acme, scale)."""
 
 from .acme import ACME_INTERVAL_SECONDS, ACME_TIMEOUT_SECONDS, AcmeJobSync
 from .controller_job import ControllerJob
@@ -12,6 +12,7 @@ from .metrics import (
     MetricsRecorder,
 )
 from .scale import ScaleJob, Scaler, WAKE_HTTP_PORT
+from .service_logs import ServiceLogsJob, ServiceLogsShipper
 
 __all__ = [
     "ACME_INTERVAL_SECONDS",
@@ -29,5 +30,7 @@ __all__ = [
     "MetricsRecorder",
     "ScaleJob",
     "Scaler",
+    "ServiceLogsJob",
+    "ServiceLogsShipper",
     "WAKE_HTTP_PORT",
 ]

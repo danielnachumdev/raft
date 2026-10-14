@@ -16,6 +16,10 @@ from .settings.types import (
     DEFAULT_METRICS_RETENTION_MAX_AGE_DAYS,
     DEFAULT_METRICS_RETENTION_MAX_BYTES,
     DEFAULT_METRICS_TIMEOUT_SECONDS,
+    DEFAULT_SERVICE_LOGS_INTERVAL_SECONDS,
+    DEFAULT_SERVICE_LOGS_RETENTION_MAX_AGE_DAYS,
+    DEFAULT_SERVICE_LOGS_RETENTION_MAX_BYTES,
+    DEFAULT_SERVICE_LOGS_TIMEOUT_SECONDS,
     STREAM_PROTOCOLS,
     AcmeConfig,
     AclConfig,
@@ -29,6 +33,7 @@ from .settings.types import (
     NotificationChannelConfig,
     NotificationsConfig,
     RaftConfig,
+    ServiceLogsConfig,
     default_config,
 )
 
@@ -48,6 +53,10 @@ __all__ = [
     "DEFAULT_METRICS_RETENTION_MAX_AGE_DAYS",
     "DEFAULT_METRICS_RETENTION_MAX_BYTES",
     "DEFAULT_METRICS_TIMEOUT_SECONDS",
+    "DEFAULT_SERVICE_LOGS_INTERVAL_SECONDS",
+    "DEFAULT_SERVICE_LOGS_RETENTION_MAX_AGE_DAYS",
+    "DEFAULT_SERVICE_LOGS_RETENTION_MAX_BYTES",
+    "DEFAULT_SERVICE_LOGS_TIMEOUT_SECONDS",
     "STREAM_PROTOCOLS",
     "AcmeConfig",
     "AclConfig",
@@ -61,5 +70,6 @@ __all__ = [
     "NotificationChannelConfig",
     "NotificationsConfig",
     "RaftConfig",
+    "ServiceLogsConfig",
     "default_config",
 ]

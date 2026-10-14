@@ -8,5 +8,6 @@ class JobType(Enum):
 
     HEAL = "heal"
     METRICS = "metrics"
+    SERVICE_LOGS = "service-logs"
     ACME = "acme"
     # SCALE intentionally absent — transitional side_ticks only.

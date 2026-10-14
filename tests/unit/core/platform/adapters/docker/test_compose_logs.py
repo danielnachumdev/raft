@@ -32,6 +32,25 @@ class TestDockerComposeLogs(DockerTestCase):
         assert "CLIENT_ID" in self.docker.container_logs("raft-app_tmp")
         assert self.docker.container_logs("") == ""
 
+    def test_container_logs_since(self) -> None:
+        self.shell.docker.return_value = self.ok(
+            "", returncode=0, stderr="2026-10-14T12:00:00Z line\n"
+        )
+        text = self.docker.container_logs_since("cid", since="2026-10-14T11:00:00Z")
+        assert "line" in text
+        self.shell.docker.assert_called_with(
+            "logs",
+            "--timestamps",
+            "--since",
+            "2026-10-14T11:00:00Z",
+            "cid",
+            capture=True,
+            check=False,
+        )
+        assert self.docker.container_logs_since("") == ""
+        text2 = self.docker.container_logs_since("cid")
+        assert "line" in text2
+
     def test_follow_compose_logs_streams(self) -> None:
         proc = MagicMock()
         proc.stdout = iter(["line-a\n", "line-b\n"])

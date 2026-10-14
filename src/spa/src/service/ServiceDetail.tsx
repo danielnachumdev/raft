@@ -14,7 +14,10 @@ export function ServiceDetail(props: {
   return (
     <>
       <ServiceActions service={c.service} onDone={props.onActionDone} />
-      <ServiceLogs service={c.service} />
+      <ServiceLogs
+        service={c.service}
+        running={/running|up|healthy/i.test(c.status)}
+      />
 
       <section className="panel">
         <h2>Overview</h2>

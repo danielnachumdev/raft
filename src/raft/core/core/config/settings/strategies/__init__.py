@@ -8,6 +8,7 @@ from .healing import HealingSettingsParser
 from .logging import LoggingSettingsParser
 from .metrics import MetricsSettingsParser
 from .notifications import NotificationsSettingsParser
+from .service_logs import ServiceLogsSettingsParser
 
 __all__ = [
     "AcmeSettingsParser",
@@ -18,4 +19,5 @@ __all__ = [
     "LoggingSettingsParser",
     "MetricsSettingsParser",
     "NotificationsSettingsParser",
+    "ServiceLogsSettingsParser",
 ]

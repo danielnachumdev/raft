@@ -76,6 +76,22 @@ logging:
 #   retentionMaxBytes: 104857600  # 100 MiB; max size of each active segment
 
 # ---------------------------------------------------------------------------
+# serviceLogs — retained Compose stdout/stderr under state/service-logs/.
+# Controller shipper appends continuously; lifecycle drains before recreate/rm
+# so cutover does not lose the last lines. Snapshot (CLI/serve/download) reads
+# retained files when the container is gone; follow still needs a live container.
+# Stdout may contain secrets — files are 0600 under the data home (same caution
+# as secrets/). Defaults are more conservative than metrics (stdout is bulkier).
+# ---------------------------------------------------------------------------
+# serviceLogs:
+#   enabled: true
+#   intervalSeconds: 5            # controller shipper poll
+#   timeoutSeconds: 30            # soft timeout for a stuck ship tick
+#   retentionMaxAgeDays: 14       # delete sealed archives older than this
+#   retentionMaxBytes: 52428800   # 50 MiB; max size of each active segment
+#   includeEdge: true             # also retain gate / router / controller
+
+# ---------------------------------------------------------------------------
 # edge — public listeners published by the gate container.
 #
 # null (or omit via YAML null) for http/https → that listener is not published.
