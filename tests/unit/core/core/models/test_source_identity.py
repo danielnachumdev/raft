@@ -36,6 +36,8 @@ class TestAppSourceIdentity(RaftTestCase):
         assert a == b
         assert a.label() == "local path=apps/demo-api"
         assert AppSourceIdentity._normalize_local_path("../apps/x") == "apps/x"
+        assert AppSourceIdentity._normalize_local_path("..") == "."
+        assert AppSourceIdentity._normalize_local_path("a/../../b") == "b"
         assert AppSourceIdentity._normalize_local_path("  ") == "."
 
     def test_git_empty_repo_key(self) -> None:

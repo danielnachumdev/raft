@@ -75,8 +75,9 @@ class ServiceLogsCapture:
                 continue
             match = _TS_PREFIX.match(text)
             if match is None:
-                if not cursor:
-                    lines.append(text)
+                if cursor:
+                    continue
+                lines.append(text)
                 continue
             ts = match.group("ts")
             body = match.group("body")

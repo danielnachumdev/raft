@@ -51,8 +51,9 @@ class AppSourceIdentity:
         parts: list[str] = []
         for part in PurePosixPath(raw).parts:
             if part == "..":
-                if parts:
-                    parts.pop()
+                if not parts:
+                    continue
+                parts.pop()
                 continue
             parts.append(part)
         return "/".join(parts) if parts else "."

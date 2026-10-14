@@ -43,11 +43,7 @@ class TestServiceLogsCoverage(RaftTestCase):
             ServiceLogsMeta(container_id="cid", cursor="2026-10-14T12:00:00Z"),
         )
         source = _SeqSource(
-            [
-                "\n"
-                "notimestamp\n"
-                "2026-10-14T12:00:01Z ok\n"
-            ]
+            ["\nnotimestamp\n2026-10-14T12:00:01Z ok\n"]
         )
         n = ServiceLogsCapture(store, source).ship("demo-api", "cid")
         assert n == 1
