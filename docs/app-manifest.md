@@ -4,6 +4,20 @@ How a `.raft/app.yaml` becomes desired state — including apply-time env and co
 
 Canonical path in a service repo: **`.raft/app.yaml`**. Shape: `apiVersion: raft/v1`, `kind: App`, `metadata`, `spec`. Copy-paste scenarios live under [`examples/`](../examples/). Exhaustive field rules for agents: [`AGENTS.md`](../AGENTS.md).
 
+## Name ownership (source identity)
+
+`metadata.name` keys `~/.raft/state/apps/<name>.yaml`. Re-applying the **same** source updates that entry (normal CI / redeploy). Applying a **different** source under the same name is rejected with an `OperatorError` Fix CTA — no silent overwrite.
+
+| `spec.source` | Identity key (durable; not checkout paths alone) |
+|---------------|--------------------------------------------------|
+| `local` | Normalized `spec.path` (posix, collapse `.` / `..`) |
+| `git` | Normalized remote (`git@host:org/repo.git` ≡ `https://host/org/repo[.git]`); **not** `ref` |
+| `docker` | Lowercased `spec.image` (tag stays in `spec.ref`; **not** part of identity) |
+
+**Reclaim:** rename `metadata.name`, or `raft delete <name>` then apply from the new source. v1 has no `--force` / `--replace`.
+
+Serve GitHub deploy uses the same apply path — conflicts surface as a failed deploy job with the Fix CTA text.
+
 ## What you declare
 
 Typical `spec` concerns (omit what you do not need):

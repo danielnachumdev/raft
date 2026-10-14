@@ -57,13 +57,14 @@ Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**). Nesting in-process re-
 3. **Packaged templates path:** product share lives at `src/raft/core/platform/share/`. `[tool.setuptools.package-data]` **must** list `core/platform/share/**` (not legacy `raft/share/`). Wrong globs → wheels without `compose.yaml` → every CLI command dies (including `raft update`). Meta guard: `tests/meta/test_package_data.py`. Recovery on a broken host: `curl …/install.sh | bash` (update cannot self-heal if stack load fails).
 4. **Console entry:** `raft` → `raft.services.cli.__main__:main`. Also `python -m raft.services.serve` / controller `__main__` where present.
 5. **Registry load is lenient; apply write is strict:** invalid `state/apps/*.yaml` skipped at load (`registry_issues`); apply still rejects bad manifests.
-6. **ACME failures do not fail deploy:** best-effort HTTP-01; errors under `state/acme/`.
-7. **Healing ≠ scaling:** `healing:` in settings; `spec.scaling` is per-App. Healer skips intentional `scaledToZero`.
-8. **Serve binds localhost only** (`127.0.0.1`). Not an edge listener. Mutative serve actions use the same flock rules as CLI; refuse gate redeploy where CLI refuses.
-9. **SPA poll:** status ~2s while tab visible; `/api/status` reloads registry every call (`refresh_apps=True`).
-10. **No PII / no live inventory in fixtures, screenshots, or PR bodies** — use `demo-api`, `192.0.2.0/24`, etc.
-11. **UI PRs need screenshots** (agent-browser + `gh pr edit --attach`) — unit tests alone are not Proof for visible SPA changes.
-12. **Desired apps are not in git** — only examples under `examples/`.
+6. **Name vs source:** `metadata.name` owned by durable source identity (`local`+path, `git`+normalized remote SSH≡HTTPS, `docker`+image; not `ref`). Same → update; different → `OperatorError` (no `--force` — delete then re-apply). Details: [`docs/app-manifest.md`](docs/app-manifest.md).
+7. **ACME failures do not fail deploy:** best-effort HTTP-01; errors under `state/acme/`.
+8. **Healing ≠ scaling:** `healing:` in settings; `spec.scaling` is per-App. Healer skips intentional `scaledToZero`.
+9. **Serve binds localhost only** (`127.0.0.1`). Not an edge listener. Mutative serve actions use the same flock rules as CLI; refuse gate redeploy where CLI refuses.
+10. **SPA poll:** status ~2s while tab visible; `/api/status` reloads registry every call (`refresh_apps=True`).
+11. **No PII / no live inventory in fixtures, screenshots, or PR bodies** — use `demo-api`, `192.0.2.0/24`, etc.
+12. **UI PRs need screenshots** (agent-browser + `gh pr edit --attach`) — unit tests alone are not Proof for visible SPA changes.
+13. **Desired apps are not in git** — only examples under `examples/`.
 
 ---
 
