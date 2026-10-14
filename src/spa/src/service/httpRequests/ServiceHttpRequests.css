@@ -54,8 +54,8 @@
 }
 
 .http-requests-table {
-  width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
   font-size: 0.8rem;
 }
 
@@ -66,6 +66,8 @@
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
   vertical-align: top;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .http-requests-table th {
@@ -78,28 +80,75 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   z-index: 1;
+  padding-right: 0.85rem;
+  overflow: visible;
+}
+
+.http-requests-th-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.http-requests-col-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0.45rem;
+  height: 100%;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+  border-right: 1px solid transparent;
+}
+
+.http-requests-col-resizer:hover,
+.http-requests-col-resizer:focus-visible {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  border-right-color: var(--accent);
+}
+
+.http-requests-table thead th:hover .http-requests-col-resizer {
+  border-right-color: color-mix(in srgb, var(--line) 80%, var(--accent));
+}
+
+.http-requests-table tbody tr {
+  cursor: pointer;
 }
 
 .http-requests-table tbody tr:hover {
   background: var(--row-hover);
 }
 
-.http-requests-path,
+.http-requests-table tbody tr:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.http-requests-table tbody tr.is-expanded td {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  word-break: break-word;
+}
+
+.http-requests-table tbody tr.is-expanded {
+  background: color-mix(in srgb, var(--idle-bg) 55%, var(--panel));
+}
+
+.http-requests-path code,
 .http-requests-ua {
-  max-width: min(14rem, 40vw);
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-@media (max-width: 719px) {
-  .http-requests-table {
-    min-width: 36rem;
-  }
-
-  .http-requests-path,
-  .http-requests-ua {
-    max-width: 10rem;
-  }
+.http-requests-table tbody tr.is-expanded .http-requests-path code,
+.http-requests-table tbody tr.is-expanded .http-requests-ua {
+  overflow: visible;
+  text-overflow: unset;
+  white-space: normal;
+  word-break: break-word;
 }
 
 @media (max-width: 519px) {
@@ -108,7 +157,6 @@
   }
 
   .http-requests-table {
-    min-width: 32rem;
     font-size: 0.75rem;
   }
 }

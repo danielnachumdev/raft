@@ -3,14 +3,9 @@ import {
   DEFAULT_HTTP_REQUESTS_LIMIT,
   HTTP_REQUESTS_POLL_MS,
   fetchServiceHttpRequests,
-  type HttpRequestRow,
   type HttpRequestsPayload,
 } from "../../shared/api";
-import {
-  formatLatencyMs,
-  formatRequestTime,
-  statusToneForCode,
-} from "./statusClass";
+import { HttpRequestsTable } from "./HttpRequestsTable";
 import "./ServiceHttpRequests.css";
 
 const LIMIT_CHOICES = [50, 100, 200] as const;
@@ -69,6 +64,7 @@ export function ServiceHttpRequests(props: {
       <p className="http-requests-note">
         Per-request edge traffic for this App’s Host(s). Trends HTTP stays
         aggregate (RPS / latency / status classes). Query strings are not logged.
+        Drag column edges to resize; click a row to expand full Path / User-Agent.
       </p>
       {data?.scaled_to_zero ? (
         <p className="http-requests-hint" role="status">
@@ -130,69 +126,6 @@ function HttpRequestsControls(props: {
         Refresh
       </button>
     </div>
-  );
-}
-
-function HttpRequestsTable(props: { rows: HttpRequestRow[] }) {
-  if (props.rows.length === 0) {
-    return (
-      <p className="http-requests-empty">
-        No recent HTTP requests for this service.
-      </p>
-    );
-  }
-  return (
-    <div className="http-requests-scroll">
-      <table className="http-requests-table">
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Method</th>
-            <th>Path</th>
-            <th>Status</th>
-            <th>Latency</th>
-            <th>Client</th>
-            <th>Host</th>
-            <th>User-Agent</th>
-          </tr>
-        </thead>
-        <tbody>
-          {props.rows.map((row, idx) => (
-            <HttpRequestRowView key={`${row.ts}-${idx}`} row={row} />
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function HttpRequestRowView(props: { row: HttpRequestRow }) {
-  const { row } = props;
-  const tone = statusToneForCode(row.status);
-  const ua = row.user_agent ?? "—";
-  return (
-    <tr>
-      <td>{formatRequestTime(row.ts)}</td>
-      <td>
-        <code>{row.method ?? "—"}</code>
-      </td>
-      <td className="http-requests-path">
-        <code title={row.path ?? undefined}>{row.path ?? "—"}</code>
-      </td>
-      <td>
-        <span className={`http-requests-status tone-${tone}`}>{row.status}</span>
-      </td>
-      <td>{formatLatencyMs(row.duration_ms)}</td>
-      <td>
-        <code>{row.client_ip ?? "—"}</code>
-      </td>
-      <td>
-        <code>{row.host}</code>
-      </td>
-      <td className="http-requests-ua" title={ua}>
-        {ua}
-      </td>
-    </tr>
   );
 }
 
