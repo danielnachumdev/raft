@@ -92,7 +92,7 @@ Align with the README table; detail for agents:
 | Healing | **Shipped** | Settings `healing:`; separate from scaling |
 | Secrets baseline (`~/.raft/secrets/<app>/env`) | **Shipped** | Guidance [`docs/secrets.md`](docs/secrets.md); external materialization epic [#143](https://github.com/danielnachumdev/raft/issues/143) / [#176](https://github.com/danielnachumdev/raft/issues/176) |
 | Past logs when container off | **Shipped** | Retained under `state/service-logs/`; shipper + drain-before-rm; [`docs/serve-logs.md`](docs/serve-logs.md) |
-| Named Trends views | **Planned** | [#202](https://github.com/danielnachumdev/raft/issues/202) |
+| Named Trends views | **Shipped** | Browser-local saved explorer configs; [#202](https://github.com/danielnachumdev/raft/issues/202); [`docs/serve-trends.md`](docs/serve-trends.md) |
 | Alerts from firewall + graph/metrics → notifications | **Planned** | Wire firewall signals + resources/`http.jsonl` metrics into shipped notification strategies; scope under epic #207 or observe/notify when filed |
 | Always-on Compose dashboard service | **Planned** | [#36](https://github.com/danielnachumdev/raft/issues/36) — not `raft serve` replacement without design |
 | Automate SPA bake in CI | **Planned** | [#41](https://github.com/danielnachumdev/raft/issues/41) |

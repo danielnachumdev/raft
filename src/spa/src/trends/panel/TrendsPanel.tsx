@@ -43,6 +43,7 @@ import {
   usesGroupPicker,
   type SeriesViewMode,
 } from "./trendsView";
+import { useTrendsNamedViews } from "../views/index.ts";
 import "./TrendsPanel.css";
 
 const INITIAL = defaultRangeState();
@@ -139,6 +140,17 @@ export function TrendsPanel() {
   const pickerIds = groupMode
     ? groups.map((g) => g.id)
     : available.map((a) => a.id);
+  const namedViews = useTrendsNamedViews({
+    metricIds,
+    viewMode,
+    selected,
+    range,
+    pickerIds,
+    setMetricIds,
+    setViewMode,
+    setSelected,
+    setRange,
+  });
   const activeIds = selected ?? pickerIds;
   const showingAll =
     selected === null ||
@@ -185,6 +197,7 @@ export function TrendsPanel() {
           activeIds={activeIds}
           showingAll={showingAll}
           busy={busy}
+          namedViews={namedViews}
           onRange={setRange}
           onToggleMetric={(id) => setMetricIds((cur) => toggleMetricId(cur, id))}
           onClearMetrics={() => setMetricIds([])}
