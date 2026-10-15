@@ -163,31 +163,27 @@ class JobOrchestrator:
             self._forget_worker(job_id)
 
     def _check_soft_timeouts(self) -> None:
-        """Warn when a worker exceeds its budget; keep it tracked so SKIP_IF_RUNNING holds.
-
-        Forgetting a live worker used to allow a second tick to start while the first
-        (and its Docker children) kept running — that piled up under the controller
-        cgroup and OOM-killed the process. Soft-timeout is advisory only.
-        """
+        """Warn once per overdue worker; keep it tracked (SKIP_IF_RUNNING holds)."""
         now = time.monotonic()
         for job_id, worker in list(self._workers.items()):
-            if not worker.is_alive():
-                continue
-            started = self._started_mono.get(job_id)
-            timeout = self._timeouts.get(job_id)
-            if started is None or timeout is None:
-                continue
-            if now - started < timeout:
-                continue
-            if job_id in self._soft_warned:
-                continue
-            self._soft_warned.add(job_id)
-            logger.warning(
-                "job soft-timeout id=%s timeout=%ss "
-                "(keeping worker tracked; skip-if-running until it finishes)",
-                job_id,
-                timeout,
-            )
+            self._warn_soft_timeout_if_due(job_id, worker, now)
+
+    def _warn_soft_timeout_if_due(
+        self, job_id: str, worker: threading.Thread, now: float
+    ) -> None:
+        if not worker.is_alive() or job_id in self._soft_warned:
+            return
+        started = self._started_mono.get(job_id)
+        timeout = self._timeouts.get(job_id)
+        if started is None or timeout is None or now - started < timeout:
+            return
+        self._soft_warned.add(job_id)
+        logger.warning(
+            "job soft-timeout id=%s timeout=%ss "
+            "(keeping worker tracked; skip-if-running until it finishes)",
+            job_id,
+            timeout,
+        )
 
     def _forget_worker(self, job_id: str) -> None:
         """Drop tracking after a worker thread has exited."""

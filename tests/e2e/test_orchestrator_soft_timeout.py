@@ -5,7 +5,7 @@ from __future__ import annotations
 import threading
 import time
 from datetime import datetime, timedelta, timezone
-from typing import List
+from typing import Callable, Dict, List
 
 import pytest
 
@@ -15,7 +15,6 @@ from raft.services.controller.engine.schedule import IntervalSchedule
 
 pytestmark = pytest.mark.e2e
 
-# Mirror production service-logs shape (scaled for the test): short interval + soft budget.
 INTERVAL = 1.0
 SOFT_TIMEOUT = 0.05
 OVERLAP_CYCLES = 8
@@ -32,32 +31,38 @@ class _Clock:
         self.now = self.now + timedelta(seconds=seconds)
 
 
-class TestE2ESoftTimeoutNoOverlap:
-    """Reproduce the service-logs soft-timeout pile-up and assert it no longer happens.
+class _OverlapProbe:
+    """Counts concurrent workers; ``peaks`` records each start's concurrency."""
 
-    Production failure: soft-timeout *forgot* the live worker so SKIP_IF_RUNNING
-    allowed another tick while ``docker logs`` children from the first were still
-    running → memory climbed to the 128MiB controller cgroup → OOM crash loop and
-    metrics gaps. Soft-timeout must stay advisory: one worker until it finishes.
-    """
+    def __init__(self) -> None:
+        self.hold = threading.Event()
+        self.active: Dict[str, int] = {"n": 0}
+        self.peaks: List[int] = []
+        self._lock = threading.Lock()
+
+    def blocking_ship(self) -> None:
+        with self._lock:
+            self.active["n"] += 1
+            self.peaks.append(self.active["n"])
+        try:
+            self.hold.wait(timeout=10)
+        finally:
+            with self._lock:
+                self.active["n"] -= 1
+
+
+class TestE2ESoftTimeoutNoOverlap:
+    """Soft-timeout must stay advisory so SKIP_IF_RUNNING prevents worker pile-up."""
 
     def test_soft_timeout_does_not_start_overlapping_workers(self) -> None:
-        hold = threading.Event()
-        active = {"n": 0}
-        peaks: List[int] = []
-        lock = threading.Lock()
-
-        def blocking_ship() -> None:
-            with lock:
-                active["n"] += 1
-                peaks.append(active["n"])
-            try:
-                hold.wait(timeout=10)
-            finally:
-                with lock:
-                    active["n"] -= 1
-
+        probe = _OverlapProbe()
         clock = _Clock()
+        orch = self._armed_orchestrator(probe.blocking_ship, clock)
+        self._run_past_soft_timeout(orch, clock, probe)
+        self._assert_no_overlap_while_held(orch, probe)
+        self._assert_can_run_again_after_reap(orch, clock, probe)
+
+    def _armed_orchestrator(self, run: Callable[[], None], clock: _Clock) -> JobOrchestrator:
         orch = JobOrchestrator()
         orch.register(
             JobSpec(
@@ -65,10 +70,15 @@ class TestE2ESoftTimeoutNoOverlap:
                 schedule=IntervalSchedule(INTERVAL),
                 timeout_seconds=SOFT_TIMEOUT,
                 queue_policy=QueuePolicy.SKIP_IF_RUNNING,
-                run=blocking_ship,
+                run=run,
             )
         )
         orch._arm_first_fires(clock())
+        return orch
+
+    def _run_past_soft_timeout(
+        self, orch: JobOrchestrator, clock: _Clock, probe: _OverlapProbe
+    ) -> None:
         self._dispatch(orch, clock)
         time.sleep(SOFT_TIMEOUT + 0.05)
         for _ in range(OVERLAP_CYCLES):
@@ -76,22 +86,27 @@ class TestE2ESoftTimeoutNoOverlap:
             self._dispatch(orch, clock)
             time.sleep(0.01)
 
-        assert max(peaks) == 1, f"overlapping workers piled up: peaks={peaks}"
+    def _assert_no_overlap_while_held(
+        self, orch: JobOrchestrator, probe: _OverlapProbe
+    ) -> None:
+        assert max(probe.peaks) == 1, f"overlapping workers: peaks={probe.peaks}"
         assert orch._is_running(JobIds.SERVICE_LOGS)
         assert orch._soft_warned == {JobIds.SERVICE_LOGS}
 
-        hold.set()
+    def _assert_can_run_again_after_reap(
+        self, orch: JobOrchestrator, clock: _Clock, probe: _OverlapProbe
+    ) -> None:
+        probe.hold.set()
         orch.join_running(timeout=2.0)
         orch._reap_finished()
         assert not orch._is_running(JobIds.SERVICE_LOGS)
-
-        hold.clear()
+        probe.hold.clear()
         clock.advance(INTERVAL)
         self._dispatch(orch, clock)
         time.sleep(0.02)
-        assert active["n"] == 1
-        assert max(peaks) == 1
-        hold.set()
+        assert probe.active["n"] == 1
+        assert max(probe.peaks) == 1
+        probe.hold.set()
         orch.join_running(timeout=2.0)
 
     def _dispatch(self, orch: JobOrchestrator, clock: _Clock) -> None:

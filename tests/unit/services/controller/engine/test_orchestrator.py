@@ -74,10 +74,13 @@ class TestJobOrchestrator:
         release.set()
 
     def test_soft_timeout_keeps_worker_tracked_so_skip_holds(self) -> None:
-        """Past soft-timeout must not start a second worker while the first lives."""
         hold = threading.Event()
         runs = {"n": 0}
+        clock, orch = self._start_blocking_metrics(hold, runs)
+        self._assert_skip_after_soft_timeout(orch, clock, runs)
+        self._assert_reruns_after_finish(orch, clock, hold, runs)
 
+    def _start_blocking_metrics(self, hold: threading.Event, runs: dict):
         def blocking() -> None:
             runs["n"] += 1
             hold.wait(timeout=5)
@@ -87,11 +90,18 @@ class TestJobOrchestrator:
         orch.register(self._spec(JobIds.METRICS, blocking, interval=1.0, timeout=0.05))
         self._run_cycles(orch, clock, cycles=1)
         assert runs["n"] == 1
+        return clock, orch
+
+    def _assert_skip_after_soft_timeout(self, orch, clock: _Clock, runs: dict) -> None:
         time.sleep(0.08)
         clock.advance(1.0)
         self._run_one_cycle(orch, clock)
         assert runs["n"] == 1
         assert orch._is_running(JobIds.METRICS)
+
+    def _assert_reruns_after_finish(
+        self, orch, clock: _Clock, hold: threading.Event, runs: dict
+    ) -> None:
         hold.set()
         orch.join_running(timeout=2.0)
         clock.advance(1.0)
