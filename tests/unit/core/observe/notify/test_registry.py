@@ -14,10 +14,10 @@ class TestNotificationRegistry(RaftTestCase):
         registry = NotificationRegistry()
         registry.register(FakeStrategy("webhook"))
         registry.register(FakeStrategy("email"))
-        assert [row["type_id"] for row in registry.catalog()] == [
-            "webhook",
-            "email",
-        ]
+        catalog = registry.catalog()
+        assert [row["type_id"] for row in catalog] == ["webhook", "email"]
+        assert catalog[0]["label"] == "webhook"
+        assert catalog[0]["fields"] == []
 
     def test_get_returns_registered_strategy(self) -> None:
         registry = NotificationRegistry()

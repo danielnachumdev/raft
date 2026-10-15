@@ -2,8 +2,20 @@
 
 export const SECRET_MASK = "***" as const;
 
+/** One settings key declared by a registered strategy for the channel form. */
+export type NotificationStrategyField = {
+  key: string;
+  label: string;
+  kind: "text" | "url" | "secret" | "number" | "checkbox" | string;
+  required: boolean;
+  help?: string;
+  placeholder?: string;
+};
+
 export type NotificationStrategyInfo = {
   type_id: string;
+  label?: string;
+  fields?: NotificationStrategyField[];
 };
 
 export type NotificationStrategiesPayload = {

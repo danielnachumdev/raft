@@ -3,13 +3,15 @@
 import logging
 import smtplib
 from email.message import EmailMessage
-from typing import Any, Mapping, Optional
+from typing import Any, Dict, Mapping, Optional
 
 from raft.core.core.errors.cta import OperatorError
 
+from ...catalog_field import CatalogField
 from ...delivery_result import DeliveryResult
 from ...event import NotificationEvent
 from ...strategy import NotificationStrategy
+from .fields import FIELDS, LABEL
 from .gateway import SmtpGateway
 from .settings import EmailSettings
 
@@ -28,6 +30,9 @@ class EmailStrategy(NotificationStrategy):
     @property
     def type_id(self) -> str:
         return TYPE_ID
+
+    def catalog_entry(self) -> Dict[str, Any]:
+        return CatalogField.entry(TYPE_ID, label=LABEL, fields=FIELDS)
 
     def validate_settings(self, settings: Mapping[str, Any]) -> None:
         self._settings.validate(settings)

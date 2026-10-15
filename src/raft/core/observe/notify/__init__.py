@@ -12,7 +12,7 @@ from .notifier import Notifier
 from .registry import NotificationRegistry
 from .settings_redactor import SettingsRedactor
 from .severity import NotificationSeverity
-from .strategies import EmailStrategy, WebhookStrategy
+from .strategies import EmailStrategy, WebhookStrategy, WhatsAppStrategy
 from .strategy import NotificationStrategy
 
 __all__ = [
@@ -31,4 +31,5 @@ __all__ = [
     "Notifier",
     "SettingsRedactor",
     "WebhookStrategy",
+    "WhatsAppStrategy",
 ]
