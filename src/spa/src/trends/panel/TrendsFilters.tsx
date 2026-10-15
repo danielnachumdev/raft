@@ -2,6 +2,10 @@ import type { MetricsAvailable, MetricsBounds } from "../../shared/api/index.ts"
 import type { RuntimeMetricId } from "../runtimeMetrics";
 import type { TrendsRangeState } from "../range/index.ts";
 import { TrendsRangeControls } from "../TrendsRangeControls";
+import {
+  TrendsViewsBar,
+  type TrendsNamedViewsApi,
+} from "../views/index.ts";
 import { IdFilter } from "./IdFilter";
 import { MetricFilter } from "./MetricFilter";
 import type { GroupOption, SeriesViewMode } from "./trendsView";
@@ -19,6 +23,7 @@ export function TrendsFilters(props: {
   activeIds: string[];
   showingAll: boolean;
   busy: boolean;
+  namedViews: TrendsNamedViewsApi;
   onRange: (next: TrendsRangeState) => void;
   onToggleMetric: (id: RuntimeMetricId) => void;
   onClearMetrics: () => void;
@@ -29,6 +34,15 @@ export function TrendsFilters(props: {
 }) {
   return (
     <aside className="trends-sidebar" aria-label="Trend filters">
+      <TrendsViewsBar
+        store={props.namedViews.store}
+        staleMessage={props.namedViews.staleMessage}
+        onSelect={props.namedViews.onSelect}
+        onSave={props.namedViews.onSave}
+        onUpdate={props.namedViews.onUpdate}
+        onRename={props.namedViews.onRename}
+        onDelete={props.namedViews.onDelete}
+      />
       <TrendsRangeControls
         range={props.range}
         bounds={props.bounds}
