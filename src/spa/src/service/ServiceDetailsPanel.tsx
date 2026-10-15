@@ -1,8 +1,16 @@
+import type { ReactNode } from "react";
+import { FlashValue } from "../chrome/FlashValue";
+import { directionalFlash } from "../chrome/flashValue";
 import type { ServiceDetailPayload } from "../shared/api";
 import { formatBytes, formatPercent } from "../shared/format";
 import "./ServiceDetail.css";
 
-type Row = { label: string; value: string };
+type Row = { label: string; value: ReactNode };
+
+const PCT_FLASH = directionalFlash({ buckets: [0.5, 2, 8] });
+const BYTES_FLASH = directionalFlash({
+  buckets: [64 * 1024, 1024 * 1024, 16 * 1024 * 1024],
+});
 
 /** Identity, allocation, and raw counters grouped in one panel. */
 export function ServiceDetailsPanel(props: { data: ServiceDetailPayload }) {
@@ -31,11 +39,39 @@ export function ServiceDetailsPanel(props: { data: ServiceDetailPayload }) {
     {
       title: "Counters",
       rows: [
-        { label: "CPU", value: formatPercent(c.cpu_percent) },
-        { label: "Memory used", value: formatBytes(c.memory.used_bytes) },
+        {
+          label: "CPU",
+          value: (
+            <FlashValue value={c.cpu_percent} mode={PCT_FLASH}>
+              {formatPercent(c.cpu_percent)}
+            </FlashValue>
+          ),
+        },
+        {
+          label: "Memory used",
+          value: (
+            <FlashValue value={c.memory.used_bytes} mode={BYTES_FLASH}>
+              {formatBytes(c.memory.used_bytes)}
+            </FlashValue>
+          ),
+        },
         { label: "Memory limit", value: formatBytes(c.memory.limit_bytes) },
-        { label: "Block read", value: formatBytes(c.block_io.read_bytes) },
-        { label: "Block write", value: formatBytes(c.block_io.write_bytes) },
+        {
+          label: "Block read",
+          value: (
+            <FlashValue value={c.block_io.read_bytes} mode={BYTES_FLASH}>
+              {formatBytes(c.block_io.read_bytes)}
+            </FlashValue>
+          ),
+        },
+        {
+          label: "Block write",
+          value: (
+            <FlashValue value={c.block_io.write_bytes} mode={BYTES_FLASH}>
+              {formatBytes(c.block_io.write_bytes)}
+            </FlashValue>
+          ),
+        },
         { label: "Started", value: p.started },
       ],
     },

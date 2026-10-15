@@ -1,0 +1,95 @@
+.flash-value {
+  display: inline-block;
+  border-radius: 0.3rem;
+  padding: 0.08em 0.28em;
+  margin: -0.08em -0.28em;
+  background-color: transparent;
+  background-image: none;
+  transition: none;
+  vertical-align: baseline;
+}
+
+.flash-value--fill {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border-radius: 0.25rem;
+}
+
+.flash-value--active {
+  animation: flash-value-wash var(--flash-duration, 700ms) ease-out;
+}
+
+.flash-value--up.flash-value--active {
+  animation-name: flash-value-wash-up;
+}
+
+.flash-value--down.flash-value--active {
+  animation-name: flash-value-wash-down;
+}
+
+@keyframes flash-value-wash {
+  0% {
+    background-color: color-mix(
+      in srgb,
+      var(--flash-color, var(--accent)) calc(var(--flash-intensity, 0.5) * 42%),
+      transparent
+    );
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes flash-value-wash-up {
+  0% {
+    background-color: color-mix(
+      in srgb,
+      var(--flash-color, var(--ok)) calc(var(--flash-intensity, 0.5) * 28%),
+      transparent
+    );
+    background-image: linear-gradient(
+      to top,
+      transparent 0%,
+      color-mix(
+        in srgb,
+        var(--flash-color, var(--ok)) calc(var(--flash-intensity, 0.5) * 48%),
+        transparent
+      ) 100%
+    );
+  }
+  100% {
+    background-color: transparent;
+    background-image: none;
+  }
+}
+
+@keyframes flash-value-wash-down {
+  0% {
+    background-color: color-mix(
+      in srgb,
+      var(--flash-color, var(--danger)) calc(var(--flash-intensity, 0.5) * 28%),
+      transparent
+    );
+    background-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      color-mix(
+        in srgb,
+        var(--flash-color, var(--danger)) calc(var(--flash-intensity, 0.5) * 48%),
+        transparent
+      ) 100%
+    );
+  }
+  100% {
+    background-color: transparent;
+    background-image: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flash-value--active {
+    animation: none;
+  }
+}

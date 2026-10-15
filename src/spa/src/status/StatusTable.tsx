@@ -1,5 +1,7 @@
 import { useCallback, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
+import { FlashValue } from "../chrome/FlashValue";
+import { directionalFlash, type FlashMode } from "../chrome/flashValue";
 import type { StatusRow } from "../shared/api";
 import { servicePath } from "../shared/api";
 import { ColumnHeaderMenu } from "./ColumnHeaderMenu";
@@ -16,6 +18,15 @@ import {
   type UtilTone,
 } from "./model/statusTone";
 import "./StatusTable.css";
+
+const PCT_FLASH = directionalFlash({
+  parse: (v) => (typeof v === "string" ? parsePercent(v) : null),
+  buckets: [0.5, 2, 8],
+});
+const MEM_FLASH = directionalFlash({
+  parse: (v) => (typeof v === "string" ? parseMemoryRatioPercent(v) : null),
+  buckets: [0.5, 2, 8],
+});
 const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "name", label: COLUMN_LABELS.name },
   { key: "role", label: COLUMN_LABELS.role },
@@ -144,11 +155,21 @@ function cellContent(key: SortKey, row: StatusTreeRow) {
     return <StatusBadge value={value} />;
   }
   if (key === "cpu") {
-    return <UtilValue value={value} tone={utilTone(parsePercent(value))} />;
+    return (
+      <UtilValue
+        value={value}
+        tone={utilTone(parsePercent(value))}
+        mode={PCT_FLASH}
+      />
+    );
   }
   if (key === "memory") {
     return (
-      <UtilValue value={value} tone={utilTone(parseMemoryRatioPercent(value))} />
+      <UtilValue
+        value={value}
+        tone={utilTone(parseMemoryRatioPercent(value))}
+        mode={MEM_FLASH}
+      />
     );
   }
   return value;
@@ -174,7 +195,15 @@ function NameCell(props: { row: StatusTreeRow }) {
   );
 }
 
-function UtilValue(props: { value: string; tone: UtilTone }) {
+function UtilValue(props: {
+  value: string;
+  tone: UtilTone;
+  mode: FlashMode;
+}) {
   const className = props.tone ? `util-value util-${props.tone}` : "util-value";
-  return <span className={className}>{props.value}</span>;
+  return (
+    <FlashValue value={props.value} mode={props.mode} className={className}>
+      {props.value}
+    </FlashValue>
+  );
 }
