@@ -16,7 +16,7 @@ SideTick = Callable[[], None]
 
 
 class JobOrchestrator:
-    """Register periodic jobs, enqueue one-shots, soft-timeout dispatch."""
+    """Register periodic jobs, enqueue one-shots; soft-timeout is advisory only."""
 
     def __init__(self, side_ticks: Sequence[SideTick] = ()) -> None:
         self._specs: Dict[str, JobSpec] = {}
@@ -25,6 +25,7 @@ class JobOrchestrator:
         self._workers: Dict[str, threading.Thread] = {}
         self._started_mono: Dict[str, float] = {}
         self._timeouts: Dict[str, float] = {}
+        self._soft_warned: set[str] = set()
         self._last_now: Optional[datetime] = None
         self._side_ticks: List[SideTick] = list(side_ticks)
 
@@ -162,29 +163,34 @@ class JobOrchestrator:
             self._forget_worker(job_id)
 
     def _check_soft_timeouts(self) -> None:
+        """Warn once per overdue worker; keep it tracked (SKIP_IF_RUNNING holds)."""
         now = time.monotonic()
         for job_id, worker in list(self._workers.items()):
-            if not worker.is_alive():
-                continue
-            started = self._started_mono.get(job_id)
-            timeout = self._timeouts.get(job_id)
-            if started is None or timeout is None:
-                continue
-            if now - started < timeout:
-                continue
-            logger.warning(
-                "job soft-timeout id=%s timeout=%ss "
-                "(forgetting worker so skip-if-running can reschedule)",
-                job_id,
-                timeout,
-            )
-            self._forget_worker(job_id)
+            self._warn_soft_timeout_if_due(job_id, worker, now)
+
+    def _warn_soft_timeout_if_due(
+        self, job_id: str, worker: threading.Thread, now: float
+    ) -> None:
+        if not worker.is_alive() or job_id in self._soft_warned:
+            return
+        started = self._started_mono.get(job_id)
+        timeout = self._timeouts.get(job_id)
+        if started is None or timeout is None or now - started < timeout:
+            return
+        self._soft_warned.add(job_id)
+        logger.warning(
+            "job soft-timeout id=%s timeout=%ss "
+            "(keeping worker tracked; skip-if-running until it finishes)",
+            job_id,
+            timeout,
+        )
 
     def _forget_worker(self, job_id: str) -> None:
-        """Drop tracking for a stuck worker; the daemon thread may still finish."""
+        """Drop tracking after a worker thread has exited."""
         self._workers.pop(job_id, None)
         self._started_mono.pop(job_id, None)
         self._timeouts.pop(job_id, None)
+        self._soft_warned.discard(job_id)
 
     def _run_side_ticks(self) -> None:
         for tick in self._side_ticks:
