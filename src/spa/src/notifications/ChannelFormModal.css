@@ -26,3 +26,22 @@
   margin: 0.35rem 0 0;
   font-size: 0.82rem;
 }
+
+.channel-settings-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.25rem;
+}
+
+.channel-field-help {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.channel-enabled .channel-field-help {
+  flex-basis: 100%;
+  margin-left: 1.4rem;
+}

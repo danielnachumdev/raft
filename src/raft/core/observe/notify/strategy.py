@@ -1,8 +1,9 @@
 """NotificationStrategy ABC — subclass + register to add a channel type."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Mapping
+from typing import Any, Dict, Mapping
 
+from .catalog_field import CatalogField
 from .delivery_result import DeliveryResult
 from .event import NotificationEvent
 
@@ -14,6 +15,10 @@ class NotificationStrategy(ABC):
     @abstractmethod
     def type_id(self) -> str:
         """Stable type discriminator matched by channel descriptors."""
+
+    def catalog_entry(self) -> Dict[str, Any]:
+        """Serve/SPA catalog row; override to declare label + settings fields."""
+        return CatalogField.entry(self.type_id, label=self.type_id)
 
     @abstractmethod
     def validate_settings(self, settings: Mapping[str, Any]) -> None:

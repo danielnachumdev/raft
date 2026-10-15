@@ -44,6 +44,7 @@ class TestEmailStrategy(RaftTestCase):
         types = [row["type_id"] for row in NotificationCatalogs.default().catalog()]
         assert TYPE_ID in types
         assert "webhook" in types
+        assert "whatsapp" in types
 
     def test_validate_requires_addresses_and_host(self) -> None:
         strategy = EmailStrategy()

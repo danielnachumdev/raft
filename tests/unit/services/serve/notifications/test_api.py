@@ -49,7 +49,11 @@ class TestServeNotificationsApi(RaftTestCase):
             row["type_id"]
             for row in client.get("/api/notifications/strategies").json()["strategies"]
         ]
-        assert types == ["webhook", "email"]
+        assert types == ["webhook", "email", "whatsapp"]
+        catalog = client.get("/api/notifications/strategies").json()["strategies"]
+        whatsapp = next(row for row in catalog if row["type_id"] == "whatsapp")
+        assert whatsapp["label"] == "WhatsApp (GREEN-API)"
+        assert any(f["key"] == "apiTokenInstance" for f in whatsapp["fields"])
         bad = client.post(
             "/api/notifications/channels",
             json={"id": "ops", "type": "email", "settings": {}},
