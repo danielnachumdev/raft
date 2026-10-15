@@ -73,7 +73,8 @@ class TestJobOrchestrator:
         assert runs["n"] == 1
         release.set()
 
-    def test_soft_timeout_forgets_worker_for_reschedule(self) -> None:
+    def test_soft_timeout_keeps_worker_tracked_so_skip_holds(self) -> None:
+        """Past soft-timeout must not start a second worker while the first lives."""
         hold = threading.Event()
         runs = {"n": 0}
 
@@ -89,8 +90,13 @@ class TestJobOrchestrator:
         time.sleep(0.08)
         clock.advance(1.0)
         self._run_one_cycle(orch, clock)
-        assert runs["n"] == 2
+        assert runs["n"] == 1
+        assert orch._is_running(JobIds.METRICS)
         hold.set()
+        orch.join_running(timeout=2.0)
+        clock.advance(1.0)
+        self._run_one_cycle(orch, clock)
+        assert runs["n"] == 2
 
     def test_one_shot_asap_and_replace_pending(self) -> None:
         runs: List[str] = []

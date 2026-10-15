@@ -234,11 +234,16 @@ class TestDynamicJobIds:
         orch._check_soft_timeouts()  # still under timeout
         assert orch._is_running(acme)
         time.sleep(0.03)
-        orch._check_soft_timeouts()  # warn + forget stuck worker
-        assert not orch._is_running(acme)
-        orch._check_soft_timeouts()  # no tracked worker
+        orch._check_soft_timeouts()  # warn once; keep tracked
+        assert orch._is_running(acme)
+        assert orch._soft_warned == {acme}
+        orch._check_soft_timeouts()  # no second warn entry
+        assert orch._soft_warned == {acme}
         self._orphan_worker_soft_check(orch, hold)
         hold.set()
+        orch.join_running(timeout=2.0)
+        orch._reap_finished()
+        assert acme not in orch._soft_warned
 
     def _orphan_worker_soft_check(self, orch: JobOrchestrator, hold: threading.Event) -> None:
         # Dead worker → ``not worker.is_alive()`` continue branch.
