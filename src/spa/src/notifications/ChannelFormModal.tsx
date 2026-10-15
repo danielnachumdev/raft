@@ -2,11 +2,16 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Modal } from "../chrome/Modal";
 import type { NotificationChannel } from "./notificationsApi";
 import {
+  fieldStateFromSettings,
   formatSettingsJson,
   parseSettingsJson,
+  settingsFromFieldState,
+  strategyFields,
+  strategyLabel,
   strategyTypeIds,
 } from "./notificationsHelpers";
 import type { NotificationStrategyInfo } from "./notificationsApi";
+import { ChannelSettingsFields } from "./ChannelSettingsFields";
 import "./ChannelFormModal.css";
 
 export type ChannelFormMode = "create" | "edit";
@@ -28,7 +33,7 @@ type Props = {
   onSubmit: (values: ChannelFormSubmit) => void | Promise<void>;
 };
 
-/** Add / edit channel dialog: catalog type + opaque settings JSON. */
+/** Add / edit channel dialog: catalog type + typed fields or JSON settings. */
 export function ChannelFormModal(props: Props) {
   const catalogIds = strategyTypeIds(props.strategies);
   const typeChoices = typeChoicesFor(props.mode, props.channel, catalogIds);
@@ -36,23 +41,21 @@ export function ChannelFormModal(props: Props) {
   const [type, setType] = useState("");
   const [enabled, setEnabled] = useState(true);
   const [settingsText, setSettingsText] = useState("{}");
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const fields = strategyFields(props.strategies, type);
+  const useTyped = fields.length > 0;
 
   useEffect(() => {
     if (!props.open) return;
-    setFormError(null);
-    if (props.mode === "edit" && props.channel) {
-      setId(props.channel.id);
-      setType(props.channel.type);
-      setEnabled(props.channel.enabled);
-      setSettingsText(formatSettingsJson(props.channel.settings));
-      return;
-    }
-    setId("");
-    setType(catalogIds[0] ?? "");
-    setEnabled(true);
-    setSettingsText("{\n  \n}");
+    resetForm(props);
   }, [props.open, props.mode, props.channel, catalogIds.join("|")]);
+
+  useEffect(() => {
+    if (!props.open || !useTyped) return;
+    if (props.mode === "edit" && props.channel?.type === type) return;
+    setFieldValues(fieldStateFromSettings(fields, {}));
+  }, [type]);
 
   const title = props.mode === "create" ? "Add channel" : "Edit channel";
   const typeLocked = props.mode === "edit" && catalogIds.length === 0;
@@ -127,7 +130,7 @@ export function ChannelFormModal(props: Props) {
               ) : null}
               {typeChoices.map((typeId) => (
                 <option key={typeId} value={typeId}>
-                  {typeId}
+                  {strategyLabel(props.strategies, typeId)}
                 </option>
               ))}
             </select>
@@ -143,18 +146,29 @@ export function ChannelFormModal(props: Props) {
           />
           Enabled
         </label>
-        <label className="deploy-label">
-          Settings (JSON)
-          <textarea
-            id="channel-settings"
-            className="channel-settings"
-            value={settingsText}
-            disabled={props.busy}
-            onChange={(e) => setSettingsText(e.target.value)}
-            spellCheck={false}
-            rows={8}
+        {useTyped ? (
+          <ChannelSettingsFields
+            fields={fields}
+            values={fieldValues}
+            busy={props.busy}
+            onChange={(key, value) =>
+              setFieldValues((prev) => ({ ...prev, [key]: value }))
+            }
           />
-        </label>
+        ) : (
+          <label className="deploy-label">
+            Settings (JSON)
+            <textarea
+              id="channel-settings"
+              className="channel-settings"
+              value={settingsText}
+              disabled={props.busy}
+              onChange={(e) => setSettingsText(e.target.value)}
+              spellCheck={false}
+              rows={8}
+            />
+          </label>
+        )}
         <p className="muted channel-form-hint">
           Secret fields from the API stay as <code>***</code>. Leave them
           unchanged to keep stored secrets.
@@ -168,14 +182,37 @@ export function ChannelFormModal(props: Props) {
     </Modal>
   );
 
+  function resetForm(p: Props) {
+    setFormError(null);
+    if (p.mode === "edit" && p.channel) {
+      setId(p.channel.id);
+      setType(p.channel.type);
+      setEnabled(p.channel.enabled);
+      setSettingsText(formatSettingsJson(p.channel.settings));
+      const editFields = strategyFields(p.strategies, p.channel.type);
+      setFieldValues(fieldStateFromSettings(editFields, p.channel.settings));
+      return;
+    }
+    const first = catalogIds[0] ?? "";
+    setId("");
+    setType(first);
+    setEnabled(true);
+    setSettingsText("{\n  \n}");
+    setFieldValues(
+      fieldStateFromSettings(strategyFields(p.strategies, first), {}),
+    );
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setFormError(null);
     let settings: Record<string, unknown>;
     try {
-      settings = parseSettingsJson(settingsText);
+      settings = useTyped
+        ? settingsFromFieldState(fields, fieldValues)
+        : parseSettingsJson(settingsText);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Invalid settings JSON");
+      setFormError(err instanceof Error ? err.message : "Invalid settings");
       return;
     }
     const trimmedId = id.trim();

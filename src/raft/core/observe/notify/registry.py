@@ -1,6 +1,6 @@
 """Type-id lookup for notification strategies (open for new classes)."""
 
-from typing import Dict, List, Sequence
+from typing import Any, Dict, List, Sequence
 
 from raft.core.core.errors.cta import OperatorError, operator
 
@@ -25,8 +25,8 @@ class NotificationRegistry:
         except KeyError:
             raise self._unknown(type_id) from None
 
-    def catalog(self) -> List[Dict[str, str]]:
-        return [{"type_id": type_id} for type_id in self._items]
+    def catalog(self) -> List[Dict[str, Any]]:
+        return [item.catalog_entry() for item in self._items.values()]
 
     def _unknown(self, type_id: str) -> OperatorError:
         known = self._known_list()

@@ -46,3 +46,10 @@ class TestSettingsRedactor(RaftTestCase):
             "label": "new",
             "nested": {"password": "p1", "x": 1},
         }
+
+    def test_masks_api_token_instance(self) -> None:
+        out = SettingsRedactor().redact(
+            {"apiTokenInstance": "demo-token-not-real", "chatId": "79001234567@c.us"}
+        )
+        assert out["apiTokenInstance"] == "***"
+        assert out["chatId"] == "79001234567@c.us"

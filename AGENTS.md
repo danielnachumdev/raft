@@ -88,7 +88,7 @@ Align with the README table; detail for agents:
 | **Ordered firewall rules** (CIDR, port, protocol, service, action) | **Shipped** | Epic [#207](https://github.com/danielnachumdev/raft/issues/207), [#211](https://github.com/danielnachumdev/raft/issues/211). On gate; Save → compile → reload; import/export; recommendations; [`docs/serve-firewall.md`](docs/serve-firewall.md). |
 | Inspection → add firewall rule | **Shipped** | [#198](https://github.com/danielnachumdev/raft/issues/198); row actions → `#211` model; prepend + reload |
 | GitHub add-service assist | **Shipped (v1)** | [`docs/serve-github-deploy.md`](docs/serve-github-deploy.md); known gap [#200](https://github.com/danielnachumdev/raft/issues/200) |
-| Notifications channels | **Shipped** | Strategy catalog + settings UI |
+| Notifications channels | **Shipped** | Strategy catalog + settings UI (`webhook`, `email`, `whatsapp` / GREEN-API); [`docs/serve-notifications.md`](docs/serve-notifications.md) |
 | Healing | **Shipped** | Settings `healing:`; separate from scaling |
 | Secrets baseline (`~/.raft/secrets/<app>/env`) | **Shipped** | Guidance [`docs/secrets.md`](docs/secrets.md); external materialization epic [#143](https://github.com/danielnachumdev/raft/issues/143) / [#176](https://github.com/danielnachumdev/raft/issues/176) |
 | Past logs when container off | **Shipped** | Retained under `state/service-logs/`; shipper + drain-before-rm; [`docs/serve-logs.md`](docs/serve-logs.md) |
@@ -136,7 +136,8 @@ Product templates sync from `src/raft/core/platform/share/` into the data home o
 | Doctor, status, logs, update | `src/raft/core/observe/` |
 | Dashboard UI | `src/spa/` then **rebuild** share SPA |
 | Ordered firewall | `lifecycle/render/firewall/` + `services/serve/firewall/` + SPA `src/spa/src/firewall/` (shared nginx helpers still under `lifecycle/render/acl/`) |
-| Operator docs for serve features | `docs/serve-*.md` |
+| Notification strategies | `observe/notify/strategies/` + `catalogs.py`; SPA `src/spa/src/notifications/` |
+| Operator docs for serve features | `docs/serve-*.md` (notifications: `docs/serve-notifications.md`) |
 
 Upstream files: `generated/nginx/upstreams/<app>-<port>.conf` mounted into the router.
 
