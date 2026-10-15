@@ -1,7 +1,11 @@
 import type { GraphEvent, MetricsSeries } from "../../shared/api";
 import { TrendsChart } from "../chart/TrendsChart";
 import type { RuntimeMetricDef } from "../runtimeMetrics";
-import { isSingleLineAvg, type SeriesViewMode } from "./trendsView";
+import {
+  isSingleLineAvg,
+  seriesWithData,
+  type SeriesViewMode,
+} from "./trendsView";
 
 export function TrendsBody(props: {
   error: string | null;
@@ -13,6 +17,8 @@ export function TrendsBody(props: {
   viewMode: SeriesViewMode;
   groupMode: boolean;
   events: GraphEvent[];
+  height?: number;
+  palette?: Map<string, number>;
 }) {
   if (props.error) {
     return (
@@ -26,7 +32,7 @@ export function TrendsBody(props: {
       <p className="muted">Select at least one metric to plot.</p>
     );
   }
-  if (props.series.length === 0) {
+  if (seriesWithData(props.series, props.metrics).length === 0) {
     const hasHttp = props.metrics.some((m) => m.plane === "http");
     const hasRes = props.metrics.some((m) => m.plane === "resources");
     const files = [
@@ -44,8 +50,8 @@ export function TrendsBody(props: {
     return (
       <p className="muted">
         {props.groupMode
-          ? "Select at least one group to plot."
-          : "Select at least one service to plot."}
+          ? "No samples for the selected groups in this range."
+          : "No samples for the selected services in this range."}
       </p>
     );
   }
@@ -58,6 +64,8 @@ export function TrendsBody(props: {
       aggregate={isSingleLineAvg(props.viewMode)}
       events={props.events}
       allSeries={props.series}
+      height={props.height}
+      palette={props.palette}
     />
   );
 }

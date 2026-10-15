@@ -1,5 +1,10 @@
 import type { MetricsAvailable, MetricsPoint, MetricsSeries } from "../../shared/api/index.ts";
-import { RUNTIME_METRICS, type RuntimeMetricId } from "../runtimeMetrics.ts";
+import {
+  RUNTIME_METRICS,
+  runtimePointValue,
+  type RuntimeMetricDef,
+  type RuntimeMetricId,
+} from "../runtimeMetrics.ts";
 
 export type SeriesViewMode =
   | "per_service"
@@ -33,6 +38,16 @@ export function resolveVisibleSeries(args: {
   }
   if (args.selected === null) return args.series;
   return args.series.filter((s) => args.selected!.includes(s.id));
+}
+
+/** Drop series with no samples for these metrics (e.g. host on HTTP graphs). */
+export function seriesWithData(
+  series: MetricsSeries[],
+  metrics: RuntimeMetricDef[],
+): MetricsSeries[] {
+  return series.filter((s) =>
+    s.points.some((p) => metrics.some((m) => runtimePointValue(p, m.id) !== null)),
+  );
 }
 
 export function groupKey(group: string | null | undefined): string {

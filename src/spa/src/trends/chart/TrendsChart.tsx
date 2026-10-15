@@ -35,6 +35,7 @@ import {
   toPlotSeries,
   typeIdsForMetrics,
   type ChartRow,
+  type PlotSeries,
 } from "./trendsChartRows";
 import "./TrendsChart.css";
 
@@ -53,6 +54,9 @@ export function TrendsChart(props: {
   events?: GraphEvent[];
   /** Full window series — used to map group charts back to deploy services. */
   allSeries?: MetricsSeries[];
+  height?: number;
+  /** Series id → color slot; keeps a service's color across dashboard graphs. */
+  palette?: Map<string, number>;
 }) {
   const hover = useChartHover();
   const metrics = props.metrics;
@@ -82,6 +86,7 @@ export function TrendsChart(props: {
   const rightType = axisTypes[1] ?? leftType;
 
   if (!rows.length) return null;
+  const height = props.height ?? 280;
 
   return (
     <div
@@ -89,8 +94,9 @@ export function TrendsChart(props: {
       role="img"
       aria-label="Resource trend chart"
       onMouseLeave={hover.clearHover}
+      style={{ minHeight: height }}
     >
-      <ResponsiveContainer width="100%" height={280}>
+      <ResponsiveContainer width="100%" height={height}>
         <LineChart data={rows} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" />
           {timeScaleXAxis(props.windowSeconds, endMs)}
@@ -98,7 +104,7 @@ export function TrendsChart(props: {
             yAxisId={LEFT_AXIS}
             tick={{ fill: "var(--muted)", fontSize: 11 }}
             unit={yAxisSuffix(leftType) || undefined}
-            width={56}
+            width={axisWidth(leftType)}
             domain={[0, "auto"]}
             tickFormatter={(v: number) => formatMetricTick(v, leftType)}
           />
@@ -108,7 +114,7 @@ export function TrendsChart(props: {
               orientation="right"
               tick={{ fill: "var(--muted)", fontSize: 11 }}
               unit={yAxisSuffix(rightType) || undefined}
-              width={56}
+              width={axisWidth(rightType)}
               domain={[0, "auto"]}
               tickFormatter={(v: number) => formatMetricTick(v, rightType)}
             />
@@ -147,6 +153,7 @@ export function TrendsChart(props: {
               chartKey: p.chartKey,
               label: p.label,
               axis: p.axis,
+              ...paletteStyle(p, metrics, props.palette),
             })),
             splitAxes,
             serviceAxis: LEFT_AXIS,
@@ -162,4 +169,21 @@ export function TrendsChart(props: {
       </ResponsiveContainer>
     </div>
   );
+}
+
+/** Byte / uptime ticks carry their own unit text ("762.9 MiB"). */
+function axisWidth(typeId: MetricTypeId): number {
+  return typeId === "bytes" || typeId === "uptime" ? 80 : 56;
+}
+
+function paletteStyle(
+  plot: PlotSeries,
+  metrics: RuntimeMetricDef[],
+  palette: Map<string, number> | undefined,
+): { colorIndex?: number; dashed?: boolean } {
+  if (!palette) return {};
+  return {
+    colorIndex: palette.get(plot.seriesId),
+    dashed: metrics.length > 1 && plot.metricId === metrics[1].id,
+  };
 }

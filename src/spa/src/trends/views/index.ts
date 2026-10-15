@@ -1,25 +1,7 @@
-/** Eager public surface for named Trends views. */
+/** Read-only #202 named views — input to the dashboard migration. */
 
-export {
-  createNamedView,
-  deleteView,
-  loadTrendsViewsStore,
-  renameView,
-  saveTrendsViewsStore,
-  setActiveViewId,
-  updateActiveConfig,
-  upsertView,
-} from "./storage.ts";
-export {
-  reconcileViewConfig,
-  staleSelectionMessage,
-  type ReconcileResult,
-} from "./reconcile.ts";
-export { TrendsViewsBar } from "./TrendsViewsBar.tsx";
-export {
-  useTrendsNamedViews,
-  type TrendsNamedViewsApi,
-} from "./useTrendsNamedViews.ts";
+export { parseStore } from "./parseStore.ts";
+export { loadTrendsViewsStore } from "./storage.ts";
 export type {
   NamedTrendsView,
   TrendsViewConfig,

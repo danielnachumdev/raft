@@ -6,7 +6,7 @@ import {
 } from "../shared/api/index.ts";
 import { peekStatus, refreshStatus } from "../shared/dashboardCache";
 import { LiveIndicator } from "../chrome/LiveIndicator";
-import { TrendsPanel } from "../trends/panel/TrendsPanel";
+import { TrendsDashboard } from "../trends/dashboard/ui/TrendsDashboard";
 import { DashboardSection } from "./DashboardSection";
 import { PageHeader } from "./PageHeader";
 import { PurgeButton } from "./PurgeButton";
@@ -163,7 +163,7 @@ export function Dashboard() {
         </>
       ) : null}
 
-      <TrendsPanel />
+      <TrendsDashboard />
     </>
   );
 }

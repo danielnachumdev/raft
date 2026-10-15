@@ -1,80 +1,50 @@
 import assert from "node:assert/strict";
 import { describe, it, beforeEach } from "node:test";
-import {
-  createNamedView,
-  deleteView,
-  loadTrendsViewsStore,
-  renameView,
-  saveTrendsViewsStore,
-  setActiveViewId,
-  updateActiveConfig,
-  upsertView,
-} from "../../../src/trends/views/storage.ts";
+import { loadTrendsViewsStore } from "../../../src/trends/views/storage.ts";
 import {
   EMPTY_VIEWS_STORE,
   TRENDS_VIEWS_STORAGE_KEY,
-  type TrendsViewConfig,
 } from "../../../src/trends/views/types.ts";
 import { defaultRangeState } from "../../../src/trends/range/index.ts";
 import { parseStore } from "../../../src/trends/views/parseStore.ts";
+import { installMemoryStorage } from "../memoryStorage.ts";
 
-const memory = new Map<string, string>();
+let memory: Map<string, string>;
 
-const sampleConfig = (): TrendsViewConfig => ({
-  metricIds: ["cpu_percent", "rps"],
-  viewMode: "per_service",
-  selected: ["demo-api"],
-  range: defaultRangeState(),
-});
-
-describe("trends views storage", () => {
+describe("legacy trends views (read-only)", () => {
   beforeEach(() => {
-    memory.clear();
-    globalThis.localStorage = {
-      getItem: (k: string) => memory.get(k) ?? null,
-      setItem: (k: string, v: string) => {
-        memory.set(k, v);
-      },
-      removeItem: (k: string) => {
-        memory.delete(k);
-      },
-      clear: () => memory.clear(),
-      key: () => null,
-      length: 0,
-    };
+    memory = installMemoryStorage();
   });
 
-  it("round-trips a saved view through localStorage", () => {
-    const view = createNamedView("demo stack", sampleConfig(), 1_700_000_000_000);
-    const store = upsertView({ ...EMPTY_VIEWS_STORE }, view);
-    saveTrendsViewsStore(store);
+  it("reads a #202 named view from localStorage", () => {
+    memory.set(
+      TRENDS_VIEWS_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        activeId: "view-a",
+        views: [
+          {
+            id: "view-a",
+            name: " demo stack ",
+            updatedAt: "2026-10-01T00:00:00.000Z",
+            config: {
+              metricIds: ["cpu_percent", "rps", "not-a-metric"],
+              viewMode: "per_service",
+              selected: ["demo-api"],
+              range: defaultRangeState(),
+            },
+          },
+        ],
+      }),
+    );
     const loaded = loadTrendsViewsStore();
-    assert.equal(loaded.activeId, view.id);
-    assert.equal(loaded.views.length, 1);
+    assert.equal(loaded.activeId, "view-a");
     assert.equal(loaded.views[0].name, "demo stack");
     assert.deepEqual(loaded.views[0].config.metricIds, ["cpu_percent", "rps"]);
-    assert.deepEqual(loaded.views[0].config.selected, ["demo-api"]);
   });
 
-  it("renames, updates config, and deletes views", () => {
-    const view = createNamedView("v1", sampleConfig(), 1);
-    let store = upsertView({ ...EMPTY_VIEWS_STORE }, view);
-    store = renameView(store, view.id, "v1-renamed");
-    assert.equal(store.views[0].name, "v1-renamed");
-    const next = { ...sampleConfig(), selected: null };
-    store = updateActiveConfig(store, next, 2);
-    assert.equal(store.views[0].config.selected, null);
-    store = deleteView(store, view.id);
-    assert.deepEqual(store.views, []);
-    assert.equal(store.activeId, null);
-  });
-
-  it("clears activeId when selecting a missing view", () => {
-    const store = setActiveViewId(
-      { version: 1, activeId: "x", views: [] },
-      "missing",
-    );
-    assert.equal(store.activeId, null);
+  it("returns an empty store when the key is missing", () => {
+    assert.deepEqual(loadTrendsViewsStore(), EMPTY_VIEWS_STORE);
   });
 
   it("rejects corrupt localStorage payloads", () => {

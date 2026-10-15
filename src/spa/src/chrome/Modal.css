@@ -26,6 +26,16 @@
   outline: none;
 }
 
+.modal-panel--wide {
+  width: min(100%, 60rem);
+  max-height: min(94vh, 48rem);
+}
+
+.modal-panel--full {
+  width: min(100%, 90rem);
+  max-height: 94vh;
+}
+
 .modal-header {
   display: flex;
   align-items: flex-start;
