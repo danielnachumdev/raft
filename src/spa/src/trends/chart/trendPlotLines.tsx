@@ -2,21 +2,26 @@ import type { ReactElement } from "react";
 import { Line } from "recharts";
 import type { ChartHoverHighlight } from "./chartHover";
 
+// Distinct hues that stay legible on both the light and dark panel colors.
 const COLORS = [
-  "#0f6b5c",
-  "#b45309",
-  "#0e7490",
-  "#9a3412",
-  "#166534",
-  "#44403c",
-  "#a16207",
-  "#1e3a5f",
+  "#0f8a74",
+  "#d9622b",
+  "#4c6fd6",
+  "#b0408a",
+  "#7a9a1f",
+  "#c79a12",
+  "#0e8fb0",
+  "#8a5cc7",
 ];
 
 export type TrendPlot = {
   chartKey: string;
   label: string;
   axis: string;
+  /** Fixed palette slot (dashboard-wide); defaults to plot order. */
+  colorIndex?: number;
+  /** Second metric of a series on a two-metric graph. */
+  dashed?: boolean;
 };
 
 /** Direct ``Line`` children for LineChart (wrapper components are skipped). */
@@ -37,8 +42,9 @@ export function trendPlotLines(args: {
       plot.chartKey,
       plot.label,
       args.splitAxes ? plot.axis : args.serviceAxis,
-      i,
+      plot.colorIndex ?? i,
       args,
+      plot.dashed,
     ),
   );
 }
@@ -52,6 +58,7 @@ function hoverLine(
     highlight: ChartHoverHighlight;
     onHoverSeries: (id: string) => void;
   },
+  dashed?: boolean,
 ): ReactElement {
   return (
     <Line
@@ -61,6 +68,7 @@ function hoverLine(
       name={name}
       yAxisId={yAxisId}
       stroke={COLORS[colorIndex % COLORS.length]}
+      strokeDasharray={dashed ? "5 3" : undefined}
       strokeWidth={args.highlight.lineStrokeWidth(id)}
       strokeOpacity={args.highlight.lineOpacity(id)}
       dot={false}

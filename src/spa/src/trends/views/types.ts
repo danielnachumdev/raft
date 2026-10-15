@@ -2,7 +2,7 @@ import type { RuntimeMetricId } from "../runtimeMetrics.ts";
 import type { TrendsRangeState } from "../range/types.ts";
 import type { SeriesViewMode } from "../panel/trendsView.ts";
 
-/** Snapshot of Trends explorer graph configuration. */
+/** #202 single-chart named view (legacy; migrated into dashboards). */
 export type TrendsViewConfig = {
   metricIds: RuntimeMetricId[];
   viewMode: SeriesViewMode;

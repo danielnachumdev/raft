@@ -16,6 +16,8 @@ export type ModalProps = {
   footer?: ReactNode;
   /** When false, overlay click does not dismiss (default true). */
   closeOnOverlay?: boolean;
+  /** ``wide`` for editors with a preview; ``full`` for near-viewport views. */
+  size?: "default" | "wide" | "full";
 };
 
 /** Reusable dialog: overlay + panel, Escape / optional overlay dismiss, focus basics. */
@@ -52,7 +54,11 @@ export function Modal(props: ModalProps) {
     <div className="modal-overlay" onClick={onOverlayClick}>
       <div
         ref={panelRef}
-        className="modal-panel"
+        className={
+          props.size && props.size !== "default"
+            ? `modal-panel modal-panel--${props.size}`
+            : "modal-panel"
+        }
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

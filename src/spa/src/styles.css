@@ -142,14 +142,16 @@ a {
 
 /* Primary call-to-action; pairs with .refresh or .action-btn. */
 .btn-primary,
-.btn-primary:hover:not(:disabled) {
+.btn-primary:hover:not(:disabled),
+.action-btn.btn-primary {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--on-accent);
   font-weight: 600;
 }
 
-.btn-primary:hover:not(:disabled) {
+.btn-primary:hover:not(:disabled),
+.action-btn.btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }

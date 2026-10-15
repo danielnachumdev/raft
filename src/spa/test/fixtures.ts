@@ -1,6 +1,10 @@
 /** Module-level SPA test fixtures (dummy data only — no live operator inventory). */
 
-import type { MetricsBounds, MetricsSeries } from "../src/shared/api/index.ts";
+import type {
+  MetricsAvailable,
+  MetricsBounds,
+  MetricsSeries,
+} from "../src/shared/api/index.ts";
 
 export function metricsPoint(
   t: string,
@@ -28,6 +32,14 @@ export function metricsSeries(
     group,
     points: points.map((p) => metricsPoint(p.t, p.cpu, p.mem ?? null)),
   };
+}
+
+export function metricsAvailable(
+  id: string,
+  group: string | null = null,
+  kind = "container",
+): MetricsAvailable {
+  return { id, label: id, kind, role: kind === "host" ? "host" : "app", group };
 }
 
 export function metricsBounds(overrides: Partial<MetricsBounds> = {}): MetricsBounds {

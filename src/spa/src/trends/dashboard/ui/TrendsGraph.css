@@ -1,0 +1,143 @@
+.trends-graph {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+  height: 100%;
+  padding: 0.7rem 0.8rem 0.6rem;
+  background: var(--input);
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.trends-graph:hover,
+.trends-graph:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+  box-shadow: 0 6px 18px var(--shadow);
+}
+
+.trends-graph-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.trends-graph-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.trends-graph-title {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trends-graph-title.is-link {
+  cursor: zoom-in;
+}
+
+.trends-graph-title.is-link:hover {
+  color: var(--accent);
+}
+
+.trends-graph-sub {
+  font-size: 0.76rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trends-graph-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex: 0 0 auto;
+  line-height: 1.15;
+}
+
+.trends-graph-stat-value {
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.trends-graph-stat-how {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.trends-graph-stale {
+  font-size: 0.78rem;
+  color: var(--warn);
+}
+
+.trends-graph-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.trends-graph-body > p {
+  margin: 0;
+  padding: 0 0.5rem;
+  text-align: center;
+  font-size: 0.88rem;
+}
+
+.trends-graph .trends-chart .recharts-legend-wrapper {
+  font-size: 0.78rem;
+}
+
+.trends-graph-skeleton {
+  flex: 1 1 auto;
+  border-radius: 0.4rem;
+  background: linear-gradient(
+    100deg,
+    var(--muted-bg) 30%,
+    color-mix(in srgb, var(--muted-bg) 40%, var(--input)) 50%,
+    var(--muted-bg) 70%
+  );
+  background-size: 300% 100%;
+  animation: trends-graph-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes trends-graph-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trends-graph,
+  .trends-graph-skeleton {
+    animation: none;
+    transition: none;
+  }
+}

@@ -1,0 +1,112 @@
+.menu-button {
+  position: relative;
+  display: inline-flex;
+}
+
+.menu-button-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.menu-button-trigger:hover,
+.menu-button-trigger[aria-expanded="true"] {
+  border-color: var(--line);
+  background: var(--muted-bg);
+  color: var(--ink);
+}
+
+.menu-button-pop {
+  position: absolute;
+  top: calc(100% + 0.3rem);
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  min-width: 12.5rem;
+  padding: 0.3rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 28px var(--shadow-strong);
+  transform-origin: top right;
+  animation: menu-pop-in 120ms ease-out;
+}
+
+.menu-button-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: none;
+  border-radius: 0.35rem;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.88rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-button-item:hover:not(:disabled),
+.menu-button-item:focus-visible {
+  background: var(--row-hover);
+  outline: none;
+}
+
+.menu-button-item:disabled {
+  color: var(--muted);
+  opacity: 0.55;
+  cursor: default;
+}
+
+.menu-button-item.is-danger {
+  color: var(--danger);
+}
+
+.menu-button-hint {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.menu-button-sep {
+  margin: 0.25rem 0.2rem;
+  border: none;
+  border-top: 1px solid var(--line);
+}
+
+@keyframes menu-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-button-pop {
+    animation: none;
+  }
+}
