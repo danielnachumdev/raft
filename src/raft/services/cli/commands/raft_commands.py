@@ -176,9 +176,13 @@ class RaftCLICommands:
         """
         Purge(self._stack).run()
 
-    def update(self) -> None:
-        """Re-install raft from GitHub (re-run install.sh / uv tool install)."""
-        SelfUpdate(self._stack).run()
+    def update(self, ref: Optional[str] = None) -> None:
+        """Re-install raft from GitHub (re-run install.sh / uv tool install).
+
+        Default follows the latest GitHub Release. Pass ``--ref`` (tag, branch,
+        or sha) to pin, e.g. ``raft update --ref main``.
+        """
+        SelfUpdate(self._stack).run(ref=ref)
 
     def uninstall(self, yes: bool = False, uv: bool = False) -> None:
         """Remove raft from this machine (stack, ~/.raft, deploy keys, uv tool).

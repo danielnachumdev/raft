@@ -62,6 +62,8 @@ Needs **Python 3.9+**, Docker, and Compose.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/danielnachumdev/raft/main/install.sh | bash
+# pin a ref (tag / branch / sha) instead of the latest Release:
+# curl -fsSL …/install.sh | bash -s -- --ref main
 ```
 
 Operator data lives under **`~/.raft/`** (override with `RAFT_DATA_HOME`). Copy ideas from [`examples/settings.yaml`](examples/settings.yaml) into `~/.raft/settings.yaml`.

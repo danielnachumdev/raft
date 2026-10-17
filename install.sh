@@ -1,10 +1,18 @@
 #!/usr/bin/env bash
+# Install raft via uv tool. Default ref = latest GitHub Release tag.
+# Override: --ref <tag|branch|sha> or RAFT_REF (RAFT_BRANCH deprecated alias).
+# Usage: curl -fsSL …/install.sh | bash
+#        curl -fsSL …/install.sh | bash -s -- --ref main
 set -euo pipefail
 
 RAFT_REPO_URL="${RAFT_REPO_URL:-https://github.com/danielnachumdev/raft.git}"
-RAFT_BRANCH="${RAFT_BRANCH:-main}"
+# Capture explicit overrides before any defaults (empty = resolve latest Release).
+_RAFT_REF_ENV="${RAFT_REF:-}"
+_RAFT_BRANCH_ENV="${RAFT_BRANCH:-}"
 RAFT_KEEP_CHECKOUT="${RAFT_KEEP_CHECKOUT:-0}"
 RAFT_INSTALL_QUIET="${RAFT_INSTALL_QUIET:-0}"
+RAFT_CLI_REF=""
+RAFT_REF=""
 
 _color_stdout() {
   [[ -z "${NO_COLOR:-}" ]] && { [[ -n "${FORCE_COLOR:-}" ]] || [[ -t 1 ]]; }
@@ -54,6 +62,92 @@ log_warn() {
   printf '%s%s%s\n' "${C_WARN}" "$*" "${C_RESET}"
 }
 
+usage() {
+  cat <<'EOF'
+Install raft (uv tool). Default: latest GitHub Release tag.
+
+  curl -fsSL …/install.sh | bash
+  curl -fsSL …/install.sh | bash -s -- --ref main
+  RAFT_REF=v0.10.0 bash install.sh
+
+Options:
+  --ref <tag|branch|sha>   Install this git ref instead of latest Release
+  -h, --help               Show this help
+
+Env:
+  RAFT_REF                 Same as --ref (wins over latest; --ref wins over env)
+  RAFT_BRANCH              Deprecated alias for RAFT_REF
+  RAFT_REPO_URL            Git remote (default: github.com/danielnachumdev/raft.git)
+  RAFT_KEEP_CHECKOUT=1     Clone to RAFT_HOME (default ~/raft) and editable-install
+EOF
+}
+
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --ref)
+        [[ $# -ge 2 ]] || die "--ref requires a value"
+        RAFT_CLI_REF="$2"
+        shift 2
+        ;;
+      --ref=*)
+        RAFT_CLI_REF="${1#--ref=}"
+        shift
+        ;;
+      -h | --help)
+        usage
+        exit 0
+        ;;
+      *)
+        die "unknown argument: $1 (try --help)"
+        ;;
+    esac
+  done
+}
+
+github_repo_slug() {
+  local url="${1%.git}"
+  if [[ "${url}" =~ github\.com[:/]([^/]+)/([^/]+)$ ]]; then
+    printf '%s/%s\n' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+    return 0
+  fi
+  die "cannot derive GitHub repo slug from RAFT_REPO_URL=${1}"
+}
+
+latest_release_tag() {
+  local slug api tag
+  slug="$(github_repo_slug "${RAFT_REPO_URL}")"
+  api="https://api.github.com/repos/${slug}/releases/latest"
+  tag="$(
+    curl -fsSL "${api}" \
+      | sed -n 's/^[[:space:]]*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' \
+      | head -1
+  )" || die "could not resolve latest GitHub Release from ${api}
+Fix: pass --ref <tag|branch|sha> or set RAFT_REF, and check outbound HTTPS"
+  [[ -n "${tag}" ]] || die "latest Release JSON missing tag_name
+Fix: pass --ref or set RAFT_REF"
+  printf '%s\n' "${tag}"
+}
+
+resolve_install_ref() {
+  if [[ -n "${RAFT_CLI_REF}" ]]; then
+    RAFT_REF="${RAFT_CLI_REF}"
+    return 0
+  fi
+  if [[ -n "${_RAFT_REF_ENV}" ]]; then
+    RAFT_REF="${_RAFT_REF_ENV}"
+    return 0
+  fi
+  if [[ -n "${_RAFT_BRANCH_ENV}" ]]; then
+    log_warn "RAFT_BRANCH is deprecated; use RAFT_REF or --ref"
+    RAFT_REF="${_RAFT_BRANCH_ENV}"
+    return 0
+  fi
+  log "Resolving latest GitHub Release…"
+  RAFT_REF="$(latest_release_tag)"
+  log "Using release ${RAFT_REF}"
+}
+
 ensure_path_local_bin() {
   case ":${PATH}:" in
     *":${HOME}/.local/bin:"*) ;;
@@ -89,16 +183,16 @@ local_checkout_dir() {
 clone_or_update() {
   local dest="$1"
   if [[ -d "${dest}/.git" ]]; then
-    log "Updating checkout at ${dest}"
+    log "Updating checkout at ${dest} (ref ${RAFT_REF})"
     git -C "${dest}" remote set-url origin "${RAFT_REPO_URL}"
-    git -C "${dest}" fetch --depth 1 origin "${RAFT_BRANCH}"
-    git -C "${dest}" checkout -B "${RAFT_BRANCH}" "origin/${RAFT_BRANCH}"
+    git -C "${dest}" fetch --depth 1 origin "${RAFT_REF}"
+    git -C "${dest}" checkout -f FETCH_HEAD
   else
     if [[ -e "${dest}" ]]; then
       die "${dest} exists but is not a git checkout; set RAFT_HOME or remove it"
     fi
-    log "Cloning ${RAFT_REPO_URL} (${RAFT_BRANCH}) → ${dest}"
-    git clone --depth 1 --branch "${RAFT_BRANCH}" "${RAFT_REPO_URL}" "${dest}"
+    log "Cloning ${RAFT_REPO_URL} (${RAFT_REF}) → ${dest}"
+    git clone --depth 1 --branch "${RAFT_REF}" "${RAFT_REPO_URL}" "${dest}"
   fi
 }
 
@@ -118,8 +212,8 @@ install_from_path() {
 }
 
 install_from_git() {
-  local spec="git+${RAFT_REPO_URL}@${RAFT_BRANCH}"
-  log "Installing raft…"
+  local spec="git+${RAFT_REPO_URL}@${RAFT_REF}"
+  log "Installing raft from ${spec}…"
   uv_tool_install "${spec}"
 }
 
@@ -127,7 +221,7 @@ finish_message() {
   ensure_path_local_bin
 
   if command -v raft >/dev/null 2>&1; then
-    log_ok "Installed raft → $(command -v raft)"
+    log_ok "Installed raft (${RAFT_REF}) → $(command -v raft)"
     raft -- --help >/dev/null 2>&1 || raft -h >/dev/null 2>&1 || true
   else
     log_warn "raft was installed but is not on PATH yet."
@@ -137,6 +231,10 @@ finish_message() {
 }
 
 main() {
+  parse_args "$@"
+  resolve_install_ref
+  export RAFT_REF
+
   ensure_git
   ensure_uv
 

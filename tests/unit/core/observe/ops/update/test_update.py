@@ -89,6 +89,30 @@ class TestSelfUpdate(DomainTestCase):
             upd.run()
         assert shell.run.call_args.args[0][4] == url
 
+    def test_run_passes_ref_as_raft_ref_env(self, monkeypatch) -> None:
+        monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
+        monkeypatch.setattr(update_mod.InstallIdentity, "read", lambda self: None)
+        shell = MagicMock()
+        upd = SelfUpdate(self.stack)
+        upd.sh = shell
+        with patch("raft.core.observe.ops.update.service.OperatorSay.say"):
+            upd.run(ref="main")
+        script = shell.run.call_args.args[0][2]
+        assert "RAFT_INSTALL_QUIET=1" in script
+        assert "RAFT_REF=main" in script
+        assert shell.run.call_args.args[0][4] == DEFAULT_INSTALL_URL
+
+    def test_run_omits_raft_ref_when_ref_unset(self, monkeypatch) -> None:
+        monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
+        monkeypatch.setattr(update_mod.InstallIdentity, "read", lambda self: None)
+        shell = MagicMock()
+        upd = SelfUpdate(self.stack)
+        upd.sh = shell
+        with patch("raft.core.observe.ops.update.service.OperatorSay.say"):
+            upd.run()
+        script = shell.run.call_args.args[0][2]
+        assert "RAFT_REF=" not in script
+
     def test_run_ignores_local_install_script(self, monkeypatch) -> None:
         script = self.tmp_path / "install.sh"
         script.write_text("#!/bin/bash\n", encoding="utf-8")
