@@ -9,11 +9,15 @@ from fastapi.responses import RedirectResponse
 from raft.core.core.config.settings import SettingsLoader
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.stack import Stack
-from .accounts import GithubAccountStore, GithubActiveResolver
-from .deploy import DeployJobStore, GithubDeployRunner
-from .oauth import GITHUB_OAUTH_SCOPES, GithubOauth, GithubSettingsWriter
-from .providers import (
+from raft.core.platform.github import (
+    GITHUB_OAUTH_SCOPES,
+    DeployJobStore,
+    GithubAccountStore,
+    GithubActiveResolver,
+    GithubDeployRunner,
+    GithubOauth,
     GithubProvider,
+    GithubSettingsWriter,
     MockGithubProvider,
     RealGithubProvider,
 )

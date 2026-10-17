@@ -11,7 +11,7 @@ from raft.core.core.models.stack import Stack
 from raft.core.observe.ops.logs import Logs
 from raft.core.observe.ops.status import Status
 from raft.core.observe.ops.status.models import StatusSnapshot
-from raft.services.serve.actions import ServeActions
+from raft.core.observe.ops.actions import ServiceActions
 from raft.services.serve.http.app import ServeAppFactory
 
 from tests.unit.base import AppSpecExtras, AppliedInventory
@@ -72,7 +72,7 @@ def live_registry_client(root):
     stack = Stack.load_apps(root)
     status = Status(stack)
     status_fx.mock_docker_idle(status)
-    actions = ServeActions(stack)
+    actions = ServiceActions(stack)
     logs = Logs(stack)
     client = TestClient(
         ServeAppFactory(stack, status=status, actions=actions, logs=logs).create()

@@ -132,14 +132,18 @@ Product templates sync from `src/raft/core/platform/share/` into the data home o
 | Change | Start here |
 |--------|------------|
 | CLI commands | `src/raft/services/cli/` |
-| Serve API / actions | `src/raft/services/serve/` |
+| Serve API / actions | `src/raft/services/serve/` (thin FastAPI adapters only) |
 | Controller jobs / wake | `src/raft/services/controller/` |
 | Manifest parse / registry | `src/raft/core/core/models/` |
 | Apply / sync / render / deploy / ACME | `src/raft/core/lifecycle/` |
 | Docker / nginx adapters, share templates | `src/raft/core/platform/` |
 | Doctor, status, logs, update | `src/raft/core/observe/` |
+| **Shared mutative capabilities** (CLI + serve) | Business rules in `core/`; serve/CLI only invoke. New capabilities: put the service under the matching core area below, keep FastAPI/Fire as adapters. |
+| Per-service start/stop/redeploy/purge | `observe/ops/actions/` (`ServiceActions`) |
+| Ordered firewall (CRUD / recommendations / from-inspection) | `lifecycle/firewall/` + nginx compile in `lifecycle/render/firewall/`; serve adapter `services/serve/firewall/`; SPA `src/spa/src/firewall/` |
+| Notification channel CRUD | `observe/notify/settings_write.py` + strategies/catalog; SPA `src/spa/src/notifications/` |
+| GitHub OAuth / deploy assist | `platform/github/`; serve adapter `services/serve/github/` |
 | Dashboard UI | `src/spa/` only (Release bakes; local `npm run build` for editable/`raft serve`) |
-| Ordered firewall | `lifecycle/render/firewall/` + `services/serve/firewall/` + SPA `src/spa/src/firewall/` (shared nginx helpers still under `lifecycle/render/acl/`) |
 | Alert rules | `core/observe/alerts/` + `services/serve/alerts/` + `services/controller/jobs/alerts/` + SPA `src/spa/src/alerts/` |
 | Notification strategies | `observe/notify/strategies/` + `catalogs.py`; SPA `src/spa/src/notifications/` |
 | Operator docs for serve features | `docs/serve-*.md` (notifications: `docs/serve-notifications.md`; alerts: `docs/serve-alerts.md`) |

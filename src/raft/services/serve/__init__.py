@@ -1,6 +1,5 @@
 """Localhost dashboard UI for operators (``raft serve``)."""
 
-from .actions import ServeActions
 from .entry import ServeMain, main
 from .http import (
     LogSseStream,
@@ -17,7 +16,6 @@ __all__ = [
     "DEFAULT_SERVE_PORT",
     "LogSseStream",
     "Serve",
-    "ServeActions",
     "ServeAppFactory",
     "ServeDownloads",
     "ServeInstructions",

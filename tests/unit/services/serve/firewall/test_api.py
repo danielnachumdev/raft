@@ -7,11 +7,11 @@ from fastapi.testclient import TestClient
 from raft.core.core.models.stack import load_stack
 from raft.core.observe.ops.status.models import StatusSnapshot
 from raft.services.serve.firewall.api import ServeFirewallApi
-from raft.services.serve.firewall.apply import ServeFirewallService
+from raft.core.lifecycle.firewall import FirewallService
 from raft.services.serve.http.app import ServeAppFactory
 from tests.unit.base import AppliedInventory, RaftTestCase
 from tests.unit.core.observe.ops.status import fixtures as status_fx
-from tests.unit.services.serve.firewall.helpers import rule_dict
+from tests.unit.core.lifecycle.firewall.helpers import rule_dict
 
 
 class TestServeFirewallApi(RaftTestCase):
@@ -29,7 +29,7 @@ class TestServeFirewallApi(RaftTestCase):
         )
         orch = MagicMock()
         api = ServeFirewallApi(
-            stack, service=ServeFirewallService(stack, orchestrator=orch)
+            stack, service=FirewallService(stack, orchestrator=orch)
         )
         self._orch = orch
         return TestClient(ServeAppFactory(stack, status=status, firewall=api).create())

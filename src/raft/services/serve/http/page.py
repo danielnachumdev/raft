@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from raft.core.core.errors.cta import OperatorError
 
 from raft.core.core.models.stack import Stack
+from raft.core.observe.ops.actions import ServiceActions
 from raft.core.observe.ops.logs import DEFAULT_LOG_TAIL, Logs
 from raft.core.observe.ops.status import Status
 from raft.core.observe.read import (
@@ -19,7 +20,6 @@ from raft.core.observe.read import (
 )
 from raft.core.observe.read.http_requests import DEFAULT_LIMIT as _HTTP_REQ_DEFAULT
 from raft.core.observe.read.http_requests import MAX_LIMIT as _HTTP_REQ_MAX
-from ..actions import ServeActions
 from .log_stream import LogSseStream
 from .paths import ServePaths
 
@@ -50,7 +50,7 @@ class ServePage:
         self,
         stack: Stack,
         status: Optional[Status] = None,
-        actions: Optional[ServeActions] = None,
+        actions: Optional[ServiceActions] = None,
         logs: Optional[Logs] = None,
     ) -> None:
         self.stack = stack
@@ -58,7 +58,7 @@ class ServePage:
         self._metrics = MetricsRead(stack.root)
         self._http_metrics = HttpMetricsRead(stack.root)
         self._http_requests = HttpRequestsRead(stack)
-        self._actions = actions or ServeActions(stack)
+        self._actions = actions or ServiceActions(stack)
         self._logs = logs or Logs(stack)
 
     def index(self, full_path: str = "") -> FileResponse:

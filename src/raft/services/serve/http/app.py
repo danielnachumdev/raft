@@ -7,9 +7,9 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from raft.core.core.models.stack import Stack
+from raft.core.observe.ops.actions import ServiceActions
 from raft.core.observe.ops.logs import Logs
 from raft.core.observe.ops.status import Status
-from ..actions import ServeActions
 from ..alerts import ServeAlertsApi
 from ..firewall import ServeFirewallApi
 from ..github import ServeGithubApi
@@ -28,7 +28,7 @@ class ServeAppFactory:
         self,
         stack: Stack,
         status: Optional[Status] = None,
-        actions: Optional[ServeActions] = None,
+        actions: Optional[ServiceActions] = None,
         logs: Optional[Logs] = None,
         downloads: Optional[ServeDownloads] = None,
         github: Optional[ServeGithubApi] = None,
