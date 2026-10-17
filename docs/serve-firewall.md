@@ -29,6 +29,11 @@ raft firewall remove_inspection --client-ip=192.0.2.1
 
 Examples use documentation CIDRs (`192.0.2.0/24`) and `demo-api` only.
 
+**East-west is a different plane:** container→container traffic on the Compose
+network (e.g. `demo-api` → `demo-redis`) is **not** matched by these gate rules.
+See [`east-west-networking.md`](east-west-networking.md). Do not add a middle
+`raft-firewall` hop.
+
 ## Design
 
 | Decision | Choice |

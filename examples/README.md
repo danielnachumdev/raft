@@ -15,6 +15,7 @@ These folders are **operator-facing samples**, not the minimal trees under `test
 | [`http-plus-stream/`](http-plus-stream/) | HTTP + gate `expose: stream` (needs `edge.streams`) |
 | [`host-published-ports/`](host-published-ports/) | HTTP + `expose: host` ports (gate not involved for those) |
 | [`grouped-volume-app/`](grouped-volume-app/) | `spec.group` + `volumes` + `expose: none` (manifest-only sample) |
+| [`east-west-demo/`](east-west-demo/) | Multi-App stack: `demo-api` → `demo-redis` on Compose DNS (`expose: none` peer) |
 
 Manifest preprocess (`${VAR}`, `${{ if }}`, `--env`) is documented in [`docs/app-manifest.md`](../docs/app-manifest.md). Healing and per-app scale-to-zero are independent opt-ins — off until you enable `healing:` in settings or add `spec.scaling` on an HTTP + `publicHost` App.
 

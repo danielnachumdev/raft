@@ -18,4 +18,4 @@ raft apply --file examples/grouped-volume-app/.raft/app.yaml --ref "$SHA"
 raft doctor
 ```
 
-Deploy is on by default. Pair with an edge-facing App in the same `group` when you want a full multi-app stack.
+Deploy is on by default. For a full caller→peer stack (`demo-api` → `demo-redis`), see [`examples/east-west-demo/`](../east-west-demo/) and [`docs/east-west-networking.md`](../../docs/east-west-networking.md).

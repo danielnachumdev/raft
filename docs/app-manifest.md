@@ -25,7 +25,7 @@ Typical `spec` concerns (omit what you do not need):
 | Area | Examples |
 |------|----------|
 | Source | `local` / `git` / `docker` + `ref` |
-| Exposure | `ports[]` with `expose: http \| stream \| host \| none`; `publicHost` when any port is `http`; omit / `ports: []` for workers (see below) |
+| Exposure | `ports[]` with `expose: http \| stream \| host \| none`; `publicHost` when any port is `http`; omit / `ports: []` for workers (see below). App↔App dials: [`east-west-networking.md`](east-west-networking.md) |
 | Host aliases | `extraHosts` — additional Host names for router + ACME SANs; `www.<publicHost>` is **not** automatic — list it here if you want it |
 | TLS | `tls: off` (default), `origin` (operator PEMs), or `acme` (public Let's Encrypt on the gate) — see **TLS modes** below |
 | Runtime | `env` / `envFile`, `volumes`, `group`, `dependsOn`, `resources`, `readiness` |
@@ -52,6 +52,10 @@ spec:
 ```
 
 **Health:** no Host/TCP probe and no edge route. Raft treats the container as healthy when Docker reports it running; the healer restarts exited/dead services; doctor reports runtime status. `raft status`, controller metrics, and `raft serve` still include the service. There is no deploy-time wait-until-running for `readiness: none`. Not eligible for `scaling` or `tls: origin|acme`.
+
+### Compose DNS and east-west peers
+
+Compose service id (DNS on `raft_default`): `metadata.name`, or `{spec.group}-{metadata.name}` when `group` is set. Internal listeners use `expose: none`. Peer URLs and the gate-ACL boundary: [`east-west-networking.md`](east-west-networking.md). Sample stack: [`examples/east-west-demo/`](../examples/east-west-demo/).
 
 **Breaking change:** Unknown `spec` / `metadata` keys fail apply (allowlist). Hostnames are `publicHost` + `extraHosts` only — put former `www` aliases in `extraHosts` (e.g. `www.<publicHost>`).
 

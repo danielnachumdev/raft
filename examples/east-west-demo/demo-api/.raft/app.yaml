@@ -1,0 +1,33 @@
+# Edge-facing API that dials demo-redis on the Compose network.
+# Compose DNS: demo-api (group demo + name api).
+# Apply: raft apply --file examples/east-west-demo/demo-api/.raft/app.yaml --ref "$SHA"
+#
+# REDIS_URL uses Compose service DNS (demo-redis), not the registry name alone.
+# Secrets (passwords) belong in envFile — see docs/secrets.md.
+
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: api
+
+spec:
+  group: demo
+  publicHost: api.example.com
+  tls: off
+  source: docker
+  image: hashicorp/http-echo
+  ref: "1.0.0"
+  path: apps/demo-api
+  dependsOn:
+    - redis
+  env:
+    REDIS_URL: redis://demo-redis:6379
+  envFile: /home/raft/.raft/secrets/api/env
+  ports:
+    - name: http
+      containerPort: 5678
+      expose: http
+  readiness:
+    type: http
+    port: http
+    path: /

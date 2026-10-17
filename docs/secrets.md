@@ -20,6 +20,10 @@ Optional shared credential for a `spec.group`: one file such as
 `~/.raft/secrets/demo/shared.env` that each App’s `envFile` can reference.
 Prefer per-App files unless several Apps truly share one secret.
 
+Peer hostnames on the Compose network (e.g. `demo-redis`) are not secret; put
+passwords and full connection strings with credentials here. App↔App wiring:
+[`east-west-networking.md`](east-west-networking.md).
+
 ## What raft creates
 
 On `ensure_raft_home` / apply:

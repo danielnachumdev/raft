@@ -1,0 +1,24 @@
+# Internal Redis peer for the east-west demo stack.
+# Compose DNS: demo-redis (group demo + name redis).
+# Apply: raft apply --file examples/east-west-demo/demo-redis/.raft/app.yaml --ref alpine
+#
+# expose: none → no public Host / no host publish. Peers dial demo-redis:6379.
+
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: redis
+
+spec:
+  group: demo
+  source: docker
+  image: redis
+  ref: alpine
+  path: apps/demo-redis
+  ports:
+    - name: redis
+      containerPort: 6379
+      expose: none
+  readiness:
+    type: tcp
+    port: redis
