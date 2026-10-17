@@ -127,3 +127,129 @@ describe("firewall + notifications cache consumers", () => {
     }
   });
 });
+
+describe("github + service + exports cache consumers", () => {
+  afterEach(() => {
+    appResourceCache.clear();
+  });
+
+  it("caches github session/config/repos and invalidates repos on select", async () => {
+    let active = "acct-a";
+    const { calls, restore } = installFetch((url, init) => {
+      if (url === "/api/github/session" && (init?.method ?? "GET") === "GET") {
+        return { authenticated: true, active_account_id: active, accounts: [] };
+      }
+      if (url === "/api/github/config") {
+        return { configured: true, clientId: "cid" };
+      }
+      if (url === "/api/github/repos") {
+        return { repos: [{ full_name: `org/${active}` }] };
+      }
+      if (url === "/api/github/accounts/select" && init?.method === "POST") {
+        active = "acct-b";
+        return { authenticated: true, active_account_id: active, accounts: [] };
+      }
+      throw new Error(`unexpected ${url} ${init?.method}`);
+    });
+
+    try {
+      const gh = await import("../../../src/deploy/github/client.ts");
+      await gh.fetchGithubSession();
+      await gh.fetchGithubSession();
+      await gh.fetchGithubConfig();
+      await gh.fetchGithubConfig();
+      await gh.fetchGithubRepos();
+      await gh.fetchGithubRepos();
+      assert.equal(
+        calls.filter((c) => c.url === "/api/github/session" && c.method === "GET")
+          .length,
+        1,
+      );
+      assert.equal(
+        calls.filter((c) => c.url === "/api/github/config" && c.method === "GET")
+          .length,
+        1,
+      );
+      assert.equal(
+        calls.filter((c) => c.url === "/api/github/repos" && c.method === "GET")
+          .length,
+        1,
+      );
+
+      await gh.selectGithubAccount("acct-b");
+      const repos = await gh.fetchGithubRepos();
+      assert.equal(repos[0]?.full_name, "org/acct-b");
+      assert.equal(
+        calls.filter((c) => c.url === "/api/github/repos" && c.method === "GET")
+          .length,
+        2,
+      );
+    } finally {
+      restore();
+    }
+  });
+
+  it("caches service detail until lifecycle action invalidates", async () => {
+    let status = "running";
+    const { calls, restore } = installFetch((url, init) => {
+      if (url === "/api/service/demo-api" && (init?.method ?? "GET") === "GET") {
+        return {
+          host: { hostname: "demo" },
+          container: { service: "demo-api", status, role: "app" },
+          presentation: { service: "demo-api", name: "demo-api", status },
+        };
+      }
+      if (url === "/api/service/demo-api/stop" && init?.method === "POST") {
+        status = "exited";
+        return { ok: true, action: "stop", service: "demo-api" };
+      }
+      throw new Error(`unexpected ${url}`);
+    });
+
+    try {
+      const svc = await import("../../../src/shared/api/service.ts");
+      const first = await svc.fetchService("demo-api");
+      const second = await svc.fetchService("demo-api");
+      assert.equal(first.container.status, "running");
+      assert.equal(second.container.status, "running");
+      assert.equal(
+        calls.filter((c) => c.url === "/api/service/demo-api" && c.method === "GET")
+          .length,
+        1,
+      );
+
+      await svc.postServiceAction("demo-api", "stop");
+      const after = await svc.fetchService("demo-api");
+      assert.equal(after.container.status, "exited");
+      assert.equal(
+        calls.filter((c) => c.url === "/api/service/demo-api" && c.method === "GET")
+          .length,
+        2,
+      );
+    } finally {
+      restore();
+    }
+  });
+
+  it("caches export catalog GETs across loadExportCatalog calls", async () => {
+    const { calls, restore } = installFetch((url) => {
+      if (url === "/api/exports") {
+        return {
+          logs: [{ id: "txt", label: "Plain text", media_type: "text/plain", suffix: "txt" }],
+          metrics: [],
+        };
+      }
+      throw new Error(`unexpected ${url}`);
+    });
+
+    try {
+      const catalog = await import("../../../src/export/catalog.ts");
+      const first = await catalog.loadExportCatalog();
+      const second = await catalog.loadExportCatalog();
+      assert.deepEqual(first, second);
+      assert.equal(calls.filter((c) => c.url === "/api/exports").length, 1);
+    } finally {
+      restore();
+    }
+  });
+});

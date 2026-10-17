@@ -1,5 +1,9 @@
 /** Per-service detail + lifecycle actions + purge. */
 
+import {
+  appResourceCache,
+  resourceId,
+} from "../cache/index.ts";
 import { detailFromBody, readJsonBody } from "./http.ts";
 import type { StatusRow } from "./status.ts";
 
@@ -50,7 +54,11 @@ export type PurgeResult = {
   builder_bytes: number;
 };
 
-export async function fetchService(name: string): Promise<ServiceDetailPayload> {
+function serviceResourceId(name: string) {
+  return resourceId("service", name);
+}
+
+async function loadService(name: string): Promise<ServiceDetailPayload> {
   const res = await fetch(`/api/service/${encodeURIComponent(name)}`);
   if (res.status === 404) {
     throw new Error("not found");
@@ -59,6 +67,12 @@ export async function fetchService(name: string): Promise<ServiceDetailPayload> 
     throw new Error(`service ${res.status}`);
   }
   return (await res.json()) as ServiceDetailPayload;
+}
+
+export async function fetchService(name: string): Promise<ServiceDetailPayload> {
+  return appResourceCache.readThrough(serviceResourceId(name), {
+    read: () => loadService(name),
+  });
 }
 
 export async function postServiceAction(
@@ -73,6 +87,7 @@ export async function postServiceAction(
   if (!res.ok) {
     throw new Error(detailFromBody(body) || `${action} failed (${res.status})`);
   }
+  appResourceCache.invalidate(serviceResourceId(name));
   return body as ServiceActionResult;
 }
 
@@ -82,5 +97,6 @@ export async function postPurge(): Promise<PurgeResult> {
   if (!res.ok) {
     throw new Error(detailFromBody(body) || `purge failed (${res.status})`);
   }
+  appResourceCache.invalidateNamespace("service");
   return body as PurgeResult;
 }

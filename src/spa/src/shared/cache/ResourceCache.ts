@@ -1,4 +1,5 @@
 import {
+  DEFAULT_RESOURCE_CACHE_TTL_MS,
   resourceIdString,
   type ResourceCacheOptions,
   type ResourceId,
@@ -23,7 +24,7 @@ export class ResourceCache {
   private readonly now: () => number;
 
   constructor(options: ResourceCacheOptions = {}) {
-    this.ttlMs = options.ttlMs ?? 60_000;
+    this.ttlMs = options.ttlMs ?? DEFAULT_RESOURCE_CACHE_TTL_MS;
     this.now = options.now ?? Date.now;
   }
 
