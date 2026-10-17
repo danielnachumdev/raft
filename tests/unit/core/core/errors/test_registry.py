@@ -70,6 +70,29 @@ class TestRegistryMessages:
             "ghcr.io", config_path=cfg
         ) is True
 
+    def test_docker_config_non_dict_root_is_unknown(self, tmp_path: Path) -> None:
+        cfg = tmp_path / "config.json"
+        cfg.write_text(json.dumps(["not", "a", "dict"]), encoding="utf-8")
+        assert RegistryMessages.docker_config_has_registry_auth(
+            "ghcr.io", config_path=cfg
+        ) is None
+
+    def test_auth_dict_skips_non_string_keys(self) -> None:
+        assert RegistryMessages._auth_dict_has_host({1: {}, "ghcr.io": {}}, "ghcr.io")
+        assert not RegistryMessages._auth_dict_has_host({1: {}}, "ghcr.io")
+
+    def test_docker_config_path_uses_docker_config_env(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        cfg_dir = tmp_path / "docker-cfg"
+        cfg_dir.mkdir()
+        (cfg_dir / "config.json").write_text(
+            json.dumps({"auths": {"ghcr.io": {"auth": "e30="}}}),
+            encoding="utf-8",
+        )
+        monkeypatch.setenv("DOCKER_CONFIG", str(cfg_dir))
+        assert RegistryMessages.docker_config_has_registry_auth("ghcr.io") is True
+
     def test_registry_unauthorized_message(self) -> None:
         msg = RegistryMessages.registry_unauthorized_message(
             "ghcr.io/example/demo-api:abc123",
