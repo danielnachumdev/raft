@@ -93,6 +93,7 @@ Align with the README table; detail for agents:
 | Secrets baseline (`~/.raft/secrets/<app>/env`) | **Shipped** | Guidance [`docs/secrets.md`](docs/secrets.md); external materialization epic [#143](https://github.com/danielnachumdev/raft/issues/143) / [#176](https://github.com/danielnachumdev/raft/issues/176) |
 | Past logs when container off | **Shipped** | Retained under `state/service-logs/`; shipper + drain-before-rm; [`docs/serve-logs.md`](docs/serve-logs.md) |
 | Trends dashboards (multi-graph) | **Shipped** | [#238](https://github.com/danielnachumdev/raft/issues/238) supersedes #202 named views (migrated on load). Shared range + one fetch per plane fanned out to `TrendsGraph`s; browser-local (`raft-serve-trends-dashboards`); `src/spa/src/trends/dashboard/`; [`docs/serve-trends.md`](docs/serve-trends.md) |
+| Per-service Trends (default graphs) | **Shipped** | Service inspection uses the same multi-graph UX, pinned to that service; browser-local `raft-serve-service-trends`; `src/spa/src/trends/service/` |
 | Alerts from firewall + graph/metrics → notifications | **Planned** | Wire firewall signals + resources/`http.jsonl` metrics into shipped notification strategies; scope under epic #207 or observe/notify when filed |
 | Always-on Compose dashboard service | **Planned** | [#36](https://github.com/danielnachumdev/raft/issues/36) — not `raft serve` replacement without design |
 | Automate SPA bake in CI | **Planned** | [#41](https://github.com/danielnachumdev/raft/issues/41) |

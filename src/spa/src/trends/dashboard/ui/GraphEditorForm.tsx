@@ -20,12 +20,15 @@ type Props = {
   draft: TrendsGraphDraft;
   available: MetricsAvailable[];
   showPresets: boolean;
+  /** Service page: hide view / series pickers (graphs stay on that service). */
+  pinnedService?: string;
   onChange: (next: TrendsGraphDraft) => void;
 };
 
 /** Graph fields: preset shortcuts, title, width, view, metrics, series picker. */
 export function GraphEditorForm(props: Props) {
   const { draft, onChange } = props;
+  const pinned = Boolean(props.pinnedService);
   const set = (patch: Partial<TrendsGraphDraft>) => onChange({ ...draft, ...patch });
   return (
     <div className="graph-editor-form">
@@ -46,19 +49,26 @@ export function GraphEditorForm(props: Props) {
         />
       </label>
       <div className="graph-editor-row">
-        <ViewModeField
-          value={draft.viewMode}
-          onChange={(viewMode) => set({ viewMode, selected: null })}
-        />
+        {pinned ? null : (
+          <ViewModeField
+            value={draft.viewMode}
+            onChange={(viewMode) => set({ viewMode, selected: null })}
+          />
+        )}
         <SizeField value={draft.size} onChange={(size) => set({ size })} />
       </div>
+      {pinned && props.pinnedService ? (
+        <p className="muted graph-editor-pinned" role="note">
+          Showing metrics for <strong>{props.pinnedService}</strong> only.
+        </p>
+      ) : null}
       <MetricFilter
         activeIds={draft.metricIds}
         busy={false}
         onToggle={(id) => set({ metricIds: toggleMetricId(draft.metricIds, id) })}
         onClearAll={() => set({ metricIds: [] })}
       />
-      <SeriesField {...props} />
+      {pinned ? null : <SeriesField {...props} />}
     </div>
   );
 }

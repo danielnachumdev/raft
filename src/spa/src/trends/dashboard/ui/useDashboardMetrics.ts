@@ -42,17 +42,25 @@ export type DashboardMetrics = {
 /**
  * One full fetch + live poll per metric plane for the whole dashboard;
  * every graph filters the shared series client-side.
+ * Optional ``services`` scopes the request (service inspection page).
  */
 export function useDashboardMetrics(
   range: TrendsRangeState,
   planeList: MetricPlane[],
+  services?: string[],
 ): DashboardMetrics {
   const planesKey = planeList.join("+");
   const planes = useMemo(() => planesKey.split("+") as MetricPlane[], [planesKey]);
-  const query = useMemo(() => toQuery(range), [range]);
+  const servicesKey = services?.join(",") ?? "";
+  const query = useMemo(() => {
+    const base = toQuery(range);
+    return servicesKey
+      ? { ...base, services: servicesKey.split(",") }
+      : base;
+  }, [range, servicesKey]);
   const rolling = isRollingWindow(query);
   const nowMs = useLiveNow(rolling);
-  const cacheKey = planesCacheKey(planes, metricsCacheKey(query));
+  const cacheKey = `${planesCacheKey(planes, metricsCacheKey(query))}:svc:${servicesKey}`;
   const seed = peekMetrics(cacheKey);
   const [series, setSeries] = useState<MetricsSeries[]>(seed?.series ?? []);
   const [available, setAvailable] = useState<MetricsAvailable[]>(seed?.available ?? []);
