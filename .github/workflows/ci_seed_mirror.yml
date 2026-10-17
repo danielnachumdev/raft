@@ -78,3 +78,18 @@ jobs:
           echo "docker build → ${dst}"
           docker build -t "${dst}" "${GITHUB_WORKSPACE}/.github/ci-seed-http-echo"
           docker push "${dst}"
+
+      # GHCR may create user packages as public even when linked to a private
+      # repo; force private so E2E relies on packages:read + docker login.
+      - name: Ensure seed packages are private
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          for name in ci-seed-nginx ci-seed-redis ci-seed-http-echo; do
+            pkg="${GHCR_REPO}/${name}"
+            enc="$(python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=""))' "${pkg}")"
+            echo "visibility private ← ${pkg}"
+            gh api --method POST "user/packages/container/${enc}/visibility" \
+              -f visibility=private
+          done
