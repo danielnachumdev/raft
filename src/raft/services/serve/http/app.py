@@ -11,6 +11,7 @@ from raft.core.observe.ops.actions import ServiceActions
 from raft.core.observe.ops.logs import Logs
 from raft.core.observe.ops.status import Status
 from ..alerts import ServeAlertsApi
+from ..events import ServeEventsApi
 from ..firewall import ServeFirewallApi
 from ..github import ServeGithubApi
 from ..notifications import ServeNotificationsApi
@@ -35,6 +36,7 @@ class ServeAppFactory:
         notifications: Optional[ServeNotificationsApi] = None,
         firewall: Optional[ServeFirewallApi] = None,
         alerts: Optional[ServeAlertsApi] = None,
+        events: Optional[ServeEventsApi] = None,
         port: int = _DEFAULT_PORT,
     ) -> None:
         self.stack = stack
@@ -46,6 +48,7 @@ class ServeAppFactory:
         self._notifications = notifications
         self._firewall = firewall
         self._alerts = alerts
+        self._events = events
         self._port = port
 
     def create(self) -> FastAPI:
@@ -72,7 +75,8 @@ class ServeAppFactory:
         notifications = self._notifications or ServeNotificationsApi(self.stack)
         firewall = self._firewall or ServeFirewallApi(self.stack)
         alerts = self._alerts or ServeAlertsApi(self.stack)
-        return page, (downloads, github, notifications, firewall, alerts)
+        events = self._events or ServeEventsApi(self.stack)
+        return page, (downloads, github, notifications, firewall, alerts, events)
 
     @staticmethod
     def _register_api(
@@ -83,6 +87,7 @@ class ServeAppFactory:
         notifications: ServeNotificationsApi,
         firewall: ServeFirewallApi,
         alerts: ServeAlertsApi,
+        events: ServeEventsApi,
     ) -> None:
         ServeAppFactory._register_read_api(app, page)
         ServeAppFactory._register_action_api(app, page)
@@ -91,6 +96,7 @@ class ServeAppFactory:
         notifications.register(app)
         firewall.register(app)
         alerts.register(app)
+        events.register(app)
 
     @staticmethod
     def _register_read_api(app: FastAPI, page: ServePage) -> None:

@@ -7,6 +7,7 @@ from typing import Callable, Optional, Sequence
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.stack import Stack
+from raft.core.core.models.state.ops_event_store import OpsEventStore
 from raft.core.observe.notify.notifier import Notifier
 
 from ..catalogs import AlertCatalogs
@@ -150,9 +151,22 @@ class AlertEngine:
                 event = self._events.firing(rule, outcome, instance)
             else:
                 event = self._events.resolved(rule, outcome, instance, now=now)
+            self._record_ops_alert(rule, outcome, step.notify)
             self._dispatch.send(rule, event)
             sent += 1
         return sent
+
+    def _record_ops_alert(self, rule, outcome, notify: str) -> None:
+        store = OpsEventStore(self._home)
+        kwargs = {
+            "rule_id": rule.id,
+            "subject": outcome.subject,
+            "channel_ids": list(rule.channel_ids),
+        }
+        if notify == "firing":
+            store.record_alert_fired(**kwargs)
+        else:
+            store.record_alert_resolved(**kwargs)
 
     def _prune(self, runtime, rule_by_id, active_fps) -> None:
         drop = []

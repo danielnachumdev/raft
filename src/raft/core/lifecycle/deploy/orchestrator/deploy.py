@@ -82,7 +82,7 @@ class OrchestratorDeploy:
 
     def finish_app_deploy(self, app, *, done: str) -> None:
         """Record GraphEvent, best-effort ACME, and operator OK line."""
-        self._record_deploy_event(app)
+        self._record_deploy_event(app, done=done)
         self._ensure_acme_best_effort([app.name])
         OperatorSay.say(f"{done} {app.name}", style="ok")
 
@@ -181,10 +181,12 @@ class OrchestratorDeploy:
     def _ensure_acme_best_effort(self, app_names: Optional[Sequence[str]] = None) -> None:
         ColdStackUp(self).ensure_acme(app_names)
 
-    def _record_deploy_event(self, app) -> None:
-        """Append a GraphEvent so Trends charts can mark this deploy."""
+    def _record_deploy_event(self, app, *, done: str = "deployed") -> None:
+        """Append GraphEvent (+ ops dual-write) for apply / redeploy success."""
+        action = "redeploy" if done == "redeployed" else "apply"
         GraphEventStore(self.stack.root).record_deployment(
             service=app.compose_id,
             app=app.name,
             ref=app.ref,
+            action=action,
         )

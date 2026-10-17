@@ -30,13 +30,18 @@ class GraphEventRecords:
         ref: str,
         ts: Optional[datetime] = None,
         label: Optional[str] = None,
+        action: str = "apply",
     ) -> GraphEvent:
-        """Convenience producer for apply / redeploy / cutover success."""
+        """Convenience producer for apply / redeploy / cutover success.
+
+        ``action`` is dual-written into the ops journal as ``deploy.apply`` /
+        ``deploy.redeploy`` (see ``OpsKindFromGraph``).
+        """
         return self._record(
             KIND_DEPLOYMENT,
             service=service,
             label=label or f"Deploy {app}",
-            metadata={"app": app, "ref": ref},
+            metadata={"app": app, "ref": ref, "action": action},
             ts=ts,
         )
 

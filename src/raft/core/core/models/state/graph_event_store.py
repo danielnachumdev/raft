@@ -21,7 +21,11 @@ EVENTS_FILENAME = "graph.jsonl"
 
 
 class GraphEventStore(GraphEventRecords):
-    """Durable chart-event log (JSONL, one object per line)."""
+    """Durable chart-event log (JSONL, one object per line).
+
+    Successful appends dual-write a mapped row into ``ops.jsonl`` so the
+    operator timeline stays consistent with Trends markers for shared kinds.
+    """
 
     def __init__(self, home: Path) -> None:
         self.home = home
@@ -39,7 +43,15 @@ class GraphEventStore(GraphEventRecords):
             self.ensure_dir()
             with self.path.open("a", encoding="utf-8") as handle:
                 handle.write(line)
+        self._dual_write_ops(stored)
         return stored
+
+    def _dual_write_ops(self, stored: GraphEvent) -> None:
+        # Lazy import: avoid models↔utils circular import at package load.
+        from .ops_event_dual_write import OpsEventDualWrite
+        from .ops_event_store import OpsEventStore
+
+        OpsEventDualWrite(OpsEventStore(self.home)).from_graph(stored)
 
     def events_in_window(
         self,

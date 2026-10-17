@@ -27,6 +27,7 @@ from ..utils.deps import (
 )
 from .alerts import AlertsCLI
 from .auth import AuthCLI
+from .events import EventsCLI
 from .firewall import FirewallCLI
 from .gate import GateCLI
 from .get import GetCLI
@@ -54,6 +55,7 @@ class RaftCLICommands:
         self.http_requests = HttpRequestsCLI(self._stack)
         self.metrics = MetricsCLI(self._stack)
         self.github = GithubCLI(self._stack)
+        self.events = EventsCLI(self._stack)
 
     @property
     def _app_names(self) -> list[str]:
