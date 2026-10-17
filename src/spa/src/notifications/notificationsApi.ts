@@ -1,5 +1,11 @@
 /** Typed client for serve `/api/notifications/*` (channel CRUD + strategy catalog). */
 
+import {
+  appResourceCache,
+  CachedResourceProxy,
+  resourceId,
+} from "../shared/cache/index.ts";
+
 export const SECRET_MASK = "***" as const;
 
 /** One settings key declared by a registered strategy for the channel form. */
@@ -86,29 +92,53 @@ async function jsonRequest<T>(
   return body as T;
 }
 
+const strategiesProxy = new CachedResourceProxy(
+  appResourceCache,
+  resourceId("notifications", "strategies"),
+  {
+    read: () =>
+      jsonRequest<NotificationStrategiesPayload>(
+        "/api/notifications/strategies",
+        undefined,
+        "strategies",
+      ),
+  },
+);
+
+const channelsProxy = new CachedResourceProxy(
+  appResourceCache,
+  resourceId("notifications", "channels"),
+  {
+    read: () =>
+      jsonRequest<NotificationChannelsPayload>(
+        "/api/notifications/channels",
+        undefined,
+        "channels",
+      ),
+  },
+);
+
 export async function fetchNotificationStrategies(): Promise<NotificationStrategiesPayload> {
-  return jsonRequest(
-    "/api/notifications/strategies",
-    undefined,
-    "strategies",
-  );
+  return strategiesProxy.read();
 }
 
 export async function fetchNotificationChannels(): Promise<NotificationChannelsPayload> {
-  return jsonRequest("/api/notifications/channels", undefined, "channels");
+  return channelsProxy.read();
 }
 
 export async function createNotificationChannel(
   body: NotificationChannelCreateBody,
 ): Promise<NotificationChannel> {
-  return jsonRequest(
-    "/api/notifications/channels",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    },
-    "create channel",
+  return channelsProxy.mutateAndInvalidate(() =>
+    jsonRequest<NotificationChannel>(
+      "/api/notifications/channels",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+      "create channel",
+    ),
   );
 }
 
@@ -116,23 +146,27 @@ export async function updateNotificationChannel(
   id: string,
   body: NotificationChannelUpdateBody,
 ): Promise<NotificationChannel> {
-  return jsonRequest(
-    `/api/notifications/channels/${encodeURIComponent(id)}`,
-    {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    },
-    "update channel",
+  return channelsProxy.mutateAndInvalidate(() =>
+    jsonRequest<NotificationChannel>(
+      `/api/notifications/channels/${encodeURIComponent(id)}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+      "update channel",
+    ),
   );
 }
 
 export async function deleteNotificationChannel(
   id: string,
 ): Promise<NotificationChannelDeleteResult> {
-  return jsonRequest(
-    `/api/notifications/channels/${encodeURIComponent(id)}`,
-    { method: "DELETE" },
-    "delete channel",
+  return channelsProxy.mutateAndInvalidate(() =>
+    jsonRequest<NotificationChannelDeleteResult>(
+      `/api/notifications/channels/${encodeURIComponent(id)}`,
+      { method: "DELETE" },
+      "delete channel",
+    ),
   );
 }
