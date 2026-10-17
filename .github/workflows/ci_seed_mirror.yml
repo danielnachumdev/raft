@@ -1,0 +1,72 @@
+# Mirror CI E2E seed images to private GHCR under this repo.
+#
+# Pins (private packages; GITHUB_TOKEN can pull when packages:read on E2E):
+#   ghcr.io/danielnachumdev/raft/ci-seed-nginx:alpine
+#   ghcr.io/danielnachumdev/raft/ci-seed-redis:7-alpine
+#   ghcr.io/danielnachumdev/raft/ci-seed-http-echo:1.0.0
+#
+# Pin refresh: bump tags below + in ci_seed_docker_images.sh together, then
+# run this workflow (Actions → CI seed mirror → Run workflow). Weekly cron
+# re-copies the same tags so drift stays intentional.
+#
+# First-time / after rename: run once before relying on E2E seed, or E2E fails
+# with a Fix CTA pointing here.
+#
+# Upstream for nginx/redis is Docker Hub library (infrequent pulls only).
+# http-echo is built here (see .github/ci-seed-http-echo/) so E2E never builds
+# and never pulls golang/alpine.
+
+name: CI seed mirror
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly Monday 06:15 UTC — intentional refresh of pinned tags.
+    - cron: "15 6 * * 1"
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  GHCR_OWNER: danielnachumdev
+  GHCR_REPO: raft
+  # Keep in sync with .github/workflows/ci_seed_docker_images.sh
+  NGINX_TAG: alpine
+  REDIS_TAG: 7-alpine
+  HTTP_ECHO_TAG: "1.0.0"
+
+jobs:
+  mirror:
+    name: Mirror seed images to GHCR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install crane
+        uses: imjasonh/setup-crane@v0.4
+
+      - name: Copy nginx and redis pins to GHCR
+        run: |
+          set -euo pipefail
+          nginx_dst="ghcr.io/${GHCR_OWNER}/${GHCR_REPO}/ci-seed-nginx:${NGINX_TAG}"
+          redis_dst="ghcr.io/${GHCR_OWNER}/${GHCR_REPO}/ci-seed-redis:${REDIS_TAG}"
+          echo "crane copy docker.io/library/nginx:${NGINX_TAG} → ${nginx_dst}"
+          crane copy "docker.io/library/nginx:${NGINX_TAG}" "${nginx_dst}"
+          echo "crane copy docker.io/library/redis:${REDIS_TAG} → ${redis_dst}"
+          crane copy "docker.io/library/redis:${REDIS_TAG}" "${redis_dst}"
+
+      - name: Build and push ci-seed-http-echo
+        run: |
+          set -euo pipefail
+          dst="ghcr.io/${GHCR_OWNER}/${GHCR_REPO}/ci-seed-http-echo:${HTTP_ECHO_TAG}"
+          echo "docker build → ${dst}"
+          docker build -t "${dst}" "${GITHUB_WORKSPACE}/.github/ci-seed-http-echo"
+          docker push "${dst}"
