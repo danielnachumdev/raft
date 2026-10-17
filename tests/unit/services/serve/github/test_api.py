@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import time
 from typing import Optional
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
+from raft.core.core.errors.cta import OperatorError
 from raft.core.observe.ops.status.models import StatusSnapshot
 from raft.services.serve.http.app import ServeAppFactory
 from raft.core.platform.github.accounts import GithubAccount
@@ -154,6 +155,37 @@ class TestServeGithubApi(RaftTestCase):
         c = self._authed_client(jobs)
         assert c.get("/api/github/deploy/abc").json()["status"] == "running"
         assert c.get("/api/github/deploy/missing").status_code == 404
+
+    def test_deploy_status_operator_error_is_400(self) -> None:
+        github, status = self._github_and_status()
+        with patch.object(
+            github._assist,
+            "deploy_status",
+            side_effect=OperatorError("no session", has_fix=False),
+        ):
+            client = TestClient(
+                ServeAppFactory(
+                    github.stack, status=status, github=github
+                ).create()
+            )
+            assert client.get("/api/github/deploy/x").status_code == 400
+
+    def _github_and_status(self):
+        stack = StackMakers.make_stack(self.tmp_path)
+        (self.tmp_path / "settings.yaml").write_text(
+            "github: {mock: true}\n", encoding="utf-8"
+        )
+        self._save_mock_account()
+        github = ServeGithubApi(
+            stack,
+            provider=MockGithubProvider(ServePaths.mock_github_dir()),
+            jobs=DeployJobStore(),
+        )
+        status = MagicMock()
+        status.collect.return_value = StatusSnapshot(
+            host=status_fx.empty_host_status(), containers=()
+        )
+        return github, status
 
     def _authed_client(self, jobs: DeployJobStore) -> TestClient:
         stack = StackMakers.make_stack(self.tmp_path)

@@ -88,7 +88,7 @@ Align with the README table; detail for agents:
 | Flat gate / App IP ACL (allow/deny lists) | **Retired** | Removed as operator path; leftover `#195` data migrates into firewall GET until Save; [`docs/serve-acl.md`](docs/serve-acl.md) |
 | **Ordered firewall rules** (CIDR, port, protocol, service, action) | **Shipped** | Epic [#207](https://github.com/danielnachumdev/raft/issues/207), [#211](https://github.com/danielnachumdev/raft/issues/211); CLI [#258](https://github.com/danielnachumdev/raft/issues/258) (`raft firewall …`). On gate; Save/CLI → compile → reload; import/export; recommendations; [`docs/serve-firewall.md`](docs/serve-firewall.md). |
 | Inspection → add firewall rule | **Shipped** | [#198](https://github.com/danielnachumdev/raft/issues/198); row actions → `#211` model; prepend + reload |
-| GitHub add-service assist | **Shipped (v1)** | [`docs/serve-github-deploy.md`](docs/serve-github-deploy.md); known gap [#200](https://github.com/danielnachumdev/raft/issues/200) |
+| GitHub add-service assist | **Shipped (v1)** | Serve + `raft github …` via `GithubAssistService`; [`docs/serve-github-deploy.md`](docs/serve-github-deploy.md); known gap [#200](https://github.com/danielnachumdev/raft/issues/200) |
 | Notifications channels | **Shipped** | Strategy catalog + channel CRUD + test-send (serve + `raft notifications …`); [`docs/serve-notifications.md`](docs/serve-notifications.md) |
 | Healing | **Shipped** | Settings `healing:`; separate from scaling |
 | Secrets baseline (`~/.raft/secrets/<app>/env`) | **Shipped** | Guidance [`docs/secrets.md`](docs/secrets.md); external materialization epic [#143](https://github.com/danielnachumdev/raft/issues/143) / [#176](https://github.com/danielnachumdev/raft/issues/176) |
@@ -142,7 +142,7 @@ Product templates sync from `src/raft/core/platform/share/` into the data home o
 | Per-service start/stop/redeploy/purge | `observe/ops/actions/` (`ServiceActions`); CLI `raft start|stop NAME` + serve actions; redeploy/purge already on CLI |
 | Ordered firewall (CRUD / recommendations / from-inspection) | `lifecycle/firewall/` + nginx compile in `lifecycle/render/firewall/`; serve adapter `services/serve/firewall/`; CLI `services/cli/commands/firewall.py` (`raft firewall …`); SPA `src/spa/src/firewall/` |
 | Notification channel CRUD / test-send | `observe/notify/settings_write.py` + `tester.py`; serve adapter `services/serve/notifications/`; CLI `services/cli/commands/notifications.py` (`raft notifications …`); SPA `src/spa/src/notifications/` |
-| GitHub OAuth / deploy assist | `platform/github/`; serve adapter `services/serve/github/` |
+| GitHub OAuth / deploy assist | `platform/github/` (`GithubAssistService`); serve `services/serve/github/`; CLI `services/cli/commands/github.py` (`raft github …`) |
 | Dashboard UI | `src/spa/` only (Release bakes; local `npm run build` for editable/`raft serve`) |
 | Alert rules | `core/observe/alerts/` + `services/serve/alerts/` + `services/controller/jobs/alerts/` + SPA `src/spa/src/alerts/` |
 | Notification strategies | `observe/notify/strategies/` + `catalogs.py`; SPA `src/spa/src/notifications/` |
