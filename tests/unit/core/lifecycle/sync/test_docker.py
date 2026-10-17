@@ -107,7 +107,11 @@ class TestSyncDocker(SyncTestCase):
         )
         assert not any(c.args[:1] == ("tag",) for c in self.shell.docker.call_args_list)
 
-    def test_sync_docker_unauthorized_clear_fix(self) -> None:
+    def test_sync_docker_unauthorized_clear_text(self) -> None:
+        self._test_sync_docker_unauthorized_clear_text_p1()
+        self._test_sync_docker_unauthorized_clear_text_p2()
+
+    def _test_sync_docker_unauthorized_clear_text_p1(self) -> None:
         app = AppMakers.make_app(
             "demo-api",
             source="docker",
@@ -126,7 +130,10 @@ class TestSyncDocker(SyncTestCase):
         )
         with pytest.raises(RuntimeError, match="docker login ghcr.io") as exc:
             self.syncer.sync([app])
-        msg = str(exc.value)
+        self._unauth_msg = str(exc.value)
+
+    def _test_sync_docker_unauthorized_clear_text_p2(self) -> None:
+        msg = self._unauth_msg
         assert f"cannot pull {_DEMO_IMAGE}:main" in msg
         assert "raft auth" in msg.lower()
         assert "command failed" not in msg.lower()
