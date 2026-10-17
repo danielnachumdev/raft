@@ -1,0 +1,60 @@
+# Path filter / change detection for the CI entry workflow.
+# Outputs drive which jobs run; workflow_dispatch forces both sides on.
+
+name: CI changes
+
+on:
+  workflow_call:
+    outputs:
+      python:
+        description: Run Meta, Unit+Integration, and E2E
+        value: ${{ jobs.changes.outputs.python }}
+      spa:
+        description: Run SPA
+        value: ${{ jobs.changes.outputs.spa }}
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Path filter
+    runs-on: ubuntu-latest
+    outputs:
+      python: ${{ steps.flags.outputs.python }}
+      spa: ${{ steps.flags.outputs.spa }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: github.event_name != 'workflow_dispatch'
+        with:
+          filters: |
+            python:
+              - '**/*.py'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - 'tests/**'
+              - 'src/raft/**'
+              - 'install.sh'
+              - '.github/workflows/ci.yml'
+              - '.github/workflows/ci_changes.yml'
+              - '.github/workflows/ci_meta.yml'
+              - '.github/workflows/ci_unit.yml'
+              - '.github/workflows/ci_e2e.yml'
+              - '.github/workflows/ci_seed_docker_images.sh'
+              - '.github/workflows/ci_seed_mirror.yml'
+            spa:
+              - 'src/spa/**'
+              - '.github/workflows/ci.yml'
+              - '.github/workflows/ci_changes.yml'
+              - '.github/workflows/ci_spa.yml'
+      - id: flags
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "python=true" >> "$GITHUB_OUTPUT"
+            echo "spa=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "python=${{ steps.filter.outputs.python }}" >> "$GITHUB_OUTPUT"
+            echo "spa=${{ steps.filter.outputs.spa }}" >> "$GITHUB_OUTPUT"
+          fi

@@ -11,7 +11,7 @@
 # Refresh: Actions → "CI seed mirror" → Run workflow (after bumping pins there
 # and here together). Weekly cron also re-copies the same tags.
 #
-# Prerequisite: docker login ghcr.io with GITHUB_TOKEN (see ci.yml E2E job).
+# Prerequisite: docker login ghcr.io with GITHUB_TOKEN (see ci_e2e.yml).
 set -euo pipefail
 
 # --- config -----------------------------------------------------------------

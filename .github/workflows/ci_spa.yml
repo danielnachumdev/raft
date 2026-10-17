@@ -1,0 +1,27 @@
+# Dashboard SPA: install, test, and build under src/spa/.
+
+name: CI SPA
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  spa:
+    name: SPA
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: src/spa/package-lock.json
+      - name: Install, test, and build dashboard SPA
+        run: |
+          cd src/spa
+          npm ci
+          npm test
+          npm run build
