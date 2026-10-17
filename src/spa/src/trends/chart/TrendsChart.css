@@ -38,4 +38,11 @@
 .trends-chart .recharts-legend-wrapper {
   max-width: 100%;
   overflow-wrap: anywhere;
+  /* Above the SVG so legend labels receive hover (series highlight). */
+  z-index: 1;
+  pointer-events: auto;
+}
+
+.trends-chart .recharts-legend-item {
+  cursor: pointer;
 }
