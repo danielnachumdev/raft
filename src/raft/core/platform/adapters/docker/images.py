@@ -18,6 +18,13 @@ class DockerImages:
     stack: Stack
     sh: Shell
 
+    def image_present(self, image: str) -> bool:
+        """True when the Engine already has this exact image ref."""
+        probed = self.sh.docker(
+            "image", "inspect", "-f", "{{.Id}}", image, check=False, capture=True
+        )
+        return probed.returncode == 0 and bool((probed.stdout or "").strip())
+
     def container_image_ref(self, container_id: str) -> str:
         named = self._named_image_if_present(container_id)
         if named:

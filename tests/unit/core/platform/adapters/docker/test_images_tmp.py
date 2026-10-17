@@ -12,6 +12,12 @@ from tests.unit.core.platform.adapters.docker.base import DockerTestCase
 
 
 class TestDockerImagesTmp(DockerTestCase):
+    def test_image_present_true_and_false(self) -> None:
+        self.shell.docker.return_value = self.ok("sha256:abc\n")
+        assert self.docker.image_present("ghcr.io/example/demo-api:abc123") is True
+        self.shell.docker.return_value = self.ok("", returncode=1)
+        assert self.docker.image_present("ghcr.io/example/demo-api:missing") is False
+
     def test_container_image_ref_named_ok(self) -> None:
         self.shell.docker.side_effect = [
             self.ok("raft-app:latest\n"),

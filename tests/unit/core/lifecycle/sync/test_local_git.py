@@ -117,23 +117,30 @@ class TestSyncLocalGit(SyncTestCase):
         (dest / ".raft").mkdir(parents=True)
         (dest / ".raft" / "app.yaml").write_text("x", encoding="utf-8")
         self.shell.git.side_effect = self._clone_fetch_git(dest, "abc123def456\n")
-        self.shell.docker.return_value = MagicMock(
-            returncode=0, stdout="sha256:deadbeef\n", stderr=""
-        )
+        self.shell.docker.side_effect = self._docker_missing_then_ok()
         self.syncer.sync([app])
-        assert (self.tmp_path / "deploy" / "hub.ref").is_file()
+        assert (self.tmp_path / "deploy" / "demo-api.ref").is_file()
         pulls = [c.args for c in self.shell.docker.call_args_list if c.args[:1] == ("pull",)]
         assert pulls
 
     @staticmethod
+    def _docker_missing_then_ok():
+        def docker(*args, **_kwargs):
+            if args[:2] == ("image", "inspect") and args[3:4] == ("{{.Id}}",):
+                return MagicMock(returncode=1, stdout="", stderr="")
+            return MagicMock(returncode=0, stdout="sha256:deadbeef\n", stderr="")
+
+        return docker
+
+    @staticmethod
     def _docker_hub_app():
         return AppMakers.make_app(
-            "hub",
+            "demo-api",
             source="docker",
-            image="ghcr.io/org/hub",
+            image="ghcr.io/example/demo-api",
             ref="main",
-            repo="git@example.com:org/hub.git",
-            path="apps/hub",
+            repo="git@example.com:org/demo-api.git",
+            path="apps/demo-api",
         )
 
     def test_sync_git_falls_back_to_origin_ref(self, monkeypatch: pytest.MonkeyPatch) -> None:

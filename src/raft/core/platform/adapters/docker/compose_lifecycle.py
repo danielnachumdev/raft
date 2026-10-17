@@ -66,18 +66,39 @@ class DockerComposeLifecycle:
             return f"{COMPOSE_PROJECT}_default"
 
     def pull_services(self, services: Sequence[str]) -> None:
-        if not services:
+        needed = self._services_needing_pull(services)
+        if not needed:
             return
-        logger.info("compose pull %s", " ".join(services))
+        logger.info("compose pull %s", " ".join(needed))
         try:
             CheckedCommands.run_compose(
                 self.sh,
-                ("pull", "--ignore-buildable", *services),
+                ("pull", "--ignore-buildable", *needed),
                 action="pull service images",
                 stream=True,
             )
         except OperatorError as exc:
-            raise self.enrich_compose_failure(exc, services=services) from exc
+            raise self.enrich_compose_failure(exc, services=needed) from exc
+
+    def _services_needing_pull(self, services: Sequence[str]) -> tuple[str, ...]:
+        return tuple(sid for sid in services if self._compose_service_needs_pull(sid))
+
+    def _compose_service_needs_pull(self, compose_id: str) -> bool:
+        image = self._pin_image_for_compose_id(compose_id)
+        if image is None:
+            return True
+        if self.image_present(image):
+            logger.info(
+                "image %s already present; skip compose pull for %s", image, compose_id
+            )
+            return False
+        return True
+
+    def _pin_image_for_compose_id(self, compose_id: str) -> Optional[str]:
+        for app in self.stack.apps:
+            if app.compose_id == compose_id and app.image:
+                return app.compose_pin_image
+        return None
 
     def build_services(self, services: Sequence[str]) -> None:
         if not services:
