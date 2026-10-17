@@ -10,7 +10,9 @@
 # re-copies the same tags so drift stays intentional.
 #
 # First-time / after rename: run once before relying on E2E seed, or E2E fails
-# with a Fix CTA pointing here.
+# with a Fix CTA pointing here. Before this file exists on the default branch,
+# `workflow_dispatch` is unavailable — a same-repo PR that touches the paths
+# below still runs this job and can publish the pins.
 #
 # Upstream for nginx/redis is Docker Hub library (infrequent pulls only).
 # http-echo is built here (see .github/ci-seed-http-echo/) so E2E never builds
@@ -20,6 +22,12 @@ name: CI seed mirror
 
 on:
   workflow_dispatch:
+  # Bootstrap / pin refresh before the workflow exists on main (dispatch-only
+  # otherwise). Same-repo PRs get packages:write on GITHUB_TOKEN.
+  pull_request:
+    paths:
+      - ".github/workflows/ci_seed_mirror.yml"
+      - ".github/ci-seed-http-echo/**"
   schedule:
     # Weekly Monday 06:15 UTC — intentional refresh of pinned tags.
     - cron: "15 6 * * 1"
