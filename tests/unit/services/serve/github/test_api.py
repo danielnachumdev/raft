@@ -11,11 +11,11 @@ from fastapi.testclient import TestClient
 
 from raft.core.observe.ops.status.models import StatusSnapshot
 from raft.services.serve.http.app import ServeAppFactory
-from raft.services.serve.github.accounts import GithubAccount
-from raft.services.serve.github.accounts import GithubAccountStore
+from raft.core.platform.github.accounts import GithubAccount
+from raft.core.platform.github.accounts import GithubAccountStore
 from raft.services.serve.github.api import ServeGithubApi
-from raft.services.serve.github.deploy import DeployJob, DeployJobStore
-from raft.services.serve.github.providers import MockGithubProvider
+from raft.core.platform.github.deploy import DeployJob, DeployJobStore
+from raft.core.platform.github.providers import MockGithubProvider
 from raft.services.serve.http.paths import ServePaths
 
 from tests.unit.base import RaftTestCase, StackMakers

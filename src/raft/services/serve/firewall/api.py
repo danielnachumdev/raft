@@ -7,7 +7,7 @@ from fastapi import Body, HTTPException, Query
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.stack import Stack
 from raft.core.lifecycle.deploy.orchestrator import Orchestrator
-from .apply import ServeFirewallService
+from raft.core.lifecycle.firewall import FirewallService
 
 
 class ServeFirewallApi:
@@ -17,11 +17,11 @@ class ServeFirewallApi:
         self,
         stack: Stack,
         *,
-        service: Optional[ServeFirewallService] = None,
+        service: Optional[FirewallService] = None,
         orchestrator: Optional[Orchestrator] = None,
     ) -> None:
         self.stack = stack
-        self._service = service or ServeFirewallService(
+        self._service = service or FirewallService(
             stack, orchestrator=orchestrator
         )
 

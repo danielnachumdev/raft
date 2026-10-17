@@ -1,6 +1,5 @@
 """FastAPI handlers for notification channel CRUD + strategy catalog."""
 
-
 from typing import Any, Dict, Optional
 
 from fastapi import Body, HTTPException
@@ -9,8 +8,7 @@ from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.stack import Stack
 from raft.core.observe.notify.catalogs import NotificationCatalogs
 from raft.core.observe.notify.registry import NotificationRegistry
-
-from .settings_write import NotificationsSettingsWriter
+from raft.core.observe.notify.settings_write import NotificationsSettingsWriter
 
 
 class ServeNotificationsApi:

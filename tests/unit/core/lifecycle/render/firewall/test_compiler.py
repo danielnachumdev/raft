@@ -2,7 +2,7 @@
 
 from raft.core.lifecycle.render.firewall import FirewallCompiler, scope_name
 from tests.unit.base import RaftTestCase
-from tests.unit.services.serve.firewall.helpers import rule
+from tests.unit.core.lifecycle.firewall.helpers import rule
 
 
 class TestFirewallCompiler(RaftTestCase):

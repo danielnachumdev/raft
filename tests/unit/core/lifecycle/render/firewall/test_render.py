@@ -3,7 +3,7 @@
 from raft.core.core.config.settings.types import EdgeConfig
 from raft.core.core.models.state.firewall_store import FirewallStore
 from tests.unit.base import AppliedInventory, RaftTestCase
-from tests.unit.services.serve.firewall.helpers import document, rule_dict
+from tests.unit.core.lifecycle.firewall.helpers import document, rule_dict
 
 _EDGE = EdgeConfig(http=80, https=None, streams=())
 

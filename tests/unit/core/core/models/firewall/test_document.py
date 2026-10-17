@@ -3,7 +3,7 @@
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.firewall import FirewallDocument, FirewallRule
 from tests.unit.base import RaftTestCase
-from tests.unit.services.serve.firewall.helpers import rule_dict
+from tests.unit.core.lifecycle.firewall.helpers import rule_dict
 
 
 class TestFirewallDocument(RaftTestCase):
