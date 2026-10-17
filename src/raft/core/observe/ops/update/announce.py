@@ -8,7 +8,7 @@ from raft.core.core.ui import OperatorSay
 
 
 class UpdateAnnounce:
-    """Print OK / already-current / PREVIOUS → CURRENT after reinstall."""
+    """Print ``OK: prev → current`` (or already-current) after reinstall."""
 
     _NEXT = (
         "Next: align the running stack with this release — templates and "
@@ -28,8 +28,7 @@ class UpdateAnnounce:
         if already_current:
             self._already_current(after_line or before_line)
             return
-        OperatorSay.say("OK: raft updated", style="ok")
-        self._transition(before_line, after_line)
+        self._ok_transition(before_line, after_line)
         OperatorSay.say(self._NEXT, style="info")
 
     @staticmethod
@@ -39,10 +38,10 @@ class UpdateAnnounce:
             OperatorSay.say(line, style="info")
 
     @staticmethod
-    def _transition(before: Optional[str], after: Optional[str]) -> None:
+    def _ok_transition(before: Optional[str], after: Optional[str]) -> None:
         if not before and not after:
+            OperatorSay.say("OK: raft updated", style="ok")
             return
         left = before or "(unknown)"
         right = after or "(unknown)"
-        OperatorSay.say("PREVIOUS → CURRENT", style="info")
-        OperatorSay.say(f"{left} → {right}", style="info")
+        OperatorSay.say(f"OK: {left} → {right}", style="ok")
