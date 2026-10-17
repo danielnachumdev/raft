@@ -3,6 +3,10 @@
   pointer-events: stroke;
 }
 
+.trends-chart .recharts-line-dots {
+  cursor: pointer;
+}
+
 .trends-chart .recharts-tooltip-cursor {
   pointer-events: none;
 }

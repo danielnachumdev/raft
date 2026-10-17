@@ -12,6 +12,7 @@ import {
   yAxisSuffix,
 } from "../metricTypes";
 import type { RuntimeMetricDef } from "../runtimeMetrics";
+import { isolatedSeriesDot } from "../chart/isolatedSeriesDot";
 import { timeScaleXAxis } from "../chart/TimeScaleXAxis";
 import { useChartHover } from "../chart/useChartHover";
 import type { ChartRow } from "./runtimeTrendsPoll";
@@ -77,7 +78,10 @@ export function ServiceRuntimeChart(props: {
             stroke="#0f6b5c"
             strokeWidth={hover.highlight.lineStrokeWidth(SERIES_ID)}
             strokeOpacity={hover.highlight.lineOpacity(SERIES_ID)}
-            dot={false}
+            dot={isolatedSeriesDot(rows, SERIES_ID, {
+              opacity: hover.highlight.lineOpacity(SERIES_ID),
+              onHover: () => hover.hoverSeries(SERIES_ID),
+            })}
             activeDot={false}
             isAnimationActive={false}
             connectNulls={false}

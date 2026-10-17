@@ -155,6 +155,7 @@ export function TrendsChart(props: {
               axis: p.axis,
               ...paletteStyle(p, metrics, props.palette),
             })),
+            rows,
             splitAxes,
             serviceAxis: LEFT_AXIS,
             highlight: hover.highlight,

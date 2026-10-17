@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import { Line } from "recharts";
 import type { ChartHoverHighlight } from "./chartHover";
+import { isolatedSeriesDot } from "./isolatedSeriesDot";
 
 // Distinct hues that stay legible on both the light and dark panel colors.
 const COLORS = [
@@ -29,6 +30,7 @@ export function trendPlotLines(args: {
   aggregate: boolean;
   avgLabel: string;
   plots: TrendPlot[];
+  rows: ReadonlyArray<Record<string, unknown>>;
   splitAxes: boolean;
   serviceAxis: string;
   highlight: ChartHoverHighlight;
@@ -55,11 +57,14 @@ function hoverLine(
   yAxisId: string,
   colorIndex: number,
   args: {
+    rows: ReadonlyArray<Record<string, unknown>>;
     highlight: ChartHoverHighlight;
     onHoverSeries: (id: string) => void;
   },
   dashed?: boolean,
 ): ReactElement {
+  const opacity = args.highlight.lineOpacity(id);
+  const onHover = () => args.onHoverSeries(id);
   return (
     <Line
       key={id}
@@ -70,12 +75,12 @@ function hoverLine(
       stroke={COLORS[colorIndex % COLORS.length]}
       strokeDasharray={dashed ? "5 3" : undefined}
       strokeWidth={args.highlight.lineStrokeWidth(id)}
-      strokeOpacity={args.highlight.lineOpacity(id)}
-      dot={false}
+      strokeOpacity={opacity}
+      dot={isolatedSeriesDot(args.rows, id, { opacity, onHover })}
       activeDot={false}
       isAnimationActive={false}
       connectNulls={false}
-      onMouseEnter={() => args.onHoverSeries(id)}
+      onMouseEnter={onHover}
     />
   );
 }
