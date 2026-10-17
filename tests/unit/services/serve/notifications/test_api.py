@@ -9,6 +9,7 @@ import yaml
 from fastapi.testclient import TestClient
 
 from raft.core.observe.notify.registry import NotificationRegistry
+from raft.core.observe.notify.settings_write import NotificationsSettingsWriter
 from raft.core.observe.ops.status.models import StatusSnapshot
 from raft.services.serve.http.app import ServeAppFactory
 from raft.services.serve.notifications.api import ServeNotificationsApi
@@ -129,6 +130,58 @@ class TestServeNotificationsApi(RaftTestCase):
             == 404
         )
         assert client.delete("/api/notifications/channels/missing").status_code == 404
+        assert (
+            client.post("/api/notifications/channels/missing/test").status_code
+            == 404
+        )
+
+    def test_send_test_uses_shared_tester(self) -> None:
+        registry = NotificationRegistry()
+        fake = FakeStrategy("webhook")
+        registry.register(fake)
+        client = self._client(registry=registry)
+        client.post(
+            "/api/notifications/channels",
+            json={
+                "id": "ops-webhook",
+                "type": "webhook",
+                "enabled": False,
+                "settings": {"url": "https://example.invalid/hooks/demo-api"},
+            },
+        )
+        response = client.post("/api/notifications/channels/ops-webhook/test")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["ok"] is True
+        assert body["deliveries"][0]["channel_id"] == "ops-webhook"
+        assert fake.delivered[0].kind == "notifications.test"
+
+    def test_send_test_unknown_type_is_400(self) -> None:
+        client = self._client_with_disk_channel()
+        response = client.post("/api/notifications/channels/ops/test")
+        assert response.status_code == 400
+        assert "ops" in response.json()["detail"]
+
+    def _client_with_disk_channel(self) -> TestClient:
+        stack = StackMakers.make_stack(self.tmp_path)
+        (self.tmp_path / "settings.yaml").write_text(
+            "edge: {http: 80, https: null}\n", encoding="utf-8"
+        )
+        NotificationsSettingsWriter(self.tmp_path).create(
+            {
+                "id": "ops",
+                "type": "webhook",
+                "settings": {"url": "https://example.invalid/hooks/demo-api"},
+            }
+        )
+        status = MagicMock()
+        status.collect.return_value = StatusSnapshot(
+            host=status_fx.empty_host_status(), containers=()
+        )
+        api = ServeNotificationsApi(stack, registry=NotificationRegistry())
+        return TestClient(
+            ServeAppFactory(stack, status=status, notifications=api).create()
+        )
 
     def test_invalid_create_is_400(self) -> None:
         client = self._client()

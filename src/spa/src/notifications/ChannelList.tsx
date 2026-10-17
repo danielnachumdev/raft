@@ -13,6 +13,7 @@ type Props = {
   onEdit: (channel: NotificationChannel) => void;
   onToggle: (channel: NotificationChannel) => void;
   onDelete: (channel: NotificationChannel) => void;
+  onSendTest: (channel: NotificationChannel) => void;
 };
 
 /** Channel rows with enable/disable, edit, delete; Send test when available. */
@@ -41,6 +42,7 @@ export function ChannelList(props: Props) {
           onEdit={() => props.onEdit(channel)}
           onToggle={() => props.onToggle(channel)}
           onDelete={() => props.onDelete(channel)}
+          onSendTest={() => props.onSendTest(channel)}
         />
       ))}
     </ul>
@@ -54,6 +56,7 @@ function ChannelRow(props: {
   onEdit: () => void;
   onToggle: () => void;
   onDelete: () => void;
+  onSendTest: () => void;
 }) {
   const { channel } = props;
   const sendOk = canSendTest(props.strategies, channel.type);
@@ -100,6 +103,7 @@ function ChannelRow(props: {
           disabled={!sendOk || props.busy}
           title={sendTitle}
           id={`channel-test-${channel.id}`}
+          onClick={props.onSendTest}
         >
           Send test
         </button>

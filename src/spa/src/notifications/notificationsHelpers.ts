@@ -61,7 +61,7 @@ export function parseSettingsJson(
 
 /**
  * Send test is only offered when the API exists and the channel type is
- * registered. Today the API is absent → always false.
+ * registered in the strategy catalog.
  */
 export function canSendTest(
   strategies: NotificationStrategyInfo[],

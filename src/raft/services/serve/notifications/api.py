@@ -9,6 +9,7 @@ from raft.core.core.models.stack import Stack
 from raft.core.observe.notify.catalogs import NotificationCatalogs
 from raft.core.observe.notify.registry import NotificationRegistry
 from raft.core.observe.notify.settings_write import NotificationsSettingsWriter
+from raft.core.observe.notify.tester import NotificationsTester
 
 
 class ServeNotificationsApi:
@@ -19,10 +20,15 @@ class ServeNotificationsApi:
         stack: Stack,
         *,
         registry: Optional[NotificationRegistry] = None,
+        writer: Optional[NotificationsSettingsWriter] = None,
+        tester: Optional[NotificationsTester] = None,
     ) -> None:
         self.stack = stack
         self._registry = registry or NotificationCatalogs.default()
-        self._settings = NotificationsSettingsWriter(
+        self._settings = writer or NotificationsSettingsWriter(
+            stack.root, registry=self._registry
+        )
+        self._tester = tester or NotificationsTester(
             stack.root, registry=self._registry
         )
 
@@ -32,6 +38,7 @@ class ServeNotificationsApi:
         app.post("/api/notifications/channels")(self.api_create)
         app.put("/api/notifications/channels/{channel_id}")(self.api_update)
         app.delete("/api/notifications/channels/{channel_id}")(self.api_delete)
+        app.post("/api/notifications/channels/{channel_id}/test")(self.api_test)
         app.get("/api/notifications/strategies")(self.api_strategies)
 
     def api_list(self) -> Dict[str, Any]:
@@ -65,6 +72,15 @@ class ServeNotificationsApi:
         except KeyError as exc:
             raise self._missing(channel_id) from exc
         return {"ok": True, "deleted": channel_id}
+
+    def api_test(self, channel_id: str) -> Dict[str, Any]:
+        try:
+            deliveries = self._tester.send(channel_id)
+        except KeyError as exc:
+            raise self._missing(channel_id) from exc
+        except OperatorError as exc:
+            raise self._bad(exc) from exc
+        return self._tester.public_response(deliveries)
 
     def api_strategies(self) -> Dict[str, Any]:
         return {"strategies": self._registry.catalog()}

@@ -15,6 +15,7 @@ from .settings_write import NotificationsSettingsWriter
 from .severity import NotificationSeverity
 from .strategies import EmailStrategy, WebhookStrategy, WhatsAppStrategy
 from .strategy import NotificationStrategy
+from .tester import KIND_NOTIFICATIONS_TEST, NotificationsTester
 
 __all__ = [
     "ChannelDelivery",
@@ -23,6 +24,7 @@ __all__ = [
     "DeliveryResult",
     "DeliveryStatus",
     "EmailStrategy",
+    "KIND_NOTIFICATIONS_TEST",
     "NotificationCatalogs",
     "NotificationDispatcher",
     "NotificationEvent",
@@ -30,6 +32,7 @@ __all__ = [
     "NotificationSeverity",
     "NotificationStrategy",
     "NotificationsSettingsWriter",
+    "NotificationsTester",
     "Notifier",
     "SettingsRedactor",
     "WebhookStrategy",
