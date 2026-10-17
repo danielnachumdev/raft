@@ -9,6 +9,7 @@ import {
   deleteNotificationChannel,
   fetchNotificationChannels,
   fetchNotificationStrategies,
+  sendNotificationTest,
   updateNotificationChannel,
   type NotificationChannel,
   type NotificationStrategyInfo,
@@ -135,6 +136,7 @@ export function NotificationsSettingsPage() {
               onEdit={openEdit}
               onToggle={(ch) => void toggleEnabled(ch)}
               onDelete={setPendingDelete}
+              onSendTest={(ch) => void sendTest(ch)}
             />
           </section>
         </>
@@ -230,6 +232,19 @@ export function NotificationsSettingsPage() {
     } catch (err) {
       toast.bad(err instanceof Error ? err.message : "Delete failed");
       throw err;
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function sendTest(channel: NotificationChannel) {
+    setBusyId(channel.id);
+    try {
+      const result = await sendNotificationTest(channel.id);
+      if (result.ok) toast.good(result.message);
+      else toast.bad(result.message);
+    } catch (err) {
+      toast.bad(err instanceof Error ? err.message : "Test failed");
     } finally {
       setBusyId(null);
     }

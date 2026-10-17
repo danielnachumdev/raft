@@ -120,11 +120,19 @@ describe("typed field state", () => {
 });
 
 describe("canSendTest / sendTestDisabledReason", () => {
-  it("stays disabled while send-test API is absent", () => {
-    assert.equal(canSendTest([{ type_id: "webhook" }], "webhook"), false);
+  it("allows send-test when the type is in the catalog", () => {
+    assert.equal(canSendTest([{ type_id: "webhook" }], "webhook"), true);
     assert.match(
-      sendTestDisabledReason([{ type_id: "webhook" }], "webhook"),
-      /not available yet/i,
+      sendTestDisabledReason([{ type_id: "email" }], "webhook"),
+      /not in the strategy catalog/i,
+    );
+  });
+
+  it("rejects empty type and empty catalog", () => {
+    assert.equal(canSendTest([{ type_id: "webhook" }], ""), false);
+    assert.match(
+      sendTestDisabledReason([], "webhook"),
+      /No notification strategies/i,
     );
   });
 });

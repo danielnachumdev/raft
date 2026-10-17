@@ -61,8 +61,21 @@ export type NotificationChannelDeleteResult = {
   deleted: string;
 };
 
-/** Server has no send-test route yet; keep UI disabled until one lands. */
-export const SEND_TEST_API_AVAILABLE = false;
+/** Send-test is available via POST /api/notifications/channels/{id}/test. */
+export const SEND_TEST_API_AVAILABLE = true;
+
+export type NotificationTestDelivery = {
+  channel_id: string;
+  type_id: string;
+  status: string;
+  error: string;
+};
+
+export type NotificationTestResult = {
+  ok: boolean;
+  deliveries: NotificationTestDelivery[];
+  message: string;
+};
 
 async function readJson(res: Response): Promise<unknown> {
   try {
@@ -168,5 +181,15 @@ export async function deleteNotificationChannel(
       { method: "DELETE" },
       "delete channel",
     ),
+  );
+}
+
+export async function sendNotificationTest(
+  id: string,
+): Promise<NotificationTestResult> {
+  return jsonRequest<NotificationTestResult>(
+    `/api/notifications/channels/${encodeURIComponent(id)}/test`,
+    { method: "POST" },
+    "send test",
   );
 }

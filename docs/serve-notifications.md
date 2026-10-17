@@ -1,6 +1,6 @@
 # Serve notifications
 
-Outbound alert channels for this host. Operators manage them under **Settings → Notifications** in `raft serve`. Durable config lives in `~/.raft/settings.yaml` under `notifications:` (not under `state/`).
+Outbound alert channels for this host. Operators manage them under **Settings → Notifications** in `raft serve`, or via **`raft notifications …`** (same shared core service: `NotificationsSettingsWriter` / `NotificationsTester`). Durable config lives in `~/.raft/settings.yaml` under `notifications:` (not under `state/`).
 
 ## Alert rules
 
@@ -14,7 +14,29 @@ Rules that decide *when* to notify live separately under **Settings → Alerts**
 | `email` | Plain-text SMTP | Optional auth / STARTTLS / port / timeout |
 | `whatsapp` | [GREEN-API](https://greenapi.com) `sendMessage` | Text alerts to a WhatsApp chat |
 
-The serve API exposes the strategy catalog at `GET /api/notifications/strategies` (includes labels and typed field metadata for the SPA form). Channel CRUD is under `/api/notifications/channels`.
+The serve API exposes the strategy catalog at `GET /api/notifications/strategies` (includes labels and typed field metadata for the SPA form). Channel CRUD is under `/api/notifications/channels`. Probe a channel with `POST /api/notifications/channels/{id}/test` (SPA **Send test**) or `raft notifications test <id>`.
+
+## CLI
+
+| Command | Role |
+|---------|------|
+| `raft notifications list` / `show ID` | List/show channels (secrets as `***`) |
+| `raft notifications strategies` | Strategy catalog |
+| `raft notifications create --file channel.yaml` | Create (same body as serve POST) |
+| `raft notifications update ID --file patch.yaml` | Update / merge settings |
+| `raft notifications enable\|disable ID` | Toggle `enabled` |
+| `raft notifications delete ID` | Remove channel |
+| `raft notifications test ID` | Safe probe through `Notifier` strategies |
+
+Example create file (PII-safe fixture names only):
+
+```yaml
+id: ops-webhook
+type: webhook
+enabled: true
+settings:
+  url: https://example.invalid/hooks/demo-api
+```
 
 ## WhatsApp (GREEN-API)
 
