@@ -1,0 +1,102 @@
+# Mirror CI E2E seed images to GHCR under this repo (leave anonymous ECR Public).
+#
+# Pins (linked to this repo; GITHUB_TOKEN pulls with packages:read on E2E):
+#   ghcr.io/danielnachumdev/raft/ci-seed-nginx:alpine
+#   ghcr.io/danielnachumdev/raft/ci-seed-redis:7-alpine
+#   ghcr.io/danielnachumdev/raft/ci-seed-http-echo:1.0.0
+#
+# Visibility: packages linked to a *public* repository stay public on GHCR
+# (GitHub does not allow private + linked-to-public-repo). Content is already
+# public upstream (library nginx/redis + our tiny echo). Access control for
+# *writes* is still GITHUB_TOKEN / packages:write.
+#
+# Pin refresh: bump tags below + in ci_seed_docker_images.sh together, then
+# run this workflow (Actions → CI seed mirror → Run workflow). Weekly cron
+# re-copies the same tags so drift stays intentional.
+#
+# First-time / after rename: run once before relying on E2E seed, or E2E fails
+# with a Fix CTA pointing here. Before this file exists on the default branch,
+# `workflow_dispatch` is unavailable — a same-repo PR that touches the paths
+# below still runs this job and can publish the pins.
+#
+# Upstream for nginx/redis is Docker Hub library (infrequent pulls only).
+# http-echo is built here (see .github/ci-seed-http-echo/) so E2E never builds
+# and never pulls golang/alpine.
+
+name: CI seed mirror
+
+on:
+  workflow_dispatch:
+  # Bootstrap / pin refresh before the workflow exists on main (dispatch-only
+  # otherwise). Same-repo PRs get packages:write on GITHUB_TOKEN.
+  pull_request:
+    paths:
+      - ".github/workflows/ci_seed_mirror.yml"
+      - ".github/ci-seed-http-echo/**"
+  schedule:
+    # Weekly Monday 06:15 UTC — intentional refresh of pinned tags.
+    - cron: "15 6 * * 1"
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  GHCR_OWNER: danielnachumdev
+  GHCR_REPO: raft
+  # Keep in sync with .github/workflows/ci_seed_docker_images.sh
+  NGINX_TAG: alpine
+  REDIS_TAG: 7-alpine
+  HTTP_ECHO_TAG: "1.0.0"
+
+jobs:
+  mirror:
+    name: Mirror seed images to GHCR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install crane
+        uses: imjasonh/setup-crane@v0.4
+
+      - name: Copy nginx and redis pins to GHCR
+        run: |
+          set -euo pipefail
+          nginx_dst="ghcr.io/${GHCR_OWNER}/${GHCR_REPO}/ci-seed-nginx:${NGINX_TAG}"
+          redis_dst="ghcr.io/${GHCR_OWNER}/${GHCR_REPO}/ci-seed-redis:${REDIS_TAG}"
+          echo "crane copy docker.io/library/nginx:${NGINX_TAG} → ${nginx_dst}"
+          crane copy "docker.io/library/nginx:${NGINX_TAG}" "${nginx_dst}"
+          echo "crane copy docker.io/library/redis:${REDIS_TAG} → ${redis_dst}"
+          crane copy "docker.io/library/redis:${REDIS_TAG}" "${redis_dst}"
+
+      - name: Build and push ci-seed-http-echo
+        run: |
+          set -euo pipefail
+          dst="ghcr.io/${GHCR_OWNER}/${GHCR_REPO}/ci-seed-http-echo:${HTTP_ECHO_TAG}"
+          echo "docker build → ${dst}"
+          docker build -t "${dst}" "${GITHUB_WORKSPACE}/.github/ci-seed-http-echo"
+          docker push "${dst}"
+
+      # Best-effort privacy: linked-to-public-repo packages cannot be private.
+      - name: Report seed package visibility
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          for name in ci-seed-nginx ci-seed-redis ci-seed-http-echo; do
+            pkg="${GHCR_REPO}/${name}"
+            enc="$(python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=""))' "${pkg}")"
+            vis="$(gh api "user/packages/container/${enc}" -q .visibility 2>/dev/null \
+              || gh api "users/${GHCR_OWNER}/packages/container/${enc}" -q .visibility)"
+            echo "${pkg}: visibility=${vis}"
+            if [[ "${vis}" == "public" ]]; then
+              echo "::notice::${pkg} is public (expected when linked to a public repo)."
+            fi
+          done
