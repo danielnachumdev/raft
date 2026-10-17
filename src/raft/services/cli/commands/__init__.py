@@ -5,6 +5,7 @@ from .auth import AuthCLI
 from .firewall import FirewallCLI
 from .gate import GateCLI
 from .get import GetCLI
+from .http_requests import HttpRequestsCLI
 from .notifications import NotificationsCLI
 from .raft_commands import RaftCLICommands
 
@@ -14,6 +15,7 @@ __all__ = [
     "FirewallCLI",
     "GateCLI",
     "GetCLI",
+    "HttpRequestsCLI",
     "NotificationsCLI",
     "RaftCLICommands",
 ]

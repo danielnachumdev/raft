@@ -84,7 +84,7 @@ Align with the README table; detail for agents:
 | Doctor / status / logs / purge | **Shipped** | |
 | Metrics JSONL + Trends (resources + HTTP aggregate) | **Shipped** | Controller scrape; `http.jsonl` contract in observe/docs |
 | `raft serve` ops UI | **Shipped** | FastAPI + packaged SPA |
-| HTTP request inspection (per App) | **Shipped** | Gate access log → `/api/service/{name}/http-requests`; [`docs/serve-http-requests.md`](docs/serve-http-requests.md) |
+| HTTP request inspection (per App) | **Shipped** | Gate access log → `/api/service/{name}/http-requests` + `raft http_requests show`; [`docs/serve-http-requests.md`](docs/serve-http-requests.md) |
 | Flat gate / App IP ACL (allow/deny lists) | **Retired** | Removed as operator path; leftover `#195` data migrates into firewall GET until Save; [`docs/serve-acl.md`](docs/serve-acl.md) |
 | **Ordered firewall rules** (CIDR, port, protocol, service, action) | **Shipped** | Epic [#207](https://github.com/danielnachumdev/raft/issues/207), [#211](https://github.com/danielnachumdev/raft/issues/211); CLI [#258](https://github.com/danielnachumdev/raft/issues/258) (`raft firewall …`). On gate; Save/CLI → compile → reload; import/export; recommendations; [`docs/serve-firewall.md`](docs/serve-firewall.md). |
 | Inspection → add firewall rule | **Shipped** | [#198](https://github.com/danielnachumdev/raft/issues/198); row actions → `#211` model; prepend + reload |
