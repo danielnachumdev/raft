@@ -1,0 +1,23 @@
+# Meta / package-data guards (codebase-as-artifact).
+
+name: CI meta
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  meta:
+    name: Meta
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.0.0
+        with:
+          python-version: "3.13"
+      - name: Install package + test deps
+        run: uv sync --extra dev
+      - name: Meta tests (codebase-as-artifact)
+        run: uv run pytest tests/meta --no-cov -n0
