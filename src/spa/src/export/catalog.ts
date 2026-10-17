@@ -1,25 +1,35 @@
 import { useEffect, useState } from "react";
+import {
+  appResourceCache,
+  CachedResourceProxy,
+  resourceId,
+} from "../shared/cache/index.ts";
 import type { ExportCatalog, ExportKind, ExportOption } from "./items";
 
 const EMPTY: ExportCatalog = { logs: [], metrics: [] };
 
-let cached: ExportCatalog | null = null;
-let inflight: Promise<ExportCatalog> | null = null;
+const catalogId = resourceId("exports", "catalog");
+
+const catalogProxy = new CachedResourceProxy(appResourceCache, catalogId, {
+  read: async () => {
+    const res = await fetch("/api/exports");
+    if (!res.ok) {
+      throw new Error(`exports ${res.status}`);
+    }
+    const body = (await res.json()) as ExportCatalog;
+    return normalizeCatalog(body);
+  },
+});
 
 export async function loadExportCatalog(): Promise<ExportCatalog> {
-  if (cached) return cached;
-  if (!inflight) {
-    inflight = fetchCatalog().finally(() => {
-      inflight = null;
-    });
-  }
-  return inflight;
+  return catalogProxy.read();
 }
 
 export function useExportOptions(kind: ExportKind): ExportOption[] {
-  const [options, setOptions] = useState<ExportOption[]>(
-    () => cached?.[kind] ?? [],
-  );
+  const [options, setOptions] = useState<ExportOption[]>(() => {
+    const hit = appResourceCache.peek<ExportCatalog>(catalogId);
+    return hit?.[kind] ?? [];
+  });
   useEffect(() => {
     let cancelled = false;
     void loadExportCatalog()
@@ -34,16 +44,6 @@ export function useExportOptions(kind: ExportKind): ExportOption[] {
     };
   }, [kind]);
   return options;
-}
-
-async function fetchCatalog(): Promise<ExportCatalog> {
-  const res = await fetch("/api/exports");
-  if (!res.ok) {
-    throw new Error(`exports ${res.status}`);
-  }
-  const body = (await res.json()) as ExportCatalog;
-  cached = normalizeCatalog(body);
-  return cached;
 }
 
 function normalizeCatalog(body: ExportCatalog): ExportCatalog {

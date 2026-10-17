@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   CachedResourceProxy,
+  DEFAULT_RESOURCE_CACHE_TTL_MS,
   ResourceCache,
   resourceId,
   resourceIdString,
@@ -14,6 +15,31 @@ describe("resourceId", () => {
 });
 
 describe("ResourceCache", () => {
+  it("defaults ttl to 10 minutes", async () => {
+    assert.equal(DEFAULT_RESOURCE_CACHE_TTL_MS, 10 * 60 * 1000);
+
+    let now = 1_000;
+    const cache = new ResourceCache({ now: () => now });
+    const id = resourceId("demo", "default-ttl");
+    let reads = 0;
+    const source = {
+      read: async () => {
+        reads += 1;
+        return reads;
+      },
+    };
+
+    assert.equal(await cache.readThrough(id, source), 1);
+    now = 1_000 + DEFAULT_RESOURCE_CACHE_TTL_MS;
+    assert.equal(await cache.readThrough(id, source), 1);
+    assert.equal(reads, 1);
+
+    now = 1_000 + DEFAULT_RESOURCE_CACHE_TTL_MS + 1;
+    assert.equal(cache.peek(id), null);
+    assert.equal(await cache.readThrough(id, source), 2);
+    assert.equal(reads, 2);
+  });
+
   it("misses then stores a read-through", async () => {
     let reads = 0;
     const cache = new ResourceCache({ ttlMs: 60_000 });

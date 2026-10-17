@@ -20,11 +20,14 @@ export type DataSource<T> = {
   read(): Promise<T>;
 };
 
+/** Default freshness window for navigation read caching (10 minutes). */
+export const DEFAULT_RESOURCE_CACHE_TTL_MS = 10 * 60 * 1000;
+
 export type ResourceCacheOptions = {
   /**
    * Freshness window in ms. Expired entries are a miss (no stale-while-revalidate).
-   * Default: 60s — short enough for settings pages; long enough to skip repeat GETs
-   * when navigating away and back within a session.
+   * Default: {@link DEFAULT_RESOURCE_CACHE_TTL_MS} — long enough to skip repeat GETs
+   * when navigating away and back within a session; mutations must set/invalidate.
    */
   ttlMs?: number;
   /** Injectable clock for tests. */
