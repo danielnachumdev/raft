@@ -11,26 +11,26 @@ from typing import List, Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DOCKERFILE = REPO_ROOT / "tests" / "e2e" / "fresh_install" / "Dockerfile"
-DEFAULT_REF = "main"
-_CI_ONCE_PY = (3, 13)
+DEFAULT_REF = "workspace"
+# E2E job is Py 3.9 only; run the image build once there.
+_CI_ONCE_PY = (3, 9)
 
 
 class FreshInstallRef:
-    """Resolve install ref: ``RAFT_E2E_REF`` / ``GITHUB_SHA``, else workspace/main.
+    """Resolve install ref: ``RAFT_E2E_REF``, else ``workspace``.
 
-    Dockerfile ``ARG RAFT_REF`` defaults to ``main`` (operator path). Local pytest
-    without env installs from the build context (``workspace``) so packaging
-    regressions are caught before push. CI sets ``RAFT_E2E_REF`` to the SHA.
+    Dockerfile ``ARG RAFT_REF`` defaults to ``workspace`` (packaging from the
+    build context after SPA bake). Operators install Release wheels; git trees
+    no longer ship hashed SPA assets, so CI does not ``git+@sha`` for this smoke.
+    Override with ``RAFT_E2E_REF=main`` / a tag only when intentionally testing
+    git install (UI assets will be missing unless that ref baked them).
     """
 
     def resolve(self) -> str:
         explicit = (os.environ.get("RAFT_E2E_REF") or "").strip()
         if explicit:
             return explicit
-        if os.environ.get("CI"):
-            sha = (os.environ.get("GITHUB_SHA") or "").strip()
-            return sha or DEFAULT_REF
-        return "workspace"
+        return DEFAULT_REF
 
 
 class FreshInstallGate:
@@ -45,6 +45,32 @@ class FreshInstallGate:
         if os.environ.get("CI"):
             return sys.version_info[:2] == _CI_ONCE_PY
         return True
+
+
+class FreshInstallSpaBake:
+    """Ensure packaged SPA exists before a ``workspace`` Docker install."""
+
+    def ensure(self, repo_root: Path) -> None:
+        index = repo_root / "src/raft/core/platform/share/serve/spa/index.html"
+        if index.is_file():
+            return
+        spa = repo_root / "src" / "spa"
+        for args in (["npm", "ci"], ["npm", "run", "build"]):
+            proc = subprocess.run(
+                args,
+                cwd=str(spa),
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=600,
+            )
+            if proc.returncode != 0:
+                detail = (proc.stderr or proc.stdout or "").strip()
+                raise AssertionError(
+                    f"{' '.join(args)} failed ({proc.returncode}):\n{detail}"
+                )
+        if not index.is_file():
+            raise AssertionError(f"SPA bake did not produce {index}")
 
 
 class FreshInstallImage:
@@ -63,6 +89,8 @@ class FreshInstallImage:
             self._rmi()
 
     def _build(self) -> None:
+        if self.ref == "workspace":
+            FreshInstallSpaBake().ensure(self.repo_root)
         self._docker(
             [
                 "build",

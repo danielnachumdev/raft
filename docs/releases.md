@@ -1,6 +1,6 @@
 # Releases and semver labels
 
-Operator-facing versions come from **GitHub Releases** (`vX.Y.Z` tags). CI does **not** bot-commit bumps into `pyproject.toml` (that file stays a packaging placeholder until wheel install from release assets lands with SPA bake — [#41](https://github.com/danielnachumdev/raft/issues/41)).
+Operator-facing versions come from **GitHub Releases** (`vX.Y.Z` tags). CI does **not** bot-commit bumps into `pyproject.toml` for day-to-day merges; the Release publish job sets the wheel version from the tag when building the artifact.
 
 ## Labels (exact names)
 
@@ -19,22 +19,34 @@ Every PR into `main` must carry **exactly one** of:
 
 Logic lives in [`scripts/release_semver.py`](../scripts/release_semver.py); workflow: [`.github/workflows/release.yml`](../.github/workflows/release.yml). Dry-run via **Actions → Release → Run workflow**.
 
-## Install / update and `latest`
+## Release bake (SPA + wheel)
 
-`install.sh` and `raft update` install from the **latest GitHub Release tag** by default (`uv tool install git+…@vX.Y.Z`). Override with an explicit ref:
+On each bump publish (not `noBump`, not dry-run), the Release job:
+
+1. Runs `cd src/spa && npm ci && npm run build` into `src/raft/core/platform/share/serve/spa/` (transient; **not** committed).
+2. Sets `pyproject.toml` `version` to the Release semver (tag without `v`).
+3. Builds a wheel via [`scripts/build_release_wheel.sh`](../scripts/build_release_wheel.sh) and **fails the job** if bake/build fails or the wheel lacks SPA assets.
+4. Creates the GitHub Release and attaches the `.whl` (no JSON placeholder).
+
+Hashed SPA files under `share/serve/spa/` stay **out of git** (`.gitkeep` + `.gitignore` only). FE PRs change `src/spa/` only.
+
+## Install / update
+
+`install.sh` and `raft update` (which re-runs `install.sh`):
+
+1. Resolve the **latest** GitHub Release tag (or `--ref` / `RAFT_REF`).
+2. Prefer the Release **wheel** asset when present (`uv tool install <wheel-url>`).
+3. Fall back to `git+…@tag` (and keep local checkout / `RAFT_KEEP_CHECKOUT` editable paths).
 
 ```bash
+curl -fsSL …/install.sh | bash
 curl -fsSL …/install.sh | bash -s -- --ref main
-RAFT_REF=main bash install.sh
+RAFT_REF=v0.11.0 bash install.sh
+RAFT_PREFER_WHEEL=0 bash install.sh   # force git+ even when a wheel exists
 raft update --ref main
 ```
 
-`RAFT_BRANCH` remains a deprecated alias for `RAFT_REF`. Local checkouts / `RAFT_KEEP_CHECKOUT=1` still editable-install from disk (ref only affects clone mode).
-
-After #41 attaches wheel (+ baked SPA) assets to each Release:
-
-1. Prefer the **latest** Release wheel asset.
-2. Keep **git@tag** (then `--ref`) as fallback when no asset exists.
+`RAFT_BRANCH` remains a deprecated alias for `RAFT_REF`. VMs stay **Node-free** on the wheel path. Contributors with an editable checkout still run `npm run build` locally so `raft serve` has UI assets.
 
 ## Merge enforcement
 

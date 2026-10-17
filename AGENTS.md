@@ -8,14 +8,14 @@ Implementation guide for coding agents changing **raft**. Operator pitch and fea
 
 | Question | Answer |
 |----------|--------|
-| What ships to operators? | CLI + Compose/nginx templates + tests. Install via [`install.sh`](install.sh) / `uv tool install` from the **latest GitHub Release** tag by default (`--ref` / `RAFT_REF` to override) — **no lasting clone**. |
+| What ships to operators? | CLI + Compose/nginx templates + tests. Install via [`install.sh`](install.sh) / `uv tool install` from the **latest GitHub Release wheel** by default (git@tag fallback; `--ref` / `RAFT_REF` / local checkout / `RAFT_KEEP_CHECKOUT`) — **no lasting clone**. |
 | Where is durable state? | **`~/.raft/`** (`RAFT_DATA_HOME`). Never put operator inventory, upstreams, or PEMs in this git repo. |
 | Where is product code? | `src/raft/services/` = runnable fronts (cli, serve, controller). `src/raft/core/` = libraries (models, lifecycle, platform, observe). |
-| Where is the SPA? | Source `src/spa/` → **must** `npm run build` into `src/raft/core/platform/share/serve/spa/` before commit/release. Packaged assets are what `raft serve` ships. |
+| Where is the SPA? | Source `src/spa/` only in git. Bake is **Release CD** (and local/CI `npm run build`) into `share/serve/spa/` — hashed assets are **not** committed (`.gitkeep` + gitignore). Operators get UI from the wheel. |
 | Human samples? | [`examples/`](examples/) + docs under [`docs/`](docs/). |
 | Package layout convention? | Class-first, ~200-line files, ≤20-line methods; see **Code style** and the writing-python skill. |
 
-**CI order:** Meta → Unit+Integration (Py 3.9–3.13) → E2E **Py 3.9 only** (SPA job parallel). Fresh-install e2e builds a Docker image that `uv tool install`s from git (`RAFT_E2E_REF`, default `main`; CI passes `github.sha`).
+**CI order:** Meta → Unit+Integration (Py 3.9–3.13; SPA baked before pytest) → E2E **Py 3.9 only** (SPA job parallel). Fresh-install e2e installs from the **workspace** build context after SPA bake (`RAFT_E2E_REF=workspace`); operators stay on Release wheels.
 
 ---
 
@@ -98,7 +98,7 @@ Align with the README table; detail for agents:
 | Alert rules engine (metrics/control-plane → notifications) | **Shipped** | [#236](https://github.com/danielnachumdev/raft/issues/236); [`docs/serve-alerts.md`](docs/serve-alerts.md); engine under `observe/alerts/` |
 | Firewall-derived alert signals (`edge.denies`) | **Planned** | Observe gate outcomes only; no middle hop (#207) |
 | Always-on Compose dashboard service | **Planned** | [#36](https://github.com/danielnachumdev/raft/issues/36) — not `raft serve` replacement without design |
-| Automate SPA bake in CI | **Planned** | [#41](https://github.com/danielnachumdev/raft/issues/41) |
+| Automate SPA bake in CD | **Shipped** | [#41](https://github.com/danielnachumdev/raft/issues/41) — Release wheel + install.sh prefers `.whl`; SPA assets not committed |
 | Middle nginx firewall hop | **Rejected** | Do not re-open without new engine requirements |
 
 ### Firewall
@@ -138,7 +138,7 @@ Product templates sync from `src/raft/core/platform/share/` into the data home o
 | Apply / sync / render / deploy / ACME | `src/raft/core/lifecycle/` |
 | Docker / nginx adapters, share templates | `src/raft/core/platform/` |
 | Doctor, status, logs, update | `src/raft/core/observe/` |
-| Dashboard UI | `src/spa/` then **rebuild** share SPA |
+| Dashboard UI | `src/spa/` only (Release bakes; local `npm run build` for editable/`raft serve`) |
 | Ordered firewall | `lifecycle/render/firewall/` + `services/serve/firewall/` + SPA `src/spa/src/firewall/` (shared nginx helpers still under `lifecycle/render/acl/`) |
 | Alert rules | `core/observe/alerts/` + `services/serve/alerts/` + `services/controller/jobs/alerts/` + SPA `src/spa/src/alerts/` |
 | Notification strategies | `observe/notify/strategies/` + `catalogs.py`; SPA `src/spa/src/notifications/` |
@@ -150,10 +150,10 @@ Upstream files: `generated/nginx/upstreams/<app>-<port>.conf` mounted into the r
 
 ## Packaging & install pitfalls
 
-- **Release tags are the operator semver SoT** (`vX.Y.Z` GitHub Releases via PR labels `bumpMajor` / `bumpMinor` / `bumpPatch` / `noBump`). See [`docs/releases.md`](docs/releases.md). Do not bot-commit version bumps into git for that pipeline; `pyproject.toml` `version` stays a packaging placeholder until wheel-from-release (#41).
-- **`package-data`** must track `core/platform/share/…` (see `pyproject.toml`). Meta test fails if globs match nothing.
-- **`raft update`** curls `install.sh` and installs from the **latest Release** tag (same as bare `install.sh`). Use `raft update --ref <tag\|branch\|sha>` (or `RAFT_REF`) to pin. Broken package-data on a released tag bricks installs of that tag; recovery: `curl …/install.sh | bash -s -- --ref main` then fix forward.
-- Fresh-install e2e: `tests/e2e/fresh_install/` — `RAFT_REF=workspace` locally; CI sets `RAFT_E2E_REF` to the SHA.
+- **Release tags + wheels are the operator SoT** (`vX.Y.Z` GitHub Releases via PR labels `bumpMajor` / `bumpMinor` / `bumpPatch` / `noBump`). Publish bakes SPA and attaches a version-aligned `.whl`. See [`docs/releases.md`](docs/releases.md). Do not commit hashed `share/serve/spa/` assets.
+- **`package-data`** must track `core/platform/share/…` (see `pyproject.toml`). Meta test fails if globs match nothing; Release/`build_release_wheel.sh` asserts the wheel contains SPA assets.
+- **`raft update`** curls `install.sh` and prefers the **latest Release wheel** (same as bare `install.sh`; git@tag fallback). Use `raft update --ref <tag\|branch\|sha>` (or `RAFT_REF`) to pin. Broken wheel/package-data on a released tag bricks installs of that tag; recovery: `curl …/install.sh | bash -s -- --ref main` then fix forward.
+- Fresh-install e2e: `tests/e2e/fresh_install/` — bake SPA then `RAFT_E2E_REF=workspace` (CI and local packaging check).
 - README demo video: GitHub only plays `<video>` when `src` is a **user-attachments** URL; keep `assets/raft-demo.mp4` as clone fallback. Do not call it “promo” in user-facing copy.
 
 ---

@@ -1,9 +1,8 @@
 name: Release
 
 # Label-driven GitHub Releases. Source of truth for operator versions is the
-# Release tag (vX.Y.Z), not pyproject.toml (left as a packaging placeholder).
-# Install/update stay on `uv tool install git+…` until #41 attaches SPA/wheel
-# assets and install.sh can prefer the latest release artifact.
+# Release tag (vX.Y.Z). On bump publish: bake SPA → build version-aligned wheel →
+# attach .whl (operators install via install.sh; see docs/releases.md / #41).
 #
 # Labels (exactly one required on every PR into main):
 #   bumpMajor | bumpMinor | bumpPatch | noBump
@@ -101,31 +100,52 @@ jobs:
         run: |
           echo "noBump: not creating a GitHub Release."
 
+      - uses: actions/setup-node@v4
+        if: steps.bump.outputs.skip != 'true' && github.event.inputs.dry_run != 'true'
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: src/spa/package-lock.json
+
+      - uses: astral-sh/setup-uv@v10.0.0
+        if: steps.bump.outputs.skip != 'true' && github.event.inputs.dry_run != 'true'
+        with:
+          python-version: "3.12"
+
+      - name: Bake SPA and build wheel
+        if: steps.bump.outputs.skip != 'true' && github.event.inputs.dry_run != 'true'
+        id: wheel
+        env:
+          TAG: ${{ steps.bump.outputs.tag }}
+        run: |
+          set -euo pipefail
+          out="$(bash scripts/build_release_wheel.sh "${TAG}" dist)"
+          echo "${out}"
+          wheel="$(echo "${out}" | sed -n 's/^wheel=//p' | tail -1)"
+          [[ -n "${wheel}" && -f "${wheel}" ]]
+          echo "path=${wheel}" >> "$GITHUB_OUTPUT"
+
       - name: Create GitHub Release
         if: steps.bump.outputs.skip != 'true' && github.event.inputs.dry_run != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.bump.outputs.tag }}
           ACTION: ${{ steps.bump.outputs.action }}
-          VERSION: ${{ steps.bump.outputs.version }}
+          WHEEL: ${{ steps.wheel.outputs.path }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           set -euo pipefail
-          # Placeholder asset (versioned) until #41 attaches real wheel + baked SPA.
-          # Avoid uploading a wheel whose pyproject version disagrees with the tag.
-          manifest="raft-${TAG}-release.json"
-          printf '%s\n' "{\"name\":\"raft\",\"version\":\"${VERSION}\",\"tag\":\"${TAG}\"}" > "${manifest}"
-          # Auto-generated notes from commits since previous tag; title is the semver tag.
           gh release create "${TAG}" \
             --title "${TAG}" \
             --generate-notes \
-            "${manifest}"
+            "${WHEEL}"
           if [[ -n "${PR_NUMBER}" && "${PR_NUMBER}" != "null" ]]; then
             echo "Published ${TAG} (${ACTION}) from #${PR_NUMBER}: ${PR_TITLE}"
           else
             echo "Published ${TAG} (${ACTION})"
           fi
+          echo "Attached $(basename "${WHEEL}")"
 
       - name: Dry-run summary
         if: github.event_name == 'workflow_dispatch'

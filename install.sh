@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Install raft via uv tool. Default ref = latest GitHub Release tag.
-# Override: --ref <tag|branch|sha> or RAFT_REF (RAFT_BRANCH deprecated alias).
-# Usage: curl -fsSL …/install.sh | bash
+# Install raft via uv tool. Default: latest GitHub Release **wheel** (SPA baked in).
+# Fallback: git+@Release-tag. Override: --ref / RAFT_REF (git), local checkout, or
+# RAFT_KEEP_CHECKOUT. Usage: curl -fsSL …/install.sh | bash
 #        curl -fsSL …/install.sh | bash -s -- --ref main
 set -euo pipefail
 
@@ -11,8 +11,11 @@ _RAFT_REF_ENV="${RAFT_REF:-}"
 _RAFT_BRANCH_ENV="${RAFT_BRANCH:-}"
 RAFT_KEEP_CHECKOUT="${RAFT_KEEP_CHECKOUT:-0}"
 RAFT_INSTALL_QUIET="${RAFT_INSTALL_QUIET:-0}"
+# Prefer Release wheel when installing the resolved tag (0 = git only).
+RAFT_PREFER_WHEEL="${RAFT_PREFER_WHEEL:-1}"
 RAFT_CLI_REF=""
 RAFT_REF=""
+RAFT_INSTALL_SOURCE=""
 
 _color_stdout() {
   [[ -z "${NO_COLOR:-}" ]] && { [[ -n "${FORCE_COLOR:-}" ]] || [[ -t 1 ]]; }
@@ -64,20 +67,21 @@ log_warn() {
 
 usage() {
   cat <<'EOF'
-Install raft (uv tool). Default: latest GitHub Release tag.
+Install raft (uv tool). Default: latest GitHub Release wheel (SPA baked in).
 
   curl -fsSL …/install.sh | bash
   curl -fsSL …/install.sh | bash -s -- --ref main
   RAFT_REF=v0.10.0 bash install.sh
 
 Options:
-  --ref <tag|branch|sha>   Install this git ref instead of latest Release
+  --ref <tag|branch|sha>   Install this git ref (wheel tried first when tag has one)
   -h, --help               Show this help
 
 Env:
   RAFT_REF                 Same as --ref (wins over latest; --ref wins over env)
   RAFT_BRANCH              Deprecated alias for RAFT_REF
   RAFT_REPO_URL            Git remote (default: github.com/danielnachumdev/raft.git)
+  RAFT_PREFER_WHEEL=0      Skip Release wheel; always git+@ref
   RAFT_KEEP_CHECKOUT=1     Clone to RAFT_HOME (default ~/raft) and editable-install
 EOF
 }
@@ -127,6 +131,22 @@ Fix: pass --ref <tag|branch|sha> or set RAFT_REF, and check outbound HTTPS"
   [[ -n "${tag}" ]] || die "latest Release JSON missing tag_name
 Fix: pass --ref or set RAFT_REF"
   printf '%s\n' "${tag}"
+}
+
+# Print browser_download_url for the first .whl on a Release tag, or return 1.
+release_wheel_url() {
+  local tag="$1"
+  local slug api url
+  [[ -n "${tag}" ]] || return 1
+  slug="$(github_repo_slug "${RAFT_REPO_URL}")"
+  api="https://api.github.com/repos/${slug}/releases/tags/${tag}"
+  url="$(
+    curl -fsSL "${api}" 2>/dev/null \
+      | sed -n 's/^[[:space:]]*"browser_download_url":[[:space:]]*"\([^"]*\.whl\)".*/\1/p' \
+      | head -1
+  )" || return 1
+  [[ -n "${url}" ]] || return 1
+  printf '%s\n' "${url}"
 }
 
 resolve_install_ref() {
@@ -204,6 +224,7 @@ install_from_path() {
   local path="$1"
   local editable="${2:-0}"
   log "Installing raft…"
+  RAFT_INSTALL_SOURCE="path:${path}"
   if [[ "${editable}" == "1" ]]; then
     uv_tool_install --editable "${path}"
   else
@@ -211,10 +232,27 @@ install_from_path() {
   fi
 }
 
+install_from_wheel_url() {
+  local url="$1"
+  log "Installing raft from Release wheel…"
+  RAFT_INSTALL_SOURCE="wheel:${url}"
+  uv_tool_install "${url}"
+}
+
 install_from_git() {
   local spec="git+${RAFT_REPO_URL}@${RAFT_REF}"
   log "Installing raft from ${spec}…"
+  RAFT_INSTALL_SOURCE="git:${spec}"
   uv_tool_install "${spec}"
+}
+
+# Prefer .whl on the Release for RAFT_REF; return 1 to fall back to git.
+try_install_release_wheel() {
+  local url
+  [[ "${RAFT_PREFER_WHEEL}" == "1" ]] || return 1
+  url="$(release_wheel_url "${RAFT_REF}")" || return 1
+  log "Found Release wheel for ${RAFT_REF}"
+  install_from_wheel_url "${url}"
 }
 
 finish_message() {
@@ -249,7 +287,12 @@ main() {
   elif checkout="$(local_checkout_dir)"; then
     editable="${RAFT_EDITABLE:-1}"
     install_from_path "${checkout}" "${editable}"
+  elif try_install_release_wheel; then
+    :
   else
+    if [[ "${RAFT_PREFER_WHEEL}" == "1" ]]; then
+      log_warn "No wheel asset for ${RAFT_REF}; falling back to git"
+    fi
     install_from_git
   fi
 

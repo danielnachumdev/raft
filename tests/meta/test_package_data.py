@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from typing import List, Tuple
 
 import pytest
@@ -9,6 +10,8 @@ import pytest
 from tests.meta.scan import REPO_ROOT, SRC_RAFT
 
 pytestmark = pytest.mark.meta
+
+_SPA_DIR = SRC_RAFT / "core" / "platform" / "share" / "serve" / "spa"
 
 
 class TestPackageData:
@@ -31,6 +34,19 @@ class TestPackageData:
         )
         assert (SRC_RAFT / "core/platform/share/compose.yaml").is_file()
         assert (SRC_RAFT / "core/platform/share/nginx").is_dir()
+
+    def test_spa_output_dir_keeps_gitkeep_only_in_git(self) -> None:
+        """Hashed SPA assets are Release/local bake only; git tracks ``.gitkeep``."""
+        keep = _SPA_DIR / ".gitkeep"
+        assert keep.is_file(), f"expected {_SPA_DIR}/.gitkeep so the path exists in git"
+        tracked = subprocess.run(
+            ["git", "ls-files", "--", str(_SPA_DIR.relative_to(REPO_ROOT))],
+            cwd=str(REPO_ROOT),
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.splitlines()
+        assert tracked == ["src/raft/core/platform/share/serve/spa/.gitkeep"], tracked
 
 
 class PackageDataPatterns:
