@@ -27,3 +27,7 @@ Today `install.sh` / `raft update` still use `uv tool install git+…@main` (unc
 2. Keep a **git fallback** when no Release asset exists (dev checkouts, broken publish, first boot).
 
 Until then, do not gate install on Releases — tags/notes alone are enough for the semver pipeline.
+
+## Merge enforcement
+
+PRs into `main` must pass the **Release label** check (exactly one of `bumpMajor` / `bumpMinor` / `bumpPatch` / `noBump`). A repository ruleset requires that status check before merge so unlabeled PRs cannot land silently.
