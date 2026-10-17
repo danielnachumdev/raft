@@ -1,8 +1,33 @@
 # Serve ordered firewall (gate)
 
-`raft serve` manages an **ordered** edge firewall on the **gate** (not a middle hop).
+`raft serve` and **`raft firewall …`** manage an **ordered** edge firewall on the **gate** (not a middle hop). Both paths share `FirewallService` (persist → render → gate nginx **reload**; never recreate for rule-only edits).
 
 Settings → **Firewall** (`/settings/edge-access`).
+
+## CLI
+
+```bash
+raft firewall show
+raft firewall replace --file rules.yaml
+raft firewall export --file rules.yaml
+raft firewall import_document --file rules.json
+raft firewall services
+raft firewall recommendations
+raft firewall dismiss permit-port-80
+raft firewall draft --client-ip=192.0.2.1 --service=demo-api
+raft firewall apply_inspection --client-ip=192.0.2.1 --service=demo-api
+raft firewall remove_inspection --client-ip=192.0.2.1
+```
+
+| Command | Serve API |
+|---------|-----------|
+| `show` / `replace --file` | `GET`/`PUT` `/api/firewall` |
+| `export` / `import_document --file` | `GET` export / `POST` import |
+| `services` | `GET` `/api/firewall/services` |
+| `recommendations` / `dismiss` | list / dismiss recommendation |
+| `draft` / `apply_inspection` / `remove_inspection` | from-inspection draft / apply / remove |
+
+Examples use documentation CIDRs (`192.0.2.0/24`) and `demo-api` only.
 
 ## Design
 

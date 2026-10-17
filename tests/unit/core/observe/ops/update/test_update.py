@@ -202,6 +202,12 @@ class TestSelfUpdate(DomainTestCase):
     def test_set_label_noop_without_active_spinner(self) -> None:
         SelfUpdate._set_label("checking install")
 
+    def test_version_line_none_without_dist_info(self, monkeypatch) -> None:
+        monkeypatch.setattr(
+            update_mod.InstallIdentity, "dist_info_dir", lambda self: None
+        )
+        assert SelfUpdate(self.stack)._version_line() is None
+
 
 class TestInstallIdentity(DomainTestCase):
     def _fake_tool_env(

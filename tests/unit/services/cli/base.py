@@ -18,7 +18,11 @@ _DEP_TARGETS = {
     "SettingsLoader": ("raft.services.cli.commands.raft_commands",),
     "HostLogging": ("raft.services.cli.commands.raft_commands",),
     "AppApply": ("raft.services.cli.commands.raft_commands",),
-    "Orchestrator": ("raft.services.cli.commands.raft_commands", "raft.services.cli.commands.gate"),
+    "Orchestrator": (
+        "raft.services.cli.commands.raft_commands",
+        "raft.services.cli.commands.gate",
+        "raft.services.cli.commands.firewall",
+    ),
     "Doctor": ("raft.services.cli.commands.raft_commands",),
     "Status": ("raft.services.cli.commands.raft_commands",),
     "Serve": ("raft.services.cli.commands.raft_commands",),

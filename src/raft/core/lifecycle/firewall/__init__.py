@@ -1,6 +1,6 @@
 """Ordered edge firewall capability (persist + render apply).
 
-Shared by ``raft serve`` and future CLI (#258). Nginx compile stays under
+Shared by ``raft serve`` and ``raft firewall`` (#258). Nginx compile stays under
 ``lifecycle/render/firewall/``; this package owns mutative business rules.
 """
 

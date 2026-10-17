@@ -86,7 +86,7 @@ Align with the README table; detail for agents:
 | `raft serve` ops UI | **Shipped** | FastAPI + packaged SPA |
 | HTTP request inspection (per App) | **Shipped** | Gate access log → `/api/service/{name}/http-requests`; [`docs/serve-http-requests.md`](docs/serve-http-requests.md) |
 | Flat gate / App IP ACL (allow/deny lists) | **Retired** | Removed as operator path; leftover `#195` data migrates into firewall GET until Save; [`docs/serve-acl.md`](docs/serve-acl.md) |
-| **Ordered firewall rules** (CIDR, port, protocol, service, action) | **Shipped** | Epic [#207](https://github.com/danielnachumdev/raft/issues/207), [#211](https://github.com/danielnachumdev/raft/issues/211). On gate; Save → compile → reload; import/export; recommendations; [`docs/serve-firewall.md`](docs/serve-firewall.md). |
+| **Ordered firewall rules** (CIDR, port, protocol, service, action) | **Shipped** | Epic [#207](https://github.com/danielnachumdev/raft/issues/207), [#211](https://github.com/danielnachumdev/raft/issues/211); CLI [#258](https://github.com/danielnachumdev/raft/issues/258) (`raft firewall …`). On gate; Save/CLI → compile → reload; import/export; recommendations; [`docs/serve-firewall.md`](docs/serve-firewall.md). |
 | Inspection → add firewall rule | **Shipped** | [#198](https://github.com/danielnachumdev/raft/issues/198); row actions → `#211` model; prepend + reload |
 | GitHub add-service assist | **Shipped (v1)** | [`docs/serve-github-deploy.md`](docs/serve-github-deploy.md); known gap [#200](https://github.com/danielnachumdev/raft/issues/200) |
 | Notifications channels | **Shipped** | Strategy catalog + settings UI (`webhook`, `email`, `whatsapp` / GREEN-API); [`docs/serve-notifications.md`](docs/serve-notifications.md) |
@@ -140,7 +140,7 @@ Product templates sync from `src/raft/core/platform/share/` into the data home o
 | Doctor, status, logs, update | `src/raft/core/observe/` |
 | **Shared mutative capabilities** (CLI + serve) | Business rules in `core/`; serve/CLI only invoke. New capabilities: put the service under the matching core area below, keep FastAPI/Fire as adapters. |
 | Per-service start/stop/redeploy/purge | `observe/ops/actions/` (`ServiceActions`) |
-| Ordered firewall (CRUD / recommendations / from-inspection) | `lifecycle/firewall/` + nginx compile in `lifecycle/render/firewall/`; serve adapter `services/serve/firewall/`; SPA `src/spa/src/firewall/` |
+| Ordered firewall (CRUD / recommendations / from-inspection) | `lifecycle/firewall/` + nginx compile in `lifecycle/render/firewall/`; serve adapter `services/serve/firewall/`; CLI `services/cli/commands/firewall.py` (`raft firewall …`); SPA `src/spa/src/firewall/` |
 | Notification channel CRUD | `observe/notify/settings_write.py` + strategies/catalog; SPA `src/spa/src/notifications/` |
 | GitHub OAuth / deploy assist | `platform/github/`; serve adapter `services/serve/github/` |
 | Dashboard UI | `src/spa/` only (Release bakes; local `npm run build` for editable/`raft serve`) |
