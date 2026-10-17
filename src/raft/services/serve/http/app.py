@@ -10,6 +10,7 @@ from raft.core.core.models.stack import Stack
 from raft.core.observe.ops.logs import Logs
 from raft.core.observe.ops.status import Status
 from ..actions import ServeActions
+from ..alerts import ServeAlertsApi
 from ..firewall import ServeFirewallApi
 from ..github import ServeGithubApi
 from ..notifications import ServeNotificationsApi
@@ -33,6 +34,7 @@ class ServeAppFactory:
         github: Optional[ServeGithubApi] = None,
         notifications: Optional[ServeNotificationsApi] = None,
         firewall: Optional[ServeFirewallApi] = None,
+        alerts: Optional[ServeAlertsApi] = None,
         port: int = _DEFAULT_PORT,
     ) -> None:
         self.stack = stack
@@ -43,10 +45,22 @@ class ServeAppFactory:
         self._github = github
         self._notifications = notifications
         self._firewall = firewall
+        self._alerts = alerts
         self._port = port
 
     def create(self) -> FastAPI:
         app = FastAPI(title="raft serve", docs_url=None, redoc_url=None)
+        page, apis = self._components()
+        self._register_api(app, page, *apis)
+        app.mount(
+            "/assets",
+            StaticFiles(directory=str(ServePaths.spa_assets_dir())),
+            name="assets",
+        )
+        self._register_spa(app, page)
+        return app
+
+    def _components(self):
         page = ServePage(
             self.stack,
             status=self._status,
@@ -57,14 +71,8 @@ class ServeAppFactory:
         github = self._github or ServeGithubApi(self.stack, port=self._port)
         notifications = self._notifications or ServeNotificationsApi(self.stack)
         firewall = self._firewall or ServeFirewallApi(self.stack)
-        self._register_api(app, page, downloads, github, notifications, firewall)
-        app.mount(
-            "/assets",
-            StaticFiles(directory=str(ServePaths.spa_assets_dir())),
-            name="assets",
-        )
-        self._register_spa(app, page)
-        return app
+        alerts = self._alerts or ServeAlertsApi(self.stack)
+        return page, (downloads, github, notifications, firewall, alerts)
 
     @staticmethod
     def _register_api(
@@ -74,6 +82,7 @@ class ServeAppFactory:
         github: ServeGithubApi,
         notifications: ServeNotificationsApi,
         firewall: ServeFirewallApi,
+        alerts: ServeAlertsApi,
     ) -> None:
         ServeAppFactory._register_read_api(app, page)
         ServeAppFactory._register_action_api(app, page)
@@ -81,6 +90,7 @@ class ServeAppFactory:
         github.register(app)
         notifications.register(app)
         firewall.register(app)
+        alerts.register(app)
 
     @staticmethod
     def _register_read_api(app: FastAPI, page: ServePage) -> None:

@@ -4,6 +4,7 @@ import { STATUS_POLL_MS } from "../shared/api/index.ts";
 export function bindStatusPolling(
   onTick: () => void,
   onLiveChange: (live: boolean) => void,
+  intervalMs: number = STATUS_POLL_MS,
 ): () => void {
   let timer: number | undefined;
 
@@ -20,7 +21,7 @@ export function bindStatusPolling(
       onLiveChange(false);
       return;
     }
-    timer = window.setInterval(onTick, STATUS_POLL_MS);
+    timer = window.setInterval(onTick, intervalMs);
     onLiveChange(true);
   };
 

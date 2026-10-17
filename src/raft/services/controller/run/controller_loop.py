@@ -8,6 +8,7 @@ from raft.core.platform.adapters.docker import DockerStack
 from raft.core.core.config.settings.types import RaftConfig
 from ..jobs import (
     AcmeJobSync,
+    AlertsJob,
     ControllerJob,
     HealJob,
     MetricsJob,
@@ -53,6 +54,7 @@ class ControllerLoop:
             HealJob(self._home, self._config.healing, self._docker),
             MetricsJob(self._home, self._config.metrics),
             ServiceLogsJob(self._home, self._config.service_logs, self._docker),
+            AlertsJob(self._home, self._config.alerts),
             ScaleJob(self._scaler),
             AcmeJobSync(self._home, self._docker, orch),
         ]
@@ -62,6 +64,7 @@ class ControllerLoop:
         logger.info("scale-to-zero enabled for apps with spec.scaling")
         self._log_metrics()
         self._log_service_logs()
+        self._log_alerts()
 
     def _log_healing(self) -> None:
         healing = self._config.healing
@@ -93,6 +96,16 @@ class ControllerLoop:
             )
             return
         logger.info("service-logs disabled")
+
+    def _log_alerts(self) -> None:
+        cfg = self._config.alerts
+        if cfg.enabled:
+            logger.info(
+                "alerts enabled interval=%ss path=state/alerts/",
+                cfg.interval_seconds,
+            )
+            return
+        logger.info("alerts disabled")
 
     def _run_orchestrator(
         self,

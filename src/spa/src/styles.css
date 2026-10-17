@@ -205,6 +205,18 @@ a {
   border-color: var(--ok-border);
 }
 
+.chip-warn {
+  color: var(--warn);
+  background: var(--warn-bg);
+  border-color: var(--warn-border);
+}
+
+.chip-bad {
+  color: var(--danger);
+  background: var(--bad-bg);
+  border-color: var(--bad-border);
+}
+
 .empty-state {
   display: flex;
   flex-direction: column;

@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Set
 
 from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.core.core.models.stack import Stack
-from raft.services.controller.jobs.metrics.http_scrape import (
+from raft.core.core.config.paths.metrics_paths import (
     ACCESS_LOG_NAME,
     GATE_HTTP_LOG_DIR,
 )

@@ -48,7 +48,8 @@ You keep services in their own repos. On the VPS you `apply` a manifest. raft sy
 | GitHub-assisted add service | ✅ |
 | Operator notifications | ✅ |
 | Ordered edge firewall (rich rules, import/export) | ✅ |
-| Alerts from firewall + graph metrics (via notifications) | 📋 |
+| Alert rules (metrics/control-plane → notifications) | ✅ |
+| Firewall-derived alert signals | 📋 |
 | Deeper secrets isolation (external stores → per-App materialization) | 📋 |
 | Trends dashboards (multi-graph, browser-local; editable graphs + named dashboards) | ✅ |
 | Per-service Trends (default editable graphs on inspection, browser-local) | ✅ |

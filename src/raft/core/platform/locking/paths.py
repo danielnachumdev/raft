@@ -6,6 +6,7 @@ LOCKS_REL = Path("state") / "locks"
 STACK_LOCK_NAME = "stack.lock"
 NOTIFICATIONS_LOCK_NAME = "notifications.lock"
 ACL_LOCK_NAME = "acl.lock"
+ALERTS_LOCK_NAME = "alerts.lock"
 
 
 class LockPaths:
@@ -25,6 +26,9 @@ class LockPaths:
 
     def acl(self) -> Path:
         return self.directory() / ACL_LOCK_NAME
+
+    def alerts(self) -> Path:
+        return self.directory() / ALERTS_LOCK_NAME
 
     def app(self, name: str) -> Path:
         safe = name.replace("/", "_").replace("\\", "_")

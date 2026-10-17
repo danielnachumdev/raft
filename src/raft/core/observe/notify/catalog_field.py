@@ -15,6 +15,8 @@ class CatalogField:
         required: bool = False,
         help_text: str = "",
         placeholder: str = "",
+        options: Optional[List[Dict[str, str]]] = None,
+        default: Any = None,
     ) -> Dict[str, Any]:
         row: Dict[str, Any] = {
             "key": key,
@@ -24,6 +26,10 @@ class CatalogField:
         }
         CatalogField._optional(row, "help", help_text)
         CatalogField._optional(row, "placeholder", placeholder)
+        if options is not None:
+            row["options"] = list(options)
+        if default is not None:
+            row["default"] = default
         return row
 
     @staticmethod

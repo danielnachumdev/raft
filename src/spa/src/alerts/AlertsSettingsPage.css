@@ -1,0 +1,59 @@
+.alerts-page .alert-rule-list,
+.alerts-page .alert-instance-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.alerts-page .alert-rule-row {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border, #3333);
+}
+
+.alerts-page .alert-rule-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.alerts-page .modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 45%);
+  display: grid;
+  place-items: center;
+  z-index: 40;
+}
+
+.alerts-page .modal-wide {
+  width: min(720px, 94vw);
+  max-height: 90vh;
+  overflow: auto;
+  background: var(--panel, #111);
+  color: inherit;
+  padding: 1.25rem;
+  border-radius: 8px;
+}
+
+.alerts-page .modal-wide label {
+  display: block;
+  margin: 0.5rem 0;
+}
+
+.alerts-page .modal-wide input,
+.alerts-page .modal-wide select,
+.alerts-page .modal-wide textarea {
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+.alerts-page .modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}

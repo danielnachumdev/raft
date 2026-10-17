@@ -6,7 +6,10 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from raft.core.core.config.settings import SettingsLoader
 from raft.core.core.config.settings.types import MetricsConfig
-from raft.services.controller.jobs.metrics import HTTP_METRICS_FILENAME, METRICS_DIR
+from raft.core.core.config.paths.metrics_paths import (
+    HTTP_METRICS_FILENAME,
+    METRICS_DIR,
+)
 from .jsonl import MetricsJsonlReader
 from .strategies import HttpMetricsSeriesBuilder
 from .window import (

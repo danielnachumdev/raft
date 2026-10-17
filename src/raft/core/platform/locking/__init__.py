@@ -7,6 +7,7 @@ Locks live under ``~/.raft/state/locks/`` (``RAFT_DATA_HOME``):
   ``raft purge`` (Docker image/build-cache prune)
 * ``notifications.lock`` — serve API rewrites of ``settings.yaml`` ``notifications:``
 * ``acl.lock`` — serve API rewrites of ordered firewall before render/reload
+* ``alerts.lock`` — CLI/serve writes to ``state/alerts/rules.yaml``
 
 Wait (with timeout) so a later-started deploy still runs after an earlier one
 and becomes the final live state. Contended waiters log ``waiting for … lock``
@@ -15,6 +16,7 @@ once, then ``acquired … lock`` when held. Override budget via
 """
 
 from .acl_lock import AclLock
+from .alerts_lock import AlertsLock
 from .app_and_stack_locks import AppAndStackLocks
 from .app_deploy_lock import AppDeployLock
 from .apps_and_stack_locks import AppsAndStackLocks
@@ -30,6 +32,7 @@ from .timeout import (
 
 __all__ = [
     "AclLock",
+    "AlertsLock",
     "AppAndStackLocks",
     "AppDeployLock",
     "AppsAndStackLocks",

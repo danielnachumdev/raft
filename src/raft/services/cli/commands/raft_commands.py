@@ -23,6 +23,7 @@ from ..utils.deps import (
     Uninstall,
     load_stack,
 )
+from .alerts import AlertsCLI
 from .auth import AuthCLI
 from .gate import GateCLI
 from .get import GetCLI
@@ -40,6 +41,7 @@ class RaftCLICommands:
         logger.debug("config loaded; log_file=%s", log_file)
         self.auth = AuthCLI(self._stack)
         self.gate = GateCLI(self._stack)
+        self.alerts = AlertsCLI(self._stack)
 
     @property
     def _app_names(self) -> list[str]:

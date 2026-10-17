@@ -9,13 +9,14 @@ from typing import Callable, Dict, List, Mapping, Optional, Tuple
 from raft.core.core.models.app import App
 from raft.core.core.models.stack import Stack
 
+from raft.core.core.config.paths.metrics_paths import (
+    ACCESS_LOG_NAME,
+    GATE_HTTP_LOG_DIR,
+)
+
 from .http_agg import HttpMetricsAggregator
-from .metrics import METRICS_DIR
 
 logger = logging.getLogger(__name__)
-
-GATE_HTTP_LOG_DIR = METRICS_DIR / "gate-http"
-ACCESS_LOG_NAME = "access.log"
 OFFSET_NAME = "access.offset"
 DEFAULT_STUB_STATUS_URL = "http://raft-gate:8081/nginx_status"
 

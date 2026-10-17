@@ -9,6 +9,7 @@ from typing import Any, Mapping, Optional, Tuple
 from raft.core.core.models.acl_policy import AclEntry, AclPolicy
 
 from ..paths.constants import LOGS_DIRNAME, SETTINGS_FILENAME
+from .alerts_config import AlertsConfig
 
 CONFIG_FILENAME = SETTINGS_FILENAME
 STREAM_PROTOCOLS = frozenset({"tcp", "udp"})
@@ -191,6 +192,7 @@ class RaftConfig:
     github: GithubServeConfig = field(default_factory=GithubServeConfig)
     notifications: NotificationsConfig = field(default_factory=NotificationsConfig)
     acl: AclConfig = field(default_factory=AclConfig)
+    alerts: AlertsConfig = field(default_factory=AlertsConfig)
 
 
 def default_config() -> RaftConfig:
