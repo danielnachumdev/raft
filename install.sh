@@ -13,6 +13,10 @@ RAFT_INSTALL_QUIET="${RAFT_INSTALL_QUIET:-0}"
 RAFT_PREFER_WHEEL="${RAFT_PREFER_WHEEL:-1}"
 RAFT_CLI_REF=""
 RAFT_REF=""
+# Set by install_from_*; printed in finish_message (release tag / wheel / git / path).
+RAFT_INSTALL_SOURCE=""
+# Captured before reinstall when raft is already on PATH (PREVIOUS → CURRENT).
+RAFT_PREVIOUS_VERSION=""
 
 _color_stdout() {
   [[ -z "${NO_COLOR:-}" ]] && { [[ -n "${FORCE_COLOR:-}" ]] || [[ -t 1 ]]; }
@@ -219,7 +223,12 @@ uv_tool_install() {
 install_from_path() {
   local path="$1"
   local editable="${2:-0}"
-  log "Installing raft…"
+  if [[ "${editable}" == "1" ]]; then
+    RAFT_INSTALL_SOURCE="editable path ${path}"
+  else
+    RAFT_INSTALL_SOURCE="path ${path}"
+  fi
+  log "Installing raft from ${RAFT_INSTALL_SOURCE}…"
   if [[ "${editable}" == "1" ]]; then
     uv_tool_install --editable "${path}"
   else
@@ -229,13 +238,18 @@ install_from_path() {
 
 install_from_wheel_url() {
   local url="$1"
-  log "Installing raft from Release wheel…"
+  local base
+  base="$(basename "${url}")"
+  RAFT_INSTALL_SOURCE="Release ${RAFT_REF} wheel ${base}"
+  log "Installing raft from ${RAFT_INSTALL_SOURCE}…"
+  log "  ${url}"
   uv_tool_install "${url}"
 }
 
 install_from_git() {
   local spec="git+${RAFT_REPO_URL}@${RAFT_REF}"
-  log "Installing raft from ${spec}…"
+  RAFT_INSTALL_SOURCE="git ref ${RAFT_REF} (${spec})"
+  log "Installing raft from ${RAFT_INSTALL_SOURCE}…"
   uv_tool_install "${spec}"
 }
 
@@ -247,16 +261,46 @@ try_install_release_wheel() {
   install_from_wheel_url "${url}"
 }
 
+capture_previous_version() {
+  if command -v raft >/dev/null 2>&1; then
+    RAFT_PREVIOUS_VERSION="$(raft --version 2>/dev/null || true)"
+  fi
+}
+
+finish_version_lines() {
+  local ver="${1:-}"
+  [[ -n "${ver}" ]] || return 0
+  if [[ -z "${RAFT_PREVIOUS_VERSION}" ]]; then
+    log_ok "${ver}"
+    return 0
+  fi
+  if [[ "${RAFT_PREVIOUS_VERSION}" == "${ver}" ]]; then
+    log_ok "raft is already up to date"
+    log_ok "${ver}"
+    return 0
+  fi
+  log_ok "PREVIOUS → CURRENT"
+  log_ok "${RAFT_PREVIOUS_VERSION} → ${ver}"
+}
+
 finish_message() {
   ensure_path_local_bin
 
   if command -v raft >/dev/null 2>&1; then
-    log_ok "Installed raft (${RAFT_REF}) → $(command -v raft)"
-    raft -- --help >/dev/null 2>&1 || raft -h >/dev/null 2>&1 || true
+    log_ok "Installed raft → $(command -v raft)"
+    if [[ -n "${RAFT_INSTALL_SOURCE}" ]]; then
+      log_ok "Source: ${RAFT_INSTALL_SOURCE}"
+    fi
+    if ver="$(raft --version 2>/dev/null)"; then
+      finish_version_lines "${ver}"
+    fi
   else
     log_warn "raft was installed but is not on PATH yet."
     log_warn "Open a new shell, or run:  export PATH=\"\${HOME}/.local/bin:\${PATH}\""
     log_warn "Then:  uv tool update-shell"
+    if [[ -n "${RAFT_INSTALL_SOURCE}" ]]; then
+      log_warn "Source: ${RAFT_INSTALL_SOURCE}"
+    fi
   fi
 }
 
@@ -267,6 +311,7 @@ main() {
 
   ensure_git
   ensure_uv
+  capture_previous_version
 
   local checkout=""
   local editable

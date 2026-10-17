@@ -9,15 +9,19 @@ from typing import Optional
 class InstallIdentity:
     """Stable identity of the installed raft tool (git commit / dist metadata)."""
 
-    def read(self) -> Optional[str]:
-        """Prefer ``direct_url.json``; fall back to ``METADATA``; else ``None``."""
+    def dist_info_dir(self) -> Optional[Path]:
+        """Path to the active ``raft-*.dist-info`` under the uv tool env, if any."""
         tool_root = self._tool_env_root()
         if tool_root is None:
             return None
         dist_infos = sorted(tool_root.glob("lib/python*/site-packages/raft-*.dist-info"))
-        if not dist_infos:
+        return dist_infos[0] if dist_infos else None
+
+    def read(self) -> Optional[str]:
+        """Prefer ``direct_url.json``; fall back to ``METADATA``; else ``None``."""
+        dist_info = self.dist_info_dir()
+        if dist_info is None:
             return None
-        dist_info = dist_infos[0]
         direct_url = dist_info / "direct_url.json"
         if direct_url.is_file():
             return direct_url.read_text(encoding="utf-8").strip()

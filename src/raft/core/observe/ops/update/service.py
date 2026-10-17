@@ -8,8 +8,9 @@ from raft.core.platform.adapters.shell import Shell
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.stack import Stack
 from raft.core.core.models.state.graph_event_store import GraphEventStore
-from raft.core.core.ui import OperatorSay
 from raft.core.core.ui.progress import TerminalProgress
+from raft.core.observe.ops.version import InstalledVersion
+from .announce import UpdateAnnounce
 from .identity import InstallIdentity
 
 DEFAULT_INSTALL_URL = "https://raw.githubusercontent.com/danielnachumdev/raft/main/install.sh"
@@ -20,6 +21,8 @@ class SelfUpdate:
         self.stack = stack
         self.sh = Shell(stack.root)
         self._identity = InstallIdentity()
+        self._versions = InstalledVersion()
+        self._announce = UpdateAnnounce()
 
     def run(
         self,
@@ -42,18 +45,37 @@ class SelfUpdate:
 
     def _run_body(self, url: str, ref: Optional[str]) -> None:
         self._set_label("checking install")
-        before = self._identity.read()
+        before_id = self._identity.read()
+        before_line = self._version_line()
         self._set_label("updating")
         self._run_installer(url, ref)
         self._set_label("verifying")
-        after = self._identity.read()
+        after_id = self._identity.read()
+        after_line = self._version_line()
         TerminalProgress.finish_active()
-        self._finish(before, after)
+        self._finish(before_id, after_id, before_line, after_line)
 
-    def _finish(self, before: Optional[str], after: Optional[str]) -> None:
-        if not self._already_current(before, after):
+    def _finish(
+        self,
+        before_id: Optional[str],
+        after_id: Optional[str],
+        before_line: Optional[str],
+        after_line: Optional[str],
+    ) -> None:
+        current = self._already_current(before_id, after_id)
+        if not current:
             GraphEventStore(self.stack.root).record_update()
-        self._announce(before, after)
+        self._announce.say(
+            already_current=current,
+            before_line=before_line,
+            after_line=after_line,
+        )
+
+    def _version_line(self) -> Optional[str]:
+        dist = self._identity.dist_info_dir()
+        if dist is None:
+            return None
+        return self._versions.line_for_dist_info(dist)
 
     @staticmethod
     def _already_current(before: Optional[str], after: Optional[str]) -> bool:
@@ -64,21 +86,6 @@ class SelfUpdate:
         active = TerminalProgress.active()
         if active is not None:
             active.set_text(label)
-
-    @staticmethod
-    def _announce(before: Optional[str], after: Optional[str]) -> None:
-        if SelfUpdate._already_current(before, after):
-            OperatorSay.say("raft is already up to date", style="info")
-            return
-        OperatorSay.say("OK: raft updated", style="ok")
-        OperatorSay.say(
-            "Next: align the running stack with this release — templates and "
-            "Compose ids can change. Typical path: `raft render`, then "
-            "`raft redeploy <app|router>` for targeted updates, or "
-            "`raft down && raft up` when edge/service names or schemas shifted. "
-            "Finish with `raft doctor`.",
-            style="info",
-        )
 
     def _run_installer(self, url: str, ref: Optional[str]) -> None:
         try:

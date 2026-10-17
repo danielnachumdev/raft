@@ -48,6 +48,8 @@ raft update --ref main
 
 `RAFT_BRANCH` remains a deprecated alias for `RAFT_REF`. VMs stay **Node-free** on the wheel path. Contributors with an editable checkout still run `npm run build` locally so `raft serve` has UI assets.
 
+After install, `install.sh` prints the resolved source (Release tag + wheel asset, or `git+…@ref`). When replacing an existing install, it also prints `PREVIOUS → CURRENT` version lines (same shape as `raft update`). Check anytime with `raft --version` (package semver; includes git ref/commit or wheel name when `direct_url.json` is present).
+
 ## Merge enforcement
 
 PRs into `main` must pass the **Release label** check (exactly one of `bumpMajor` / `bumpMinor` / `bumpPatch` / `noBump`). A repository ruleset requires that status check before merge so unlabeled PRs cannot land silently.
