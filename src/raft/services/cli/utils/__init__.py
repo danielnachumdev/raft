@@ -4,6 +4,7 @@ from .argv import ApplyEnvArgvBridge, ApplyEnvOverrides, RepeatableFlagPeeler
 from .command_progress import CommandProgress
 from .fire_run import FireRunner
 from .logs_argv import LogsArgvNormalizer
+from .version_argv import VersionArgv
 
 __all__ = [
     "ApplyEnvArgvBridge",
@@ -12,4 +13,5 @@ __all__ = [
     "FireRunner",
     "LogsArgvNormalizer",
     "RepeatableFlagPeeler",
+    "VersionArgv",
 ]

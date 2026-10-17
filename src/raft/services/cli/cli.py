@@ -7,12 +7,15 @@ from typing import Optional
 
 from raft.core.core.utils import TraceContext
 
+from raft.core.observe.ops.version import InstalledVersion
+
 from .commands import RaftCLICommands
 from .exit_mapper import CliExitMapper
 from .utils.argv import ApplyEnvArgvBridge
 from .utils.command_progress import CommandProgress
 from .utils.fire_run import FireRunner
 from .utils.logs_argv import LogsArgvNormalizer
+from .utils.version_argv import VersionArgv
 
 
 class RaftCLI:
@@ -32,6 +35,9 @@ class RaftCLI:
         """Normalize argv and dispatch to ``RaftCLICommands`` via Fire."""
         os.environ["PAGER"] = "cat"
         raw = list(argv) if argv is not None else sys.argv[1:]
+        if VersionArgv.is_request(raw):
+            print(InstalledVersion().line(), flush=True)
+            return 0
         bridge = ApplyEnvArgvBridge()
         command, token = bridge.bind(raw)
         command = LogsArgvNormalizer().normalize(command)
