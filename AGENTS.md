@@ -8,7 +8,7 @@ Implementation guide for coding agents changing **raft**. Operator pitch and fea
 
 | Question | Answer |
 |----------|--------|
-| What ships to operators? | CLI + Compose/nginx templates + tests. Install via [`install.sh`](install.sh) / `uv tool install` from GitHub — **no lasting clone** by default. |
+| What ships to operators? | CLI + Compose/nginx templates + tests. Install via [`install.sh`](install.sh) / `uv tool install` from the **latest GitHub Release** tag by default (`--ref` / `RAFT_REF` to override) — **no lasting clone**. |
 | Where is durable state? | **`~/.raft/`** (`RAFT_DATA_HOME`). Never put operator inventory, upstreams, or PEMs in this git repo. |
 | Where is product code? | `src/raft/services/` = runnable fronts (cli, serve, controller). `src/raft/core/` = libraries (models, lifecycle, platform, observe). |
 | Where is the SPA? | Source `src/spa/` → **must** `npm run build` into `src/raft/core/platform/share/serve/spa/` before commit/release. Packaged assets are what `raft serve` ships. |
@@ -152,7 +152,7 @@ Upstream files: `generated/nginx/upstreams/<app>-<port>.conf` mounted into the r
 
 - **Release tags are the operator semver SoT** (`vX.Y.Z` GitHub Releases via PR labels `bumpMajor` / `bumpMinor` / `bumpPatch` / `noBump`). See [`docs/releases.md`](docs/releases.md). Do not bot-commit version bumps into git for that pipeline; `pyproject.toml` `version` stays a packaging placeholder until wheel-from-release (#41).
 - **`package-data`** must track `core/platform/share/…` (see `pyproject.toml`). Meta test fails if globs match nothing.
-- **`raft update`** curls `install.sh` and `uv tool install`s from GitHub. Broken package-data on `main` bricks installs.
+- **`raft update`** curls `install.sh` and installs from the **latest Release** tag (same as bare `install.sh`). Use `raft update --ref <tag\|branch\|sha>` (or `RAFT_REF`) to pin. Broken package-data on a released tag bricks installs of that tag; recovery: `curl …/install.sh | bash -s -- --ref main` then fix forward.
 - Fresh-install e2e: `tests/e2e/fresh_install/` — `RAFT_REF=workspace` locally; CI sets `RAFT_E2E_REF` to the SHA.
 - README demo video: GitHub only plays `<video>` when `src` is a **user-attachments** URL; keep `assets/raft-demo.mp4` as clone fallback. Do not call it “promo” in user-facing copy.
 

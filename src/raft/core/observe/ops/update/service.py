@@ -1,6 +1,7 @@
 """Re-install the raft CLI from GitHub (`raft update`)."""
 
 import os
+import shlex
 from typing import Optional, TextIO
 
 from raft.core.platform.adapters.shell import Shell
@@ -20,23 +21,30 @@ class SelfUpdate:
         self.sh = Shell(stack.root)
         self._identity = InstallIdentity()
 
-    def run(self, *, progress_stream: Optional[TextIO] = None) -> None:
+    def run(
+        self,
+        *,
+        ref: Optional[str] = None,
+        progress_stream: Optional[TextIO] = None,
+    ) -> None:
         url = os.environ.get("RAFT_INSTALL_URL", DEFAULT_INSTALL_URL)
-        self._run_with_progress(url, progress_stream)
+        self._run_with_progress(url, ref, progress_stream)
 
-    def _run_with_progress(self, url: str, stream: Optional[TextIO]) -> None:
+    def _run_with_progress(
+        self, url: str, ref: Optional[str], stream: Optional[TextIO]
+    ) -> None:
         existing = TerminalProgress.active()
         if existing is not None:
-            self._run_body(url)
+            self._run_body(url, ref)
             return
         with TerminalProgress(stream, prefix="raft update", label="updating"):
-            self._run_body(url)
+            self._run_body(url, ref)
 
-    def _run_body(self, url: str) -> None:
+    def _run_body(self, url: str, ref: Optional[str]) -> None:
         self._set_label("checking install")
         before = self._identity.read()
         self._set_label("updating")
-        self._run_installer(url)
+        self._run_installer(url, ref)
         self._set_label("verifying")
         after = self._identity.read()
         TerminalProgress.finish_active()
@@ -72,17 +80,9 @@ class SelfUpdate:
             style="info",
         )
 
-    def _run_installer(self, url: str) -> None:
+    def _run_installer(self, url: str, ref: Optional[str]) -> None:
         try:
-            self.sh.run(
-                [
-                    "bash",
-                    "-c",
-                    'export RAFT_INSTALL_QUIET=1; curl -fsSL "$1" | bash',
-                    "_",
-                    url,
-                ],
-            )
+            self.sh.run(self._installer_argv(url, ref))
         except Exception as exc:
             TerminalProgress.finish_active()
             raise OperatorError(
@@ -90,3 +90,12 @@ class SelfUpdate:
                 f"Fix: check outbound HTTPS, then retry `raft update`\n"
                 f"     or run manually: curl -fsSL {url} | bash"
             ) from exc
+
+    @staticmethod
+    def _installer_argv(url: str, ref: Optional[str]) -> list:
+        """Build ``bash -c`` argv; optional ``RAFT_REF`` for install.sh."""
+        export = "export RAFT_INSTALL_QUIET=1"
+        cleaned = (ref or "").strip()
+        if cleaned:
+            export = f"{export}; export RAFT_REF={shlex.quote(cleaned)}"
+        return ["bash", "-c", f'{export}; curl -fsSL "$1" | bash', "_", url]

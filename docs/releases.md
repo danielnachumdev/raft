@@ -19,14 +19,22 @@ Every PR into `main` must carry **exactly one** of:
 
 Logic lives in [`scripts/release_semver.py`](../scripts/release_semver.py); workflow: [`.github/workflows/release.yml`](../.github/workflows/release.yml). Dry-run via **Actions → Release → Run workflow**.
 
-## Install / update and `latest` (forward path)
+## Install / update and `latest`
 
-Today `install.sh` / `raft update` still use `uv tool install git+…@main` (unchanged). After #41 attaches real wheel (and baked SPA) assets to each Release:
+`install.sh` and `raft update` install from the **latest GitHub Release tag** by default (`uv tool install git+…@vX.Y.Z`). Override with an explicit ref:
 
-1. Prefer the **latest** GitHub Release asset (e.g. `gh release download -R … -p '*.whl'`).
-2. Keep a **git fallback** when no Release asset exists (dev checkouts, broken publish, first boot).
+```bash
+curl -fsSL …/install.sh | bash -s -- --ref main
+RAFT_REF=main bash install.sh
+raft update --ref main
+```
 
-Until then, do not gate install on Releases — tags/notes alone are enough for the semver pipeline.
+`RAFT_BRANCH` remains a deprecated alias for `RAFT_REF`. Local checkouts / `RAFT_KEEP_CHECKOUT=1` still editable-install from disk (ref only affects clone mode).
+
+After #41 attaches wheel (+ baked SPA) assets to each Release:
+
+1. Prefer the **latest** Release wheel asset.
+2. Keep **git@tag** (then `--ref`) as fallback when no asset exists.
 
 ## Merge enforcement
 
