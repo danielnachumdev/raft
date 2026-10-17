@@ -20,5 +20,8 @@ from raft.core.core.config.paths import PackageRootFinder
 root = PackageRootFinder().find()
 assert (root / "compose.yaml").is_file(), root
 assert (root / "nginx").is_dir(), root
-print(f"OK packaged share at {root}")
+spa = root / "serve" / "spa"
+assert (spa / "index.html").is_file(), spa
+assert (spa / "assets").is_dir() and any((spa / "assets").iterdir()), spa
+print(f"OK packaged share + SPA at {root}")
 PY

@@ -62,7 +62,7 @@ Needs **Python 3.9+**, Docker, and Compose.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/danielnachumdev/raft/main/install.sh | bash
-# pin a ref (tag / branch / sha) instead of the latest Release:
+# pin a ref (tag / branch / sha) instead of the latest Release wheel:
 # curl -fsSL …/install.sh | bash -s -- --ref main
 ```
 
@@ -128,7 +128,7 @@ uv run pytest
 uv run raft -- --help
 ```
 
-CI runs the suite across Python 3.9–3.13. Dashboard source is in **`src/spa/`** (build writes `src/raft/core/platform/share/serve/spa/`).
+CI runs the suite across Python 3.9–3.13. Dashboard source is in **`src/spa/`** (Release CD bakes into `share/serve/spa/` inside the wheel; hashed assets are not committed — see [`docs/releases.md`](docs/releases.md)).
 
 Changing the product? **[AGENTS.md](AGENTS.md)** is the implementation guide (architecture invariants, packaging pitfalls, planned vs shipped detail). Manifest contract: [`docs/app-manifest.md`](docs/app-manifest.md).
 

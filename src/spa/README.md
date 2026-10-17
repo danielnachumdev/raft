@@ -2,7 +2,7 @@
 
 Source for the `raft serve` UI (React + Vite + TypeScript).
 
-**Runtime is static only.** `npm run build` writes into [`src/raft/core/platform/share/serve/spa/`](../raft/share/serve/spa/), which FastAPI serves from the same process as `/api/status` and `/api/metrics`. There is no separate Node server in production. Trends charts poll `/api/metrics` (Resources) or `/api/metrics/http` (HTTP edge) with a `since` cursor — no WebSocket.
+**Runtime is static only.** `npm run build` writes into [`src/raft/core/platform/share/serve/spa/`](../raft/core/platform/share/serve/spa/), which FastAPI serves from the same process as `/api/status` and `/api/metrics`. There is no separate Node server in production. Trends charts poll `/api/metrics` (Resources) or `/api/metrics/http` (HTTP edge) with a `since` cursor — no WebSocket.
 
 **Status freshness:** the dashboard polls `GET /api/status` every `STATUS_POLL_MS` (**2s**) while the tab is visible. The API re-reads applied Apps from `state/apps/` on each request, so CLI/CI apply/update/delete (including no-port workers) appears within about one poll interval without restarting `raft serve` or hard-refreshing the browser.
 
@@ -16,14 +16,16 @@ npm ci
 npm run dev          # Vite on :5173; proxies /api → raft serve :8787
 ```
 
-In another terminal: `raft serve` (or `uv run raft serve`).
+In another terminal: `raft serve` (or `uv run raft serve`). For editable installs, bake once so the packaged path has assets:
+
+```bash
+cd src/spa && npm ci && npm run build
+```
 
 ## Ship FE changes
 
-```bash
-cd src/spa
-npm ci
-npm run build        # updates ../raft/share/serve/spa/
-```
+Change **`src/spa/` only**. Do **not** commit hashed files under `share/serve/spa/` (gitignored; `.gitkeep` keeps the directory).
 
-Commit the updated `spa/` assets with the Python package so `uv tool install` / `raft update` ships a working UI without Node on the host.
+Operators get the UI from the **Release wheel** (bake happens in the Release job — see [`docs/releases.md`](../../docs/releases.md)). PR CI builds the SPA for tests; a failed bake/build on Release publish fails the release.
+
+Local packaging / `raft serve` in a checkout still needs `npm run build` into the share path before you exercise the packaged UI.
