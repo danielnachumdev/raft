@@ -1,6 +1,5 @@
 import {
   CartesianGrid,
-  Legend,
   LineChart,
   ResponsiveContainer,
   Tooltip,
@@ -23,6 +22,7 @@ import {
 import type { RuntimeMetricDef } from "../runtimeMetrics";
 import { timeScaleXAxis } from "./TimeScaleXAxis";
 import { tooltipItemSortKey } from "./tooltipItemSort";
+import { trendsLegend } from "./TrendsLegend";
 import { trendPlotLines } from "./trendPlotLines";
 import { useChartHover } from "./useChartHover";
 import {
@@ -138,14 +138,11 @@ export function TrendsChart(props: {
             ]}
             itemSorter={tooltipItemSortKey}
           />
-          <Legend
-            formatter={(value) => labels[value] ?? value}
-            onMouseEnter={(item) => {
-              if (typeof item.dataKey === "string") {
-                hover.hoverSeries(item.dataKey);
-              }
-            }}
-          />
+          {trendsLegend({
+            labels,
+            highlight: hover.highlight,
+            onHoverSeries: hover.hoverSeries,
+          })}
           {trendPlotLines({
             aggregate: false,
             avgLabel: "",
