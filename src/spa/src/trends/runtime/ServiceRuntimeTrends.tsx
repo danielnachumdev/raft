@@ -49,11 +49,16 @@ export function ServiceRuntimeTrends(props: { service: string }) {
     RESOURCE_METRICS.find((m) => m.id === metricId) ?? RESOURCE_METRICS[0];
 
   useEffect(() => {
+    setSeries(null);
+    setEvents([]);
+    setCursor(null);
+    setBusy(true);
+  }, [props.service]);
+
+  useEffect(() => {
     let cancelled = false;
     setBusy(true);
     setError(null);
-    setSeries(null);
-    setEvents([]);
     setCursor(null);
     void (async () => {
       try {
@@ -98,14 +103,14 @@ export function ServiceRuntimeTrends(props: { service: string }) {
     () => buildRows(series, metric.id),
     [series, metric.id],
   );
-  const showCold = busy && series === null && !error;
+  const cold = busy && series === null && !error;
 
   return (
     <section className="panel service-runtime-trends">
       <div className="panel-head">
         <h2>Runtime trends</h2>
         <p className="muted panel-kind" aria-live="polite">
-          {showCold
+          {cold
             ? "Loading…"
             : busy
               ? "Updating…"
@@ -120,7 +125,7 @@ export function ServiceRuntimeTrends(props: { service: string }) {
               services: [props.service],
             })
           }
-          disabled={showCold || Boolean(error)}
+          disabled={cold || Boolean(error)}
         />
       </div>
       <div className="service-runtime-controls">
@@ -128,7 +133,7 @@ export function ServiceRuntimeTrends(props: { service: string }) {
           range={range}
           bounds={bounds}
           clampMessage={clampMessage}
-          busy={busy && series === null}
+          busy={cold}
           onChange={setRange}
         />
         <label className="trends-field">
@@ -137,7 +142,7 @@ export function ServiceRuntimeTrends(props: { service: string }) {
             value={metric.id}
             onChange={(e) => setMetricId(e.target.value as RuntimeMetricId)}
             aria-label="Runtime metric"
-            disabled={busy && series === null}
+            disabled={cold}
           >
             {RESOURCE_METRICS.map((m) => (
               <option key={m.id} value={m.id}>
@@ -149,7 +154,7 @@ export function ServiceRuntimeTrends(props: { service: string }) {
       </div>
       <RuntimeTrendsBody
         error={error}
-        showCold={showCold}
+        busy={busy && !error}
         series={series}
         rows={rows}
         metric={metric}

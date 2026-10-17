@@ -1,11 +1,12 @@
 import type { GraphEvent, MetricsSeries } from "../../shared/api";
+import { ChartLoadingOverlay } from "../chart/ChartLoadingOverlay";
 import type { RuntimeMetricDef } from "../runtimeMetrics";
 import { ServiceRuntimeChart } from "./ServiceRuntimeChart";
 import type { ChartRow } from "./runtimeTrendsPoll";
 
 export function RuntimeTrendsBody(props: {
   error: string | null;
-  showCold: boolean;
+  busy: boolean;
   series: MetricsSeries | null;
   rows: ChartRow[];
   metric: RuntimeMetricDef;
@@ -20,14 +21,26 @@ export function RuntimeTrendsBody(props: {
       </p>
     );
   }
-  if (props.showCold) {
-    return (
-      <div className="trends-loading" role="status" aria-busy="true">
-        <span className="spinner" aria-hidden="true" />
-        <p>Loading metrics…</p>
-      </div>
-    );
-  }
+  const hasData = Boolean(props.series && props.series.points.length > 0);
+  return (
+    <ChartLoadingOverlay
+      busy={props.busy}
+      hasData={hasData}
+      label={hasData ? "Updating metrics" : "Loading metrics"}
+    >
+      <RuntimeChartContent {...props} />
+    </ChartLoadingOverlay>
+  );
+}
+
+function RuntimeChartContent(props: {
+  series: MetricsSeries | null;
+  rows: ChartRow[];
+  metric: RuntimeMetricDef;
+  windowSec: number;
+  rangeEndMs?: number;
+  events: GraphEvent[];
+}) {
   if (!props.series || props.series.points.length === 0) {
     return (
       <p className="muted">
