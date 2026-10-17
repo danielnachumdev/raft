@@ -6,6 +6,7 @@ from .firewall import FirewallCLI
 from .gate import GateCLI
 from .get import GetCLI
 from .http_requests import HttpRequestsCLI
+from .metrics import MetricsCLI
 from .notifications import NotificationsCLI
 from .raft_commands import RaftCLICommands
 
@@ -16,6 +17,7 @@ __all__ = [
     "GateCLI",
     "GetCLI",
     "HttpRequestsCLI",
+    "MetricsCLI",
     "NotificationsCLI",
     "RaftCLICommands",
 ]

@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from raft.services.controller.jobs.metrics import METRICS_DIR, METRICS_FILENAME
 from raft.core.core.errors.cta import OperatorError
 from raft.core.observe.ops.status.models import StatusSnapshot
+from raft.core.observe.export.service import ExportService
 from raft.services.serve.http.app import ServeAppFactory
 from raft.services.serve.http.downloads import ServeDownloads
 
@@ -100,8 +101,8 @@ class TestServeDownloads(RaftTestCase):
         assert "raft-metrics.csv" in response.headers["content-disposition"]
 
     def test_split_services_ignores_blank_tokens(self) -> None:
-        assert ServeDownloads._split_services(" , , ") is None
-        assert ServeDownloads._split_services("gate, site") == ["gate", "site"]
+        assert ExportService.split_services(" , , ") is None
+        assert ExportService.split_services("gate, site") == ["gate", "site"]
 
     def test_metrics_download_unknown_format_is_400(self) -> None:
         response = self._client(MagicMock()).get(
@@ -109,6 +110,12 @@ class TestServeDownloads(RaftTestCase):
         )
         assert response.status_code == 400
         assert "xlsx" in response.json()["detail"]
+
+    def test_operator_error_without_unknown_prefix_is_400(self) -> None:
+        logs = MagicMock()
+        logs.snapshot.side_effect = OperatorError("compose unavailable.\nFix: up")
+        response = self._client(logs).get("/api/service/site/logs/download")
+        assert response.status_code == 400
 
     @staticmethod
     def _write_sample(stack, *, ts: str) -> None:
