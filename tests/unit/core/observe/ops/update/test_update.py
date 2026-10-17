@@ -34,7 +34,7 @@ class TestSelfUpdate(DomainTestCase):
         shell = MagicMock()
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        with patch("raft.core.observe.ops.update.service.OperatorSay.say") as say:
+        with patch("raft.core.observe.ops.update.announce.OperatorSay.say") as say:
             upd.run()
         shell.run.assert_called_once()
         args = shell.run.call_args.args[0]
@@ -53,14 +53,19 @@ class TestSelfUpdate(DomainTestCase):
     def test_run_reports_already_up_to_date_when_identity_unchanged(self, monkeypatch) -> None:
         monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
         monkeypatch.setattr(update_mod.InstallIdentity, "read", lambda self: "same-id")
+        monkeypatch.setattr(
+            update_mod.SelfUpdate,
+            "_version_line",
+            lambda self: "raft 0.1.0 (git main@abc1234)",
+        )
         shell = MagicMock()
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        with patch("raft.core.observe.ops.update.service.OperatorSay.say") as say:
+        with patch("raft.core.observe.ops.update.announce.OperatorSay.say") as say:
             upd.run()
-        styles = [c.kwargs.get("style") for c in say.call_args_list]
-        assert styles == ["info"]
-        assert "already up to date" in say.call_args_list[0].args[0]
+        texts = [c.args[0] for c in say.call_args_list if c.args]
+        assert texts[0] == "raft is already up to date"
+        assert texts[1] == "raft 0.1.0 (git main@abc1234)"
         events = GraphEventStore(self.stack.root).events_in_window(from_ts=_EPOCH)
         assert events == []
 
@@ -71,12 +76,27 @@ class TestSelfUpdate(DomainTestCase):
         shell = MagicMock()
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        with patch("raft.core.observe.ops.update.service.OperatorSay.say") as say:
+        with patch("raft.core.observe.ops.update.announce.OperatorSay.say") as say:
             upd.run()
         styles = [c.kwargs.get("style") for c in say.call_args_list]
         assert "ok" in styles and styles.count("info") >= 1
         events = GraphEventStore(self.stack.root).events_in_window(from_ts=_EPOCH)
         assert [e.kind for e in events] == [KIND_UPDATE]
+
+    def test_run_wires_version_lines_into_announce(self, monkeypatch) -> None:
+        monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
+        identities = iter(["id-a", "id-b"])
+        lines = iter(["raft 0.1.0 (git main@abc)", "raft 0.1.0 (git feat/x@def)"])
+        monkeypatch.setattr(update_mod.InstallIdentity, "read", lambda self: next(identities))
+        monkeypatch.setattr(update_mod.SelfUpdate, "_version_line", lambda self: next(lines))
+        shell = MagicMock()
+        upd = SelfUpdate(self.stack)
+        upd.sh = shell
+        with patch("raft.core.observe.ops.update.announce.OperatorSay.say") as say:
+            upd.run()
+        texts = [c.args[0] for c in say.call_args_list if c.args]
+        assert "PREVIOUS → CURRENT" in texts
+        assert "raft 0.1.0 (git main@abc) → raft 0.1.0 (git feat/x@def)" in texts
 
     def test_run_respects_install_url_env(self, monkeypatch) -> None:
         url = "https://example.test/install.sh"
@@ -85,7 +105,7 @@ class TestSelfUpdate(DomainTestCase):
         shell = MagicMock()
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        with patch("raft.core.observe.ops.update.service.OperatorSay.say"):
+        with patch("raft.core.observe.ops.update.announce.OperatorSay.say"):
             upd.run()
         assert shell.run.call_args.args[0][4] == url
 
@@ -95,7 +115,7 @@ class TestSelfUpdate(DomainTestCase):
         shell = MagicMock()
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        with patch("raft.core.observe.ops.update.service.OperatorSay.say"):
+        with patch("raft.core.observe.ops.update.announce.OperatorSay.say"):
             upd.run(ref="main")
         script = shell.run.call_args.args[0][2]
         assert "RAFT_INSTALL_QUIET=1" in script
@@ -108,7 +128,7 @@ class TestSelfUpdate(DomainTestCase):
         shell = MagicMock()
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        with patch("raft.core.observe.ops.update.service.OperatorSay.say"):
+        with patch("raft.core.observe.ops.update.announce.OperatorSay.say"):
             upd.run()
         script = shell.run.call_args.args[0][2]
         assert "RAFT_REF=" not in script
@@ -121,7 +141,7 @@ class TestSelfUpdate(DomainTestCase):
         shell = MagicMock()
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        with patch("raft.core.observe.ops.update.service.OperatorSay.say"):
+        with patch("raft.core.observe.ops.update.announce.OperatorSay.say"):
             upd.run()
         args = shell.run.call_args.args[0]
         assert args[4] == DEFAULT_INSTALL_URL
@@ -131,11 +151,12 @@ class TestSelfUpdate(DomainTestCase):
         monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
         order: list[str] = []
         monkeypatch.setattr(update_mod.InstallIdentity, "read", self._active_step(order, "identity"))
+        monkeypatch.setattr(update_mod.SelfUpdate, "_version_line", lambda self: None)
         shell = MagicMock()
         shell.run.side_effect = self._active_step(order, "install")
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        with patch("raft.core.observe.ops.update.service.OperatorSay.say"):
+        with patch("raft.core.observe.ops.update.announce.OperatorSay.say"):
             upd.run(progress_stream=object())
         assert order == ["identity", "install", "identity"]
         assert TerminalProgress.active() is None
@@ -156,7 +177,7 @@ class TestSelfUpdate(DomainTestCase):
         shell.run.side_effect = RuntimeError("curl failed")
         upd = SelfUpdate(self.stack)
         upd.sh = shell
-        with patch("raft.core.observe.ops.update.service.OperatorSay.say"):
+        with patch("raft.core.observe.ops.update.announce.OperatorSay.say"):
             try:
                 upd.run(progress_stream=object())
                 raise AssertionError("expected OperatorError")
@@ -172,7 +193,7 @@ class TestSelfUpdate(DomainTestCase):
         upd = SelfUpdate(self.stack)
         upd.sh = shell
         with TerminalProgress(prefix="raft update", label="updating"):
-            with patch("raft.core.observe.ops.update.service.OperatorSay.say"):
+            with patch("raft.core.observe.ops.update.announce.OperatorSay.say"):
                 upd.run()
             assert TerminalProgress.active() is not None
             assert TerminalProgress.current()._finished
@@ -198,6 +219,14 @@ class TestInstallIdentity(DomainTestCase):
         raft_bin = bin_dir / "raft"
         raft_bin.write_text("#!/bin/sh\n", encoding="utf-8")
         return root
+
+    def test_dist_info_dir_via_which(self, monkeypatch) -> None:
+        root = self._fake_tool_env(direct_url='{"url":"x"}')
+        raft_bin = root / "bin" / "raft"
+        monkeypatch.setattr(identity_mod.shutil, "which", lambda _name: str(raft_bin))
+        dist = InstallIdentity().dist_info_dir()
+        assert dist is not None
+        assert dist.name == "raft-0.1.0.dist-info"
 
     def test_identity_from_direct_url_via_which(self, monkeypatch) -> None:
         root = self._fake_tool_env(direct_url='{"url":"git","vcs_info":{"commit_id":"abc"}}\n')

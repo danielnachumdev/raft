@@ -15,6 +15,8 @@ RAFT_CLI_REF=""
 RAFT_REF=""
 # Set by install_from_*; printed in finish_message (release tag / wheel / git / path).
 RAFT_INSTALL_SOURCE=""
+# Captured before reinstall when raft is already on PATH (PREVIOUS → CURRENT).
+RAFT_PREVIOUS_VERSION=""
 
 _color_stdout() {
   [[ -z "${NO_COLOR:-}" ]] && { [[ -n "${FORCE_COLOR:-}" ]] || [[ -t 1 ]]; }
@@ -259,6 +261,28 @@ try_install_release_wheel() {
   install_from_wheel_url "${url}"
 }
 
+capture_previous_version() {
+  if command -v raft >/dev/null 2>&1; then
+    RAFT_PREVIOUS_VERSION="$(raft --version 2>/dev/null || true)"
+  fi
+}
+
+finish_version_lines() {
+  local ver="${1:-}"
+  [[ -n "${ver}" ]] || return 0
+  if [[ -z "${RAFT_PREVIOUS_VERSION}" ]]; then
+    log_ok "${ver}"
+    return 0
+  fi
+  if [[ "${RAFT_PREVIOUS_VERSION}" == "${ver}" ]]; then
+    log_ok "raft is already up to date"
+    log_ok "${ver}"
+    return 0
+  fi
+  log_ok "PREVIOUS → CURRENT"
+  log_ok "${RAFT_PREVIOUS_VERSION} → ${ver}"
+}
+
 finish_message() {
   ensure_path_local_bin
 
@@ -268,7 +292,7 @@ finish_message() {
       log_ok "Source: ${RAFT_INSTALL_SOURCE}"
     fi
     if ver="$(raft --version 2>/dev/null)"; then
-      log_ok "${ver}"
+      finish_version_lines "${ver}"
     fi
   else
     log_warn "raft was installed but is not on PATH yet."
@@ -287,6 +311,7 @@ main() {
 
   ensure_git
   ensure_uv
+  capture_previous_version
 
   local checkout=""
   local editable

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from importlib.metadata import PackageNotFoundError
+from pathlib import Path
 from typing import Optional
 from unittest.mock import MagicMock, patch
 
@@ -22,6 +23,54 @@ class TestInstalledVersion:
                 InstalledVersion, "source_detail", return_value="git main@398e4ea"
             ):
                 assert InstalledVersion().line() == "raft 0.1.0 (git main@398e4ea)"
+
+    def test_line_for_dist_info_wheel(self, tmp_path: Path) -> None:
+        dist = tmp_path / "raft-0.11.0.dist-info"
+        dist.mkdir()
+        (dist / "METADATA").write_text("Name: raft\nVersion: 0.11.0\n", encoding="utf-8")
+        (dist / "direct_url.json").write_text(
+            json.dumps(
+                {
+                    "url": (
+                        "https://github.com/danielnachumdev/raft/releases/download/"
+                        "v0.11.0/raft-0.11.0-py3-none-any.whl"
+                    ),
+                    "archive_info": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+        assert (
+            InstalledVersion().line_for_dist_info(dist)
+            == "raft 0.11.0 (wheel raft-0.11.0-py3-none-any.whl)"
+        )
+
+    def test_line_for_dist_info_git_ref(self, tmp_path: Path) -> None:
+        dist = tmp_path / "raft-0.1.0.dist-info"
+        dist.mkdir()
+        (dist / "METADATA").write_text("Name: raft\nVersion: 0.1.0\n", encoding="utf-8")
+        (dist / "direct_url.json").write_text(
+            json.dumps(
+                {
+                    "url": "https://github.com/danielnachumdev/raft.git",
+                    "vcs_info": {
+                        "vcs": "git",
+                        "commit_id": "def5678abcdef",
+                        "requested_revision": "feat/foo",
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        assert (
+            InstalledVersion().line_for_dist_info(dist)
+            == "raft 0.1.0 (git feat/foo@def5678)"
+        )
+
+    def test_line_for_dist_info_none_without_metadata(self, tmp_path: Path) -> None:
+        dist = tmp_path / "raft-0.1.0.dist-info"
+        dist.mkdir()
+        assert InstalledVersion().line_for_dist_info(dist) is None
 
     def test_package_version_falls_back_to_dunder(self) -> None:
         with patch(

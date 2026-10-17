@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from importlib.metadata import PackageNotFoundError, distribution, version
+from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import unquote, urlparse
 
@@ -13,10 +14,14 @@ class InstalledVersion:
 
     def line(self) -> str:
         """Single-line version string for ``raft --version``."""
-        detail = self.source_detail()
-        if detail:
-            return f"raft {self.package_version()} ({detail})"
-        return f"raft {self.package_version()}"
+        return self._compose(self.package_version(), self.source_detail())
+
+    def line_for_dist_info(self, dist_info: Path) -> Optional[str]:
+        """Format from an on-disk ``*.dist-info`` (uv tool env after reinstall)."""
+        pkg = self._version_from_metadata_file(dist_info / "METADATA")
+        if not pkg:
+            return None
+        return self._compose(pkg, self._detail_from_direct_url_file(dist_info))
 
     def package_version(self) -> str:
         """Packaging version from dist metadata, else ``raft.__version__``."""
@@ -29,7 +34,28 @@ class InstalledVersion:
 
     def source_detail(self) -> Optional[str]:
         """Short install source from ``direct_url.json``, if present."""
-        raw = self._direct_url_text()
+        return self._detail_from_direct_url_text(self._direct_url_text())
+
+    @staticmethod
+    def _compose(pkg: str, detail: Optional[str]) -> str:
+        if detail:
+            return f"raft {pkg} ({detail})"
+        return f"raft {pkg}"
+
+    def _direct_url_text(self) -> Optional[str]:
+        try:
+            dist = distribution("raft")
+        except PackageNotFoundError:
+            return None
+        return dist.read_text("direct_url.json")
+
+    def _detail_from_direct_url_file(self, dist_info: Path) -> Optional[str]:
+        path = dist_info / "direct_url.json"
+        if not path.is_file():
+            return None
+        return self._detail_from_direct_url_text(path.read_text(encoding="utf-8"))
+
+    def _detail_from_direct_url_text(self, raw: Optional[str]) -> Optional[str]:
         if not raw:
             return None
         try:
@@ -40,12 +66,14 @@ class InstalledVersion:
             return None
         return self._format_direct_url(data)
 
-    def _direct_url_text(self) -> Optional[str]:
-        try:
-            dist = distribution("raft")
-        except PackageNotFoundError:
+    @staticmethod
+    def _version_from_metadata_file(path: Path) -> Optional[str]:
+        if not path.is_file():
             return None
-        return dist.read_text("direct_url.json")
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("Version:"):
+                return line.split(":", 1)[1].strip() or None
+        return None
 
     def _format_direct_url(self, data: dict[str, Any]) -> Optional[str]:
         vcs = data.get("vcs_info")
