@@ -86,6 +86,23 @@ class TestDockerLifecyclePull(DockerTestCase):
         self.shell.compose.assert_any_call("build", "app", capture=False, check=False)
 
     def test_pull_services_skips_when_pin_present(self) -> None:
+        self._stack_demo_api_docker()
+        self.shell.compose.return_value = self.ok()
+        self.shell.docker.return_value = self.ok("sha256:local\n")
+        self.docker.pull_services(("demo-api",))
+        assert self.shell.compose.call_count == 0
+        assert not any(c.args[:1] == ("pull",) for c in self.shell.docker.call_args_list)
+
+    def test_pull_services_pulls_when_pin_missing(self) -> None:
+        self._stack_demo_api_docker()
+        self.shell.compose.return_value = self.ok()
+        self.shell.docker.side_effect = self._docker_missing_then_ok()
+        self.docker.pull_services(("demo-api",))
+        self.shell.compose.assert_any_call(
+            "pull", "--ignore-buildable", "demo-api", capture=False, check=False
+        )
+
+    def _stack_demo_api_docker(self) -> None:
         from tests.unit.base import StackMakers
 
         app = AppMakers.make_app(
@@ -93,11 +110,6 @@ class TestDockerLifecyclePull(DockerTestCase):
         )
         self.stack = StackMakers.make_stack(self.tmp_path, (app,))
         self.docker = self.docker_stack()
-        self.shell.compose.return_value = self.ok()
-        self.shell.docker.return_value = self.ok("sha256:local\n")
-        self.docker.pull_services(("demo-api",))
-        assert self.shell.compose.call_count == 0
-        assert not any(c.args[:1] == ("pull",) for c in self.shell.docker.call_args_list)
 
     def test_pull_and_build_enrich_failures(self) -> None:
         from raft.core.core.errors.cta import OperatorError
