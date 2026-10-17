@@ -1,0 +1,138 @@
+name: Release
+
+# Label-driven GitHub Releases. Source of truth for operator versions is the
+# Release tag (vX.Y.Z), not pyproject.toml (left as a packaging placeholder).
+# Install/update stay on `uv tool install git+…` until #41 attaches SPA/wheel
+# assets and install.sh can prefer the latest release artifact.
+#
+# Labels (exactly one required on every PR into main):
+#   bumpMajor | bumpMinor | bumpPatch | noBump
+# Missing label → check job fails (no silent patch). Multiple → fail closed.
+# noBump → publish job succeeds without creating a Release.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled, closed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Print bump result without creating a Release"
+        type: boolean
+        default: true
+      latest_tag:
+        description: "Override latest tag (empty = query GitHub Releases)"
+        type: string
+        default: ""
+      labels:
+        description: "Comma-separated labels for dry-run (e.g. bumpPatch)"
+        type: string
+        default: "bumpPatch"
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: release-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  check-label:
+    name: Release label
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Require exactly one bump / noBump label
+        env:
+          LABELS_JSON: ${{ toJson(github.event.pull_request.labels) }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release_semver.py --latest-tag v0.0.0 --labels-json "${LABELS_JSON}"
+
+  publish:
+    name: Publish release
+    if: >
+      (github.event_name == 'pull_request' &&
+       github.event.action == 'closed' &&
+       github.event.pull_request.merged == true) ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Resolve labels + latest Release tag
+        id: bump
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_LABELS_JSON: ${{ toJson(github.event.pull_request.labels) }}
+          DISPATCH_LABELS: ${{ github.event.inputs.labels }}
+          DISPATCH_LATEST: ${{ github.event.inputs.latest_tag }}
+        run: |
+          set -euo pipefail
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            IFS=',' read -r -a raw <<< "${DISPATCH_LABELS}"
+            labels_json="$(printf '%s\n' "${raw[@]}" | python3 -c 'import json,sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')"
+            latest="${DISPATCH_LATEST}"
+          else
+            labels_json="${PR_LABELS_JSON}"
+            latest=""
+          fi
+          if [[ -z "${latest}" ]]; then
+            latest="$(gh release view --json tagName -q .tagName 2>/dev/null || true)"
+          fi
+          echo "latest_tag=${latest:-<none>}"
+          out="$(python3 scripts/release_semver.py --latest-tag "${latest}" --labels-json "${labels_json}")"
+          echo "${out}"
+          skip="$(echo "${out}" | sed -n 's/^skip=//p')"
+          tag="$(echo "${out}" | sed -n 's/^tag=//p')"
+          action="$(echo "${out}" | sed -n 's/^action=//p')"
+          version="$(echo "${out}" | sed -n 's/^version=//p')"
+          echo "skip=${skip}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "action=${action}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "latest=${latest}" >> "$GITHUB_OUTPUT"
+
+      - name: Skip (noBump)
+        if: steps.bump.outputs.skip == 'true'
+        run: |
+          echo "noBump: not creating a GitHub Release."
+
+      - name: Create GitHub Release
+        if: steps.bump.outputs.skip != 'true' && github.event.inputs.dry_run != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.bump.outputs.tag }}
+          ACTION: ${{ steps.bump.outputs.action }}
+          VERSION: ${{ steps.bump.outputs.version }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          # Placeholder asset (versioned) until #41 attaches real wheel + baked SPA.
+          # Avoid uploading a wheel whose pyproject version disagrees with the tag.
+          manifest="raft-${TAG}-release.json"
+          printf '%s\n' "{\"name\":\"raft\",\"version\":\"${VERSION}\",\"tag\":\"${TAG}\"}" > "${manifest}"
+          # Auto-generated notes from commits since previous tag; title is the semver tag.
+          gh release create "${TAG}" \
+            --title "${TAG}" \
+            --generate-notes \
+            "${manifest}"
+          if [[ -n "${PR_NUMBER}" && "${PR_NUMBER}" != "null" ]]; then
+            echo "Published ${TAG} (${ACTION}) from #${PR_NUMBER}: ${PR_TITLE}"
+          else
+            echo "Published ${TAG} (${ACTION})"
+          fi
+
+      - name: Dry-run summary
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          set -euo pipefail
+          echo "dry_run=${{ github.event.inputs.dry_run }}"
+          echo "action=${{ steps.bump.outputs.action }}"
+          echo "skip=${{ steps.bump.outputs.skip }}"
+          echo "latest=${{ steps.bump.outputs.latest }}"
+          echo "next_tag=${{ steps.bump.outputs.tag }}"
