@@ -118,9 +118,14 @@ export function useDashboardMetrics(
     return () => window.clearInterval(id);
   }, [query, cursors, busy, planes, live]);
 
+  const scopedAvailable = useMemo(
+    () => scopeAvailable(available, servicesKey),
+    [available, servicesKey],
+  );
+
   return {
     series,
-    available,
+    available: scopedAvailable,
     events,
     bounds,
     clampMessage,
@@ -130,6 +135,16 @@ export function useDashboardMetrics(
     busy,
     error,
   };
+}
+
+/** When the fetch is service-scoped, hide unrelated catalog rows from graphs. */
+function scopeAvailable(
+  available: MetricsAvailable[],
+  servicesKey: string,
+): MetricsAvailable[] {
+  if (!servicesKey) return available;
+  const want = new Set(servicesKey.split(","));
+  return available.filter((a) => want.has(a.id));
 }
 
 type Setters = {
