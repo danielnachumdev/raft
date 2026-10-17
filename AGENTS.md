@@ -95,7 +95,7 @@ Align with the README table; detail for agents:
 | Past logs when container off | **Shipped** | Retained under `state/service-logs/`; shipper + drain-before-rm; [`docs/serve-logs.md`](docs/serve-logs.md) |
 | Trends dashboards (multi-graph) | **Shipped** | [#238](https://github.com/danielnachumdev/raft/issues/238) supersedes #202 named views (migrated on load). Shared range + one fetch per plane fanned out to `TrendsGraph`s; browser-local (`raft-serve-trends-dashboards`); `src/spa/src/trends/dashboard/`; [`docs/serve-trends.md`](docs/serve-trends.md) |
 | Per-service Trends (default graphs) | **Shipped** | Service inspection uses the same multi-graph UX, pinned to that service; browser-local `raft-serve-service-trends`; `src/spa/src/trends/service/` |
-| Alert rules engine (metrics/control-plane → notifications) | **Shipped** | [#236](https://github.com/danielnachumdev/raft/issues/236); [`docs/serve-alerts.md`](docs/serve-alerts.md); engine under `observe/alerts/` |
+| Alert rules engine (metrics/control-plane → notifications) | **Shipped** | [#236](https://github.com/danielnachumdev/raft/issues/236); dual-plane CLI+serve lock [#264](https://github.com/danielnachumdev/raft/issues/264); [`docs/serve-alerts.md`](docs/serve-alerts.md); `AlertRulesService` / engine under `observe/alerts/` |
 | Firewall-derived alert signals (`edge.denies`) | **Planned** | Observe gate outcomes only; no middle hop (#207) |
 | Always-on Compose dashboard service | **Planned** | [#36](https://github.com/danielnachumdev/raft/issues/36) — not `raft serve` replacement without design |
 | Automate SPA bake in CD | **Shipped** | [#41](https://github.com/danielnachumdev/raft/issues/41) — Release wheel + install.sh prefers `.whl`; SPA assets not committed |

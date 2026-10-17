@@ -2,6 +2,14 @@
 
 Alert rules decide **when** something is wrong. Notification channels decide **where** to send. Rules evaluate metrics (`state/metrics/resources.jsonl`, `http.jsonl`) and control-plane signals, then emit `NotificationEvent`s into the existing `Notifier` (no parallel delivery stack).
 
+## Dual-plane lock (#264 / epic #256)
+
+Mutative and inspect ops ship on **both** planes through shared core services
+(`AlertRulesService`, `AlertEngine`, `AlertTester` under `observe/alerts/`).
+Serve (`/api/alerts/*`) and CLI (`raft alerts …`) are thin adapters only — no
+alert business logic lives in FastAPI handlers. Shipped with [#236](https://github.com/danielnachumdev/raft/issues/236)
+(PR #251); this document is the operator-facing lock for [#264](https://github.com/danielnachumdev/raft/issues/264).
+
 ## Persistence
 
 | Path | Role |
