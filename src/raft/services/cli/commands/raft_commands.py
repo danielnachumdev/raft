@@ -30,6 +30,7 @@ from .auth import AuthCLI
 from .firewall import FirewallCLI
 from .gate import GateCLI
 from .get import GetCLI
+from .http_requests import HttpRequestsCLI
 from .notifications import NotificationsCLI
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,7 @@ class RaftCLICommands:
         self.alerts = AlertsCLI(self._stack)
         self.firewall = FirewallCLI(self._stack)
         self.notifications = NotificationsCLI(self._stack)
+        self.http_requests = HttpRequestsCLI(self._stack)
 
     @property
     def _app_names(self) -> list[str]:

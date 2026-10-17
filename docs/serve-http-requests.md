@@ -27,11 +27,24 @@ $request_time $status $host $time_iso8601 $request_method $uri $remote_addr "$ht
 - Cookies, `Authorization`, and bodies are never logged.
 - New fields appear after share sync and a gate nginx **reload** (config file change).
 
-## API
+## API and CLI
 
 `GET /api/service/{name}/http-requests?limit=100`
 
 Returns recent rows for that App’s `publicHost` + `extraHosts` (newest first). Ineligible services return `eligible: false` and an empty `requests` list (unknown name → 404).
+
+CLI (same `HttpRequestsRead` contract):
+
+```bash
+raft http_requests show demo-api --limit=50
+raft http_requests show demo-api --json
+```
+
+Deny a client from a row (shared firewall from-inspection path):
+
+```bash
+raft firewall apply_inspection --client-ip=192.0.2.10 --service=demo-api
+```
 
 ## Privacy defaults
 
