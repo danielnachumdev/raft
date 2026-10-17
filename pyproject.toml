@@ -4,7 +4,6 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "raft"
-# Packaging placeholder in git; Release publish sets this from the tag when building the wheel.
 version = "0.1.0"
 description = "Kubernetes-ish behaviour with Docker and nginx — App manifests and a kubectl-style CLI"
 license = { text = "AGPL-3.0-only" }

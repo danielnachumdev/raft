@@ -1,12 +1,7 @@
-# Fresh operator-style install: ``uv tool install`` from the build context
-# (after SPA bake) or from git. Operators on VMs use Release **wheels** via
-# install.sh (Node-free); this image validates package-data / CLI smoke.
+# Packaging smoke: ``uv tool install`` from build context (``RAFT_REF=workspace``)
+# or git. SPA must be baked into share/serve/spa before a workspace install.
 #
 #   docker build -f tests/e2e/fresh_install/Dockerfile --build-arg RAFT_REF=workspace .
-#
-# ``RAFT_REF`` defaults to ``workspace``. CI bakes ``src/spa`` then passes
-# ``workspace``. Use a git ref only when intentionally testing git+ install
-# (hashed SPA assets are not in git).
 FROM python:3.12-slim-bookworm
 
 RUN apt-get update \

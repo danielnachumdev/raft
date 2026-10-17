@@ -18,11 +18,10 @@ permissions:
 #   python — Meta, Unit+Integration, E2E. Any Python source, packaging/lockfile,
 #            pytest tree, install script, share templates Python loads, or this
 #            workflow / E2E seed script.
-#   spa    — SPA job. Dashboard sources / lockfile under src/spa/, or this workflow.
-#            Packaged share/serve/spa/ is gitignored (Release bake / local npm only).
+#   spa    — SPA job. Dashboard sources / lockfile under src/spa/, or this workflow
+#            (packaged share/serve/spa/ is gitignored).
 # workflow_dispatch forces both sides on. Docs-only / unrelated paths skip both;
 # the aggregate "CI" job still succeeds so required checks can key off it.
-# Unit/E2E bake the SPA before pytest (assets are not committed).
 
 jobs:
   changes:
@@ -115,7 +114,7 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: src/spa/package-lock.json
-      - name: Bake dashboard SPA (not committed)
+      - name: Bake dashboard SPA
         run: |
           cd src/spa
           npm ci
@@ -143,7 +142,7 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: src/spa/package-lock.json
-      - name: Bake dashboard SPA (not committed)
+      - name: Bake dashboard SPA
         run: |
           cd src/spa
           npm ci
@@ -157,8 +156,6 @@ jobs:
         run: bash "${GITHUB_WORKSPACE}/.github/workflows/ci_seed_docker_images.sh"
       - name: E2E Compose tests
         env:
-          # Packaging smoke installs from the build context (SPA baked above).
-          # Operators use Release wheels; git trees no longer ship hashed SPA assets.
           RAFT_E2E_REF: workspace
         run: uv run pytest tests/e2e -m e2e -q --tb=short --no-cov -n0
 

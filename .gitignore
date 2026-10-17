@@ -10,11 +10,11 @@ htmlcov/
 build/
 dist/
 
-# Dashboard SPA (source + local node_modules)
+# Dashboard SPA
 src/spa/node_modules/
 src/spa/dist/
 
-# Built dashboard assets (Release wheel / local `npm run build` only)
+# Built share/serve/spa (Release / local npm build; keep .gitkeep)
 src/raft/core/platform/share/serve/spa/**
 !src/raft/core/platform/share/serve/spa/.gitkeep
 

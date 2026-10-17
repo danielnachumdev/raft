@@ -36,7 +36,6 @@ class TestPackageData:
         assert (SRC_RAFT / "core/platform/share/nginx").is_dir()
 
     def test_spa_output_dir_keeps_gitkeep_only_in_git(self) -> None:
-        """Hashed SPA assets are Release/local bake only; git tracks ``.gitkeep``."""
         keep = _SPA_DIR / ".gitkeep"
         assert keep.is_file(), f"expected {_SPA_DIR}/.gitkeep so the path exists in git"
         tracked = subprocess.run(

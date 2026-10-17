@@ -12,19 +12,12 @@ from typing import List, Optional
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DOCKERFILE = REPO_ROOT / "tests" / "e2e" / "fresh_install" / "Dockerfile"
 DEFAULT_REF = "workspace"
-# E2E job is Py 3.9 only; run the image build once there.
+# E2E CI job is Py 3.9 only; run the image build once there.
 _CI_ONCE_PY = (3, 9)
 
 
 class FreshInstallRef:
-    """Resolve install ref: ``RAFT_E2E_REF``, else ``workspace``.
-
-    Dockerfile ``ARG RAFT_REF`` defaults to ``workspace`` (packaging from the
-    build context after SPA bake). Operators install Release wheels; git trees
-    no longer ship hashed SPA assets, so CI does not ``git+@sha`` for this smoke.
-    Override with ``RAFT_E2E_REF=main`` / a tag only when intentionally testing
-    git install (UI assets will be missing unless that ref baked them).
-    """
+    """``RAFT_E2E_REF`` when set, else ``workspace`` (packaging from build context)."""
 
     def resolve(self) -> str:
         explicit = (os.environ.get("RAFT_E2E_REF") or "").strip()
@@ -48,8 +41,6 @@ class FreshInstallGate:
 
 
 class FreshInstallSpaBake:
-    """Ensure packaged SPA exists before a ``workspace`` Docker install."""
-
     def ensure(self, repo_root: Path) -> None:
         index = repo_root / "src/raft/core/platform/share/serve/spa/index.html"
         if index.is_file():

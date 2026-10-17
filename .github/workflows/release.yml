@@ -1,8 +1,7 @@
 name: Release
 
-# Label-driven GitHub Releases. Source of truth for operator versions is the
-# Release tag (vX.Y.Z). On bump publish: bake SPA → build version-aligned wheel →
-# attach .whl (operators install via install.sh; see docs/releases.md / #41).
+# Label-driven GitHub Releases. Operator SoT is the Release tag (vX.Y.Z).
+# On bump publish: bake SPA → version-aligned wheel → attach .whl (docs/releases.md).
 #
 # Labels (exactly one required on every PR into main):
 #   bumpMajor | bumpMinor | bumpPatch | noBump

@@ -62,8 +62,7 @@ Needs **Python 3.9+**, Docker, and Compose.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/danielnachumdev/raft/main/install.sh | bash
-# default: latest Release **wheel** (SPA baked in); git@tag if no wheel yet
-# pin a ref (tag / branch / sha):
+# pin a ref (tag / branch / sha) instead of the latest Release wheel:
 # curl -fsSL …/install.sh | bash -s -- --ref main
 ```
 

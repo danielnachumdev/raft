@@ -1,11 +1,5 @@
 #!/usr/bin/env bash
-# Bake the dashboard SPA and build a version-aligned raft wheel for GitHub Releases.
-#
-# Usage: scripts/build_release_wheel.sh <tag> [out-dir]
-#   tag      Release tag (vX.Y.Z); wheel version is the tag without a leading v
-#   out-dir  Directory for the .whl (default: dist/)
-#
-# Requires: Node/npm (src/spa), uv. Fails if the wheel lacks packaged SPA assets.
+# Usage: scripts/build_release_wheel.sh <vX.Y.Z> [out-dir]
 set -euo pipefail
 
 TAG="${1:?usage: build_release_wheel.sh <vX.Y.Z> [out-dir]}"
