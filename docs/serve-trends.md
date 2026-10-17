@@ -46,6 +46,16 @@ The time range belongs to the **dashboard**, not the graph.
 
 The dashboard fetches each metric plane **once** for the shared range — `/api/metrics` (resources) and/or `/api/metrics/http` — only for planes some graph uses, then live-polls with `since` cursors. Every graph filters that shared series client-side; adding graphs does not add requests. Series with no samples for a graph's metrics (e.g. host on HTTP graphs) are left out of that graph.
 
+CLI (same `MetricsRead` / `HttpMetricsRead` / `ExportService` cores; no browser required):
+
+```bash
+raft metrics history --window=3600 --service=demo-api
+raft metrics history --http --window=900
+raft metrics catalog
+raft metrics export_metrics --service=demo-api --file=out.csv
+raft metrics export_logs demo-api --format=txt --file=demo-api.log
+```
+
 ## Persistence
 
 Browser **`localStorage`** key `raft-serve-trends-dashboards` (version 2; same machine/browser only). Not written under `~/.raft/`. Clearing site data resets to Overview. Corrupt or foreign payloads are ignored and fall back to Overview; graphs with unknown metrics or more than two metric types are trimmed on load.

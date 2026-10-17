@@ -82,7 +82,7 @@ Align with the README table; detail for agents:
 | Multi-app `group` / `dependsOn` / volumes / `envFile` / `expose: none` | **Shipped** | |
 | Worker Apps (`ports: []`) | **Shipped** | `readiness: none`; no scaling/TLS origin\|acme |
 | Doctor / status / logs / purge | **Shipped** | |
-| Metrics JSONL + Trends (resources + HTTP aggregate) | **Shipped** | Controller scrape; `http.jsonl` contract in observe/docs |
+| Metrics JSONL + Trends (resources + HTTP aggregate) | **Shipped** | Controller scrape; `http.jsonl` contract in observe/docs; CLI `raft metrics history|catalog|export_*` |
 | `raft serve` ops UI | **Shipped** | FastAPI + packaged SPA |
 | HTTP request inspection (per App) | **Shipped** | Gate access log → `/api/service/{name}/http-requests` + `raft http_requests show`; [`docs/serve-http-requests.md`](docs/serve-http-requests.md) |
 | Flat gate / App IP ACL (allow/deny lists) | **Retired** | Removed as operator path; leftover `#195` data migrates into firewall GET until Save; [`docs/serve-acl.md`](docs/serve-acl.md) |
