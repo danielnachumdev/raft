@@ -34,3 +34,15 @@ class TestAlertsCliStatusInstances(RaftTestCase):
                 View.return_value.build.return_value = _STATUS
                 cli.status()
             assert say.called
+
+    def test_status_json_skips_stale_warning(self) -> None:
+        home = Path(self.tmp_path)
+        cli = AlertsCLI(Stack(root=home, apps=()))
+        fresh = {**_STATUS, "stale": False}
+        with patch("raft.services.cli.commands.alerts.AlertStatusView") as View:
+            View.return_value.build.return_value = fresh
+            with patch(
+                "raft.services.cli.commands.alerts_output.AlertsCliOutput.say_json"
+            ) as sj:
+                cli.status(json=True)
+                assert sj.called
