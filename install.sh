@@ -15,7 +15,7 @@ RAFT_CLI_REF=""
 RAFT_REF=""
 # Set by install_from_*; printed in finish_message (release tag / wheel / git / path).
 RAFT_INSTALL_SOURCE=""
-# Captured before reinstall when raft is already on PATH (PREVIOUS → CURRENT).
+# Captured before reinstall when raft is already on PATH (OK: prev → current).
 RAFT_PREVIOUS_VERSION=""
 
 _color_stdout() {
@@ -279,8 +279,7 @@ finish_version_lines() {
     log_ok "${ver}"
     return 0
   fi
-  log_ok "PREVIOUS → CURRENT"
-  log_ok "${RAFT_PREVIOUS_VERSION} → ${ver}"
+  log_ok "OK: ${RAFT_PREVIOUS_VERSION} → ${ver}"
 }
 
 finish_message() {

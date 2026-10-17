@@ -95,8 +95,11 @@ class TestSelfUpdate(DomainTestCase):
         with patch("raft.core.observe.ops.update.announce.OperatorSay.say") as say:
             upd.run()
         texts = [c.args[0] for c in say.call_args_list if c.args]
-        assert "PREVIOUS → CURRENT" in texts
-        assert "raft 0.1.0 (git main@abc) → raft 0.1.0 (git feat/x@def)" in texts
+        assert texts[0] == (
+            "OK: raft 0.1.0 (git main@abc) → raft 0.1.0 (git feat/x@def)"
+        )
+        assert texts[1].startswith("Next: align the running stack")
+        assert "PREVIOUS → CURRENT" not in texts
 
     def test_run_respects_install_url_env(self, monkeypatch) -> None:
         url = "https://example.test/install.sh"
