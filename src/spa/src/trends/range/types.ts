@@ -14,6 +14,8 @@ export type MetricsQueryOpts = {
   window: number;
   start?: string;
   end?: string;
+  /** Optional Compose service filter (service Trends page). */
+  services?: string[];
 };
 
 export const FALLBACK_MAX_DAYS = 30;

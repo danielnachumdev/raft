@@ -19,6 +19,11 @@
   align-items: end;
 }
 
+.graph-editor-pinned {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
 .graph-editor-presets {
   display: flex;
   flex-direction: column;

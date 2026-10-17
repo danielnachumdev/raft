@@ -51,6 +51,7 @@ You keep services in their own repos. On the VPS you `apply` a manifest. raft sy
 | Alerts from firewall + graph metrics (via notifications) | 📋 |
 | Deeper secrets isolation (external stores → per-App materialization) | 📋 |
 | Trends dashboards (multi-graph, browser-local; editable graphs + named dashboards) | ✅ |
+| Per-service Trends (default editable graphs on inspection, browser-local) | ✅ |
 
 ✅ shipped · 🚧 in progress · 📋 planned
 

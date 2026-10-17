@@ -42,17 +42,25 @@ export type DashboardMetrics = {
 /**
  * One full fetch + live poll per metric plane for the whole dashboard;
  * every graph filters the shared series client-side.
+ * Optional ``services`` scopes the request (service inspection page).
  */
 export function useDashboardMetrics(
   range: TrendsRangeState,
   planeList: MetricPlane[],
+  services?: string[],
 ): DashboardMetrics {
   const planesKey = planeList.join("+");
   const planes = useMemo(() => planesKey.split("+") as MetricPlane[], [planesKey]);
-  const query = useMemo(() => toQuery(range), [range]);
+  const servicesKey = services?.join(",") ?? "";
+  const query = useMemo(() => {
+    const base = toQuery(range);
+    return servicesKey
+      ? { ...base, services: servicesKey.split(",") }
+      : base;
+  }, [range, servicesKey]);
   const rolling = isRollingWindow(query);
   const nowMs = useLiveNow(rolling);
-  const cacheKey = planesCacheKey(planes, metricsCacheKey(query));
+  const cacheKey = `${planesCacheKey(planes, metricsCacheKey(query))}:svc:${servicesKey}`;
   const seed = peekMetrics(cacheKey);
   const [series, setSeries] = useState<MetricsSeries[]>(seed?.series ?? []);
   const [available, setAvailable] = useState<MetricsAvailable[]>(seed?.available ?? []);
@@ -110,9 +118,14 @@ export function useDashboardMetrics(
     return () => window.clearInterval(id);
   }, [query, cursors, busy, planes, live]);
 
+  const scopedAvailable = useMemo(
+    () => scopeAvailable(available, servicesKey),
+    [available, servicesKey],
+  );
+
   return {
     series,
-    available,
+    available: scopedAvailable,
     events,
     bounds,
     clampMessage,
@@ -122,6 +135,16 @@ export function useDashboardMetrics(
     busy,
     error,
   };
+}
+
+/** When the fetch is service-scoped, hide unrelated catalog rows from graphs. */
+function scopeAvailable(
+  available: MetricsAvailable[],
+  servicesKey: string,
+): MetricsAvailable[] {
+  if (!servicesKey) return available;
+  const want = new Set(servicesKey.split(","));
+  return available.filter((a) => want.has(a.id));
 }
 
 type Setters = {

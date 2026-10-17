@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ServiceDetailPayload } from "../shared/api";
 import { ServiceLogs } from "../logs/ServiceLogs";
-import { ServiceRuntimeTrends } from "../trends/runtime/ServiceRuntimeTrends";
+import { ServiceTrendsDashboard } from "../trends/service/ui/ServiceTrendsDashboard";
 import { ServiceHttpRequests } from "./httpRequests/ServiceHttpRequests";
 import { ServiceDetailsPanel } from "./ServiceDetailsPanel";
 import { ServiceOverview } from "./ServiceOverview";
@@ -32,7 +32,7 @@ export function ServiceDetail(props: { data: ServiceDetailPayload }) {
         />
       </div>
       <div className="service-section" id="trends">
-        <ServiceRuntimeTrends service={c.service} />
+        <ServiceTrendsDashboard service={c.service} />
       </div>
       <div className="service-section" id="http">
         <ServiceHttpRequests

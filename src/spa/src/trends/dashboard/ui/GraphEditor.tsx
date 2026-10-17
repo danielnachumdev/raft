@@ -20,6 +20,8 @@ export function GraphEditor(props: EditorProps & { target: EditorTarget | null }
 type EditorProps = {
   data: DashboardMetrics;
   palette: Map<string, number>;
+  /** When set, View / Services pickers are hidden (service page). */
+  pinnedService?: string;
   onCancel: () => void;
   onSave: (draft: TrendsGraphDraft) => void;
 };
@@ -58,6 +60,7 @@ function EditorModal(props: EditorProps & { target: EditorTarget }) {
           draft={draft}
           available={props.data.available}
           showPresets={adding}
+          pinnedService={props.pinnedService}
           onChange={setDraft}
         />
         <div className="graph-editor-preview" aria-label="Preview">

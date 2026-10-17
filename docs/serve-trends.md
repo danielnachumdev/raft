@@ -1,6 +1,6 @@
 # Serve: Trends dashboards
 
-Trends in `raft serve` is a multi-graph **dashboard**: several graphs side by side over one shared time range, so CPU, memory, traffic, latency, errors and network are visible at a glance. Operators add, edit, duplicate, resize, reorder and remove graphs, and can keep several named dashboards.
+Trends in `raft serve` is a multi-graph **dashboard**: several graphs side by side over one shared time range, so CPU, memory, traffic, latency, errors and network are visible at a glance. Operators add, edit, duplicate, resize, reorder and remove graphs, and can keep several named dashboards. Each **service inspection** page gets the same default graphs pinned to that service (see [Service page Trends](#service-page-trends)).
 
 Design: [issue #238](https://github.com/danielnachumdev/raft/issues/238) (UX brief on the issue); supersedes the single-chart named views from [issue #202](https://github.com/danielnachumdev/raft/issues/202).
 
@@ -64,6 +64,15 @@ The legacy key is left untouched (read-only) and is not consulted again once das
 
 Each graph intersects its saved service or group ids with the live catalog at render time and shows a muted notice (“1 saved service no longer available.”). The stored graph is not rewritten, so ids that come back reappear. Graphs that saved “all” do not treat catalog churn as stale.
 
+## Service page Trends
+
+Each service inspection page has the same multi-graph Trends experience, scoped to that Compose service:
+
+- **Default:** the six Overview graphs (CPU, Memory, Request rate, Latency p95, Errors, Network), last **1h**, pinned to the open service — no setup required.
+- **Edit / add / remove / reorder / expand / restore defaults** work like the global dashboard; the graph editor hides View and Services pickers and keeps every graph on this service.
+- **Fetch:** `/api/metrics` and `/api/metrics/http` are requested with `services=<name>` so the page only loads that series.
+- **Persistence:** browser **`localStorage`** key `raft-serve-service-trends` (version 1): a map of service name → `{ range, panels }`. Independent of the global Overview dashboards key. Missing or corrupt entries fall back to the default six graphs for that service.
+
 ## Out of scope
 
-Prometheus/Grafana, server-side or shared dashboards, per-graph ranges, autoscaling from metrics, stream/host request metrics, exposing Trends beyond localhost, replacing status tables. Service Runtime charts on a service page are separate.
+Prometheus/Grafana, server-side or shared dashboards, per-graph ranges, autoscaling from metrics, stream/host request metrics, exposing Trends beyond localhost, replacing status tables.
