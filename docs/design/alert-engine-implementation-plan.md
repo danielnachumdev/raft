@@ -13,7 +13,7 @@ Audience: the agent implementing the engine. Read [`AGENTS.md`](../../AGENTS.md)
 
 An **in-process alert rules engine** under `src/raft/core/observe/alerts/`. A controller interval job loads durable rules from `~/.raft/state/alerts/rules.yaml`, queries registered **signal sources** (metrics JSONL, control-plane facts, later firewall/edge), evaluates registered **rule kinds** combined with `all` / `any` compositions over time windows, tracks per-instance state (pending / firing / cool-down / recovery) in `~/.raft/state/alerts/runtime.json`, and emits existing `NotificationEvent`s into the existing `Notifier`, which fans out to the channels configured in `settings.yaml` `notifications:`.
 
-Operators manage rules from **both** the CLI (`raft alerts …`) and `raft serve` (new **Alerts** settings page). Both are editors over the same rules document through one shared service class.
+Operators manage rules from **both** the CLI (`raft alerts …`) and `raft serve` (new **Alerts** settings page). Both are editors over the same rules document through one shared service class. **Parity lock:** [#264](https://github.com/danielnachumdev/raft/issues/264) / epic [#256](https://github.com/danielnachumdev/raft/issues/256) — satisfied when v1 shipped dual-plane via PR #251 (no serve-first waiver).
 
 ### 1.2 Goals
 
