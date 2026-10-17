@@ -1,0 +1,45 @@
+# E2E Compose tests (Py 3.9). Pulls private GHCR seed pins via ci_seed_docker_images.sh.
+
+name: CI e2e
+
+on:
+  workflow_call:
+
+# packages:read — pull private GHCR CI seed pins (ci_seed_mirror.yml).
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  e2e:
+    name: E2E (Py 3.9)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: src/spa/package-lock.json
+      - name: Bake dashboard SPA
+        run: |
+          cd src/spa
+          npm ci
+          npm run build
+      - uses: astral-sh/setup-uv@v10.0.0
+        with:
+          python-version: "3.9"
+      - name: Install package + test deps
+        run: uv sync --extra dev
+      - name: Log in to GHCR (CI seed pins)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Seed images (private GHCR pins)
+        run: bash "${GITHUB_WORKSPACE}/.github/workflows/ci_seed_docker_images.sh"
+      - name: E2E Compose tests
+        env:
+          RAFT_E2E_REF: workspace
+        run: uv run pytest tests/e2e -m e2e -q --tb=short --no-cov -n0
