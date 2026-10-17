@@ -125,6 +125,57 @@ class TestInstalledVersion:
             assert InstalledVersion()._direct_url_text() == '{"url":"x"}'
         dist.read_text.assert_called_once_with("direct_url.json")
 
+    def test_direct_url_text_none_when_package_missing(self) -> None:
+        with patch(
+            "raft.core.observe.ops.version.report.distribution",
+            side_effect=PackageNotFoundError("raft"),
+        ):
+            assert InstalledVersion()._direct_url_text() is None
+
+    def test_detail_from_direct_url_file_none_when_missing(
+        self, tmp_path: Path
+    ) -> None:
+        dist = tmp_path / "raft-0.1.0.dist-info"
+        dist.mkdir()
+        assert InstalledVersion()._detail_from_direct_url_file(dist) is None
+
+    def test_source_detail_none_when_json_not_object(self) -> None:
+        with patch.object(InstalledVersion, "_direct_url_text", return_value="[]"):
+            assert InstalledVersion().source_detail() is None
+
+    def test_version_from_metadata_none_without_version_field(
+        self, tmp_path: Path
+    ) -> None:
+        meta = tmp_path / "METADATA"
+        meta.write_text("Name: raft\n", encoding="utf-8")
+        assert InstalledVersion()._version_from_metadata_file(meta) is None
+
+    def test_source_detail_file_url_without_dir_info(self) -> None:
+        assert (
+            self._detail({"url": "file:///opt/raft"}) == "path /opt/raft"
+        )
+
+    def test_source_detail_plain_url_fallback(self) -> None:
+        assert self._detail({"url": "https://example.test/raft"}) == (
+            "https://example.test/raft"
+        )
+
+    def test_source_detail_empty_url_none(self) -> None:
+        assert self._detail({"url": ""}) is None
+
+    def test_format_git_rev_only(self) -> None:
+        assert InstalledVersion()._format_git({"requested_revision": "main"}) == (
+            "git main"
+        )
+
+    def test_format_git_commit_only(self) -> None:
+        assert InstalledVersion()._format_git({"commit_id": "abc1234xxxx"}) == (
+            "git @abc1234"
+        )
+
+    def test_format_git_bare(self) -> None:
+        assert InstalledVersion()._format_git({}) == "git"
+
     @staticmethod
     def _detail(payload: dict) -> Optional[str]:
         raw = json.dumps(payload)

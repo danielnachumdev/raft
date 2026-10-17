@@ -21,6 +21,14 @@ class TestUpdateAnnounce:
             "raft 0.1.0 (git main@abc1234)",
         ]
 
+    def test_already_current_without_version_line(self) -> None:
+        with patch("raft.core.observe.ops.update.announce.OperatorSay.say") as say:
+            UpdateAnnounce().say(
+                already_current=True, before_line=None, after_line=None
+            )
+        texts = [c.args[0] for c in say.call_args_list]
+        assert texts == ["raft is already up to date"]
+
     def test_transition_wheel(self) -> None:
         with patch("raft.core.observe.ops.update.announce.OperatorSay.say") as say:
             UpdateAnnounce().say(
