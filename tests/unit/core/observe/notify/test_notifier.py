@@ -40,6 +40,29 @@ class TestNotifier(RaftTestCase):
         dispatcher.dispatch.side_effect = RuntimeError("boom")
         Notifier(home, registry=registry, dispatcher=dispatcher).notify(self._event())
 
+    def test_channel_ids_filter_and_deliver(self) -> None:
+        home = Path(self.tmp_path)
+        self._write_two_channels(home)
+        fake = FakeStrategy("webhook")
+        registry = NotificationRegistry()
+        registry.register(fake)
+        deliveries = Notifier(home, registry=registry).deliver(
+            self._event(), channel_ids=["ops-primary", "missing"]
+        )
+        assert len(deliveries) == 1
+        assert deliveries[0].channel_id == "ops-primary"
+
+    @staticmethod
+    def _write_two_channels(home: Path) -> None:
+        (home / "settings.yaml").write_text(
+            "notifications:\n  enabled: true\n  channels:\n"
+            "    - id: ops-primary\n      type: webhook\n"
+            "      settings: {url: https://hooks.example.invalid/x}\n"
+            "    - id: ops-secondary\n      type: webhook\n"
+            "      settings: {url: https://hooks.example.invalid/y}\n",
+            encoding="utf-8",
+        )
+
     def _write_channels(
         self, home: Path, *, enabled: bool, type_id: str = "webhook"
     ) -> None:

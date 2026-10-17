@@ -1,6 +1,7 @@
-"""Controller job implementations (heal, metrics, service-logs, acme, scale)."""
+"""Controller job implementations (heal, metrics, service-logs, acme, scale, alerts)."""
 
 from .acme import ACME_INTERVAL_SECONDS, ACME_TIMEOUT_SECONDS, AcmeJobSync
+from .alerts import AlertsJob
 from .controller_job import ControllerJob
 from .heal import HealForever, HealJob, Healer
 from .metrics import (
@@ -18,6 +19,7 @@ __all__ = [
     "ACME_INTERVAL_SECONDS",
     "ACME_TIMEOUT_SECONDS",
     "AcmeJobSync",
+    "AlertsJob",
     "ControllerJob",
     "HTTP_METRICS_FILENAME",
     "HealForever",

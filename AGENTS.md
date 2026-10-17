@@ -45,6 +45,7 @@ Overlapping apply/redeploy/render tears tmp names, upstreams, and `generated/`. 
 | `app-<name>.lock` | apply, redeploy / `ensure_app_deployed`, delete app | One mutative pipeline per app; later waiter wins after wait |
 | `stack.lock` | render, sync, cutover, compose up/recreate, gate recreate, up/down, purge | No torn `generated/` / mid-cutover upstream reset |
 | `acl.lock` | serve firewall writes (before render/reload) | Firewall persist does not race another firewall writer |
+| `alerts.lock` | CLI/serve writes to `state/alerts/rules.yaml` | Alert rules document writers do not tear each other |
 
 Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**). Nesting in-process re-enters. `doctor` / `status` do not take these locks.
 
@@ -94,7 +95,8 @@ Align with the README table; detail for agents:
 | Past logs when container off | **Shipped** | Retained under `state/service-logs/`; shipper + drain-before-rm; [`docs/serve-logs.md`](docs/serve-logs.md) |
 | Trends dashboards (multi-graph) | **Shipped** | [#238](https://github.com/danielnachumdev/raft/issues/238) supersedes #202 named views (migrated on load). Shared range + one fetch per plane fanned out to `TrendsGraph`s; browser-local (`raft-serve-trends-dashboards`); `src/spa/src/trends/dashboard/`; [`docs/serve-trends.md`](docs/serve-trends.md) |
 | Per-service Trends (default graphs) | **Shipped** | Service inspection uses the same multi-graph UX, pinned to that service; browser-local `raft-serve-service-trends`; `src/spa/src/trends/service/` |
-| Alerts from firewall + graph/metrics → notifications | **Planned** | Wire firewall signals + resources/`http.jsonl` metrics into shipped notification strategies; scope under epic #207 or observe/notify when filed |
+| Alert rules engine (metrics/control-plane → notifications) | **Shipped** | [#236](https://github.com/danielnachumdev/raft/issues/236); [`docs/serve-alerts.md`](docs/serve-alerts.md); engine under `observe/alerts/` |
+| Firewall-derived alert signals (`edge.denies`) | **Planned** | Observe gate outcomes only; no middle hop (#207) |
 | Always-on Compose dashboard service | **Planned** | [#36](https://github.com/danielnachumdev/raft/issues/36) — not `raft serve` replacement without design |
 | Automate SPA bake in CI | **Planned** | [#41](https://github.com/danielnachumdev/raft/issues/41) |
 | Middle nginx firewall hop | **Rejected** | Do not re-open without new engine requirements |
@@ -118,6 +120,7 @@ Align with the README table; detail for agents:
 | `state/firewall/rules.yaml` | Ordered firewall document (#211); always drives render |
 | `state/firewall/dismissed-recommendations.json` | Dismissed baseline firewall suggestions |
 | `state/scaling/`, `state/metrics/`, `state/acme/`, `state/serve/` | Feature state |
+| `state/alerts/rules.yaml`, `state/alerts/runtime.json` | Alert rules (desired) + evaluation runtime |
 | `certs/`, `secrets/`, `apps/`, `deploy/`, `logs/` | TLS material, env files, checkouts, pins, host log |
 
 Product templates sync from `src/raft/core/platform/share/` into the data home on bootstrap/use.
@@ -137,8 +140,9 @@ Product templates sync from `src/raft/core/platform/share/` into the data home o
 | Doctor, status, logs, update | `src/raft/core/observe/` |
 | Dashboard UI | `src/spa/` then **rebuild** share SPA |
 | Ordered firewall | `lifecycle/render/firewall/` + `services/serve/firewall/` + SPA `src/spa/src/firewall/` (shared nginx helpers still under `lifecycle/render/acl/`) |
+| Alert rules | `core/observe/alerts/` + `services/serve/alerts/` + `services/controller/jobs/alerts/` + SPA `src/spa/src/alerts/` |
 | Notification strategies | `observe/notify/strategies/` + `catalogs.py`; SPA `src/spa/src/notifications/` |
-| Operator docs for serve features | `docs/serve-*.md` (notifications: `docs/serve-notifications.md`) |
+| Operator docs for serve features | `docs/serve-*.md` (notifications: `docs/serve-notifications.md`; alerts: `docs/serve-alerts.md`) |
 
 Upstream files: `generated/nginx/upstreams/<app>-<port>.conf` mounted into the router.
 

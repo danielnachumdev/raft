@@ -15,13 +15,15 @@ from raft.core.core.config.settings.types import (
     DEFAULT_METRICS_RETENTION_MAX_BYTES,
 )
 
+from raft.core.core.config.paths.metrics_paths import (
+    HTTP_METRICS_FILENAME,
+    METRICS_DIR,
+)
+
 from .http_scrape import GateHttpScraper
-from .metrics import METRICS_DIR
 from .rotation import MetricsRotation
 
 logger = logging.getLogger(__name__)
-
-HTTP_METRICS_FILENAME = "http.jsonl"
 
 CollectFn = Callable[[], Dict[str, Any]]
 ClockFn = Callable[[], float]

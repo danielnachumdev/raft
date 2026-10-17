@@ -46,6 +46,7 @@ class TemplateAsserts:
         assert "./state/metrics:/raft/state/metrics" in compose
         assert "./state/service-logs:/raft/state/service-logs" in compose
         assert "./state/events:/raft/state/events" in compose
+        assert "./state/alerts:/raft/state/alerts" in compose
         assert "./certs:/raft/certs" in compose
         assert "./state/acme:/raft/state/acme" in compose
         assert "./generated/nginx/upstreams:/raft/generated/nginx/upstreams" in compose

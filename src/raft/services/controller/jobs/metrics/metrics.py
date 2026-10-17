@@ -7,6 +7,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+from raft.core.core.config.paths.metrics_paths import (
+    METRICS_DIR,
+    METRICS_FILENAME,
+)
 from raft.core.core.config.settings.types import (
     DEFAULT_METRICS_BATCH_SIZE,
     DEFAULT_METRICS_FLUSH_SECONDS,
@@ -19,9 +23,6 @@ from raft.core.observe.ops.status import Status
 from .rotation import MetricsRotation
 
 logger = logging.getLogger(__name__)
-
-METRICS_DIR = Path("state") / "metrics"
-METRICS_FILENAME = "resources.jsonl"
 
 CollectFn = Callable[[], Dict[str, Any]]
 ClockFn = Callable[[], float]

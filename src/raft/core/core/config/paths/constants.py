@@ -29,6 +29,7 @@ DATA_DIR_RELS = (
     "state/metrics/gate-http",
     "state/service-logs",
     "state/events",
+    "state/alerts",
     "state/serve",
     "state/acl",
     "state/acl/apps",

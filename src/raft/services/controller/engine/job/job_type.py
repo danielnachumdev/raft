@@ -10,4 +10,5 @@ class JobType(Enum):
     METRICS = "metrics"
     SERVICE_LOGS = "service-logs"
     ACME = "acme"
+    ALERTS = "alerts"
     # SCALE intentionally absent — transitional side_ticks only.
