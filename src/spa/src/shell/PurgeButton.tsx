@@ -2,9 +2,14 @@ import { useState } from "react";
 import { ConfirmPopup } from "../chrome/ConfirmPopup";
 import { toast } from "../chrome/toast";
 import { postPurge } from "../shared/api";
+import {
+  purgeFailureMessage,
+  purgeStartedMessage,
+  purgeSuccessMessage,
+} from "./purgeMessages";
 import "./PurgeButton.css";
 
-/** Dashboard control: confirm, then POST /api/purge and toast reclaim. */
+/** Dashboard control: confirm, then background POST /api/purge with toasts. */
 export function PurgeButton() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -37,29 +42,29 @@ export function PurgeButton() {
         confirmLabel="Purge"
         danger={false}
         onCancel={() => setOpen(false)}
-        onConfirm={() => runPurge()}
+        onConfirm={() => startPurge()}
       />
     </>
   );
 
-  async function runPurge() {
+  /** Dismiss confirm immediately; purge runs in the background with toasts. */
+  function startPurge() {
+    setOpen(false);
+    if (busy) return;
     setBusy(true);
+    toast.regular(purgeStartedMessage());
+    void runPurge();
+  }
+
+  async function runPurge() {
     try {
       const result = await postPurge();
-      toast.good(successMessage(result.reclaimed_human));
+      toast.good(purgeSuccessMessage(result.reclaimed_human));
     } catch (err) {
       const detail = err instanceof Error ? err.message : "Purge failed.";
-      toast.bad(`Purge failed: ${detail}`);
+      toast.bad(purgeFailureMessage(detail));
     } finally {
       setBusy(false);
-      setOpen(false);
     }
   }
-}
-
-function successMessage(human: string): string {
-  if (!human || human === "0B" || human === "-") {
-    return "Purge finished — nothing to reclaim (0B).";
-  }
-  return `Purge finished — reclaimed ${human}.`;
 }
