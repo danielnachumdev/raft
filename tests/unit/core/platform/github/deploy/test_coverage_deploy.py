@@ -51,9 +51,13 @@ class TestCoverageDeploy(RaftTestCase):
             "github: {mock: false, clientId: id, clientSecret: sec}\n", encoding="utf-8"
         )
         api = ServeGithubApi(StackMakers.make_stack(self.tmp_path), provider=MagicMock(), port=9999)
-        assert api._default_provider().__class__.__name__ == "RealGithubProvider"
+        assert api._assist._default_provider().__class__.__name__ == "RealGithubProvider"
         GithubAccountStore(self.tmp_path).set_pending("good")
-        with patch.object(api._oauth, "complete_oauth", return_value=github_fx.sample_account(mock=False)):
+        with patch.object(
+            api._assist._oauth,
+            "complete_oauth",
+            return_value=github_fx.sample_account(mock=False),
+        ):
             assert api.api_callback(MagicMock(), code="c", state="good").status_code == 302
         bad = api.api_callback(MagicMock(), code=None, state=None, mock=None)
         assert bad.status_code == 302 and "oauth_error=" in bad.headers["location"]
@@ -77,7 +81,7 @@ class TestCoverageDeploy(RaftTestCase):
         provider.list_repos.return_value = [
             GithubRepo("demo/http-only-site", "http-only-site", "demo", False, "main", "c", "s", "h")
         ]
-        with patch.object(api._runner, "start") as start:
+        with patch.object(api._assist._runner, "start") as start:
             start.return_value = DeployJob(id="j", full_name="demo/http-only-site", ref="main")
             assert api.api_deploy({"full_name": "demo/http-only-site", "ref": "main"})["id"] == "j"
 
@@ -128,10 +132,12 @@ class TestCoverageDeploy(RaftTestCase):
             "github: {mock: false, clientId: id, clientSecret: sec}\n", encoding="utf-8"
         )
         api = ServeGithubApi(StackMakers.make_stack(self.tmp_path), port=8787)
-        assert api._oauth.mock_enabled is False
-        assert "Temporary GitHub" in api._login_hint()
+        assert api._assist._oauth.mock_enabled is False
+        assert "Temporary GitHub" in api._assist._login_hint()
         with patch.object(
-            api._oauth, "login_url", side_effect=OperatorError("x", has_fix=False)
+            api._assist._oauth,
+            "login_url",
+            side_effect=OperatorError("x", has_fix=False),
         ):
             login = api.api_login(MagicMock())
             assert login.status_code == 302 and "oauth_error=" in login.headers["location"]
@@ -142,8 +148,7 @@ class TestCoverageDeploy(RaftTestCase):
     def test_mock_default_provider(self) -> None:
         (self.tmp_path / "settings.yaml").write_text("github: {mock: true}\n", encoding="utf-8")
         mock_api = ServeGithubApi(StackMakers.make_stack(self.tmp_path), port=8787)
-        assert mock_api._default_provider().__class__.__name__ == "MockGithubProvider"
-
+        assert mock_api._assist._default_provider().__class__.__name__ == "MockGithubProvider"
     def test_remaining_deploy_local(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path)
         runner = GithubDeployRunner(stack, MagicMock(), DeployJobStore())

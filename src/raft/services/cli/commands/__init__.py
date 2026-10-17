@@ -5,6 +5,7 @@ from .auth import AuthCLI
 from .firewall import FirewallCLI
 from .gate import GateCLI
 from .get import GetCLI
+from .github import GithubCLI
 from .http_requests import HttpRequestsCLI
 from .metrics import MetricsCLI
 from .notifications import NotificationsCLI
@@ -16,6 +17,7 @@ __all__ = [
     "FirewallCLI",
     "GateCLI",
     "GetCLI",
+    "GithubCLI",
     "HttpRequestsCLI",
     "MetricsCLI",
     "NotificationsCLI",

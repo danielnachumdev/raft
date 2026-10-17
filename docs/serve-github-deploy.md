@@ -6,6 +6,11 @@ GitHub OAuth (required scopes), then the admin picks a repository and raft
 drives apply/deploy. After apply, raft opens a PR that adds a GitHub Actions
 workflow for push-based `raft apply` when secrets are configured.
 
+The same product rules live in shared `GithubAssistService`. Operators without
+a browser can use **`raft github …`** (config, mock/real login, accounts, repos,
+deploy + status). That path is **OAuth assist** — not the same as
+**`raft auth`** deploy keys used for private `raft apply --git` / CI.
+
 Anything raft cannot safely automate (secrets, host volumes, DNS/TLS, deploy-key
 paste, CI host secrets) shows in an **Additional steps** panel afterward.
 
@@ -52,6 +57,15 @@ github:
 
 Or `RAFT_GITHUB_MOCK=1`. That mints `mock-operator` and lists
 `share/serve/mock-github/` fixtures (no GitHub write).
+
+CLI mock path (no serve process required):
+
+```bash
+raft github login --mock
+raft github repos
+raft github deploy owner/fixture-repo   # names from mock-github fixtures
+raft github deploy_status <job-id>
+```
 
 ## Real GitHub OAuth App
 

@@ -1,6 +1,6 @@
 """GitHub OAuth, accounts, providers, and deploy-assist (shared capability).
 
-FastAPI adapters stay under ``raft.services.serve.github``; CLI parity is #263.
+Adapters: ``raft.services.serve.github`` and ``raft github …`` CLI.
 """
 
 from .accounts import (
@@ -9,6 +9,7 @@ from .accounts import (
     GithubActiveResolver,
     GithubPendingOauth,
 )
+from .assist import GithubAssistService
 from .deploy import (
     CiPrResult,
     DeployJob,
@@ -37,6 +38,7 @@ __all__ = [
     "GithubAccountStore",
     "GithubActiveResolver",
     "GithubApiGateway",
+    "GithubAssistService",
     "GithubCiPrSetup",
     "GithubDeployRunner",
     "GithubHttpError",
