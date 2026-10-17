@@ -14,9 +14,56 @@ concurrency:
 permissions:
   contents: read
 
+# Path filters (dorny/paths-filter):
+#   python — Meta, Unit+Integration, E2E. Any Python source, packaging/lockfile,
+#            pytest tree, install script, share templates Python loads, or this
+#            workflow / E2E seed script.
+#   spa    — SPA job. Dashboard sources, lockfile/config under src/spa/, packaged
+#            SPA under share, or this workflow.
+# workflow_dispatch forces both sides on. Docs-only / unrelated paths skip both;
+# the aggregate "CI" job still succeeds so required checks can key off it.
+
 jobs:
+  changes:
+    name: Path filter
+    runs-on: ubuntu-latest
+    outputs:
+      python: ${{ steps.flags.outputs.python }}
+      spa: ${{ steps.flags.outputs.spa }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: github.event_name != 'workflow_dispatch'
+        with:
+          filters: |
+            python:
+              - '**/*.py'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - 'tests/**'
+              - 'src/raft/**'
+              - 'install.sh'
+              - '.github/workflows/ci.yml'
+              - '.github/workflows/ci_seed_docker_images.sh'
+            spa:
+              - 'src/spa/**'
+              - 'src/raft/core/platform/share/serve/spa/**'
+              - '.github/workflows/ci.yml'
+      - id: flags
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "python=true" >> "$GITHUB_OUTPUT"
+            echo "spa=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "python=${{ steps.filter.outputs.python }}" >> "$GITHUB_OUTPUT"
+            echo "spa=${{ steps.filter.outputs.spa }}" >> "$GITHUB_OUTPUT"
+          fi
+
   spa:
     name: SPA
+    needs: [changes]
+    if: needs.changes.outputs.spa == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -34,6 +81,8 @@ jobs:
 
   meta:
     name: Meta
+    needs: [changes]
+    if: needs.changes.outputs.python == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -47,7 +96,8 @@ jobs:
 
   test:
     name: Unit+Integration (Py ${{ matrix.python-version }})
-    needs: [meta]
+    needs: [changes, meta]
+    if: needs.changes.outputs.python == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -72,7 +122,8 @@ jobs:
 
   e2e:
     name: E2E (Py 3.9)
-    needs: [test]
+    needs: [changes, test]
+    if: needs.changes.outputs.python == 'true'
     runs-on: ubuntu-latest
     environment: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork && 'e2e' || fromJSON('null') }}
     steps:
@@ -88,3 +139,47 @@ jobs:
         env:
           RAFT_E2E_REF: ${{ github.sha }}
         run: uv run pytest tests/e2e -m e2e -q --tb=short --no-cov -n0
+
+  # Always-green aggregate for branch protection when path filters skip jobs.
+  # Prefer requiring this check ("CI") over Meta / Unit+Integration / E2E / SPA
+  # by name — skipped required jobs otherwise block merges.
+  ci:
+    name: CI
+    needs: [changes, spa, meta, test, e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require success or intentional skip
+        run: |
+          set -euo pipefail
+          if [[ "${{ needs.changes.result }}" != "success" ]]; then
+            echo "FAIL Path filter: ${{ needs.changes.result }}"
+            exit 1
+          fi
+          python="${{ needs.changes.outputs.python }}"
+          spa="${{ needs.changes.outputs.spa }}"
+          echo "path filter: python=${python} spa=${spa}"
+          echo "results: spa=${{ needs.spa.result }} meta=${{ needs.meta.result }} test=${{ needs.test.result }} e2e=${{ needs.e2e.result }}"
+
+          fail=0
+          accept() {
+            local label="$1" result="$2" expect="$3"
+            if [[ "$expect" != "true" ]]; then
+              if [[ "$result" == "skipped" || "$result" == "success" ]]; then
+                echo "OK  ${label}: ${result} (not required for this change set)"
+                return
+              fi
+            fi
+            if [[ "$result" == "success" ]]; then
+              echo "OK  ${label}: ${result}"
+              return
+            fi
+            echo "FAIL ${label}: ${result} (expected success when filter=${expect})"
+            fail=1
+          }
+
+          accept SPA "${{ needs.spa.result }}" "${spa}"
+          accept Meta "${{ needs.meta.result }}" "${python}"
+          accept Unit+Integration "${{ needs.test.result }}" "${python}"
+          accept E2E "${{ needs.e2e.result }}" "${python}"
+          exit "${fail}"
