@@ -1,6 +1,9 @@
 # scripts/
 
-Small operator helpers that are **not** part of the `raft` CLI. Today that means one tool: local `Host` routing for browser checks.
+Small helpers that are **not** part of the `raft` CLI.
+
+- **`release_semver.py`** — CI helper for label-driven GitHub Releases (see [`docs/releases.md`](../docs/releases.md)).
+- **`hosts.py`** — local `Host` routing for browser checks (below).
 
 ## The problem
 

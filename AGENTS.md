@@ -150,6 +150,7 @@ Upstream files: `generated/nginx/upstreams/<app>-<port>.conf` mounted into the r
 
 ## Packaging & install pitfalls
 
+- **Release tags are the operator semver SoT** (`vX.Y.Z` GitHub Releases via PR labels `bumpMajor` / `bumpMinor` / `bumpPatch` / `noBump`). See [`docs/releases.md`](docs/releases.md). Do not bot-commit version bumps into git for that pipeline; `pyproject.toml` `version` stays a packaging placeholder until wheel-from-release (#41).
 - **`package-data`** must track `core/platform/share/…` (see `pyproject.toml`). Meta test fails if globs match nothing.
 - **`raft update`** curls `install.sh` and `uv tool install`s from GitHub. Broken package-data on `main` bricks installs.
 - Fresh-install e2e: `tests/e2e/fresh_install/` — `RAFT_REF=workspace` locally; CI sets `RAFT_E2E_REF` to the SHA.
