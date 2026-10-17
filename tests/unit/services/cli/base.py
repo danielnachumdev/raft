@@ -29,6 +29,7 @@ _DEP_TARGETS = {
     "Logs": ("raft.services.cli.commands.raft_commands",),
     "Purge": ("raft.services.cli.commands.raft_commands",),
     "SelfUpdate": ("raft.services.cli.commands.raft_commands",),
+    "ServiceActions": ("raft.services.cli.commands.raft_commands",),
     "Uninstall": ("raft.services.cli.commands.raft_commands",),
     "GitAuthManager": ("raft.services.cli.commands.auth",),
 }

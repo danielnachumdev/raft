@@ -6,6 +6,7 @@ from raft.core.core.models.stack import load_stack
 from raft.core.lifecycle.apply import AppApply
 from raft.core.platform.auth import GitAuthManager
 from raft.core.lifecycle.deploy.orchestrator import Orchestrator
+from raft.core.observe.ops.actions import ServiceActions
 from raft.core.observe.ops.doctor import Doctor
 from raft.core.observe.ops.logs import Logs
 from raft.core.observe.ops.purge import Purge
@@ -23,6 +24,7 @@ __all__ = [
     "Purge",
     "SelfUpdate",
     "Serve",
+    "ServiceActions",
     "Status",
     "Uninstall",
     "SettingsLoader",

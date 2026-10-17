@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -245,6 +245,18 @@ class TestCliDispatch(CliTestCase):
         assert self.run_main(["down"]) == 0
         self.orch.start.assert_called_once()
         self.orch.stop.assert_called_once()
+
+    def test_start_stop_dispatch(self) -> None:
+        actions = MagicMock()
+        actions.start.return_value = {"ok": True, "action": "start", "service": "app"}
+        actions.stop.return_value = {"ok": True, "action": "stop", "service": "app"}
+        with patch("raft.core.core.ui.OperatorSay.say"), self.patched_deps(
+            ServiceActions=actions
+        ):
+            assert RaftCLI()._invoke_fire(["start", "app"]) == 0
+            assert RaftCLI()._invoke_fire(["stop", "app"]) == 0
+        actions.start.assert_called_once_with("app")
+        actions.stop.assert_called_once_with("app")
 
     def test_render_dispatch(self) -> None:
         assert self.run_main(["render"]) == 0

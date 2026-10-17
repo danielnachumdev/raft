@@ -6,6 +6,7 @@ from typing import Optional, Sequence, Union
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.errors.domain import DomainErrors
+from raft.core.core.ui import OperatorSay
 from raft.core.lifecycle.apply import ApplyEnvSources
 
 from ..utils.argv import ApplyEnvOverrides
@@ -18,6 +19,7 @@ from ..utils.deps import (
     Purge,
     SelfUpdate,
     Serve,
+    ServiceActions,
     SettingsLoader,
     Status,
     Uninstall,
@@ -119,6 +121,23 @@ class RaftCLICommands:
     def down(self) -> None:
         """Stop and remove the stack."""
         Orchestrator(self._stack).stop()
+
+    def start(self, name: str) -> None:
+        """Start one Compose service (App name, gate/router/controller, or Compose id).
+
+        Same flock locks, scale-to-zero clear, and GraphEvents as serve Start.
+        """
+        result = ServiceActions(self._stack).start(name)
+        OperatorSay.say(f"Started {result['service']}.")
+
+    def stop(self, name: str) -> None:
+        """Stop one Compose service.
+
+        Apps with ``spec.scaling`` mark ``scaledToZero`` (healer skips; holding
+        page) — same as serve Stop.
+        """
+        result = ServiceActions(self._stack).stop(name)
+        OperatorSay.say(f"Stopped {result['service']}.")
 
     def render(self) -> None:
         """Generate Compose/nginx from ~/.raft/state/apps/*.yaml."""
