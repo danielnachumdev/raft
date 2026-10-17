@@ -122,16 +122,25 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
         ServiceLogsHooks.before_compose_recreate(self.stack, compose_id, self)
 
     def _pull_and_tag(self, app: App, *, pull_ref: str, pin: str) -> None:
-        result = self.sh.docker("pull", pull_ref, capture=True, check=False)
-        if result.returncode != 0:
-            detail = (result.stderr or result.stdout or "").strip()
-            CheckedCommands.raise_for_docker_pull_failure(pull_ref, detail=detail, app=app.name, repo=app.repo)
+        self._pull_if_missing(app, pull_ref)
         if pull_ref != pin:
             CheckedCommands.run_docker(
                 self.sh,
                 ("tag", pull_ref, pin),
                 action=f"tag {pull_ref} as {pin}",
             )
+
+    def _pull_if_missing(self, app: App, pull_ref: str) -> None:
+        if self.image_present(pull_ref):
+            logger.info("image %s already present; skip pull", pull_ref)
+            return
+        result = self.sh.docker("pull", pull_ref, capture=True, check=False)
+        if result.returncode == 0:
+            return
+        detail = (result.stderr or result.stdout or "").strip()
+        CheckedCommands.raise_for_docker_pull_failure(
+            pull_ref, detail=detail, app=app.name, repo=app.repo
+        )
 
     def restart_service(self, service: str) -> None:
         """Restart a running service (Compose ``restart``)."""

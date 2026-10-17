@@ -101,13 +101,15 @@ class TestDockerHealthEnrich(DockerTestCase):
                 self.docker.rebuild_service("app")
 
     def _assert_recreate_pulled_enrich(self) -> None:
-        app = AppMakers.make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
-        self.shell.docker.return_value = self.ok()
-        with self._enrich_patch("--- hub ---\nbad"):
+        app = AppMakers.make_app(
+            "demo-api", source="docker", image="ghcr.io/example/demo-api", ref="main"
+        )
+        self.shell.docker.return_value = self.ok("sha256:local\n")
+        with self._enrich_patch("--- demo-api ---\nbad"):
             self.shell.compose.return_value = self.ok(returncode=1)
-            with pytest.raises(RuntimeError, match="--- hub ---"):
+            with pytest.raises(RuntimeError, match="--- demo-api ---"):
                 self.docker.recreate_pulled_service(
-                    app, pull_ref="ghcr.io/org/hub:main"
+                    app, pull_ref="ghcr.io/example/demo-api:main"
                 )
 
     def _assert_enrich_returns_original(self) -> None:
