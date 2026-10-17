@@ -139,7 +139,7 @@ Product templates sync from `src/raft/core/platform/share/` into the data home o
 | Docker / nginx adapters, share templates | `src/raft/core/platform/` |
 | Doctor, status, logs, update | `src/raft/core/observe/` |
 | **Shared mutative capabilities** (CLI + serve) | Business rules in `core/`; serve/CLI only invoke. New capabilities: put the service under the matching core area below, keep FastAPI/Fire as adapters. |
-| Per-service start/stop/redeploy/purge | `observe/ops/actions/` (`ServiceActions`) |
+| Per-service start/stop/redeploy/purge | `observe/ops/actions/` (`ServiceActions`); CLI `raft start|stop NAME` + serve actions; redeploy/purge already on CLI |
 | Ordered firewall (CRUD / recommendations / from-inspection) | `lifecycle/firewall/` + nginx compile in `lifecycle/render/firewall/`; serve adapter `services/serve/firewall/`; CLI `services/cli/commands/firewall.py` (`raft firewall …`); SPA `src/spa/src/firewall/` |
 | Notification channel CRUD / test-send | `observe/notify/settings_write.py` + `tester.py`; serve adapter `services/serve/notifications/`; CLI `services/cli/commands/notifications.py` (`raft notifications …`); SPA `src/spa/src/notifications/` |
 | GitHub OAuth / deploy assist | `platform/github/`; serve adapter `services/serve/github/` |
