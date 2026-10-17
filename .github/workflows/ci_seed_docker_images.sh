@@ -52,7 +52,7 @@ print_ghcr_fix_cta() {
 
 Fix: GHCR CI seed pin missing or unreadable: ${src}
   1. Open Actions → "CI seed mirror" → Run workflow (use this branch or main).
-  2. Confirm packages exist under the raft repo (private GHCR).
+  2. Confirm packages exist under the raft repo (GHCR (repo-linked)).
   3. Re-run the E2E job (needs packages:read + docker login ghcr.io).
   Pin refresh docs: .github/workflows/ci_seed_mirror.yml
 

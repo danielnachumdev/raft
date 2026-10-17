@@ -1,9 +1,14 @@
-# Mirror CI E2E seed images to private GHCR under this repo.
+# Mirror CI E2E seed images to GHCR under this repo (leave anonymous ECR Public).
 #
-# Pins (private packages; GITHUB_TOKEN can pull when packages:read on E2E):
+# Pins (linked to this repo; GITHUB_TOKEN pulls with packages:read on E2E):
 #   ghcr.io/danielnachumdev/raft/ci-seed-nginx:alpine
 #   ghcr.io/danielnachumdev/raft/ci-seed-redis:7-alpine
 #   ghcr.io/danielnachumdev/raft/ci-seed-http-echo:1.0.0
+#
+# Visibility: packages linked to a *public* repository stay public on GHCR
+# (GitHub does not allow private + linked-to-public-repo). Content is already
+# public upstream (library nginx/redis + our tiny echo). Access control for
+# *writes* is still GITHUB_TOKEN / packages:write.
 #
 # Pin refresh: bump tags below + in ci_seed_docker_images.sh together, then
 # run this workflow (Actions → CI seed mirror → Run workflow). Weekly cron
@@ -79,9 +84,8 @@ jobs:
           docker build -t "${dst}" "${GITHUB_WORKSPACE}/.github/ci-seed-http-echo"
           docker push "${dst}"
 
-      # GHCR may create user packages as public even when linked to a private
-      # repo; force private so E2E relies on packages:read + docker login.
-      - name: Ensure seed packages are private
+      # Best-effort privacy: linked-to-public-repo packages cannot be private.
+      - name: Report seed package visibility
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -89,7 +93,10 @@ jobs:
           for name in ci-seed-nginx ci-seed-redis ci-seed-http-echo; do
             pkg="${GHCR_REPO}/${name}"
             enc="$(python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=""))' "${pkg}")"
-            echo "visibility private ← ${pkg}"
-            gh api --method POST "user/packages/container/${enc}/visibility" \
-              -f visibility=private
+            vis="$(gh api "user/packages/container/${enc}" -q .visibility 2>/dev/null \
+              || gh api "users/${GHCR_OWNER}/packages/container/${enc}" -q .visibility)"
+            echo "${pkg}: visibility=${vis}"
+            if [[ "${vis}" == "public" ]]; then
+              echo "::notice::${pkg} is public (expected when linked to a public repo)."
+            fi
           done
