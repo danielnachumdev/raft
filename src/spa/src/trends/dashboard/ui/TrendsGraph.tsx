@@ -1,5 +1,6 @@
 import { useMemo, type ReactNode } from "react";
 import { FlashValue } from "../../../chrome/FlashValue";
+import { ChartLoadingOverlay } from "../../chart/ChartLoadingOverlay";
 import { formatMetricValue } from "../../metricTypes";
 import { isSingleLineAvg } from "../../panel/trendsView";
 import { TrendsBody } from "../../panel/TrendsBody";
@@ -117,22 +118,26 @@ function GraphBody(props: {
   height: number;
 }) {
   const { data, view } = props;
-  if (data.busy && data.series.length === 0) {
-    return <div className="trends-graph-skeleton" role="status" aria-label="Loading graph" />;
-  }
+  const hasData = data.series.length > 0;
   return (
-    <TrendsBody
-      error={data.error}
-      series={data.series}
-      visible={view.visible}
-      metrics={view.metrics}
-      windowSec={data.windowSec}
-      rangeEndMs={data.rangeEndMs}
-      viewMode={props.config.viewMode}
-      groupMode={view.groupMode}
-      events={data.events}
-      height={props.height}
-      palette={props.palette}
-    />
+    <ChartLoadingOverlay
+      busy={data.busy}
+      hasData={hasData}
+      label={hasData ? "Updating graph" : "Loading graph"}
+    >
+      <TrendsBody
+        error={data.error}
+        series={data.series}
+        visible={view.visible}
+        metrics={view.metrics}
+        windowSec={data.windowSec}
+        rangeEndMs={data.rangeEndMs}
+        viewMode={props.config.viewMode}
+        groupMode={view.groupMode}
+        events={data.events}
+        height={props.height}
+        palette={props.palette}
+      />
+    </ChartLoadingOverlay>
   );
 }

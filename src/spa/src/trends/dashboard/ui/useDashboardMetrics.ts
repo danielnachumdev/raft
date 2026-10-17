@@ -77,7 +77,9 @@ export function useDashboardMetrics(
       setWindowSec,
     };
     const cached = peekMetrics(cacheKey);
-    seedFromCache(cached, setters);
+    // Keep prior samples on screen when the new key misses cache so graphs
+    // can show a refresh overlay instead of flashing empty.
+    if (cached) seedFromCache(cached, setters);
     setCursors({});
     setBusy(true);
     setError(null);
