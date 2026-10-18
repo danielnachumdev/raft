@@ -49,6 +49,7 @@ You keep services in their own repos. On the VPS you `apply` a manifest. raft sy
 | Operator notifications | ✅ |
 | Ordered edge firewall (rich rules, import/export) | ✅ |
 | Alert rules (metrics/control-plane → notifications) | ✅ |
+| Operator system event timeline (CLI + serve) | ✅ |
 | Firewall-derived alert signals | 📋 |
 | Deeper secrets isolation (external stores → per-App materialization) | 📋 |
 | Trends dashboards (multi-graph, browser-local; editable graphs + named dashboards) | ✅ |

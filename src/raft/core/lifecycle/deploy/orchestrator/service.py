@@ -12,6 +12,7 @@ from raft.core.platform.adapters.nginx import NginxUpstreams
 from raft.core.platform.adapters.shell import Shell
 from raft.core.core.config.settings import SettingsLoader
 from raft.core.core.models.state.graph_event_store import GraphEventStore
+from raft.core.core.models.state.ops_event_store import OpsEventStore
 from raft.core.core.models.stack import Stack
 from raft.core.core.ui import OperatorSay
 from raft.core.observe.ops.certs import CertProbe
@@ -60,6 +61,7 @@ class Orchestrator(OrchestratorDeploy):
                     CertProbe(self.stack).require_origin()
                     self.docker.reload_gate_nginx()
                     stamp.write(disk)
+                    self._record_gate_reload()
                     OperatorSay.say(
                         "reloaded gate nginx (edge TLS/http/stream config)", style="info"
                     )
@@ -72,6 +74,10 @@ class Orchestrator(OrchestratorDeploy):
         """Gate process just started/recreated with current on-disk fragments."""
         stamp = GateNginxStamp(self.stack.root)
         stamp.write(stamp.fingerprint())
+
+    def _record_gate_reload(self) -> None:
+        """Append ops journal row for policy-only gate nginx reload."""
+        OpsEventStore(self.stack.root).record_gate_reload(reason="render")
 
     def _wait_app_ready(self, app, *, timeout: Optional[float] = None) -> None:
         AppReadyWait(self).run(app, timeout=timeout)
@@ -208,5 +214,6 @@ class Orchestrator(OrchestratorDeploy):
                 app="router",
                 ref="-",
                 label="Redeploy router",
+                action="redeploy",
             )
             OperatorSay.say("router redeployed", style="ok")

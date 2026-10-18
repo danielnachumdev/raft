@@ -4,6 +4,7 @@ from typing import Any, Dict, Mapping, Optional
 
 from raft.core.core.models.firewall import FirewallDocument
 from raft.core.core.models.stack import Stack
+from raft.core.core.models.state.ops_event_store import OpsEventStore
 from raft.core.lifecycle.deploy.orchestrator import Orchestrator
 from raft.core.lifecycle.render.firewall import FirewallEffective
 from .eligibility import FirewallEligibility
@@ -34,6 +35,7 @@ class FirewallService:
     def put(self, body: Mapping[str, Any]) -> Dict[str, Any]:
         result = self._writer.put(body)
         self._apply()
+        self._record_ops_event(result)
         return {**result, "applied": True}
 
     def export_document(self) -> Dict[str, Any]:
@@ -81,3 +83,8 @@ class FirewallService:
 
     def _apply(self) -> None:
         self._orch.render()
+
+    def _record_ops_event(self, result: Mapping[str, Any]) -> None:
+        rules = result.get("rules")
+        count = len(rules) if isinstance(rules, list) else 0
+        OpsEventStore(self._stack.root).record_firewall_apply(rule_count=count)

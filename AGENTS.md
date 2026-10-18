@@ -96,6 +96,7 @@ Align with the README table; detail for agents:
 | Trends dashboards (multi-graph) | **Shipped** | [#238](https://github.com/danielnachumdev/raft/issues/238) supersedes #202 named views (migrated on load). Shared range + one fetch per plane fanned out to `TrendsGraph`s; browser-local (`raft-serve-trends-dashboards`); `src/spa/src/trends/dashboard/`; [`docs/serve-trends.md`](docs/serve-trends.md) |
 | Per-service Trends (default graphs) | **Shipped** | Service inspection uses the same multi-graph UX, pinned to that service; browser-local `raft-serve-service-trends`; `src/spa/src/trends/service/` |
 | Alert rules engine (metrics/control-plane → notifications) | **Shipped** | [#236](https://github.com/danielnachumdev/raft/issues/236); dual-plane CLI+serve lock [#264](https://github.com/danielnachumdev/raft/issues/264); [`docs/serve-alerts.md`](docs/serve-alerts.md); `AlertRulesService` / engine under `observe/alerts/` |
+| Operator system event timeline | **Shipped** | [#267](https://github.com/danielnachumdev/raft/issues/267); `state/events/ops.jsonl` dual-write with GraphEvents; `raft events` + serve `/events`; [`docs/serve-events.md`](docs/serve-events.md) |
 | Firewall-derived alert signals (`edge.denies`) | **Planned** | Observe gate outcomes only; no middle hop (#207) |
 | Always-on Compose dashboard service | **Planned** | [#36](https://github.com/danielnachumdev/raft/issues/36) — not `raft serve` replacement without design |
 | Automate SPA bake in CD | **Shipped** | [#41](https://github.com/danielnachumdev/raft/issues/41) — Release wheel + install.sh prefers `.whl`; SPA assets not committed |
@@ -120,6 +121,8 @@ Align with the README table; detail for agents:
 | `state/firewall/rules.yaml` | Ordered firewall document (#211); always drives render |
 | `state/firewall/dismissed-recommendations.json` | Dismissed baseline firewall suggestions |
 | `state/scaling/`, `state/metrics/`, `state/acme/`, `state/serve/` | Feature state |
+| `state/events/graph.jsonl` | Trends GraphEvents (chart markers) |
+| `state/events/ops.jsonl` | Operator system event timeline (#267) |
 | `state/alerts/rules.yaml`, `state/alerts/runtime.json` | Alert rules (desired) + evaluation runtime |
 | `certs/`, `secrets/`, `apps/`, `deploy/`, `logs/` | TLS material, env files, checkouts, pins, host log |
 
@@ -145,8 +148,9 @@ Product templates sync from `src/raft/core/platform/share/` into the data home o
 | GitHub OAuth / deploy assist | `platform/github/` (`GithubAssistService`); serve `services/serve/github/`; CLI `services/cli/commands/github.py` (`raft github …`) |
 | Dashboard UI | `src/spa/` only (Release bakes; local `npm run build` for editable/`raft serve`) |
 | Alert rules | `core/observe/alerts/` + `services/serve/alerts/` + `services/controller/jobs/alerts/` + SPA `src/spa/src/alerts/` |
+| Ops event timeline | `core/models/state/ops_event*` + `observe/ops/events/`; dual-write from `GraphEventStore`; serve `services/serve/events/`; CLI `services/cli/commands/events.py` (`raft events`); SPA `src/spa/src/events/` |
 | Notification strategies | `observe/notify/strategies/` + `catalogs.py`; SPA `src/spa/src/notifications/` |
-| Operator docs for serve features | `docs/serve-*.md` (notifications: `docs/serve-notifications.md`; alerts: `docs/serve-alerts.md`) |
+| Operator docs for serve features | `docs/serve-*.md` (notifications / alerts / events: `docs/serve-events.md`) |
 
 Upstream files: `generated/nginx/upstreams/<app>-<port>.conf` mounted into the router.
 

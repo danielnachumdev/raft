@@ -6,6 +6,7 @@ from raft.core.platform.adapters.docker.prune import DockerPrune
 from raft.core.platform.adapters.shell import Shell
 from raft.core.platform.locking import StackLock
 from raft.core.core.models.stack import Stack
+from raft.core.core.models.state.ops_event_store import OpsEventStore
 from raft.core.core.ui import OperatorSay
 from ..status.formatters import StatusFormatters
 from .result import PurgeResult
@@ -44,10 +45,19 @@ class Purge:
         image_bytes = self._prune.unused_images()
         builder_bytes = self._prune.build_cache()
         total = image_bytes + builder_bytes
-        return PurgeResult(
+        result = PurgeResult(
             reclaimed_bytes=total,
             image_bytes=image_bytes,
             builder_bytes=builder_bytes,
+        )
+        self._record_ops_event(result)
+        return result
+
+    def _record_ops_event(self, result: PurgeResult) -> None:
+        OpsEventStore(self.stack.root).record_purge(
+            reclaimed_bytes=result.reclaimed_bytes,
+            image_bytes=result.image_bytes,
+            builder_bytes=result.builder_bytes,
         )
 
     @staticmethod
