@@ -10,6 +10,7 @@ export {
   fetchStatus,
   serviceLogsPath,
   servicePath,
+  versionChromeText,
   type RaftVersion,
   type RegistryIssue,
   type StatusPayload,

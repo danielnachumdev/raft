@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import unquote, urlparse
 
+from .stamp import InstallStamp
+
 
 class InstalledVersion:
     """Format ``raft <semver> [(source)]`` for operators."""
@@ -24,17 +26,42 @@ class InstalledVersion:
         return self._compose(pkg, self._detail_from_direct_url_file(dist_info))
 
     def package_version(self) -> str:
-        """Packaging version from dist metadata, else ``raft.__version__``."""
+        """Packaging version from dist metadata, install stamp, or ``__version__``."""
         try:
             return version("raft")
         except PackageNotFoundError:
-            from raft import __version__
+            return self._package_version_fallback()
 
-            return __version__
+    def chrome_label(self) -> str:
+        """Short UI label: git ``rev@sha`` when that is the install SoT, else semver."""
+        detail = self.source_detail()
+        if detail and detail.startswith("git "):
+            return detail[4:]
+        return self.package_version()
+
+    def write_install_stamp(self, package_dir: Path) -> None:
+        """Embed this process's install identity into a copied package tree."""
+        InstallStamp().write(
+            package_dir,
+            package=self.package_version(),
+            detail=self.source_detail(),
+        )
 
     def source_detail(self) -> Optional[str]:
-        """Short install source from ``direct_url.json``, if present."""
-        return self._detail_from_direct_url_text(self._direct_url_text())
+        """Short install source from ``direct_url.json`` or image install stamp."""
+        from_url = self._detail_from_direct_url_text(self._direct_url_text())
+        if from_url is not None:
+            return from_url
+        stamped = InstallStamp().read()
+        return stamped.get("detail") if stamped else None
+
+    def _package_version_fallback(self) -> str:
+        stamped = InstallStamp().read()
+        if stamped:
+            return stamped["package"]
+        from raft import __version__
+
+        return __version__
 
     @staticmethod
     def _compose(pkg: str, detail: Optional[str]) -> str:

@@ -48,9 +48,16 @@ class TestServeAppFactory(RaftTestCase):
         ), patch(
             "raft.core.observe.read.status.InstalledVersion.line",
             return_value="raft 0.11.0",
+        ), patch(
+            "raft.core.observe.read.status.InstalledVersion.chrome_label",
+            return_value="0.11.0",
         ):
             data = client.get("/api/status").json()
-        assert data["version"] == {"package": "0.11.0", "line": "raft 0.11.0"}
+        assert data["version"] == {
+            "package": "0.11.0",
+            "line": "raft 0.11.0",
+            "label": "0.11.0",
+        }
 
     def test_api_service_returns_detail(self) -> None:
         client, status = serve_fx.client_and_status(

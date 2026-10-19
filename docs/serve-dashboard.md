@@ -149,6 +149,15 @@ service and clears `enabled`.
 When enabled, `raft doctor` lists `dashboard` under the `raft` group with the
 other control-plane members (gate / router / controller).
 
+## Version badge
+
+The SPA top bar shows the same install identity as `raft version` on the host.
+Template sync stamps that identity into `~/.raft/dashboard/raft/` (and the
+controller build context) before Compose builds the image, because the
+container loads raft via `PYTHONPATH` without wheel dist-info. After
+`raft update`, re-enable or recreate the dashboard so the image rebuilds with
+the new stamp.
+
 ## Relationship to `raft serve`
 
 `raft serve` remains a foreground localhost helper (useful for development).

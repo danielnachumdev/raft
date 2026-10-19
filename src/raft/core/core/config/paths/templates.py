@@ -59,7 +59,15 @@ class ProductTemplateSync:
                     "__pycache__", "*.pyc", "*.pyo", ".pytest_cache"
                 ),
             )
+            self._stamp_installed_version(dest)
         self._sync_build_pyproject(home, package_root, build_dir)
+
+    @staticmethod
+    def _stamp_installed_version(package_dir: Path) -> None:
+        """Record host ``raft version`` so PYTHONPATH images match the CLI."""
+        from raft.core.observe.ops.version import InstalledVersion
+
+        InstalledVersion().write_install_stamp(package_dir)
 
     def _sync_build_pyproject(
         self, home: Path, package_root: Path, build_dir: str

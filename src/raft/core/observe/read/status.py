@@ -61,6 +61,7 @@ class StatusRead:
         return {
             "package": installed.package_version(),
             "line": installed.line(),
+            "label": installed.chrome_label(),
         }
 
     def service_detail(self, name: str, *, refresh_apps: bool = False) -> Optional[Dict[str, Any]]:

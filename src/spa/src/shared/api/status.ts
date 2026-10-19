@@ -26,7 +26,18 @@ export type RaftVersion = {
   package: string;
   /** Operator line matching ``raft --version`` (e.g. ``raft 0.11.0 (editable …)``). */
   line: string;
+  /** Short chrome label: semver for wheels, ``rev@sha`` for git installs. */
+  label?: string;
 };
+
+/** Top-bar version text (prefer server ``label``, else packaging semver). */
+export function versionChromeText(version: RaftVersion): string {
+  const label = version.label?.trim();
+  if (label) {
+    return label;
+  }
+  return version.package;
+}
 
 export type StatusPayload = {
   host: { hostname?: string; [key: string]: unknown };
