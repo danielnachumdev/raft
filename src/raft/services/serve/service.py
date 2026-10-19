@@ -1,6 +1,6 @@
 """Blocking localhost HTTP server for ``raft serve``."""
 
-
+import os
 from typing import Optional
 
 import uvicorn
@@ -12,7 +12,9 @@ from .http import ServeAppFactory, ServeInstructions
 from .runtime import ServeRuntime
 
 DEFAULT_SERVE_PORT = 8787
-_BIND_HOST = "127.0.0.1"
+# Host CLI defaults to loopback. Compose dashboard sets RAFT_SERVE_BIND=0.0.0.0
+# so docker-proxy can reach the process; host publish stays 127.0.0.1:port.
+_DEFAULT_BIND_HOST = "127.0.0.1"
 
 
 class Serve:
@@ -31,9 +33,16 @@ class Serve:
             app = ServeAppFactory(
                 self.stack, status=self._status, port=port
             ).create()
-            uvicorn.run(app, host=_BIND_HOST, port=port, log_level="warning")
+            uvicorn.run(
+                app, host=self._bind_host(), port=port, log_level="warning"
+            )
         finally:
             lease.release()
+
+    @staticmethod
+    def _bind_host() -> str:
+        raw = (os.environ.get("RAFT_SERVE_BIND") or "").strip()
+        return raw or _DEFAULT_BIND_HOST
 
     def _always_on_urls(self) -> dict:
         try:

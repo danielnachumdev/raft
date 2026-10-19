@@ -2,6 +2,8 @@
 
 from unittest.mock import patch
 
+import pytest
+
 from raft.services.serve.service import DEFAULT_SERVE_PORT, Serve
 
 from tests.unit.base import RaftTestCase, StackMakers
@@ -18,3 +20,11 @@ class TestServeRun(RaftTestCase):
         args, kwargs = run.call_args
         assert kwargs["host"] == "127.0.0.1" and kwargs["port"] == 8787
         assert args[0] is not None
+
+    def test_run_honors_raft_serve_bind_env(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("RAFT_SERVE_BIND", "0.0.0.0")
+        with patch("raft.services.serve.service.uvicorn.run") as run:
+            Serve(StackMakers.make_stack(self.tmp_path)).run(port=8799)
+        assert run.call_args.kwargs["host"] == "0.0.0.0"
