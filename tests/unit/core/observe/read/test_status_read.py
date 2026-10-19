@@ -63,11 +63,18 @@ class TestStatusRead(RaftTestCase):
         ), patch(
             "raft.core.observe.read.status.InstalledVersion.line",
             return_value="raft 0.11.0",
+        ), patch(
+            "raft.core.observe.read.status.InstalledVersion.chrome_label",
+            return_value="0.11.0",
         ):
             payload = StatusRead(
                 StackMakers.make_stack(self.tmp_path), status=status
             ).api_payload()
-        assert payload["version"] == {"package": "0.11.0", "line": "raft 0.11.0"}
+        assert payload["version"] == {
+            "package": "0.11.0",
+            "line": "raft 0.11.0",
+            "label": "0.11.0",
+        }
 
     def test_snapshot_dict_omits_serve_version(self) -> None:
         snap = StatusSnapshot(

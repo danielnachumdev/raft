@@ -24,6 +24,26 @@ class TestProductTemplateSync(RaftTestCase):
         assert not marker.is_file()
         assert (home / "controller" / "raft" / "__init__.py").is_file()
 
+    def test_sync_stamps_host_version_into_python_builds(self) -> None:
+        from unittest.mock import patch
+
+        home = self.tmp_path / "home"
+        ensure_raft_home(home)
+        with patch(
+            "raft.core.observe.ops.version.InstalledVersion.package_version",
+            return_value="0.12.7",
+        ), patch(
+            "raft.core.observe.ops.version.InstalledVersion.source_detail",
+            return_value="wheel raft-0.12.7-py3-none-any.whl",
+        ):
+            ProductTemplateSync().sync(home, find_package_root())
+        for build in ("controller", "dashboard"):
+            stamp = home / build / "raft" / "_install_stamp.json"
+            assert stamp.is_file(), build
+            text = stamp.read_text(encoding="utf-8")
+            assert '"package": "0.12.7"' in text
+            assert "raft-0.12.7-py3-none-any.whl" in text
+
     def test_find_package_root_bundled(self) -> None:
         root = find_package_root()
         assert (root / "compose.yaml").is_file()

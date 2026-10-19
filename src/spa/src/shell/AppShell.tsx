@@ -1,4 +1,5 @@
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { versionChromeText } from "../shared/api/status";
 import { LogoutButton } from "./LogoutButton";
 import { MobileNav } from "./MobileNav";
 import { matchesNavExtra, TOPBAR_NAV } from "./navItems";
@@ -46,7 +47,7 @@ export function AppShell() {
                 id="raft-version"
                 title={version.line}
               >
-                v{version.package}
+                v{versionChromeText(version)}
               </span>
             ) : null}
             <LogoutButton className="topbar-logout-desktop" />
