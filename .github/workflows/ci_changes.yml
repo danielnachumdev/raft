@@ -15,11 +15,13 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   changes:
     name: Path filter
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       python: ${{ steps.flags.outputs.python }}
       spa: ${{ steps.flags.outputs.spa }}
@@ -36,6 +38,7 @@ jobs:
               - 'uv.lock'
               - 'tests/**'
               - 'src/raft/**'
+              - 'scripts/**'
               - 'install.sh'
               - '.github/workflows/ci.yml'
               - '.github/workflows/ci_changes.yml'
@@ -43,7 +46,6 @@ jobs:
               - '.github/workflows/ci_unit.yml'
               - '.github/workflows/ci_e2e.yml'
               - '.github/workflows/ci_seed_docker_images.sh'
-              - '.github/workflows/ci_seed_mirror.yml'
             spa:
               - 'src/spa/**'
               - '.github/workflows/ci.yml'

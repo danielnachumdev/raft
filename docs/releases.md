@@ -17,7 +17,7 @@ Every PR into `main` must carry **exactly one** of:
 - **Multiple labels:** fail closed with a clear error.
 - **Base version:** latest GitHub Release tag; if none exist yet, treat as `0.0.0`.
 
-Logic lives in [`scripts/release_semver.py`](../scripts/release_semver.py); workflow: [`.github/workflows/release.yml`](../.github/workflows/release.yml). Dry-run via **Actions → Release → Run workflow**.
+Logic lives in [`scripts/release_semver.py`](../scripts/release_semver.py); workflow: [`.github/workflows/release.yml`](../.github/workflows/release.yml). Dry-run via **Actions → Release → Run workflow**. Label checks cancel superseded runs for the same PR; merge **publish** does not (`cancel-in-progress` is off for `closed`) so a late label event cannot kill SPA bake / wheel attach.
 
 ## Release bake (SPA + wheel)
 

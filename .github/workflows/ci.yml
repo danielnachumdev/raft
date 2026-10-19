@@ -17,11 +17,15 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # PR number or branch ref — never commit SHA (SHA-keyed groups cannot cancel
+  # superseded runs; that burned parallel CI minutes elsewhere).
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
+  # dorny/paths-filter lists PR files via the API on pull_request events.
+  pull-requests: read
 
 # Path filters (dorny/paths-filter in ci_changes.yml):
 #   python — Meta, Unit+Integration, E2E. Any Python source, packaging/lockfile,
@@ -31,6 +35,7 @@ permissions:
 #            orchestrator CI workflows (packaged share/serve/spa/ is gitignored).
 # workflow_dispatch forces both sides on. Docs-only / unrelated paths skip both;
 # the aggregate "CI" job still succeeds so required checks can key off it.
+# Do not add workflow-level `paths:` here — skipped required checks would block merges.
 
 jobs:
   changes:
@@ -73,6 +78,7 @@ jobs:
     needs: [changes, spa, meta, test, e2e]
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Require success or intentional skip
         run: |
