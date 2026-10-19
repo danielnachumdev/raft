@@ -22,15 +22,6 @@
   flex: 0 0 auto;
 }
 
-.logs-filter-op select {
-  font: inherit;
-  color: var(--ink);
-  border: 1px solid var(--line);
-  background: var(--input);
-  border-radius: 0.35rem;
-  padding: 0.35rem 0.55rem;
-}
-
 .logs-filter-values {
   display: flex;
   flex-direction: column;
@@ -48,32 +39,11 @@
 .logs-filter-value-row input {
   flex: 1 1 auto;
   min-width: 0;
-  font: inherit;
-  color: var(--ink);
-  border: 1px solid var(--line);
-  background: var(--input);
-  border-radius: 0.35rem;
   padding: 0.35rem 0.55rem;
 }
 
-.logs-filter-add,
-.logs-filter-remove {
-  font: inherit;
-  font-size: 0.82rem;
-  color: var(--muted);
-  border: 1px solid var(--line);
-  background: var(--panel);
-  border-radius: 0.35rem;
-  padding: 0.3rem 0.55rem;
-  cursor: pointer;
-}
-
-.logs-filter-add:hover,
-.logs-filter-remove:hover,
-.logs-filter-add:focus-visible,
-.logs-filter-remove:focus-visible {
-  color: var(--ink);
-  border-color: var(--ink);
+.logs-filter-add {
+  align-self: flex-start;
 }
 
 .logs-match-count {

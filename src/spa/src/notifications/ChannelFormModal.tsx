@@ -101,7 +101,7 @@ export function ChannelFormModal(props: Props) {
         className="channel-form"
         onSubmit={(event) => void handleSubmit(event)}
       >
-        <label className="deploy-label">
+        <label className="field">
           Id
           <input
             id="channel-id"
@@ -113,7 +113,7 @@ export function ChannelFormModal(props: Props) {
             required
           />
         </label>
-        <label className="deploy-label">
+        <label className="field">
           Type
           {typeLocked ? (
             <input id="channel-type" value={type} disabled readOnly />
@@ -156,7 +156,7 @@ export function ChannelFormModal(props: Props) {
             }
           />
         ) : (
-          <label className="deploy-label">
+          <label className="field">
             Settings (JSON)
             <textarea
               id="channel-settings"

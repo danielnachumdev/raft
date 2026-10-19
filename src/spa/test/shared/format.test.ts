@@ -5,6 +5,7 @@ import {
   formatCount,
   formatDuration,
   formatPercent,
+  relativeTime,
 } from "../../src/shared/format.ts";
 
 describe("formatBytes", () => {
@@ -48,5 +49,20 @@ describe("formatPercent / formatCount", () => {
   it("renders missing values as a dash", () => {
     assert.equal(formatPercent(null), "-");
     assert.equal(formatCount(undefined), "-");
+  });
+});
+
+describe("relativeTime", () => {
+  const now = Date.parse("2026-10-19T12:00:00Z");
+  it("buckets seconds, minutes, hours, and days", () => {
+    assert.equal(relativeTime("2026-10-19T11:59:58Z", now), "just now");
+    assert.equal(relativeTime("2026-10-19T11:59:18Z", now), "42s ago");
+    assert.equal(relativeTime("2026-10-19T11:55:00Z", now), "5m ago");
+    assert.equal(relativeTime("2026-10-19T09:00:00Z", now), "3h ago");
+    assert.equal(relativeTime("2026-10-17T12:00:00Z", now), "2d ago");
+  });
+
+  it("passes through unparseable input", () => {
+    assert.equal(relativeTime("soon", now), "soon");
   });
 });

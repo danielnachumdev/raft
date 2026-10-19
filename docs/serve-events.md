@@ -64,7 +64,7 @@ use `demo-api`, `demo-api-cpu-high`, `ops-webhook`, `192.0.2.0/24`.
 
 | Plane | Entry |
 |-------|--------|
-| Serve UI | **Events** nav → `/events` (hours / kind / service filters) |
+| Serve UI | **Events** nav → `/events`: day-grouped timeline, toned kind chips, service links; window / kind / service filters; quiet 15s refresh while the tab is visible |
 | Serve API | `GET /api/events?hours=24&service=demo-api&kind=alert.fired` |
 | CLI | `raft events --hours=6 --service=demo-api` / `--json` |
 

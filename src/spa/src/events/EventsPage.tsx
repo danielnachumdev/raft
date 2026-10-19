@@ -1,161 +1,139 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { LiveIndicator } from "../chrome/LiveIndicator";
+import type { StatusPayload } from "../shared/api/index.ts";
+import { peekStatus, refreshStatus } from "../shared/dashboardCache";
 import { PageHeader } from "../shell/PageHeader";
-import {
-  fetchOpsEvents,
-  type OpsEventRow,
-  type OpsEventsPayload,
-} from "./eventsApi";
+import { bindStatusPolling } from "../shell/statusPolling";
+import { fetchOpsEvents, type OpsEventsPayload } from "./eventsApi";
+import { EventsFilters } from "./EventsFilters";
+import { DEFAULT_EVENTS_QUERY, type EventsQuery } from "./eventsView";
+import { EventsTimeline } from "./EventsTimeline";
 import "./EventsPage.css";
 
-const HOUR_OPTIONS = [1, 6, 24, 72, 168] as const;
+const EVENTS_POLL_MS = 15_000;
 
-/** Read-only chronological timeline over ``state/events/ops.jsonl``. */
+/** Chronological timeline over ``state/events/ops.jsonl``; quiet poll while visible. */
 export function EventsPage() {
-  const [hours, setHours] = useState(24);
-  const [kind, setKind] = useState("");
-  const [service, setService] = useState("");
+  const [query, setQuery] = useState<EventsQuery>(DEFAULT_EVENTS_QUERY);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [payload, setPayload] = useState<OpsEventsPayload | null>(null);
+  const [live, setLive] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  const services = useKnownServices();
+  const queryRef = useRef(query);
 
-  const load = useCallback(async () => {
-    setBusy(true);
-    setError(null);
+  const load = useCallback(async (opts?: { quiet?: boolean }) => {
+    if (!opts?.quiet) setBusy(true);
     try {
-      const next = await fetchOpsEvents({
-        hours,
-        kind: kind.trim() || undefined,
-        service: service.trim() || undefined,
-      });
-      setPayload(next);
+      const q = queryRef.current;
+      setPayload(
+        await fetchOpsEvents({
+          hours: q.hours,
+          kind: q.kind || undefined,
+          service: q.service || undefined,
+        }),
+      );
+      setError(null);
     } catch (err) {
+      if (!opts?.quiet) setPayload(null);
       setError(err instanceof Error ? err.message : "Failed to load events");
-      setPayload(null);
     } finally {
+      setNow(Date.now());
       setBusy(false);
     }
-  }, [hours, kind, service]);
+  }, []);
 
   useEffect(() => {
-    void load();
+    void load({ quiet: true });
   }, [load]);
 
+  useEffect(
+    () => bindStatusPolling(() => void load({ quiet: true }), setLive, EVENTS_POLL_MS),
+    [load],
+  );
+
   const events = payload?.events ?? [];
+  const applyQuery = (next: EventsQuery) => {
+    queryRef.current = next;
+    setQuery(next);
+    void load();
+  };
 
   return (
     <div className="events-page">
       <PageHeader
         title="Events"
-        subtitle="Host activity from apply, scale, purge, firewall, and alerts."
+        subtitle="Host activity from deploys, scaling, service actions, the firewall, and alerts."
+        meta={<LiveIndicator isLive={live} label={live ? "Live" : "Paused · tab hidden"} />}
         actions={
           <button
             type="button"
-            className="refresh"
+            className={busy ? "btn is-loading" : "btn"}
             id="events-refresh"
             onClick={() => void load()}
             disabled={busy}
+            aria-busy={busy}
           >
+            {busy ? <span className="spinner refresh-spinner" aria-hidden="true" /> : null}
             Refresh
           </button>
         }
       />
-      <form
-        className="events-filters"
-        id="events-filters"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void load();
-        }}
-      >
-        <label>
-          Hours
-          <select
-            id="events-hours"
-            value={hours}
-            onChange={(e) => setHours(Number(e.target.value))}
-          >
-            {HOUR_OPTIONS.map((h) => (
-              <option key={h} value={h}>
-                {h === 168 ? "7 days" : `${h}h`}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Kind
-          <input
-            id="events-kind"
-            type="text"
-            placeholder="deploy.apply"
-            value={kind}
-            onChange={(e) => setKind(e.target.value)}
-            list="events-kind-suggestions"
-          />
-          <datalist id="events-kind-suggestions">
-            <option value="deploy.apply" />
-            <option value="deploy.redeploy" />
-            <option value="scale.wake" />
-            <option value="scale.idle_stop" />
-            <option value="stack.purge" />
-            <option value="firewall.apply" />
-            <option value="gate.reload" />
-            <option value="alert.fired" />
-            <option value="alert.resolved" />
-          </datalist>
-        </label>
-        <label>
-          Service
-          <input
-            id="events-service"
-            type="text"
-            placeholder="demo-api"
-            value={service}
-            onChange={(e) => setService(e.target.value)}
-          />
-        </label>
-        <button type="submit" className="btn-primary" id="events-apply-filters">
-          Apply
-        </button>
-      </form>
-      {error ? (
-        <p className="error" id="events-error" role="alert">
-          {error}
-        </p>
-      ) : null}
-      {busy && !payload ? <p className="muted">Loading…</p> : null}
-      {!busy && !error && events.length === 0 ? (
-        <p className="muted" id="events-empty">
-          No events in this window.
-        </p>
-      ) : null}
-      {events.length > 0 ? (
-        <ol className="events-timeline" id="events-timeline">
-          {events.map((row) => (
-            <EventRow key={row.id ?? `${row.ts}-${row.kind}`} row={row} />
-          ))}
-        </ol>
-      ) : null}
+      <section className="panel" id="events-panel">
+        <div className="panel-head">
+          <h2>
+            Timeline
+            {payload ? <span className="panel-count">{events.length}</span> : null}
+          </h2>
+        </div>
+        <EventsFilters query={query} services={services.names} onChange={applyQuery} />
+        {error ? (
+          <p className="callout callout-bad error" id="events-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+        {busy && !payload ? (
+          <div className="loading" role="status">
+            <span className="spinner" aria-hidden="true" />
+            <p>Loading events…</p>
+          </div>
+        ) : null}
+        {payload && events.length === 0 ? <EventsEmpty filtered={query.kind !== "" || query.service !== ""} /> : null}
+        {events.length > 0 ? (
+          <EventsTimeline rows={events} now={now} knownServices={services.ids} />
+        ) : null}
+      </section>
     </div>
   );
 }
 
-function EventRow({ row }: { row: OpsEventRow }) {
+function EventsEmpty(props: { filtered: boolean }) {
   return (
-    <li className="events-row">
-      <time className="events-ts" dateTime={row.ts}>
-        {formatTs(row.ts)}
-      </time>
-      <span className="events-kind">{row.kind}</span>
-      <span className="events-service muted">{row.service || "—"}</span>
-      <span className="events-summary">{row.summary}</span>
-    </li>
+    <div className="empty-state" id="events-empty">
+      <p>
+        <strong>No events in this window.</strong>
+      </p>
+      <p className="muted">
+        {props.filtered
+          ? "Try a wider window or clear the filters."
+          : "Deploys, scaling, service actions, firewall saves, and alerts appear here as they happen."}
+      </p>
+    </div>
   );
 }
 
-function formatTs(value: string): string {
-  try {
-    return new Date(value).toLocaleString();
-  } catch {
-    return value;
-  }
+/** Compose ids known to /api/status (for links + service suggestions). */
+function useKnownServices(): { ids: Set<string>; names: string[] } {
+  const [status, setStatus] = useState<StatusPayload | null>(() => peekStatus());
+  useEffect(() => {
+    void refreshStatus()
+      .then(setStatus)
+      .catch(() => undefined);
+  }, []);
+  return useMemo(() => {
+    const rows = status ? [...status.apps, ...status.control_plane] : [];
+    const names = rows.map((r) => r.service).sort();
+    return { ids: new Set(names), names };
+  }, [status]);
 }

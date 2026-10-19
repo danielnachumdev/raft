@@ -17,7 +17,6 @@
   flex-wrap: wrap;
 }
 
-.http-requests-live,
 .http-requests-limit {
   display: inline-flex;
   align-items: center;
@@ -136,15 +135,13 @@
   background: color-mix(in srgb, var(--idle-bg) 55%, var(--panel));
 }
 
-.http-requests-path code,
-.http-requests-ua {
+.http-requests-path code {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.http-requests-table tbody tr.is-expanded .http-requests-path code,
-.http-requests-table tbody tr.is-expanded .http-requests-ua {
+.http-requests-table tbody tr.is-expanded .http-requests-path code {
   overflow: visible;
   text-overflow: unset;
   white-space: normal;
@@ -197,25 +194,37 @@
   gap: 0.35rem;
 }
 
-.http-requests-fw-btn {
-  margin: 0;
-  padding: 0.2rem 0.45rem;
-  border: 1px solid var(--line);
-  border-radius: 0.3rem;
+.http-requests-table .btn-sm {
+  min-height: 1.6rem;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+/* Keep row actions reachable while the wide table scrolls horizontally. */
+.http-requests-table :is(th, td):last-child {
+  position: sticky;
+  right: 0;
   background: var(--panel);
-  color: var(--ink);
-  font: inherit;
-  font-size: 0.72rem;
-  cursor: pointer;
-  white-space: nowrap;
+  box-shadow: inset 1px 0 0 var(--line);
 }
 
-.http-requests-fw-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+.http-requests-table th:last-child {
+  z-index: 2;
 }
 
-.http-requests-fw-btn.danger:hover {
-  border-color: var(--danger);
-  color: var(--danger);
+.http-requests-table tbody tr:hover td:last-child {
+  background: var(--row-hover);
+}
+
+.http-requests-table tbody tr.is-expanded td:last-child {
+  background: color-mix(in srgb, var(--idle-bg) 55%, var(--panel));
+}
+
+.http-requests-time {
+  font-variant-numeric: tabular-nums;
+}
+
+.http-requests-live {
+  font-size: 0.85rem;
+  color: var(--muted);
 }

@@ -1,0 +1,120 @@
+/* Zero-specificity defaults so every native control matches the theme. */
+:where(
+    input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"]),
+    select,
+    textarea
+  ) {
+  font: inherit;
+  color: var(--ink);
+  background: var(--input);
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  padding: 0.4rem 0.55rem;
+  min-width: 0;
+  transition: border-color 120ms ease;
+}
+
+:where(input, select, textarea):hover:not(:disabled) {
+  border-color: var(--tree-guide);
+}
+
+:where(input, select, textarea):focus {
+  border-color: var(--accent);
+}
+
+:where(input, select, textarea):disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+:where(input, textarea)::placeholder {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+:where(textarea) {
+  resize: vertical;
+  line-height: 1.4;
+}
+
+:where(select) {
+  cursor: pointer;
+}
+
+:where(input[type="checkbox"], input[type="radio"]) {
+  accent-color: var(--accent);
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Stacked label + control. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.75rem 0;
+  font-size: 0.9rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.field > :is(input, select, textarea) {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Compact caps label used in toolbars (Trends, Events, HTTP requests). */
+.field-caps,
+.trends-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+:is(.field-caps, .trends-field) :is(select, input),
+.trends-services-search {
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.92rem;
+  padding: 0.35rem 0.55rem;
+  width: 100%;
+}
+
+.trends-field :is(select, input):disabled,
+.trends-services-search:disabled {
+  cursor: wait;
+}
+
+/* Inline checkbox + text. */
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.form-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0 1rem;
+}
+
+.form-error {
+  margin: 0.5rem 0 0;
+  color: var(--danger);
+  font-size: 0.9rem;
+}

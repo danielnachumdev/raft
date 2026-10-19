@@ -11,6 +11,7 @@ import {
 import {
   formatLatencyMs,
   formatRequestTime,
+  formatRequestTimeFull,
   statusToneForCode,
 } from "../../src/service/httpRequests/statusClass.ts";
 
@@ -27,6 +28,13 @@ describe("HTTP request inspection helpers", () => {
     assert.equal(formatLatencyMs(1.2), "1.2 ms");
     assert.equal(formatLatencyMs(42.6), "43 ms");
     assert.equal(formatRequestTime(null), "—");
+    assert.equal(formatRequestTime("later"), "later");
+    const now = Date.parse("2026-10-19T12:00:00Z");
+    assert.match(formatRequestTime("2026-10-19T11:59:30Z", now), /\d{2}.\d{2}.\d{2}/);
+    assert.notEqual(formatRequestTime("2026-10-10T11:59:30Z", now), formatRequestTime("2026-10-19T11:59:30Z", now));
+    assert.equal(formatRequestTimeFull(null), "");
+    assert.equal(formatRequestTimeFull("later"), "later");
+    assert.ok(formatRequestTimeFull("2026-10-19T11:59:30Z").length > 0);
   });
 });
 

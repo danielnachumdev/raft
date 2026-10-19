@@ -109,15 +109,15 @@ export function InspectionFirewallActions(props: Props) {
     <div className="http-requests-fw">
       <button
         type="button"
-        className="http-requests-fw-btn"
-        title="Add or update firewall rule for this client IP"
+        className="btn btn-sm"
+        title="Add or update a firewall rule for this client IP"
         onClick={() => void openAdd()}
       >
-        Firewall
+        Add rule
       </button>
       <button
         type="button"
-        className="http-requests-fw-btn danger"
+        className="btn btn-sm btn-danger"
         title="Remove matching host CIDR firewall rule"
         onClick={() => void openRemove()}
       >

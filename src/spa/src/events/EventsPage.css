@@ -1,93 +1,148 @@
-.events-page .events-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem 1rem;
-  align-items: flex-end;
-  margin: 0 0 1.25rem;
+.events-filter-service {
+  flex: 1 1 14rem;
+  max-width: 22rem;
 }
 
-.events-page .events-filters label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.85rem;
+.events-filters .field-caps:not(.events-filter-service) {
+  flex: 0 1 12rem;
+}
+
+.events-filter-actions {
+  margin-left: auto;
+}
+
+.events-day + .events-day {
+  margin-top: 1.1rem;
+}
+
+.events-day-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--muted);
 }
 
-.events-page .events-filters input,
-.events-page .events-filters select {
-  min-width: 10rem;
-  padding: 0.4rem 0.55rem;
-  border: 1px solid var(--line);
-  border-radius: 0.35rem;
-  background: var(--input);
-  color: var(--ink);
-  font: inherit;
-}
-
-.events-page .events-timeline {
+.events-list {
   list-style: none;
   margin: 0;
   padding: 0;
   border-top: 1px solid var(--line);
 }
 
-.events-page .events-row {
+.events-row {
   display: grid;
-  grid-template-columns: 11rem 9.5rem 8rem 1fr;
-  gap: 0.75rem 1rem;
-  align-items: baseline;
-  padding: 0.65rem 0;
+  grid-template-columns: 7.5rem 10rem minmax(0, 1fr) minmax(6rem, 11rem);
+  gap: 0.35rem 1rem;
+  align-items: center;
+  padding: 0.55rem 0.5rem 0.55rem 0.65rem;
   border-bottom: 1px solid var(--line);
+  border-left: 3px solid transparent;
   font-size: 0.92rem;
 }
 
-.events-page .events-ts {
+.events-row:hover {
+  background: var(--row-hover);
+}
+
+.events-row--ok {
+  border-left-color: var(--ok-border);
+}
+
+.events-row--warn {
+  border-left-color: var(--warn);
+}
+
+.events-row--bad {
+  border-left-color: var(--danger);
+}
+
+.events-row--idle {
+  border-left-color: var(--idle-border);
+}
+
+.events-ts {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+
+.events-clock {
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: 0.82rem;
+}
+
+.events-ago {
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
-.events-page .events-kind {
+.events-kind .chip {
   font-family: var(--font-mono);
-  font-size: 0.82rem;
-  color: var(--accent);
+  font-size: 0.76rem;
 }
 
-.events-page .events-service {
+.events-summary {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.events-service {
   font-family: var(--font-mono);
   font-size: 0.82rem;
+  text-align: right;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.events-page .events-summary {
-  min-width: 0;
+.events-service a {
+  text-decoration: none;
 }
 
-@media (max-width: 720px) {
-  .events-page .events-row {
-    grid-template-columns: 1fr 1fr;
+.events-service a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 719px) {
+  .events-filters .field-caps,
+  .events-filters .field-caps:not(.events-filter-service) {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+
+  .events-filter-actions {
+    margin-left: 0;
+  }
+
+  .events-row {
+    grid-template-columns: auto minmax(0, 1fr);
     grid-template-areas:
       "ts kind"
-      "service summary";
+      "summary summary"
+      "service service";
   }
 
-  .events-page .events-ts {
+  .events-ts {
     grid-area: ts;
+    flex-direction: row;
+    gap: 0.5rem;
+    align-items: baseline;
   }
 
-  .events-page .events-kind {
+  .events-kind {
     grid-area: kind;
-    text-align: right;
+    justify-self: end;
   }
 
-  .events-page .events-service {
-    grid-area: service;
-  }
-
-  .events-page .events-summary {
+  .events-summary {
     grid-area: summary;
+  }
+
+  .events-service {
+    grid-area: service;
+    text-align: left;
   }
 }

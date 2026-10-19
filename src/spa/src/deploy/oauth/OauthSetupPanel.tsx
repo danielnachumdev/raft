@@ -119,7 +119,7 @@ export function OauthSetupPanel(props: {
           </p>
           <button
             type="button"
-            className="refresh"
+            className="btn btn-primary"
             disabled={busy}
             id="oauth-continue-configured"
             onClick={() => onContinue?.()}
@@ -129,7 +129,7 @@ export function OauthSetupPanel(props: {
         </div>
       ) : (
         <form className="oauth-setup-form" onSubmit={(e) => void onSubmit(e)}>
-          <label className="deploy-label">
+          <label className="field">
             Client ID
             <input
               id="oauth-client-id"
@@ -141,7 +141,7 @@ export function OauthSetupPanel(props: {
               required
             />
           </label>
-          <label className="deploy-label">
+          <label className="field">
             Client secret
             <input
               id="oauth-client-secret"
@@ -156,7 +156,7 @@ export function OauthSetupPanel(props: {
           </label>
           <button
             type="submit"
-            className="refresh"
+            className="btn btn-primary"
             disabled={busy}
             id="oauth-save-config"
           >
