@@ -7,33 +7,12 @@ import pytest
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.platform.github.gateway import GithubApiGateway
-from raft.core.platform.github.providers import MockGithubProvider
 from raft.core.platform.github.providers import RealGithubProvider
-from raft.services.serve.http.paths import ServePaths
 
 from tests.unit.base import RaftTestCase
 
 _GATEWAY_URLOPEN = "raft.core.platform.github.gateway.urlopen"
 
-
-class TestMockGithubProvider(RaftTestCase):
-    def test_list_filter_and_manifest(self) -> None:
-        p = MockGithubProvider(ServePaths.mock_github_dir())
-        all_repos = p.list_repos("tok")
-        assert {r.full_name for r in all_repos} == {
-            "demo/http-only-site",
-            "demo/no-manifest",
-        }
-        filtered = p.list_repos("tok", query="http-only")
-        assert [r.full_name for r in filtered] == ["demo/http-only-site"]
-        text = p.fetch_manifest("tok", "demo/http-only-site", "main")
-        assert "http-only-site" in text
-        with pytest.raises(OperatorError, match="no .raft/app.yaml"):
-            p.fetch_manifest("tok", "demo/no-manifest", "main")
-        with pytest.raises(OperatorError, match="unknown mock"):
-            p.fetch_manifest("tok", "other/x", "main")
-        assert p.resolve_local_tree("demo/nope") is None
-        assert p.resolve_local_tree("bad") is None
 
 
 class TestRealGithubProvider(RaftTestCase):

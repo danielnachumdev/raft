@@ -1,7 +1,6 @@
-"""GitHub OAuth App helpers + mock login (localhost callback)."""
+"""GitHub OAuth App helpers (localhost callback)."""
 
 import json
-import secrets
 import time
 from typing import Optional, Tuple
 from urllib.parse import urlencode
@@ -21,7 +20,7 @@ _USER = "https://api.github.com/user"
 
 
 class GithubOauth:
-    """Build authorize URLs and exchange codes (or mint a mock account)."""
+    """Build authorize URLs and exchange OAuth codes for a connected account."""
 
     def __init__(
         self,
@@ -34,10 +33,6 @@ class GithubOauth:
         self._store = store
         self._http = gateway or GithubApiGateway()
 
-    @property
-    def mock_enabled(self) -> bool:
-        return self._cfg.mock
-
     def login_url(
         self,
         *,
@@ -45,8 +40,6 @@ class GithubOauth:
         redirect_path: str = "/api/github/callback",
         select_account: bool = False,
     ) -> str:
-        if self._cfg.mock:
-            return self._mock_login_url(port=port, select_account=select_account)
         self._require_oauth_creds()
         state = self._store.mint_oauth_state()
         self._store.set_pending(state)
@@ -59,32 +52,6 @@ class GithubOauth:
         if select_account:
             params["prompt"] = "select_account"
         return f"{_AUTHORIZE}?{urlencode(params)}"
-
-    def complete_mock(self, *, add: bool = False) -> GithubAccount:
-        if not self._cfg.mock:
-            raise OperatorError(
-                "mock GitHub login is disabled.\n"
-                "Fix: set github.mock: true in settings.yaml or RAFT_GITHUB_MOCK=1",
-                has_fix=False,
-            )
-        login = (
-            f"mock-operator-{secrets.token_hex(3)}" if add else "mock-operator"
-        )
-        account = self._new_account(
-            login,
-            f"mock-{secrets.token_hex(8)}",
-            mock=True,
-        )
-        if add:
-            return self._store.append_account(account)
-        return self._store.upsert_account(account)
-
-    @staticmethod
-    def _mock_login_url(*, port: int, select_account: bool) -> str:
-        query = "mock=1"
-        if select_account:
-            query += "&add=1"
-        return f"http://127.0.0.1:{port}/api/github/callback?{query}"
 
     def complete_oauth(self, *, code: str, state: str) -> GithubAccount:
         self._require_oauth_creds()
@@ -110,14 +77,12 @@ class GithubOauth:
         token: str,
         *,
         github_user_id: Optional[str] = None,
-        mock: bool = False,
     ) -> GithubAccount:
         now = time.time()
         return GithubAccount(
             id=self._store.new_account_id(),
             login=login,
             access_token=token,
-            mock=mock,
             expires_at=now + self._cfg.session_ttl_seconds,
             github_user_id=github_user_id,
             created_at=now,
@@ -182,7 +147,6 @@ class GithubOauth:
         raise OperatorError(
             "GitHub OAuth is not configured.\n"
             "Fix: set github.clientId + github.clientSecret in ~/.raft/settings.yaml "
-            "(or RAFT_GITHUB_CLIENT_ID / RAFT_GITHUB_CLIENT_SECRET), "
-            "or enable mock mode (github.mock: true / RAFT_GITHUB_MOCK=1)",
+            "(or RAFT_GITHUB_CLIENT_ID / RAFT_GITHUB_CLIENT_SECRET)",
             has_fix=False,
         )

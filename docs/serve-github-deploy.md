@@ -7,7 +7,7 @@ drives apply/deploy. After apply, raft opens a PR that adds a GitHub Actions
 workflow for push-based `raft apply` when secrets are configured.
 
 The same product rules live in shared `GithubAssistService`. Operators without
-a browser can use **`raft github …`** (config, mock/real login, accounts, repos,
+a browser can use **`raft github …`** (config, login, accounts, repos,
 deploy + status). That path is **OAuth assist** — not the same as
 **`raft auth`** deploy keys used for private `raft apply --git` / CI.
 
@@ -45,28 +45,6 @@ This is **not** a public multi-user console and **not** a full App lifecycle UI.
 Deep link `/deploy` (without `instructions=1`) skips straight to accounts /
 Continue when OAuth is already configured.
 
-## Developer mock (settings / env only)
-
-Fixture login is **not** offered in the serve UI. For local/CI only:
-
-```yaml
-# ~/.raft/settings.yaml
-github:
-  mock: true
-```
-
-Or `RAFT_GITHUB_MOCK=1`. That mints `mock-operator` and lists
-`share/serve/mock-github/` fixtures (no GitHub write).
-
-CLI mock path (no serve process required):
-
-```bash
-raft github login --mock
-raft github repos
-raft github deploy owner/fixture-repo   # names from mock-github fixtures
-raft github deploy_status <job-id>
-```
-
 ## Real GitHub OAuth App
 
 Do these steps **in order** (default port **8787**; replace `<port>` if you
@@ -98,7 +76,6 @@ create-app form).
 
 ```yaml
 github:
-  mock: false
   clientId: Iv1.example
   clientSecret: ghs_example   # prefer env in real hosts
   sessionTtlSeconds: 3600     # default 1h; min 60
@@ -109,7 +86,6 @@ Env overrides (preferred for secrets on long-lived hosts):
 - `RAFT_GITHUB_CLIENT_ID`
 - `RAFT_GITHUB_CLIENT_SECRET`
 - `RAFT_GITHUB_SESSION_TTL_SECONDS`
-- `RAFT_GITHUB_MOCK`
 
 Note: env overrides win over `settings.yaml`. If `RAFT_GITHUB_*` is set in the
 serve process environment, the UI paste path still updates the file, but env
@@ -149,8 +125,7 @@ identities can be connected. The accounts list shows who has access (per-row
 trash delete, `+` to add). Before listing repos, the operator picks **View repos as**
 (account dropdown); that selection sets the server `active_account_id` used for
 `GET /api/github/repos` and deploy. Pending OAuth CSRF state is stored
-separately and must not wipe existing accounts. Mock mode stays settings/env
-only (at most one mock account). Token refresh is not shipped in this version.
+separately and must not wipe existing accounts. Token refresh is not shipped in this version.
 
 ## Token storage and retention
 
@@ -171,7 +146,7 @@ only (at most one mock account). Token refresh is not shipped in this version.
 | `GET` | `/api/github/session` | Multi-account public snapshot + active `authenticated`/`login` + hint |
 | `GET` | `/api/github/config` | OAuth setup status (no secrets) + callback / docs links |
 | `POST` | `/api/github/config` | `{clientId, clientSecret}` → write settings + reload |
-| `GET` | `/api/github/login` | Start OAuth or mock callback (add account; preserves others) |
+| `GET` | `/api/github/login` | Start OAuth (add account; preserves others) |
 | `GET` | `/api/github/callback` | Finish login → upsert account, set active → `/deploy` |
 | `POST` | `/api/github/logout` | Delete active browsing account (compat) |
 | `POST` | `/api/github/accounts/select` | `{account_id}` → set browsing account for repos/deploy |

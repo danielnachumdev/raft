@@ -28,27 +28,23 @@ class TestRaftApplyWorkflow(RaftTestCase):
 
 
 class TestGithubCiPrSetup(RaftTestCase):
-    def test_mock_opens_pr(self) -> None:
-        result = GithubCiPrSetup().ensure("tok", github_fx.sample_repo(), mock=True)
-        assert result.status == "opened" and result.pr_url and "pull/1" in result.pr_url
-
     def test_exists_on_default_branch(self) -> None:
         ci = GithubCiPrSetup()
         with patch.object(ci, "_request", return_value='{"sha":"abc"}'):
-            result = ci.ensure("tok", github_fx.sample_repo(), mock=False)
+            result = ci.ensure("tok", github_fx.sample_repo())
         assert result.status == "exists"
 
     def test_opens_pr_happy_path(self) -> None:
         ci = GithubCiPrSetup()
         with patch.object(ci, "_request", side_effect=_HappyGithub()):
-            result = ci.ensure("tok", github_fx.sample_repo(), mock=False)
+            result = ci.ensure("tok", github_fx.sample_repo(), )
         assert result.status == "opened"
         assert result.pr_url == "https://github.com/o/r/pull/9"
 
     def test_branch_exists_and_pr_422(self) -> None:
         ci = GithubCiPrSetup()
         with patch.object(ci, "_request", side_effect=_RetryGithub()):
-            result = ci.ensure("tok", github_fx.sample_repo(), mock=False)
+            result = ci.ensure("tok", github_fx.sample_repo(), )
         assert result.pr_url == "https://github.com/o/r/pull/2"
 
     def test_http_error_and_missing_sha(self) -> None:
@@ -70,7 +66,7 @@ class TestGithubCiPrSetup(RaftTestCase):
         ci = GithubCiPrSetup()
         with patch.object(ci, "_ensure_real", side_effect=RuntimeError("boom")):
             with pytest.raises(OperatorError, match="CI PR setup failed"):
-                ci.ensure("t", github_fx.sample_repo(), mock=False)
+                ci.ensure("t", github_fx.sample_repo(), )
 
     def test_next_steps_ci(self) -> None:
         ns = DeployNextSteps()

@@ -26,9 +26,6 @@ export function GithubAccountSwitcher(props: {
           <li key={account.id} className="gh-account-item">
             <div className="gh-account-meta" id={`github-account-${account.id}`}>
               <span className="gh-account-login">{account.login}</span>
-              {account.mock ? (
-                <span className="gh-account-tag">mock</span>
-              ) : null}
               {account.expired ? (
                 <span className="gh-account-tag is-expired">expired</span>
               ) : null}

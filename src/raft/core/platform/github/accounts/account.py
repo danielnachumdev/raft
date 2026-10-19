@@ -10,7 +10,6 @@ class GithubAccount:
     id: str
     login: str
     access_token: str
-    mock: bool
     expires_at: float
     github_user_id: Optional[str] = None
     created_at: Optional[float] = None
@@ -23,7 +22,6 @@ class GithubAccount:
         return {
             "id": self.id,
             "login": self.login,
-            "mock": self.mock,
             "expires_at": self.expires_at,
             "expired": self.is_expired(),
         }
@@ -33,7 +31,6 @@ class GithubAccount:
             "id": self.id,
             "login": self.login,
             "access_token": self.access_token,
-            "mock": self.mock,
             "expires_at": self.expires_at,
             "github_user_id": self.github_user_id,
             "created_at": self.created_at,
@@ -49,7 +46,6 @@ class GithubAccount:
                 id=str(raw["id"]),
                 login=str(raw["login"]),
                 access_token=str(raw["access_token"]),
-                mock=bool(raw.get("mock", False)),
                 expires_at=float(raw["expires_at"]),
                 github_user_id=_opt_str(raw.get("github_user_id")),
                 created_at=_opt_float(raw.get("created_at")),

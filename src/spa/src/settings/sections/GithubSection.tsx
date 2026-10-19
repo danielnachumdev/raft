@@ -16,14 +16,6 @@ export function GithubSection(props: {
       title="GitHub"
       hint="OAuth for Add service. RAFT_GITHUB_* env vars override this file when set. Prefer the Add service flow to paste credentials."
     >
-      <label className="check">
-        <input
-          type="checkbox"
-          checked={v.mock}
-          onChange={(e) => set({ mock: e.target.checked })}
-        />
-        Mock mode (local fixture repos; no OAuth App)
-      </label>
       <div className="form-grid">
         <TextField
           id="github-client-id"

@@ -18,8 +18,6 @@ from raft.core.platform.github.accounts import GithubPendingOauth
 from raft.core.platform.github.accounts import GithubAccountStore
 from raft.services.serve.github.api import ServeGithubApi
 from raft.core.platform.github.oauth import GithubOauth
-from raft.core.platform.github.providers import MockGithubProvider
-from raft.services.serve.http.paths import ServePaths
 
 from tests.unit.base import RaftTestCase, StackMakers
 from tests.unit.core.observe.ops.status import fixtures as status_fx
@@ -50,7 +48,7 @@ class TestAccountsCoverage(RaftTestCase):
         assert store.public_snapshot()["active_account_id"] == a.id
         store._unlink(self.tmp_path / "state" / "serve" / "missing.json")
 
-    def test_store_upsert_match_and_mock(self) -> None:
+    def test_store_upsert_match(self) -> None:
         store = GithubAccountStore(self.tmp_path)
         a = store.upsert_account(self._acct("a", "alice", "t1", uid="1"))
         store.upsert_account(self._acct("b2", "bob", "t2b", uid="2"))
@@ -61,10 +59,22 @@ class TestAccountsCoverage(RaftTestCase):
         assert by_login.id == a.id
         store.set_pending("st", ttl_seconds=-1)
         assert store.get_pending() is None
-        store.upsert_account(self._mock("m1", "m"))
-        store.upsert_account(self._mock("m2", "m2"))
-        mocks = [x for x in store.public_snapshot()["accounts"] if x["mock"]]
-        assert len(mocks) == 1
+        # Legacy storage with mock field still loads
+        raw_path = self.tmp_path / "state" / "serve" / "github-accounts.json"
+        data = json.loads(raw_path.read_text(encoding="utf-8"))
+        data["accounts"].append(
+            {
+                "id": "legacy",
+                "login": "legacy-user",
+                "access_token": "tok",
+                "mock": True,
+                "expires_at": time.time() + 60,
+            }
+        )
+        raw_path.write_text(json.dumps(data), encoding="utf-8")
+        snap = store.public_snapshot()
+        assert any(a["login"] == "legacy-user" for a in snap["accounts"])
+        assert all("mock" not in a for a in snap["accounts"])
 
     def test_legacy_corrupt_and_empty(self) -> None:
         store = GithubAccountStore(self.tmp_path)
@@ -102,12 +112,9 @@ class TestAccountsCoverage(RaftTestCase):
     def _client(self) -> TestClient:
         stack = StackMakers.make_stack(self.tmp_path)
         (self.tmp_path / "settings.yaml").write_text(
-            "github: {mock: true}\n", encoding="utf-8"
+            "github: {clientId: id, clientSecret: sec}\n", encoding="utf-8"
         )
-        api = ServeGithubApi(
-            stack,
-            provider=MockGithubProvider(ServePaths.mock_github_dir()),
-        )
+        api = ServeGithubApi(stack, provider=MagicMock())
         status = MagicMock()
         status.collect.return_value = StatusSnapshot(
             host=status_fx.empty_host_status(), containers=()
@@ -124,7 +131,6 @@ class TestAccountsCoverage(RaftTestCase):
                     "id": "alive",
                     "login": "z",
                     "access_token": "tok",
-                    "mock": False,
                     "expires_at": time.time() + 60,
                     "github_user_id": "  ",
                     "created_at": None,
@@ -146,17 +152,6 @@ class TestAccountsCoverage(RaftTestCase):
             id=account_id,
             login=login,
             access_token=token,
-            mock=False,
             expires_at=time.time() + 60,
             github_user_id=uid,
-        )
-
-    @staticmethod
-    def _mock(account_id: str, token: str) -> GithubAccount:
-        return GithubAccount(
-            id=account_id,
-            login="mock-operator",
-            access_token=token,
-            mock=True,
-            expires_at=time.time() + 60,
         )

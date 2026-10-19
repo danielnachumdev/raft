@@ -47,26 +47,13 @@ class GithubCLI:
         OperatorSay.say("Saved GitHub OAuth config.")
         self._emit(out, as_json=True)
 
-    def login(self, add: bool = False, port: int = 8787, mock: bool = False) -> None:
-        """Print authorize URL, or complete mock login when ``github.mock`` is on.
+    def login(self, add: bool = False, port: int = 8787) -> None:
+        """Print the GitHub authorize URL for browser OAuth.
 
         Example::
 
-            raft github login --mock
             raft github login --port=8787
         """
-        if mock or self._assist.session().get("mock"):
-            self._finish_mock_login(add=add)
-            return
-        self._print_authorize_url(port=port, add=add)
-
-    def _finish_mock_login(self, *, add: bool) -> None:
-        out = self._assist.complete_mock(add=add)
-        OperatorSay.say(
-            f"Mock GitHub login complete ({out['account'].get('login')})."
-        )
-
-    def _print_authorize_url(self, *, port: int, add: bool) -> None:
         url = self._assist.login_url(port=port, add=add)
         OperatorSay.say(f"Open this URL in a browser:\n{url}")
         OperatorSay.say(
@@ -158,7 +145,7 @@ class GithubCLI:
             )
 
     def deploy(self, full_name: str, ref: str = "", json: bool = False) -> None:
-        """Start a deploy-assist job for ``owner/repo`` (mock fixtures OK)."""
+        """Start a deploy-assist job for ``owner/repo``."""
         job = self._assist.start_deploy(full_name=full_name, ref=ref)
         if json:
             self._emit(job, as_json=True)

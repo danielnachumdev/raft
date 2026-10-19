@@ -23,7 +23,6 @@ from .oauth import GITHUB_OAUTH_SCOPES, GithubOauth, GithubSettingsWriter
 from .providers import (
     GithubProvider,
     GithubRepo,
-    MockGithubProvider,
     RealGithubProvider,
     filter_repos,
 )
@@ -48,7 +47,6 @@ __all__ = [
     "GithubProvider",
     "GithubRepo",
     "GithubSettingsWriter",
-    "MockGithubProvider",
     "RealGithubProvider",
     "filter_repos",
 ]

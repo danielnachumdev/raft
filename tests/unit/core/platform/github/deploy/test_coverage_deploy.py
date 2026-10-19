@@ -46,9 +46,8 @@ class TestCoverageDeploy(RaftTestCase):
         assert job.next_steps
 
     def test_api_callback_oauth(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.delenv("RAFT_GITHUB_MOCK", raising=False)
         (self.tmp_path / "settings.yaml").write_text(
-            "github: {mock: false, clientId: id, clientSecret: sec}\n", encoding="utf-8"
+            "github: {clientId: id, clientSecret: sec}\n", encoding="utf-8"
         )
         api = ServeGithubApi(StackMakers.make_stack(self.tmp_path), provider=MagicMock(), port=9999)
         assert api._assist._default_provider().__class__.__name__ == "RealGithubProvider"
@@ -56,10 +55,10 @@ class TestCoverageDeploy(RaftTestCase):
         with patch.object(
             api._assist._oauth,
             "complete_oauth",
-            return_value=github_fx.sample_account(mock=False),
+            return_value=github_fx.sample_account(),
         ):
             assert api.api_callback(MagicMock(), code="c", state="good").status_code == 302
-        bad = api.api_callback(MagicMock(), code=None, state=None, mock=None)
+        bad = api.api_callback(MagicMock(), code=None, state=None)
         assert bad.status_code == 302 and "oauth_error=" in bad.headers["location"]
         denied = api.api_callback(
             MagicMock(), error="access_denied", error_description="user said no"
@@ -67,7 +66,7 @@ class TestCoverageDeploy(RaftTestCase):
         assert "oauth_error=" in denied.headers["location"]
 
     def test_api_port_and_repos_deploy(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text("github: {mock: true}\n", encoding="utf-8")
+        (self.tmp_path / "settings.yaml").write_text("github: {clientId: id, clientSecret: sec}\n", encoding="utf-8")
         provider = MagicMock()
         api = ServeGithubApi(StackMakers.make_stack(self.tmp_path), provider=provider, jobs=DeployJobStore())
         GithubAccountStore(self.tmp_path).upsert_account(github_fx.sample_account())
@@ -127,12 +126,10 @@ class TestCoverageDeploy(RaftTestCase):
         runner._run("missing", github_fx.sample_account(), github_fx.sample_repo())
 
     def test_remaining_api_hints(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.delenv("RAFT_GITHUB_MOCK", raising=False)
         (self.tmp_path / "settings.yaml").write_text(
-            "github: {mock: false, clientId: id, clientSecret: sec}\n", encoding="utf-8"
+            "github: {clientId: id, clientSecret: sec}\n", encoding="utf-8"
         )
         api = ServeGithubApi(StackMakers.make_stack(self.tmp_path), port=8787)
-        assert api._assist._oauth.mock_enabled is False
         assert "Temporary GitHub" in api._assist._login_hint()
         with patch.object(
             api._assist._oauth,
@@ -145,10 +142,13 @@ class TestCoverageDeploy(RaftTestCase):
         req.headers = {"host": "127.0.0.1:notaport"}
         assert api._request_port(req) == 8787
 
-    def test_mock_default_provider(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text("github: {mock: true}\n", encoding="utf-8")
-        mock_api = ServeGithubApi(StackMakers.make_stack(self.tmp_path), port=8787)
-        assert mock_api._assist._default_provider().__class__.__name__ == "MockGithubProvider"
+    def test_default_provider_is_real(self) -> None:
+        (self.tmp_path / "settings.yaml").write_text(
+            "github: {clientId: id, clientSecret: sec}\n", encoding="utf-8"
+        )
+        api = ServeGithubApi(StackMakers.make_stack(self.tmp_path), port=8787)
+        assert api._assist._default_provider().__class__.__name__ == "RealGithubProvider"
+
     def test_remaining_deploy_local(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path)
         runner = GithubDeployRunner(stack, MagicMock(), DeployJobStore())
@@ -181,7 +181,7 @@ class TestCoverageDeploy(RaftTestCase):
         ) as apply_cls:
             github_fx.stub_auth(auth_cls)
             apply_cls.return_value.apply_git.return_value = "web"
-            job = runner.start(github_fx.sample_account(mock=False), github_fx.sample_repo(), "main")
+            job = runner.start(github_fx.sample_account(), github_fx.sample_repo(), "main")
             for _ in range(80):
                 time.sleep(0.05)
                 if job.status in {"succeeded", "failed"}:

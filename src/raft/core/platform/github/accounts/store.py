@@ -36,7 +36,6 @@ class GithubAccountStore:
         }
         if active is not None:
             out["login"] = active.login
-            out["mock"] = active.mock
             out["expires_at"] = active.expires_at
         return out
 
@@ -171,7 +170,6 @@ class GithubAccountStore:
                 id=self.new_account_id(),
                 login=login,
                 access_token=token,
-                mock=bool(raw.get("mock", False)),
                 expires_at=float(raw["expires_at"]),
                 created_at=time.time(),
             )
@@ -249,8 +247,6 @@ class GithubAccountStore:
     def _find_match(
         self, accounts: list[GithubAccount], incoming: GithubAccount
     ) -> Optional[GithubAccount]:
-        if incoming.mock:
-            return next((a for a in accounts if a.mock), None)
         if incoming.github_user_id:
             by_uid = next(
                 (a for a in accounts if a.github_user_id == incoming.github_user_id),
@@ -258,13 +254,12 @@ class GithubAccountStore:
             )
             if by_uid is not None:
                 return by_uid
-        return next((a for a in accounts if a.login == incoming.login and not a.mock), None)
+        return next((a for a in accounts if a.login == incoming.login), None)
 
     @staticmethod
     def _merge_into(existing: GithubAccount, incoming: GithubAccount) -> None:
         existing.login = incoming.login
         existing.access_token = incoming.access_token
-        existing.mock = incoming.mock
         existing.expires_at = incoming.expires_at
         if incoming.github_user_id:
             existing.github_user_id = incoming.github_user_id

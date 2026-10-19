@@ -87,7 +87,6 @@ class TestGithubAccountStore(RaftTestCase):
         return {
             "access_token": "legacy-tok",
             "login": "carol",
-            "mock": False,
             "expires_at": time.time() + 120,
         }
 
@@ -104,7 +103,6 @@ class TestGithubAccountStore(RaftTestCase):
             id=account_id,
             login=login,
             access_token=token,
-            mock=False,
             expires_at=expires_at if expires_at is not None else time.time() + 60,
             github_user_id=uid,
             created_at=time.time(),

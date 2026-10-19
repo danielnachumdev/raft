@@ -100,7 +100,7 @@ class GithubDeployRunner:
     ) -> None:
         self._step(job, "CI workflow PR", "running")
         try:
-            result = self._ci.ensure(account.access_token, repo, mock=account.mock)
+            result = self._ci.ensure(account.access_token, repo)
             job.ci_pr = result.to_dict()
             self._step(job, "CI workflow PR", "ok", result.detail)
         except OperatorError as exc:

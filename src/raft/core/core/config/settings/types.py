@@ -134,7 +134,6 @@ class AcmeConfig:
 class GithubServeConfig:
     """Temporary GitHub OAuth for ``raft serve`` deploy assist (v1)."""
 
-    mock: bool = False
     client_id: Optional[str] = None
     client_secret: Optional[str] = None
     session_ttl_seconds: int = DEFAULT_GITHUB_SESSION_TTL_SECONDS

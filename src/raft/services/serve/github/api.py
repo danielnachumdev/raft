@@ -81,8 +81,6 @@ class ServeGithubApi:
         request: Request,
         code: Optional[str] = None,
         state: Optional[str] = None,
-        mock: Optional[str] = None,
-        add: Optional[str] = None,
         error: Optional[str] = None,
         error_description: Optional[str] = None,
     ) -> RedirectResponse:
@@ -91,9 +89,7 @@ class ServeGithubApi:
             msg = error_description or error
             return self._oauth_error_redirect(f"GitHub authorization failed: {msg}")
         try:
-            self._assist.complete_callback(
-                code=code, state=state, mock=mock, add=add
-            )
+            self._assist.complete_callback(code=code, state=state)
         except OperatorError as exc:
             return self._oauth_error_redirect(str(exc))
         return RedirectResponse("/deploy", status_code=302)

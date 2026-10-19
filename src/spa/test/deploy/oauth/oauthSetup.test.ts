@@ -77,7 +77,6 @@ describe("oauthSetupHints", () => {
     const hints = resolveOauthSetupHints(
       {
         oauth_configured: false,
-        mock: false,
         client_id_set: false,
         callback_url: "http://127.0.0.1:9/api/github/callback",
         homepage_url: "http://127.0.0.1:9/",

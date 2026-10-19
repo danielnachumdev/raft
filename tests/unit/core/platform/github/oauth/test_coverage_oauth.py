@@ -37,7 +37,7 @@ class TestCoverageOauth(RaftTestCase):
 
     def test_oauth_token_request_http_error(self) -> None:
         oauth = GithubOauth(
-            GithubServeConfig(mock=False, client_id="id", client_secret="sec"),
+            GithubServeConfig(client_id="id", client_secret="sec"),
             GithubAccountStore(self.tmp_path),
         )
         import urllib.error
@@ -51,7 +51,7 @@ class TestCoverageOauth(RaftTestCase):
 
     def test_oauth_exchange_ok_and_fetch(self) -> None:
         oauth = GithubOauth(
-            GithubServeConfig(mock=False, client_id="id", client_secret="sec"),
+            GithubServeConfig(client_id="id", client_secret="sec"),
             GithubAccountStore(self.tmp_path),
         )
         ok = MagicMock()
@@ -73,11 +73,9 @@ class TestCoverageOauth(RaftTestCase):
 
     def test_oauth_fetch_user_missing(self) -> None:
         oauth = GithubOauth(
-            GithubServeConfig(mock=False, client_id="id", client_secret="sec"),
+            GithubServeConfig(client_id="id", client_secret="sec"),
             GithubAccountStore(self.tmp_path),
         )
-        with pytest.raises(OperatorError, match="disabled"):
-            GithubOauth(GithubServeConfig(mock=False), GithubAccountStore(self.tmp_path)).complete_mock()
         user = MagicMock()
         user.read.return_value = b"{}"
         user.status = 200

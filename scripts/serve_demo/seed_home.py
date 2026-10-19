@@ -78,7 +78,6 @@ acme:
   email: ops@example.com
   challenge: http-01
 github:
-  mock: true
   sessionTtlSeconds: 3600
 notifications:
   enabled: true
