@@ -30,6 +30,27 @@ class TestDashboardAuthMiddleware(RaftTestCase):
         client = TestClient(app)
         assert client.get("/api/status").status_code == 401
 
+    def test_password_mode_allows_spa_shell_get(self) -> None:
+        hashed = DashboardPassword().hash("correct-horse")
+        sessions = PasswordSessionAuth(self.tmp_path, password_hash=hashed)
+        cfg = DashboardConfig(
+            auth=DashboardAuthConfig(mode="password", password_hash=hashed)
+        )
+        app = FastAPI()
+        app.add_middleware(DashboardAuthMiddleware, config=cfg, sessions=sessions)
+
+        @app.get("/")
+        def index():
+            return {"shell": True}
+
+        @app.get("/api/status")
+        def status():
+            return {"ok": True}
+
+        client = TestClient(app)
+        assert client.get("/").status_code == 200
+        assert client.get("/api/status").status_code == 401
+
     def test_external_mode_requires_header(self) -> None:
         cfg = DashboardConfig(
             auth=DashboardAuthConfig(
