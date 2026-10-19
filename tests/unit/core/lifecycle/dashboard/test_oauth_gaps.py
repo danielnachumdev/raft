@@ -47,6 +47,12 @@ class TestDashboardOAuthGaps(RaftTestCase):
         assert url.startswith("http://")
         assert url.endswith("/oauth2/callback")
 
+    def test_env_parse_skips_blank_comment_and_bare_keys(self) -> None:
+        parsed = DashboardOAuthEnv._parse(
+            "\n# note\nNOT_AN_ASSIGNMENT\nA=1\nB=\"two\"\nC='three'\n"
+        )
+        assert parsed == {"A": "1", "B": "two", "C": "three"}
+
     def test_paths_absolute_allowlist(self) -> None:
         home = Path(self.tmp_path)
         abs_path = home / "custom.txt"
