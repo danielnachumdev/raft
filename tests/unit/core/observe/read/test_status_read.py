@@ -40,7 +40,9 @@ class TestStatusRead(RaftTestCase):
         )
         status = MagicMock()
         status.collect.return_value = snap
-        payload = StatusRead(StackMakers.make_stack(self.tmp_path), status=status).api_payload()
+        payload = StatusRead(
+            StackMakers.make_stack(self.tmp_path), status=status
+        ).api_payload()
         assert payload["host"] == snap.to_dict()["host"]
         assert payload["containers"] == snap.to_dict()["containers"]
         assert payload["control_plane"][0]["name"] == "gate"
@@ -49,6 +51,35 @@ class TestStatusRead(RaftTestCase):
         assert payload["apps"][0]["external_urls"] == []
         assert payload["registry_issues"] == []
         status.collect.assert_called_once()
+
+    def test_api_payload_includes_installed_version(self) -> None:
+        status = MagicMock()
+        status.collect.return_value = StatusSnapshot(
+            host=status_fx.empty_host_status(), containers=()
+        )
+        with patch(
+            "raft.core.observe.read.status.InstalledVersion.package_version",
+            return_value="0.11.0",
+        ), patch(
+            "raft.core.observe.read.status.InstalledVersion.line",
+            return_value="raft 0.11.0",
+        ):
+            payload = StatusRead(
+                StackMakers.make_stack(self.tmp_path), status=status
+            ).api_payload()
+        assert payload["version"] == {"package": "0.11.0", "line": "raft 0.11.0"}
+
+    def test_snapshot_dict_omits_serve_version(self) -> None:
+        snap = StatusSnapshot(
+            host=status_fx.empty_host_status(),
+            containers=(),
+        )
+        status = MagicMock()
+        status.collect.return_value = snap
+        body = StatusRead(
+            StackMakers.make_stack(self.tmp_path), status=status
+        ).snapshot_dict()
+        assert "version" not in body
 
     def test_api_payload_includes_registry_issues(self) -> None:
         from raft.core.core.models.registry import RegistryIssue
