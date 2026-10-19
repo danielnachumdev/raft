@@ -34,34 +34,49 @@ class TestServeGithubApi(RaftTestCase):
         status.collect.return_value = StatusSnapshot(
             host=status_fx.empty_host_status(), containers=()
         )
-        if provider is None:
-            provider = MagicMock()
-            provider.list_repos.return_value = [
-                GithubRepo(
-                    "demo/http-only-site",
-                    "http-only-site",
-                    "demo",
-                    False,
-                    "main",
-                    "c",
-                    "s",
-                    "h",
-                )
-            ]
-        github = ServeGithubApi(stack, provider=provider, port=8787)
+        github = ServeGithubApi(
+            stack, provider=provider or self._default_provider(), port=8787
+        )
         return TestClient(ServeAppFactory(stack, status=status, github=github).create())
+
+    @staticmethod
+    def _default_provider() -> MagicMock:
+        provider = MagicMock()
+        provider.list_repos.return_value = [
+            GithubRepo(
+                "demo/http-only-site",
+                "http-only-site",
+                "demo",
+                False,
+                "main",
+                "c",
+                "s",
+                "h",
+            )
+        ]
+        return provider
 
     def test_session_login_logout_repos(self) -> None:
         client = self._client()
+        self._assert_anonymous_session(client)
+        login = client.get("/api/github/login", follow_redirects=False)
+        assert login.status_code == 302
+        assert "github.com/login/oauth/authorize" in login.headers["location"]
+        self._seed_account()
+        self._assert_authed_session_and_repos(client)
+        out = client.post("/api/github/logout").json()
+        assert out["authenticated"] is False
+
+    @staticmethod
+    def _assert_anonymous_session(client: TestClient) -> None:
         bare = client.get("/api/github/session").json()
         assert bare["authenticated"] is False
         assert "mock" not in bare
         assert bare["oauth_configured"] is True
         assert bare["accounts"] == []
-        login = client.get("/api/github/login", follow_redirects=False)
-        assert login.status_code == 302
-        assert "github.com/login/oauth/authorize" in login.headers["location"]
-        self._seed_account()
+
+    @staticmethod
+    def _assert_authed_session_and_repos(client: TestClient) -> None:
         session = client.get("/api/github/session").json()
         assert session["authenticated"] is True
         assert session["login"] == "demo-operator"
@@ -71,8 +86,6 @@ class TestServeGithubApi(RaftTestCase):
         assert "workflow" in session["scopes"]
         repos = client.get("/api/github/repos").json()["repos"]
         assert any(r["full_name"] == "demo/http-only-site" for r in repos)
-        out = client.post("/api/github/logout").json()
-        assert out["authenticated"] is False
 
     def test_add_account_preserves_first_and_select(self) -> None:
         client = self._client()

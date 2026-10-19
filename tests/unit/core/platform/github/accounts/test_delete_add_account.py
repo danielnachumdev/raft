@@ -73,10 +73,20 @@ class TestDeleteAndAddAccount(RaftTestCase):
         self._write_real_github_settings()
         store = GithubAccountStore(self.tmp_path)
         store.upsert_account(self._expired_kept())
-        client = self._client(settings=None)
-        login = client.get("/api/github/login?add=1", follow_redirects=False)
+        state = self._login_add_state()
+        cb = self._callback_append_bob(store, state)
+        assert cb.status_code == 302
+        logins = {a["login"] for a in store.public_snapshot()["accounts"]}
+        assert logins == {"demo-user", "demo-bob"}
+
+    def _login_add_state(self) -> str:
+        login = self._client(settings=None).get(
+            "/api/github/login?add=1", follow_redirects=False
+        )
         assert login.status_code == 302
-        state = parse_qs(urlparse(login.headers["location"]).query)["state"][0]
+        return parse_qs(urlparse(login.headers["location"]).query)["state"][0]
+
+    def _callback_append_bob(self, store: GithubAccountStore, state: str):
         api = ServeGithubApi(
             StackMakers.make_stack(self.tmp_path), provider=MagicMock(), port=8787
         )
@@ -88,10 +98,7 @@ class TestDeleteAndAddAccount(RaftTestCase):
             "complete_oauth",
             return_value=store.append_account(account),
         ):
-            cb = api.api_callback(MagicMock(), code="c", state=state)
-        assert cb.status_code == 302
-        logins = {a["login"] for a in store.public_snapshot()["accounts"]}
-        assert logins == {"demo-user", "demo-bob"}
+            return api.api_callback(MagicMock(), code="c", state=state)
 
     def _expired_sample(self):
         return github_fx.sample_account(
