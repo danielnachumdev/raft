@@ -88,15 +88,16 @@ class AcmeEnsure:
     def _named_targets(self, app_names: Sequence[str]) -> list[App]:
         out: list[App] = []
         for name in app_names:
-            if name == DASHBOARD_SERVICE_NAME:
-                dash = self._dashboard_app()
-                if dash is not None:
-                    out.append(dash)
-                continue
-            app = self.stack.app(name)
-            if self._is_acme(app):
-                out.append(app)
+            resolved = self._resolve_named(name)
+            if resolved is not None:
+                out.append(resolved)
         return out
+
+    def _resolve_named(self, name: str) -> Optional[App]:
+        if name == DASHBOARD_SERVICE_NAME:
+            return self._dashboard_app()
+        app = self.stack.app(name)
+        return app if self._is_acme(app) else None
 
     def _dashboard_app(self) -> Optional[App]:
         cfg = SettingsLoader().load(self.stack.root).dashboard
