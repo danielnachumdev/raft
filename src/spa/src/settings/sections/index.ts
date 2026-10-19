@@ -1,5 +1,6 @@
 export { AcmeSection } from "./AcmeSection";
 export { AlertsSection } from "./AlertsSection";
+export { AppearanceSection } from "./AppearanceSection";
 export { EdgeSection } from "./EdgeSection";
 export { GithubSection } from "./GithubSection";
 export { HealingSection } from "./HealingSection";

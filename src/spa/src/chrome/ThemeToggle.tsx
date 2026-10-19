@@ -6,7 +6,7 @@ import {
 } from "./theme";
 import "./ThemeToggle.css";
 
-/** Sun/moon switch in the page header; preference survives reload. */
+/** Sun/moon switch; preference survives reload via localStorage. */
 export function ThemeToggle() {
   const [theme, setThemeState] = useState<Theme>(() => resolveTheme());
   const isDark = theme === "dark";

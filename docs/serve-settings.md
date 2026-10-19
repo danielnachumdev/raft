@@ -16,6 +16,7 @@ Specialized pages remain for deep workflows:
 
 | Section | Role | Side effects |
 |---------|------|----------------|
+| Appearance | Dashboard light/dark theme | Browser `localStorage` only; applies immediately (not in `settings.yaml`) |
 | `logging` | Host CLI file log | Applies on next CLI process |
 | `edge` | Gate published http / https / streams | **Ports change → `raft gate recreate`** |
 | `healing` | Controller self-heal | Next heal job tick |
