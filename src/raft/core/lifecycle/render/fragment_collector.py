@@ -6,6 +6,7 @@ from typing import Optional
 from raft.core.lifecycle.acme.http_redirect import AcmeHttpRedirect
 from raft.core.lifecycle.acme.paths import AcmePaths
 from raft.core.platform.adapters.nginx import NginxUpstreamText
+from raft.core.core.config.settings import SettingsLoader
 from raft.core.core.config.settings.types import EdgeConfig
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.app import App
@@ -36,11 +37,33 @@ class FragmentCollector:
     def collect(self, apps: list[App], resolved: dict[str, AppSpec]) -> EdgeFragments:
         gate_http_dir = self._root / "generated" / "nginx" / "gate-http"
         self._policy = PolicyIncludes(self._root, self._edge, gate_http_dir)
-        self._policy.write_all(apps)
+        dash_cfg = SettingsLoader().load(self._root).dashboard
+        fw_apps = list(apps) + self._dashboard_firewall_apps(dash_cfg)
+        self._policy.write_all(fw_apps)
         fragments = EdgeFragments()
         for app in apps:
             fragments.merge(self._for_app(app, resolved[app.name]))
+        fragments.merge(self._dashboard_fragments(dash_cfg))
         return fragments
+
+    def _dashboard_firewall_apps(self, dash_cfg) -> list[App]:
+        from raft.core.lifecycle.dashboard.target import DashboardTarget
+
+        return DashboardTarget().firewall_apps(dash_cfg)
+
+    def _dashboard_fragments(self, dash_cfg) -> EdgeFragments:
+        from raft.core.lifecycle.dashboard.edge_render import DashboardEdgeRender
+        from raft.core.lifecycle.dashboard.target import DashboardTarget
+
+        assert self._policy is not None
+        name = DashboardTarget.SERVICE_NAME
+        https_inc = self._include(name, self._edge.https)
+        return DashboardEdgeRender().contribute(
+            dash_cfg,
+            edge=self._edge,
+            data_home=self._root,
+            acl_include=https_inc,
+        )
 
     def _for_app(self, app: App, app_spec: AppSpec) -> EdgeFragments:
         http_inc = self._include(app.name, self._edge.http)

@@ -11,6 +11,7 @@ from .strategies import (
     AcmeSettingsParser,
     AclSettingsParser,
     AlertsSettingsParser,
+    DashboardSettingsParser,
     EdgeSettingsParser,
     GithubSettingsParser,
     HealingSettingsParser,
@@ -36,6 +37,7 @@ class SettingsLoader:
         self._notifications = NotificationsSettingsParser()
         self._acl = AclSettingsParser()
         self._alerts = AlertsSettingsParser()
+        self._dashboard = DashboardSettingsParser()
 
     def load(self, data_home: Path, *, path: Optional[Path] = None) -> RaftConfig:
         config_path = path or RaftHome().settings_path(data_home)
@@ -49,12 +51,7 @@ class SettingsLoader:
 
     def _from_raw(self, data: Optional[dict[str, Any]]) -> RaftConfig:
         if data is None:
-            return RaftConfig(
-                github=self._github.parse(None),
-                notifications=self._notifications.parse(None),
-                acl=self._acl.parse(None),
-                alerts=self._alerts.parse(None),
-            )
+            return self._defaults()
         return RaftConfig(
             logging=self._logging.parse(data.get("logging") or {}),
             edge=self._edge.parse(data.get("edge")),
@@ -66,6 +63,16 @@ class SettingsLoader:
             notifications=self._notifications.parse(data.get("notifications")),
             acl=self._acl.parse(data.get("acl")),
             alerts=self._alerts.parse(data.get("alerts")),
+            dashboard=self._dashboard.parse(data.get("dashboard")),
+        )
+
+    def _defaults(self) -> RaftConfig:
+        return RaftConfig(
+            github=self._github.parse(None),
+            notifications=self._notifications.parse(None),
+            acl=self._acl.parse(None),
+            alerts=self._alerts.parse(None),
+            dashboard=self._dashboard.parse(None),
         )
 
     def _read_mapping(self, config_path: Path) -> dict[str, Any]:

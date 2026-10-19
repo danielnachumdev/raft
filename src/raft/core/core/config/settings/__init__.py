@@ -2,10 +2,12 @@
 
 from .document import SettingsDocument
 from .loader import SettingsLoader, load_config
+from .dashboard_config import DashboardAuthConfig, DashboardConfig
 from .operator_service import OperatorSettingsService
 from .strategies import (
     AcmeSettingsParser,
     AclSettingsParser,
+    DashboardSettingsParser,
     EdgeSettingsParser,
     GithubSettingsParser,
     HealingSettingsParser,
@@ -76,6 +78,9 @@ __all__ = [
     "AcmeSettingsParser",
     "AclConfig",
     "AclSettingsParser",
+    "DashboardAuthConfig",
+    "DashboardConfig",
+    "DashboardSettingsParser",
     "EdgeConfig",
     "EdgeSettingsParser",
     "EdgeStream",

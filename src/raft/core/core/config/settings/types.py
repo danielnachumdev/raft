@@ -10,6 +10,7 @@ from raft.core.core.models.acl_policy import AclEntry, AclPolicy
 
 from ..paths.constants import LOGS_DIRNAME, SETTINGS_FILENAME
 from .alerts_config import AlertsConfig
+from .dashboard_config import DashboardConfig
 
 CONFIG_FILENAME = SETTINGS_FILENAME
 STREAM_PROTOCOLS = frozenset({"tcp", "udp"})
@@ -193,6 +194,7 @@ class RaftConfig:
     notifications: NotificationsConfig = field(default_factory=NotificationsConfig)
     acl: AclConfig = field(default_factory=AclConfig)
     alerts: AlertsConfig = field(default_factory=AlertsConfig)
+    dashboard: DashboardConfig = field(default_factory=DashboardConfig)
 
 
 def default_config() -> RaftConfig:

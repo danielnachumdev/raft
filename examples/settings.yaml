@@ -197,6 +197,25 @@ edge:
 #         # timeoutSeconds: 10
 
 # ---------------------------------------------------------------------------
+# dashboard — always-on Compose service raft-dashboard (same UI as raft serve).
+# Disabled by default. When enabled, publishes 127.0.0.1:<port> only.
+# Optional publicHost + tls + auth for gate/router exposure.
+# Docs: docs/serve-dashboard.md
+# ---------------------------------------------------------------------------
+# dashboard:
+#   enabled: true
+#   port: 8787
+#   # publicHost: ops.example.com
+#   # tls: acme                 # off | origin | acme
+#   auth:
+#     mode: none                # none | password | external
+#     # passwordHash: …         # set via: raft dashboard set-password
+#     # verifyUrl: http://auth.demo.example/verify
+#     # signInUrl: https://auth.demo.example/sign-in
+#     # identityHeader: X-Raft-Identity
+# CLI: raft dashboard status|enable|disable|set-password
+
+# ---------------------------------------------------------------------------
 # Edge firewall is ordered rules under state/firewall/rules.yaml (raft serve
 # Settings → Firewall). Not configured here. See docs/serve-firewall.md.
 # Legacy acl.gate / state/acl/apps are retired (read only for one-time migrate).

@@ -3,6 +3,7 @@
 from .acme import AcmeSettingsParser
 from .acl import AclSettingsParser
 from .alerts import AlertsSettingsParser
+from .dashboard import DashboardSettingsParser
 from .edge import EdgeSettingsParser
 from .github import GithubSettingsParser
 from .healing import HealingSettingsParser
@@ -15,6 +16,7 @@ __all__ = [
     "AcmeSettingsParser",
     "AclSettingsParser",
     "AlertsSettingsParser",
+    "DashboardSettingsParser",
     "EdgeSettingsParser",
     "GithubSettingsParser",
     "HealingSettingsParser",

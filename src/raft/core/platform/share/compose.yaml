@@ -26,6 +26,8 @@ include:
     project_directory: .
   - path: generated/compose.edge.yaml
     project_directory: .
+  - path: generated/compose.dashboard.yaml
+    project_directory: .
 
 services:
   raft-gate:

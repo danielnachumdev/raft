@@ -86,3 +86,28 @@ class TestAcmeEnsure(RaftTestCase):
             config=AcmeConfig(email="ops@example.com"),
         ).run()
         runner.issue.assert_not_called()
+
+    def test_named_dashboard_skipped_when_not_acme(self) -> None:
+        runner = MagicMock()
+        AcmeEnsure(
+            load_stack(self.tmp_path),
+            order_runner=runner,
+            config=AcmeConfig(email="ops@example.com"),
+        ).run(["raft-dashboard"])
+        runner.issue.assert_not_called()
+
+    def test_named_dashboard_issues_when_acme(self) -> None:
+        (self.tmp_path / "settings.yaml").write_text(
+            "dashboard:\n  enabled: true\n  publicHost: ops.example.com\n"
+            "  tls: acme\n  auth: {mode: password, passwordHash: pbkdf2_sha256$1$a$b}\n",
+            encoding="utf-8",
+        )
+        runner = MagicMock()
+        runner.issue.return_value = self_signed_pem(["ops.example.com"])
+        AcmeEnsure(
+            load_stack(self.tmp_path),
+            order_runner=runner,
+            config=AcmeConfig(email="ops@example.com"),
+        ).run(["raft-dashboard"])
+        runner.issue.assert_called_once()
+        assert (self.tmp_path / "certs" / "raft-dashboard" / "acme.pem").is_file()

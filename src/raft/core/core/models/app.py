@@ -37,6 +37,7 @@ def display_service_label(compose_id: str, group: Optional[str] = None) -> str:
 GATE_COMPOSE_ID = compose_service_id("gate", EDGE_GROUP)
 ROUTER_COMPOSE_ID = compose_service_id("router", EDGE_GROUP)
 CONTROLLER_COMPOSE_ID = compose_service_id("controller", EDGE_GROUP)
+DASHBOARD_COMPOSE_ID = compose_service_id("dashboard", EDGE_GROUP)
 
 
 @dataclass(frozen=True)
