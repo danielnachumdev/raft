@@ -36,7 +36,10 @@ RUN uv pip compile pyproject.toml -o /tmp/requirements.txt \
 WORKDIR /opt
 COPY raft/ /opt/raft/
 COPY login.html /opt/dashboard/login.html
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 ENV PYTHONPATH=/opt
 
 # Compose sets working_dir=/raft and RAFT_DATA_HOME=/raft.
-CMD ["python", "-m", "raft.services.dashboard"]
+# Entrypoint: app on loopback → wait ready → nginx auth edge.
+ENTRYPOINT ["/start.sh"]

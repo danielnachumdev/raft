@@ -76,10 +76,14 @@ class DashboardProxyNginx:
 
     @staticmethod
     def _server(listen: int, inner: str) -> str:
+        # Relative Location so TLS-terminating edges (gate/CF) keep https/host.
         return (
             "    server {\n"
             f"        listen {listen};\n"
             "        server_name _;\n"
+            "        server_tokens off;\n"
+            "        absolute_redirect off;\n"
+            "        port_in_redirect off;\n"
             f"{inner}"
             "    }\n"
         )

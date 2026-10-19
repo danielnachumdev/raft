@@ -42,8 +42,9 @@ Rules:
 
 Gate / router treat the dashboard like any other Host → upstream (TLS on the
 gate when configured). **Authentication is an implementation detail inside the
-dashboard container**: its image runs nginx in front of the SPA process and only
-proxies after password or external auth succeeds — unauthenticated clients never
+dashboard container**: the image entrypoint starts the app on loopback, waits
+until it listens, then runs nginx with `auth_request` in front. Unauthenticated
+clients get a relative `/login` redirect (`absolute_redirect off`) and never
 receive SPA bytes.
 
 ### Password auth
