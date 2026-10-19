@@ -10,6 +10,7 @@ export {
   fetchStatus,
   serviceLogsPath,
   servicePath,
+  type RaftVersion,
   type RegistryIssue,
   type StatusPayload,
   type StatusRow,

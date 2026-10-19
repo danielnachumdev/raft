@@ -20,6 +20,14 @@ export type RegistryIssue = {
   error: string;
 };
 
+/** Installed raft package version from serve ``GET /api/status``. */
+export type RaftVersion = {
+  /** Packaging semver (e.g. ``0.11.0``). */
+  package: string;
+  /** Operator line matching ``raft --version`` (e.g. ``raft 0.11.0 (editable …)``). */
+  line: string;
+};
+
 export type StatusPayload = {
   host: { hostname?: string; [key: string]: unknown };
   containers: unknown[];
@@ -27,6 +35,8 @@ export type StatusPayload = {
   apps: StatusRow[];
   /** Applied manifests under state/apps that failed to parse (others still load). */
   registry_issues?: RegistryIssue[];
+  /** Running raft install; omit only on stale cached payloads. */
+  version?: RaftVersion;
 };
 
 /** Dashboard status poll while the tab is visible (tight bound for out-of-band apply). */

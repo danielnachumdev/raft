@@ -7,6 +7,7 @@ from raft.core.core.config.settings.types import EdgeConfig
 from raft.core.core.models.stack import Stack
 from raft.core.observe.ops.status import Status
 from raft.core.observe.ops.status.models import StatusSnapshot
+from raft.core.observe.ops.version import InstalledVersion
 from .depends import ServeDependsMap
 from .external_urls import ExternalUrlBuilder
 from .snapshot_view import ServeSnapshotView
@@ -50,7 +51,17 @@ class StatusRead:
         body["control_plane"] = view["control_plane"]
         body["apps"] = view["apps"]
         body["registry_issues"] = [issue.to_dict() for issue in self.stack.registry_issues]
+        body["version"] = self._version_payload()
         return body
+
+    @staticmethod
+    def _version_payload() -> Dict[str, str]:
+        """Installed raft package version for serve chrome (not CLI ``--json``)."""
+        installed = InstalledVersion()
+        return {
+            "package": installed.package_version(),
+            "line": installed.line(),
+        }
 
     def service_detail(self, name: str, *, refresh_apps: bool = False) -> Optional[Dict[str, Any]]:
         """One service's container + presentation row, or None if unknown."""
