@@ -1,6 +1,8 @@
 """Operator settings — ``~/.raft/settings.yaml`` loaders and types."""
 
+from .document import SettingsDocument
 from .loader import SettingsLoader, load_config
+from .operator_service import OperatorSettingsService
 from .strategies import (
     AcmeSettingsParser,
     AclSettingsParser,
@@ -89,9 +91,11 @@ __all__ = [
     "NotificationChannelConfig",
     "NotificationsConfig",
     "NotificationsSettingsParser",
+    "OperatorSettingsService",
     "RaftConfig",
     "ServiceLogsConfig",
     "ServiceLogsSettingsParser",
+    "SettingsDocument",
     "SettingsLoader",
     "default_config",
     "load_config",

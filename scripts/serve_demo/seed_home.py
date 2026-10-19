@@ -58,7 +58,29 @@ for name, (group, host, port, deps) in APPS.items():
 
 write(
     "settings.yaml",
-    """notifications:
+    """logging:
+  dir: logs
+  file: raft.log
+  level: INFO
+edge:
+  http: 80
+  https: 443
+  streams: []
+healing:
+  enabled: false
+  intervalSeconds: 15
+metrics:
+  intervalSeconds: 60
+serviceLogs:
+  enabled: true
+  includeEdge: true
+acme:
+  email: ops@example.com
+  challenge: http-01
+github:
+  mock: true
+  sessionTtlSeconds: 3600
+notifications:
   enabled: true
   channels:
     - id: ops-primary
@@ -79,6 +101,11 @@ write(
         chatId: 79007654321@c.us
 alerts:
   enabled: true
+  intervalSeconds: 60
+acl:
+  gate:
+    mode: "off"
+    entries: []
 """,
 )
 

@@ -11,6 +11,7 @@ from raft.core.core.config.paths import RaftHome
 from raft.core.core.config.settings import SettingsLoader
 from raft.core.core.config.settings.types import GithubServeConfig
 from raft.core.core.errors.cta import OperatorError
+from raft.core.platform.locking import SettingsLock
 
 from .setup import SETUP_DOCS_URL, GithubOauthAppSetup
 
@@ -68,14 +69,15 @@ class GithubSettingsWriter:
         return {"mock": False, "clientId": cid, "clientSecret": secret}
 
     def _merge_github(self, patch: Mapping[str, Any]) -> None:
-        data = self._load_root()
-        github = data.get("github")
-        if not isinstance(github, dict):
-            github = {}
-        merged = dict(github)
-        merged.update(patch)
-        data["github"] = merged
-        self._write_root(data)
+        with SettingsLock(self._home):
+            data = self._load_root()
+            github = data.get("github")
+            if not isinstance(github, dict):
+                github = {}
+            merged = dict(github)
+            merged.update(patch)
+            data["github"] = merged
+            self._write_root(data)
 
     def _load_root(self) -> Dict[str, Any]:
         if not self._path.is_file():

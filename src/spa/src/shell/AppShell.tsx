@@ -20,6 +20,16 @@ const NAV: NavItem[] = [
     alsoActive: ["/deploy"],
   },
   { to: "/events", label: "Events", id: "nav-events" },
+  {
+    to: "/settings",
+    label: "Settings",
+    id: "nav-settings",
+    alsoActive: [
+      "/settings/edge-access",
+      "/settings/alerts",
+      "/settings/notifications",
+    ],
+  },
   { to: "/settings/edge-access", label: "Firewall", id: "nav-edge-access" },
   { to: "/settings/alerts", label: "Alerts", id: "nav-alerts" },
   {

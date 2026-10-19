@@ -20,6 +20,7 @@ ROUTES=(
   "add-service:/add-service"
   "deploy:/deploy"
   "events:/events"
+  "settings:/settings"
   "notifications:/settings/notifications"
   "alerts:/settings/alerts"
   "firewall:/settings/edge-access"
