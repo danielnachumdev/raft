@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 
 from raft.core.core.models.app import EDGE_GROUP
@@ -57,16 +58,7 @@ class TestStatusRead(RaftTestCase):
         status.collect.return_value = StatusSnapshot(
             host=status_fx.empty_host_status(), containers=()
         )
-        with patch(
-            "raft.core.observe.read.status.InstalledVersion.package_version",
-            return_value="0.11.0",
-        ), patch(
-            "raft.core.observe.read.status.InstalledVersion.line",
-            return_value="raft 0.11.0",
-        ), patch(
-            "raft.core.observe.read.status.InstalledVersion.chrome_label",
-            return_value="0.11.0",
-        ):
+        with self._patch_installed_version("0.11.0"):
             payload = StatusRead(
                 StackMakers.make_stack(self.tmp_path), status=status
             ).api_payload()
@@ -75,6 +67,14 @@ class TestStatusRead(RaftTestCase):
             "line": "raft 0.11.0",
             "label": "0.11.0",
         }
+
+    @contextmanager
+    def _patch_installed_version(self, semver: str):
+        base = "raft.core.observe.read.status.InstalledVersion"
+        with patch(f"{base}.package_version", return_value=semver), patch(
+            f"{base}.line", return_value=f"raft {semver}"
+        ), patch(f"{base}.chrome_label", return_value=semver):
+            yield
 
     def test_snapshot_dict_omits_serve_version(self) -> None:
         snap = StatusSnapshot(
