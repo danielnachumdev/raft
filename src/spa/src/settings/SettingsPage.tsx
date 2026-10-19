@@ -9,7 +9,6 @@ import {
 } from "./settingsApi";
 import { SettingsNotes } from "./SettingsNotes";
 import {
-  AclSection,
   AcmeSection,
   AlertsSection,
   EdgeSection,
@@ -175,10 +174,6 @@ export function SettingsPage() {
             value={draft.alerts}
             onChange={(alerts) => patch("alerts", alerts)}
           />
-          <AclSection
-            value={draft.acl}
-            onChange={(acl) => patch("acl", acl)}
-          />
           <StorageSection />
         </>
       ) : null}
@@ -196,6 +191,5 @@ const TOC = [
   { href: "#settings-github", label: "GitHub" },
   { href: "#settings-notifications", label: "Notifications" },
   { href: "#settings-alerts", label: "Alerts" },
-  { href: "#settings-acl", label: "ACL" },
   { href: "#settings-storage", label: "Storage" },
 ];
