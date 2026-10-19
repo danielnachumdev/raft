@@ -78,6 +78,12 @@ class ServiceActions:
         if compose_id == self.stack.router:
             orch.redeploy_router()
             return self._ok("redeploy", compose_id)
+        self._refuse_control_plane_redeploy(compose_id)
+        assert app is not None
+        orch.redeploy_app(app.name)
+        return self._ok("redeploy", compose_id)
+
+    def _refuse_control_plane_redeploy(self, compose_id: str) -> None:
         if compose_id == self.stack.controller:
             raise OperatorError(
                 "refusing to redeploy `controller` — restart it with Start "
@@ -90,9 +96,6 @@ class ServiceActions:
                 "after Stop, or use `raft dashboard enable`.",
                 has_fix=False,
             )
-        assert app is not None
-        orch.redeploy_app(app.name)
-        return self._ok("redeploy", compose_id)
 
     def _resolve(self, name: str) -> tuple[str, Optional[App]]:
         compose_id = self._targets.resolve(name)[0]
