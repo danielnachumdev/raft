@@ -26,7 +26,7 @@ class TestExternalUrlBuilder(RaftTestCase):
         AppliedInventory.write_applied_app(self.tmp_path, "site")
         stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))
         builder = self._builder(stack)
-        for role in ("gate", "router", "controller"):
+        for role in ("gate", "router", "controller", "dashboard"):
             assert builder.urls_for(service="raft-gate", role=role) == ()
 
     def test_unknown_service_gets_no_urls(self) -> None:

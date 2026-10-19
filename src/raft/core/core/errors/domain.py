@@ -22,7 +22,7 @@ class DomainErrors:
     def unknown_logs_target(name: str, known: str) -> OperatorError:
         return OperatorError(
             f"unknown logs target {name!r} (known: {known}).\n"
-            f"Fix: raft logs <app|gate|router|controller>   # see: raft get apps"
+            f"Fix: raft logs <app|gate|router|controller|dashboard>   # see: raft get apps"
         )
 
     @staticmethod

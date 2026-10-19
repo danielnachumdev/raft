@@ -10,7 +10,7 @@ from .depends import ServeDependsMap
 from .external_urls import ExternalUrlBuilder
 from .serve_row import ServeRow
 
-_CONTROL_ROLES = frozenset({"gate", "router", "controller"})
+_CONTROL_ROLES = frozenset({"gate", "router", "controller", "dashboard"})
 
 
 class ServeSnapshotView:

@@ -14,8 +14,9 @@ Canonical status JSON matches ``raft status --json`` / ``StatusSnapshot.to_dict(
       ]
     }
 
-``role`` is ``gate`` | ``router`` | ``controller`` | ``app``. Numeric fields are
-raw (bytes, percents, seconds) — format in the UI or CLI human path.
+``role`` is ``gate`` | ``router`` | ``controller`` | ``dashboard`` | ``app``.
+Numeric fields are raw (bytes, percents, seconds) — format in the UI or CLI
+human path. ``dashboard`` appears in ``control_plane`` only when enabled.
 
 Serve ``GET /api/status`` returns that snapshot **plus** presentation lists
 ``control_plane`` / ``apps`` (display labels + human cpu/memory/started/uptime

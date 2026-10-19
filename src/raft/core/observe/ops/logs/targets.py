@@ -5,6 +5,7 @@ from __future__ import annotations
 from raft.core.core.errors.domain import DomainErrors
 from raft.core.core.models.app import (
     CONTROLLER_COMPOSE_ID,
+    DASHBOARD_COMPOSE_ID,
     GATE_COMPOSE_ID,
     ROUTER_COMPOSE_ID,
 )
@@ -14,9 +15,11 @@ _EDGE_ALIASES = {
     "gate": GATE_COMPOSE_ID,
     "router": ROUTER_COMPOSE_ID,
     "controller": CONTROLLER_COMPOSE_ID,
+    "dashboard": DASHBOARD_COMPOSE_ID,
     GATE_COMPOSE_ID: GATE_COMPOSE_ID,
     ROUTER_COMPOSE_ID: ROUTER_COMPOSE_ID,
     CONTROLLER_COMPOSE_ID: CONTROLLER_COMPOSE_ID,
+    DASHBOARD_COMPOSE_ID: DASHBOARD_COMPOSE_ID,
 }
 
 
@@ -35,7 +38,10 @@ class LogsTargets:
 
     def known_labels(self) -> str:
         """Comma-separated operator-facing labels for error CTAs."""
-        labels = ["gate", "router", "controller", *(a.name for a in self.stack.apps)]
+        labels = ["gate", "router", "controller"]
+        if self.stack.dashboard in self.stack.core_services:
+            labels.append("dashboard")
+        labels.extend(a.name for a in self.stack.apps)
         return ", ".join(labels) if labels else "(none)"
 
     def _one(self, name: str) -> str:

@@ -36,16 +36,23 @@ class TestServePaths:
 
 
 class TestServeSnapshotView:
-    def _snapshot(self) -> StatusSnapshot:
+    def _snapshot(self, *, dashboard: bool = False) -> StatusSnapshot:
         fx = status_fx
+        containers = [
+            fx.container("raft-gate", role="gate", group=EDGE_GROUP),
+            fx.container("raft-router", role="router", group=EDGE_GROUP),
+            fx.container("raft-controller", role="controller", group=EDGE_GROUP),
+        ]
+        if dashboard:
+            containers.append(
+                fx.container("raft-dashboard", role="dashboard", group=EDGE_GROUP)
+            )
+        containers.append(
+            fx.container("demo-web", role="app", app="web", group="demo")
+        )
         return StatusSnapshot(
             host=fx.empty_host_status(),
-            containers=(
-                fx.container("raft-gate", role="gate", group=EDGE_GROUP),
-                fx.container("raft-router", role="router", group=EDGE_GROUP),
-                fx.container("raft-controller", role="controller", group=EDGE_GROUP),
-                fx.container("demo-web", role="app", app="web", group="demo"),
-            ),
+            containers=tuple(containers),
         )
 
     def test_splits_control_plane_and_apps(self) -> None:
@@ -55,6 +62,21 @@ class TestServeSnapshotView:
         assert [r.group for r in plane] == [EDGE_GROUP] * 3
         assert len(apps) == 1 and apps[0].name == "web" and apps[0].group == "demo"
         assert "%" in apps[0].cpu or apps[0].cpu == "-"
+
+    def test_control_plane_includes_dashboard_when_present(self) -> None:
+        view = ServeSnapshotView(self._snapshot(dashboard=True))
+        plane = view.control_plane()
+        assert [r.name for r in plane] == [
+            "gate",
+            "router",
+            "controller",
+            "dashboard",
+        ]
+        dash = plane[-1]
+        assert dash.service == "raft-dashboard"
+        assert dash.role == "dashboard"
+        assert dash.group == EDGE_GROUP
+        assert len(view.apps()) == 1
 
     def test_to_payload_includes_host_and_rows(self) -> None:
         payload = ServeSnapshotView(self._snapshot()).to_payload()

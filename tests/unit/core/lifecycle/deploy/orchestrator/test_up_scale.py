@@ -28,6 +28,20 @@ class TestOrchUpScale(OrchestratorTestCase, ControllerTestCase):
         )
         assert ScalingStore(self.tmp_path).is_scaled_to_zero("app")
 
+    def test_start_with_deferred_includes_enabled_dashboard(self) -> None:
+        """Selective ``up --no-deps`` must still start raft-dashboard when enabled."""
+        (self.tmp_path / "settings.yaml").write_text(
+            "dashboard: {enabled: true}\n", encoding="utf-8"
+        )
+        AppliedInventory.write_applied_app(self.tmp_path, "app", extra=self.scaling_extra())
+        orch = self._orch_cold_edge(with_dashboard=True)
+        with patch.object(orch, "sync"):
+            orch.start()
+        orch.docker.start_stack.assert_called_once_with(
+            ("raft-gate", "raft-dashboard", "raft-router", "raft-controller")
+        )
+        assert ScalingStore(self.tmp_path).is_scaled_to_zero("app")
+
     def test_start_docker_scaling_app_pulls_without_empty_build(self) -> None:
         """Image-only deferred apps must not invoke ``compose build`` (Compose WARN)."""
         AppliedInventory.write_applied_app(
@@ -131,9 +145,12 @@ class TestOrchUpScale(OrchestratorTestCase, ControllerTestCase):
             },
         )
 
-    def _orch_cold_edge(self) -> Orchestrator:
+    def _orch_cold_edge(self, *, with_dashboard: bool = False) -> Orchestrator:
         orch = self._orch_for_home()
-        orch.docker.running_services.side_effect = [[], RunningServices.edge()]
+        edge = RunningServices.edge()
+        if with_dashboard:
+            edge = ["raft-gate", "raft-dashboard", "raft-router", "raft-controller"]
+        orch.docker.running_services.side_effect = [[], edge]
         return orch
 
     def _orch_for_home(self) -> Orchestrator:
