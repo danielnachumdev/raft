@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from typing import Any, Dict, Mapping, Optional
+from typing import Any, Dict, Mapping
 
 import yaml
 
@@ -12,7 +12,9 @@ from raft.core.platform.locking import SettingsLock
 
 from .document import SettingsDocument
 from .loader import SettingsLoader
+from .operator_yaml import OperatorSettingsYaml
 from .secrets_merge import SettingsSecretsMerge
+from .section_meta import SettingsSectionMeta
 from .side_effects import SettingsSideEffects
 from .types import RaftConfig
 from .yaml_dump import SettingsYamlDump
@@ -28,11 +30,25 @@ class OperatorSettingsService:
         self._document = SettingsDocument()
         self._secrets = SettingsSecretsMerge()
         self._effects = SettingsSideEffects()
-        self._yaml = SettingsYamlDump()
+        self._yaml_dump = SettingsYamlDump()
+        self._sections = SettingsSectionMeta()
+        self._yaml = OperatorSettingsYaml(
+            loader=self._loader,
+            document=self._document,
+            secrets=self._secrets,
+            dump=self._yaml_dump,
+            sections=self._sections,
+        )
 
     def get_public(self) -> Dict[str, Any]:
         cfg = self._loader.load(self._home)
         return self._response(cfg, notes=self._effects.for_get(cfg))
+
+    def get_yaml_public(self) -> Dict[str, Any]:
+        cfg = self._loader.load(self._home)
+        payload = self._response(cfg, notes=self._effects.for_get(cfg))
+        payload["yaml"] = self._yaml.dump_public(cfg)
+        return payload
 
     def replace(self, body: Mapping[str, Any]) -> Dict[str, Any]:
         with SettingsLock(self._home):
@@ -43,13 +59,21 @@ class OperatorSettingsService:
             notes = self._effects.for_replace(before=before, after=after)
             return self._response(after, notes=notes)
 
-    def _response(
-        self, cfg: RaftConfig, *, notes: list
-    ) -> Dict[str, Any]:
+    def replace_yaml(self, body: Mapping[str, Any]) -> Dict[str, Any]:
+        return self.replace({"document": self._yaml.mapping_from_body(body)})
+
+    def encode_yaml(self, body: Mapping[str, Any]) -> Dict[str, Any]:
+        return self._yaml.encode(body)
+
+    def decode_yaml(self, body: Mapping[str, Any]) -> Dict[str, Any]:
+        return self._yaml.decode(body)
+
+    def _response(self, cfg: RaftConfig, *, notes: list) -> Dict[str, Any]:
         raw = self._document.to_raw(cfg)
         return {
             "path": str(self._path),
             "document": self._secrets.redact_document(raw),
+            "sections": self._sections.for_config(cfg),
             "notes": notes,
         }
 
@@ -78,12 +102,12 @@ class OperatorSettingsService:
             ),
             acl=parsed.acl,
             alerts=parsed.alerts,
+            dashboard=self._secrets.dashboard(parsed.dashboard, prior.dashboard),
         )
 
     def _persist(self, cfg: RaftConfig) -> None:
         root = self._load_root()
-        raw = self._document.to_raw(cfg)
-        for key, value in raw.items():
+        for key, value in self._document.to_raw(cfg).items():
             root[key] = value
         self._write_root(root)
 
@@ -108,5 +132,5 @@ class OperatorSettingsService:
 
     def _write_root(self, data: Mapping[str, Any]) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        self._path.write_text(self._yaml.dump(data), encoding="utf-8")
+        self._path.write_text(self._yaml_dump.dump(data), encoding="utf-8")
         os.chmod(self._path, 0o600)

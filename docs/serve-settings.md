@@ -1,6 +1,6 @@
 # Serve operator settings
 
-Edit the full host document `~/.raft/settings.yaml` (`RaftConfig`) from **Settings** in `raft serve`, or via `GET` / `PUT /api/settings`.
+Edit the full host document `~/.raft/settings.yaml` (`RaftConfig`) from **Settings** in `raft serve`, or via `GET` / `PUT /api/settings` (JSON) and `GET` / `PUT /api/settings/yaml` (YAML text).
 
 Specialized pages remain for deep workflows:
 
@@ -24,7 +24,42 @@ Specialized pages remain for deep workflows:
 
 Confirm before apply. After a successful update, align the running stack the same way as CLI (`raft render` / targeted `redeploy` / `down`+`up` when schemas shifted, then `raft doctor`). Restart `raft serve` or the dashboard process so the UI loads the new package.
 
-## Sections
+## Form ↔ YAML
+
+The Settings page toggles **Form** and **YAML**:
+
+- **Form** — one card per RaftConfig section with enablement (below).
+- **YAML** — full document editor. Encode/decode round-trips through `OperatorSettingsService` (`POST /api/settings/yaml/encode` / `decode`); Save uses `PUT /api/settings/yaml`.
+
+Validation always uses the same section parsers as file load. Invalid YAML or sections return OperatorError-style `400` detail.
+
+## Section enablement
+
+GET responses include `sections[]` describing how each block maps to real config (no fake flags that rewrite unrelated keys):
+
+| key | kind | Enabled when |
+|-----|------|----------------|
+| `logging` | `always` | Always present |
+| `edge` | `always` | Always present |
+| `metrics` | `always` | Always present (no `enabled` key in RaftConfig) |
+| `healing` | `flag` | `healing.enabled` |
+| `serviceLogs` | `flag` | `serviceLogs.enabled` |
+| `notifications` | `flag` | `notifications.enabled` |
+| `alerts` | `flag` | `alerts.enabled` |
+| `dashboard` | `flag` | `dashboard.enabled` |
+| `acme` | `derived` | `acme.email` is set |
+| `github` | `derived` | `github.clientId` is set |
+
+UI behavior:
+
+- **Disabled** sections show an enable toggle; fields are inactive until enabled.
+- Enabling a **flag** section sets the corresponding `enabled: true`.
+- Enabling **derived** sections leaves real keys for the operator to fill (e.g. ACME email, GitHub `clientId`). Disabling clears presence keys (`acme.email`, GitHub credentials).
+- Save rejects incomplete enabled sections client-side (e.g. ACME without email; dashboard `publicHost` with `auth.mode: none`); the backend still validates the full document.
+
+Appearance, Updates, and Storage are UI-only (not `settings.yaml` sections).
+
+## Sections (roles)
 
 | Section | Role | Side effects |
 |---------|------|----------------|
@@ -35,10 +70,11 @@ Confirm before apply. After a successful update, align the running stack the sam
 | `healing` | Controller self-heal | Next heal job tick |
 | `metrics` | Resource + HTTP sampling | Next metrics job tick |
 | `serviceLogs` | Retained Compose stdout | Next shipper tick |
-| `acme` | Let's Encrypt HTTP-01 | Apply/renew jobs; email required when apps use `tls: acme` |
+| `acme` | Let's Encrypt HTTP-01 | Apply/renew jobs; email when enabled / apps use `tls: acme` |
 | `github` | Serve OAuth (Add from GitHub) | `RAFT_GITHUB_*` env overrides when set |
-| `notifications` | Global enable + channels | Channel secrets redacted in API; prefer Notifications page for CRUD |
+| `notifications` | Global enable + channels | Channel secrets redacted; prefer Notifications page for CRUD |
 | `alerts` | Evaluation cadence | Rules stay under `state/alerts/` |
+| `dashboard` | Always-on `raft-dashboard` | Compose / public Host / auth — see [`serve-dashboard.md`](serve-dashboard.md) |
 | Storage | Purge unused Docker images / build cache | Confirm → `POST /api/purge` (same as `raft purge`); toasts for success/error |
 
 Legacy `acl.gate` may still appear in the API document for round-trip and migrate-on-GET into Firewall until Save — it is **not** an editable Settings section. Prefer [Settings → Firewall](serve-firewall.md).
@@ -50,7 +86,19 @@ GET /api/settings
 PUT /api/settings
 Content-Type: application/json
 
-{ "document": { "logging": {…}, "edge": {…}, … } }
+{ "document": { "logging": {…}, "edge": {…}, "dashboard": {…}, … } }
+
+GET /api/settings/yaml
+PUT /api/settings/yaml
+Content-Type: application/json
+
+{ "yaml": "logging:\n  level: INFO\n…" }
+
+POST /api/settings/yaml/encode
+{ "document": { … } }   → { "yaml": "…", "document": {…}, "sections": […] }
+
+POST /api/settings/yaml/decode
+{ "yaml": "…" }         → { "document": {…}, "sections": […] }
 ```
 
 Update check / apply (not part of the settings document):
@@ -65,23 +113,35 @@ Content-Type: application/json
 
 `GET` returns camelCase fields: `current`, `currentLine`, `latestTag`, `latestVersion`, `updateAvailable`, `releaseUrl`, `state`, `message`. `POST` returns `alreadyCurrent`, `beforeLine`, `afterLine`, `nextSteps`.
 
-Response shape:
+Response shape (GET/PUT JSON and YAML):
 
 ```json
 {
   "path": "/tmp/raft-demo/home/settings.yaml",
   "document": { },
+  "sections": [
+    {
+      "key": "healing",
+      "title": "Healing",
+      "kind": "flag",
+      "enabled": false,
+      "source": "healing.enabled"
+    }
+  ],
   "notes": [
     {
       "code": "edge.ports",
       "severity": "warn",
       "message": "Published edge ports … Run `raft gate recreate` …"
     }
-  ]
+  ],
+  "yaml": "…"
 }
 ```
 
-Validation uses the same section parsers as file load. Secret-like values (`github.clientSecret`, notification channel tokens/passwords) are returned as `***`; re-saving the mask keeps the stored value.
+(`yaml` is present on `GET /api/settings/yaml` and YAML PUT responses.)
+
+Secret-like values (`github.clientSecret`, `dashboard.auth.passwordHash`, notification channel tokens/passwords) are returned as `***`; re-saving the mask keeps the stored value.
 
 Mutative writes take `settings.lock` (same flock as notification channel and GitHub OAuth settings writers).
 
@@ -92,6 +152,7 @@ Fixtures, docs, and screenshots use only documentation hosts (`ops.example.com`,
 ## Related
 
 - [`examples/settings.yaml`](../examples/settings.yaml)
+- [`serve-dashboard.md`](serve-dashboard.md)
 - [`serve-notifications.md`](serve-notifications.md)
 - [`serve-alerts.md`](serve-alerts.md)
 - [`serve-firewall.md`](serve-firewall.md)

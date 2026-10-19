@@ -1,10 +1,13 @@
 import { NumberField } from "../NumberField";
 import { SectionCard } from "../SectionCard";
 import { TextField } from "../TextField";
-import { SECRET_MASK, type SettingsDocument } from "../settingsApi";
+import { SECRET_MASK, type SettingsDocument, type SettingsSection } from "../settingsApi";
 
 export function GithubSection(props: {
   value: SettingsDocument["github"];
+  meta?: SettingsSection;
+  enabled: boolean;
+  onEnabledChange: (enabled: boolean) => void;
   onChange: (next: SettingsDocument["github"]) => void;
 }) {
   const v = props.value;
@@ -14,7 +17,11 @@ export function GithubSection(props: {
     <SectionCard
       id="settings-github"
       title="GitHub"
-      hint="OAuth for Add service. RAFT_GITHUB_* env vars override this file when set. Prefer the Add service flow to paste credentials."
+      kind={props.meta?.kind ?? "derived"}
+      enabled={props.enabled}
+      source={props.meta?.source}
+      onEnabledChange={props.onEnabledChange}
+      hint="OAuth for Add service. RAFT_GITHUB_* env vars override this file when set."
     >
       <div className="form-grid">
         <TextField

@@ -1,9 +1,10 @@
 import { NumberField } from "../NumberField";
 import { SectionCard } from "../SectionCard";
-import type { SettingsDocument } from "../settingsApi";
+import type { SettingsDocument, SettingsSection } from "../settingsApi";
 
 export function MetricsSection(props: {
   value: SettingsDocument["metrics"];
+  meta?: SettingsSection;
   onChange: (next: SettingsDocument["metrics"]) => void;
 }) {
   const v = props.value;
@@ -13,6 +14,9 @@ export function MetricsSection(props: {
     <SectionCard
       id="settings-metrics"
       title="Metrics"
+      kind={props.meta?.kind ?? "always"}
+      enabled
+      source={props.meta?.source}
       hint="Controller sampling for resources.jsonl and http.jsonl under state/metrics/."
     >
       <div className="form-grid">

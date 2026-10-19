@@ -1,10 +1,11 @@
 import { NumberField } from "../NumberField";
 import { SectionCard } from "../SectionCard";
 import { TextField } from "../TextField";
-import type { SettingsDocument } from "../settingsApi";
+import type { SettingsDocument, SettingsSection } from "../settingsApi";
 
 export function LoggingSection(props: {
   value: SettingsDocument["logging"];
+  meta?: SettingsSection;
   onChange: (next: SettingsDocument["logging"]) => void;
 }) {
   const v = props.value;
@@ -14,6 +15,9 @@ export function LoggingSection(props: {
     <SectionCard
       id="settings-logging"
       title="Logging"
+      kind={props.meta?.kind ?? "always"}
+      enabled
+      source={props.meta?.source}
       hint="Host CLI file log under the data home. Terminal output stays plain text."
     >
       <div className="form-grid">

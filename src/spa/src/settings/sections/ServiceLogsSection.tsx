@@ -1,9 +1,12 @@
 import { NumberField } from "../NumberField";
 import { SectionCard } from "../SectionCard";
-import type { SettingsDocument } from "../settingsApi";
+import type { SettingsDocument, SettingsSection } from "../settingsApi";
 
 export function ServiceLogsSection(props: {
   value: SettingsDocument["serviceLogs"];
+  meta?: SettingsSection;
+  enabled: boolean;
+  onEnabledChange: (enabled: boolean) => void;
   onChange: (next: SettingsDocument["serviceLogs"]) => void;
 }) {
   const v = props.value;
@@ -13,17 +16,13 @@ export function ServiceLogsSection(props: {
     <SectionCard
       id="settings-service-logs"
       title="Service logs"
+      kind={props.meta?.kind ?? "flag"}
+      enabled={props.enabled}
+      source={props.meta?.source}
+      onEnabledChange={props.onEnabledChange}
       hint="Retained Compose stdout under state/service-logs/ (0600). May contain secrets."
     >
       <div className="settings-checks">
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={v.enabled}
-            onChange={(e) => set({ enabled: e.target.checked })}
-          />
-          Enabled
-        </label>
         <label className="check">
           <input
             type="checkbox"

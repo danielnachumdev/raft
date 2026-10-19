@@ -1,9 +1,12 @@
 import { NumberField } from "../NumberField";
 import { SectionCard } from "../SectionCard";
-import type { SettingsDocument } from "../settingsApi";
+import type { SettingsDocument, SettingsSection } from "../settingsApi";
 
 export function HealingSection(props: {
   value: SettingsDocument["healing"];
+  meta?: SettingsSection;
+  enabled: boolean;
+  onEnabledChange: (enabled: boolean) => void;
   onChange: (next: SettingsDocument["healing"]) => void;
 }) {
   const v = props.value;
@@ -13,16 +16,12 @@ export function HealingSection(props: {
     <SectionCard
       id="settings-healing"
       title="Healing"
+      kind={props.meta?.kind ?? "flag"}
+      enabled={props.enabled}
+      source={props.meta?.source}
+      onEnabledChange={props.onEnabledChange}
       hint="Controller self-heal for Apps (never the gate). Separate from per-app scale-to-zero."
     >
-      <label className="check">
-        <input
-          type="checkbox"
-          checked={v.enabled}
-          onChange={(e) => set({ enabled: e.target.checked })}
-        />
-        Enabled
-      </label>
       <div className="form-grid">
         <NumberField
           id="heal-interval"
