@@ -5,18 +5,18 @@ from __future__ import annotations
 from typing import Optional
 
 from raft.core.core.ui import OperatorSay
+from .outcome import NEXT_STEPS, UpdateOutcome
 
 
 class UpdateAnnounce:
     """Print ``OK: prev → current`` (or already-current) after reinstall."""
 
-    _NEXT = (
-        "Next: align the running stack with this release — templates and "
-        "Compose ids can change. Typical path: `raft render`, then "
-        "`raft redeploy <app|router>` for targeted updates, or "
-        "`raft down && raft up` when edge/service names or schemas shifted. "
-        "Finish with `raft doctor`."
-    )
+    def say_outcome(self, outcome: UpdateOutcome) -> None:
+        self.say(
+            already_current=outcome.already_current,
+            before_line=outcome.before_line,
+            after_line=outcome.after_line,
+        )
 
     def say(
         self,
@@ -29,7 +29,7 @@ class UpdateAnnounce:
             self._already_current(after_line or before_line)
             return
         self._ok_transition(before_line, after_line)
-        OperatorSay.say(self._NEXT, style="info")
+        OperatorSay.say(NEXT_STEPS, style="info")
 
     @staticmethod
     def _already_current(line: Optional[str]) -> None:

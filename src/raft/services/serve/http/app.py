@@ -17,6 +17,7 @@ from ..firewall import ServeFirewallApi
 from ..github import ServeGithubApi
 from ..notifications import ServeNotificationsApi
 from ..settings import ServeSettingsApi
+from ..update import ServeUpdateApi
 from .downloads import ServeDownloads
 from .page import ServePage
 from .paths import ServePaths
@@ -40,6 +41,7 @@ class ServeAppFactory:
         alerts: Optional[ServeAlertsApi] = None,
         events: Optional[ServeEventsApi] = None,
         settings: Optional[ServeSettingsApi] = None,
+        update: Optional[ServeUpdateApi] = None,
         port: int = _DEFAULT_PORT,
     ) -> None:
         self.stack = stack
@@ -53,6 +55,7 @@ class ServeAppFactory:
         self._alerts = alerts
         self._events = events
         self._settings = settings
+        self._update = update
         self._port = port
 
     def create(self) -> FastAPI:
@@ -85,6 +88,7 @@ class ServeAppFactory:
         alerts = self._alerts or ServeAlertsApi(self.stack)
         events = self._events or ServeEventsApi(self.stack)
         settings = self._settings or ServeSettingsApi(self.stack)
+        update = self._update or ServeUpdateApi(self.stack)
         return (
             downloads,
             github,
@@ -93,6 +97,7 @@ class ServeAppFactory:
             alerts,
             events,
             settings,
+            update,
         )
 
     @staticmethod
@@ -106,6 +111,7 @@ class ServeAppFactory:
         alerts: ServeAlertsApi,
         events: ServeEventsApi,
         settings: ServeSettingsApi,
+        update: ServeUpdateApi,
     ) -> None:
         ServeAppFactory._register_read_api(app, page)
         ServeAppFactory._register_action_api(app, page)
@@ -116,6 +122,7 @@ class ServeAppFactory:
         alerts.register(app)
         events.register(app)
         settings.register(app)
+        update.register(app)
 
     @staticmethod
     def _register_read_api(app: FastAPI, page: ServePage) -> None:

@@ -79,3 +79,14 @@ class TestUpdateAnnounce:
             )
         texts = [c.args[0] for c in say.call_args_list]
         assert texts[0] == "OK: raft 0.1.0 (git main@abc) → (unknown)"
+
+    def test_say_outcome_delegates(self) -> None:
+        from raft.core.observe.ops.update import UpdateOutcome
+
+        outcome = UpdateOutcome(
+            already_current=True, before_line="raft 0.1.0", after_line="raft 0.1.0"
+        )
+        with patch("raft.core.observe.ops.update.announce.OperatorSay.say") as say:
+            UpdateAnnounce().say_outcome(outcome)
+        texts = [c.args[0] for c in say.call_args_list]
+        assert texts[0] == "raft is already up to date"

@@ -7,16 +7,29 @@ Specialized pages remain for deep workflows:
 | UI | Durable state |
 |----|----------------|
 | **Settings** (this page) | Full `settings.yaml` sections |
+| Settings → Updates | Host CLI package (GitHub Releases); not in `settings.yaml` |
 | Settings → Notifications | Channel CRUD (`notifications.channels`) |
 | Settings → Alerts | Rules under `state/alerts/rules.yaml` |
 | Settings → Firewall | Ordered rules under `state/firewall/rules.yaml` |
 | Settings → Storage | Host cleanup (`POST /api/purge` / `raft purge`) — not in `settings.yaml` |
+
+## Updates (Check for updates)
+
+**Settings → Updates** queries GitHub for the latest raft Release (same SoT as `raft update` / `install.sh` — prefer Release wheel) and compares it to the installed package version.
+
+| Action | API | Behavior |
+|--------|-----|----------|
+| Check for updates | `GET /api/update/status` | Latest Release tag vs installed semver |
+| Update raft | `POST /api/update` | Runs the shared `SelfUpdate` path (`install.sh`); optional JSON `{ "ref": "<tag\|branch\|sha>" }` matches CLI `--ref` |
+
+Confirm before apply. After a successful update, align the running stack the same way as CLI (`raft render` / targeted `redeploy` / `down`+`up` when schemas shifted, then `raft doctor`). Restart `raft serve` or the dashboard process so the UI loads the new package.
 
 ## Sections
 
 | Section | Role | Side effects |
 |---------|------|----------------|
 | Appearance | Dashboard light/dark theme | Browser `localStorage` only; applies immediately (not in `settings.yaml`) |
+| Updates (UI) | Check / apply raft package updates | Reinstalls CLI via `install.sh`; stack may need render/redeploy |
 | `logging` | Host CLI file log | Applies on next CLI process |
 | `edge` | Gate published http / https / streams | **Ports change → `raft gate recreate`** |
 | `healing` | Controller self-heal | Next heal job tick |
@@ -39,6 +52,18 @@ Content-Type: application/json
 
 { "document": { "logging": {…}, "edge": {…}, … } }
 ```
+
+Update check / apply (not part of the settings document):
+
+```http
+GET /api/update/status
+POST /api/update
+Content-Type: application/json
+
+{ "ref": "v0.12.0" }
+```
+
+`GET` returns camelCase fields: `current`, `currentLine`, `latestTag`, `latestVersion`, `updateAvailable`, `releaseUrl`, `state`, `message`. `POST` returns `alreadyCurrent`, `beforeLine`, `afterLine`, `nextSteps`.
 
 Response shape:
 

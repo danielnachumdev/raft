@@ -1,0 +1,22 @@
+.settings-updates {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.settings-updates-status {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.settings-updates-next {
+  margin: 0;
+  font-size: 0.88rem;
+  white-space: pre-wrap;
+}
+
+.settings-updates-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}

@@ -20,6 +20,7 @@ import {
   NotificationsSection,
   ServiceLogsSection,
   StorageSection,
+  UpdatesSection,
 } from "./sections";
 import "./SettingsPage.css";
 
@@ -141,6 +142,7 @@ export function SettingsPage() {
               </a>
             ))}
           </nav>
+          <UpdatesSection />
           <LoggingSection
             value={draft.logging}
             onChange={(logging) => patch("logging", logging)}
@@ -186,6 +188,7 @@ export function SettingsPage() {
 
 const TOC = [
   { href: "#settings-appearance", label: "Appearance" },
+  { href: "#settings-updates", label: "Updates" },
   { href: "#settings-logging", label: "Logging" },
   { href: "#settings-edge", label: "Edge" },
   { href: "#settings-healing", label: "Healing" },
