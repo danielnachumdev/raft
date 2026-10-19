@@ -5,6 +5,11 @@ import {
   fetchServiceHttpRequests,
   type HttpRequestsPayload,
 } from "../../shared/api";
+import {
+  httpRequestsEmptyLabel,
+  httpRequestsIdleHint,
+  isIdleContainerStatus,
+} from "./emptyState";
 import { HttpRequestsTable } from "./HttpRequestsTable";
 import "./ServiceHttpRequests.css";
 
@@ -19,8 +24,9 @@ export function ServiceHttpRequests(props: {
   onEligibleChange?: (eligible: boolean) => void;
 }) {
   const { onEligibleChange } = props;
+  const idleContainer = isIdleContainerStatus(props.containerStatus);
   const [limit, setLimit] = useState<number>(DEFAULT_HTTP_REQUESTS_LIMIT);
-  const [live, setLive] = useState(true);
+  const [live, setLive] = useState(!idleContainer);
   const [data, setData] = useState<HttpRequestsPayload | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +62,14 @@ export function ServiceHttpRequests(props: {
     return null;
   }
 
+  const scaledToZero =
+    Boolean(data?.scaled_to_zero) ||
+    props.containerStatus.trim().toLowerCase() === "scaled-to-zero";
+  const idleHint = httpRequestsIdleHint({
+    scaledToZero,
+    idleContainer: !scaledToZero && idleContainer,
+  });
+
   return (
     <section className="panel http-requests" aria-labelledby="http-requests-title">
       <div className="http-requests-head">
@@ -74,15 +88,9 @@ export function ServiceHttpRequests(props: {
         aggregate (RPS / latency / status classes). Query strings are not logged.
         Drag column edges to resize; click a row to expand full Path / User-Agent.
       </p>
-      {data?.scaled_to_zero ? (
+      {idleHint ? (
         <p className="http-requests-hint" role="status">
-          App is scaled to zero — new proxied traffic will wake it.
-        </p>
-      ) : null}
-      {!data?.scaled_to_zero && isNotRunning(props.containerStatus) ? (
-        <p className="http-requests-hint" role="status">
-          App is not running — showing recent edge rows if any remain in the
-          access log.
+          {idleHint}
         </p>
       ) : null}
       {error ? (
@@ -97,6 +105,10 @@ export function ServiceHttpRequests(props: {
         <HttpRequestsTable
           rows={data.requests}
           appName={props.appName ?? null}
+          emptyLabel={httpRequestsEmptyLabel({
+            scaledToZero,
+            idleContainer: !scaledToZero && idleContainer,
+          })}
         />
       ) : null}
     </section>
@@ -140,9 +152,4 @@ function HttpRequestsControls(props: {
       </button>
     </div>
   );
-}
-
-function isNotRunning(status: string): boolean {
-  const key = status.trim().toLowerCase();
-  return key === "not running" || key === "exited" || key === "dead";
 }

@@ -10,13 +10,17 @@ import "./ServiceDetail.css";
 
 /** Service page body: overview → logs → trends → HTTP → details. */
 export function ServiceDetail(props: { data: ServiceDetailPayload }) {
-  const { container: c } = props.data;
-  const [httpEligible, setHttpEligible] = useState(false);
+  const { container: c, presentation: p } = props.data;
+  // Host-routed Apps (external URLs) keep the HTTP nav even when scaled to
+  // zero / stopped — history comes from the gate access log, not the container.
+  const hostRouted = (p.external_urls?.length ?? 0) > 0;
+  const [httpEligible, setHttpEligible] = useState(hostRouted);
+  const showHttp = hostRouted || httpEligible;
   const sections: ServiceSection[] = [
     { id: "overview", label: "Overview" },
     { id: "logs", label: "Logs" },
     { id: "trends", label: "Trends" },
-    ...(httpEligible ? [{ id: "http", label: "HTTP requests" }] : []),
+    ...(showHttp ? [{ id: "http", label: "HTTP requests" }] : []),
     { id: "details", label: "Details" },
   ];
   return (

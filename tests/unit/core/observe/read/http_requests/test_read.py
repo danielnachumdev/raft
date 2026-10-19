@@ -79,6 +79,46 @@ class TestHttpRequestsRead(RaftTestCase):
         payload = HttpRequestsRead(stack).for_service("demo-api")
         assert payload["scaled_to_zero"] is True
 
+    def test_scaled_to_zero_still_returns_history(self) -> None:
+        stack = self._stack_with_demo()
+        ScalingStore(stack.root).mark_scaled_to_zero("demo-api")
+        self._write_log(
+            stack.root,
+            '0.01 200 demo-api.test 2026-10-13T01:00:00+00:00 GET /past '
+            '192.0.2.10 "DemoAgent/1.0"\n'
+            '0.02 200 demo-api.test 2026-10-13T01:00:01+00:00 GET '
+            '/_raft_hold_demo-api 192.0.2.11 "DemoAgent/1.0"\n',
+        )
+        payload = HttpRequestsRead(stack).for_service("demo-api", limit=10)
+        assert payload["eligible"] is True
+        assert payload["scaled_to_zero"] is True
+        assert payload["reason"] is None
+        assert [row["path"] for row in payload["requests"]] == [
+            "/_raft_hold_demo-api",
+            "/past",
+        ]
+
+    def test_scaled_to_zero_empty_history_still_eligible(self) -> None:
+        stack = self._stack_with_demo()
+        ScalingStore(stack.root).mark_scaled_to_zero("demo-api")
+        payload = HttpRequestsRead(stack).for_service("demo-api")
+        assert payload["eligible"] is True
+        assert payload["scaled_to_zero"] is True
+        assert payload["requests"] == []
+
+    def test_compose_id_lookup_when_scaled_to_zero(self) -> None:
+        stack = self._stack_with_demo()
+        app = stack.apps[0]
+        ScalingStore(stack.root).mark_scaled_to_zero(app.name)
+        self._write_log(
+            stack.root,
+            '0.01 200 demo-api.test 2026-10-13T01:00:00+00:00 GET /via-id '
+            '192.0.2.10 "DemoAgent/1.0"\n',
+        )
+        payload = HttpRequestsRead(stack).for_service(app.compose_id)
+        assert payload["eligible"] is True
+        assert payload["requests"][0]["path"] == "/via-id"
+
     def test_limit_clamp_min_and_max(self) -> None:
         stack = self._stack_with_demo()
         low = HttpRequestsRead(stack).for_service("demo-api", limit=0)

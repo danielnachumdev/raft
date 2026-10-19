@@ -55,7 +55,7 @@ class HttpRequestsCLI:
         rows = list(payload.get("requests") or [])
         self._print_header(payload, service=service, count=len(rows))
         if not rows:
-            OperatorSay.say("No recent HTTP requests for this service.")
+            OperatorSay.say(_empty_history_line(payload))
             return
         OperatorSay.say(
             "TIME  STATUS  METHOD  PATH  CLIENT  LATENCY  UA"
@@ -66,9 +66,7 @@ class HttpRequestsCLI:
     def _print_header(
         self, payload: Dict[str, Any], *, service: str, count: int
     ) -> None:
-        note = ""
-        if payload.get("scaled_to_zero"):
-            note = " (scaled to zero — traffic will wake the App)"
+        note = _scaled_note(payload)
         OperatorSay.say(
             f"{service}: {count} request(s), limit={payload.get('limit')}{note}"
         )
@@ -92,6 +90,18 @@ class HttpRequestsCLI:
             f"{row.get('duration_ms') or '-'}  "
             f"{_short_ua(row.get('user_agent'))}"
         )
+
+
+def _scaled_note(payload: Dict[str, Any]) -> str:
+    if not payload.get("scaled_to_zero"):
+        return ""
+    return " (scaled to zero — past rows still listed; new traffic will wake the App)"
+
+
+def _empty_history_line(payload: Dict[str, Any]) -> str:
+    if payload.get("scaled_to_zero"):
+        return "No retained HTTP requests for this service in the gate access log."
+    return "No recent HTTP requests for this service."
 
 
 def _short_ua(value: Any) -> str:

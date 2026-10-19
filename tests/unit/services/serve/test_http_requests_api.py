@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from raft.core.core.models.stack import Stack
+from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.services.controller.jobs.metrics.http_scrape import (
     ACCESS_LOG_NAME,
     GATE_HTTP_LOG_DIR,
@@ -27,6 +28,22 @@ class TestServeHttpRequestsApi(RaftTestCase):
         assert data["eligible"] is True
         assert data["requests"][0]["path"] == "/health"
         assert data["requests"][0]["client_ip"] == "192.0.2.10"
+
+    def test_api_scaled_to_zero_still_returns_history(self) -> None:
+        stack = self._stack()
+        ScalingStore(stack.root).mark_scaled_to_zero("demo-api")
+        self._write_log(
+            stack.root,
+            '0.01 200 demo-api.test 2026-10-13T01:00:00+00:00 GET /past '
+            '192.0.2.10 "DemoAgent/1.0"\n',
+        )
+        client, _ = serve_fx.client_and_status(stack, serve_fx.empty_snapshot())
+        res = client.get("/api/service/demo-api/http-requests")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["eligible"] is True
+        assert data["scaled_to_zero"] is True
+        assert data["requests"][0]["path"] == "/past"
 
     def test_api_404_unknown(self) -> None:
         stack = self._stack()
