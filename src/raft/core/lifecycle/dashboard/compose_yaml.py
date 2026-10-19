@@ -51,6 +51,8 @@ class DashboardComposeYaml:
             "    environment:",
             "      RAFT_DATA_HOME: /raft",
             f'      RAFT_SERVE_PORT: "{port}"',
+            # Listen on all container interfaces; host mapping stays loopback.
+            "      RAFT_SERVE_BIND: \"0.0.0.0\"",
             "    ports:",
             f'      - "127.0.0.1:{port}:{port}"',
         ]
