@@ -42,6 +42,12 @@ class TestInstallStamp:
         (pkg / "_install_stamp.json").write_text('{"detail":"x"}\n', encoding="utf-8")
         assert InstallStamp().read(pkg) is None
 
+    def test_read_none_when_json_not_object(self, tmp_path: Path) -> None:
+        pkg = tmp_path / "raft"
+        pkg.mkdir()
+        (pkg / "_install_stamp.json").write_text('["0.12.7"]\n', encoding="utf-8")
+        assert InstallStamp().read(pkg) is None
+
 
 class TestInstalledVersionStampFallback:
     def test_package_version_uses_stamp_without_dist(self, tmp_path: Path) -> None:
