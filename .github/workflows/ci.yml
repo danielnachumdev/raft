@@ -1,13 +1,15 @@
 name: CI
 
-# Entry orchestrator. Job bodies live in SRP reusable workflows:
+# Top-level CI invoker. Validation only — never creates tags / Releases / wheels.
+# Job bodies live in SRP reusable workflows:
 #   ci_changes.yml — path filter / change detection
 #   ci_spa.yml     — SPA install/test/build
 #   ci_meta.yml    — meta / package-data guards
 #   ci_unit.yml    — unit+integration matrix
 #   ci_e2e.yml     — e2e (GHCR seed pins)
 # Aggregate gate stays here so branch protection can require check name "CI".
-# Seed mirror and Release stay as their own workflows (already SRP).
+# Semver / Release publish is CD (cd.yml), gated on this workflow succeeding.
+# Seed mirror stays as its own workflow (already SRP).
 
 on:
   push:

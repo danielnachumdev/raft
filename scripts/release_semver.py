@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Label-driven semver for GitHub Releases (source of truth: release tags).
 
-Used by ``.github/workflows/release.yml``. Prefer Release tags over
+Used by ``.github/workflows/cd.yml`` (semver job). Prefer Release tags over
 ``pyproject.toml`` so CI does not bot-commit version files.
 
 Bump labels (exact names, mutually exclusive with each other and ``noBump``):
