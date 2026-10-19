@@ -9,7 +9,6 @@ import { LiveIndicator } from "../chrome/LiveIndicator";
 import { TrendsDashboard } from "../trends/dashboard/ui/TrendsDashboard";
 import { DashboardSection } from "./DashboardSection";
 import { PageHeader } from "./PageHeader";
-import { PurgeButton } from "./PurgeButton";
 import { RegistryIssues } from "./RegistryIssues";
 import { StatusSummary } from "./StatusSummary";
 import { statusMetaLabel } from "./statusMeta";
@@ -118,7 +117,6 @@ export function Dashboard() {
               ) : null}
               Refresh
             </button>
-            <PurgeButton />
             <Link className="refresh btn-primary" to="/add-service" id="add-service">
               Add service
             </Link>

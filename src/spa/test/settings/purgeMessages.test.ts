@@ -4,7 +4,7 @@ import {
   purgeFailureMessage,
   purgeStartedMessage,
   purgeSuccessMessage,
-} from "../../src/shell/purgeMessages.ts";
+} from "../../src/settings/purgeMessages.ts";
 
 describe("purgeStartedMessage", () => {
   it("signals background start without reclaim details", () => {

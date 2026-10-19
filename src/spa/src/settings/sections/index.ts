@@ -8,3 +8,4 @@ export { LoggingSection } from "./LoggingSection";
 export { MetricsSection } from "./MetricsSection";
 export { NotificationsSection } from "./NotificationsSection";
 export { ServiceLogsSection } from "./ServiceLogsSection";
+export { StorageSection } from "./StorageSection";
