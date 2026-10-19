@@ -12,6 +12,7 @@ from raft.core.core.ui.progress import TerminalProgress
 from raft.core.observe.ops.version import InstalledVersion
 from .announce import UpdateAnnounce
 from .identity import InstallIdentity
+from .outcome import UpdateOutcome
 
 DEFAULT_INSTALL_URL = "https://raw.githubusercontent.com/danielnachumdev/raft/main/install.sh"
 
@@ -29,21 +30,27 @@ class SelfUpdate:
         *,
         ref: Optional[str] = None,
         progress_stream: Optional[TextIO] = None,
-    ) -> None:
+        announce: bool = True,
+    ) -> UpdateOutcome:
         url = os.environ.get("RAFT_INSTALL_URL", DEFAULT_INSTALL_URL)
-        self._run_with_progress(url, ref, progress_stream)
+        return self._run_with_progress(url, ref, progress_stream, announce)
 
     def _run_with_progress(
-        self, url: str, ref: Optional[str], stream: Optional[TextIO]
-    ) -> None:
+        self,
+        url: str,
+        ref: Optional[str],
+        stream: Optional[TextIO],
+        announce: bool,
+    ) -> UpdateOutcome:
         existing = TerminalProgress.active()
         if existing is not None:
-            self._run_body(url, ref)
-            return
+            return self._run_body(url, ref, announce)
         with TerminalProgress(stream, prefix="raft update", label="updating"):
-            self._run_body(url, ref)
+            return self._run_body(url, ref, announce)
 
-    def _run_body(self, url: str, ref: Optional[str]) -> None:
+    def _run_body(
+        self, url: str, ref: Optional[str], announce: bool
+    ) -> UpdateOutcome:
         self._set_label("checking install")
         before_id = self._identity.read()
         before_line = self._version_line()
@@ -53,7 +60,7 @@ class SelfUpdate:
         after_id = self._identity.read()
         after_line = self._version_line()
         TerminalProgress.finish_active()
-        self._finish(before_id, after_id, before_line, after_line)
+        return self._finish(before_id, after_id, before_line, after_line, announce)
 
     def _finish(
         self,
@@ -61,15 +68,19 @@ class SelfUpdate:
         after_id: Optional[str],
         before_line: Optional[str],
         after_line: Optional[str],
-    ) -> None:
+        announce: bool,
+    ) -> UpdateOutcome:
         current = self._already_current(before_id, after_id)
         if not current:
             GraphEventStore(self.stack.root).record_update()
-        self._announce.say(
+        outcome = UpdateOutcome(
             already_current=current,
             before_line=before_line,
             after_line=after_line,
         )
+        if announce:
+            self._announce.say_outcome(outcome)
+        return outcome
 
     def _version_line(self) -> Optional[str]:
         dist = self._identity.dist_info_dir()

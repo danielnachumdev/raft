@@ -89,6 +89,7 @@ Align with the README table; detail for agents:
 | Metrics JSONL + Trends (resources + HTTP aggregate) | **Shipped** | Controller scrape; `http.jsonl` contract in observe/docs; CLI `raft metrics history|catalog|export_*` |
 | `raft serve` ops UI | **Shipped** | FastAPI + packaged SPA |
 | Full operator settings UI (`settings.yaml` / `RaftConfig`) | **Shipped** | `OperatorSettingsService` + `GET/PUT /api/settings` + SPA `/settings`; [`docs/serve-settings.md`](docs/serve-settings.md). Edge port changes note `raft gate recreate`. |
+| Settings → Check for updates | **Shipped** | `UpdateCheck` + `SelfUpdate` via `GET/POST /api/update`; same GitHub Release wheel SoT as `raft update` / `install.sh` |
 | HTTP request inspection (per App) | **Shipped** | Gate access log → `/api/service/{name}/http-requests` + `raft http_requests show`; [`docs/serve-http-requests.md`](docs/serve-http-requests.md) |
 | Flat gate / App IP ACL (allow/deny lists) | **Retired** | Removed as operator path; leftover `#195` data migrates into firewall GET until Save; [`docs/serve-acl.md`](docs/serve-acl.md) |
 | **Ordered firewall rules** (CIDR, port, protocol, service, action) | **Shipped** | Epic [#207](https://github.com/danielnachumdev/raft/issues/207), [#211](https://github.com/danielnachumdev/raft/issues/211); CLI [#258](https://github.com/danielnachumdev/raft/issues/258) (`raft firewall …`). On gate; Save/CLI → compile → reload; import/export; recommendations; [`docs/serve-firewall.md`](docs/serve-firewall.md). |
@@ -150,6 +151,7 @@ Product templates sync from `src/raft/core/platform/share/` into the data home o
 | Per-service start/stop/redeploy/purge | `observe/ops/actions/` (`ServiceActions`); CLI `raft start|stop NAME` + serve actions; redeploy/purge already on CLI |
 | Ordered firewall (CRUD / recommendations / from-inspection) | `lifecycle/firewall/` + nginx compile in `lifecycle/render/firewall/`; serve adapter `services/serve/firewall/`; CLI `services/cli/commands/firewall.py` (`raft firewall …`); SPA `src/spa/src/firewall/` |
 | Full operator settings (`settings.yaml`) | `core/config/settings/operator_service.py` (`OperatorSettingsService`); serve adapter `services/serve/settings/`; SPA `src/spa/src/settings/`; [`docs/serve-settings.md`](docs/serve-settings.md) |
+| Check for updates (Settings) | `observe/ops/update/` (`UpdateCheck`, `SelfUpdate`); serve `services/serve/update/`; SPA `src/spa/src/settings/sections/UpdatesSection.tsx` |
 | Notification channel CRUD / test-send | `observe/notify/settings_write.py` + `tester.py`; serve adapter `services/serve/notifications/`; CLI `services/cli/commands/notifications.py` (`raft notifications …`); SPA `src/spa/src/notifications/` |
 | GitHub OAuth / deploy assist | `platform/github/` (`GithubAssistService`); serve `services/serve/github/`; CLI `services/cli/commands/github.py` (`raft github …`) |
 | Dashboard UI | `src/spa/` only (Release bakes; local `npm run build` for editable/`raft serve`) |
