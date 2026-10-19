@@ -14,6 +14,7 @@ jobs:
   e2e:
     name: E2E (Py 3.9)
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     # Fork PRs: optional approval env (same rule as pre-split ci.yml).
     environment: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork && 'e2e' || fromJSON('null') }}
     steps:
