@@ -40,6 +40,12 @@ Rules:
   `raft-dashboard` (set `acme.email`).
 - Firewall service id is `raft-dashboard` when `publicHost` is set.
 
+Gate / router treat the dashboard like any other Host → upstream (TLS on the
+gate when configured). **Authentication is an implementation detail inside the
+dashboard container**: its image runs nginx in front of the SPA process and only
+proxies after password or external auth succeeds — unauthenticated clients never
+receive SPA bytes.
+
 ### Password auth
 
 ```bash
@@ -47,14 +53,16 @@ raft dashboard set-password
 raft dashboard enable --public-host=ops.example.com --tls=acme --auth-mode=password
 ```
 
-The dashboard process checks a signed session cookie (PBKDF2 hash in settings).
-Mutative API calls need the CSRF cookie value in `X-CSRF-Token`.
+In-container nginx uses `auth_request` against `/api/dashboard/auth`. Browsers
+without a session cookie get `/login` (static HTML in the image). Login posts to
+`/api/dashboard/login`; a signed session cookie (PBKDF2 hash in settings) unlocks
+the SPA. Mutative API calls need the CSRF cookie value in `X-CSRF-Token`.
 
 ### External auth (BYO)
 
-Gate nginx uses `auth_request` to your `verifyUrl` (subrequest — not a reverse
-proxy in front of raft). On success, the identity header is forwarded to the
-dashboard process, which requires that header.
+In-container nginx uses `auth_request` to your `verifyUrl`. On success, the
+identity header is forwarded to the dashboard process, which requires that
+header. Unauthenticated clients are redirected to `signInUrl`.
 
 ```yaml
 dashboard:

@@ -26,7 +26,8 @@ class TestDashboardComposeAndWriter(RaftTestCase):
         )
         assert "raft-dashboard" in text
         assert "127.0.0.1:8787:8787" in text
-        assert 'RAFT_SERVE_BIND: "0.0.0.0"' in text
+        assert 'RAFT_DASHBOARD_APP_PORT: "18787"' in text
+        assert "RAFT_SERVE_BIND" not in text
 
     def test_password_roundtrip_and_bad(self) -> None:
         pw = DashboardPassword()

@@ -12,8 +12,8 @@ from .http import ServeAppFactory, ServeInstructions
 from .runtime import ServeRuntime
 
 DEFAULT_SERVE_PORT = 8787
-# Host CLI defaults to loopback. Compose dashboard sets RAFT_SERVE_BIND=0.0.0.0
-# so docker-proxy can reach the process; host publish stays 127.0.0.1:port.
+# Host CLI defaults to loopback. Override with RAFT_SERVE_BIND when needed.
+# Always-on dashboard listens via in-container nginx (see DashboardProcess).
 _DEFAULT_BIND_HOST = "127.0.0.1"
 
 

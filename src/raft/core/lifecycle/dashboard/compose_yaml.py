@@ -50,9 +50,9 @@ class DashboardComposeYaml:
         return [
             "    environment:",
             "      RAFT_DATA_HOME: /raft",
+            # nginx listens on dashboard.port; uvicorn stays on loopback inside.
             f'      RAFT_SERVE_PORT: "{port}"',
-            # Listen on all container interfaces; host mapping stays loopback.
-            "      RAFT_SERVE_BIND: \"0.0.0.0\"",
+            '      RAFT_DASHBOARD_APP_PORT: "18787"',
             "    ports:",
             f'      - "127.0.0.1:{port}:{port}"',
         ]

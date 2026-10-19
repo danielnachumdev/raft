@@ -1,12 +1,12 @@
 # Build context is ~/.raft/dashboard (Dockerfile + pyproject.toml + copied ``raft`` package).
-# Same package as host CLI / controller — process is ``raft serve``.
+# nginx terminates auth (password / external) before the SPA process.
 FROM python:3.12-slim
 
 ARG TARGETARCH
 
 RUN set -eux; \
     apt-get update; \
-    apt-get install -y --no-install-recommends ca-certificates curl; \
+    apt-get install -y --no-install-recommends ca-certificates curl nginx-light; \
     case "${TARGETARCH}" in \
       amd64) DOCKER_ARCH=x86_64; COMPOSE_ARCH=x86_64 ;; \
       arm64) DOCKER_ARCH=aarch64; COMPOSE_ARCH=aarch64 ;; \
@@ -35,6 +35,7 @@ RUN uv pip compile pyproject.toml -o /tmp/requirements.txt \
 
 WORKDIR /opt
 COPY raft/ /opt/raft/
+COPY login.html /opt/dashboard/login.html
 ENV PYTHONPATH=/opt
 
 # Compose sets working_dir=/raft and RAFT_DATA_HOME=/raft.

@@ -23,13 +23,13 @@ from tests.unit.base import RaftTestCase, StackMakers
 
 
 class TestMiddlewareGaps(RaftTestCase):
-    def test_assets_public(self) -> None:
+    def test_assets_require_auth(self) -> None:
         app = self._app_with(
             DashboardConfig(auth=DashboardAuthConfig(mode="password")),
             sessions=None,
         )
-        client = TestClient(app)
-        assert client.get("/assets/x.js").status_code == 200
+        client = TestClient(app, follow_redirects=False)
+        assert client.get("/assets/x.js").status_code == 401
         assert client.get("/api/status").status_code == 401
 
     def test_none_and_unknown_mode(self) -> None:

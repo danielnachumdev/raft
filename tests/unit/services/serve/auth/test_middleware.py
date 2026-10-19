@@ -30,7 +30,14 @@ class TestDashboardAuthMiddleware(RaftTestCase):
         client = TestClient(app)
         assert client.get("/api/status").status_code == 401
 
-    def test_password_mode_allows_spa_shell_get(self) -> None:
+    def test_password_mode_redirects_spa_to_login(self) -> None:
+        client = self._password_client_with_shell()
+        redir = client.get("/")
+        assert redir.status_code == 302
+        assert redir.headers["location"] == "/login"
+        assert client.get("/api/status").status_code == 401
+
+    def _password_client_with_shell(self) -> TestClient:
         hashed = DashboardPassword().hash("correct-horse")
         sessions = PasswordSessionAuth(self.tmp_path, password_hash=hashed)
         cfg = DashboardConfig(
@@ -47,9 +54,7 @@ class TestDashboardAuthMiddleware(RaftTestCase):
         def status():
             return {"ok": True}
 
-        client = TestClient(app)
-        assert client.get("/").status_code == 200
-        assert client.get("/api/status").status_code == 401
+        return TestClient(app, follow_redirects=False)
 
     def test_external_mode_requires_header(self) -> None:
         cfg = DashboardConfig(
