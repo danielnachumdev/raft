@@ -33,7 +33,7 @@ gate → router → apps
 
 - **Stream** / **host** / **workers** do not use Host→router the same way (stream: gate→app; host: app publishes; workers: no ports). Do not invent dummy ports for workers.
 - **No middle `raft-firewall` hop.** Edge firewall is **policy-on-gate** (design lock #208 / epic #207). A dedicated hop was explicitly rejected.
-- Cutover reloads **router**. Render reloads **gate** when `state/gate-nginx.fingerprint` ≠ on-disk generated gate fragments and gate is running.
+- Cutover reloads **router**. Render reloads **gate** when `state/gate-nginx.fingerprint` ≠ on-disk generated gate fragments and gate is running; reloads **router** when `state/router-nginx.fingerprint` ≠ on-disk `router/hosts.conf` + `upstreams/*` and router is running.
 - Firewall / TLS fragment changes: **render + nginx reload**, never gate container restart for policy-only edits.
 
 ### Locks (correctness, not optional)

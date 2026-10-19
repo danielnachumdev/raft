@@ -17,6 +17,7 @@ from raft.core.core.models.stack import Stack
 from raft.core.core.ui import OperatorSay
 from raft.core.observe.ops.certs import CertProbe
 from raft.core.lifecycle.render.gate_nginx import GateNginxStamp
+from raft.core.lifecycle.render.router_nginx import RouterNginxStamp
 from raft.core.lifecycle.render.stack_renderer import StackRenderer
 from raft.core.lifecycle.sync import SourceSync
 from raft.core.platform.locking import StackLock
@@ -53,26 +54,50 @@ class Orchestrator(OrchestratorDeploy):
     def render(self) -> None:
         with StackLock(self.stack.root):
             StackRenderer(self.stack).render()
-            stamp = GateNginxStamp(self.stack.root)
-            disk = stamp.fingerprint()
-            if self.stack.gate in self.docker.running_services():
-                if stamp.read() != disk:
-                    # Fail before nginx -t so operators see doctor-style PEM guidance.
-                    CertProbe(self.stack).require_origin()
-                    self.docker.reload_gate_nginx()
-                    stamp.write(disk)
-                    self._record_gate_reload()
-                    OperatorSay.say(
-                        "reloaded gate nginx (edge TLS/http/stream config)", style="info"
-                    )
+            self._reload_gate_if_stale()
+            self._reload_router_if_stale()
             OperatorSay.say(
                 "rendered generated/ from applied App manifests + edge settings",
                 style="ok",
             )
 
+    def _reload_gate_if_stale(self) -> None:
+        stamp = GateNginxStamp(self.stack.root)
+        disk = stamp.fingerprint()
+        if self.stack.gate not in self.docker.running_services():
+            return
+        if stamp.read() == disk:
+            return
+        # Fail before nginx -t so operators see doctor-style PEM guidance.
+        CertProbe(self.stack).require_origin()
+        self.docker.reload_gate_nginx()
+        stamp.write(disk)
+        self._record_gate_reload()
+        OperatorSay.say(
+            "reloaded gate nginx (edge TLS/http/stream config)", style="info"
+        )
+
+    def _reload_router_if_stale(self) -> None:
+        stamp = RouterNginxStamp(self.stack.root)
+        disk = stamp.fingerprint()
+        if self.stack.router not in self.docker.running_services():
+            return
+        if stamp.read() == disk:
+            return
+        self.docker.reload_router_nginx()
+        stamp.write(disk)
+        OperatorSay.say(
+            "reloaded router nginx (Host / upstream config)", style="info"
+        )
+
     def _mark_gate_nginx_loaded(self) -> None:
         """Gate process just started/recreated with current on-disk fragments."""
         stamp = GateNginxStamp(self.stack.root)
+        stamp.write(stamp.fingerprint())
+
+    def _mark_router_nginx_loaded(self) -> None:
+        """Router process just started/recreated with current on-disk fragments."""
+        stamp = RouterNginxStamp(self.stack.root)
         stamp.write(stamp.fingerprint())
 
     def _record_gate_reload(self) -> None:
@@ -86,6 +111,7 @@ class Orchestrator(OrchestratorDeploy):
         """Re-resolve upstream DNS after Compose start (router may have raced apps)."""
         logger.info("reloading router nginx before Host readiness waits")
         self.docker.reload_router_nginx()
+        self._mark_router_nginx_loaded()
 
     def start(self) -> None:
         with StackLock(self.stack.root):
@@ -206,6 +232,7 @@ class Orchestrator(OrchestratorDeploy):
                 )
             logger.info("recreating inner router (gate stays up)")
             self.docker.recreate_router()
+            self._mark_router_nginx_loaded()
             logger.info("waiting for readiness via gate")
             for app in self.stack.apps:
                 self._wait_app_ready(app)

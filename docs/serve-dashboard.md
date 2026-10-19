@@ -77,8 +77,10 @@ raft dashboard disable
 raft dashboard set-password
 ```
 
-`enable` persists settings, runs `raft render`, and `compose up` for
-`raft-dashboard`. `disable` stops the service and clears `enabled`.
+`enable` persists settings, runs `raft render` (which reloads gate/router nginx
+when generated edge fragments changed), `compose up` for `raft-dashboard`, then
+reloads the router again so the new Compose DNS name is picked up. `disable`
+stops the service and clears `enabled`.
 
 ## Relationship to `raft serve`
 

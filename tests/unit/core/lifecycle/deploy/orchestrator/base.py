@@ -35,13 +35,33 @@ class OrchestratorTestCase(DomainTestCase):
         fingerprint: str,
         read: Optional[str],
         patch_certs: bool = False,
+        router_fingerprint: str = "router-same",
+        router_read: Optional[str] = "router-same",
     ) -> Iterator[MagicMock]:
         with patch("raft.core.lifecycle.deploy.orchestrator.service.GateNginxStamp") as stamp_cls:
             stamp = stamp_cls.return_value
             stamp.fingerprint.return_value = fingerprint
             stamp.read.return_value = read
-            with self._render_patches(patch_certs):
-                yield stamp
+            with self.render_with_router_stamp(
+                fingerprint=router_fingerprint, read=router_read
+            ):
+                with self._render_patches(patch_certs):
+                    yield stamp
+
+    @contextmanager
+    def render_with_router_stamp(
+        self,
+        *,
+        fingerprint: str,
+        read: Optional[str],
+    ) -> Iterator[MagicMock]:
+        with patch(
+            "raft.core.lifecycle.deploy.orchestrator.service.RouterNginxStamp"
+        ) as stamp_cls:
+            stamp = stamp_cls.return_value
+            stamp.fingerprint.return_value = fingerprint
+            stamp.read.return_value = read
+            yield stamp
 
     @contextmanager
     def _render_patches(self, patch_certs: bool) -> Iterator[None]:

@@ -37,11 +37,13 @@ class TestOrchRenderStart(OrchestratorTestCase):
     def test_render_invokes_stack_renderer(self) -> None:
         self.set_running()
         with patch("raft.core.lifecycle.deploy.orchestrator.service.StackRenderer") as renderer_cls:
-            instance = renderer_cls.return_value
-            self.orch.render()
-            renderer_cls.assert_called_once_with(self.orch.stack)
-            instance.render.assert_called_once()
-            self.orch.docker.reload_gate_nginx.assert_not_called()
+            with self.render_with_router_stamp(fingerprint="r", read="r"):
+                instance = renderer_cls.return_value
+                self.orch.render()
+                renderer_cls.assert_called_once_with(self.orch.stack)
+                instance.render.assert_called_once()
+                self.orch.docker.reload_gate_nginx.assert_not_called()
+                self.orch.docker.reload_router_nginx.assert_not_called()
 
     def test_render_reloads_gate_when_stamp_differs_from_disk(self) -> None:
         self.set_edge_only()
@@ -79,6 +81,50 @@ class TestOrchRenderStart(OrchestratorTestCase):
         with self.render_with_gate_stamp(fingerprint="disk-fp", read="stale"):
             self.orch.render()
         self.orch.docker.reload_gate_nginx.assert_not_called()
+
+    def test_render_reloads_router_when_stamp_differs(self) -> None:
+        self.set_edge_only()
+        with self.render_with_gate_stamp(
+            fingerprint="g",
+            read="g",
+            router_fingerprint="disk-r",
+            router_read="stale-r",
+        ):
+            self.orch.render()
+        self.orch.docker.reload_router_nginx.assert_called_once()
+
+    def test_render_reloads_router_when_stamp_missing(self) -> None:
+        self.set_edge_only()
+        with self.render_with_gate_stamp(
+            fingerprint="g",
+            read="g",
+            router_fingerprint="on-disk",
+            router_read=None,
+        ):
+            self.orch.render()
+        self.orch.docker.reload_router_nginx.assert_called_once()
+
+    def test_render_skips_router_reload_when_stamp_matches(self) -> None:
+        self.set_edge_only()
+        with self.render_with_gate_stamp(
+            fingerprint="g",
+            read="g",
+            router_fingerprint="same",
+            router_read="same",
+        ):
+            self.orch.render()
+        self.orch.docker.reload_router_nginx.assert_not_called()
+
+    def test_render_skips_router_reload_when_router_down(self) -> None:
+        self.set_running(*RunningServices.gate_only())
+        with self.render_with_gate_stamp(
+            fingerprint="g",
+            read="g",
+            router_fingerprint="disk-r",
+            router_read="stale-r",
+        ):
+            self.orch.render()
+        self.orch.docker.reload_router_nginx.assert_not_called()
 
     def test_start_happy_path(self) -> None:
         self.orch.docker.running_services.side_effect = [

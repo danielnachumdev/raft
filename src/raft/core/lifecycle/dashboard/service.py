@@ -57,6 +57,10 @@ class DashboardService:
         with StackLock(self._stack.root):
             self._orch.render()
             self._docker.start_stack([DASHBOARD_SERVICE_NAME])
+            # Render may have reloaded router before this service existed; reload
+            # again so Compose DNS for raft-dashboard resolves into upstreams.
+            if self._stack.router in self._docker.running_services():
+                self._docker.reload_router_nginx()
             self._ensure_acme()
         return self.status()
 
