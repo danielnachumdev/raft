@@ -25,7 +25,11 @@ MIN_LIMIT = 1
 
 
 class HttpRequestsRead:
-    """Tail gate access.log and return recent rows for one App's Hosts."""
+    """Tail gate access.log and return recent rows for one App's Hosts.
+
+    Scaled-to-zero / not-running Apps stay readable when the access log still
+    has matching Host rows; ``scaled_to_zero`` is a UI hint only.
+    """
 
     def __init__(
         self,

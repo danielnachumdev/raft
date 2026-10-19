@@ -40,7 +40,12 @@ class HttpRequestsTarget:
 
 
 class HttpRequestsEligibility:
-    """Map serve/CLI names to Host-routed Apps (or an ineligible reason)."""
+    """Map serve/CLI names to Host-routed Apps (or an ineligible reason).
+
+    Eligibility is manifest-only (``expose: http`` + ``publicHost``). Compose
+    runtime — scaled-to-zero, stopped, or missing container — never denies
+    inspection; gate ``access.log`` history is independent of the App process.
+    """
 
     def __init__(self, stack: Stack) -> None:
         self.stack = stack
@@ -86,6 +91,8 @@ class HttpRequestsEligibility:
 
     @staticmethod
     def _ineligible_reason(app: App, spec) -> Optional[str]:
+        # Do not consult ScalingStore / Docker here — idle scale-to-zero and
+        # stopped containers must still resolve as eligible for log history.
         if not spec.http_ports():
             return "HTTP request inspection requires at least one expose: http port"
         if not app.public_host.strip():

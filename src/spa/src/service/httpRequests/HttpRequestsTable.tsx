@@ -19,6 +19,8 @@ export function HttpRequestsTable(props: {
   rows: HttpRequestRow[];
   /** App name for firewall service prefill (Host-routed). */
   appName: string | null;
+  /** Distinguish true empty history from scaled/stopped idle states. */
+  emptyLabel?: string;
 }) {
   const resize = useColumnResize();
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -26,7 +28,7 @@ export function HttpRequestsTable(props: {
   if (props.rows.length === 0) {
     return (
       <p className="http-requests-empty">
-        No recent HTTP requests for this service.
+        {props.emptyLabel ?? "No recent HTTP requests for this service."}
       </p>
     );
   }

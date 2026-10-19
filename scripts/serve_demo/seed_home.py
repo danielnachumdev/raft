@@ -234,6 +234,9 @@ for i in range(n):
 write("state/metrics/resources.jsonl", "".join(json.dumps(r) + "\n" for r in res))
 write("state/metrics/http.jsonl", "".join(json.dumps(r) + "\n" for r in http))
 
+# --- scale-to-zero marker (demo-docs idle) --------------------------------
+write("state/scaling/demo-docs.json", json.dumps({"scaledToZero": True}) + "\n")
+
 # --- gate access log ----------------------------------------------------
 paths = ["/", "/api/orders", "/api/orders/42", "/api/cart", "/health", "/api/login", "/static/app.js"]
 ips = ["192.0.2.10", "192.0.2.44", "198.51.100.7", "203.0.113.9", "192.0.2.81"]
@@ -246,6 +249,14 @@ for k in range(160):
     lines.append(
         f"{random.uniform(0.003, 0.9):.3f} {status} {host} {t.strftime('%Y-%m-%dT%H:%M:%S+00:00')} "
         f"{method} {random.choice(paths)} {random.choice(ips)} \"Mozilla/5.0 (demo)\""
+    )
+# Retained history for the scaled-to-zero docs App (operators still inspect these).
+for k in range(12):
+    t = now - timedelta(minutes=40 + k * 3)
+    lines.append(
+        f"{random.uniform(0.004, 0.2):.3f} 200 docs.demo.example "
+        f"{t.strftime('%Y-%m-%dT%H:%M:%S+00:00')} GET /guide/{k} 192.0.2.10 "
+        f"\"Mozilla/5.0 (demo)\""
     )
 write("state/metrics/gate-http/access.log", "\n".join(lines) + "\n")
 print("demo home at", home)

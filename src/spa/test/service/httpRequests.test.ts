@@ -9,11 +9,47 @@ import {
   tableMinWidth,
 } from "../../src/service/httpRequests/columnResize.ts";
 import {
+  httpRequestsEmptyLabel,
+  httpRequestsIdleHint,
+  isIdleContainerStatus,
+} from "../../src/service/httpRequests/emptyState.ts";
+import {
   formatLatencyMs,
   formatRequestTime,
   formatRequestTimeFull,
   statusToneForCode,
 } from "../../src/service/httpRequests/statusClass.ts";
+
+describe("HTTP request empty / idle copy", () => {
+  it("treats scaled-to-zero and stopped as idle containers", () => {
+    assert.equal(isIdleContainerStatus("scaled-to-zero"), true);
+    assert.equal(isIdleContainerStatus("not running"), true);
+    assert.equal(isIdleContainerStatus("running"), false);
+  });
+
+  it("distinguishes retained-empty from ordinary empty", () => {
+    assert.match(
+      httpRequestsEmptyLabel({ scaledToZero: true, idleContainer: false }),
+      /retained HTTP requests/,
+    );
+    assert.match(
+      httpRequestsEmptyLabel({ scaledToZero: false, idleContainer: true }),
+      /retained HTTP requests/,
+    );
+    assert.equal(
+      httpRequestsEmptyLabel({ scaledToZero: false, idleContainer: false }),
+      "No recent HTTP requests for this service.",
+    );
+  });
+
+  it("scaled hint says past rows still appear", () => {
+    const hint = httpRequestsIdleHint({
+      scaledToZero: true,
+      idleContainer: false,
+    });
+    assert.match(String(hint), /past edge requests still appear/i);
+  });
+});
 
 describe("HTTP request inspection helpers", () => {
   it("tones status classes", () => {

@@ -33,6 +33,8 @@ $request_time $status $host $time_iso8601 $request_method $uri $remote_addr "$ht
 
 Returns recent rows for that App’s `publicHost` + `extraHosts` (newest first). Ineligible services return `eligible: false` and an empty `requests` list (unknown name → 404).
 
+**Eligibility is manifest-only** (`expose: http` + `publicHost`). Scaled-to-zero, stopped, or missing Compose containers do **not** set `eligible: false` — the reader tails the gate access log on disk. `scaled_to_zero` is a UI/CLI hint only.
+
 CLI (same `HttpRequestsRead` contract):
 
 ```bash
@@ -60,8 +62,9 @@ Fixtures and docs use dummy names only (`demo-api`, `demo-api.test`, `192.0.2.10
 
 | State | Behavior |
 |-------|----------|
-| No matching rows | “No recent HTTP requests for this service.” |
-| Scaled to zero | Panel still shown; note that traffic will wake the App |
+| No matching rows (App up) | “No recent HTTP requests for this service.” |
+| No matching rows (scaled / stopped) | “No retained HTTP requests for this service in the gate access log.” — not “unavailable” |
+| Scaled to zero | Panel + section nav still shown; hint that past rows still appear when present; new proxied traffic wakes the App |
 | Not running | Panel still shown for leftover log rows |
 | Ineligible | Panel hidden |
 
