@@ -59,11 +59,14 @@ class TestDashboardProcess(RaftTestCase):
             shut.assert_called_once()
 
     def _assert_shutdown_kill(self, proc: DashboardProcess) -> None:
+        done = MagicMock()
+        done.poll.return_value = 0
         alive = MagicMock()
         alive.poll.return_value = None
         alive.wait.side_effect = subprocess.TimeoutExpired(cmd="x", timeout=1)
-        proc._app, proc._nginx = alive, None
+        proc._nginx, proc._app = done, alive
         proc._shutdown()
+        done.terminate.assert_not_called()
         alive.kill.assert_called_once()
 
     def _proc_with_conf(self):
