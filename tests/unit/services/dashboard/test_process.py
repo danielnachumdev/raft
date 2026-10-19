@@ -40,6 +40,12 @@ class TestDashboardProcess(RaftTestCase):
             assert DashboardProcess._listen_port(8787) == 8801
         with patch.dict("os.environ", {"RAFT_DASHBOARD_APP_PORT": "bad"}):
             assert DashboardProcess._app_port() == 18787
+        with patch.dict("os.environ", {"RAFT_DASHBOARD_APP_PORT": "19001"}):
+            assert DashboardProcess._app_port() == 19001
+        assert proc._children() == []
+        oauth = MagicMock()
+        proc._oauth = oauth
+        assert proc._children() == [("oauth2-proxy", oauth)]
 
     def test_nginx_exit_shutdown_and_signals(self) -> None:
         proc, _ = self._proc_with_conf()
@@ -58,13 +64,31 @@ class TestDashboardProcess(RaftTestCase):
                 signal.getsignal(signal.SIGTERM)(signal.SIGTERM, None)
             shut.assert_called_once()
 
+    def test_run_starts_oauth_sidecar(self) -> None:
+        home = Path(self.tmp_path)
+        (home / "settings.yaml").write_text(
+            "dashboard:\n  auth:\n    mode: oauth\n", encoding="utf-8"
+        )
+        proc = DashboardProcess(StackMakers.make_stack(home))
+        conf = home / "nginx.conf"
+        app, nginx, oauth = MagicMock(), MagicMock(), MagicMock()
+        app.poll.side_effect = [None, 0, 0]
+        nginx.poll.return_value = None
+        oauth.poll.return_value = None
+        with patch(
+            "raft.services.dashboard.process.DashboardOAuthProxyProcess"
+        ) as oauth_cls:
+            oauth_cls.return_value.start.return_value = oauth
+            self._run_mocked(proc, app, nginx, conf)
+            oauth_cls.return_value.start.assert_called_once()
+
     def _assert_shutdown_kill(self, proc: DashboardProcess) -> None:
         done = MagicMock()
         done.poll.return_value = 0
         alive = MagicMock()
         alive.poll.return_value = None
         alive.wait.side_effect = subprocess.TimeoutExpired(cmd="x", timeout=1)
-        proc._nginx, proc._app = done, alive
+        proc._nginx, proc._app, proc._oauth = done, alive, None
         proc._shutdown()
         done.terminate.assert_not_called()
         alive.kill.assert_called_once()

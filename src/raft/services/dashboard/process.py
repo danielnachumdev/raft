@@ -7,26 +7,30 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from raft.core.core.config.settings import SettingsLoader
+from raft.core.core.config.settings.dashboard_config import DashboardConfig
 from raft.core.core.models.stack import Stack
 from raft.core.lifecycle.dashboard.proxy_nginx import (
     DEFAULT_APP_PORT,
     DashboardProxyNginx,
 )
 
+from .process_oauth import DashboardOAuthProxyProcess
+
 _CONF = Path("/tmp/raft-dashboard-nginx.conf")
 _APP_WAIT_SECONDS = 120.0
 
 
 class DashboardProcess:
-    """Backend on loopback → wait ready → nginx edge → trap both processes."""
+    """Backend on loopback → wait ready → nginx edge → trap child processes."""
 
     def __init__(self, stack: Stack) -> None:
         self._stack = stack
         self._app: Optional[subprocess.Popen] = None
         self._nginx: Optional[subprocess.Popen] = None
+        self._oauth: Optional[subprocess.Popen] = None
 
     def run(self) -> None:
         cfg = SettingsLoader().load(self._stack.root).dashboard
@@ -34,6 +38,8 @@ class DashboardProcess:
         app_port = self._app_port()
         self._log(f"auth.mode={cfg.auth.mode} listen={listen} app={app_port}")
         self._write_nginx(cfg, listen=listen, app_port=app_port)
+        if cfg.auth.mode == "oauth":
+            self._oauth = DashboardOAuthProxyProcess().start(cfg)
         self._app = self._start_app(app_port=app_port)
         self._wait_ready(app_port)
         self._nginx = self._start_nginx()
@@ -42,7 +48,7 @@ class DashboardProcess:
         self._shutdown()
         raise SystemExit(code)
 
-    def _write_nginx(self, cfg, *, listen: int, app_port: int) -> None:
+    def _write_nginx(self, cfg: DashboardConfig, *, listen: int, app_port: int) -> None:
         text = DashboardProxyNginx().render(
             cfg, listen=listen, app_port=app_port
         )
@@ -68,17 +74,24 @@ class DashboardProcess:
         )
 
     def _wait_either(self) -> int:
-        assert self._app is not None and self._nginx is not None
+        children = self._children()
         while True:
-            app_code = self._app.poll()
-            nginx_code = self._nginx.poll()
-            if app_code is not None:
-                self._log(f"app exited code={app_code}")
-                return int(app_code)
-            if nginx_code is not None:
-                self._log(f"nginx exited code={nginx_code}")
-                return int(nginx_code)
+            for name, proc in children:
+                code = proc.poll()
+                if code is not None:
+                    self._log(f"{name} exited code={code}")
+                    return int(code)
             time.sleep(0.5)
+
+    def _children(self) -> List[tuple]:
+        out: List[tuple] = []
+        if self._app is not None:
+            out.append(("app", self._app))
+        if self._nginx is not None:
+            out.append(("nginx", self._nginx))
+        if self._oauth is not None:
+            out.append(("oauth2-proxy", self._oauth))
+        return out
 
     def _install_signals(self) -> None:
         def _handle(signum, _frame) -> None:
@@ -90,7 +103,7 @@ class DashboardProcess:
         signal.signal(signal.SIGINT, _handle)
 
     def _shutdown(self) -> None:
-        for proc in (self._nginx, self._app):
+        for proc in (self._nginx, self._app, self._oauth):
             if proc is None or proc.poll() is not None:
                 continue
             proc.terminate()

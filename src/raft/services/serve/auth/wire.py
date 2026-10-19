@@ -10,6 +10,7 @@ from raft.core.core.models.stack import Stack
 from .login_routes import DashboardLoginRoutes
 from .middleware import DashboardAuthMiddleware
 from .password_session import PasswordSessionAuth
+from .session_routes import DashboardSessionRoutes
 
 
 class ServeAuthWire:
@@ -24,6 +25,7 @@ class ServeAuthWire:
         cfg = self._resolve_config()
         if cfg.auth.mode == "none":
             return
+        DashboardSessionRoutes(cfg).register(app)
         if cfg.auth.mode == "password":
             if not self._wire_password(app, cfg):
                 return

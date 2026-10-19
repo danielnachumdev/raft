@@ -208,12 +208,17 @@ edge:
 #   # publicHost: ops.example.com
 #   # tls: acme                 # off | origin | acme
 #   auth:
-#     mode: none                # none | password | external
+#     mode: none                # none | password | oauth | external
 #     # passwordHash: …         # set via: raft dashboard set-password
 #     # verifyUrl: http://auth.demo.example/verify
 #     # signInUrl: https://auth.demo.example/sign-in
 #     # identityHeader: X-Raft-Identity
-# CLI: raft dashboard status|enable|disable|set-password
+#     # oauth:
+#     #   provider: google      # google | oidc
+#     #   # issuerUrl: https://login.example.com/   # oidc only
+#     #   allowlistFile: secrets/dashboard/oauth-allowlist.txt
+#     # secrets: ~/.raft/secrets/dashboard/oauth.env (+ allowlist)
+# CLI: raft dashboard status|enable|disable|set-password|oauth …
 
 # ---------------------------------------------------------------------------
 # Edge firewall is ordered rules under state/firewall/rules.yaml (raft serve

@@ -16,6 +16,7 @@ _PUBLIC_PATHS = frozenset(
         "/api/dashboard/login",
         "/api/dashboard/logout",
         "/api/dashboard/auth",
+        "/api/dashboard/session",
     }
 )
 _MUTATIVE = frozenset({"POST", "PUT", "PATCH", "DELETE"})
@@ -54,7 +55,7 @@ class DashboardAuthMiddleware:
             return None
         if request.url.path in self._public:
             return None
-        if mode == "external":
+        if mode in {"external", "oauth"}:
             return self._external(request)
         if mode == "password":
             return self._password(request)

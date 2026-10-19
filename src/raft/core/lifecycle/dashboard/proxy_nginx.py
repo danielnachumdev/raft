@@ -25,6 +25,12 @@ class DashboardProxyNginx:
             server = self._password(listen=listen, app_port=app_port, login=login_html)
         elif mode == "external":
             server = self._external(cfg, listen=listen, app_port=app_port)
+        elif mode == "oauth":
+            from .proxy_nginx_oauth import DashboardOAuthNginx
+
+            server = DashboardOAuthNginx().server(
+                cfg, listen=listen, app_port=app_port
+            )
         else:
             server = self._open(listen=listen, app_port=app_port)
         return self._wrap(server)
@@ -56,6 +62,7 @@ class DashboardProxyNginx:
             f"{self._login_page(login)}"
             f"{self._public_api(app_port, '/api/dashboard/login')}"
             f"{self._public_api(app_port, '/api/dashboard/logout')}"
+            f"{self._public_api(app_port, '/api/dashboard/session')}"
             f"{self._location_slash(app_port, auth=self._password_auth())}"
             "        location @raft_dashboard_signin {\n"
             "            return 302 /login;\n"

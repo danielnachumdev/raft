@@ -41,6 +41,8 @@ class DashboardService:
         auth_mode: Optional[str] = None,
         verify_url: Optional[str] = None,
         sign_in_url: Optional[str] = None,
+        oauth_provider: Optional[str] = None,
+        oauth_issuer_url: Optional[str] = None,
     ) -> Dict[str, Any]:
         self._writer.enable(**self._enable_kwargs(
             public_host=public_host,
@@ -48,6 +50,8 @@ class DashboardService:
             auth_mode=auth_mode,
             verify_url=verify_url,
             sign_in_url=sign_in_url,
+            oauth_provider=oauth_provider,
+            oauth_issuer_url=oauth_issuer_url,
         ))
         with StackLock(self._stack.root):
             self._bring_dashboard_up()
@@ -61,18 +65,21 @@ class DashboardService:
         auth_mode: Optional[str],
         verify_url: Optional[str],
         sign_in_url: Optional[str],
+        oauth_provider: Optional[str],
+        oauth_issuer_url: Optional[str],
     ) -> Dict[str, Any]:
         kwargs: Dict[str, Any] = {}
-        if public_host is not None:
-            kwargs["public_host"] = public_host
-        if tls is not None:
-            kwargs["tls"] = tls
-        if auth_mode is not None:
-            kwargs["auth_mode"] = auth_mode
-        if verify_url is not None:
-            kwargs["verify_url"] = verify_url
-        if sign_in_url is not None:
-            kwargs["sign_in_url"] = sign_in_url
+        for key, value in (
+            ("public_host", public_host),
+            ("tls", tls),
+            ("auth_mode", auth_mode),
+            ("verify_url", verify_url),
+            ("sign_in_url", sign_in_url),
+            ("oauth_provider", oauth_provider),
+            ("oauth_issuer_url", oauth_issuer_url),
+        ):
+            if value is not None:
+                kwargs[key] = value
         return kwargs
 
     def _bring_dashboard_up(self) -> None:

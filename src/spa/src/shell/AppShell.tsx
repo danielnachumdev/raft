@@ -1,5 +1,6 @@
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { ThemeToggle } from "../chrome/ThemeToggle";
+import { LogoutButton } from "./LogoutButton";
 import { useRaftVersion } from "./useRaftVersion";
 import "./AppShell.css";
 
@@ -80,6 +81,7 @@ export function AppShell() {
                 v{version.package}
               </span>
             ) : null}
+            <LogoutButton />
             <ThemeToggle />
           </div>
         </div>

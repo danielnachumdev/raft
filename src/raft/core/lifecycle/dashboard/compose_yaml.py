@@ -29,7 +29,7 @@ class DashboardComposeYaml:
             "services:",
             f"  {name}:",
             *self._build_block(),
-            *self._runtime_block(port),
+            *self._runtime_block(cfg, port),
             *self._volume_block(),
             *self._resources_block(),
         ]
@@ -45,16 +45,26 @@ class DashboardComposeYaml:
             '      - "${RAFT_DOCKER_GID:-0}"',
         ]
 
-    @staticmethod
-    def _runtime_block(port: int) -> list[str]:
-        return [
+    def _runtime_block(self, cfg: DashboardConfig, port: int) -> list[str]:
+        lines = [
             "    environment:",
             "      RAFT_DATA_HOME: /raft",
             # nginx listens on dashboard.port; uvicorn stays on loopback inside.
             f'      RAFT_SERVE_PORT: "{port}"',
             '      RAFT_DASHBOARD_APP_PORT: "18787"',
+            *self._oauth_env_file(cfg),
             "    ports:",
             f'      - "127.0.0.1:{port}:{port}"',
+        ]
+        return lines
+
+    @staticmethod
+    def _oauth_env_file(cfg: DashboardConfig) -> list[str]:
+        if cfg.auth.mode != "oauth":
+            return []
+        return [
+            "    env_file:",
+            "      - ./secrets/dashboard/oauth.env",
         ]
 
     @staticmethod
