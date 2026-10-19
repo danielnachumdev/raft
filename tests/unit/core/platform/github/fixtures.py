@@ -96,7 +96,12 @@ def write_local_app_tree(root: Path, *, name: str = "site") -> Path:
     root.mkdir(parents=True, exist_ok=True)
     raft = root / ".raft"
     raft.mkdir(parents=True, exist_ok=True)
-    (raft / "app.yaml").write_text(
+    (raft / "app.yaml").write_text(_local_app_yaml(name), encoding="utf-8")
+    return root
+
+
+def _local_app_yaml(name: str) -> str:
+    return (
         "apiVersion: raft/v1\n"
         "kind: App\n"
         f"metadata:\n  name: {name}\n"
@@ -113,7 +118,5 @@ def write_local_app_tree(root: Path, *, name: str = "site") -> Path:
         "  readiness:\n"
         "    type: none\n"
         "    port: http\n"
-        "    path: /\n",
-        encoding="utf-8",
+        "    path: /\n"
     )
-    return root

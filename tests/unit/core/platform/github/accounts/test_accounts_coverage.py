@@ -59,22 +59,27 @@ class TestAccountsCoverage(RaftTestCase):
         assert by_login.id == a.id
         store.set_pending("st", ttl_seconds=-1)
         assert store.get_pending() is None
-        # Legacy storage with mock field still loads
+
+    def test_legacy_mock_field_loads_without_mock_key(self) -> None:
+        store = GithubAccountStore(self.tmp_path)
+        store.upsert_account(self._acct("a", "alice", "t1", uid="1"))
         raw_path = self.tmp_path / "state" / "serve" / "github-accounts.json"
         data = json.loads(raw_path.read_text(encoding="utf-8"))
-        data["accounts"].append(
-            {
-                "id": "legacy",
-                "login": "legacy-user",
-                "access_token": "tok",
-                "mock": True,
-                "expires_at": time.time() + 60,
-            }
-        )
+        data["accounts"].append(self._legacy_mock_row())
         raw_path.write_text(json.dumps(data), encoding="utf-8")
         snap = store.public_snapshot()
         assert any(a["login"] == "legacy-user" for a in snap["accounts"])
         assert all("mock" not in a for a in snap["accounts"])
+
+    @staticmethod
+    def _legacy_mock_row() -> dict:
+        return {
+            "id": "legacy",
+            "login": "legacy-user",
+            "access_token": "tok",
+            "mock": True,
+            "expires_at": time.time() + 60,
+        }
 
     def test_legacy_corrupt_and_empty(self) -> None:
         store = GithubAccountStore(self.tmp_path)
