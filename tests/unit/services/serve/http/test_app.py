@@ -27,14 +27,7 @@ class TestServeAppFactory(RaftTestCase):
         client, status = serve_fx.client_and_status(
             StackMakers.make_stack(self.tmp_path), serve_fx.full_snapshot()
         )
-        with patch(
-            "raft.core.observe.read.status.InstalledVersion.package_version",
-            return_value="0.11.0",
-        ), patch(
-            "raft.core.observe.read.status.InstalledVersion.line",
-            return_value="raft 0.11.0",
-        ):
-            response = client.get("/api/status")
+        response = client.get("/api/status")
         assert response.status_code == 200
         status.collect.assert_called_once_with(refresh_apps=True)
         data = response.json()
@@ -44,6 +37,19 @@ class TestServeAppFactory(RaftTestCase):
         assert data["control_plane"][0]["service"] == "raft-gate"
         assert data["apps"][0]["name"] == "site"
         assert data["apps"][0]["service"] == "site"
+
+    def test_api_status_includes_installed_version(self) -> None:
+        client, _ = serve_fx.client_and_status(
+            StackMakers.make_stack(self.tmp_path), serve_fx.full_snapshot()
+        )
+        with patch(
+            "raft.core.observe.read.status.InstalledVersion.package_version",
+            return_value="0.11.0",
+        ), patch(
+            "raft.core.observe.read.status.InstalledVersion.line",
+            return_value="raft 0.11.0",
+        ):
+            data = client.get("/api/status").json()
         assert data["version"] == {"package": "0.11.0", "line": "raft 0.11.0"}
 
     def test_api_service_returns_detail(self) -> None:
