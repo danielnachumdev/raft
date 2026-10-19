@@ -42,12 +42,21 @@ class StackUpScalePlan:
         return self._compose_ids(names)
 
     def start_compose_ids(self) -> Tuple[str, ...]:
-        return (
-            self.stack.gate,
-            self.stack.router,
-            self.stack.controller,
-            *(app.compose_id for app in self.apps_to_start()),
+        """Compose ids for selective ``up --no-deps`` (deferred apps omitted).
+
+        When ``dashboard.enabled``, include ``raft-dashboard`` before the router
+        so Compose DNS resolves dashboard upstreams at router start.
+        """
+        return self._edge_compose_ids() + tuple(
+            app.compose_id for app in self.apps_to_start()
         )
+
+    def _edge_compose_ids(self) -> Tuple[str, ...]:
+        edge = [self.stack.gate]
+        if self.stack.dashboard in self.stack.core_services:
+            edge.append(self.stack.dashboard)
+        edge.extend((self.stack.router, self.stack.controller))
+        return tuple(edge)
 
     def _deferred_by_source(self, source: str) -> AbstractSet[str]:
         return {

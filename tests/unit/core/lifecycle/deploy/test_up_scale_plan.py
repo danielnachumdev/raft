@@ -41,6 +41,28 @@ class TestStackUpScalePlan(ControllerTestCase):
             "raft-controller",
         )
 
+    def test_start_includes_dashboard_before_router_when_enabled(
+        self, tmp_path: Path
+    ) -> None:
+        home = self.raft_home(tmp_path)
+        (home / "settings.yaml").write_text(
+            "dashboard: {enabled: true}\n", encoding="utf-8"
+        )
+        AppliedInventory.write_applied_app(home, self.APP, extra=self.scaling_extra())
+        plan = StackUpScalePlan(load_stack(home))
+        assert plan.has_deferred()
+        assert plan.start_compose_ids() == (
+            "raft-gate",
+            "raft-dashboard",
+            "raft-router",
+            "raft-controller",
+        )
+
+    def test_start_omits_dashboard_when_disabled(self, tmp_path: Path) -> None:
+        home = self.applied_home(tmp_path, extra=self.scaling_extra())
+        plan = StackUpScalePlan(load_stack(home))
+        assert "raft-dashboard" not in plan.start_compose_ids()
+
     def test_scale_with_parent_false_not_deferred(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
         AppliedInventory.write_applied_app(home, "sidecar")
