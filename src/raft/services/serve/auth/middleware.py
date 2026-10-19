@@ -54,6 +54,14 @@ class DashboardAuthMiddleware:
         path = request.url.path
         if path in self._public or path.startswith("/assets/"):
             return None
+        # SPA shell + client routes must load so the login form can render;
+        # JSON APIs under /api/ stay gated (except _PUBLIC_PATHS above).
+        if (
+            mode == "password"
+            and request.method == "GET"
+            and not path.startswith("/api/")
+        ):
+            return None
         if mode == "external":
             return self._external(request)
         if mode == "password":

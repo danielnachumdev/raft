@@ -42,7 +42,27 @@ class DashboardService:
         verify_url: Optional[str] = None,
         sign_in_url: Optional[str] = None,
     ) -> Dict[str, Any]:
-        kwargs = {}
+        self._writer.enable(**self._enable_kwargs(
+            public_host=public_host,
+            tls=tls,
+            auth_mode=auth_mode,
+            verify_url=verify_url,
+            sign_in_url=sign_in_url,
+        ))
+        with StackLock(self._stack.root):
+            self._bring_dashboard_up()
+        return self.status()
+
+    @staticmethod
+    def _enable_kwargs(
+        *,
+        public_host: Optional[str],
+        tls: Optional[str],
+        auth_mode: Optional[str],
+        verify_url: Optional[str],
+        sign_in_url: Optional[str],
+    ) -> Dict[str, Any]:
+        kwargs: Dict[str, Any] = {}
         if public_host is not None:
             kwargs["public_host"] = public_host
         if tls is not None:
@@ -53,16 +73,16 @@ class DashboardService:
             kwargs["verify_url"] = verify_url
         if sign_in_url is not None:
             kwargs["sign_in_url"] = sign_in_url
-        self._writer.enable(**kwargs)
-        with StackLock(self._stack.root):
-            self._orch.render()
-            self._docker.start_stack([DASHBOARD_SERVICE_NAME])
-            # Render may have reloaded router before this service existed; reload
-            # again so Compose DNS for raft-dashboard resolves into upstreams.
-            if self._stack.router in self._docker.running_services():
-                self._docker.reload_router_nginx()
-            self._ensure_acme()
-        return self.status()
+        return kwargs
+
+    def _bring_dashboard_up(self) -> None:
+        self._orch.render()
+        self._docker.start_stack([DASHBOARD_SERVICE_NAME])
+        # Render may have reloaded router before this service existed; reload
+        # again so Compose DNS for raft-dashboard resolves into upstreams.
+        if self._stack.router in self._docker.running_services():
+            self._docker.reload_router_nginx()
+        self._ensure_acme()
 
     def _ensure_acme(self) -> None:
         AcmeEnsure(
