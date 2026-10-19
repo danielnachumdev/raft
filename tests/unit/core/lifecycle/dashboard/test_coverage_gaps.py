@@ -55,6 +55,7 @@ class TestDashboardCoverageGaps(RaftTestCase):
             docker=MagicMock(),
             writer=writer,
         )
+        svc._docker.running_services.return_value = ["raft-router"]
         snap = svc.enable(
             public_host="ops.example.com",
             tls="acme",
@@ -63,6 +64,7 @@ class TestDashboardCoverageGaps(RaftTestCase):
             sign_in_url="https://auth.demo.example/s",
         )
         assert snap["enabled"] is True
+        svc._docker.reload_router_nginx.assert_called_once()
 
     def test_writer_clear_host_and_http_url(self) -> None:
         home = Path(self.tmp_path)

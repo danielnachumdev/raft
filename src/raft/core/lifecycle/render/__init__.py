@@ -8,6 +8,7 @@ from .compose_apps import ComposeAppsYaml, compose_str
 from .env_file_path import ComposeEnvFilePath
 from .fragment_collector import FragmentCollector
 from .gate_nginx import GateNginxStamp
+from .router_nginx import RouterNginxStamp
 from .scaling_gate import ScalingGate
 from .scaling_holding import ScalingHoldingPages
 from .stack_renderer import StackRenderer
@@ -17,6 +18,7 @@ __all__ = [
     "ComposeEnvFilePath",
     "FragmentCollector",
     "GateNginxStamp",
+    "RouterNginxStamp",
     "ScalingGate",
     "ScalingHoldingPages",
     "StackRenderer",
