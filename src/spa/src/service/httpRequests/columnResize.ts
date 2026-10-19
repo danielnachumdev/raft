@@ -2,13 +2,13 @@
 
 export const HTTP_REQUEST_COLUMNS = [
   { key: "time", label: "Time", defaultWidth: 96 },
-  { key: "method", label: "Method", defaultWidth: 72 },
+  { key: "method", label: "Method", defaultWidth: 82 },
   { key: "path", label: "Path", defaultWidth: 200 },
-  { key: "status", label: "Status", defaultWidth: 68 },
-  { key: "latency", label: "Latency", defaultWidth: 76 },
+  { key: "status", label: "Status", defaultWidth: 76 },
+  { key: "latency", label: "Latency", defaultWidth: 84 },
   { key: "client", label: "Client", defaultWidth: 112 },
   { key: "host", label: "Host", defaultWidth: 140 },
-  { key: "ua", label: "User-Agent", defaultWidth: 196 },
+  { key: "ua", label: "User-Agent", defaultWidth: 170 },
   { key: "firewall", label: "Firewall", defaultWidth: 150 },
 ] as const;
 
