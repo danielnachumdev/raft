@@ -9,6 +9,7 @@ import { InspectionFirewallActions } from "./InspectionFirewallActions";
 import {
   formatLatencyMs,
   formatRequestTime,
+  formatRequestTimeFull,
   statusToneForCode,
 } from "./statusClass";
 import { useColumnResize } from "./useColumnResize";
@@ -143,7 +144,9 @@ function HttpRequestRowView(props: {
           : "Click to expand full request details"
       }
     >
-      <td>{formatRequestTime(row.ts)}</td>
+      <td className="http-requests-time" title={formatRequestTimeFull(row.ts)}>
+        {formatRequestTime(row.ts)}
+      </td>
       <td>
         <code>{row.method ?? "—"}</code>
       </td>

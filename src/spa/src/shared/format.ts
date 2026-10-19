@@ -53,3 +53,15 @@ export function formatCount(value: number | null | undefined): string {
 function isCount(value: number | null | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
+
+/** ISO timestamp → ``just now`` / ``42s ago`` / ``5m ago`` / ``3h ago`` / ``2d ago``. */
+export function relativeTime(iso: string, now: number): string {
+  const then = Date.parse(iso);
+  if (Number.isNaN(then)) return iso;
+  const delta = Math.max(0, Math.floor((now - then) / 1000));
+  if (delta < 5) return "just now";
+  if (delta < 60) return `${delta}s ago`;
+  if (delta < 3600) return `${Math.floor(delta / 60)}m ago`;
+  if (delta < 86400) return `${Math.floor(delta / 3600)}h ago`;
+  return `${Math.floor(delta / 86400)}d ago`;
+}

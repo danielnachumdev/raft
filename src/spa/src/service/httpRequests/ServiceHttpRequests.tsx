@@ -113,7 +113,7 @@ function HttpRequestsControls(props: {
 }) {
   return (
     <div className="http-requests-controls">
-      <label className="http-requests-live">
+      <label className="check http-requests-live">
         <input
           type="checkbox"
           checked={props.live}
@@ -135,7 +135,7 @@ function HttpRequestsControls(props: {
           ))}
         </select>
       </label>
-      <button type="button" className="refresh" onClick={props.onRefresh}>
+      <button type="button" className="btn btn-sm" onClick={props.onRefresh}>
         Refresh
       </button>
     </div>

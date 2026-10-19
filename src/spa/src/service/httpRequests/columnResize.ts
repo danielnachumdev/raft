@@ -1,15 +1,15 @@
 /** Column keys and pure width helpers for the HTTP requests table. */
 
 export const HTTP_REQUEST_COLUMNS = [
-  { key: "time", label: "Time", defaultWidth: 148 },
-  { key: "method", label: "Method", defaultWidth: 72 },
-  { key: "path", label: "Path", defaultWidth: 180 },
-  { key: "status", label: "Status", defaultWidth: 68 },
-  { key: "latency", label: "Latency", defaultWidth: 76 },
+  { key: "time", label: "Time", defaultWidth: 96 },
+  { key: "method", label: "Method", defaultWidth: 82 },
+  { key: "path", label: "Path", defaultWidth: 200 },
+  { key: "status", label: "Status", defaultWidth: 76 },
+  { key: "latency", label: "Latency", defaultWidth: 84 },
   { key: "client", label: "Client", defaultWidth: 112 },
   { key: "host", label: "Host", defaultWidth: 140 },
-  { key: "ua", label: "User-Agent", defaultWidth: 240 },
-  { key: "firewall", label: "Firewall", defaultWidth: 148 },
+  { key: "ua", label: "User-Agent", defaultWidth: 170 },
+  { key: "firewall", label: "Firewall", defaultWidth: 150 },
 ] as const;
 
 export type HttpRequestColumnKey = (typeof HTTP_REQUEST_COLUMNS)[number]["key"];

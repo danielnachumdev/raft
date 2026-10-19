@@ -48,7 +48,7 @@ function FieldRow(props: {
     );
   }
   return (
-    <label className="deploy-label">
+    <label className="field">
       {field.label}
       {field.required ? " *" : ""}
       <input

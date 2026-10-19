@@ -35,7 +35,7 @@ export function DeployRepoPicker(props: {
       <p className="muted">
         Repos you own or belong to (org / collaborator). Filter as you type.
       </p>
-      <label className="deploy-label" htmlFor="github-view-as">
+      <label className="field" htmlFor="github-view-as">
         View repos as
         <select
           id="github-view-as"
@@ -58,7 +58,7 @@ export function DeployRepoPicker(props: {
           pick a repository.
         </p>
       ) : null}
-      <label className="deploy-label">
+      <label className="field">
         Filter
         <input
           type="search"
@@ -96,7 +96,7 @@ export function DeployRepoPicker(props: {
       </ul>
       {selected ? (
         <div className="deploy-confirm" id="deploy-confirm">
-          <label className="deploy-label">
+          <label className="field">
             Ref (branch or tag)
             <input
               type="text"

@@ -47,10 +47,10 @@ export function LogFilterBar(props: {
         ))}
         <button
           type="button"
-          className="logs-filter-add"
+          className="btn btn-sm btn-ghost logs-filter-add"
           onClick={() => onChange({ ...filter, values: [...filter.values, ""] })}
         >
-          Add value
+          + Add value
         </button>
       </div>
       {isLogFilterActive(filter) ? (
@@ -83,7 +83,7 @@ function FilterValueRow(props: {
       {props.canRemove ? (
         <button
           type="button"
-          className="logs-filter-remove"
+          className="btn btn-sm btn-ghost logs-filter-remove"
           aria-label={`Remove filter value ${props.index + 1}`}
           onClick={props.onRemove}
         >

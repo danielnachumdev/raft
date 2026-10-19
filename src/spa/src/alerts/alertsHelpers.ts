@@ -195,15 +195,6 @@ export function routingLabel(
     .join(", ");
 }
 
-export function relativeTime(iso: string, now: number): string {
-  const then = Date.parse(iso);
-  if (Number.isNaN(then)) return iso;
-  const delta = Math.max(0, Math.floor((now - then) / 1000));
-  if (delta < 60) return `${delta}s ago`;
-  if (delta < 3600) return `${Math.floor(delta / 60)}m ago`;
-  return `${Math.floor(delta / 3600)}h ago`;
-}
-
 export function kindsForSource(
   catalog: AlertCatalogPayload,
   signal: string,
@@ -230,4 +221,21 @@ export function addLeaf(
   const op = groupOp(tree);
   const children = [...groupChildren(tree), leaf];
   return op === "all" ? { all: children } : { any: children };
+}
+
+/** Chip class for a rule's evaluation state (firing / pending / ok / disabled). */
+export function ruleStateChip(state: string): string {
+  if (state === "firing") return "chip chip-bad";
+  if (state === "pending" || state === "suppressed") return "chip chip-warn";
+  if (state === "ok") return "chip chip-ok";
+  return "chip";
+}
+
+/** Chip class for a rule severity (critical/error → bad, warning → warn, info → idle). */
+export function severityChip(severity: string): string {
+  const s = severity.toLowerCase();
+  if (s === "critical" || s === "error") return "chip chip-bad";
+  if (s === "warning" || s === "warn") return "chip chip-warn";
+  if (s === "info") return "chip chip-idle";
+  return "chip";
 }

@@ -116,7 +116,7 @@ export function FirewallRuleFormModal(props: Props) {
         className="fw-entry-form"
         onSubmit={(e) => void onSubmit(e)}
       >
-        <label className="deploy-label">
+        <label className="field">
           Id
           <input
             id="firewall-rule-id"
@@ -126,7 +126,7 @@ export function FirewallRuleFormModal(props: Props) {
             autoComplete="off"
           />
         </label>
-        <label className="deploy-label">
+        <label className="field">
           CIDR
           <input
             id="firewall-rule-cidr"
@@ -137,7 +137,7 @@ export function FirewallRuleFormModal(props: Props) {
             autoComplete="off"
           />
         </label>
-        <label className="deploy-label fw-check">
+        <label className="field fw-check">
           <input
             type="checkbox"
             id="firewall-rule-port-any"
@@ -148,7 +148,7 @@ export function FirewallRuleFormModal(props: Props) {
           Port any
         </label>
         {!portAny ? (
-          <label className="deploy-label">
+          <label className="field">
             Port
             <input
               id="firewall-rule-port"
@@ -161,7 +161,7 @@ export function FirewallRuleFormModal(props: Props) {
             />
           </label>
         ) : null}
-        <label className="deploy-label">
+        <label className="field">
           Protocol
           <select
             id="firewall-rule-protocol"
@@ -177,7 +177,7 @@ export function FirewallRuleFormModal(props: Props) {
           </select>
         </label>
         {protocol === "other" ? (
-          <label className="deploy-label">
+          <label className="field">
             Other protocol
             <input
               id="firewall-rule-protocol-other"
@@ -188,7 +188,7 @@ export function FirewallRuleFormModal(props: Props) {
             />
           </label>
         ) : null}
-        <label className="deploy-label">
+        <label className="field">
           Service
           <select
             id="firewall-rule-service"
@@ -203,7 +203,7 @@ export function FirewallRuleFormModal(props: Props) {
             ))}
           </select>
         </label>
-        <label className="deploy-label">
+        <label className="field">
           Action
           <select
             id="firewall-rule-action"

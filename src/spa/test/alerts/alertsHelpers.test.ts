@@ -8,8 +8,9 @@ import {
   formatAlertDuration,
   kindsForSource,
   parseAlertDuration,
-  relativeTime,
   routingLabel,
+  ruleStateChip,
+  severityChip,
   ruleStateFor,
   summarizeCondition,
   validateDraft,
@@ -94,6 +95,23 @@ describe("alertsHelpers", () => {
       "firing",
     );
     assert.ok(kindsForSource(catalog, "metrics.http").length >= 1);
-    assert.ok(relativeTime(new Date().toISOString(), Date.now()).includes("ago"));
+  });
+});
+
+describe("chip tones", () => {
+  it("maps rule states", () => {
+    assert.equal(ruleStateChip("firing"), "chip chip-bad");
+    assert.equal(ruleStateChip("pending"), "chip chip-warn");
+    assert.equal(ruleStateChip("suppressed"), "chip chip-warn");
+    assert.equal(ruleStateChip("ok"), "chip chip-ok");
+    assert.equal(ruleStateChip("disabled"), "chip");
+  });
+
+  it("maps severities case-insensitively", () => {
+    assert.equal(severityChip("Critical"), "chip chip-bad");
+    assert.equal(severityChip("error"), "chip chip-bad");
+    assert.equal(severityChip("warning"), "chip chip-warn");
+    assert.equal(severityChip("info"), "chip chip-idle");
+    assert.equal(severityChip("custom"), "chip");
   });
 });

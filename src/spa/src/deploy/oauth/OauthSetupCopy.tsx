@@ -17,7 +17,7 @@ export function CopyableValue(props: { value: string; id: string }) {
       <code id={props.id}>{props.value}</code>
       <button
         type="button"
-        className="oauth-copy"
+        className="btn btn-sm"
         onClick={() => void onCopy()}
         aria-label={`Copy ${props.id}`}
       >
