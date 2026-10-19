@@ -28,13 +28,13 @@ dashboard:
   publicHost: ops.example.com
   tls: acme          # off | origin | acme
   auth:
-    mode: password   # password | external (required when publicHost is set)
+    mode: password   # password | oauth | external (required when publicHost is set)
 ```
 
 Rules:
 
 - `auth.mode: none` cannot set `publicHost`.
-- `publicHost` requires `auth.mode` `password` or `external`, and `tls` set.
+- `publicHost` requires `auth.mode` `password`, `oauth`, or `external`, and `tls` set.
 - Origin PEMs: `~/.raft/certs/raft-dashboard/origin.{pem,key}`.
 - ACME uses the same HTTP-01 path as Apps; synthetic target name
   `raft-dashboard` (set `acme.email`).
@@ -44,7 +44,7 @@ Gate / router treat the dashboard like any other Host → upstream (TLS on the
 gate when configured). **Authentication is an implementation detail inside the
 dashboard container**: the image entrypoint starts the app on loopback, waits
 until it listens, then runs nginx with `auth_request` in front. Unauthenticated
-clients get a relative `/login` redirect (`absolute_redirect off`) and never
+clients get a relative sign-in redirect (`absolute_redirect off`) and never
 receive SPA bytes.
 
 ### Password auth
@@ -58,6 +58,56 @@ In-container nginx uses `auth_request` against `/api/dashboard/auth`. Browsers
 without a session cookie get `/login` (static HTML in the image). Login posts to
 `/api/dashboard/login`; a signed session cookie (PBKDF2 hash in settings) unlocks
 the SPA. Mutative API calls need the CSRF cookie value in `X-CSRF-Token`.
+The SPA top bar shows **Log out** (clears the session and returns to `/login`).
+
+### OAuth auth (provider catalog)
+
+First-party OAuth edge via **oauth2-proxy** in the dashboard image. Provider is
+a catalog field under `auth.oauth` — not a separate mode per IdP.
+
+```yaml
+dashboard:
+  enabled: true
+  publicHost: ops.example.com
+  tls: acme
+  auth:
+    mode: oauth
+    identityHeader: X-Raft-Identity
+    oauth:
+      provider: google   # google | oidc
+      # oidc also needs: issuerUrl: https://login.example.com/
+      redirectPath: /oauth2/callback
+      allowlistFile: secrets/dashboard/oauth-allowlist.txt
+```
+
+Secrets stay under the data home (never in git / PR bodies):
+
+| File | Role |
+|------|------|
+| `~/.raft/secrets/dashboard/oauth.env` | `OAUTH2_PROXY_CLIENT_ID`, `CLIENT_SECRET`, `COOKIE_SECRET`, `REDIRECT_URL` (0600) |
+| `~/.raft/secrets/dashboard/oauth-allowlist.txt` | One allowed identity per line |
+
+```bash
+raft dashboard oauth init --provider=google
+# fill client id/secret in the printed env path; redirect URL is printed
+# add allowlist lines (example identity only in docs):
+printf '%s\n' 'ops@example.com' > /tmp/dashboard-allowlist.txt
+raft dashboard oauth allowlist-set --file=/tmp/dashboard-allowlist.txt
+# or: echo ops@example.com | raft dashboard oauth allowlist-add
+raft dashboard enable --public-host=ops.example.com --tls=acme --auth-mode=oauth
+```
+
+Runtime shape:
+
+- nginx `auth_request` → oauth2-proxy `/oauth2/auth`
+- unauthenticated → relative `302 /oauth2/start?rd=…`
+- identity not on allowlist → `/unauthorized` (static HTML in the image)
+- SPA **Log out** → `/oauth2/sign_out?rd=/`
+
+`provider: oidc` uses the same binary with `issuerUrl` plus the same env secrets
+and allowlist. Operators who already run Authentik / Cloudflare Access / custom
+verify should use **`external`** instead (below) — fully open, zero catalog
+coupling.
 
 ### External auth (BYO)
 
@@ -84,6 +134,9 @@ raft dashboard status
 raft dashboard enable
 raft dashboard disable
 raft dashboard set-password
+raft dashboard oauth init
+raft dashboard oauth allowlist-set --file=…
+raft dashboard oauth allowlist-add
 ```
 
 `enable` persists settings, runs `raft render` (which reloads gate/router nginx

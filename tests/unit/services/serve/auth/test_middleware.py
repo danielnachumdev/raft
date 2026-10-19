@@ -57,16 +57,25 @@ class TestDashboardAuthMiddleware(RaftTestCase):
         return TestClient(app, follow_redirects=False)
 
     def test_external_mode_requires_header(self) -> None:
-        cfg = DashboardConfig(
-            auth=DashboardAuthConfig(
+        self._assert_identity_mode(
+            DashboardAuthConfig(
                 mode="external",
                 verify_url="http://auth.demo.example/verify",
                 sign_in_url="https://auth.demo.example/sign-in",
                 identity_header="X-Raft-Identity",
             )
         )
+
+    def test_oauth_mode_requires_identity_header(self) -> None:
+        self._assert_identity_mode(
+            DashboardAuthConfig(mode="oauth", identity_header="X-Raft-Identity")
+        )
+
+    def _assert_identity_mode(self, auth: DashboardAuthConfig) -> None:
         app = FastAPI()
-        app.add_middleware(DashboardAuthMiddleware, config=cfg)
+        app.add_middleware(
+            DashboardAuthMiddleware, config=DashboardConfig(auth=auth)
+        )
 
         @app.get("/api/status")
         def status():

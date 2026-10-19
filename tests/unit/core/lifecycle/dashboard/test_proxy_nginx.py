@@ -36,6 +36,7 @@ class TestDashboardProxyNginx(RaftTestCase):
         assert "location = /login" in text
         assert "location = /api/dashboard/login" in text
         assert "location = /api/dashboard/logout" in text
+        assert "location = /api/dashboard/session" in text
         assert "/api/dashboard/auth" in text
         assert "return 302 /login" in text
 

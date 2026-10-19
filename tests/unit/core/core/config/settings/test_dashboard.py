@@ -57,3 +57,4 @@ class TestDashboardSection(RaftTestCase):
         )
         assert cfg.auth.mode == "external"
         assert cfg.tls == "acme"
+

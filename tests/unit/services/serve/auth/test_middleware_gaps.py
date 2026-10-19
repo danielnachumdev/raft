@@ -92,9 +92,39 @@ class TestMiddlewareGaps(RaftTestCase):
                 sign_in_url="https://auth.demo.example/s",
             )
         )
-        ServeAuthWire(StackMakers.make_stack(home), config=ext).apply(
-            self._plain_app()
-        )
+        app = self._plain_app()
+        ServeAuthWire(StackMakers.make_stack(home), config=ext).apply(app)
+        session = TestClient(app).get("/api/dashboard/session")
+        assert session.status_code == 200
+        assert session.json()["mode"] == "external"
+
+    def test_wire_oauth_session_logout_hint(self) -> None:
+        home = Path(self.tmp_path)
+        (home / "settings.yaml").write_text("{}\n", encoding="utf-8")
+        cfg = DashboardConfig(auth=DashboardAuthConfig(mode="oauth"))
+        app = self._plain_app()
+        ServeAuthWire(StackMakers.make_stack(home), config=cfg).apply(app)
+        body = TestClient(app).get("/api/dashboard/session").json()
+        assert body["mode"] == "oauth"
+        assert body["logout"]["path"].startswith("/oauth2/sign_out")
+
+    def test_session_password_and_none_logout_hints(self) -> None:
+        from raft.services.serve.auth.session_routes import DashboardSessionRoutes
+
+        pw = DashboardSessionRoutes(
+            DashboardConfig(auth=DashboardAuthConfig(mode="password"))
+        )._payload()
+        assert pw["logout"]["kind"] == "post"
+        none = DashboardSessionRoutes(
+            DashboardConfig(auth=DashboardAuthConfig(mode="none"))
+        )._payload()
+        assert none["logout"]["kind"] == "none"
+        ext = DashboardSessionRoutes(
+            DashboardConfig(
+                auth=DashboardAuthConfig(mode="external", sign_in_url=None)
+            )
+        )._payload()
+        assert ext["logout"]["path"] == "/"
 
     def _app_with(self, cfg: DashboardConfig, sessions=None) -> FastAPI:
         app = self._plain_app()

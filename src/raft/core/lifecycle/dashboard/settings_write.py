@@ -11,6 +11,7 @@ from raft.core.core.config.settings import SettingsLoader
 from raft.core.core.config.settings.dashboard_config import (
     DashboardAuthConfig,
     DashboardConfig,
+    DashboardOAuthConfig,
 )
 from raft.core.core.config.settings.strategies.dashboard import DashboardSettingsParser
 from raft.core.core.errors.cta import OperatorError
@@ -33,15 +34,24 @@ class DashboardSettingsWriter:
 
     def status_public(self) -> Dict[str, Any]:
         cfg = self.load()
+        from .oauth_ops import DashboardOAuthOps
+
+        auth = self._auth_public(cfg.auth)
+        if cfg.auth.mode == "oauth":
+            auth["oauth"] = DashboardOAuthOps(self._home).status_public(cfg)
         return {
             "enabled": cfg.enabled,
             "port": cfg.port,
             "publicHost": cfg.public_host,
             "tls": cfg.tls,
-            "auth": self._auth_public(cfg.auth),
+            "auth": auth,
             "localUrl": f"http://127.0.0.1:{cfg.port}/",
             "publicUrl": self._public_url(cfg),
         }
+
+    def replace(self, cfg: DashboardConfig) -> None:
+        """Persist a full dashboard config (caller holds ``dashboard.lock``)."""
+        self._persist(cfg)
 
     def enable(self, **kwargs: Optional[str]) -> DashboardConfig:
         with DashboardLock(self._home):
@@ -79,6 +89,7 @@ class DashboardSettingsWriter:
             verify_url=cfg.auth.verify_url,
             sign_in_url=cfg.auth.sign_in_url,
             identity_header=cfg.auth.identity_header,
+            oauth=cfg.auth.oauth,
         )
         return DashboardConfig(
             enabled=cfg.enabled,
@@ -103,7 +114,24 @@ class DashboardSettingsWriter:
         self._set_auth_field(auth, kwargs, "auth_mode", "mode")
         self._set_auth_field(auth, kwargs, "verify_url", "verifyUrl")
         self._set_auth_field(auth, kwargs, "sign_in_url", "signInUrl")
+        self._apply_oauth_kwargs(auth, kwargs)
         raw["auth"] = auth
+
+    @staticmethod
+    def _apply_oauth_kwargs(
+        auth: dict, kwargs: Mapping[str, Optional[str]]
+    ) -> None:
+        if (
+            kwargs.get("oauth_provider") is None
+            and kwargs.get("oauth_issuer_url") is None
+        ):
+            return
+        oauth = dict(auth.get("oauth") or {})
+        if kwargs.get("oauth_provider") is not None:
+            oauth["provider"] = kwargs["oauth_provider"]
+        if kwargs.get("oauth_issuer_url") is not None:
+            oauth["issuerUrl"] = kwargs["oauth_issuer_url"]
+        auth["oauth"] = oauth
 
     @staticmethod
     def _set_public_host(raw: dict, value: Optional[str]) -> None:
@@ -126,6 +154,10 @@ class DashboardSettingsWriter:
                 "Fix: raft dashboard set-password, then raft dashboard enable",
                 has_fix=False,
             )
+        if cfg.auth.mode == "oauth":
+            from .oauth_ops import DashboardOAuthOps
+
+            DashboardOAuthOps(self._home).require_ready(cfg)
 
     @staticmethod
     def _require_password_length(password: str) -> None:
@@ -164,6 +196,18 @@ class DashboardSettingsWriter:
             out["signInUrl"] = auth.sign_in_url
         if auth.identity_header:
             out["identityHeader"] = auth.identity_header
+        out["oauth"] = DashboardSettingsWriter._oauth_raw(auth.oauth)
+        return out
+
+    @staticmethod
+    def _oauth_raw(oauth: DashboardOAuthConfig) -> Dict[str, Any]:
+        out: Dict[str, Any] = {
+            "provider": oauth.provider,
+            "redirectPath": oauth.redirect_path,
+            "allowlistFile": oauth.allowlist_file,
+        }
+        if oauth.issuer_url:
+            out["issuerUrl"] = oauth.issuer_url
         return out
 
     @staticmethod

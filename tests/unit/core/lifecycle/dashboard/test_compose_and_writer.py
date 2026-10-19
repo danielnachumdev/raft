@@ -28,6 +28,15 @@ class TestDashboardComposeAndWriter(RaftTestCase):
         assert "127.0.0.1:8787:8787" in text
         assert 'RAFT_DASHBOARD_APP_PORT: "18787"' in text
         assert "RAFT_SERVE_BIND" not in text
+        assert "oauth.env" not in text
+        oauth = DashboardComposeYaml().build(
+            DashboardConfig(
+                enabled=True,
+                port=8787,
+                auth=DashboardAuthConfig(mode="oauth"),
+            )
+        )
+        assert "./secrets/dashboard/oauth.env" in oauth
 
     def test_password_roundtrip_and_bad(self) -> None:
         pw = DashboardPassword()

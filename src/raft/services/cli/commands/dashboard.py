@@ -8,6 +8,8 @@ from raft.core.core.models.stack import Stack
 from raft.core.core.ui import OperatorSay
 from raft.core.lifecycle.dashboard.service import DashboardService
 
+from .dashboard_oauth import DashboardOauthCLI
+
 
 class DashboardCLI:
     """Manage the always-on ``raft-dashboard`` Compose service."""
@@ -20,6 +22,7 @@ class DashboardCLI:
     ) -> None:
         self._stack = stack
         self._svc = service or DashboardService(stack)
+        self.oauth = DashboardOauthCLI(stack)
 
     def status(self, json: bool = False) -> None:
         """Show enabled / port / public Host / auth mode."""
@@ -38,6 +41,11 @@ class DashboardCLI:
         OperatorSay.say(f"public: {public}")
         auth = payload.get("auth") or {}
         OperatorSay.say(f"auth.mode: {auth.get('mode')}")
+        oauth = auth.get("oauth") or {}
+        if auth.get("mode") == "oauth":
+            OperatorSay.say(f"auth.oauth.provider: {oauth.get('provider')}")
+            ready = "yes" if oauth.get("secretsReady") else "no"
+            OperatorSay.say(f"auth.oauth.secretsReady: {ready}")
         OperatorSay.say(f"tls: {payload.get('tls')}")
 
     def enable(
@@ -47,6 +55,8 @@ class DashboardCLI:
         auth_mode: Optional[str] = None,
         verify_url: Optional[str] = None,
         sign_in_url: Optional[str] = None,
+        oauth_provider: Optional[str] = None,
+        oauth_issuer_url: Optional[str] = None,
     ) -> None:
         """Enable always-on dashboard (render + compose up)."""
         self._svc.enable(
@@ -55,6 +65,8 @@ class DashboardCLI:
             auth_mode=auth_mode,
             verify_url=verify_url,
             sign_in_url=sign_in_url,
+            oauth_provider=oauth_provider,
+            oauth_issuer_url=oauth_issuer_url,
         )
         payload = self._svc.status()
         OperatorSay.say(

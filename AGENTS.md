@@ -103,7 +103,7 @@ Align with the README table; detail for agents:
 | Alert rules engine (metrics/control-plane → notifications) | **Shipped** | [#236](https://github.com/danielnachumdev/raft/issues/236); dual-plane CLI+serve lock [#264](https://github.com/danielnachumdev/raft/issues/264); [`docs/serve-alerts.md`](docs/serve-alerts.md); `AlertRulesService` / engine under `observe/alerts/` |
 | Operator system event timeline | **Shipped** | [#267](https://github.com/danielnachumdev/raft/issues/267); `state/events/ops.jsonl` dual-write with GraphEvents; `raft events` + serve `/events`; [`docs/serve-events.md`](docs/serve-events.md) |
 | Firewall-derived alert signals (`edge.denies`) | **Planned** | Observe gate outcomes only; no middle hop (#207) |
-| Always-on Compose dashboard service | **Shipped** | [#36](https://github.com/danielnachumdev/raft/issues/36); `dashboard:` settings + `raft-dashboard` Compose; optional `publicHost` + TLS + auth (`none`/`password`/`external`); CLI `raft dashboard …`; [`docs/serve-dashboard.md`](docs/serve-dashboard.md) |
+| Always-on Compose dashboard service | **Shipped** | [#36](https://github.com/danielnachumdev/raft/issues/36); `dashboard:` settings + `raft-dashboard` Compose; optional `publicHost` + TLS + auth (`none`/`password`/`oauth`/`external`); OAuth via in-container oauth2-proxy + allowlist; CLI `raft dashboard …` / `oauth …`; [`docs/serve-dashboard.md`](docs/serve-dashboard.md) |
 | Automate SPA bake in CD | **Shipped** | [#41](https://github.com/danielnachumdev/raft/issues/41) — Release wheel + install.sh prefers `.whl`; SPA assets not committed |
 | Middle nginx firewall hop | **Rejected** | Do not re-open without new engine requirements |
 
