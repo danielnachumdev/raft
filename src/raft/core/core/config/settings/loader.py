@@ -40,8 +40,12 @@ class SettingsLoader:
     def load(self, data_home: Path, *, path: Optional[Path] = None) -> RaftConfig:
         config_path = path or RaftHome().settings_path(data_home)
         if not config_path.exists():
-            return self._from_raw(None)
-        return self._from_raw(self._read_mapping(config_path))
+            return self.from_raw(None)
+        return self.from_raw(self._read_mapping(config_path))
+
+    def from_raw(self, data: Optional[dict[str, Any]]) -> RaftConfig:
+        """Parse an in-memory settings mapping (same rules as the file)."""
+        return self._from_raw(data)
 
     def _from_raw(self, data: Optional[dict[str, Any]]) -> RaftConfig:
         if data is None:

@@ -5,7 +5,8 @@ Locks live under ``~/.raft/state/locks/`` (``RAFT_DATA_HOME``):
 * ``app-<name>.lock`` — one mutative deploy/apply for that app at a time
 * ``stack.lock`` — render, nginx reload, cutover, compose up/recreate, gate,
   ``raft purge`` (Docker image/build-cache prune)
-* ``notifications.lock`` — serve API rewrites of ``settings.yaml`` ``notifications:``
+* ``settings.lock`` — any rewrite of ``settings.yaml`` (full document, notifications,
+  github OAuth). Historical ``notifications.lock`` name aliases this path.
 * ``acl.lock`` — serve API rewrites of ordered firewall before render/reload
 * ``alerts.lock`` — CLI/serve writes to ``state/alerts/rules.yaml``
 
@@ -23,6 +24,7 @@ from .apps_and_stack_locks import AppsAndStackLocks
 from .exclusive import ExclusiveLock
 from .notifications_lock import NotificationsLock
 from .paths import LockPaths
+from .settings_lock import SettingsLock
 from .stack_lock import StackLock
 from .timeout import (
     DEFAULT_LOCK_TIMEOUT_SECONDS,
@@ -42,5 +44,6 @@ __all__ = [
     "LockPaths",
     "LockTimeout",
     "NotificationsLock",
+    "SettingsLock",
     "StackLock",
 ]

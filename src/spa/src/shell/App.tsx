@@ -6,6 +6,7 @@ import { DeployPage } from "../deploy/DeployPage";
 import { FirewallSettingsPage } from "../firewall/FirewallSettingsPage";
 import { AlertsSettingsPage } from "../alerts/AlertsSettingsPage";
 import { NotificationsSettingsPage } from "../notifications/NotificationsSettingsPage";
+import { SettingsPage } from "../settings/SettingsPage";
 import { EventsPage } from "../events/EventsPage";
 import { ServicePage } from "../service/ServicePage";
 import { ToastHost } from "../chrome/ToastHost";
@@ -19,6 +20,7 @@ export function App() {
           <Route path="/add-service" element={<AddServicePage />} />
           <Route path="/deploy" element={<DeployPage />} />
           <Route path="/events" element={<EventsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route
             path="/settings/notifications"
             element={<NotificationsSettingsPage />}

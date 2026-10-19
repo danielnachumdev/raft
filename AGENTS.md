@@ -46,6 +46,7 @@ Overlapping apply/redeploy/render tears tmp names, upstreams, and `generated/`. 
 | `stack.lock` | render, sync, cutover, compose up/recreate, gate recreate, up/down, purge | No torn `generated/` / mid-cutover upstream reset |
 | `acl.lock` | serve firewall writes (before render/reload) | Firewall persist does not race another firewall writer |
 | `alerts.lock` | CLI/serve writes to `state/alerts/rules.yaml` | Alert rules document writers do not tear each other |
+| `settings.lock` | full settings document, notification channels, github OAuth settings writers | No torn `settings.yaml` (historical `notifications.lock` name aliases this path) |
 
 Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**). Nesting in-process re-enters. `doctor` / `status` do not take these locks.
 
@@ -84,6 +85,7 @@ Align with the README table; detail for agents:
 | Doctor / status / logs / purge | **Shipped** | |
 | Metrics JSONL + Trends (resources + HTTP aggregate) | **Shipped** | Controller scrape; `http.jsonl` contract in observe/docs; CLI `raft metrics history|catalog|export_*` |
 | `raft serve` ops UI | **Shipped** | FastAPI + packaged SPA |
+| Full operator settings UI (`settings.yaml` / `RaftConfig`) | **Shipped** | `OperatorSettingsService` + `GET/PUT /api/settings` + SPA `/settings`; [`docs/serve-settings.md`](docs/serve-settings.md). Edge port changes note `raft gate recreate`. |
 | HTTP request inspection (per App) | **Shipped** | Gate access log → `/api/service/{name}/http-requests` + `raft http_requests show`; [`docs/serve-http-requests.md`](docs/serve-http-requests.md) |
 | Flat gate / App IP ACL (allow/deny lists) | **Retired** | Removed as operator path; leftover `#195` data migrates into firewall GET until Save; [`docs/serve-acl.md`](docs/serve-acl.md) |
 | **Ordered firewall rules** (CIDR, port, protocol, service, action) | **Shipped** | Epic [#207](https://github.com/danielnachumdev/raft/issues/207), [#211](https://github.com/danielnachumdev/raft/issues/211); CLI [#258](https://github.com/danielnachumdev/raft/issues/258) (`raft firewall …`). On gate; Save/CLI → compile → reload; import/export; recommendations; [`docs/serve-firewall.md`](docs/serve-firewall.md). |
@@ -114,7 +116,7 @@ Align with the README table; detail for agents:
 
 | Path | Role |
 |------|------|
-| `settings.yaml` | logging, edge, healing, metrics, acme, github, notifications (legacy `acl.gate` read-only for migrate) |
+| `settings.yaml` | logging, edge, healing, metrics, serviceLogs, acme, github, notifications, alerts cadence (legacy `acl.gate` for migrate) |
 | `state/apps/*.yaml` | Applied App registry |
 | `generated/` | Compose + nginx (+ `gate-http/firewall/` includes) — **do not hand-edit as source of truth** |
 | `state/locks/` | flock files |
@@ -144,6 +146,7 @@ Product templates sync from `src/raft/core/platform/share/` into the data home o
 | **Shared mutative capabilities** (CLI + serve) | Business rules in `core/`; serve/CLI only invoke. New capabilities: put the service under the matching core area below, keep FastAPI/Fire as adapters. |
 | Per-service start/stop/redeploy/purge | `observe/ops/actions/` (`ServiceActions`); CLI `raft start|stop NAME` + serve actions; redeploy/purge already on CLI |
 | Ordered firewall (CRUD / recommendations / from-inspection) | `lifecycle/firewall/` + nginx compile in `lifecycle/render/firewall/`; serve adapter `services/serve/firewall/`; CLI `services/cli/commands/firewall.py` (`raft firewall …`); SPA `src/spa/src/firewall/` |
+| Full operator settings (`settings.yaml`) | `core/config/settings/operator_service.py` (`OperatorSettingsService`); serve adapter `services/serve/settings/`; SPA `src/spa/src/settings/`; [`docs/serve-settings.md`](docs/serve-settings.md) |
 | Notification channel CRUD / test-send | `observe/notify/settings_write.py` + `tester.py`; serve adapter `services/serve/notifications/`; CLI `services/cli/commands/notifications.py` (`raft notifications …`); SPA `src/spa/src/notifications/` |
 | GitHub OAuth / deploy assist | `platform/github/` (`GithubAssistService`); serve `services/serve/github/`; CLI `services/cli/commands/github.py` (`raft github …`) |
 | Dashboard UI | `src/spa/` only (Release bakes; local `npm run build` for editable/`raft serve`) |
