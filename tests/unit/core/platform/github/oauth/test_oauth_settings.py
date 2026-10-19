@@ -20,16 +20,15 @@ class TestGithubSettingsParser(RaftTestCase):
     def test_parse_and_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._clear_github_env(monkeypatch)
         p = GithubSettingsParser()
-        assert p.parse(None).mock is False
+        assert p.parse(None).client_id is None
         cfg = p.parse({"mock": True, "sessionTtlSeconds": 120})
-        assert cfg.mock is True and cfg.session_ttl_seconds == 120
+        assert cfg.session_ttl_seconds == 120
         with pytest.raises(OperatorError):
             p.parse([])
         with pytest.raises(OperatorError):
             p.parse({"sessionTtlSeconds": 10})
         self._set_github_env(monkeypatch)
-        env_cfg = p.parse({"mock": False})
-        assert env_cfg.mock is True
+        env_cfg = p.parse({"mock": True})
         assert env_cfg.client_id == "id"
         assert env_cfg.session_ttl_seconds == 90
 
@@ -45,30 +44,23 @@ class TestGithubSettingsParser(RaftTestCase):
 
     @staticmethod
     def _set_github_env(monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("RAFT_GITHUB_MOCK", "1")
+        monkeypatch.setenv("RAFT_GITHUB_MOCK", "1")  # ignored
         monkeypatch.setenv("RAFT_GITHUB_CLIENT_ID", "id")
         monkeypatch.setenv("RAFT_GITHUB_CLIENT_SECRET", "sec")
         monkeypatch.setenv("RAFT_GITHUB_SESSION_TTL_SECONDS", "90")
 
 
 class TestGithubOauth(RaftTestCase):
-    def test_mock_login_and_url(self) -> None:
-        store = GithubAccountStore(self.tmp_path)
-        oauth = GithubOauth(GithubServeConfig(mock=True), store)
-        assert "callback?mock=1" in oauth.login_url(port=8787)
-        account = oauth.complete_mock()
-        assert account.login == "mock-operator" and account.mock is True
-
     def test_oauth_requires_creds(self) -> None:
         store = self._store_with_kept()
-        bare = GithubOauth(GithubServeConfig(mock=False), store)
+        bare = GithubOauth(GithubServeConfig(), store)
         with pytest.raises(OperatorError, match="not configured"):
             bare.login_url(port=8787)
 
     def test_oauth_preserves_accounts_on_add(self) -> None:
         store = self._store_with_kept()
         oauth = GithubOauth(
-            GithubServeConfig(mock=False, client_id="id", client_secret="sec"),
+            GithubServeConfig(client_id="id", client_secret="sec"),
             store,
         )
         assert "github.com/login/oauth/authorize" in oauth.login_url(port=8787)
@@ -85,6 +77,11 @@ class TestGithubOauth(RaftTestCase):
             GithubOauth._token_from_payload({})
         assert GithubOauth._token_from_payload({"access_token": "x"}) == "x"
 
+    def test_legacy_mock_key_ignored(self) -> None:
+        cfg = GithubSettingsParser().parse({"mock": True, "clientId": "x", "clientSecret": "y"})
+        assert cfg.client_id == "x"
+        assert GithubOauth(cfg, GithubAccountStore(self.tmp_path)).login_url(port=1)
+
     def _store_with_kept(self) -> GithubAccountStore:
         store = GithubAccountStore(self.tmp_path)
         store.upsert_account(
@@ -92,7 +89,6 @@ class TestGithubOauth(RaftTestCase):
                 id="keep",
                 login="kept",
                 access_token="keep-tok",
-                mock=False,
                 expires_at=9_999_999_999,
                 github_user_id="9",
             )

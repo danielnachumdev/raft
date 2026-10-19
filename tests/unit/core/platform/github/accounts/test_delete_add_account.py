@@ -3,7 +3,7 @@
 import json
 import time
 from typing import Optional
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urlparse
 
 from fastapi.testclient import TestClient
@@ -11,9 +11,7 @@ from fastapi.testclient import TestClient
 from raft.core.observe.ops.status.models import StatusSnapshot
 from raft.core.platform.github.accounts import GithubAccountStore
 from raft.services.serve.github.api import ServeGithubApi
-from raft.core.platform.github.providers import MockGithubProvider
 from raft.services.serve.http.app import ServeAppFactory
-from raft.services.serve.http.paths import ServePaths
 
 from tests.unit.base import RaftTestCase, StackMakers
 from tests.unit.core.observe.ops.status import fixtures as status_fx
@@ -71,21 +69,35 @@ class TestDeleteAndAddAccount(RaftTestCase):
         query = parse_qs(urlparse(login.headers["location"]).query)
         assert query.get("prompt") == ["select_account"]
 
-    def test_mock_add_callback_keeps_existing_and_appends(self) -> None:
+    def test_oauth_add_callback_keeps_existing_and_appends(self) -> None:
+        self._write_real_github_settings()
         store = GithubAccountStore(self.tmp_path)
         store.upsert_account(self._expired_kept())
-        client = self._client()
+        client = self._client(settings=None)
         login = client.get("/api/github/login?add=1", follow_redirects=False)
-        assert login.status_code == 302 and "add=1" in login.headers["location"]
-        self._follow_mock_callback(client, login.headers["location"])
-        self._assert_two_accounts_after_mock_add(client, store)
+        assert login.status_code == 302
+        state = parse_qs(urlparse(login.headers["location"]).query)["state"][0]
+        api = ServeGithubApi(
+            StackMakers.make_stack(self.tmp_path), provider=MagicMock(), port=8787
+        )
+        account = github_fx.sample_account(
+            id="new", login="demo-bob", access_token="tok-b", github_user_id="2"
+        )
+        with patch.object(
+            api._assist._oauth,
+            "complete_oauth",
+            return_value=store.append_account(account),
+        ):
+            cb = api.api_callback(MagicMock(), code="c", state=state)
+        assert cb.status_code == 302
+        logins = {a["login"] for a in store.public_snapshot()["accounts"]}
+        assert logins == {"demo-user", "demo-bob"}
 
     def _expired_sample(self):
         return github_fx.sample_account(
             id="demo-expired",
             login="demo-user",
             access_token="dead-token",
-            mock=False,
             expires_at=time.time() - 30,
             github_user_id="42",
         )
@@ -95,7 +107,6 @@ class TestDeleteAndAddAccount(RaftTestCase):
             id="kept",
             login="demo-user",
             access_token="dead",
-            mock=False,
             expires_at=time.time() - 5,
             github_user_id="9",
         )
@@ -106,7 +117,6 @@ class TestDeleteAndAddAccount(RaftTestCase):
                 id="a1",
                 login="demo-alice",
                 access_token="tok-a",
-                mock=False,
                 github_user_id="1",
             )
         )
@@ -115,7 +125,6 @@ class TestDeleteAndAddAccount(RaftTestCase):
                 id="a2",
                 login="demo-bob",
                 access_token="tok-b",
-                mock=False,
                 github_user_id="2",
             )
         )
@@ -138,38 +147,20 @@ class TestDeleteAndAddAccount(RaftTestCase):
     def _write_real_github_settings(self) -> None:
         self.write_home_settings(
             "edge: {http: 80}\n"
-            "github: {mock: false, clientId: cid, clientSecret: csec}\n"
+            "github: {clientId: cid, clientSecret: csec}\n"
         )
-
-    def _follow_mock_callback(self, client: TestClient, location: str) -> None:
-        parsed = urlparse(location)
-        cb = client.get(f"{parsed.path}?{parsed.query}", follow_redirects=False)
-        assert cb.status_code == 302 and cb.headers["location"] == "/deploy"
-
-    def _assert_two_accounts_after_mock_add(
-        self, client: TestClient, store: GithubAccountStore
-    ) -> None:
-        session = client.get("/api/github/session").json()
-        logins = {a["login"] for a in session["accounts"]}
-        assert "demo-user" in logins
-        assert any(name.startswith("mock-operator") for name in logins)
-        assert len(session["accounts"]) == 2
-        assert len(store.public_snapshot()["accounts"]) == 2
 
     def _client(self, *, settings: Optional[str] = "") -> TestClient:
         stack = StackMakers.make_stack(self.tmp_path)
         if settings is not None:
             body = settings or (
-                "edge: {http: 80, https: null}\ngithub: {mock: true}\n"
+                "edge: {http: 80, https: null}\n"
+                "github: {clientId: cid, clientSecret: csec}\n"
             )
             self.write_home_settings(body)
         status = MagicMock()
         status.collect.return_value = StatusSnapshot(
             host=status_fx.empty_host_status(), containers=()
         )
-        github = ServeGithubApi(
-            stack,
-            provider=MockGithubProvider(ServePaths.mock_github_dir()),
-            port=8787,
-        )
+        github = ServeGithubApi(stack, provider=MagicMock(), port=8787)
         return TestClient(ServeAppFactory(stack, status=status, github=github).create())

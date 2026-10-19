@@ -36,7 +36,7 @@ Confirm before apply. After a successful update, align the running stack the sam
 | `metrics` | Resource + HTTP sampling | Next metrics job tick |
 | `serviceLogs` | Retained Compose stdout | Next shipper tick |
 | `acme` | Let's Encrypt HTTP-01 | Apply/renew jobs; email required when apps use `tls: acme` |
-| `github` | Serve OAuth / mock | `RAFT_GITHUB_*` env overrides when set |
+| `github` | Serve OAuth (Add from GitHub) | `RAFT_GITHUB_*` env overrides when set |
 | `notifications` | Global enable + channels | Channel secrets redacted in API; prefer Notifications page for CRUD |
 | `alerts` | Evaluation cadence | Rules stay under `state/alerts/` |
 | Storage | Purge unused Docker images / build cache | Confirm → `POST /api/purge` (same as `raft purge`); toasts for success/error |

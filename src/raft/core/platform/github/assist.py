@@ -1,6 +1,6 @@
 """Shared GitHub OAuth / accounts / deploy-assist (serve + CLI)."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from raft.core.core.config.settings import SettingsLoader
 from raft.core.core.errors.cta import OperatorError
@@ -9,12 +9,7 @@ from raft.core.core.models.stack import Stack
 from .accounts import GithubAccountStore, GithubActiveResolver
 from .deploy import DeployJobStore, GithubDeployRunner
 from .oauth import GITHUB_OAUTH_SCOPES, GithubOauth, GithubSettingsWriter
-from .providers import (
-    GithubProvider,
-    GithubRepo,
-    MockGithubProvider,
-    RealGithubProvider,
-)
+from .providers import GithubProvider, GithubRepo, RealGithubProvider
 
 
 class GithubAssistService:
@@ -72,10 +67,6 @@ class GithubAssistService:
         select = add or bool(self._accounts.public_snapshot().get("accounts"))
         return self._oauth.login_url(port=bind, select_account=select)
 
-    def complete_mock(self, *, add: bool = False) -> Dict[str, Any]:
-        account = self._oauth.complete_mock(add=add)
-        return {"ok": True, "account": account.to_public()}
-
     def complete_oauth(self, *, code: str, state: str) -> Dict[str, Any]:
         account = self._oauth.complete_oauth(code=code, state=state)
         return {"ok": True, "account": account.to_public()}
@@ -85,12 +76,7 @@ class GithubAssistService:
         *,
         code: Optional[str] = None,
         state: Optional[str] = None,
-        mock: Optional[str] = None,
-        add: Optional[str] = None,
     ) -> None:
-        if mock == "1" or (self._cfg.mock and not code):
-            self._oauth.complete_mock(add=self._truthy(add))
-            return
         if not code or not state:
             raise OperatorError(
                 "OAuth callback missing code/state.\nFix: start login again",
@@ -152,8 +138,6 @@ class GithubAssistService:
         return repo
 
     def _default_provider(self) -> GithubProvider:
-        if self._cfg.mock:
-            return MockGithubProvider()
         return RealGithubProvider()
 
     def _reload(self, cfg) -> None:
@@ -168,10 +152,6 @@ class GithubAssistService:
                 "GitHub OAuth is not configured. Create an OAuth App, save "
                 "client id/secret (settings.yaml or raft github config save), "
                 "then continue."
-            )
-        if self._cfg.mock:
-            return (
-                "Mock GitHub mode is on — login is local and lists fixture repos."
             )
         return (
             "Temporary GitHub login lists repos you own or belong to, then raft "
@@ -189,7 +169,3 @@ class GithubAssistService:
             "default_branch": repo.default_branch,
             "html_url": repo.html_url,
         }
-
-    @staticmethod
-    def _truthy(value: Optional[str]) -> bool:
-        return str(value or "").strip().lower() in {"1", "true", "yes"}

@@ -88,7 +88,6 @@ class TestOperatorSettingsService(RaftTestCase):
     @staticmethod
     def _with_github_secret(doc: dict, secret: str) -> dict:
         doc["github"] = {
-            "mock": False,
             "clientId": "Iv1.demo",
             "clientSecret": secret,
             "sessionTtlSeconds": 3600,

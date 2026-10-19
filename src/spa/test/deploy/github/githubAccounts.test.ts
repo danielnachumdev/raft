@@ -28,14 +28,12 @@ describe("accountCount", () => {
           {
             id: "1",
             login: "demo-alice",
-            mock: true,
             expires_at: 1,
             expired: true,
           },
           {
             id: "2",
             login: "demo-bob",
-            mock: true,
             expires_at: 9e12,
           },
         ]),
@@ -51,14 +49,12 @@ describe("usableAccounts", () => {
       {
         id: "1",
         login: "demo-alice",
-        mock: true,
         expires_at: 1,
         expired: true,
       },
       {
         id: "2",
         login: "demo-bob",
-        mock: true,
         expires_at: 9e12,
       },
     ]);
@@ -112,7 +108,6 @@ describe("shouldAutoLoginGithub", () => {
           {
             id: "1",
             login: "demo-user",
-            mock: false,
             expires_at: 1,
             expired: true,
           },

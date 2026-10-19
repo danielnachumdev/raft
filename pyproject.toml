@@ -39,7 +39,6 @@ raft = [
     "core/platform/share/controller/**/*",
     "core/platform/share/dashboard/**/*",
     "core/platform/share/serve/**/*",
-    "core/platform/share/serve/mock-github/**/*",
 ]
 
 [tool.pytest.ini_options]

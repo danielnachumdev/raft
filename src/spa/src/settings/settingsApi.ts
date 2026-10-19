@@ -67,7 +67,6 @@ export type SettingsDocument = {
     challenge: string;
   };
   github: {
-    mock: boolean;
     clientId: string | null;
     clientSecret: string | null;
     sessionTtlSeconds: number;

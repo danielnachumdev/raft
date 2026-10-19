@@ -50,7 +50,6 @@ class SettingsSecretsMerge:
         if secret == SettingsRedactor._MASK and prior.client_secret:
             secret = prior.client_secret
         return GithubServeConfig(
-            mock=incoming.mock,
             client_id=incoming.client_id,
             client_secret=secret,
             session_ttl_seconds=incoming.session_ttl_seconds,

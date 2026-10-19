@@ -1,6 +1,5 @@
 export type GithubOauthConfig = {
   oauth_configured: boolean;
-  mock: boolean;
   client_id_set: boolean;
   callback_url: string;
   oauth_app_url: string;
@@ -19,7 +18,6 @@ export type GithubOauthConfig = {
 export type GithubAccountPublic = {
   id: string;
   login: string;
-  mock: boolean;
   expires_at: number;
   expired?: boolean;
 };
@@ -27,7 +25,6 @@ export type GithubAccountPublic = {
 export type GithubSession = {
   authenticated: boolean;
   login?: string;
-  mock?: boolean;
   expires_at?: number;
   accounts?: GithubAccountPublic[];
   active_account_id?: string | null;

@@ -1,4 +1,4 @@
-"""Serve GitHub API route tests (mock provider)."""
+"""Serve GitHub API route tests (real OAuth path + MagicMock provider)."""
 
 from __future__ import annotations
 
@@ -16,43 +16,55 @@ from raft.core.platform.github.accounts import GithubAccount
 from raft.core.platform.github.accounts import GithubAccountStore
 from raft.services.serve.github.api import ServeGithubApi
 from raft.core.platform.github.deploy import DeployJob, DeployJobStore
-from raft.core.platform.github.providers import MockGithubProvider
-from raft.services.serve.http.paths import ServePaths
+from raft.core.platform.github.providers import GithubRepo
 
 from tests.unit.base import RaftTestCase, StackMakers
 from tests.unit.core.observe.ops.status import fixtures as status_fx
 
 
 class TestServeGithubApi(RaftTestCase):
-    def _client(self, *, settings: Optional[str] = None) -> TestClient:
+    def _client(self, *, settings: Optional[str] = None, provider=None) -> TestClient:
         stack = StackMakers.make_stack(self.tmp_path)
         body = settings or (
-            "edge: {http: 80, https: null}\ngithub: {mock: true}\n"
+            "edge: {http: 80, https: null}\n"
+            "github: {clientId: cid, clientSecret: csec}\n"
         )
         self.write_home_settings(body)
         status = MagicMock()
         status.collect.return_value = StatusSnapshot(
             host=status_fx.empty_host_status(), containers=()
         )
-        github = ServeGithubApi(
-            stack,
-            provider=MockGithubProvider(ServePaths.mock_github_dir()),
-            port=8787,
-        )
+        if provider is None:
+            provider = MagicMock()
+            provider.list_repos.return_value = [
+                GithubRepo(
+                    "demo/http-only-site",
+                    "http-only-site",
+                    "demo",
+                    False,
+                    "main",
+                    "c",
+                    "s",
+                    "h",
+                )
+            ]
+        github = ServeGithubApi(stack, provider=provider, port=8787)
         return TestClient(ServeAppFactory(stack, status=status, github=github).create())
 
     def test_session_login_logout_repos(self) -> None:
         client = self._client()
         bare = client.get("/api/github/session").json()
-        assert bare["authenticated"] is False and bare["mock"] is True
+        assert bare["authenticated"] is False
+        assert "mock" not in bare
         assert bare["oauth_configured"] is True
         assert bare["accounts"] == []
-        assert client.get("/api/github/login", follow_redirects=False).status_code == 302
-        cb = client.get("/api/github/callback?mock=1", follow_redirects=False)
-        assert cb.status_code == 302 and cb.headers["location"] == "/deploy"
+        login = client.get("/api/github/login", follow_redirects=False)
+        assert login.status_code == 302
+        assert "github.com/login/oauth/authorize" in login.headers["location"]
+        self._seed_account()
         session = client.get("/api/github/session").json()
         assert session["authenticated"] is True
-        assert session["login"] == "mock-operator"
+        assert session["login"] == "demo-operator"
         assert len(session["accounts"]) == 1
         assert "access_token" not in session
         assert "access_token" not in session["accounts"][0]
@@ -66,12 +78,9 @@ class TestServeGithubApi(RaftTestCase):
         client = self._client()
         store = GithubAccountStore(self.tmp_path)
         first = store.upsert_account(self._alice())
-        client.get("/api/github/callback?mock=1")
+        store.append_account(self._operator())
         session = client.get("/api/github/session").json()
-        assert {a["login"] for a in session["accounts"]} == {
-            "alice",
-            "mock-operator",
-        }
+        assert {a["login"] for a in session["accounts"]} == {"alice", "demo-operator"}
         selected = client.post(
             "/api/github/accounts/select",
             json={"account_id": first.id},
@@ -79,7 +88,7 @@ class TestServeGithubApi(RaftTestCase):
         assert selected["login"] == "alice"
         assert store.active_usable().access_token == "tok-a"
         gone = client.delete(f"/api/github/accounts/{first.id}").json()
-        assert gone["login"] == "mock-operator"
+        assert gone["login"] == "demo-operator"
         assert len(gone["accounts"]) == 1
 
     def test_config_save_reloads_oauth(
@@ -116,10 +125,20 @@ class TestServeGithubApi(RaftTestCase):
             id="first",
             login="alice",
             access_token="tok-a",
-            mock=False,
             expires_at=time.time() + 60,
             github_user_id="1",
         )
+
+    def _operator(self) -> GithubAccount:
+        return GithubAccount(
+            id="op",
+            login="demo-operator",
+            access_token="tok-op",
+            expires_at=time.time() + 60,
+        )
+
+    def _seed_account(self) -> None:
+        GithubAccountStore(self.tmp_path).upsert_account(self._operator())
 
     def test_config_errors_and_hints(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._clear_github_env(monkeypatch)
@@ -130,7 +149,6 @@ class TestServeGithubApi(RaftTestCase):
     @staticmethod
     def _clear_github_env(monkeypatch: pytest.MonkeyPatch) -> None:
         for key in (
-            "RAFT_GITHUB_MOCK",
             "RAFT_GITHUB_CLIENT_ID",
             "RAFT_GITHUB_CLIENT_SECRET",
         ):
@@ -139,7 +157,7 @@ class TestServeGithubApi(RaftTestCase):
     def test_deploy_requires_session_and_valid_name(self) -> None:
         client = self._client()
         assert client.post("/api/github/deploy", json={}).status_code == 401
-        client.get("/api/github/callback?mock=1")
+        self._seed_account()
         assert client.post("/api/github/deploy", json={"full_name": "nope"}).status_code == 400
         missing = client.post(
             "/api/github/deploy", json={"full_name": "demo/does-not-exist"}
@@ -170,17 +188,18 @@ class TestServeGithubApi(RaftTestCase):
             )
             assert client.get("/api/github/deploy/x").status_code == 400
 
+    def test_callback_requires_code(self) -> None:
+        client = self._client()
+        bad = client.get("/api/github/callback", follow_redirects=False)
+        assert bad.status_code == 302 and "oauth_error=" in bad.headers["location"]
+
     def _github_and_status(self):
         stack = StackMakers.make_stack(self.tmp_path)
         (self.tmp_path / "settings.yaml").write_text(
-            "github: {mock: true}\n", encoding="utf-8"
+            "github: {clientId: cid, clientSecret: csec}\n", encoding="utf-8"
         )
-        self._save_mock_account()
-        github = ServeGithubApi(
-            stack,
-            provider=MockGithubProvider(ServePaths.mock_github_dir()),
-            jobs=DeployJobStore(),
-        )
+        self._seed_account()
+        github = ServeGithubApi(stack, provider=MagicMock(), jobs=DeployJobStore())
         status = MagicMock()
         status.collect.return_value = StatusSnapshot(
             host=status_fx.empty_host_status(), containers=()
@@ -190,27 +209,12 @@ class TestServeGithubApi(RaftTestCase):
     def _authed_client(self, jobs: DeployJobStore) -> TestClient:
         stack = StackMakers.make_stack(self.tmp_path)
         (self.tmp_path / "settings.yaml").write_text(
-            "github: {mock: true}\n", encoding="utf-8"
+            "github: {clientId: cid, clientSecret: csec}\n", encoding="utf-8"
         )
-        self._save_mock_account()
-        api = ServeGithubApi(
-            stack,
-            provider=MockGithubProvider(ServePaths.mock_github_dir()),
-            jobs=jobs,
-        )
+        self._seed_account()
+        api = ServeGithubApi(stack, provider=MagicMock(), jobs=jobs)
         status = MagicMock()
         status.collect.return_value = StatusSnapshot(
             host=status_fx.empty_host_status(), containers=()
         )
         return TestClient(ServeAppFactory(stack, status=status, github=api).create())
-
-    def _save_mock_account(self) -> None:
-        GithubAccountStore(self.tmp_path).upsert_account(
-            GithubAccount(
-                id="mock",
-                access_token="mock",
-                login="mock-operator",
-                mock=True,
-                expires_at=time.time() + 60,
-            )
-        )

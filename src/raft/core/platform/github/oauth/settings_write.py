@@ -30,7 +30,6 @@ class GithubSettingsWriter:
         out.update(
             {
                 "oauth_configured": self.oauth_ready(cfg),
-                "mock": cfg.mock,
                 "client_id_set": bool(cfg.client_id),
                 "settings_path": str(self._path),
             }
@@ -49,7 +48,7 @@ class GithubSettingsWriter:
 
     @staticmethod
     def oauth_ready(cfg: GithubServeConfig) -> bool:
-        return bool(cfg.mock or (cfg.client_id and cfg.client_secret))
+        return bool(cfg.client_id and cfg.client_secret)
 
     def _validated_patch(
         self,
@@ -66,7 +65,7 @@ class GithubSettingsWriter:
                 f"or see {SETUP_DOCS_URL}",
                 has_fix=False,
             )
-        return {"mock": False, "clientId": cid, "clientSecret": secret}
+        return {"clientId": cid, "clientSecret": secret}
 
     def _merge_github(self, patch: Mapping[str, Any]) -> None:
         with SettingsLock(self._home):
@@ -75,6 +74,7 @@ class GithubSettingsWriter:
             if not isinstance(github, dict):
                 github = {}
             merged = dict(github)
+            merged.pop("mock", None)
             merged.update(patch)
             data["github"] = merged
             self._write_root(data)

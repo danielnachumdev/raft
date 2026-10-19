@@ -13,11 +13,9 @@ from raft.core.core.models.ports import PortSpec
 from raft.core.platform.github.deploy import GithubDeployRunner
 from raft.core.platform.github.deploy import DeployJob, DeployJobStore
 from raft.core.platform.github.deploy import DeployNextSteps
-from raft.core.platform.github.providers import MockGithubProvider
-from raft.core.platform.github.accounts import GithubAccount
-from raft.services.serve.http.paths import ServePaths
 
 from tests.unit.base import AppliedInventory, RaftTestCase, StackMakers
+from tests.unit.core.platform.github import fixtures as github_fx
 
 
 class TestDeployNextSteps(RaftTestCase):
@@ -44,34 +42,34 @@ class TestDeployNextSteps(RaftTestCase):
 
 
 class TestGithubDeployRunner(RaftTestCase):
-    def _session(self) -> GithubAccount:
-        return GithubAccount(
-            id="mock",
-            access_token="mock",
-            login="mock-operator",
-            mock=True,
-            expires_at=time.time() + 60,
-        )
-
     def _wait(self, job: DeployJob) -> None:
         for _ in range(80):
             time.sleep(0.05)
             if job.status in {"succeeded", "failed"}:
                 return
 
-    def test_mock_local_deploy_succeeds(self) -> None:
+    def _provider(self, *, with_manifest: bool = True, name: str = "http-only-site"):
+        tree = self.tmp_path / "fixture-tree"
+        if with_manifest:
+            github_fx.write_local_app_tree(tree, name=name)
+        else:
+            tree.mkdir(parents=True, exist_ok=True)
+        return github_fx.StubLocalGithubProvider(tree, full_name=f"demo/{name}")
+
+    def test_local_deploy_succeeds(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path)
-        runner = GithubDeployRunner(
-            stack, MockGithubProvider(ServePaths.mock_github_dir()), DeployJobStore()
-        )
-        repo = next(
-            r
-            for r in MockGithubProvider(ServePaths.mock_github_dir()).list_repos("t")
-            if r.full_name == "demo/http-only-site"
-        )
-        with patch("raft.core.platform.github.deploy.job.AppApply") as apply_cls:
+        provider = self._provider()
+        runner = GithubDeployRunner(stack, provider, DeployJobStore())
+        repo = provider.list_repos("t")[0]
+        with patch("raft.core.platform.github.deploy.job.AppApply") as apply_cls, patch(
+            "raft.core.platform.github.deploy.job.GithubCiPrSetup.ensure"
+        ) as ensure:
             apply_cls.return_value.apply_file.return_value = "http-only-site"
-            job = runner.start(self._session(), repo, "main")
+            ensure.return_value = type("R", (), {"to_dict": lambda self: {"status": "opened", "detail": "ok"}, "detail": "ok"})()
+            # use real CiPrResult-like
+            from raft.core.platform.github.deploy import CiPrResult
+            ensure.return_value = CiPrResult(status="opened", detail="ok", pr_url="https://github.com/o/r/pull/1")
+            job = runner.start(github_fx.sample_account(), repo, "main")
             self._wait(job)
         assert job.status == "succeeded"
         assert job.app_name == "http-only-site"
@@ -81,15 +79,11 @@ class TestGithubDeployRunner(RaftTestCase):
     def test_missing_manifest_fails(self) -> None:
         runner = GithubDeployRunner(
             StackMakers.make_stack(self.tmp_path),
-            MockGithubProvider(ServePaths.mock_github_dir()),
+            self._provider(with_manifest=False, name="no-manifest"),
             DeployJobStore(),
         )
-        repo = next(
-            r
-            for r in MockGithubProvider(ServePaths.mock_github_dir()).list_repos("t")
-            if r.full_name == "demo/no-manifest"
-        )
-        job = runner.start(self._session(), repo, "main")
+        repo = runner._provider.list_repos("t")[0]
+        job = runner.start(github_fx.sample_account(), repo, "main")
         self._wait(job)
         assert job.status == "failed"
         assert job.error and ".raft/app.yaml" in job.error
@@ -102,32 +96,28 @@ class TestGithubDeployRunner(RaftTestCase):
             repo="git@github.com:other-org/other-api.git",
             public_host="other.test",
         )
-        job = self._start_mock_deploy("demo/http-only-site")
+        job = self._start_local_deploy("demo/http-only-site")
         self._wait(job)
         assert job.status == "failed"
         assert job.error and "different source" in job.error
         assert "raft delete http-only-site" in job.error
         assert "Fix:" in job.error
 
-    def _start_mock_deploy(self, full_name: str) -> DeployJob:
+    def _start_local_deploy(self, full_name: str) -> DeployJob:
+        name = full_name.split("/", 1)[1]
+        provider = self._provider(name=name)
         runner = GithubDeployRunner(
             StackMakers.make_stack(self.tmp_path),
-            MockGithubProvider(ServePaths.mock_github_dir()),
+            provider,
             DeployJobStore(),
         )
-        repo = next(
-            r
-            for r in MockGithubProvider(ServePaths.mock_github_dir()).list_repos("t")
-            if r.full_name == full_name
-        )
-        return runner.start(self._session(), repo, "main")
+        repo = next(r for r in provider.list_repos("t") if r.full_name == full_name)
+        return runner.start(github_fx.sample_account(), repo, "main")
 
     def test_fill_next_steps_from_registry(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path)
         manifest = self._write_registry_manifest()
-        runner = GithubDeployRunner(
-            stack, MockGithubProvider(ServePaths.mock_github_dir()), DeployJobStore()
-        )
+        runner = GithubDeployRunner(stack, self._provider(), DeployJobStore())
         job = DeployJob(
             id="x", full_name="demo/http-only-site", ref="main", app_name="http-only-site"
         )

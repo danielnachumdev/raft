@@ -21,13 +21,7 @@ class GithubCiPrSetup:
         self._workflow = RaftApplyWorkflow()
         self._http = gateway or GithubApiGateway()
 
-    def ensure(self, token: str, repo: GithubRepo, *, mock: bool = False) -> CiPrResult:
-        if mock:
-            return CiPrResult(
-                status="opened",
-                detail="mock CI PR (fixture; no GitHub write)",
-                pr_url=f"{repo.html_url}/pull/1",
-            )
+    def ensure(self, token: str, repo: GithubRepo) -> CiPrResult:
         return self._ensure_or_wrap(token, repo)
 
     def _ensure_or_wrap(self, token: str, repo: GithubRepo) -> CiPrResult:

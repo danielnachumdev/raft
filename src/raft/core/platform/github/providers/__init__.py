@@ -2,12 +2,11 @@
 
 from .provider import GithubProvider
 from .repo import GithubRepo, filter_repos
-from .strategies import MockGithubProvider, RealGithubProvider
+from .strategies import RealGithubProvider
 
 __all__ = [
     "GithubProvider",
     "GithubRepo",
-    "MockGithubProvider",
     "RealGithubProvider",
     "filter_repos",
 ]

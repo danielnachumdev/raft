@@ -1,6 +1,5 @@
-"""Concrete GithubProvider implementations (mock / real API)."""
+"""Concrete GithubProvider implementations (real GitHub API)."""
 
-from .mock import MockGithubProvider
 from .real import RealGithubProvider
 
-__all__ = ["MockGithubProvider", "RealGithubProvider"]
+__all__ = ["RealGithubProvider"]

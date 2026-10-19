@@ -1,4 +1,4 @@
-"""Parse ``github:`` (serve OAuth / mock) from settings.yaml + env."""
+"""Parse ``github:`` (serve OAuth) from settings.yaml + env."""
 
 import os
 from typing import Any
@@ -8,14 +8,16 @@ from ..scalars import SettingsScalars
 from ..section import SettingsSectionParser
 from ..types import DEFAULT_GITHUB_SESSION_TTL_SECONDS, GithubServeConfig
 
-_ENV_MOCK = "RAFT_GITHUB_MOCK"
 _ENV_CLIENT_ID = "RAFT_GITHUB_CLIENT_ID"
 _ENV_CLIENT_SECRET = "RAFT_GITHUB_CLIENT_SECRET"
 _ENV_TTL = "RAFT_GITHUB_SESSION_TTL_SECONDS"
 
 
 class GithubSettingsParser(SettingsSectionParser[GithubServeConfig]):
-    """Resolve GitHub serve config: settings.yaml, then env overrides."""
+    """Resolve GitHub serve config: settings.yaml, then env overrides.
+
+    Legacy ``github.mock`` / ``RAFT_GITHUB_MOCK`` are ignored (feature removed).
+    """
 
     def __init__(self) -> None:
         self._scalars = SettingsScalars()
@@ -30,23 +32,20 @@ class GithubSettingsParser(SettingsSectionParser[GithubServeConfig]):
         if not isinstance(raw, dict):
             raise OperatorError(
                 "settings.yaml github must be a mapping.\n"
-                "Fix: set github: {mock: true} or github: {clientId: …, clientSecret: …}",
+                "Fix: set github: {clientId: …, clientSecret: …}",
                 has_fix=False,
             )
         return GithubServeConfig(
-            mock=bool(raw.get("mock", False)),
             client_id=self._scalars.optional_str(raw.get("clientId")),
             client_secret=self._scalars.optional_str(raw.get("clientSecret")),
             session_ttl_seconds=self._ttl(raw.get("sessionTtlSeconds")),
         )
 
     def _apply_env(self, base: GithubServeConfig) -> GithubServeConfig:
-        mock = self._env_bool(_ENV_MOCK, base.mock)
         client_id = os.environ.get(_ENV_CLIENT_ID) or base.client_id
         client_secret = os.environ.get(_ENV_CLIENT_SECRET) or base.client_secret
         ttl = self._env_ttl(base.session_ttl_seconds)
         return GithubServeConfig(
-            mock=mock,
             client_id=self._scalars.optional_str(client_id),
             client_secret=self._scalars.optional_str(client_secret),
             session_ttl_seconds=ttl,
@@ -93,10 +92,3 @@ class GithubSettingsParser(SettingsSectionParser[GithubServeConfig]):
                 has_fix=False,
             )
         return value
-
-    @staticmethod
-    def _env_bool(name: str, default: bool) -> bool:
-        raw = os.environ.get(name)
-        if raw is None or not str(raw).strip():
-            return default
-        return str(raw).strip().lower() in {"1", "true", "yes", "on"}

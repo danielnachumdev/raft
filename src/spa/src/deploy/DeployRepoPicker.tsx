@@ -47,7 +47,6 @@ export function DeployRepoPicker(props: {
           {accounts.map((account) => (
             <option key={account.id} value={account.id}>
               {account.login}
-              {account.mock ? " (mock)" : ""}
             </option>
           ))}
         </select>

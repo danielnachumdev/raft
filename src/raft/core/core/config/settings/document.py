@@ -102,7 +102,6 @@ class SettingsDocument:
 
     def _github(self, cfg: GithubServeConfig) -> dict[str, Any]:
         return {
-            "mock": cfg.mock,
             "clientId": cfg.client_id,
             "clientSecret": cfg.client_secret,
             "sessionTtlSeconds": cfg.session_ttl_seconds,

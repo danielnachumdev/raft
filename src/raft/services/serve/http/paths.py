@@ -30,6 +30,3 @@ class ServePaths:
     def spa_assets_dir(cls) -> Path:
         return cls.spa_dir() / "assets"
 
-    @classmethod
-    def mock_github_dir(cls) -> Path:
-        return cls.share_dir() / "mock-github"
