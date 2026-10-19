@@ -45,17 +45,7 @@ class TestDashboardCoverageGaps(RaftTestCase):
         assert frag.gate_tls == {}
 
     def test_service_enable_all_kwargs(self) -> None:
-        home = Path(self.tmp_path)
-        (home / "settings.yaml").write_text("{}\n", encoding="utf-8")
-        writer = DashboardSettingsWriter(home)
-        writer.set_password("correct-horse")
-        svc = DashboardService(
-            StackMakers.make_stack(home),
-            orchestrator=MagicMock(),
-            docker=MagicMock(),
-            writer=writer,
-        )
-        svc._docker.running_services.return_value = ["raft-gate", "raft-router"]
+        svc = self._password_svc(running=["raft-gate", "raft-router"])
         snap = svc.enable(
             public_host="ops.example.com",
             tls="acme",
@@ -68,6 +58,12 @@ class TestDashboardCoverageGaps(RaftTestCase):
         svc._docker.reload_gate_nginx.assert_called_once()
 
     def test_service_enable_skips_router_reload_when_router_down(self) -> None:
+        svc = self._password_svc(running=[])
+        svc.enable(public_host="ops.example.com", tls="acme", auth_mode="password")
+        svc._docker.reload_router_nginx.assert_not_called()
+        svc._docker.reload_gate_nginx.assert_not_called()
+
+    def _password_svc(self, *, running: list[str]) -> DashboardService:
         home = Path(self.tmp_path)
         (home / "settings.yaml").write_text("{}\n", encoding="utf-8")
         writer = DashboardSettingsWriter(home)
@@ -78,10 +74,8 @@ class TestDashboardCoverageGaps(RaftTestCase):
             docker=MagicMock(),
             writer=writer,
         )
-        svc._docker.running_services.return_value = []
-        svc.enable(public_host="ops.example.com", tls="acme", auth_mode="password")
-        svc._docker.reload_router_nginx.assert_not_called()
-        svc._docker.reload_gate_nginx.assert_not_called()
+        svc._docker.running_services.return_value = running
+        return svc
 
     def test_writer_clear_host_and_http_url(self) -> None:
         home = Path(self.tmp_path)
