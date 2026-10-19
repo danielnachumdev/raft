@@ -28,13 +28,13 @@ Branch protection requires the aggregate **CI** check. That check is the same jo
 | Path filter | yes | yes |
 | Meta | yes (python paths) | yes (python paths) |
 | SPA install / test / build | yes (spa paths) | yes (spa paths) |
-| Unit+Integration (bake SPA → unit → integration) | **Py 3.9 + 3.13** | **Py 3.9–3.13** (full) |
+| Unit+Integration (bake SPA → unit → integration) | **Py 3.9–3.13** (full) | **Py 3.9 + 3.13** |
 | E2E (Py 3.9, after Meta, parallel with Unit) | yes (python paths) | yes (python paths) |
 | Aggregate `CI` | yes | yes |
 | Release label (`cd.yml`) | yes | n/a |
 | semver / Release wheel (`cd.yml`) | no | yes (after CI success) |
 
-Middle Python versions (3.10–3.12) still run every step on `main` before **semver**; they are not deleted — only deferred so PR pipelines finish sooner.
+Middle Python versions (3.10–3.12) still run every step on the PR before merge; they are not deleted — only kept off `main` so post-merge / CD finish sooner after the thorough pre-merge gate.
 
 ## Release bake (SPA + wheel)
 

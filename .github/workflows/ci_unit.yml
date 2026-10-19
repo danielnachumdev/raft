@@ -1,5 +1,5 @@
 # Unit + integration matrix. Bakes SPA into share before pytest.
-# Caller selects Python versions (PR bookends vs full matrix on main).
+# Caller selects Python versions (full matrix on PR vs bookends on main).
 
 name: CI unit
 
@@ -7,7 +7,7 @@ on:
   workflow_call:
     inputs:
       python-versions:
-        description: JSON array of Python versions (e.g. '["3.9","3.13"]')
+        description: JSON array of Python versions (e.g. '["3.9","3.10","3.11","3.12","3.13"]')
         type: string
         default: '["3.9","3.10","3.11","3.12","3.13"]'
 

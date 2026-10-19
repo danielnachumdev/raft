@@ -13,10 +13,11 @@ name: CI
 #
 # Pre-merge (pull_request) vs post-merge (push to main / workflow_dispatch):
 #   Meta, SPA, E2E, aggregate — both (path-filtered).
-#   Unit+Integration — PR runs Py 3.9+3.13 bookends; main/dispatch runs full
-#   3.9–3.13. Every matrix cell + step still exists; middle versions move to
-#   post-merge only so PR wall-clock drops without weakening the CD gate
-#   (semver still waits for successful CI on main, which includes the full matrix).
+#   Unit+Integration — PR runs the full Py 3.9–3.13 matrix (thorough merge
+#   gate); main/dispatch runs Py 3.9+3.13 bookends only so post-merge + CD
+#   wall-clock stays short. Every matrix cell + step still exists; middle
+#   versions are PR-only. CD semver still waits for successful CI on main
+#   (bookend smoke after the PR already proved the full matrix).
 #   E2E runs after Meta in parallel with Unit (not serialized behind the matrix).
 
 on:
@@ -70,8 +71,8 @@ jobs:
     if: needs.changes.outputs.python == 'true'
     uses: ./.github/workflows/ci_unit.yml
     with:
-      # PR: oldest + newest supported. Main / dispatch: full support matrix.
-      python-versions: ${{ github.event_name == 'pull_request' && '["3.9","3.13"]' || '["3.9","3.10","3.11","3.12","3.13"]' }}
+      # PR: full support matrix (thorough). Main / dispatch: oldest + newest bookends.
+      python-versions: ${{ github.event_name == 'pull_request' && '["3.9","3.10","3.11","3.12","3.13"]' || '["3.9","3.13"]' }}
 
   e2e:
     name: E2E (Py 3.9)
