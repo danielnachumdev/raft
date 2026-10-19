@@ -37,6 +37,10 @@ on:
     # Weekly Monday 06:15 UTC — intentional refresh of pinned tags.
     - cron: "15 6 * * 1"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   packages: write
@@ -53,6 +57,7 @@ jobs:
   mirror:
     name: Mirror seed images to GHCR
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
 

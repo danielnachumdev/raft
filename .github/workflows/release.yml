@@ -32,14 +32,17 @@ permissions:
   pull-requests: read
 
 concurrency:
+  # PR number (or run_id for dispatch) — never commit SHA.
+  # Do not cancel merge/publish runs: a late label sync must not kill wheel bake.
   group: release-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event.action != 'closed' }}
 
 jobs:
   check-label:
     name: Release label
     if: github.event_name == 'pull_request' && github.event.action != 'closed'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
       - name: Require exactly one bump / noBump label
@@ -57,6 +60,8 @@ jobs:
        github.event.pull_request.merged == true) ||
       github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    # SPA bake + wheel — hard cap so a hung npm/uv step cannot bill unbounded.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
