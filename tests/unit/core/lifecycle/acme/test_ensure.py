@@ -86,3 +86,12 @@ class TestAcmeEnsure(RaftTestCase):
             config=AcmeConfig(email="ops@example.com"),
         ).run()
         runner.issue.assert_not_called()
+
+    def test_named_dashboard_skipped_when_not_acme(self) -> None:
+        runner = MagicMock()
+        AcmeEnsure(
+            load_stack(self.tmp_path),
+            order_runner=runner,
+            config=AcmeConfig(email="ops@example.com"),
+        ).run(["raft-dashboard"])
+        runner.issue.assert_not_called()
