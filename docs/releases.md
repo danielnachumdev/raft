@@ -1,6 +1,6 @@
 # Releases and semver labels
 
-Operator-facing versions come from **GitHub Releases** (`vX.Y.Z` tags). CI does **not** bot-commit bumps into `pyproject.toml` for day-to-day merges; the Release publish job sets the wheel version from the tag when building the artifact.
+Operator-facing versions come from **GitHub Releases** (`vX.Y.Z` tags). CI does **not** bot-commit bumps into `pyproject.toml` for day-to-day merges; the CD **semver** job sets the wheel version from the tag when building the artifact.
 
 ## Labels (exact names)
 
@@ -17,11 +17,11 @@ Every PR into `main` must carry **exactly one** of:
 - **Multiple labels:** fail closed with a clear error.
 - **Base version:** latest GitHub Release tag; if none exist yet, treat as `0.0.0`.
 
-Logic lives in [`scripts/release_semver.py`](../scripts/release_semver.py); workflow: [`.github/workflows/release.yml`](../.github/workflows/release.yml). Dry-run via **Actions → Release → Run workflow**. Label checks cancel superseded runs for the same PR; merge **publish** does not (`cancel-in-progress` is off for `closed`) so a late label event cannot kill SPA bake / wheel attach.
+Logic lives in [`scripts/release_semver.py`](../scripts/release_semver.py). Top-level workflows: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) (validation only) and [`.github/workflows/cd.yml`](../.github/workflows/cd.yml) (label check + **semver**). The **semver** job runs only after **CI** succeeds for a `push` to `main` (`workflow_run` gate) — it cannot create a tag/Release/wheel while tests are still failing. Dry-run via **Actions → CD → Run workflow**. Label checks cancel superseded runs for the same PR; **semver** publish does not cancel in progress so a late label event cannot kill SPA bake / wheel attach. Re-running CI on an already-tagged commit is a no-op (idempotent).
 
 ## Release bake (SPA + wheel)
 
-On each bump publish (not `noBump`, not dry-run), the Release job:
+On each bump publish (not `noBump`, not dry-run), the **semver** job:
 
 1. Runs `cd src/spa && npm ci && npm run build` into `src/raft/core/platform/share/serve/spa/` (transient; **not** committed).
 2. Sets `pyproject.toml` `version` to the Release semver (tag without `v`).
