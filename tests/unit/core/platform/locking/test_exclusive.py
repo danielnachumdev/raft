@@ -101,7 +101,8 @@ class TestExclusiveLock(RaftTestCase):
 
     def test_notifications_lock_helper(self) -> None:
         with NotificationsLock(self.root, timeout=1):
-            assert self.paths.notifications().name == "notifications.lock"
+            assert self.paths.notifications() == self.paths.settings()
+            assert self.paths.notifications().name == "settings.lock"
             assert self.paths.notifications().is_file()
 
     def test_acl_lock_helper(self) -> None:
