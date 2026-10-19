@@ -87,8 +87,13 @@ class DashboardService:
         self._docker.start_stack([DASHBOARD_SERVICE_NAME])
         # Render may have reloaded router before this service existed; reload
         # again so Compose DNS for raft-dashboard resolves into upstreams.
-        if self._stack.router in self._docker.running_services():
+        # Reload gate too — variable proxy_pass + Docker DNS can SERVFAIL
+        # briefly while the new container joins the network (public 502/offline).
+        running = set(self._docker.running_services())
+        if self._stack.router in running:
             self._docker.reload_router_nginx()
+        if self._stack.gate in running:
+            self._docker.reload_gate_nginx()
         self._ensure_acme()
 
     def _ensure_acme(self) -> None:

@@ -52,11 +52,7 @@ class StackUpScalePlan:
         )
 
     def _edge_compose_ids(self) -> Tuple[str, ...]:
-        edge = [self.stack.gate]
-        if self.stack.dashboard in self.stack.core_services:
-            edge.append(self.stack.dashboard)
-        edge.extend((self.stack.router, self.stack.controller))
-        return tuple(edge)
+        return self.stack.control_plane_services
 
     def _deferred_by_source(self, source: str) -> AbstractSet[str]:
         return {

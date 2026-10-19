@@ -7,7 +7,7 @@ Design lock: [issue #197](https://github.com/danielnachumdev/raft/issues/197).
 ## Where it appears
 
 - Service detail (`/service/<compose-id>`), panel **HTTP requests**.
-- Hidden for gate / router / controller, workers, and stream/host/none-only Apps.
+- Hidden for gate / router / controller / dashboard, workers, and stream/host/none-only Apps.
 - Not an edge-wide request browser in v1.
 
 ## Source of truth

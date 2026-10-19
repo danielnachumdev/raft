@@ -68,7 +68,8 @@ class DashboardEdgeRender:
             "        proxy_set_header Host $host;",
             "        proxy_set_header X-Real-IP $remote_addr;",
             "        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;",
-            "        proxy_set_header X-Forwarded-Proto $scheme;",
+            # Preserve gate TLS proto for in-container oauth2-proxy / cookies.
+            "        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;",
             "        proxy_connect_timeout 3s;",
             "        proxy_read_timeout 60s;",
             "    }",

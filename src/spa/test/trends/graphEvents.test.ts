@@ -29,6 +29,10 @@ describe("isRaftLevelEvent", () => {
       true,
     );
     assert.equal(
+      isRaftLevelEvent({ kind: "stop", ts: "t", service: "raft-dashboard" }),
+      true,
+    );
+    assert.equal(
       isRaftLevelEvent({ kind: "deployment", ts: "t", service: "demo-web" }),
       false,
     );

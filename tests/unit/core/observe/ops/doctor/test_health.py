@@ -42,6 +42,23 @@ class TestDoctorHealth(DoctorTestCase):
         assert results[("raft-gate", "running")].detail == "unhealthy"
         assert results[("raft-router", "running")].status == "fail"
 
+    def test_enabled_dashboard_probed_like_edge(self) -> None:
+        (self.tmp_path / "settings.yaml").write_text(
+            "dashboard: {enabled: true}\n", encoding="utf-8"
+        )
+        docker = self.mock_docker(
+            running=RunningServices.edge(),
+            runtime={
+                "raft-gate": ("running", "none"),
+                "raft-router": ("running", "none"),
+            },
+        )
+        ctx = self._ctx(docker)
+        with patch("shutil.which", return_value="/usr/bin/docker"):
+            results = {(r.service, r.check): r for r in RuntimeChecks().run(ctx)}
+        assert results[("raft-dashboard", "running")].status == "warn"
+        assert results[("raft-dashboard", "running")].detail == "not running"
+
     def test_app_fails_when_unhealthy(self) -> None:
         docker = self.mock_docker(
             running=RunningServices.with_apps("app"),

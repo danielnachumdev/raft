@@ -43,8 +43,16 @@ class RuntimeChecks:
     def _edge_running(cls, ctx: DoctorContext, running: set[str]) -> list[CheckResult]:
         return [
             cls._edge_service_result(ctx, name, running)
-            for name in (ctx.stack.gate, ctx.stack.router)
+            for name in cls._edge_always_probe(ctx)
         ]
+
+    @staticmethod
+    def _edge_always_probe(ctx: DoctorContext) -> tuple[str, ...]:
+        """Gate + router always; enabled dashboard too (controller is health-only)."""
+        names = [ctx.stack.gate, ctx.stack.router]
+        if ctx.stack.dashboard in ctx.stack.control_plane_services:
+            names.append(ctx.stack.dashboard)
+        return tuple(names)
 
     @classmethod
     def _edge_service_result(
@@ -83,8 +91,7 @@ class RuntimeChecks:
         cls, ctx: DoctorContext, running: set[str]
     ) -> list[CheckResult]:
         """Fail/warn when a running app or controller is unhealthy/crash-looping."""
-        edge = {ctx.stack.gate, ctx.stack.router}
-        skip = edge | cls._scaled_compose_ids(ctx)
+        skip = set(cls._edge_always_probe(ctx)) | cls._scaled_compose_ids(ctx)
         results: list[CheckResult] = []
         watched = running | cls._restarting_services(ctx, skip)
         for service in sorted(watched):

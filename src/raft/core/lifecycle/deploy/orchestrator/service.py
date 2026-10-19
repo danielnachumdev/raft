@@ -149,11 +149,7 @@ class Orchestrator(OrchestratorDeploy):
             )
 
     def _expected_edge_running(self) -> tuple[str, ...]:
-        edge = [self.stack.gate]
-        if self.stack.dashboard in self.stack.core_services:
-            edge.append(self.stack.dashboard)
-        edge.extend((self.stack.router, self.stack.controller))
-        return tuple(edge)
+        return self.stack.control_plane_services
 
     def stop(self) -> None:
         with StackLock(self.stack.root):

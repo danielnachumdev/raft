@@ -30,6 +30,7 @@ class TestDashboardOAuth(RaftTestCase):
         assert "location = /unauthorized" in text
         assert "return 302 /oauth2/start" in text
         assert "X-Raft-Identity" in text
+        assert "X-Forwarded-Proto $raft_fwd_proto" in text
 
     def test_proxy_cfg_google_and_oidc(self) -> None:
         google = DashboardOAuthProxyCfg().render(self._oauth_cfg())
