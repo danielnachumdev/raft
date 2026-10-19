@@ -44,7 +44,8 @@ DATA_DIR_RELS = (
 )
 
 TEMPLATE_FILES = ("compose.yaml",)
-TEMPLATE_DIRS = ("nginx", "controller")
+TEMPLATE_DIRS = ("nginx", "controller", "dashboard")
 CONTROLLER_BUILD_DIR = "controller"
+DASHBOARD_BUILD_DIR = "dashboard"
 CONTROLLER_PACKAGE_DIR = "raft"
 CONTROLLER_PYPROJECT = "pyproject.toml"

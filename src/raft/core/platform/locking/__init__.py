@@ -9,6 +9,7 @@ Locks live under ``~/.raft/state/locks/`` (``RAFT_DATA_HOME``):
   github OAuth). Historical ``notifications.lock`` name aliases this path.
 * ``acl.lock`` — serve API rewrites of ordered firewall before render/reload
 * ``alerts.lock`` — CLI/serve writes to ``state/alerts/rules.yaml``
+* ``dashboard.lock`` — CLI writes to ``settings.yaml`` ``dashboard:``
 
 Wait (with timeout) so a later-started deploy still runs after an earlier one
 and becomes the final live state. Contended waiters log ``waiting for … lock``
@@ -21,6 +22,7 @@ from .alerts_lock import AlertsLock
 from .app_and_stack_locks import AppAndStackLocks
 from .app_deploy_lock import AppDeployLock
 from .apps_and_stack_locks import AppsAndStackLocks
+from .dashboard_lock import DashboardLock
 from .exclusive import ExclusiveLock
 from .notifications_lock import NotificationsLock
 from .paths import LockPaths
@@ -39,6 +41,7 @@ __all__ = [
     "AppDeployLock",
     "AppsAndStackLocks",
     "DEFAULT_LOCK_TIMEOUT_SECONDS",
+    "DashboardLock",
     "ENV_LOCK_TIMEOUT",
     "ExclusiveLock",
     "LockPaths",

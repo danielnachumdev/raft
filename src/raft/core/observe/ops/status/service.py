@@ -78,7 +78,7 @@ class Status:
 
     def _edge_targets(self) -> list[_Target]:
         edge = StatusAllocated.edge()
-        return [
+        targets: list[_Target] = [
             (self.stack.gate, "gate", None, EDGE_GROUP, edge),
             (self.stack.router, "router", None, EDGE_GROUP, edge),
             (
@@ -89,6 +89,21 @@ class Status:
                 StatusAllocated.controller(),
             ),
         ]
+        self._maybe_append_dashboard(targets)
+        return targets
+
+    def _maybe_append_dashboard(self, targets: list[_Target]) -> None:
+        if self.stack.dashboard not in self.stack.core_services:
+            return
+        targets.append(
+            (
+                self.stack.dashboard,
+                "dashboard",
+                None,
+                EDGE_GROUP,
+                StatusAllocated.controller(),
+            )
+        )
 
     def _one_container(
         self,

@@ -47,6 +47,7 @@ Overlapping apply/redeploy/render tears tmp names, upstreams, and `generated/`. 
 | `acl.lock` | serve firewall writes (before render/reload) | Firewall persist does not race another firewall writer |
 | `alerts.lock` | CLI/serve writes to `state/alerts/rules.yaml` | Alert rules document writers do not tear each other |
 | `settings.lock` | full settings document, notification channels, github OAuth settings writers | No torn `settings.yaml` (historical `notifications.lock` name aliases this path) |
+| `dashboard.lock` | CLI writes to `settings.yaml` `dashboard:` | Dashboard settings writers do not tear each other |
 
 Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**). Nesting in-process re-enters. `doctor` / `status` do not take these locks.
 
@@ -100,7 +101,7 @@ Align with the README table; detail for agents:
 | Alert rules engine (metrics/control-plane → notifications) | **Shipped** | [#236](https://github.com/danielnachumdev/raft/issues/236); dual-plane CLI+serve lock [#264](https://github.com/danielnachumdev/raft/issues/264); [`docs/serve-alerts.md`](docs/serve-alerts.md); `AlertRulesService` / engine under `observe/alerts/` |
 | Operator system event timeline | **Shipped** | [#267](https://github.com/danielnachumdev/raft/issues/267); `state/events/ops.jsonl` dual-write with GraphEvents; `raft events` + serve `/events`; [`docs/serve-events.md`](docs/serve-events.md) |
 | Firewall-derived alert signals (`edge.denies`) | **Planned** | Observe gate outcomes only; no middle hop (#207) |
-| Always-on Compose dashboard service | **Planned** | [#36](https://github.com/danielnachumdev/raft/issues/36) — not `raft serve` replacement without design |
+| Always-on Compose dashboard service | **Shipped** | [#36](https://github.com/danielnachumdev/raft/issues/36); `dashboard:` settings + `raft-dashboard` Compose; optional `publicHost` + TLS + auth (`none`/`password`/`external`); CLI `raft dashboard …`; [`docs/serve-dashboard.md`](docs/serve-dashboard.md) |
 | Automate SPA bake in CD | **Shipped** | [#41](https://github.com/danielnachumdev/raft/issues/41) — Release wheel + install.sh prefers `.whl`; SPA assets not committed |
 | Middle nginx firewall hop | **Rejected** | Do not re-open without new engine requirements |
 
@@ -116,7 +117,7 @@ Align with the README table; detail for agents:
 
 | Path | Role |
 |------|------|
-| `settings.yaml` | logging, edge, healing, metrics, serviceLogs, acme, github, notifications, alerts cadence (legacy `acl.gate` for migrate) |
+| `settings.yaml` | logging, edge, healing, metrics, serviceLogs, acme, github, notifications, dashboard, alerts cadence (legacy `acl.gate` for migrate) |
 | `state/apps/*.yaml` | Applied App registry |
 | `generated/` | Compose + nginx (+ `gate-http/firewall/` includes) — **do not hand-edit as source of truth** |
 | `state/locks/` | flock files |
@@ -152,6 +153,7 @@ Product templates sync from `src/raft/core/platform/share/` into the data home o
 | Dashboard UI | `src/spa/` only (Release bakes; local `npm run build` for editable/`raft serve`) |
 | Alert rules | `core/observe/alerts/` + `services/serve/alerts/` + `services/controller/jobs/alerts/` + SPA `src/spa/src/alerts/` |
 | Ops event timeline | `core/models/state/ops_event*` + `observe/ops/events/`; dual-write from `GraphEventStore`; serve `services/serve/events/`; CLI `services/cli/commands/events.py` (`raft events`); SPA `src/spa/src/events/` |
+| Always-on dashboard | `lifecycle/dashboard/` + `share/dashboard/`; settings `dashboard:`; serve auth `services/serve/auth/`; CLI `services/cli/commands/dashboard.py`; docs [`docs/serve-dashboard.md`](docs/serve-dashboard.md) |
 | Notification strategies | `observe/notify/strategies/` + `catalogs.py`; SPA `src/spa/src/notifications/` |
 | Operator docs for serve features | `docs/serve-*.md` (notifications / alerts / events: `docs/serve-events.md`) |
 

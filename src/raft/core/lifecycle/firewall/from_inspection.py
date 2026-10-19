@@ -160,6 +160,9 @@ class InspectionFirewall:
         return app_name
 
     def _find_app_name(self, name: str) -> Optional[str]:
+        if name == "raft-dashboard":
+            meta = self._eligibility.meta("raft-dashboard")
+            return "raft-dashboard" if meta.get("supported") else None
         for app in self._stack.apps:
             if app.name == name or app.compose_id == name:
                 return app.name

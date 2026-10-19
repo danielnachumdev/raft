@@ -11,6 +11,7 @@ from raft.core.observe.ops.actions import ServiceActions
 from raft.core.observe.ops.logs import Logs
 from raft.core.observe.ops.status import Status
 from ..alerts import ServeAlertsApi
+from ..auth import ServeAuthWire
 from ..events import ServeEventsApi
 from ..firewall import ServeFirewallApi
 from ..github import ServeGithubApi
@@ -58,6 +59,7 @@ class ServeAppFactory:
         app = FastAPI(title="raft serve", docs_url=None, redoc_url=None)
         page, apis = self._components()
         self._register_api(app, page, *apis)
+        ServeAuthWire(self.stack).apply(app)
         app.mount(
             "/assets",
             StaticFiles(directory=str(ServePaths.spa_assets_dir())),

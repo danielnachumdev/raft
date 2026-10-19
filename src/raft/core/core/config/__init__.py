@@ -23,6 +23,8 @@ from .paths import (
 from .settings import (
     CONFIG_FILENAME,
     AcmeConfig,
+    DashboardAuthConfig,
+    DashboardConfig,
     EdgeConfig,
     EdgeStream,
     GithubServeConfig,
@@ -45,6 +47,8 @@ __all__ = [
     "CONFIG_FILENAME",
     "DATA_HOME_ENV",
     "DEPLOY_DIRNAME",
+    "DashboardAuthConfig",
+    "DashboardConfig",
     "DirTreeSync",
     "EdgeConfig",
     "EdgeStream",

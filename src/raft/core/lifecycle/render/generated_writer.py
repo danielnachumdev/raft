@@ -5,9 +5,11 @@ from pathlib import Path
 from typing import Optional
 
 from raft.core.core.config.paths import GENERATED_DIRNAME
+from raft.core.core.config.settings import SettingsLoader
 from raft.core.core.config.settings.types import EdgeConfig
 from raft.core.core.models.manifest import AppSpec
 from raft.core.core.models.stack import Stack
+from raft.core.lifecycle.dashboard.compose_yaml import DashboardComposeYaml
 from .acl.proxy_location import AclProxyLocation
 from .compose_apps import ComposeAppsYaml
 from .edge.fragments import EdgeFragments
@@ -36,12 +38,18 @@ class GeneratedWriter:
         (self._root / "compose.edge.yaml").write_text(
             self._compose_edge_yaml(), encoding="utf-8"
         )
+        self._write_dashboard_compose()
         hosts = self._root / "nginx" / "router" / "hosts.conf"
         hosts.write_text(self._router_hosts_conf(fragments), encoding="utf-8")
         self._write_gate_http(fragments)
         self._write_gate_stream(fragments)
         self._write_gate_tls(fragments)
         self._write_upstreams(fragments)
+
+    def _write_dashboard_compose(self) -> None:
+        cfg = SettingsLoader().load(self._stack.root).dashboard
+        text = DashboardComposeYaml().build(cfg)
+        (self._root / "compose.dashboard.yaml").write_text(text, encoding="utf-8")
 
     def _compose_edge_yaml(self) -> str:
         lines = [

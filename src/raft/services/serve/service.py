@@ -27,13 +27,29 @@ class Serve:
         """Print tunnel CTAs, then block on uvicorn until SIGINT."""
         lease = self._runtime.acquire(port)
         try:
-            ServeInstructions(port).print()
+            ServeInstructions(port, **self._always_on_urls()).print()
             app = ServeAppFactory(
                 self.stack, status=self._status, port=port
             ).create()
             uvicorn.run(app, host=_BIND_HOST, port=port, log_level="warning")
         finally:
             lease.release()
+
+    def _always_on_urls(self) -> dict:
+        try:
+            from raft.core.lifecycle.dashboard.settings_write import (
+                DashboardSettingsWriter,
+            )
+
+            snap = DashboardSettingsWriter(self.stack.root).status_public()
+        except Exception:  # noqa: BLE001 — instructions are best-effort
+            return {}
+        if not snap.get("enabled"):
+            return {}
+        out = {"always_on_url": snap.get("localUrl")}
+        if snap.get("publicUrl"):
+            out["public_url"] = snap["publicUrl"]
+        return out
 
     def stop(self, port: int = DEFAULT_SERVE_PORT) -> None:
         """Stop a serve process on ``port`` in another process (no-op if idle)."""

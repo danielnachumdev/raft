@@ -2,12 +2,15 @@
 
 from typing import Any, Optional
 
+from raft.core.core.config.settings import SettingsLoader
+from raft.core.core.config.settings.dashboard_config import DASHBOARD_SERVICE_NAME
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.app import App
 from raft.core.core.models.app_document import AppDocument
 from raft.core.core.models.manifest import AppSpec
 from raft.core.core.models.registry import AppRegistry
 from raft.core.core.models.stack import Stack
+from raft.core.lifecycle.dashboard.target import DashboardTarget
 
 
 class FirewallEligibility:
@@ -15,8 +18,11 @@ class FirewallEligibility:
 
     def __init__(self, stack: Stack) -> None:
         self._stack = stack
+        self._dash = DashboardTarget()
 
     def meta(self, name: str) -> dict[str, Any]:
+        if name == DASHBOARD_SERVICE_NAME:
+            return self._dashboard_meta()
         app = self._find_app(name)
         if app is None:
             return {
@@ -26,6 +32,17 @@ class FirewallEligibility:
             }
         _, spec = self._load_spec(app)
         return self._meta_for_spec(app, spec)
+
+    def _dashboard_meta(self) -> dict[str, Any]:
+        cfg = SettingsLoader().load(self._stack.root).dashboard
+        app = self._dash.app(cfg)
+        if app is None:
+            return {
+                "supported": False,
+                "reason": "raft-dashboard has no publicHost",
+                "fix": "set dashboard.publicHost in settings.yaml",
+            }
+        return self._meta_for_spec(app, self._dash.spec(cfg))
 
     def _meta_for_spec(self, app: App, spec: AppSpec) -> dict[str, Any]:
         try:

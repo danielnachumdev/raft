@@ -55,6 +55,14 @@ class FirewallService:
                 apps.append(
                     {"name": app.name, "publicHost": meta.get("publicHost")}
                 )
+        dash = self._eligibility.meta("raft-dashboard")
+        if dash.get("supported"):
+            apps.append(
+                {
+                    "name": "raft-dashboard",
+                    "publicHost": dash.get("publicHost"),
+                }
+            )
         return {"services": [{"name": "any", "label": "Any (edge-wide)"}, *apps]}
 
     def recommendations(self) -> Dict[str, Any]:

@@ -48,13 +48,17 @@ class TestProductTemplateSync(RaftTestCase):
         pkg = self.tmp_path / "share-only"
         (pkg / "nginx").mkdir(parents=True)
         (pkg / "controller").mkdir()
+        (pkg / "dashboard").mkdir()
         (pkg / "compose.yaml").write_text("name: raft\n", encoding="utf-8")
         (pkg / "controller" / "Dockerfile").write_text("FROM scratch\n", encoding="utf-8")
+        (pkg / "dashboard" / "Dockerfile").write_text("FROM scratch\n", encoding="utf-8")
         dest = self.tmp_path / "dest"
         dest.mkdir()
         sync_product_templates(dest, pkg)
         assert (dest / "controller" / "Dockerfile").is_file()
+        assert (dest / "dashboard" / "Dockerfile").is_file()
         assert not (dest / "controller" / "raft").exists()
+        assert not (dest / "dashboard" / "raft").exists()
         pyproject = dest / "controller" / "pyproject.toml"
         assert pyproject.is_file()
         text = pyproject.read_text(encoding="utf-8")

@@ -5,9 +5,12 @@ from datetime import datetime, timezone
 from typing import Callable, Optional, Sequence
 
 from raft.core.core.config.settings import SettingsLoader
+from raft.core.core.config.settings.dashboard_config import DASHBOARD_SERVICE_NAME
 from raft.core.core.config.settings.types import AcmeConfig
 from raft.core.core.models.app import App
+from raft.core.core.models.manifest import AppSpec
 from raft.core.core.models.stack import Stack
+from raft.core.lifecycle.dashboard.target import DashboardTarget
 from raft.core.observe.notify.control_events import ControlPlaneEvents
 from raft.core.observe.notify.notifier import Notifier
 from .account import AcmeAccountStore
@@ -44,6 +47,7 @@ class AcmeEnsure:
         self._installer = installer
         self._order_runner = order_runner
         self._notifier = notifier if notifier is not None else Notifier(stack.root)
+        self._dash = DashboardTarget()
 
     def run(self, app_names: Optional[Sequence[str]] = None) -> None:
         """Ensure one or all ``tls: acme`` apps; install/reload if material changed."""
@@ -60,7 +64,7 @@ class AcmeEnsure:
 
     def ensure_app(self, app: App) -> bool:
         """Return True when live material bytes were written."""
-        spec = self.stack.spec_for(app)
+        spec = self._spec_for(app)
         if spec.tls != "acme":
             return False
         email = (self._config.email or "").strip()
@@ -74,17 +78,41 @@ class AcmeEnsure:
 
     def _targets(self, app_names: Optional[Sequence[str]]) -> list[App]:
         if app_names is None:
-            return [a for a in self.stack.apps if self._is_acme(a)]
+            out = [a for a in self.stack.apps if self._is_acme(a)]
+            dash = self._dashboard_app()
+            if dash is not None:
+                out.append(dash)
+            return out
+        return self._named_targets(app_names)
+
+    def _named_targets(self, app_names: Sequence[str]) -> list[App]:
         out: list[App] = []
         for name in app_names:
+            if name == DASHBOARD_SERVICE_NAME:
+                dash = self._dashboard_app()
+                if dash is not None:
+                    out.append(dash)
+                continue
             app = self.stack.app(name)
             if self._is_acme(app):
                 out.append(app)
         return out
 
+    def _dashboard_app(self) -> Optional[App]:
+        cfg = SettingsLoader().load(self.stack.root).dashboard
+        if cfg.tls != "acme":
+            return None
+        return self._dash.app(cfg)
+
+    def _spec_for(self, app: App) -> AppSpec:
+        if app.name == DASHBOARD_SERVICE_NAME:
+            cfg = SettingsLoader().load(self.stack.root).dashboard
+            return self._dash.spec(cfg)
+        return self.stack.spec_for(app)
+
     def _is_acme(self, app: App) -> bool:
         try:
-            return self.stack.spec_for(app).tls == "acme"
+            return self._spec_for(app).tls == "acme"
         except Exception:  # noqa: BLE001
             return False
 

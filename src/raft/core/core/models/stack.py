@@ -15,6 +15,7 @@ from raft.core.core.errors.domain import DomainErrors
 from .app import (
     COMPOSE_PROJECT,
     CONTROLLER_COMPOSE_ID,
+    DASHBOARD_COMPOSE_ID,
     GATE_COMPOSE_ID,
     ROUTER_COMPOSE_ID,
     App,
@@ -44,6 +45,7 @@ class Stack:
     gate: str = GATE_COMPOSE_ID
     router: str = ROUTER_COMPOSE_ID
     controller: str = CONTROLLER_COMPOSE_ID
+    dashboard: str = DASHBOARD_COMPOSE_ID
     public_base_url: str = "http://127.0.0.1"
     state_dir: str = DEPLOY_DIRNAME
     drain_seconds: float = 3.0
@@ -59,12 +61,18 @@ class Stack:
 
     @property
     def core_services(self) -> tuple[str, ...]:
-        return (
-            self.gate,
-            self.router,
-            self.controller,
-            *(app.compose_id for app in self.apps),
-        )
+        edge = (self.gate, self.router, self.controller)
+        if self._dashboard_enabled():
+            edge = edge + (self.dashboard,)
+        return edge + tuple(app.compose_id for app in self.apps)
+
+    def _dashboard_enabled(self) -> bool:
+        try:
+            from raft.core.core.config.settings import SettingsLoader
+
+            return SettingsLoader().load(self.root).dashboard.enabled
+        except Exception:  # noqa: BLE001 — status/doctor tolerate bad settings
+            return False
 
     @property
     def upstreams_dir(self) -> Path:
