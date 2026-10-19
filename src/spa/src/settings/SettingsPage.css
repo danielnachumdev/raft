@@ -114,12 +114,6 @@
   visibility: hidden;
 }
 
-.settings-acl-list {
-  margin: 0.5rem 0 0;
-  padding-left: 1.1rem;
-  font-size: 0.9rem;
-}
-
 .settings-storage-block {
   display: flex;
   flex-direction: column;

@@ -25,8 +25,9 @@ Specialized pages remain for deep workflows:
 | `github` | Serve OAuth / mock | `RAFT_GITHUB_*` env overrides when set |
 | `notifications` | Global enable + channels | Channel secrets redacted in API; prefer Notifications page for CRUD |
 | `alerts` | Evaluation cadence | Rules stay under `state/alerts/` |
-| `acl` | Legacy flat gate ACL | Prefer Firewall; leftover migrates on GET until Save |
 | Storage | Purge unused Docker images / build cache | Confirm → `POST /api/purge` (same as `raft purge`); toasts for success/error |
+
+Legacy `acl.gate` may still appear in the API document for round-trip and migrate-on-GET into Firewall until Save — it is **not** an editable Settings section. Prefer [Settings → Firewall](serve-firewall.md).
 
 ## API
 

@@ -14,12 +14,6 @@ export type EdgeStream = {
   protocol: string;
 };
 
-export type AclEntry = {
-  id: string;
-  cidr: string;
-  comment?: string;
-};
-
 export type NotificationChannel = {
   id: string;
   type: string;
@@ -82,10 +76,11 @@ export type SettingsDocument = {
     enabled: boolean;
     channels: NotificationChannel[];
   };
+  /** Legacy ``acl.gate`` — API round-trip only; not editable in Settings UI. */
   acl: {
     gate: {
       mode: string;
-      entries: AclEntry[];
+      entries: Array<{ id: string; cidr: string; comment?: string }>;
     };
   };
   alerts: {
