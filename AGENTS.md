@@ -15,7 +15,9 @@ Implementation guide for coding agents changing **raft**. Operator pitch and fea
 | Human samples? | [`examples/`](examples/) + docs under [`docs/`](docs/). |
 | Package layout convention? | Class-first, ~200-line files, ≤20-line methods; see **Code style** and the writing-python skill. |
 
-**CI order:** Meta → Unit+Integration (Py 3.9–3.13; SPA baked before pytest) → E2E **Py 3.9 only** (SPA job parallel). Path filters skip Python vs SPA sides when irrelevant; concurrency cancels superseded PR/main runs; every `runs-on` job has `timeout-minutes`. Fresh-install e2e installs from the **workspace** build context after SPA bake (`RAFT_E2E_REF=workspace`); operators stay on Release wheels.
+**CI order:** Meta → then Unit+Integration and E2E **in parallel** (SPA job parallel with Meta when spa paths change). Path filters skip Python vs SPA sides when irrelevant; concurrency cancels superseded PR/main runs; every `runs-on` job has `timeout-minutes`. Fresh-install e2e installs from the **workspace** build context after SPA bake (`RAFT_E2E_REF=workspace`); operators stay on Release wheels.
+
+**Pre-merge vs post-merge (same steps, different triggers):** PRs run Meta + SPA (path-filtered) + the **full** Unit+Integration matrix **Py 3.9–3.13** + E2E **Py 3.9** (thorough merge gate). Push to `main` / `workflow_dispatch` runs Unit+Integration on **Py 3.9 + 3.13** bookends only (plus the same Meta / SPA / E2E) so post-merge and CD stay short. CD **semver** still waits for successful CI on `main` (bookend smoke after the PR already proved the full matrix). No steps removed — middle Python versions are PR-only.
 
 ---
 
