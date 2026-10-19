@@ -13,7 +13,7 @@ type SessionPayload = {
 };
 
 /** Top-bar control to end password / OAuth / external dashboard sessions. */
-export function LogoutButton() {
+export function LogoutButton(props: { className?: string; id?: string }) {
   const [hint, setHint] = useState<LogoutHint | null>(null);
 
   useEffect(() => {
@@ -40,11 +40,15 @@ export function LogoutButton() {
 
   if (!hint) return null;
 
+  const classes = ["btn", "btn-sm", "btn-ghost", props.className]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <button
       type="button"
-      className="btn btn-sm btn-ghost"
-      id="dashboard-logout"
+      className={classes}
+      id={props.id ?? "dashboard-logout"}
       onClick={() => void runLogout(hint)}
     >
       Log out
