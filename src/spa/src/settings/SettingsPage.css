@@ -51,23 +51,75 @@
   margin: 0;
 }
 
+.settings-mode {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
 .settings-section {
   padding: 0.35rem 0 1rem;
   border-bottom: 1px solid var(--line);
 }
 
+.settings-section-disabled {
+  opacity: 0.72;
+}
+
+.settings-section-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
 .settings-section-head h2 {
-  margin: 0 0 0.25rem;
+  margin: 0;
   font-size: 1.15rem;
 }
 
+.settings-section-enable {
+  margin: 0;
+}
+
+.settings-section-badge {
+  font-size: 0.8rem;
+}
+
 .settings-section-hint {
+  margin: 0.35rem 0 0.35rem;
+  font-size: 0.88rem;
+}
+
+.settings-section-hint code,
+.settings-section-source code {
+  font-size: 0.85em;
+}
+
+.settings-section-source {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+}
+
+.settings-section-body {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.settings-yaml-hint {
   margin: 0 0 0.75rem;
   font-size: 0.88rem;
 }
 
-.settings-section-hint code {
-  font-size: 0.85em;
+.settings-yaml-editor {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  resize: vertical;
+  min-height: 24rem;
 }
 
 .settings-checks {

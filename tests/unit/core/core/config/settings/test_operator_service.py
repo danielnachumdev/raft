@@ -19,6 +19,8 @@ class TestOperatorSettingsService(RaftTestCase):
         assert doc["edge"]["https"] == 443
         assert doc["healing"]["enabled"] is False
         assert doc["notifications"]["channels"] == []
+        assert doc["dashboard"]["enabled"] is False
+        assert any(s["key"] == "dashboard" for s in payload["sections"])
         assert payload["path"].endswith("settings.yaml")
 
     def test_replace_round_trip_and_redact_github_secret(self) -> None:

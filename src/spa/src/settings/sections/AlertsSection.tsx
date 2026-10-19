@@ -1,10 +1,13 @@
 import { Link } from "react-router-dom";
 import { NumberField } from "../NumberField";
 import { SectionCard } from "../SectionCard";
-import type { SettingsDocument } from "../settingsApi";
+import type { SettingsDocument, SettingsSection } from "../settingsApi";
 
 export function AlertsSection(props: {
   value: SettingsDocument["alerts"];
+  meta?: SettingsSection;
+  enabled: boolean;
+  onEnabledChange: (enabled: boolean) => void;
   onChange: (next: SettingsDocument["alerts"]) => void;
 }) {
   const v = props.value;
@@ -14,6 +17,10 @@ export function AlertsSection(props: {
     <SectionCard
       id="settings-alerts"
       title="Alerts"
+      kind={props.meta?.kind ?? "flag"}
+      enabled={props.enabled}
+      source={props.meta?.source}
+      onEnabledChange={props.onEnabledChange}
       hint={
         <>
           Controller evaluation cadence. Rules live under{" "}
@@ -22,14 +29,6 @@ export function AlertsSection(props: {
         </>
       }
     >
-      <label className="check">
-        <input
-          type="checkbox"
-          checked={v.enabled}
-          onChange={(e) => set({ enabled: e.target.checked })}
-        />
-        Enabled
-      </label>
       <div className="form-grid">
         <NumberField
           id="alerts-interval"

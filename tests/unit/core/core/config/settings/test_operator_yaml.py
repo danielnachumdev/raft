@@ -1,0 +1,77 @@
+"""YAML encode/decode/replace through OperatorSettingsService."""
+
+from __future__ import annotations
+
+import pytest
+
+from raft.core.core.config.settings import OperatorSettingsService
+from raft.core.core.errors.cta import OperatorError
+
+from tests.unit.base import RaftTestCase
+
+
+class TestOperatorSettingsYaml(RaftTestCase):
+    def test_get_yaml_public_includes_document_and_text(self) -> None:
+        payload = OperatorSettingsService(self.tmp_path).get_yaml_public()
+        assert "logging:" in payload["yaml"]
+        assert payload["document"]["edge"]["http"] == 80
+        assert any(s["key"] == "dashboard" for s in payload["sections"])
+
+    def test_replace_yaml_round_trip(self) -> None:
+        svc = OperatorSettingsService(self.tmp_path)
+        text = svc.get_yaml_public()["yaml"]
+        text = text.replace("level: INFO", "level: DEBUG", 1)
+        out = svc.replace_yaml({"yaml": text})
+        assert out["document"]["logging"]["level"] == "DEBUG"
+        assert "yaml" not in out or out.get("document")
+
+    def test_encode_decode_without_persist(self) -> None:
+        svc = OperatorSettingsService(self.tmp_path)
+        doc = svc.get_public()["document"]
+        doc["healing"]["enabled"] = True
+        encoded = svc.encode_yaml({"document": doc})
+        assert "healing:" in encoded["yaml"]
+        decoded = svc.decode_yaml({"yaml": encoded["yaml"]})
+        assert decoded["document"]["healing"]["enabled"] is True
+
+    def test_invalid_yaml_raises(self) -> None:
+        svc = OperatorSettingsService(self.tmp_path)
+        with pytest.raises(OperatorError, match="invalid settings YAML"):
+            svc.replace_yaml({"yaml": "logging: [\n"})
+
+    def test_dashboard_round_trip_and_password_mask(self) -> None:
+        svc = OperatorSettingsService(self.tmp_path)
+        doc = svc.get_public()["document"]
+        doc["dashboard"] = self._dashboard("pbkdf2$demo")
+        out = svc.replace({"document": doc})
+        assert out["document"]["dashboard"]["enabled"] is True
+        assert out["document"]["dashboard"]["auth"]["passwordHash"] == "***"
+        again = out["document"]
+        again["dashboard"]["auth"]["passwordHash"] = "***"
+        again["dashboard"]["port"] = 8790
+        svc.replace({"document": again})
+        loaded = svc.get_public()["document"]["dashboard"]
+        assert loaded["port"] == 8790
+        assert loaded["auth"]["passwordHash"] == "***"
+
+    @staticmethod
+    def _dashboard(password_hash: str) -> dict:
+        return {
+            "enabled": True,
+            "port": 8787,
+            "publicHost": None,
+            "tls": "off",
+            "auth": {
+                "mode": "none",
+                "passwordHash": password_hash,
+                "verifyUrl": None,
+                "signInUrl": None,
+                "identityHeader": "X-Raft-Identity",
+                "oauth": {
+                    "provider": "google",
+                    "redirectPath": "/oauth2/callback",
+                    "allowlistFile": "secrets/dashboard/oauth-allowlist.txt",
+                    "issuerUrl": None,
+                },
+            },
+        }

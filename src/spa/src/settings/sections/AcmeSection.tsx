@@ -1,10 +1,13 @@
 import { NumberField } from "../NumberField";
 import { SectionCard } from "../SectionCard";
 import { TextField } from "../TextField";
-import type { SettingsDocument } from "../settingsApi";
+import type { SettingsDocument, SettingsSection } from "../settingsApi";
 
 export function AcmeSection(props: {
   value: SettingsDocument["acme"];
+  meta?: SettingsSection;
+  enabled: boolean;
+  onEnabledChange: (enabled: boolean) => void;
   onChange: (next: SettingsDocument["acme"]) => void;
 }) {
   const v = props.value;
@@ -14,7 +17,11 @@ export function AcmeSection(props: {
     <SectionCard
       id="settings-acme"
       title="ACME"
-      hint="Let's Encrypt HTTP-01 for tls: acme apps. Use ops@example.com in docs/fixtures only."
+      kind={props.meta?.kind ?? "derived"}
+      enabled={props.enabled}
+      source={props.meta?.source}
+      onEnabledChange={props.onEnabledChange}
+      hint="Let's Encrypt HTTP-01 for tls: acme apps. Email required when enabled (e.g. ops@example.com)."
     >
       <div className="form-grid">
         <TextField

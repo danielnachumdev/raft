@@ -2,6 +2,8 @@
 
 from typing import Any, Mapping
 
+from .alerts_config import AlertsConfig
+from .dashboard_config import DashboardAuthConfig, DashboardConfig, DashboardOAuthConfig
 from .types import (
     AcmeConfig,
     AclConfig,
@@ -17,7 +19,6 @@ from .types import (
     RaftConfig,
     ServiceLogsConfig,
 )
-from .alerts_config import AlertsConfig
 
 
 class SettingsDocument:
@@ -35,6 +36,7 @@ class SettingsDocument:
             "notifications": self._notifications(cfg.notifications),
             "acl": self._acl(cfg.acl),
             "alerts": self._alerts(cfg.alerts),
+            "dashboard": self._dashboard(cfg.dashboard),
         }
 
     def _logging(self, cfg: LoggingConfig) -> dict[str, Any]:
@@ -135,6 +137,34 @@ class SettingsDocument:
             "enabled": cfg.enabled,
             "intervalSeconds": cfg.interval_seconds,
             "timeoutSeconds": cfg.timeout_seconds,
+        }
+
+    def _dashboard(self, cfg: DashboardConfig) -> dict[str, Any]:
+        return {
+            "enabled": cfg.enabled,
+            "port": cfg.port,
+            "publicHost": cfg.public_host,
+            "tls": cfg.tls,
+            "auth": self._dashboard_auth(cfg.auth),
+        }
+
+    def _dashboard_auth(self, auth: DashboardAuthConfig) -> dict[str, Any]:
+        return {
+            "mode": auth.mode,
+            "passwordHash": auth.password_hash,
+            "verifyUrl": auth.verify_url,
+            "signInUrl": auth.sign_in_url,
+            "identityHeader": auth.identity_header,
+            "oauth": self._dashboard_oauth(auth.oauth),
+        }
+
+    @staticmethod
+    def _dashboard_oauth(oauth: DashboardOAuthConfig) -> dict[str, Any]:
+        return {
+            "provider": oauth.provider,
+            "redirectPath": oauth.redirect_path,
+            "allowlistFile": oauth.allowlist_file,
+            "issuerUrl": oauth.issuer_url,
         }
 
     @staticmethod

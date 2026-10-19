@@ -4,6 +4,7 @@ from .document import SettingsDocument
 from .loader import SettingsLoader, load_config
 from .dashboard_config import DashboardAuthConfig, DashboardConfig
 from .operator_service import OperatorSettingsService
+from .section_meta import SettingsSectionMeta
 from .strategies import (
     AcmeSettingsParser,
     AclSettingsParser,
@@ -102,6 +103,7 @@ __all__ = [
     "ServiceLogsSettingsParser",
     "SettingsDocument",
     "SettingsLoader",
+    "SettingsSectionMeta",
     "default_config",
     "load_config",
 ]

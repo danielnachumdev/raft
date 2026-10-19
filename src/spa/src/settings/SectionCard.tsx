@@ -1,19 +1,61 @@
 import type { ReactNode } from "react";
+import type { SectionKind } from "./settingsApi";
 
-/** One settings section with title, optional hint, and body fields. */
+/** One settings section with optional enable toggle (flag / derived). */
 export function SectionCard(props: {
   id: string;
   title: string;
   hint?: ReactNode;
+  kind?: SectionKind;
+  enabled?: boolean;
+  source?: string;
+  onEnabledChange?: (enabled: boolean) => void;
   children: ReactNode;
 }) {
+  const kind = props.kind ?? "always";
+  const enabled = props.enabled ?? true;
+  const canToggle = kind !== "always" && props.onEnabledChange;
   return (
-    <section className="settings-section" id={props.id} aria-labelledby={`${props.id}-title`}>
+    <section
+      className={`settings-section${enabled ? "" : " settings-section-disabled"}`}
+      id={props.id}
+      aria-labelledby={`${props.id}-title`}
+      data-enabled={enabled ? "true" : "false"}
+      data-kind={kind}
+    >
       <header className="settings-section-head">
-        <h2 id={`${props.id}-title`}>{props.title}</h2>
-        {props.hint ? <p className="muted settings-section-hint">{props.hint}</p> : null}
+        <div className="settings-section-title-row">
+          <h2 id={`${props.id}-title`}>{props.title}</h2>
+          {canToggle ? (
+            <label className="check settings-section-enable">
+              <input
+                type="checkbox"
+                id={`${props.id}-enabled`}
+                checked={enabled}
+                onChange={(e) => props.onEnabledChange?.(e.target.checked)}
+              />
+              {enabled ? "Enabled" : "Disabled"}
+            </label>
+          ) : (
+            <span className="settings-section-badge muted">Always on</span>
+          )}
+        </div>
+        {props.hint ? (
+          <p className="muted settings-section-hint">{props.hint}</p>
+        ) : null}
+        {props.source ? (
+          <p className="muted settings-section-source">
+            Enablement: <code>{props.source}</code>
+          </p>
+        ) : null}
       </header>
-      <div className="settings-section-body">{props.children}</div>
+      <fieldset
+        className="settings-section-body"
+        disabled={!enabled}
+        aria-disabled={!enabled}
+      >
+        {props.children}
+      </fieldset>
     </section>
   );
 }

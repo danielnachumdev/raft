@@ -8,6 +8,16 @@ export type SettingsNote = {
   message: string;
 };
 
+export type SectionKind = "always" | "flag" | "derived";
+
+export type SettingsSection = {
+  key: string;
+  title: string;
+  kind: SectionKind;
+  enabled: boolean;
+  source: string;
+};
+
 export type EdgeStream = {
   name: string;
   port: number;
@@ -87,12 +97,33 @@ export type SettingsDocument = {
     intervalSeconds: number;
     timeoutSeconds: number;
   };
+  dashboard: {
+    enabled: boolean;
+    port: number;
+    publicHost: string | null;
+    tls: string;
+    auth: {
+      mode: string;
+      passwordHash: string | null;
+      verifyUrl: string | null;
+      signInUrl: string | null;
+      identityHeader: string;
+      oauth: {
+        provider: string;
+        redirectPath: string;
+        allowlistFile: string;
+        issuerUrl: string | null;
+      };
+    };
+  };
 };
 
 export type SettingsPayload = {
   path: string;
   document: SettingsDocument;
+  sections: SettingsSection[];
   notes: SettingsNote[];
+  yaml?: string;
 };
 
 async function readJson(res: Response): Promise<unknown> {
@@ -138,5 +169,53 @@ export async function putSettings(
       body: JSON.stringify({ document }),
     },
     "save settings",
+  );
+}
+
+export async function fetchSettingsYaml(): Promise<SettingsPayload> {
+  return jsonRequest<SettingsPayload>(
+    "/api/settings/yaml",
+    undefined,
+    "settings yaml",
+  );
+}
+
+export async function putSettingsYaml(yaml: string): Promise<SettingsPayload> {
+  return jsonRequest<SettingsPayload>(
+    "/api/settings/yaml",
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ yaml }),
+    },
+    "save settings yaml",
+  );
+}
+
+export async function encodeSettingsYaml(
+  document: SettingsDocument,
+): Promise<{ yaml: string; document: SettingsDocument; sections: SettingsSection[] }> {
+  return jsonRequest(
+    "/api/settings/yaml/encode",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ document }),
+    },
+    "encode settings yaml",
+  );
+}
+
+export async function decodeSettingsYaml(
+  yaml: string,
+): Promise<{ document: SettingsDocument; sections: SettingsSection[] }> {
+  return jsonRequest(
+    "/api/settings/yaml/decode",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ yaml }),
+    },
+    "decode settings yaml",
   );
 }

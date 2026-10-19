@@ -1,10 +1,11 @@
 import { NumberField } from "../NumberField";
 import { SectionCard } from "../SectionCard";
 import { TextField } from "../TextField";
-import type { EdgeStream, SettingsDocument } from "../settingsApi";
+import type { EdgeStream, SettingsDocument, SettingsSection } from "../settingsApi";
 
 export function EdgeSection(props: {
   value: SettingsDocument["edge"];
+  meta?: SettingsSection;
   onChange: (next: SettingsDocument["edge"]) => void;
 }) {
   const v = props.value;
@@ -15,6 +16,9 @@ export function EdgeSection(props: {
     <SectionCard
       id="settings-edge"
       title="Edge"
+      kind={props.meta?.kind ?? "always"}
+      enabled
+      source={props.meta?.source}
       hint={
         <>
           Public listeners published by the gate. Changing http / https / streams
