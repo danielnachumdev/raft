@@ -86,6 +86,16 @@ body[data-mobile-nav-open] .topbar {
   font-weight: 600;
 }
 
+.topbar-link--icon {
+  justify-content: center;
+  padding-inline: 0.55rem;
+}
+
+.topbar-link--icon svg {
+  display: block;
+  flex-shrink: 0;
+}
+
 .topbar-tools {
   display: flex;
   align-items: center;

@@ -4,6 +4,8 @@ export type NavItem = {
   id: string;
   /** Extra path prefixes that keep this item highlighted. */
   alsoActive?: string[];
+  /** When set, desktop nav renders an icon button instead of the text label. */
+  icon?: "gear";
 };
 
 /** Primary top-bar destinations (desktop nav + mobile menu). */
@@ -20,6 +22,7 @@ export const TOPBAR_NAV: NavItem[] = [
     to: "/settings",
     label: "Settings",
     id: "nav-settings",
+    icon: "gear",
     alsoActive: [
       "/settings/edge-access",
       "/settings/alerts",
