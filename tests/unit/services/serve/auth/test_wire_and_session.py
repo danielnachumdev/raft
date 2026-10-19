@@ -16,6 +16,10 @@ class TestServeAuthWireAndSession(RaftTestCase):
     def test_login_logout_and_csrf(self) -> None:
         client = self._password_client()
         assert client.get("/api/status").status_code == 401
+        assert client.get("/api/dashboard/auth").status_code == 401
+        login_page = client.get("/login")
+        assert login_page.status_code == 200
+        assert "Sign in" in login_page.text
         bad = client.post("/api/dashboard/login", json={"password": "nope"})
         assert bad.status_code == 401
         ok = client.post(

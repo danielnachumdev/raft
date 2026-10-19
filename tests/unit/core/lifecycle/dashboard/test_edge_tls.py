@@ -1,4 +1,4 @@
-"""Dashboard edge TLS / external-origin paths."""
+"""Dashboard edge TLS paths (auth stays inside the dashboard container)."""
 
 from pathlib import Path
 
@@ -30,29 +30,21 @@ class TestDashboardEdgeTls(RaftTestCase):
         base.update(kwargs)
         return DashboardConfig(**base)
 
-    def test_external_origin_tls(self) -> None:
+    def test_origin_tls_no_gate_auth_request(self) -> None:
         frag = DashboardEdgeRender().contribute(
             self._cfg(),
             edge=EdgeConfig(http=80, https=443),
             data_home=Path(self.tmp_path),
         )
-        assert "raft-dashboard.conf" in frag.gate_tls
-        assert "auth_request" in frag.gate_tls["raft-dashboard.conf"]
-        assert "ssl_certificate" in frag.gate_tls["raft-dashboard.conf"]
+        text = frag.gate_tls["raft-dashboard.conf"]
+        assert "ssl_certificate" in text
+        assert "auth_request" not in text
 
-    def test_external_origin_needs_https(self) -> None:
+    def test_origin_needs_https(self) -> None:
         with pytest.raises(OperatorError, match="edge.https"):
             DashboardEdgeRender().contribute(
                 self._cfg(),
                 edge=EdgeConfig(http=80, https=None),
-                data_home=Path(self.tmp_path),
-            )
-
-    def test_external_tls_off_needs_http(self) -> None:
-        with pytest.raises(OperatorError, match="edge.http"):
-            DashboardEdgeRender().contribute(
-                self._cfg(tls="off"),
-                edge=EdgeConfig(http=None, https=443),
                 data_home=Path(self.tmp_path),
             )
 
@@ -70,7 +62,7 @@ class TestDashboardEdgeTls(RaftTestCase):
                 data_home=Path(self.tmp_path),
             )
 
-    def test_password_mode_uses_tls_edge(self) -> None:
+    def test_password_origin_tls_no_gate_auth_request(self) -> None:
         cfg = DashboardConfig(
             enabled=True,
             public_host="ops.example.com",
@@ -82,5 +74,6 @@ class TestDashboardEdgeTls(RaftTestCase):
             edge=EdgeConfig(http=80, https=443),
             data_home=Path(self.tmp_path),
         )
-        assert "raft-dashboard.conf" in frag.gate_tls
-        assert "auth_request" not in frag.gate_tls["raft-dashboard.conf"]
+        text = frag.gate_tls["raft-dashboard.conf"]
+        assert "ssl_certificate" in text
+        assert "auth_request" not in text

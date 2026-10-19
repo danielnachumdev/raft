@@ -3,7 +3,7 @@
 from typing import Optional, Set
 
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from raft.core.core.config.settings.dashboard_config import DashboardConfig
@@ -12,6 +12,7 @@ from .password_session import PasswordSessionAuth
 
 _PUBLIC_PATHS = frozenset(
     {
+        "/login",
         "/api/dashboard/login",
         "/api/dashboard/logout",
         "/api/dashboard/auth",
@@ -51,16 +52,7 @@ class DashboardAuthMiddleware:
         mode = self._cfg.auth.mode
         if mode == "none":
             return None
-        path = request.url.path
-        if path in self._public or path.startswith("/assets/"):
-            return None
-        # SPA shell + client routes must load so the login form can render;
-        # JSON APIs under /api/ stay gated (except _PUBLIC_PATHS above).
-        if (
-            mode == "password"
-            and request.method == "GET"
-            and not path.startswith("/api/")
-        ):
+        if request.url.path in self._public:
             return None
         if mode == "external":
             return self._external(request)
@@ -79,12 +71,26 @@ class DashboardAuthMiddleware:
             return self._json(401, "password auth not configured")
         cookie = request.cookies.get(self._sessions.cookie_name())
         if not self._sessions.session_ok(cookie):
-            return self._json(401, "authentication required")
+            return self._unauthenticated(request)
         if request.method in _MUTATIVE:
             csrf = request.headers.get("X-CSRF-Token")
             if not self._sessions.csrf_ok(cookie, csrf):
                 return self._json(403, "CSRF token missing or invalid")
         return None
+
+    def _unauthenticated(self, request: Request) -> ASGIApp:
+        path = request.url.path
+        if request.method == "GET" and not path.startswith("/api/"):
+            return self._redirect("/login")
+        return self._json(401, "authentication required")
+
+    @staticmethod
+    def _redirect(location: str) -> ASGIApp:
+        async def _app(scope: Scope, receive: Receive, send: Send) -> None:
+            response: Response = RedirectResponse(location, status_code=302)
+            await response(scope, receive, send)
+
+        return _app
 
     @staticmethod
     def _json(status: int, detail: str) -> ASGIApp:
