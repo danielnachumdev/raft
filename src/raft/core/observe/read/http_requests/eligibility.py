@@ -5,17 +5,21 @@ from typing import Optional, Set, Tuple
 
 from raft.core.core.models.app import (
     CONTROLLER_COMPOSE_ID,
+    DASHBOARD_COMPOSE_ID,
     GATE_COMPOSE_ID,
     ROUTER_COMPOSE_ID,
     App,
 )
 from raft.core.core.models.stack import Stack
 
-_EDGE_IDS = frozenset({GATE_COMPOSE_ID, ROUTER_COMPOSE_ID, CONTROLLER_COMPOSE_ID})
+_EDGE_IDS = frozenset(
+    {GATE_COMPOSE_ID, ROUTER_COMPOSE_ID, CONTROLLER_COMPOSE_ID, DASHBOARD_COMPOSE_ID}
+)
 _EDGE_ALIASES = {
     "gate": GATE_COMPOSE_ID,
     "router": ROUTER_COMPOSE_ID,
     "controller": CONTROLLER_COMPOSE_ID,
+    "dashboard": DASHBOARD_COMPOSE_ID,
 }
 
 

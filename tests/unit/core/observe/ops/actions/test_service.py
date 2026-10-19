@@ -145,6 +145,11 @@ class TestServiceActions(RaftTestCase):
         with pytest.raises(OperatorError, match="controller"):
             actions.redeploy("controller")
 
+    def test_redeploy_dashboard_refused(self) -> None:
+        actions, _docker, _orch = self._actions()
+        with pytest.raises(OperatorError, match="dashboard"):
+            actions.redeploy("dashboard")
+
     def test_unknown_service(self) -> None:
         actions, _docker, _orch = self._actions()
         with pytest.raises(OperatorError, match="unknown"):

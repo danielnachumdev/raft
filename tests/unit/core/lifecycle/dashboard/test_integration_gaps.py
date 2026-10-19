@@ -88,7 +88,22 @@ class TestDashboardIntegrationGaps(RaftTestCase):
         home = Path(self.tmp_path)
         self._enable_public(home)
         targets = Status(load_stack(home))._edge_targets()
-        assert any(t[0] == "raft-dashboard" for t in targets)
+        assert any(t[0] == "raft-dashboard" and t[1] == "dashboard" for t in targets)
+
+    def test_serve_control_plane_lists_dashboard(self) -> None:
+        from raft.core.observe.ops.status.models import StatusSnapshot
+        from raft.core.observe.read import ServeSnapshotView
+        from tests.unit.core.observe.ops.status import fixtures as status_fx
+
+        snap = StatusSnapshot(
+            host=status_fx.empty_host_status(),
+            containers=(
+                status_fx.container("raft-gate", role="gate", group="raft"),
+                status_fx.container("raft-dashboard", role="dashboard", group="raft"),
+            ),
+        )
+        names = [r.name for r in ServeSnapshotView(snap).control_plane()]
+        assert names == ["gate", "dashboard"]
 
     def test_instructions_always_on(self) -> None:
         text = ServeInstructions(

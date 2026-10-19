@@ -84,6 +84,12 @@ class ServiceActions:
                 "after Stop, or recreate the stack with `raft down` / `raft up`.",
                 has_fix=False,
             )
+        if compose_id == self.stack.dashboard:
+            raise OperatorError(
+                "refusing to redeploy `dashboard` — restart it with Start "
+                "after Stop, or use `raft dashboard enable`.",
+                has_fix=False,
+            )
         assert app is not None
         orch.redeploy_app(app.name)
         return self._ok("redeploy", compose_id)
