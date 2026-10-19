@@ -18,14 +18,17 @@ class TestDashboardMain(RaftTestCase):
         with patch.dict("os.environ", {"RAFT_SERVE_PORT": "8801"}):
             assert dash_main._port(home) == 8801
 
-    def test_main_runs_serve(self) -> None:
+    def test_main_runs_serve_without_bootstrap(self) -> None:
         home = Path(self.tmp_path)
         (home / "settings.yaml").write_text("{}\n", encoding="utf-8")
-        with patch("raft.services.dashboard.__main__.load_stack") as load:
-            with patch("raft.services.dashboard.__main__.Serve") as serve_cls:
-                stack = MagicMock()
-                stack.root = home
-                load.return_value = stack
-                serve_cls.return_value.run = MagicMock()
-                dash_main.main()
-                serve_cls.return_value.run.assert_called_once()
+        with patch("raft.services.dashboard.__main__.RaftHome") as home_cls:
+            with patch("raft.services.dashboard.__main__.Stack.load_apps") as load:
+                with patch("raft.services.dashboard.__main__.Serve") as serve_cls:
+                    home_cls.return_value.resolve.return_value = home
+                    stack = MagicMock()
+                    stack.root = home
+                    load.return_value = stack
+                    serve_cls.return_value.run = MagicMock()
+                    dash_main.main()
+                    load.assert_called_once_with(home)
+                    serve_cls.return_value.run.assert_called_once()
