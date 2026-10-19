@@ -11,6 +11,7 @@ import { SettingsNotes } from "./SettingsNotes";
 import {
   AcmeSection,
   AlertsSection,
+  AppearanceSection,
   EdgeSection,
   GithubSection,
   HealingSection,
@@ -115,6 +116,8 @@ export function SettingsPage() {
         }
       />
 
+      <AppearanceSection />
+
       {busy ? (
         <div className="loading" role="status" aria-busy="true">
           <span className="spinner" aria-hidden="true" />
@@ -182,6 +185,7 @@ export function SettingsPage() {
 }
 
 const TOC = [
+  { href: "#settings-appearance", label: "Appearance" },
   { href: "#settings-logging", label: "Logging" },
   { href: "#settings-edge", label: "Edge" },
   { href: "#settings-healing", label: "Healing" },
