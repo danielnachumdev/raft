@@ -1,0 +1,11 @@
+/* Settings purge action — keep a stable min width while busy. */
+#stack-purge {
+  min-width: 11rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+#stack-purge.is-loading {
+  opacity: 0.85;
+}

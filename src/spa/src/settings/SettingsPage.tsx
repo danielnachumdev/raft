@@ -19,6 +19,7 @@ import {
   MetricsSection,
   NotificationsSection,
   ServiceLogsSection,
+  StorageSection,
 } from "./sections";
 import "./SettingsPage.css";
 
@@ -178,6 +179,7 @@ export function SettingsPage() {
             value={draft.acl}
             onChange={(acl) => patch("acl", acl)}
           />
+          <StorageSection />
         </>
       ) : null}
     </div>
@@ -195,4 +197,5 @@ const TOC = [
   { href: "#settings-notifications", label: "Notifications" },
   { href: "#settings-alerts", label: "Alerts" },
   { href: "#settings-acl", label: "ACL" },
+  { href: "#settings-storage", label: "Storage" },
 ];

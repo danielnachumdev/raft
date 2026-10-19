@@ -10,6 +10,7 @@ Specialized pages remain for deep workflows:
 | Settings → Notifications | Channel CRUD (`notifications.channels`) |
 | Settings → Alerts | Rules under `state/alerts/rules.yaml` |
 | Settings → Firewall | Ordered rules under `state/firewall/rules.yaml` |
+| Settings → Storage | Host cleanup (`POST /api/purge` / `raft purge`) — not in `settings.yaml` |
 
 ## Sections
 
@@ -25,6 +26,7 @@ Specialized pages remain for deep workflows:
 | `notifications` | Global enable + channels | Channel secrets redacted in API; prefer Notifications page for CRUD |
 | `alerts` | Evaluation cadence | Rules stay under `state/alerts/` |
 | `acl` | Legacy flat gate ACL | Prefer Firewall; leftover migrates on GET until Save |
+| Storage | Purge unused Docker images / build cache | Confirm → `POST /api/purge` (same as `raft purge`); toasts for success/error |
 
 ## API
 

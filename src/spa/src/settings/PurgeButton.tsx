@@ -9,7 +9,7 @@ import {
 } from "./purgeMessages";
 import "./PurgeButton.css";
 
-/** Dashboard control: confirm, then background POST /api/purge with toasts. */
+/** Settings → Storage: confirm, then background POST /api/purge with toasts. */
 export function PurgeButton() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -18,7 +18,7 @@ export function PurgeButton() {
     <>
       <button
         type="button"
-        className={busy ? "refresh is-loading" : "refresh"}
+        className={busy ? "btn-secondary is-loading" : "btn-secondary"}
         onClick={() => setOpen(true)}
         disabled={busy}
         aria-busy={busy}
@@ -29,7 +29,7 @@ export function PurgeButton() {
         {busy ? (
           <span className="spinner refresh-spinner" aria-hidden="true" />
         ) : null}
-        Purge images
+        Purge unused images
       </button>
       <ConfirmPopup
         open={open}
