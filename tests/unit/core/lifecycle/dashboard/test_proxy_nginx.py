@@ -30,6 +30,9 @@ class TestDashboardProxyNginx(RaftTestCase):
             login_html=Path("/opt/dashboard/login.html"),
         )
         assert "auth_request /_raft_dashboard_auth" in text
+        assert "server_tokens off" in text
+        assert "absolute_redirect off" in text
+        assert "port_in_redirect off" in text
         assert "location = /login" in text
         assert "location = /api/dashboard/login" in text
         assert "location = /api/dashboard/logout" in text
