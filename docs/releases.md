@@ -19,6 +19,23 @@ Every PR into `main` must carry **exactly one** of:
 
 Logic lives in [`scripts/release_semver.py`](../scripts/release_semver.py). Top-level workflows: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) (validation only) and [`.github/workflows/cd.yml`](../.github/workflows/cd.yml) (label check + **semver**). The **semver** job runs only after **CI** succeeds for a `push` to `main` (`workflow_run` gate) — it cannot create a tag/Release/wheel while tests are still failing. Dry-run via **Actions → CD → Run workflow**. Label checks cancel superseded runs for the same PR; **semver** publish does not cancel in progress so a late label event cannot kill SPA bake / wheel attach. Re-running CI on an already-tagged commit is a no-op (idempotent).
 
+### CI pre-merge vs post-merge
+
+Branch protection requires the aggregate **CI** check. That check is the same job name on PRs and on `main`; the **Unit+Integration** matrix width differs:
+
+| Job / step | Pull request (pre-merge) | Push to `main` (post-merge, gates CD) |
+|------------|--------------------------|----------------------------------------|
+| Path filter | yes | yes |
+| Meta | yes (python paths) | yes (python paths) |
+| SPA install / test / build | yes (spa paths) | yes (spa paths) |
+| Unit+Integration (bake SPA → unit → integration) | **Py 3.9 + 3.13** | **Py 3.9–3.13** (full) |
+| E2E (Py 3.9, after Meta, parallel with Unit) | yes (python paths) | yes (python paths) |
+| Aggregate `CI` | yes | yes |
+| Release label (`cd.yml`) | yes | n/a |
+| semver / Release wheel (`cd.yml`) | no | yes (after CI success) |
+
+Middle Python versions (3.10–3.12) still run every step on `main` before **semver**; they are not deleted — only deferred so PR pipelines finish sooner.
+
 ## Release bake (SPA + wheel)
 
 On each bump publish (not `noBump`, not dry-run), the **semver** job:

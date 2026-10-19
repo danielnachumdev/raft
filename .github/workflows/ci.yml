@@ -5,11 +5,19 @@ name: CI
 #   ci_changes.yml — path filter / change detection
 #   ci_spa.yml     — SPA install/test/build
 #   ci_meta.yml    — meta / package-data guards
-#   ci_unit.yml    — unit+integration matrix
+#   ci_unit.yml    — unit+integration matrix (version set via input)
 #   ci_e2e.yml     — e2e (GHCR seed pins)
 # Aggregate gate stays here so branch protection can require check name "CI".
 # Semver / Release publish is CD (cd.yml), gated on this workflow succeeding.
 # Seed mirror stays as its own workflow (already SRP).
+#
+# Pre-merge (pull_request) vs post-merge (push to main / workflow_dispatch):
+#   Meta, SPA, E2E, aggregate — both (path-filtered).
+#   Unit+Integration — PR runs Py 3.9+3.13 bookends; main/dispatch runs full
+#   3.9–3.13. Every matrix cell + step still exists; middle versions move to
+#   post-merge only so PR wall-clock drops without weakening the CD gate
+#   (semver still waits for successful CI on main, which includes the full matrix).
+#   E2E runs after Meta in parallel with Unit (not serialized behind the matrix).
 
 on:
   push:
@@ -61,10 +69,13 @@ jobs:
     needs: [changes, meta]
     if: needs.changes.outputs.python == 'true'
     uses: ./.github/workflows/ci_unit.yml
+    with:
+      # PR: oldest + newest supported. Main / dispatch: full support matrix.
+      python-versions: ${{ github.event_name == 'pull_request' && '["3.9","3.13"]' || '["3.9","3.10","3.11","3.12","3.13"]' }}
 
   e2e:
     name: E2E (Py 3.9)
-    needs: [changes, test]
+    needs: [changes, meta]
     if: needs.changes.outputs.python == 'true'
     permissions:
       contents: read
