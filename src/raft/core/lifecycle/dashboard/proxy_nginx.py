@@ -49,6 +49,11 @@ class DashboardProxyNginx:
             "    fastcgi_temp_path /tmp/nginx_fastcgi;\n"
             "    uwsgi_temp_path /tmp/nginx_uwsgi;\n"
             "    scgi_temp_path /tmp/nginx_scgi;\n"
+            "    # Prefer edge proto (gate TLS) over local http listen.\n"
+            "    map $http_x_forwarded_proto $raft_fwd_proto {\n"
+            "        default $http_x_forwarded_proto;\n"
+            "        ''      $scheme;\n"
+            "    }\n"
             f"{server_body}"
             "}\n"
         )
@@ -171,6 +176,6 @@ class DashboardProxyNginx:
             "            proxy_set_header X-Real-IP $remote_addr;\n"
             "            proxy_set_header X-Forwarded-For "
             "$proxy_add_x_forwarded_for;\n"
-            "            proxy_set_header X-Forwarded-Proto $scheme;\n"
+            "            proxy_set_header X-Forwarded-Proto $raft_fwd_proto;\n"
             "            proxy_set_header Cookie $http_cookie;\n"
         )

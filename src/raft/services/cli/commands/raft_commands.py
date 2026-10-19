@@ -133,9 +133,10 @@ class RaftCLICommands:
         Orchestrator(self._stack).stop()
 
     def start(self, name: str) -> None:
-        """Start one Compose service (App name, gate/router/controller, or Compose id).
+        """Start one Compose service (App name, edge/control-plane, or Compose id).
 
-        Same flock locks, scale-to-zero clear, and GraphEvents as serve Start.
+        Names: ``gate`` / ``router`` / ``controller`` / ``dashboard``, or Compose
+        ids. Same flock locks, scale-to-zero clear, and GraphEvents as serve Start.
         """
         result = ServiceActions(self._stack).start(name)
         OperatorSay.say(f"Started {result['service']}.")
@@ -196,8 +197,9 @@ class RaftCLICommands:
 
         Snapshot (default): recent lines, like ``docker compose logs --tail``.
         Pass ``-f`` / ``--follow`` to stream until Ctrl+C (like ``tail -f``).
-        Names: app registry name, ``gate`` / ``router`` / ``controller``, or
-        Compose ids (``raft-gate``, ``GROUP-NAME``). Omit names for all services.
+        Names: app registry name, ``gate`` / ``router`` / ``controller`` /
+        ``dashboard``, or Compose ids (``raft-gate``, ``GROUP-NAME``). Omit
+        names for all services.
         """
         Logs(self._stack).show(*services, tail=tail, follow=follow)
 

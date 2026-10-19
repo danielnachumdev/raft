@@ -65,7 +65,7 @@ class DashboardOAuthNginx:
             "            proxy_set_header Host $host;\n"
             "            proxy_set_header X-Real-IP $remote_addr;\n"
             "            proxy_set_header X-Forwarded-Uri $request_uri;\n"
-            "            proxy_set_header X-Forwarded-Proto $scheme;\n"
+            "            proxy_set_header X-Forwarded-Proto $raft_fwd_proto;\n"
             "        }\n"
         )
 
@@ -78,7 +78,7 @@ class DashboardOAuthNginx:
             "            proxy_set_header X-Real-IP $remote_addr;\n"
             "            proxy_set_header X-Forwarded-For "
             "$proxy_add_x_forwarded_for;\n"
-            "            proxy_set_header X-Forwarded-Proto $scheme;\n"
+            "            proxy_set_header X-Forwarded-Proto $raft_fwd_proto;\n"
             "            proxy_set_header X-Auth-Request-Redirect $request_uri;\n"
             "            proxy_intercept_errors on;\n"
             "            error_page 403 = @raft_dashboard_denied;\n"

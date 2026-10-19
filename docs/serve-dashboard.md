@@ -141,8 +141,13 @@ raft dashboard oauth allowlist-add
 
 `enable` persists settings, runs `raft render` (which reloads gate/router nginx
 when generated edge fragments changed), `compose up` for `raft-dashboard`, then
-reloads the router again so the new Compose DNS name is picked up. `disable`
-stops the service and clears `enabled`.
+reloads the router and gate again so Compose DNS for the new service (and
+gate→router) is fresh. A brief public 502/offline window during that join is
+expected; if it persists, `raft render` then `raft doctor`. `disable` stops the
+service and clears `enabled`.
+
+When enabled, `raft doctor` lists `dashboard` under the `raft` group with the
+other control-plane members (gate / router / controller).
 
 ## Relationship to `raft serve`
 

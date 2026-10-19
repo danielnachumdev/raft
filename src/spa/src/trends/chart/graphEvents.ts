@@ -8,6 +8,7 @@ const RAFT_LEVEL_SERVICES = new Set([
   "raft-gate",
   "raft-router",
   "raft-controller",
+  "raft-dashboard",
 ]);
 
 /** Stack-wide kinds (may omit service or attach to gate). */

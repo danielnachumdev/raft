@@ -55,7 +55,7 @@ class TestDashboardCoverageGaps(RaftTestCase):
             docker=MagicMock(),
             writer=writer,
         )
-        svc._docker.running_services.return_value = ["raft-router"]
+        svc._docker.running_services.return_value = ["raft-gate", "raft-router"]
         snap = svc.enable(
             public_host="ops.example.com",
             tls="acme",
@@ -65,6 +65,7 @@ class TestDashboardCoverageGaps(RaftTestCase):
         )
         assert snap["enabled"] is True
         svc._docker.reload_router_nginx.assert_called_once()
+        svc._docker.reload_gate_nginx.assert_called_once()
 
     def test_service_enable_skips_router_reload_when_router_down(self) -> None:
         home = Path(self.tmp_path)
@@ -80,6 +81,7 @@ class TestDashboardCoverageGaps(RaftTestCase):
         svc._docker.running_services.return_value = []
         svc.enable(public_host="ops.example.com", tls="acme", auth_mode="password")
         svc._docker.reload_router_nginx.assert_not_called()
+        svc._docker.reload_gate_nginx.assert_not_called()
 
     def test_writer_clear_host_and_http_url(self) -> None:
         home = Path(self.tmp_path)

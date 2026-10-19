@@ -38,6 +38,11 @@ services:
         )
         assert self.stack.upstream_name(self.app, port) == "app_http"
         assert self.stack.certs_dir == self.tmp_path / "certs"
+        assert self.stack.control_plane_services == (
+            "raft-gate",
+            "raft-router",
+            "raft-controller",
+        )
         assert self.stack.core_services == (
             "raft-gate",
             "raft-router",
@@ -46,6 +51,19 @@ services:
         )
         with pytest.raises(RuntimeError, match="unknown app"):
             self.stack.app("nope")
+
+    def test_control_plane_includes_enabled_dashboard(self) -> None:
+        (self.tmp_path / "settings.yaml").write_text(
+            "dashboard: {enabled: true}\n", encoding="utf-8"
+        )
+        stack = load_stack(self.tmp_path)
+        assert stack.control_plane_services == (
+            "raft-gate",
+            "raft-dashboard",
+            "raft-router",
+            "raft-controller",
+        )
+        assert stack.core_services[1] == "raft-dashboard"
 
     def test_spec_for(self) -> None:
         spec = self.stack.spec_for(self.app)

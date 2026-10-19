@@ -30,7 +30,7 @@ export function ServiceLogsSection(props: {
             checked={v.includeEdge}
             onChange={(e) => set({ includeEdge: e.target.checked })}
           />
-          Include edge (gate / router / controller)
+          Include edge (gate / router / controller / dashboard)
         </label>
       </div>
       <div className="form-grid">

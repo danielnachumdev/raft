@@ -39,7 +39,7 @@ class LogsTargets:
     def known_labels(self) -> str:
         """Comma-separated operator-facing labels for error CTAs."""
         labels = ["gate", "router", "controller"]
-        if self.stack.dashboard in self.stack.core_services:
+        if self.stack.dashboard in self.stack.control_plane_services:
             labels.append("dashboard")
         labels.extend(a.name for a in self.stack.apps)
         return ", ".join(labels) if labels else "(none)"

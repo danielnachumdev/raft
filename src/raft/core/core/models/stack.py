@@ -60,11 +60,23 @@ class Stack:
         raise DomainErrors.unknown_app(name, known)
 
     @property
-    def core_services(self) -> tuple[str, ...]:
-        edge = (self.gate, self.router, self.controller)
+    def control_plane_services(self) -> tuple[str, ...]:
+        """Gate, optional dashboard, router, controller — no Apps.
+
+        Order matches selective ``raft up`` so Compose DNS for dashboard
+        exists before the router starts.
+        """
+        edge = [self.gate]
         if self._dashboard_enabled():
-            edge = edge + (self.dashboard,)
-        return edge + tuple(app.compose_id for app in self.apps)
+            edge.append(self.dashboard)
+        edge.extend((self.router, self.controller))
+        return tuple(edge)
+
+    @property
+    def core_services(self) -> tuple[str, ...]:
+        return self.control_plane_services + tuple(
+            app.compose_id for app in self.apps
+        )
 
     def _dashboard_enabled(self) -> bool:
         try:

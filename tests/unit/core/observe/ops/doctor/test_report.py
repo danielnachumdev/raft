@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from raft.core.core.models.app import GATE_COMPOSE_ID, ROUTER_COMPOSE_ID
+from raft.core.core.models.app import (
+    DASHBOARD_COMPOSE_ID,
+    GATE_COMPOSE_ID,
+    ROUTER_COMPOSE_ID,
+)
 from raft.core.core.models.stack import load_stack
 from raft.core.observe.ops.doctor import INFRA, CheckResult, Doctor
 from raft.core.observe.ops.doctor.checks.apps import AppChecks
@@ -156,3 +160,24 @@ class TestDoctorReport(DoctorTestCase):
         assert "raft\n" in out and "  docker\n" not in out
         assert "svc\n" in out and "  FAIL" in out and "fix →" in out
         assert "other\n" in out
+
+    def test_report_lists_enabled_dashboard_under_raft(self, capsys) -> None:
+        (self.tmp_path / "settings.yaml").write_text(
+            "dashboard: {enabled: true}\n", encoding="utf-8"
+        )
+        d = self.doctor(stack=load_stack(self.tmp_path))
+        assert (
+            d.report(
+                [
+                    CheckResult(INFRA, "docker", "ok", "fine"),
+                    CheckResult(DASHBOARD_COMPOSE_ID, "running", "ok", "up"),
+                ],
+                color=False,
+            )
+            == 0
+        )
+        out = capsys.readouterr().out
+        assert "raft\n" in out
+        assert "  dashboard\n" in out
+        assert "  gate\n" in out and "  router\n" in out and "  controller\n" in out
+        assert DASHBOARD_COMPOSE_ID not in out

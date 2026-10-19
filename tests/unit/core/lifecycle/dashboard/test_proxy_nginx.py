@@ -18,6 +18,8 @@ class TestDashboardProxyNginx(RaftTestCase):
         assert "listen 8787" in text
         assert "auth_request" not in text
         assert "proxy_pass http://127.0.0.1:18787" in text
+        assert "map $http_x_forwarded_proto $raft_fwd_proto" in text
+        assert "X-Forwarded-Proto $raft_fwd_proto" in text
 
     def test_password_gates_spa(self) -> None:
         cfg = DashboardConfig(
