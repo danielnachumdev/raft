@@ -211,7 +211,7 @@ class ScaleDependsWakeStack:
         yamls = RaftHomeFixtures.fixture_app_yamls("multi_app_group")
         ordered = sorted(yamls, key=lambda p: 0 if "redis" in str(p) else 1)
         RaftHomeFixtures.apply_and_render(home, ordered)
-        YamlDoc(home / "services" / f"{FRONTEND}.yaml").merge_spec(
+        YamlDoc(home / "services" / FRONTEND / "app.yaml").merge_spec(
             {"scaling": dict(SCALING)}
         )
         StackRenderer(load_stack(home)).render()

@@ -128,7 +128,9 @@ class ScaleE2EStack:
 
     @staticmethod
     def _inject_scaling(home: Path) -> None:
-        YamlDoc(home / "services" / f"{APP}.yaml").merge_spec({"scaling": dict(SCALING)})
+        YamlDoc(home / "services" / APP / "app.yaml").merge_spec(
+            {"scaling": dict(SCALING)}
+        )
 
     @staticmethod
     def _rewrite_wake_port(home: Path, port: int) -> None:

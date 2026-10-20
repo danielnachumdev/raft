@@ -144,6 +144,7 @@ class TestScalingStore(ControllerTestCase):
         home = self.raft_home(tmp_path)
         store = ScalingStore(home)
         store.ensure_dirs(self.APP)
+        store.ensure_dirs(None)
         path = store.path_for(self.APP)
         with patch("raft.core.core.models.state.scaling_store.os.replace", side_effect=OSError("boom")):
             with pytest.raises(OSError, match="boom"):

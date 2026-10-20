@@ -128,6 +128,19 @@ class TestCliDispatch(CliTestCase):
             assert RaftCLI()._invoke_fire(["doctor"]) == 0
         doctor.report.assert_called_once()
 
+    def test_migrate_dispatches(self) -> None:
+        helper = MagicMock()
+        helper.run.return_value = ["move: a → b"]
+        with patch(
+            "raft.core.observe.ops.migrate.LayoutMigrate", return_value=helper
+        ):
+            with self.patched_deps():
+                assert RaftCLI()._invoke_fire(["migrate"]) == 0
+                assert RaftCLI()._invoke_fire(["migrate", "--dry-run"]) == 0
+        assert helper.run.call_args_list[0].kwargs == {"dry_run": False}
+        assert helper.run.call_args_list[1].kwargs == {"dry_run": True}
+        assert helper.report.call_count == 2
+
     def test_status_dispatches(self) -> None:
         status = MagicMock()
         status.report.return_value = 0

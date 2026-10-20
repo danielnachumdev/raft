@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -14,6 +15,11 @@ from tests.unit.core.observe.ops.doctor.base import DoctorTestCase
 
 class TestMetricsWritable(DoctorTestCase):
     def test_skips_when_metrics_dir_missing(self) -> None:
+        # ensure_raft_home creates host/metrics; remove so parent.is_dir is false.
+        metrics = self.tmp_path / "host" / "metrics"
+        if metrics.exists():
+            shutil.rmtree(metrics)
+        assert not metrics.is_dir()
         assert HostChecks()._metrics(self._ctx()) is None
 
     def test_ok_when_active_file_writable(self) -> None:

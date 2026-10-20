@@ -151,6 +151,12 @@ services:
     def test_empty_registry(self) -> None:
         assert AppRegistry(self.tmp_path).load() == ()
 
+    def test_skips_non_directory_entries_under_services(self) -> None:
+        services = self.tmp_path / "services"
+        services.mkdir(parents=True, exist_ok=True)
+        (services / "readme.txt").write_text("skip me\n", encoding="utf-8")
+        assert AppRegistry(self.tmp_path).load() == ()
+
     def test_registry_dir_missing(self) -> None:
         bare = self.tmp_path / "bare"
         bare.mkdir()

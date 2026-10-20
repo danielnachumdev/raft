@@ -164,9 +164,19 @@ class TestCoverageDeploy(RaftTestCase):
         with patch("raft.core.platform.github.deploy.job.AppApply") as apply_cls:
             apply_cls.return_value.apply_file.return_value = "web"
             runner._deploy_local(job, tree, {"metadata": {"name": "web"}, "spec": {}}, "web")
+        # Second deploy hits rmtree of an existing checkout.
+        with patch("raft.core.platform.github.deploy.job.AppApply") as apply_cls:
+            apply_cls.return_value.apply_file.return_value = "web"
+            runner._deploy_local(job, tree, {"metadata": {"name": "web"}, "spec": {}}, "web")
+
+    def test_registry_or_loads_existing_file(self) -> None:
+        path = self.tmp_path / "reg.yaml"
+        path.write_text("metadata:\n  name: from-disk\n", encoding="utf-8")
+        loaded = GithubDeployRunner._registry_or({"metadata": {"name": "fallback"}}, path)
+        assert loaded["metadata"]["name"] == "from-disk"
 
     def _stage_local_tree(self, stack) -> Path:
-        dest = stack.root / "services" / "web"
+        dest = stack.root / "services" / "web" / "checkout"
         dest.mkdir(parents=True, exist_ok=True)
         (dest / "keep").write_text("x", encoding="utf-8")
         tree = self.tmp_path / "fixture-tree"

@@ -51,6 +51,15 @@ class TestServiceLogsStoreReader:
         assert ServiceLogsReader(store).tail("demo-api", lines=10) == ""
         assert ServiceLogsReader(store).tail("demo-api", lines=0) == ""
 
+    def test_service_dir_uses_app_yaml_when_unmapped(self, tmp_path: Path) -> None:
+        manifest = tmp_path / "services" / "demo-api" / "app.yaml"
+        manifest.parent.mkdir(parents=True, exist_ok=True)
+        manifest.write_text("kind: App\n", encoding="utf-8")
+        store = ServiceLogsStore(tmp_path, max_age_days=14, max_bytes=1024)
+        assert store.service_dir("demo-api") == (
+            tmp_path / "services" / "demo-api" / "logs"
+        )
+
     def test_reader_file_starting_with_newline(self, tmp_path: Path) -> None:
         store = ServiceLogsStore(tmp_path, max_age_days=14, max_bytes=1024)
         active = store.active_path("demo-api")

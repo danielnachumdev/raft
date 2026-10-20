@@ -179,7 +179,7 @@ class AcmeE2EStack:
         )
 
     def _acme_error(self) -> str:
-        path = self.home / "state" / "acme" / "services" / f"{APP}.json"
+        path = AcmePaths(self.home).app_state(APP)
         if path.is_file():
             return path.read_text(encoding="utf-8")
         return "no acme app state"
@@ -189,11 +189,11 @@ class AcmeE2EStack:
         RaftHomeFixtures.apply_and_render(
             home, RaftHomeFixtures.fixture_app_yamls("http_only")
         )
-        YamlDoc(home / "services" / f"{APP}.yaml").merge_spec(
+        YamlDoc(home / "services" / APP / "app.yaml").merge_spec(
             {"tls": "acme", "publicHost": PUBLIC_HOST, "scaling": dict(SCALING)}
         )
         StackRenderer(load_stack(home)).render()
-        (home / "state" / "acme" / "http-01").mkdir(parents=True, exist_ok=True)
+        AcmePaths(home).ensure_dirs()
 
     @staticmethod
     def _write_acme_settings(home: Path, directory: str) -> None:
