@@ -44,14 +44,19 @@ class TestHostDockerUpdate:
 
     def test_run_wraps_shell_failure(self) -> None:
         shell = MagicMock()
-        shell.run.side_effect = RuntimeError("boom")
+        shell.run.side_effect = RuntimeError("install.sh: git is required")
         upd = HostDockerUpdate(
             shell, host_home="/home/demo", uid=1, gid=1, image="img"
         )
-        with pytest.raises(OperatorError, match="host Docker one-shot"):
+        with pytest.raises(OperatorError, match="git is required"):
             upd.run("https://example.test/install.sh", None)
         shell.run.assert_called_once()
         assert shell.run.call_args.kwargs.get("timeout") == 600.0
+        assert shell.run.call_args.kwargs.get("capture") is True
+
+    def test_default_image_includes_scm_tools(self) -> None:
+        assert "bookworm-scm" in DEFAULT_HOST_UPDATE_IMAGE
+        assert "bookworm-curl" not in DEFAULT_HOST_UPDATE_IMAGE
 
     @staticmethod
     def _argv(*, ref: str | None) -> list[str]:

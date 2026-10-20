@@ -53,3 +53,4 @@ class TestDashboardEdgeRender(RaftTestCase):
         assert "auth_request" not in str(frag.gate_tls)
         joined = "\n".join(frag.router_servers)
         assert "X-Forwarded-Proto $http_x_forwarded_proto" in joined
+        assert "proxy_read_timeout 600s" in joined

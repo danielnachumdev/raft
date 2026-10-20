@@ -164,9 +164,10 @@ Check-for-updates works in the dashboard (GitHub Release vs stamped version).
 **Update** reinstalls the **host** uv-tool `raft` CLI (same `install.sh` /
 Release wheel path as `raft update`) via a one-shot container: Compose injects
 `RAFT_HOST_HOME`, the dashboard mounts host `~/.local` read-only for identity
-checks, and apply uses `docker.sock` with an image that has `curl`+`bash`
-(not the dashboard image). After a successful update, recreate the dashboard
-so the image rebuilds with the new install stamp:
+checks, and apply uses `docker.sock` with `buildpack-deps:bookworm-scm`
+(`curl`+`bash`+`git`; not the dashboard image). Nginx allows up to 600s for
+`/api/update` (image pull + install). After a successful update, recreate the
+dashboard so the image rebuilds with the new install stamp:
 
 ```bash
 raft dashboard disable
