@@ -2,6 +2,8 @@
 
 Trends in `raft serve` is a multi-graph **dashboard**: several graphs side by side over one shared time range, so CPU, memory, traffic, latency, errors and network are visible at a glance. Operators add, edit, duplicate, resize, reorder and remove graphs, and can keep several named dashboards. Each **service inspection** page gets the same default graphs pinned to that service (see [Service page Trends](#service-page-trends)).
 
+The **Overview** page is an embed of the reusable [dashboard kit](serve-dashboard-kit.md) (`src/spa/src/dashboard-kit/`, [issue #249](https://github.com/danielnachumdev/raft/issues/249)). Operator-facing behavior below is unchanged; the kit owns the shell, query model, and embed contract so service Trends and future surfaces can share it.
+
 Design: [issue #238](https://github.com/danielnachumdev/raft/issues/238) (UX brief on the issue); supersedes the single-chart named views from [issue #202](https://github.com/danielnachumdev/raft/issues/202).
 
 ## Default layout (Overview)
@@ -58,7 +60,7 @@ raft metrics export_logs demo-api --format=txt --file=demo-api.log
 
 ## Persistence
 
-Browser **`localStorage`** key `raft-serve-trends-dashboards` (version 2; same machine/browser only). Not written under `~/.raft/`. Clearing site data resets to Overview. Corrupt or foreign payloads are ignored and fall back to Overview; graphs with unknown metrics or more than two metric types are trimmed on load.
+Browser **`localStorage`** key `raft-serve-trends-dashboards` (version 2; same machine/browser only). Not written under `~/.raft/` (kit v1 stance: browser-local; see [dashboard kit](serve-dashboard-kit.md)). Clearing site data resets to Overview. Corrupt or foreign payloads are ignored and fall back to Overview; graphs with unknown metrics or more than two metric types are trimmed on load.
 
 ## Migration from named views (#202)
 
