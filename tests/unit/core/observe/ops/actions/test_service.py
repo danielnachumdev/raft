@@ -52,7 +52,13 @@ class TestServiceActions(RaftTestCase):
             self._enter(locks)
             result = actions.start("site")
         docker.start_service.assert_called_once_with("site")
-        assert result == {"ok": True, "action": "start", "service": "site"}
+        assert result == {
+            "ok": True,
+            "action": "start",
+            "service": "site",
+            "no_deps": False,
+            "started_deps": [],
+        }
         events = GraphEventStore(self.tmp_path).events_in_window(from_ts=_EPOCH)
         assert len(events) == 1
         assert events[0].kind == KIND_START

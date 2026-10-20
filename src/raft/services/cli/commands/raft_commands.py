@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Optional, Sequence, Union
+from typing import Any, Dict, Optional, Sequence, Union
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.errors.domain import DomainErrors
@@ -132,13 +132,23 @@ class RaftCLICommands:
         """Stop and remove the stack."""
         Orchestrator(self._stack).stop()
 
-    def start(self, name: str) -> None:
+    def start(self, name: str, no_deps: bool = False) -> None:
         """Start one Compose service (App name, edge/control-plane, or Compose id).
 
         Names: ``gate`` / ``router`` / ``controller`` / ``dashboard``, or Compose
         ids. Same flock locks, scale-to-zero clear, and GraphEvents as serve Start.
+        Default starts transitive ``spec.dependsOn`` first (wake order); pass
+        ``--no-deps`` to start only ``name``.
         """
-        result = ServiceActions(self._stack).start(name)
+        result = ServiceActions(self._stack).start(name, no_deps=no_deps)
+        self._say_start_result(result)
+
+    def _say_start_result(self, result: Dict[str, Any]) -> None:
+        if result.get("no_deps"):
+            OperatorSay.say("Skipping dependsOn (--no-deps).")
+        for dep in result.get("started_deps") or ():
+            OperatorSay.say(f"Starting dependency {dep}…")
+            OperatorSay.say(f"Started {dep}.")
         OperatorSay.say(f"Started {result['service']}.")
 
     def stop(self, name: str) -> None:

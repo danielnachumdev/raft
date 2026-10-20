@@ -1,6 +1,6 @@
 """Mutative per-service actions (start / stop / redeploy / purge)."""
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.app import App
@@ -8,21 +8,24 @@ from raft.core.core.models.stack import Stack
 from raft.core.core.models.state.graph_event_store import GraphEventStore
 from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.core.lifecycle.deploy.orchestrator import Orchestrator
+from raft.core.observe.ops.actions.start_depends import StartDepends
 from raft.core.observe.ops.logs.targets import LogsTargets
 from raft.core.observe.ops.purge import Purge
 from raft.core.platform.adapters.docker import DockerStack
 from raft.core.platform.adapters.shell import Shell
-from raft.core.platform.locking import AppAndStackLocks, StackLock
+from raft.core.platform.locking import AppAndStackLocks, AppsAndStackLocks, StackLock
 
 
 class ServiceActions:
     """Start / stop / redeploy one Compose service via deploy collaborators.
 
     Start and stop use Compose ``up -d --no-deps`` / ``stop`` under the same
-    flock locks as apply/redeploy. For apps with ``spec.scaling``, stop marks
-    ``scaledToZero`` (healer skips; gate holding page) and start clears it.
-    Redeploy mirrors ``raft redeploy``: apps cutover (must be running), router
-    recreates, gate is refused. ``purge`` removes unused Docker images/cache.
+    flock locks as apply/redeploy. Default start also brings up transitive
+    ``spec.dependsOn`` first (wake order); pass ``no_deps=True`` to skip.
+    For apps with ``spec.scaling``, stop marks ``scaledToZero`` (healer skips;
+    gate holding page) and start clears it. Redeploy mirrors ``raft redeploy``:
+    apps cutover (must be running), router recreates, gate is refused.
+    ``purge`` removes unused Docker images/cache.
     """
 
     def __init__(
@@ -52,14 +55,15 @@ class ServiceActions:
         """Purge unused Docker images/build cache; same path as ``raft purge``."""
         return self._purge_svc().execute().as_api()
 
-    def start(self, name: str) -> Dict[str, Any]:
+    def start(self, name: str, *, no_deps: bool = False) -> Dict[str, Any]:
         compose_id, app = self._resolve(name)
-        with self._locks(app):
-            self._docker_stack().start_service(compose_id)
-            if app is not None:
-                self._clear_scaled_to_zero(app)
-            self._record_start_event(compose_id, app)
-        return self._ok("start", compose_id)
+        if app is None or no_deps:
+            return self._start_one(compose_id, app, no_deps=no_deps, started_deps=())
+        deps_helper = StartDepends(self.stack, self._docker_stack())
+        chain = deps_helper.wake_chain(app.name)
+        if len(chain) <= 1:
+            return self._start_one(compose_id, app, no_deps=False, started_deps=())
+        return self._start_with_deps(compose_id, app, deps_helper, chain)
 
     def stop(self, name: str) -> Dict[str, Any]:
         compose_id, app = self._resolve(name)
@@ -82,6 +86,47 @@ class ServiceActions:
         assert app is not None
         orch.redeploy_app(app.name)
         return self._ok("redeploy", compose_id)
+
+    def _start_with_deps(
+        self,
+        compose_id: str,
+        app: App,
+        deps_helper: StartDepends,
+        chain: Tuple[str, ...],
+    ) -> Dict[str, Any]:
+        with AppsAndStackLocks(self.stack.root, chain):
+            started = self._start_dep_names(deps_helper, chain[:-1])
+            self._docker_stack().start_service(compose_id)
+            self._clear_scaled_to_zero(app)
+            deps_helper.restore_upstreams(chain)
+            self._record_start_event(compose_id, app)
+        return self._ok("start", compose_id, no_deps=False, started_deps=started)
+
+    def _start_one(
+        self,
+        compose_id: str,
+        app: Optional[App],
+        *,
+        no_deps: bool,
+        started_deps: Tuple[str, ...],
+    ) -> Dict[str, Any]:
+        with self._locks(app):
+            self._docker_stack().start_service(compose_id)
+            if app is not None:
+                self._clear_scaled_to_zero(app)
+            self._record_start_event(compose_id, app)
+        return self._ok(
+            "start", compose_id, no_deps=no_deps, started_deps=started_deps
+        )
+
+    def _start_dep_names(
+        self, deps_helper: StartDepends, dep_names: Tuple[str, ...]
+    ) -> Tuple[str, ...]:
+        started: list[str] = []
+        for dep_name in dep_names:
+            deps_helper.start_dep(dep_name)
+            started.append(dep_name)
+        return tuple(started)
 
     def _refuse_control_plane_redeploy(self, compose_id: str) -> None:
         if compose_id == self.stack.controller:
@@ -163,5 +208,15 @@ class ServiceActions:
             return None
 
     @staticmethod
-    def _ok(action: str, service: str) -> Dict[str, Any]:
-        return {"ok": True, "action": action, "service": service}
+    def _ok(
+        action: str,
+        service: str,
+        *,
+        no_deps: bool = False,
+        started_deps: Tuple[str, ...] = (),
+    ) -> Dict[str, Any]:
+        payload: Dict[str, Any] = {"ok": True, "action": action, "service": service}
+        if action == "start":
+            payload["no_deps"] = no_deps
+            payload["started_deps"] = list(started_deps)
+        return payload

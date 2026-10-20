@@ -127,8 +127,12 @@ class ServePage:
             headers=_SSE_HEADERS,
         )
 
-    def api_service_start(self, name: str) -> Dict[str, Any]:
-        return self._run_action(self._actions.start, name)
+    def api_service_start(self, name: str, no_deps: bool = False) -> Dict[str, Any]:
+        """Start one service; default starts ``dependsOn`` (wake order)."""
+        try:
+            return self._actions.start(name, no_deps=no_deps)
+        except OperatorError as exc:
+            raise self._http_for_operator(exc) from exc
 
     def api_service_stop(self, name: str) -> Dict[str, Any]:
         return self._run_action(self._actions.stop, name)
