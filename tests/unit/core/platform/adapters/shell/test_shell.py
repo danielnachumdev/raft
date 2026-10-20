@@ -26,6 +26,7 @@ class TestShell(RaftTestCase):
         env = run.call_args.kwargs["env"]
         assert "RAFT_HOST_UID" in env and "RAFT_HOST_GID" in env
         assert "RAFT_DOCKER_GID" in env
+        assert "RAFT_HOST_HOME" in env
 
     def test_docker_socket_gid_from_stat(self) -> None:
         st = MagicMock(st_gid=988)

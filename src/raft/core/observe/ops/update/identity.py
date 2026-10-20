@@ -32,15 +32,33 @@ class InstallIdentity:
 
     def _tool_env_root(self) -> Optional[Path]:
         """Locate the uv tool environment that provides ``raft`` on PATH, if any."""
+        from_bin = self._root_from_raft_bin()
+        if from_bin is not None:
+            return from_bin
+        for root in self._candidate_roots():
+            if root.is_dir():
+                return root
+        return None
+
+    @staticmethod
+    def _root_from_raft_bin() -> Optional[Path]:
         raft_bin = shutil.which("raft")
-        if raft_bin:
-            resolved = Path(raft_bin).resolve()
-            if resolved.parent.name == "bin":
-                return resolved.parent.parent
+        if not raft_bin:
+            return None
+        resolved = Path(raft_bin).resolve()
+        if resolved.parent.name == "bin":
+            return resolved.parent.parent
+        return None
+
+    @staticmethod
+    def _candidate_roots() -> list[Path]:
+        roots: list[Path] = []
+        host_home = (os.environ.get("RAFT_HOST_HOME") or "").strip()
+        if host_home:
+            roots.append(Path(host_home) / ".local" / "share" / "uv" / "tools" / "raft")
         tool_dir = os.environ.get("UV_TOOL_DIR")
-        root = (
-            Path(tool_dir) / "raft"
-            if tool_dir
-            else Path.home() / ".local" / "share" / "uv" / "tools" / "raft"
-        )
-        return root if root.is_dir() else None
+        if tool_dir:
+            roots.append(Path(tool_dir) / "raft")
+        else:
+            roots.append(Path.home() / ".local" / "share" / "uv" / "tools" / "raft")
+        return roots

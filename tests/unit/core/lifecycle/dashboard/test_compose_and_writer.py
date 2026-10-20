@@ -18,17 +18,23 @@ from tests.unit.base import RaftTestCase
 
 
 class TestDashboardComposeAndWriter(RaftTestCase):
-    def test_compose_empty_and_enabled(self) -> None:
+    def test_compose_empty_when_disabled(self) -> None:
         empty = DashboardComposeYaml().build(DashboardConfig())
         assert "services: {}" in empty
+
+    def test_compose_enabled_injects_host_home(self) -> None:
         text = DashboardComposeYaml().build(
             DashboardConfig(enabled=True, port=8787)
         )
         assert "raft-dashboard" in text
         assert "127.0.0.1:8787:8787" in text
         assert 'RAFT_DASHBOARD_APP_PORT: "18787"' in text
+        assert 'RAFT_HOST_HOME: "${RAFT_HOST_HOME}"' in text
+        assert '"${RAFT_HOST_HOME}/.local:${RAFT_HOST_HOME}/.local:ro"' in text
         assert "RAFT_SERVE_BIND" not in text
         assert "oauth.env" not in text
+
+    def test_compose_oauth_env_file(self) -> None:
         oauth = DashboardComposeYaml().build(
             DashboardConfig(
                 enabled=True,

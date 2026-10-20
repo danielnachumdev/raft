@@ -52,6 +52,8 @@ class DashboardComposeYaml:
             # nginx listens on dashboard.port; uvicorn stays on loopback inside.
             f'      RAFT_SERVE_PORT: "{port}"',
             '      RAFT_DASHBOARD_APP_PORT: "18787"',
+            # Absolute host home for Settings → Update (Docker one-shot + identity).
+            '      RAFT_HOST_HOME: "${RAFT_HOST_HOME}"',
             *self._oauth_env_file(cfg),
             "    ports:",
             f'      - "127.0.0.1:{port}:{port}"',
@@ -67,11 +69,25 @@ class DashboardComposeYaml:
             "      - ./secrets/dashboard/oauth.env",
         ]
 
-    @staticmethod
-    def _volume_block() -> list[str]:
+    def _volume_block(self) -> list[str]:
         return [
             "    volumes:",
+            *self._host_volumes(),
+            *self._data_home_volumes(),
+            "    restart: unless-stopped",
+        ]
+
+    @staticmethod
+    def _host_volumes() -> list[str]:
+        return [
             "      - /var/run/docker.sock:/var/run/docker.sock",
+            # Host uv-tool env (read-only) so Update can verify the host CLI.
+            '      - "${RAFT_HOST_HOME}/.local:${RAFT_HOST_HOME}/.local:ro"',
+        ]
+
+    @staticmethod
+    def _data_home_volumes() -> list[str]:
+        return [
             "      - .:/raft:ro",
             "      - ./settings.yaml:/raft/settings.yaml",
             "      - ./state/locks:/raft/state/locks",
@@ -86,7 +102,6 @@ class DashboardComposeYaml:
             "      - ./certs:/raft/certs",
             "      - ./secrets:/raft/secrets",
             "      - ./generated:/raft/generated",
-            "    restart: unless-stopped",
         ]
 
     @staticmethod

@@ -52,13 +52,14 @@ class TestUpdateCheck:
     def test_status_surfaces_apply_block(self) -> None:
         gate = MagicMock(spec=HostApplyGate)
         gate.blocked_reason.return_value = (
-            "Cannot apply raft update from the always-on dashboard container.\n"
-            "Fix: on the host run `raft update`."
+            "Cannot apply raft update from the always-on dashboard: "
+            "RAFT_HOST_HOME is unset or not an absolute path.\n"
+            "Fix: on the host run `raft render`."
         )
         result = self._check("0.10.0", "v0.11.0", host_gate=gate)
         assert result.can_apply is False
         assert result.apply_block_reason is not None
-        assert "dashboard container" in result.message
+        assert "RAFT_HOST_HOME" in result.message
         assert result.as_public()["canApply"] is False
 
     def _check(self, current: str, tag: str, *, host_gate=None):

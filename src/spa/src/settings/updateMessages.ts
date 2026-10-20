@@ -2,10 +2,10 @@
 
 export function updateConfirmMessage(from: string, to: string): string {
   return (
-    `Reinstall raft from the latest GitHub Release wheel ` +
-    `(same path as \`raft update\`). ` +
+    `Reinstall the host raft CLI from the latest GitHub Release wheel ` +
+    `(same path as \`raft update\` / install.sh). ` +
     `Installed ${from} → ${to}. ` +
-    `Brief service impact is possible while the CLI package is replaced.`
+    `Afterward, recreate the always-on dashboard so its image picks up the new stamp.`
   );
 }
 

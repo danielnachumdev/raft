@@ -29,6 +29,7 @@ class TestUpdateOutcome(DomainTestCase):
         shell = MagicMock()
         gate = MagicMock()
         gate.ensure = MagicMock()
+        gate.uses_host_docker.return_value = False
         upd = SelfUpdate(self.stack, host_gate=gate)
         upd.sh = shell
         with patch("raft.core.observe.ops.update.announce.OperatorSay.say") as say:
@@ -46,6 +47,7 @@ class TestUpdateOutcome(DomainTestCase):
         public = changed.as_public()
         assert public["alreadyCurrent"] is False
         assert "raft render" in (public["nextSteps"] or "")
+        assert "raft dashboard disable" in (public["nextSteps"] or "")
         same = UpdateOutcome(
             already_current=True, before_line="raft 0.11.0", after_line="raft 0.11.0"
         )
