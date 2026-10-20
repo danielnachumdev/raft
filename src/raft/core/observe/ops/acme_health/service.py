@@ -84,7 +84,7 @@ class AcmeCertHealth:
         except Exception as exc:  # noqa: BLE001
             return AcmeHealthOutcome(
                 "fail",
-                f"certs/{app.name}/acme.pem unreadable: {exc}",
+                f"services/{app.name}/certs/acme.pem unreadable: {exc}",
                 fix="re-apply so ACME can re-issue, or remove corrupt PEMs",
             )
         return self._expiry_result(app, material, acme)
@@ -119,13 +119,13 @@ class AcmeCertHealth:
         if last_error:
             return AcmeHealthOutcome(
                 "warn",
-                f"certs/{app.name}/acme.pem+key (notAfter {not_after}); "
+                f"services/{app.name}/certs/acme.pem+key (notAfter {not_after}); "
                 f"lastError: {last_error}",
                 fix=self._renew_fix(app, last_error),
             )
         return AcmeHealthOutcome(
             "ok",
-            f"certs/{app.name}/acme.pem+key (notAfter {not_after})",
+            f"services/{app.name}/certs/acme.pem+key (notAfter {not_after})",
         )
 
     def _near_expiry(

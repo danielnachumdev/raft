@@ -148,7 +148,7 @@ class TestCliErrorRewrite(CliTestCase):
                 self.run_cli(["down"])
         assert exc.value.code == 1
         err_out = capsys.readouterr().err
-        assert "certs/web/" in err_out
+        assert "services/web/certs/" in err_out
         assert "command failed" not in err_out
         assert "Hint: run `raft doctor`" not in err_out
 
