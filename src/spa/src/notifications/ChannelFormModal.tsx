@@ -83,7 +83,7 @@ export function ChannelFormModal(props: Props) {
           <button
             type="submit"
             form="channel-form"
-            className={props.busy ? "btn is-loading" : "btn"}
+            className={props.busy ? "btn btn-primary is-loading" : "btn btn-primary"}
             disabled={saveDisabled}
             aria-busy={props.busy}
             id="channel-form-save"

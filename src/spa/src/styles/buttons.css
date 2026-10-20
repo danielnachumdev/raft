@@ -95,3 +95,78 @@
   border-width: 2px;
   flex-shrink: 0;
 }
+
+/* Square icon-only button (row actions); pair with aria-label + title. */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-height-sm);
+  height: var(--control-height-sm);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+
+.btn-icon:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--row-hover);
+}
+
+.btn-icon:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.btn-icon.is-danger {
+  color: var(--danger);
+}
+
+.btn-icon.is-danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  background: var(--bad-bg);
+}
+
+/* Segmented control: mutually exclusive modes (role="tablist" + aria-selected). */
+.segmented {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--muted-bg);
+}
+
+.segmented > button {
+  min-height: calc(var(--control-height) - 6px);
+  padding: 0.25rem 0.8rem;
+  border: 0;
+  border-radius: calc(var(--radius-control) - 2px);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--text-md);
+  cursor: pointer;
+}
+
+.segmented > button:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.segmented > button[aria-selected="true"] {
+  background: var(--panel);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: var(--shadow-raise);
+}
+
+.segmented > button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

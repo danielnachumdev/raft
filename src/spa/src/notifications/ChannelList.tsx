@@ -4,6 +4,7 @@ import {
   sendTestDisabledReason,
 } from "./notificationsHelpers";
 import type { NotificationStrategyInfo } from "./notificationsApi";
+import { EmptyState } from "../chrome/StateViews";
 import "./ChannelList.css";
 
 type Props = {
@@ -20,19 +21,14 @@ type Props = {
 export function ChannelList(props: Props) {
   if (props.channels.length === 0) {
     return (
-      <div className="empty-state" id="channels-empty">
-        <p>
-          <strong>No notification channels configured.</strong>
-        </p>
-        <p className="muted">
-          Use <em>Add channel</em> so raft alerts for this host reach you.
-        </p>
-      </div>
+      <EmptyState id="channels-empty" title="No notification channels configured.">
+        Use <em>Add channel</em> so raft alerts for this host reach you.
+      </EmptyState>
     );
   }
 
   return (
-    <ul className="channel-list" id="channel-list">
+    <ul className="item-list" id="channel-list">
       {props.channels.map((channel) => (
         <ChannelRow
           key={channel.id}
@@ -65,23 +61,26 @@ function ChannelRow(props: {
     : sendTestDisabledReason(props.strategies, channel.type);
 
   return (
-    <li className="channel-row" data-channel-id={channel.id}>
-      <div className="channel-row-main">
-        <span className="channel-title">
+    <li
+      className={channel.enabled ? "item-row" : "item-row is-disabled"}
+      data-channel-id={channel.id}
+    >
+      <div className="item-row-main">
+        <div className="item-row-title">
           <strong className="channel-id">{channel.id}</strong>
           <span className={channel.enabled ? "chip chip-ok" : "chip"}>
             {channel.enabled ? "Enabled" : "Disabled"}
           </span>
-        </span>
-        <span className="muted channel-meta">
-          type <code>{channel.type}</code>
-        </span>
+          <span className="chip channel-type" title="Delivery strategy">
+            {channel.type}
+          </span>
+        </div>
         <SettingsPreview settings={channel.settings} />
       </div>
-      <div className="channel-row-actions">
+      <div className="btn-group item-row-actions">
         <button
           type="button"
-          className="btn"
+          className="btn btn-sm"
           disabled={props.busy}
           onClick={props.onToggle}
           id={`channel-toggle-${channel.id}`}
@@ -90,7 +89,7 @@ function ChannelRow(props: {
         </button>
         <button
           type="button"
-          className="btn"
+          className="btn btn-sm"
           disabled={props.busy}
           onClick={props.onEdit}
           id={`channel-edit-${channel.id}`}
@@ -99,7 +98,7 @@ function ChannelRow(props: {
         </button>
         <button
           type="button"
-          className="btn"
+          className="btn btn-sm"
           disabled={!sendOk || props.busy}
           title={sendTitle}
           id={`channel-test-${channel.id}`}
@@ -109,7 +108,7 @@ function ChannelRow(props: {
         </button>
         <button
           type="button"
-          className="btn btn-danger"
+          className="btn btn-sm btn-danger"
           disabled={props.busy}
           onClick={props.onDelete}
           id={`channel-delete-${channel.id}`}
@@ -124,7 +123,7 @@ function ChannelRow(props: {
 function SettingsPreview(props: { settings: Record<string, unknown> }) {
   const keys = Object.keys(props.settings);
   if (keys.length === 0) {
-    return <span className="muted channel-settings-preview">settings {"{}"}</span>;
+    return <p className="item-row-meta">No settings</p>;
   }
   const summary = keys
     .slice(0, 4)
@@ -132,10 +131,12 @@ function SettingsPreview(props: { settings: Record<string, unknown> }) {
     .join(", ");
   const more = keys.length > 4 ? `, +${keys.length - 4}` : "";
   return (
-    <span className="muted channel-settings-preview">
-      {summary}
-      {more}
-    </span>
+    <p className="item-row-meta">
+      <code className="channel-settings-preview">
+        {summary}
+        {more}
+      </code>
+    </p>
   );
 }
 

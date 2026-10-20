@@ -17,7 +17,7 @@ export function LogViewer(props: {
   error: string | null;
   connectingLabel: string;
   controls: ReactNode;
-  /** Empty-stream copy when no filter is active (default: no log output). */
+  /** Empty-stream copy when no filter is active (default: "No log output yet."). */
   emptyLabel?: string;
 }) {
   const [filter, setFilter] = useState(defaultLogFilter);
@@ -53,7 +53,7 @@ export function LogViewer(props: {
       emptyLabel={
         isLogFilterActive(filter)
           ? "No lines match this filter."
-          : (props.emptyLabel ?? "(no log output)")
+          : (props.emptyLabel ?? "No log output yet.")
       }
     />
   );
@@ -63,7 +63,7 @@ export function LogViewer(props: {
       {props.controls}
       <button
         type="button"
-        className="btn"
+        className="btn btn-sm"
         aria-expanded={expanded}
         onClick={() => setExpanded((v) => !v)}
       >

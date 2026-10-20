@@ -98,7 +98,7 @@ export function FirewallRuleFormModal(props: Props) {
           <button
             type="submit"
             form="firewall-rule-form"
-            className={props.busy ? "btn is-loading" : "btn"}
+            className={props.busy ? "btn btn-primary is-loading" : "btn btn-primary"}
             disabled={!canSave}
             aria-busy={props.busy}
             id="firewall-rule-save"

@@ -1,200 +1,66 @@
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "../chrome/toast";
+import { useLocation } from "react-router-dom";
+import { SaveBar } from "../chrome/SaveBar";
+import { ErrorState, LoadingState } from "../chrome/StateViews";
+import { useHashScroll } from "../chrome/useHashScroll";
+import { useUnsavedGuard } from "../chrome/useUnsavedGuard";
 import { PageHeader } from "../shell/PageHeader";
 import { AppearanceSection } from "./sections/AppearanceSection";
 import { UpdatesSection } from "./sections/UpdatesSection";
 import { SettingsFormView } from "./SettingsFormView";
 import { SettingsNotes } from "./SettingsNotes";
+import { SettingsSectionNav } from "./SettingsSectionNav";
 import { SettingsYamlPanel } from "./SettingsYamlPanel";
-import {
-  applySectionEnabled,
-  enabledMapFromSections,
-  validateEnabledSections,
-  type EnabledMap,
-} from "./sectionEnablement";
-import {
-  decodeSettingsYaml,
-  encodeSettingsYaml,
-  fetchSettings,
-  putSettings,
-  putSettingsYaml,
-  type SettingsDocument,
-  type SettingsNote,
-  type SettingsSection,
-} from "./settingsApi";
+import { useSettingsEditor, type EditorMode } from "./useSettingsEditor";
 import "./SettingsPage.css";
-
-type EditorMode = "form" | "yaml";
 
 /** Full ``settings.yaml`` / RaftConfig editor for ``raft serve``. */
 export function SettingsPage() {
-  const [draft, setDraft] = useState<SettingsDocument | null>(null);
-  const [sections, setSections] = useState<SettingsSection[]>([]);
-  const [enabled, setEnabled] = useState<EnabledMap>({});
-  const [yamlText, setYamlText] = useState("");
-  const [mode, setMode] = useState<EditorMode>("form");
-  const [path, setPath] = useState("");
-  const [notes, setNotes] = useState<SettingsNote[]>([]);
-  const [busy, setBusy] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const applyPayload = useCallback(
-    (payload: {
-      path: string;
-      document: SettingsDocument;
-      sections: SettingsSection[];
-      notes: SettingsNote[];
-      yaml?: string;
-    }) => {
-      setDraft(structuredClone(payload.document));
-      setSections(payload.sections);
-      setEnabled(enabledMapFromSections(payload.sections));
-      setPath(payload.path);
-      setNotes(payload.notes);
-      if (payload.yaml != null) setYamlText(payload.yaml);
-    },
-    [],
-  );
-
-  const load = useCallback(async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      applyPayload(await fetchSettings());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load settings");
-    } finally {
-      setBusy(false);
-    }
-  }, [applyPayload]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const switchMode = async (next: EditorMode) => {
-    if (next === mode || !draft) return;
-    setError(null);
-    try {
-      if (next === "yaml") {
-        const encoded = await encodeSettingsYaml(draft);
-        setYamlText(encoded.yaml);
-        setMode("yaml");
-        return;
-      }
-      const decoded = await decodeSettingsYaml(yamlText);
-      setDraft(structuredClone(decoded.document));
-      setSections(decoded.sections);
-      setEnabled(enabledMapFromSections(decoded.sections));
-      setMode("form");
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to switch editor mode";
-      setError(message);
-      toast.bad(message);
-    }
-  };
-
-  const save = async () => {
-    setSaving(true);
-    setError(null);
-    try {
-      const payload =
-        mode === "yaml" ? await putSettingsYaml(yamlText) : await saveForm();
-      if (!payload) return;
-      applyPayload(payload);
-      const warn = payload.notes.find((n) => n.severity === "warn");
-      if (warn) toast.warning(warn.message);
-      else toast.good("Settings saved");
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to save settings";
-      setError(message);
-      toast.bad(message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const saveForm = async () => {
-    if (!draft) return null;
-    const problem = validateEnabledSections(draft, enabled);
-    if (problem) {
-      setError(problem);
-      toast.bad(problem);
-      return null;
-    }
-    return putSettings(draft);
-  };
-
-  const patch = <K extends keyof SettingsDocument>(
-    key: K,
-    value: SettingsDocument[K],
-  ) => {
-    setDraft((prev) => (prev ? { ...prev, [key]: value } : prev));
-  };
-
-  const onEnabledChange = (key: string, next: boolean) => {
-    setEnabled((prev) => ({ ...prev, [key]: next }));
-    setDraft((prev) =>
-      prev ? applySectionEnabled(prev, key, next) : prev,
-    );
-  };
+  const editor = useSettingsEditor();
+  const { draft, busy, saving, mode } = editor;
+  useUnsavedGuard(editor.dirty);
+  useHashScroll(useLocation().hash, !busy && draft !== null);
 
   return (
     <div className="settings-page">
       <PageHeader
         title="Settings"
-        subtitle="Operator settings.yaml — enable sections, edit as form or YAML."
+        subtitle={
+          <>
+            Operator <code>settings.yaml</code> for this host — edit section by
+            section, or switch to YAML for the whole document.
+          </>
+        }
         meta={
-          path ? (
-            <code className="settings-path" title={path}>
-              {path}
+          editor.path ? (
+            <code className="settings-path" title={editor.path}>
+              {editor.path}
             </code>
           ) : undefined
         }
         actions={
           <>
-            <div className="settings-mode" role="tablist" aria-label="Editor mode">
-              <button
-                type="button"
-                role="tab"
-                id="settings-mode-form"
-                className={mode === "form" ? "btn-primary" : "btn-secondary"}
-                aria-selected={mode === "form"}
-                disabled={busy || saving}
-                onClick={() => void switchMode("form")}
-              >
-                Form
-              </button>
-              <button
-                type="button"
-                role="tab"
-                id="settings-mode-yaml"
-                className={mode === "yaml" ? "btn-primary" : "btn-secondary"}
-                aria-selected={mode === "yaml"}
-                disabled={busy || saving || !draft}
-                onClick={() => void switchMode("yaml")}
-              >
-                YAML
-              </button>
-            </div>
+            <ModeSwitch
+              mode={mode}
+              disabled={busy || saving || !draft}
+              onChange={(next) => void editor.switchMode(next)}
+            />
             <button
               type="button"
-              className="btn-secondary"
+              className="btn"
               id="settings-reload"
+              title="Discard local edits and reload settings.yaml"
               disabled={busy || saving}
-              onClick={() => void load()}
+              onClick={() => void editor.load()}
             >
               Reload
             </button>
             <button
               type="button"
-              className="btn-primary"
+              className={saving ? "btn btn-primary is-loading" : "btn btn-primary"}
               id="settings-save"
-              disabled={busy || saving || (mode === "form" && !draft)}
-              onClick={() => void save()}
+              disabled={busy || saving || !draft || !editor.dirty}
+              aria-busy={saving}
+              onClick={() => void editor.save()}
             >
               {saving ? "Saving…" : "Save"}
             </button>
@@ -202,44 +68,76 @@ export function SettingsPage() {
         }
       />
 
-      <AppearanceSection />
+      {busy ? <LoadingState label="Loading settings…" /> : null}
 
-      {busy ? (
-        <div className="loading" role="status" aria-busy="true">
-          <span className="spinner" aria-hidden="true" />
-          <p>Loading settings…</p>
-        </div>
-      ) : null}
-
-      {error ? (
-        <p className="error" role="alert" id="settings-error">
-          {error}
-        </p>
+      {editor.error ? (
+        <ErrorState
+          message={editor.error}
+          id="settings-error"
+          onRetry={draft ? undefined : () => void editor.load()}
+        />
       ) : null}
 
       {!busy && draft ? (
-        <>
-          <SettingsNotes notes={notes} />
-          {mode === "form" ? (
-            <>
-              <UpdatesSection />
-              <SettingsFormView
-                draft={draft}
-                sections={sections}
-                enabled={enabled}
-                onPatch={patch}
-                onEnabledChange={onEnabledChange}
+        <div className={mode === "form" ? "with-aside settings-layout" : "settings-layout"}>
+          {mode === "form" ? <SettingsSectionNav enabled={editor.enabled} /> : null}
+          <div className="settings-main">
+            <SettingsNotes notes={editor.notes} />
+            {mode === "form" ? (
+              <>
+                <AppearanceSection />
+                <UpdatesSection />
+                <SettingsFormView
+                  draft={draft}
+                  sections={editor.sections}
+                  enabled={editor.enabled}
+                  onPatch={editor.patch}
+                  onEnabledChange={editor.setSectionEnabled}
+                />
+              </>
+            ) : (
+              <SettingsYamlPanel
+                value={editor.yamlText}
+                onChange={editor.setYamlText}
+                disabled={saving}
               />
-            </>
-          ) : (
-            <SettingsYamlPanel
-              value={yamlText}
-              onChange={setYamlText}
-              disabled={saving}
+            )}
+            <SaveBar
+              open={editor.dirty}
+              id="settings-save-bar"
+              message="Unsaved changes to settings.yaml"
+              saveLabel="Save"
+              saving={saving}
+              onSave={() => void editor.save()}
+              onDiscard={() => void editor.load()}
             />
-          )}
-        </>
+          </div>
+        </div>
       ) : null}
+    </div>
+  );
+}
+
+function ModeSwitch(props: {
+  mode: EditorMode;
+  disabled: boolean;
+  onChange: (next: EditorMode) => void;
+}) {
+  return (
+    <div className="segmented" role="tablist" aria-label="Editor mode">
+      {(["form", "yaml"] as const).map((value) => (
+        <button
+          key={value}
+          type="button"
+          role="tab"
+          id={`settings-mode-${value}`}
+          aria-selected={props.mode === value}
+          disabled={props.disabled}
+          onClick={() => props.onChange(value)}
+        >
+          {value === "form" ? "Form" : "YAML"}
+        </button>
+      ))}
     </div>
   );
 }

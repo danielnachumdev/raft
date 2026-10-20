@@ -86,9 +86,31 @@ body[data-mobile-nav-open] .topbar {
   font-weight: 600;
 }
 
+/* Hairline between nav groups (Monitor | Configure). */
+.topbar-link--group-start {
+  position: relative;
+  margin-left: 0.65rem;
+}
+
+.topbar-link--group-start::before {
+  content: "";
+  position: absolute;
+  left: -0.45rem;
+  top: 25%;
+  bottom: 25%;
+  width: 1px;
+  background: var(--line);
+}
+
 .topbar-link--icon {
   justify-content: center;
   padding-inline: 0.55rem;
+}
+
+.topbar-cta.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .topbar-link--icon svg {
@@ -130,7 +152,14 @@ body[data-mobile-nav-open] .topbar {
     display: none;
   }
 
-  .topbar-logout-desktop {
+  .topbar-logout-desktop,
+  .topbar-tools .topbar-cta {
+    display: none;
+  }
+}
+
+@media (min-width: 720px) and (max-width: 979px) {
+  .topbar-version {
     display: none;
   }
 }

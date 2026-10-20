@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { Link } from "react-router-dom";
 import { ConfirmPopup } from "../chrome/ConfirmPopup";
 import { LiveIndicator } from "../chrome/LiveIndicator";
+import { ErrorState, LoadingState } from "../chrome/StateViews";
 import { toast } from "../chrome/toast";
 import { fetchNotificationChannels } from "../notifications/notificationsApi";
 import type { NotificationChannel } from "../notifications/notificationsApi";
@@ -132,18 +133,10 @@ export function AlertsSettingsPage() {
       />
 
       {busy ? (
-        <div className="loading" role="status">
-          <span className="spinner" aria-hidden="true" />
-          <p>Loading alerts…</p>
-        </div>
+        <LoadingState label="Loading alerts…" />
       ) : null}
       {error ? (
-        <div className="callout callout-bad alerts-error" id="alerts-error" role="alert">
-          <span>{error}</span>
-          <button type="button" className="btn btn-sm" onClick={() => void load()}>
-            Retry
-          </button>
-        </div>
+        <ErrorState message={error} id="alerts-error" onRetry={() => void load()} />
       ) : null}
       <AlertCallouts status={status} hasChannels={enabledChannels.length > 0} />
 

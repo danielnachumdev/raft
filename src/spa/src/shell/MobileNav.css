@@ -96,6 +96,26 @@
   gap: 0.1rem;
 }
 
+.mobile-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.25rem 0;
+}
+
+.mobile-nav-group + .mobile-nav-group {
+  border-top: 1px solid var(--line);
+}
+
+.mobile-nav-group-label {
+  margin: 0.2rem 0.75rem 0.15rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .mobile-nav-link {
   display: flex;
   align-items: center;

@@ -86,18 +86,18 @@ notifications:
       enabled: true
       type: whatsapp
       settings:
-        apiUrl: https://api.green-api.com
+        apiUrl: https://api.green-api.example
         idInstance: "1101000001"
         apiTokenInstance: "replace-me"
-        chatId: 79001234567@c.us
+        chatId: 15555550100@c.us
     - id: ops-backup
       enabled: false
       type: whatsapp
       settings:
-        apiUrl: https://api.green-api.com
+        apiUrl: https://api.green-api.example
         idInstance: "1101000002"
         apiTokenInstance: "replace-me"
-        chatId: 79007654321@c.us
+        chatId: 15555550101@c.us
 alerts:
   enabled: true
   intervalSeconds: 60

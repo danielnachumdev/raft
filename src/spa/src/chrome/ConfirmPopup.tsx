@@ -47,7 +47,7 @@ export function ConfirmPopup(props: ConfirmPopupProps) {
             type="button"
             className={[
               "btn",
-              props.danger ? "btn-danger" : "",
+              props.danger ? "btn-danger" : "btn-primary",
               busy ? "is-loading" : "",
             ]
               .filter(Boolean)

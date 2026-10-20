@@ -18,7 +18,7 @@ export function LogLines(props: {
   }
   const onlyEmpty = props.lines.length === 1 && props.lines[0].raw === "";
   if (onlyEmpty) {
-    return <p className="logs-empty muted">(no log output)</p>;
+    return <p className="logs-empty muted">No log output yet.</p>;
   }
   const needles = trimFilterValues(props.highlightValues);
   return (

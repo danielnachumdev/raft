@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { ErrorState, LoadingState } from "../chrome/StateViews";
 import { PageHeader } from "../shell/PageHeader";
 import { FirewallPanel } from "./FirewallPanel";
 import {
@@ -13,8 +14,6 @@ import {
   type FirewallRecommendation,
   type FirewallServiceOption,
 } from "./firewallApi";
-import "../deploy/DeployPage.css";
-import "./FirewallSettingsPage.css";
 
 /** Settings page: ordered edge firewall only. */
 export function FirewallSettingsPage() {
@@ -54,46 +53,49 @@ export function FirewallSettingsPage() {
     void load();
   }, [load]);
 
+  const header = (actions?: ReactNode) => (
+    <PageHeader
+      title="Firewall"
+      subtitle="Ordered edge rules on the gate. Saving compiles them and reloads gate nginx — the gate is never recreated."
+      actions={actions}
+    />
+  );
+
+  if (busy || error) {
+    return (
+      <>
+        {header()}
+        {busy ? <LoadingState label="Loading firewall…" /> : null}
+        {error ? (
+          <ErrorState
+            message={error}
+            id="firewall-page-error"
+            onRetry={() => void load()}
+          />
+        ) : null}
+      </>
+    );
+  }
+
   return (
-    <div className="fw-settings-page">
-      <PageHeader
-        title="Firewall"
-        subtitle="Ordered edge rules on the gate. Saving compiles them and reloads gate nginx — the gate is never recreated."
-      />
-
-      {busy ? (
-        <div className="loading" role="status" aria-busy="true">
-          <span className="spinner" aria-hidden="true" />
-          <p>Loading firewall…</p>
-        </div>
-      ) : null}
-
-      {error ? (
-        <p className="error" role="alert" id="firewall-page-error">
-          {error}
-        </p>
-      ) : null}
-
-      {!busy && !error ? (
-        <FirewallPanel
-          document={document}
-          services={services}
-          recommendations={recommendations}
-          busy={busy}
-          onSave={async (next) => {
-            setDocument(await putFirewall(next));
-            setRecommendations(await fetchFirewallRecommendations());
-          }}
-          onExport={exportFirewall}
-          onImport={async (body) => {
-            setDocument(await importFirewall(body));
-            setRecommendations(await fetchFirewallRecommendations());
-          }}
-          onDismissRecommendation={async (id) => {
-            setRecommendations(await dismissFirewallRecommendation(id));
-          }}
-        />
-      ) : null}
-    </div>
+    <FirewallPanel
+      document={document}
+      services={services}
+      recommendations={recommendations}
+      busy={busy}
+      header={header}
+      onSave={async (next) => {
+        setDocument(await putFirewall(next));
+        setRecommendations(await fetchFirewallRecommendations());
+      }}
+      onExport={exportFirewall}
+      onImport={async (body) => {
+        setDocument(await importFirewall(body));
+        setRecommendations(await fetchFirewallRecommendations());
+      }}
+      onDismissRecommendation={async (id) => {
+        setRecommendations(await dismissFirewallRecommendation(id));
+      }}
+    />
   );
 }

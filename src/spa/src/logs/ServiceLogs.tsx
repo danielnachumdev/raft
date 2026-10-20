@@ -56,7 +56,7 @@ export function ServiceLogs(props: {
       error={error}
       connectingLabel={follow ? "Connecting…" : "Loading logs…"}
       emptyLabel={
-        follow ? "(no log output)" : "No retained logs yet."
+        follow ? "No log output yet." : "No retained logs yet."
       }
       controls={
         <ServiceLogControls
@@ -113,7 +113,7 @@ function ServiceLogControls(props: {
       </label>
       <button
         type="button"
-        className={`btn${props.busy ? " is-loading" : ""}`}
+        className={`btn btn-sm${props.busy ? " is-loading" : ""}`}
         disabled={loading}
         aria-busy={props.busy}
         onClick={props.onRefresh}

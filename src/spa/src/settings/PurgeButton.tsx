@@ -18,7 +18,7 @@ export function PurgeButton() {
     <>
       <button
         type="button"
-        className={busy ? "btn-secondary is-loading" : "btn-secondary"}
+        className={busy ? "btn is-loading" : "btn"}
         onClick={() => setOpen(true)}
         disabled={busy}
         aria-busy={busy}

@@ -11,11 +11,14 @@ import {
   refreshStatus,
 } from "../shared/dashboardCache";
 import { ExternalUrlLinks } from "../shared/ExternalUrlLinks";
+import { ErrorState, LoadingState } from "../chrome/StateViews";
+import { useHashScroll } from "../chrome/useHashScroll";
 import { PageHeader } from "../shell/PageHeader";
 import { StatusBadge } from "../status/StatusBadge";
 import { ServiceActions } from "./ServiceActions";
 import { ServiceDetail } from "./ServiceDetail";
 import "./ServicePage.css";
+
 /** Deep-linked service page: `/service/:service`. */
 export function ServicePage() {
   const { service: raw } = useParams<{ service: string }>();
@@ -89,17 +92,16 @@ export function ServicePage() {
       />
 
       {busy && data === null && !error ? (
-        <div className="loading" role="status" aria-busy="true">
-          <span className="spinner" aria-hidden="true" />
-          <p>Loading service…</p>
-        </div>
+        <LoadingState label="Loading service…" />
       ) : null}
 
       {error ? (
-        <div className="callout callout-bad" role="alert">
-          <p className="error">{error}</p>
-          <Link to="/">Back to stack status</Link>
-        </div>
+        <>
+          <ErrorState message={error} onRetry={() => void load()} />
+          <Link className="btn btn-sm" to="/">
+            Back to stack status
+          </Link>
+        </>
       ) : null}
 
       {data ? <ServiceDetail key={trendsKey} data={data} /> : null}
@@ -122,12 +124,4 @@ function ServiceMeta(props: { data: ServiceDetailPayload }) {
       ) : null}
     </>
   );
-}
-
-function useHashScroll(hash: string, ready: boolean): void {
-  useEffect(() => {
-    if (!ready || !hash) return;
-    const el = document.getElementById(decodeURIComponent(hash.slice(1)));
-    el?.scrollIntoView({ block: "start" });
-  }, [hash, ready]);
 }

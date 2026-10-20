@@ -30,8 +30,10 @@ Confirm before apply (when `canApply`). After a successful update, align the run
 
 The Settings page toggles **Form** and **YAML**:
 
-- **Form** — one card per RaftConfig section with enablement (below).
+- **Form** — one card per RaftConfig section with enablement (below). A sticky section index (General / Platform / Integrations / Maintenance, plus links to the Alert rules, Notification channels, and Firewall pages) tracks the scroll position and marks disabled sections **off**. Deep links like `/settings#settings-notifications` jump to a card.
 - **YAML** — full document editor. Encode/decode round-trips through `OperatorSettingsService` (`POST /api/settings/yaml/encode` / `decode`); Save uses `PUT /api/settings/yaml`.
+
+**Save** is enabled only when the draft differs from the loaded document. A sticky **Unsaved changes** bar offers Discard (reload from disk) and Save. The browser also asks for confirmation before you close the tab with unsaved edits. Firewall uses the same bar for unsaved rule edits.
 
 Validation always uses the same section parsers as file load. Invalid YAML or sections return OperatorError-style `400` detail.
 

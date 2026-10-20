@@ -23,24 +23,33 @@ export function FirewallRecommendations(props: Props) {
   }
 
   return (
-    <section className="fw-recs" id="firewall-recommendations">
-      <h3>Recommendations</h3>
-      <p className="muted">
+    <section className="panel" id="firewall-recommendations">
+      <div className="panel-head">
+        <h2>
+          Recommendations
+          <span className="panel-count">{props.items.length}</span>
+        </h2>
+      </div>
+      <p className="panel-lede">
         Fast baseline for new stacks. Apply inserts into the table (Save still
         required). Dismiss hides until the baseline changes.
       </p>
-      <ul className="fw-rec-list">
+      <ul className="item-list">
         {props.items.map((item) => (
-          <li key={item.id} className="fw-rec-row" data-fw-rec-id={item.id}>
-            <div>
-              <strong>{item.title}</strong>
-              <p className="muted">{item.summary}</p>
-              <code className="fw-rec-preview">{preview(item.rule)}</code>
+          <li key={item.id} className="item-row" data-fw-rec-id={item.id}>
+            <div className="item-row-main">
+              <div className="item-row-title">
+                <strong>{item.title}</strong>
+              </div>
+              <p className="item-row-meta">{item.summary}</p>
+              <p className="item-row-meta">
+                <code className="fw-rec-preview">{preview(item.rule)}</code>
+              </p>
             </div>
-            <div className="fw-rec-actions">
+            <div className="btn-group item-row-actions">
               <button
                 type="button"
-                className="btn"
+                className="btn btn-sm"
                 id={`firewall-rec-apply-${item.id}`}
                 disabled={props.busy}
                 onClick={() => props.onApply(item)}
@@ -49,7 +58,7 @@ export function FirewallRecommendations(props: Props) {
               </button>
               <button
                 type="button"
-                className="btn"
+                className="btn btn-sm btn-ghost"
                 id={`firewall-rec-dismiss-${item.id}`}
                 disabled={props.busy}
                 onClick={() => void dismiss(item.id)}

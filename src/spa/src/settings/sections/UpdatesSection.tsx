@@ -50,7 +50,7 @@ export function UpdatesSection() {
         <div className="settings-updates-actions">
           <button
             type="button"
-            className="btn-secondary"
+            className="btn"
             id="settings-check-updates"
             disabled={busy}
             onClick={() => void runCheck()}
@@ -60,7 +60,7 @@ export function UpdatesSection() {
           {status?.updateAvailable && status.canApply !== false ? (
             <button
               type="button"
-              className="btn-primary"
+              className="btn btn-primary"
               id="settings-apply-update"
               disabled={busy}
               onClick={() => setConfirmOpen(true)}

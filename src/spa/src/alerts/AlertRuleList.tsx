@@ -30,7 +30,7 @@ type Props = AlertRuleHandlers & {
 /** Rule rows: name + state/severity chips, condition summary, compact actions. */
 export function AlertRuleList(props: Props) {
   return (
-    <ul className="alert-rule-list">
+    <ul className="item-list alert-rule-list">
       {props.rules.map((rule) => (
         <AlertRuleRow key={rule.id} rule={rule} {...props} />
       ))}
@@ -43,7 +43,7 @@ function AlertRuleRow(props: Props & { rule: AlertRule }) {
   const state = ruleStateFor(props.status, rule.id, rule.enabled);
   return (
     <li
-      className={rule.enabled ? "alert-rule-row" : "alert-rule-row is-disabled"}
+      className={rule.enabled ? "item-row alert-rule-row" : "item-row alert-rule-row is-disabled"}
       data-rule-id={rule.id}
       id={`alert-rule-${rule.id}`}
     >
@@ -73,7 +73,7 @@ function RuleActions(props: Props & { rule: AlertRule }) {
   const { rule } = props;
   const busy = props.busyId === rule.id;
   return (
-    <div className="btn-group alert-rule-actions">
+    <div className="btn-group item-row-actions">
       <button type="button" className="btn btn-sm" id={`alert-edit-${rule.id}`} onClick={() => props.onEdit(rule)}>
         Edit
       </button>
