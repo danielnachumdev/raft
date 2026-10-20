@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from raft.core.observe.ops.update import LatestRelease, UpdateCheck
+from raft.core.observe.ops.update import HostApplyGate, LatestRelease, UpdateCheck
 from raft.core.observe.ops.version import InstalledVersion
 
 
@@ -18,6 +18,8 @@ class TestUpdateCheck:
         public = result.as_public()
         assert public["updateAvailable"] is True
         assert public["latestTag"] == "v0.11.0"
+        assert public["canApply"] is True
+        assert public["applyBlockReason"] is None
 
     def test_up_to_date_when_equal(self) -> None:
         result = self._check("0.11.0", "v0.11.0")
@@ -42,10 +44,24 @@ class TestUpdateCheck:
         fetcher.fetch.return_value = LatestRelease(
             tag="v0.11.0", html_url="", name="v0.11.0"
         )
-        result = UpdateCheck(versions=versions, fetcher=fetcher).status()
+        result = UpdateCheck(
+            versions=versions, fetcher=fetcher, host_gate=self._open_gate()
+        ).status()
         assert result.release_url is None
 
-    def _check(self, current: str, tag: str):
+    def test_status_surfaces_apply_block(self) -> None:
+        gate = MagicMock(spec=HostApplyGate)
+        gate.blocked_reason.return_value = (
+            "Cannot apply raft update from the always-on dashboard container.\n"
+            "Fix: on the host run `raft update`."
+        )
+        result = self._check("0.10.0", "v0.11.0", host_gate=gate)
+        assert result.can_apply is False
+        assert result.apply_block_reason is not None
+        assert "dashboard container" in result.message
+        assert result.as_public()["canApply"] is False
+
+    def _check(self, current: str, tag: str, *, host_gate=None):
         versions = MagicMock(spec=InstalledVersion)
         versions.package_version.return_value = current
         versions.line.return_value = f"raft {current}"
@@ -55,4 +71,14 @@ class TestUpdateCheck:
             html_url="https://github.com/danielnachumdev/raft/releases/tag/" + tag,
             name=tag,
         )
-        return UpdateCheck(versions=versions, fetcher=fetcher).status()
+        return UpdateCheck(
+            versions=versions,
+            fetcher=fetcher,
+            host_gate=host_gate or self._open_gate(),
+        ).status()
+
+    @staticmethod
+    def _open_gate() -> MagicMock:
+        gate = MagicMock(spec=HostApplyGate)
+        gate.blocked_reason.return_value = None
+        return gate

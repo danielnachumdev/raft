@@ -57,7 +57,7 @@ export function UpdatesSection() {
           >
             {phase === "checking" ? "Checking…" : "Check for updates"}
           </button>
-          {status?.updateAvailable ? (
+          {status?.updateAvailable && status.canApply !== false ? (
             <button
               type="button"
               className="btn-primary"

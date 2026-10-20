@@ -11,6 +11,7 @@ from raft.core.core.models.state.graph_event_store import GraphEventStore
 from raft.core.core.ui.progress import TerminalProgress
 from raft.core.observe.ops.version import InstalledVersion
 from .announce import UpdateAnnounce
+from .host_apply import HostApplyGate
 from .identity import InstallIdentity
 from .outcome import UpdateOutcome
 
@@ -18,12 +19,18 @@ DEFAULT_INSTALL_URL = "https://raw.githubusercontent.com/danielnachumdev/raft/ma
 
 
 class SelfUpdate:
-    def __init__(self, stack: Stack) -> None:
+    def __init__(
+        self,
+        stack: Stack,
+        *,
+        host_gate: Optional[HostApplyGate] = None,
+    ) -> None:
         self.stack = stack
         self.sh = Shell(stack.root)
         self._identity = InstallIdentity()
         self._versions = InstalledVersion()
         self._announce = UpdateAnnounce()
+        self._host_gate = host_gate or HostApplyGate()
 
     def run(
         self,
@@ -32,6 +39,7 @@ class SelfUpdate:
         progress_stream: Optional[TextIO] = None,
         announce: bool = True,
     ) -> UpdateOutcome:
+        self._host_gate.ensure()
         url = os.environ.get("RAFT_INSTALL_URL", DEFAULT_INSTALL_URL)
         return self._run_with_progress(url, ref, progress_stream, announce)
 
@@ -111,9 +119,15 @@ class SelfUpdate:
 
     @staticmethod
     def _installer_argv(url: str, ref: Optional[str]) -> list:
-        """Build ``bash -c`` argv; optional ``RAFT_REF`` for install.sh."""
+        """Build ``bash -c`` argv; optional ``RAFT_REF`` for install.sh.
+
+        ``pipefail`` is required: without it, a missing ``curl`` still exits 0
+        (empty stdin to bash), which made dashboard Settings report a false
+        success while the host CLI stayed unchanged.
+        """
         export = "export RAFT_INSTALL_QUIET=1"
         cleaned = (ref or "").strip()
         if cleaned:
             export = f"{export}; export RAFT_REF={shlex.quote(cleaned)}"
-        return ["bash", "-c", f'{export}; curl -fsSL "$1" | bash', "_", url]
+        script = f'set -euo pipefail; {export}; curl -fsSL "$1" | bash'
+        return ["bash", "-c", script, "_", url]

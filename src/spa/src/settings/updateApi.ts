@@ -11,6 +11,9 @@ export type UpdateStatus = {
   releaseUrl: string | null;
   state: "up_to_date" | "update_available" | "ahead" | "unknown" | string;
   message: string;
+  /** False in always-on dashboard (host ``raft update`` only). */
+  canApply?: boolean;
+  applyBlockReason?: string | null;
 };
 
 export type UpdateApplyResult = {

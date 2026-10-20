@@ -19,10 +19,12 @@ Specialized pages remain for deep workflows:
 
 | Action | API | Behavior |
 |--------|-----|----------|
-| Check for updates | `GET /api/update/status` | Latest Release tag vs installed semver |
+| Check for updates | `GET /api/update/status` | Latest Release tag vs installed semver; includes `canApply` / `applyBlockReason` |
 | Update raft | `POST /api/update` | Runs the shared `SelfUpdate` path (`install.sh`); optional JSON `{ "ref": "<tag\|branch\|sha>" }` matches CLI `--ref` |
 
-Confirm before apply. After a successful update, align the running stack the same way as CLI (`raft render` / targeted `redeploy` / `down`+`up` when schemas shifted, then `raft doctor`). Restart `raft serve` or the dashboard process so the UI loads the new package.
+**Always-on dashboard:** Check works inside `raft-dashboard`, but **Apply is host-only**. The dashboard image has no host `curl` / uv-tool env, so Settings refuses apply (`canApply: false`) and asks the operator to run `raft update` on the host, then recreate the dashboard so the image rebuilds with the new install stamp. Host `raft serve` can still apply (same path as CLI).
+
+Confirm before apply (when `canApply`). After a successful update, align the running stack the same way as CLI (`raft render` / targeted `redeploy` / `down`+`up` when schemas shifted, then `raft doctor`). Restart `raft serve` or recreate the dashboard process so the UI loads the new package.
 
 ## Form ↔ YAML
 
@@ -111,7 +113,7 @@ Content-Type: application/json
 { "ref": "v0.12.0" }
 ```
 
-`GET` returns camelCase fields: `current`, `currentLine`, `latestTag`, `latestVersion`, `updateAvailable`, `releaseUrl`, `state`, `message`. `POST` returns `alreadyCurrent`, `beforeLine`, `afterLine`, `nextSteps`.
+`GET` returns camelCase fields: `current`, `currentLine`, `latestTag`, `latestVersion`, `updateAvailable`, `releaseUrl`, `state`, `message`, `canApply`, `applyBlockReason`. `POST` returns `alreadyCurrent`, `beforeLine`, `afterLine`, `nextSteps` (refuses with 400 when `canApply` would be false).
 
 Response shape (GET/PUT JSON and YAML):
 

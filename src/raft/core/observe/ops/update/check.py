@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from raft.core.observe.ops.version import InstalledVersion
+from .host_apply import HostApplyGate
 from .latest import LatestRelease, LatestReleaseFetcher
 from .semver import SemverParts
 
@@ -22,6 +23,8 @@ class UpdateCheckResult:
     release_url: Optional[str]
     state: str
     message: str
+    can_apply: bool = True
+    apply_block_reason: Optional[str] = None
 
     def as_public(self) -> dict:
         return {
@@ -33,6 +36,8 @@ class UpdateCheckResult:
             "releaseUrl": self.release_url,
             "state": self.state,
             "message": self.message,
+            "canApply": self.can_apply,
+            "applyBlockReason": self.apply_block_reason,
         }
 
 
@@ -44,9 +49,11 @@ class UpdateCheck:
         *,
         versions: Optional[InstalledVersion] = None,
         fetcher: Optional[LatestReleaseFetcher] = None,
+        host_gate: Optional[HostApplyGate] = None,
     ) -> None:
         self._versions = versions or InstalledVersion()
         self._fetcher = fetcher or LatestReleaseFetcher()
+        self._host_gate = host_gate or HostApplyGate()
 
     def status(self) -> UpdateCheckResult:
         current = self._versions.package_version()
@@ -94,8 +101,8 @@ class UpdateCheck:
             return text[1:]
         return text
 
-    @staticmethod
     def _result(
+        self,
         current: str,
         line: str,
         release: LatestRelease,
@@ -104,6 +111,8 @@ class UpdateCheck:
         state: str,
         message: str,
     ) -> UpdateCheckResult:
+        block = self._host_gate.blocked_reason()
+        can_apply = block is None
         return UpdateCheckResult(
             current=current,
             current_line=line,
@@ -112,5 +121,14 @@ class UpdateCheck:
             update_available=available,
             release_url=release.html_url or None,
             state=state,
-            message=message,
+            message=self._message_with_block(message, block),
+            can_apply=can_apply,
+            apply_block_reason=block,
         )
+
+    @staticmethod
+    def _message_with_block(message: str, block: Optional[str]) -> str:
+        if not block:
+            return message
+        first = block.split("\n", 1)[0].rstrip(".")
+        return f"{message} {first}."

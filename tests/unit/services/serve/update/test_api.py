@@ -95,6 +95,17 @@ class TestServeUpdateApi(RaftTestCase):
         res = client.post("/api/update", json={})
         assert res.status_code == 400
 
+    def test_apply_refuses_dashboard_container(self) -> None:
+        updater = MagicMock()
+        updater.run.side_effect = OperatorError(
+            "Cannot apply raft update from the always-on dashboard container.\n"
+            "Fix: on the host run `raft update`"
+        )
+        client = self._client(updater=updater)
+        res = client.post("/api/update", json={})
+        assert res.status_code == 400
+        assert "dashboard container" in res.json()["detail"]
+
     def _client(self, *, check=None, updater=None) -> TestClient:
         stack = Stack(root=self.tmp_path, apps=())
         app = FastAPI()
