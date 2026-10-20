@@ -5,11 +5,11 @@ Locks live under ``~/.raft/host/locks/`` (``RAFT_DATA_HOME``):
 * ``app-<name>.lock`` — one mutative deploy/apply for that app at a time
 * ``stack.lock`` — render, nginx reload, cutover, compose up/recreate, gate,
   ``raft purge`` (Docker image/build-cache prune)
-* ``settings.lock`` — any rewrite of ``settings.yaml`` (full document, notifications,
+* ``settings.lock`` — any rewrite of ``host/settings.yaml`` (full document, notifications,
   github OAuth)
 * ``acl.lock`` — serve API rewrites of ordered firewall before render/reload
 * ``alerts.lock`` — CLI/serve writes to ``host/alerts/rules.yaml``
-* ``dashboard.lock`` — CLI writes to ``settings.yaml`` ``dashboard:``
+* ``dashboard.lock`` — CLI writes to ``host/settings.yaml`` ``dashboard:``
 
 Wait (with timeout) so a later-started deploy still runs after an earlier one
 and becomes the final live state. Contended waiters log ``waiting for … lock``

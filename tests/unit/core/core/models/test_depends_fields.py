@@ -22,7 +22,7 @@ class TestDependsOnFields:
                 "source": "docker",
                 "image": "hashicorp/http-echo",
                 "ref": "1.0.0",
-                "path": "apps/web",
+                "path": "services/web/checkout",
                 "ports": [{"name": "http", "containerPort": 80, "expose": "http"}],
                 "publicHost": "web.test",
                 "dependsOn": depends_on,

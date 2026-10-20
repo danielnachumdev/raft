@@ -7,7 +7,7 @@ spec:
   source: docker
   image: redis
   ref: alpine
-  path: apps/expose-none-vol
+  path: services/expose-none-vol/checkout
   envFile: /tmp/raft-e2e-demo.env
   env:
     DEMO_FLAG: "1"

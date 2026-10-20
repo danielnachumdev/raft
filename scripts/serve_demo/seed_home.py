@@ -54,12 +54,12 @@ for name, (group, host, port, deps) in APPS.items():
         lines += ["  ports:", "    - name: main", f"      containerPort: {port}", f"      expose: {expose}"]
     if name == "demo-docs":
         lines += ["  scaling:", "    idleSeconds: 300", "    minUpSeconds: 60"]
-    write(f"services/{name}.yaml", "\n".join(lines) + "\n")
+    write(f"services/{name}/app.yaml", "\n".join(lines) + "\n")
 
 write(
-    "settings.yaml",
+    "host/settings.yaml",
     """logging:
-  dir: logs
+  dir: host/logs
   file: raft.log
   level: INFO
 edge:
@@ -235,7 +235,10 @@ write("host/metrics/resources.jsonl", "".join(json.dumps(r) + "\n" for r in res)
 write("host/metrics/http.jsonl", "".join(json.dumps(r) + "\n" for r in http))
 
 # --- scale-to-zero marker (demo-docs idle) --------------------------------
-write("host/scaling/demo-docs.json", json.dumps({"scaledToZero": True}) + "\n")
+write(
+    "services/demo-docs/scaling/state.json",
+    json.dumps({"scaledToZero": True}) + "\n",
+)
 
 # --- gate access log ----------------------------------------------------
 paths = ["/", "/api/orders", "/api/orders/42", "/api/cart", "/health", "/api/login", "/static/app.js"]

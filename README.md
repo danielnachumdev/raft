@@ -71,7 +71,7 @@ curl -fsSL https://raw.githubusercontent.com/danielnachumdev/raft/main/install.s
 
 Operator data lives under **`~/.raft/`** (override with `RAFT_DATA_HOME`). Copy ideas from [`examples/settings.yaml`](examples/settings.yaml) into `~/.raft/host/settings.yaml`.
 
-**TLS:** browser → VPS directly → `tls: acme` (Let's Encrypt HTTP-01 on the gate; set DNS A/AAAA, open 80/443, and `acme.email` — no PEMs to paste). Behind Cloudflare Origin (or similar) → `tls: origin` (install `origin.{pem,key}` under `~/.raft/services/*/certs/<app>/` before deploy).
+**TLS:** browser → VPS directly → `tls: acme` (Let's Encrypt HTTP-01 on the gate; set DNS A/AAAA, open 80/443, and `acme.email` — no PEMs to paste). Behind Cloudflare Origin (or similar) → `tls: origin` (install `origin.{pem,key}` under `~/.raft/services/<app>/certs/` before deploy).
 
 ```bash
 raft doctor

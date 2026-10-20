@@ -16,9 +16,9 @@
 # ---------------------------------------------------------------------------
 logging:
   # Directory for log files. Relative paths are under the data home
-  # (~/.raft/logs by default). Absolute paths are used as-is.
+  # (~/.raft/host/logs by default). Absolute paths are used as-is.
   # Override entirely with env RAFT_LOG_DIR.
-  dir: logs
+  dir: host/logs
 
   # Log file name inside logging.dir (live append target).
   file: raft.log

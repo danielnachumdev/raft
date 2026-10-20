@@ -50,7 +50,7 @@ class TestFingerprintRouterNginx(RaftTestCase):
         assert stamp.read() == "abc123"
 
     def test_reload_stamp_empty_file_is_none(self) -> None:
-        path = self.tmp_path / "state" / "router-nginx.fingerprint"
+        path = self.tmp_path / "host" / "router-nginx.fingerprint"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("\n", encoding="utf-8")
         assert self._stamp().read() is None

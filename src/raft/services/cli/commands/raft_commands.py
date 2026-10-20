@@ -151,7 +151,7 @@ class RaftCLICommands:
         OperatorSay.say(f"Stopped {result['service']}.")
 
     def render(self) -> None:
-        """Generate Compose/nginx from ~/.raft/services/*/*.yaml."""
+        """Generate Compose/nginx from ~/.raft/services/*/app.yaml."""
         Orchestrator(self._stack).render()
 
     def doctor(self, name: Optional[str] = None) -> None:

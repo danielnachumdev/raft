@@ -60,6 +60,6 @@ class CertChecks:
                 app.compose_id,
                 "certs",
                 "ok",
-                f"certs/{app.name}/origin.pem+key",
+                f"services/{app.name}/certs/origin.pem+key",
             )
         return CheckResult(app.compose_id, "certs", "fail", item.detail, fix=item.fix)

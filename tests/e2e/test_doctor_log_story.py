@@ -55,7 +55,7 @@ class TestDoctorLogObservability:
     def _seed_oversized_log(self, home: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         monkeypatch.delenv("RAFT_LOG_DIR", raising=False)
         self._write_logging_settings(home, max_bytes=120)
-        log_dir = home / "logs"
+        log_dir = home / "host" / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         log_file = log_dir / "raft.log"
         stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

@@ -693,7 +693,7 @@ Per-tick IO: `MetricsSampleCache` memoizes (via `SignalContext.memo`) one read p
 
 - Reads the latest `resources.jsonl` samples within `min(10m, 2 × metrics interval)` (memoized with 5.1) and emits one STATE point per sample per container: `value = row["status"]` (e.g. `running`, `exited`).
 - `select`: `{target: "<service>" | "*"}`; `"*"` expands to **applied app names** (from `SignalContext.app_names`), so an app missing from samples yields an empty series → no data → `noData` applies (`noData: alerting` catches "container gone").
-- Skips apps intentionally scaled to zero: use the existing `ScalingStore(home).is_scaled_to_zero(name)` (`state/scaling/`, `scaledToZero`) and drop those subjects (healing ≠ scaling invariant; never alert on intentional idle stop).
+- Skips apps intentionally scaled to zero: use the existing `ScalingStore(home).is_scaled_to_zero(name)` (`services/<name>/scaling/`, `scaledToZero`) and drop those subjects (healing ≠ scaling invariant; never alert on intentional idle stop).
 
 ### 5.4 `control.events` (`GraphEventsSource`, EVENT)
 

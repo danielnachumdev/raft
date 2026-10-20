@@ -14,8 +14,8 @@ Host-exposed ports do **not** need `edge.streams`. Only gate-published listeners
 This sample uses `tls: origin`. Install PEMs **before** first deploy, or set `tls: off` in the manifest:
 
 ```text
-~/.raft/services/*/certs/host-published-ports/origin.pem
-~/.raft/services/*/certs/host-published-ports/origin.key
+~/.raft/services/host-published-ports/certs/origin.pem
+~/.raft/services/host-published-ports/certs/origin.key
 ```
 
 ## Apply

@@ -95,7 +95,8 @@ class DeployNextSteps:
         return {
             "title": "Origin TLS material",
             "body": (
-                f"Install origin.pem + origin.key under certs/{app_name}/ "
+                f"Install origin.pem + origin.key under "
+                f"services/{app_name}/certs/ "
                 "before trusting HTTPS (raft never pastes PEMs for you)."
             ),
         }
@@ -106,8 +107,9 @@ class DeployNextSteps:
             "title": "ACME prerequisites",
             "body": (
                 "Ensure DNS points here, TCP 80+443 are open, and "
-                "acme.email is set in settings.yaml. Live material is "
-                f"written to certs/{app_name}/acme.* by apply/controller."
+                "acme.email is set in host/settings.yaml. Live material is "
+                f"written to services/{app_name}/certs/acme.* by "
+                "apply/controller."
             ),
         }
 

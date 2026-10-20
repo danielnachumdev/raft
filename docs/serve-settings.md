@@ -121,7 +121,7 @@ Response shape (GET/PUT JSON and YAML):
 
 ```json
 {
-  "path": "/tmp/raft-demo/home/settings.yaml",
+  "path": "/tmp/raft-demo/home/host/settings.yaml",
   "document": { },
   "sections": [
     {

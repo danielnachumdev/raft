@@ -15,8 +15,8 @@ spec:
   source: docker
   image: redis
   ref: alpine
-  path: apps/grouped-volume-app
-  envFile: /home/raft/.raft/secrets/grouped-volume-app/env
+  path: services/grouped-volume-app/checkout
+  envFile: /home/raft/.raft/services/grouped-volume-app/secrets/env
   volumes:
     - name: data
       hostPath: /mnt/raft-data/demo/redis

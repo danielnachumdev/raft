@@ -14,8 +14,8 @@ For **direct** browser → VPS HTTPS (Let's Encrypt on the gate), use [`../https
 Install PEMs **before** first deploy:
 
 ```text
-~/.raft/services/*/certs/https-origin-site/origin.pem
-~/.raft/services/*/certs/https-origin-site/origin.key
+~/.raft/services/https-origin-site/certs/origin.pem
+~/.raft/services/https-origin-site/certs/origin.key
 ```
 
 `raft doctor` fails `tls: origin` apps when these are missing. If PEMs are not ready yet: `raft apply … --no-deploy`, install certs, then apply again without `--no-deploy` (or `raft up`).

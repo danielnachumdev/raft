@@ -30,7 +30,7 @@ class TestDoctorEnvFile(DoctorTestCase):
         AppliedInventory.write_applied_app(
             self.tmp_path,
             "demo-api",
-            extra={"envFile": "secrets/demo-api/env"},
+            extra={"envFile": "services/demo-api/secrets/env"},
         )
         results = self.run_keyed(
             StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("demo-api"),)),
