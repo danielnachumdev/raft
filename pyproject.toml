@@ -14,6 +14,8 @@ dependencies = [
     "fastapi>=0.115.0",
     "uvicorn>=0.30.0",
     "acme>=2.0",
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
 ]
 
 [project.optional-dependencies]
@@ -39,6 +41,7 @@ raft = [
     "core/platform/share/controller/**/*",
     "core/platform/share/dashboard/**/*",
     "core/platform/share/serve/**/*",
+    "core/core/db/alembic/**/*",
 ]
 
 [tool.pytest.ini_options]
@@ -73,6 +76,8 @@ branch = true
 source = ["src/raft"]
 relative_files = true
 # pytest-cov + xdist manage parallel data files; do not set parallel=true here.
+# Alembic env.py is a script loaded by alembic.command (not import-safe for unit tests).
+omit = ["*/core/core/db/alembic/env.py"]
 
 [tool.coverage.report]
 show_missing = true

@@ -4,6 +4,7 @@ from pathlib import Path
 
 DATA_HOME_ENV = "RAFT_DATA_HOME"
 SETTINGS_FILENAME = "settings.yaml"
+DB_FILENAME = "raft.sqlite"
 GENERATED_DIRNAME = "generated"
 HOST_DIRNAME = "host"
 SERVICES_DIRNAME = "services"

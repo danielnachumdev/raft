@@ -124,6 +124,7 @@ Layout (#313): `host/` (control-plane) + `services/<SERVICE>/` (App-owned) + `ge
 
 | Path | Role |
 |------|------|
+| `raft.sqlite` | SQLite durable-state foundation (#317); Alembic schema; `raft db migrate` imports settings/apps/firewall (files remain live SoT until cutover #320) |
 | `host/settings.yaml` | logging, edge, healing, metrics, serviceLogs, acme, github, notifications, dashboard, alerts cadence |
 | `services/<name>/app.yaml` | Applied App registry |
 | `generated/` | Compose + nginx (+ `gate-http/firewall/` includes) — **do not hand-edit as source of truth** |
