@@ -10,6 +10,7 @@ from raft.core.lifecycle.render.edge.tls import TlsEdge
 from raft.core.platform.adapters.nginx import NginxUpstreamText
 
 from .target import DashboardTarget
+from .update_proxy_timeout import UPDATE_PROXY_TIMEOUT
 
 
 class DashboardEdgeRender:
@@ -33,8 +34,7 @@ class DashboardEdgeRender:
         frag = self._http_upstream(cfg)
         app = self._target.app(cfg)
         assert app is not None
-        # Gate must match router 600s — Settings → Update pulls install.sh.
-        # A 60s gate timeout aborts the browser request (nginx 499) mid-apply.
+        # Gate must match router — see UPDATE_PROXY_TIMEOUT.
         frag.merge(
             self._tls.contribute_app(
                 app,
@@ -42,8 +42,8 @@ class DashboardEdgeRender:
                 edge=edge,
                 data_home=data_home,
                 acl_include=acl_include,
-                proxy_read_timeout="600s",
-                proxy_send_timeout="600s",
+                proxy_read_timeout=UPDATE_PROXY_TIMEOUT,
+                proxy_send_timeout=UPDATE_PROXY_TIMEOUT,
             )
         )
         return frag
@@ -76,8 +76,8 @@ class DashboardEdgeRender:
 
     @staticmethod
     def _proxy_lines(upstream: str) -> list[str]:
-        # 600s: Settings → Update may pull a one-shot image + run install.sh.
         # X-Forwarded-Proto: preserve gate TLS for in-container oauth2-proxy.
+        t = UPDATE_PROXY_TIMEOUT
         return [
             f"        proxy_pass http://{upstream};",
             "        proxy_set_header Host $host;",
@@ -85,8 +85,8 @@ class DashboardEdgeRender:
             "        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;",
             "        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;",
             "        proxy_connect_timeout 3s;",
-            "        proxy_read_timeout 600s;",
-            "        proxy_send_timeout 600s;",
+            f"        proxy_read_timeout {t};",
+            f"        proxy_send_timeout {t};",
         ]
 
     @staticmethod
