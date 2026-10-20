@@ -37,10 +37,10 @@ The time range belongs to the **dashboard**, not the graph.
 
 - **Toolbar:** dashboard switcher + ⋯ menu (New, Rename, Restore default graphs, Delete), shared **Range**, **+ Add graph**.
 - **Add / edit graph:** modal with preset chips (CPU, Memory, Request rate, Latency p95, Errors, Network, Disk I/O, In-flight, Latency spread, Processes), title, view, width, metric and service/group pickers, and a **live preview** fed by the dashboard's data.
-- **Graph ⋯ menu:** Expand, Export CSV, Edit…, Duplicate, Make full / half width, Move earlier / later, Remove.
+- **Graph chrome:** ↓ **Export** menu (CSV of that graph’s visible series) beside the ⋯ menu (Expand, Edit…, Duplicate, Make full / half width, Move earlier / later, Remove).
 - **Reorder:** drag a graph by its ⠿ handle onto another graph's slot (or use Move earlier / later).
 - **Remove** is immediate with an inline **Undo** for a few seconds.
-- **Expand:** click a graph title (or menu → Expand) for a near-fullscreen view; ←/→ step through the dashboard's graphs. The expanded footer offers **Export CSV** (that graph's visible series only) and **Export PNG** (high-resolution screenshot of the expanded chart).
+- **Expand:** click a graph title (or menu → Expand) for a near-fullscreen view; ←/→ step through the dashboard's graphs. The expanded footer **Export** control opens a submenu: **CSV** (that graph's visible series only) and **PNG** (high-resolution screenshot of the expanded chart).
 - **Header number:** each graph shows the latest sample rolled up — **peak now** (max across lines) for percent / latency, **total now** (sum) for rates / counts / bytes, **avg now** in “average of all”. Same-type pairs (4xx + 5xx, RX + TX) fold together; the HTTP edge series is not double-counted in totals.
 - A service keeps the **same color on every graph**; the second metric of a two-metric graph is drawn dashed.
 

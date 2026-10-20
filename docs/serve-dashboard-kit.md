@@ -8,7 +8,7 @@ Trends operator UX (default graphs, range controls, persistence keys) remains do
 
 | Piece | Behavior |
 |-------|----------|
-| Shell | Grid (half/full → 12-col `span` 6/12), panels, edit/view, empty/stale, expand, undo-on-remove, per-graph CSV + expanded PNG export |
+| Shell | Grid (half/full → 12-col `span` 6/12), panels, edit/view, empty/stale, expand, undo-on-remove, per-graph Export menu (CSV; PNG when expanded) |
 | Panels | `timeseries` against raft metrics (resources + HTTP aggregate). `stat` reserved, not rendered |
 | Time | Shared dashboard range only; live poll on rolling windows; **no** per-panel range |
 | Variables | Embed `variables.service` / `variables.group`; `${service}` / `${group}` in titles; hooks for later dropdown chrome |
@@ -58,8 +58,8 @@ Shared Trends graph chrome (`GraphCell` / `ExpandedGraph`) owns export, so Overv
 
 | Action | Where | What |
 |--------|-------|------|
-| Export CSV | Graph ⋯ menu and expanded footer | Client CSV of that graph's **visible** series; same dialect as panel Download CSV (HTTP metrics appended when needed) |
-| Export PNG | Expanded footer only | High-DPI (`html-to-image`, 3×) screenshot of the expanded graph card |
+| Export → CSV | Graph ↓ Export menu; expanded footer Export submenu | Client CSV of that graph's **visible** series; same dialect as panel Download CSV (HTTP metrics appended when needed) |
+| Export → PNG | Expanded footer Export submenu only | High-DPI (`html-to-image`, 3×) screenshot of the expanded graph card |
 
 Panel-level **Download** in `KitHead` remains the full-window metrics attachment (not per-graph).
 
