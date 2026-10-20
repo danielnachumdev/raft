@@ -4,11 +4,11 @@ from pathlib import Path
 
 from raft.core.core.config.settings.dashboard_config import DashboardConfig
 
+from .update_proxy_timeout import UPDATE_PROXY_TIMEOUT
+
 # Baked into the dashboard image; share path used when generating outside Docker.
 IMAGE_LOGIN_HTML = Path("/opt/dashboard/login.html")
 DEFAULT_APP_PORT = 18787
-# Settings → Update may pull an image and run install.sh (host one-shot).
-_UPDATE_PROXY_TIMEOUT = "600s"
 
 
 class DashboardProxyNginx:
@@ -133,7 +133,7 @@ class DashboardProxyNginx:
         return (
             "        location = /api/update {\n"
             f"{auth}"
-            f"{self._proxy_pass(app_port, read_timeout=_UPDATE_PROXY_TIMEOUT)}"
+            f"{self._proxy_pass(app_port, read_timeout=UPDATE_PROXY_TIMEOUT)}"
             "        }\n"
         )
 

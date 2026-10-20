@@ -7,6 +7,9 @@ import os
 from typing import Optional
 
 from raft.core.core.errors.cta import OperatorError
+from raft.core.lifecycle.dashboard.update_proxy_timeout import (
+    UPDATE_PROXY_TIMEOUT_SECONDS,
+)
 from raft.core.platform.adapters.shell import Shell
 from .install_cmd import DEFAULT_HOST_UPDATE_IMAGE, InstallCmd
 
@@ -14,7 +17,7 @@ _HOST_HOME_ENV = "RAFT_HOST_HOME"
 _HOST_UID_ENV = "RAFT_HOST_UID"
 _HOST_GID_ENV = "RAFT_HOST_GID"
 _IMAGE_ENV = "RAFT_HOST_UPDATE_IMAGE"
-_TIMEOUT_SECONDS = 600.0
+_TIMEOUT_SECONDS = float(UPDATE_PROXY_TIMEOUT_SECONDS)
 logger = logging.getLogger(__name__)
 
 
