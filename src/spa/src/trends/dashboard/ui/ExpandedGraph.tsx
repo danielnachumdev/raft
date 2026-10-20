@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Modal } from "../../../chrome/Modal";
 import { exportGraphCsv, exportGraphPng } from "../../export/index.ts";
 import { graphTitle, type TrendsGraphConfig } from "../model/index.ts";
+import { GraphExportMenu } from "./GraphExportMenu";
 import { TrendsGraph } from "./TrendsGraph";
 import type { DashboardMetrics } from "./useDashboardMetrics";
 
@@ -48,27 +49,16 @@ export function ExpandedGraph(props: {
           <span className="muted trends-expanded-pos">
             {index + 1} of {props.panels.length} · ←/→ to browse
           </span>
-          <button
-            type="button"
-            className="action-btn"
-            id="trends-export-csv"
+          <GraphExportMenu
+            appearance="text"
             disabled={!panel}
-            onClick={() => panel && exportGraphCsv(panel, props.data)}
-          >
-            Export CSV
-          </button>
+            onCsv={() => panel && exportGraphCsv(panel, props.data)}
+            onPng={() => void onPng()}
+            pngBusy={pngBusy}
+          />
           <button
             type="button"
-            className="action-btn"
-            id="trends-export-png"
-            disabled={!panel || pngBusy}
-            onClick={() => void onPng()}
-          >
-            {pngBusy ? "Exporting…" : "Export PNG"}
-          </button>
-          <button
-            type="button"
-            className="action-btn"
+            className="btn"
             disabled={index <= 0}
             onClick={() => step(-1)}
           >
@@ -76,7 +66,7 @@ export function ExpandedGraph(props: {
           </button>
           <button
             type="button"
-            className="action-btn"
+            className="btn"
             disabled={index >= props.panels.length - 1}
             onClick={() => step(1)}
           >
@@ -85,7 +75,7 @@ export function ExpandedGraph(props: {
           {props.onEdit ? (
             <button
               type="button"
-              className="action-btn"
+              className="btn"
               onClick={() => panel && props.onEdit?.(panel.id)}
             >
               Edit…

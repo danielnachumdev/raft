@@ -1,6 +1,7 @@
 import { gridCellClass } from "../../../dashboard-kit/model/layout.ts";
 import { exportGraphCsv } from "../../export/index.ts";
 import type { TrendsGraphConfig } from "../model/index.ts";
+import { GraphExportMenu } from "./GraphExportMenu";
 import { MenuButton, type MenuItem } from "./MenuButton";
 import { TrendsGraph } from "./TrendsGraph";
 import type { GraphDrag } from "./useGraphDrag";
@@ -50,11 +51,17 @@ export function GraphCell(props: {
           </span>
         }
         actions={
-          <MenuButton
-            label="Graph options"
-            className="trends-graph-menu"
-            items={graphMenu(panel, props.index, props.count, actions, props.data)}
-          />
+          <div className="trends-graph-actions">
+            <GraphExportMenu
+              appearance="icon"
+              onCsv={() => exportGraphCsv(panel, props.data)}
+            />
+            <MenuButton
+              label="Graph options"
+              className="trends-graph-menu"
+              items={graphMenu(panel, props.index, props.count, actions)}
+            />
+          </div>
         }
       />
     </div>
@@ -66,16 +73,10 @@ function graphMenu(
   index: number,
   count: number,
   a: GraphActions,
-  data: DashboardMetrics,
 ): MenuItem[] {
   const id = panel.id;
   return [
     { id: "expand", label: "Expand", onSelect: () => a.expand(id) },
-    {
-      id: "csv",
-      label: "Export CSV",
-      onSelect: () => exportGraphCsv(panel, data),
-    },
     { id: "edit", label: "Edit…", onSelect: () => a.edit(id) },
     { id: "duplicate", label: "Duplicate", onSelect: () => a.duplicate(id) },
     {

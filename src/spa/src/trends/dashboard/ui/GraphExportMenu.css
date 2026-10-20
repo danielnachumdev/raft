@@ -1,0 +1,43 @@
+.graph-export-menu.is-text .menu-button-trigger {
+  min-width: auto;
+  height: auto;
+  min-height: var(--control-height);
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 0.88rem;
+  gap: 0.35rem;
+}
+
+.graph-export-menu.is-text .menu-button-trigger:hover,
+.graph-export-menu.is-text .menu-button-trigger[aria-expanded="true"] {
+  border-color: var(--accent);
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.graph-export-chevron {
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1;
+}
+
+.graph-export-arrow {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.trends-graph-actions {
+  display: inline-flex;
+  align-items: flex-start;
+  flex: 0 0 auto;
+  gap: 0.1rem;
+  margin: -0.2rem -0.3rem 0 0;
+}
+
+.trends-graph-actions .trends-graph-menu,
+.trends-graph-actions .graph-export-menu {
+  margin: 0;
+}
