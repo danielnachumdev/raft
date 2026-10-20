@@ -104,7 +104,7 @@ metadata:
 spec:
   publicHost: ${RAFT_APP_HOST:-web.test}
   source: local
-  path: apps/${RAFT_APP_NAME}
+  path: services/${RAFT_APP_NAME}
   ref: main
   ports:
     - name: http
@@ -122,7 +122,7 @@ metadata:
 spec:
   publicHost: web.test
   source: local
-  path: apps/x
+  path: services/x/checkout
   ref: main
   ports:
     - name: http
@@ -139,7 +139,7 @@ metadata:
 spec:
   publicHost: git.test
   source: git
-  path: apps/${APP_NAME}
+  path: services/${APP_NAME}
   ports:
     - name: http
       containerPort: 80
@@ -155,7 +155,7 @@ metadata:
 spec:
   publicHost: git.test
   source: git
-  path: apps/x
+  path: services/x/checkout
   ports:
     - name: http
       containerPort: 80
@@ -173,7 +173,7 @@ spec:
   source: docker
   image: redis
   ref: alpine
-  path: apps/${RAFT_APP_NAME}
+  path: services/${RAFT_APP_NAME}
   envFile: ${CI_ENV_FILE}
   env:
     DATABASE_URL: ${CI_DATABASE_URL}

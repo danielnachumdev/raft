@@ -1,7 +1,9 @@
-"""Per-App secret layout under ``~/.raft/secrets/<app>/``."""
+"""Per-App secret layout under ``~/.raft/services/<app>/secrets/``."""
 
 import os
 from pathlib import Path
+
+from raft.core.core.config.paths.service_paths import ServicePaths
 
 SECRETS_DIRNAME = "secrets"
 ENV_FILENAME = "env"
@@ -20,22 +22,21 @@ class AppSecretsLayout:
         self._home = home
 
     def root(self) -> Path:
-        return self._home / SECRETS_DIRNAME
+        """Parent of per-app secret dirs — ``services/`` (not a shared secrets tree)."""
+        return self._home / "services"
 
     def app_dir(self, app_name: str) -> Path:
-        return self.root() / app_name
+        return ServicePaths(self._home, app_name).secrets()
 
     def env_file(self, app_name: str) -> Path:
-        return self.app_dir(app_name) / ENV_FILENAME
+        return ServicePaths(self._home, app_name).secrets_env()
 
     def ensure_root(self) -> Path:
         path = self.root()
         path.mkdir(parents=True, exist_ok=True)
-        os.chmod(path, APP_DIR_MODE)
         return path
 
     def ensure_app_dir(self, app_name: str) -> Path:
-        self.ensure_root()
         path = self.app_dir(app_name)
         path.mkdir(parents=True, exist_ok=True)
         os.chmod(path, APP_DIR_MODE)

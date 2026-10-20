@@ -6,7 +6,7 @@ from typing import Optional
 
 from raft.core.core.config.paths import GENERATED_DIRNAME
 
-ROUTER_NGINX_RELOAD_STAMP = Path("state") / "router-nginx.fingerprint"
+ROUTER_NGINX_RELOAD_STAMP = Path("host") / "router-nginx.fingerprint"
 
 
 class RouterNginxStamp:

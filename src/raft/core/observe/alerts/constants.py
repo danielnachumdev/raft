@@ -6,7 +6,7 @@ KIND_ALERT_FIRING = "alert.firing"
 KIND_ALERT_RESOLVED = "alert.resolved"
 KIND_ALERT_TEST = "alert.test"
 
-ALERTS_STATE_DIR = Path("state") / "alerts"
+ALERTS_STATE_DIR = Path("host") / "alerts"
 RULES_NAME = "rules.yaml"
 RUNTIME_NAME = "runtime.json"
 

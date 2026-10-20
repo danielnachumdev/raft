@@ -54,7 +54,7 @@ for name, (group, host, port, deps) in APPS.items():
         lines += ["  ports:", "    - name: main", f"      containerPort: {port}", f"      expose: {expose}"]
     if name == "demo-docs":
         lines += ["  scaling:", "    idleSeconds: 300", "    minUpSeconds: 60"]
-    write(f"state/apps/{name}.yaml", "\n".join(lines) + "\n")
+    write(f"services/{name}.yaml", "\n".join(lines) + "\n")
 
 write(
     "settings.yaml",
@@ -109,7 +109,7 @@ acl:
 )
 
 write(
-    "state/firewall/rules.yaml",
+    "host/firewall/rules.yaml",
     """version: 1
 rules:
   - {id: r1, cidr: 192.0.2.0/24, port: any, protocol: tcp, service: any, action: permit}
@@ -120,7 +120,7 @@ rules:
 )
 
 write(
-    "state/alerts/rules.yaml",
+    "host/alerts/rules.yaml",
     """version: 1
 rules:
   - id: demo-api-5xx-rate
@@ -174,7 +174,7 @@ for i, (mins, kind, svc, summary, meta) in enumerate(events):
     if meta:
         row["metadata"] = meta
     ops.append(json.dumps(row))
-write("state/events/ops.jsonl", "\n".join(ops) + "\n")
+write("host/events/ops.jsonl", "\n".join(ops) + "\n")
 
 # --- metrics ------------------------------------------------------------
 step = timedelta(seconds=30)
@@ -231,11 +231,11 @@ for i in range(n):
     http.append({"ts": ts, "rps": round(total, 2), "requests": int(total * 30), "in_flight": 3 + int(10 * inc),
                  "active_connections": 24, "duration_ms": {"avg": 60, "p50": 40, "p95": 180, "p99": 300},
                  "status_class": {"2xx": int(total * 28), "3xx": 3, "4xx": 12, "5xx": int(40 * inc)}, "by_service": by})
-write("state/metrics/resources.jsonl", "".join(json.dumps(r) + "\n" for r in res))
-write("state/metrics/http.jsonl", "".join(json.dumps(r) + "\n" for r in http))
+write("host/metrics/resources.jsonl", "".join(json.dumps(r) + "\n" for r in res))
+write("host/metrics/http.jsonl", "".join(json.dumps(r) + "\n" for r in http))
 
 # --- scale-to-zero marker (demo-docs idle) --------------------------------
-write("state/scaling/demo-docs.json", json.dumps({"scaledToZero": True}) + "\n")
+write("host/scaling/demo-docs.json", json.dumps({"scaledToZero": True}) + "\n")
 
 # --- gate access log ----------------------------------------------------
 paths = ["/", "/api/orders", "/api/orders/42", "/api/cart", "/health", "/api/login", "/static/app.js"]
@@ -258,5 +258,5 @@ for k in range(12):
         f"{t.strftime('%Y-%m-%dT%H:%M:%S+00:00')} GET /guide/{k} 192.0.2.10 "
         f"\"Mozilla/5.0 (demo)\""
     )
-write("state/metrics/gate-http/access.log", "\n".join(lines) + "\n")
+write("host/metrics/gate-http/access.log", "\n".join(lines) + "\n")
 print("demo home at", home)

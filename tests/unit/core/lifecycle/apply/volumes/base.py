@@ -16,7 +16,7 @@ class VolumesTestCase(RaftTestCase):
             "spec": {
                 "source": "docker",
                 "image": "redis",
-                "path": f"apps/{name}",
+                "path": f"services/{name}/checkout",
                 "ports": [
                     {
                         "name": "redis",

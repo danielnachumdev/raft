@@ -11,7 +11,7 @@ When client IP accuracy on mail-like ports matters, prefer [`../host-published-p
 
 ## Settings
 
-Add the stream listener in `~/.raft/settings.yaml`, then recreate the gate:
+Add the stream listener in `~/.raft/host/settings.yaml`, then recreate the gate:
 
 ```yaml
 edge:

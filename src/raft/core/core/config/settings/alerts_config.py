@@ -10,7 +10,7 @@ MIN_ALERTS_INTERVAL_SECONDS = 15.0
 
 @dataclass(frozen=True)
 class AlertsConfig:
-    """Controller alert evaluation schedule (rules live under state/alerts/)."""
+    """Controller alert evaluation schedule (rules live under host/alerts/)."""
 
     enabled: bool = DEFAULT_ALERTS_ENABLED
     interval_seconds: float = DEFAULT_ALERTS_INTERVAL_SECONDS

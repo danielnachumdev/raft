@@ -40,7 +40,7 @@ class TestMetricsEdges(RaftTestCase):
     def test_reverse_read_without_trailing_newline(self) -> None:
         home = self.tmp_path / "raft"
         path = home / METRICS_DIR / METRICS_FILENAME
-        path.parent.mkdir(parents=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         now = datetime(2026, 10, 2, 12, 0, tzinfo=timezone.utc)
         row = {"ts": now.isoformat(), "host": {"cpus": 1}, "containers": []}
         path.write_bytes(json.dumps(row).encode("utf-8"))  # no trailing \n
@@ -151,7 +151,7 @@ class TestMetricsEdges(RaftTestCase):
     def test_empty_jsonl_file(self) -> None:
         home = self.tmp_path / "raft"
         path = home / METRICS_DIR / METRICS_FILENAME
-        path.parent.mkdir(parents=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("", encoding="utf-8")
         assert MetricsJsonlReader(path).samples_in_window(
             from_ts=datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -174,7 +174,7 @@ class TestMetricsEdges(RaftTestCase):
         home = self.tmp_path / "raft"
         now = datetime(2026, 10, 2, 12, 0, tzinfo=timezone.utc)
         path = home / METRICS_DIR / METRICS_FILENAME
-        path.parent.mkdir(parents=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
             json.dumps(
                 {

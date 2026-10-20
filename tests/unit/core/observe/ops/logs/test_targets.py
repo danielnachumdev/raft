@@ -47,7 +47,7 @@ class TestLogsTargets(RaftTestCase):
         assert "app" in str(exc.value)
 
     def test_known_labels_include_dashboard_when_enabled(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "dashboard: {enabled: true}\n", encoding="utf-8"
         )
         stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("app"),))

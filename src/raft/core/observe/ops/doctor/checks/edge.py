@@ -28,7 +28,7 @@ class EdgeChecks:
                     "edge",
                     "warn",
                     "no edge listeners declared in settings.yaml",
-                    fix="set edge.http / edge.https / edge.streams in ~/.raft/settings.yaml",
+                    fix="set edge.http / edge.https / edge.streams in ~/.raft/host/settings.yaml",
                 )
             ]
         gate_up = self._gate_is_up(ctx)

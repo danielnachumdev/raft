@@ -13,7 +13,7 @@ MAX_LIMIT = 1000
 
 
 class OpsEventsService:
-    """Read window over ``~/.raft/state/events/ops.jsonl`` (+ sealed archives)."""
+    """Read window over ``~/.raft/host/events/ops.jsonl`` (+ sealed archives)."""
 
     def __init__(
         self, home: Path, *, store: Optional[OpsEventStore] = None

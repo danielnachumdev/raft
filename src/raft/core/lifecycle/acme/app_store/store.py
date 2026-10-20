@@ -72,6 +72,7 @@ class AcmeAppStore:
     def _save_unlocked(self, app_name: str, state: AcmeAppState) -> None:
         self._paths.ensure_dirs()
         path = self._paths.app_state(app_name)
+        path.parent.mkdir(parents=True, exist_ok=True)
         text = json.dumps(state.to_mapping(), indent=2, sort_keys=True) + "\n"
         self._atomic_write(path, text)
 

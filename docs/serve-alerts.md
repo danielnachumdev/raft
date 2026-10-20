@@ -14,9 +14,9 @@ alert business logic lives in FastAPI handlers. Shipped with [#236](https://gith
 
 | Path | Role |
 |------|------|
-| `~/.raft/state/alerts/rules.yaml` | Desired rules document (versioned) |
+| `~/.raft/host/alerts/rules.yaml` | Desired rules document (versioned) |
 | `~/.raft/state/alerts/runtime.json` | Controller-owned firing / pending / cool-down state |
-| `~/.raft/settings.yaml` `alerts:` | Master switch + evaluation interval only |
+| `~/.raft/host/settings.yaml` `alerts:` | Master switch + evaluation interval only |
 
 ## Settings
 

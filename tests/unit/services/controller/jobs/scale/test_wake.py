@@ -184,7 +184,7 @@ class TestScalerWake(ScalerTestCase):
 
     def test_load_spec_errors(self, tmp_path: Path) -> None:
         scaler, _ = self.scaler(tmp_path)
-        path = scaler.home / "state" / "apps" / "web.yaml"
+        path = scaler.home / "services" / "web" / "app.yaml"
         path.write_text("not: yaml: [[", encoding="utf-8")
         assert scaler._load_spec(self.APP) is None
 

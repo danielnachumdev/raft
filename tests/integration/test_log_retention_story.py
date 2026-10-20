@@ -31,7 +31,7 @@ class TestLogRetentionFromSettings:
         home = isolated_raft_env
         monkeypatch.delenv("RAFT_LOG_DIR", raising=False)
         RaftHomeFixtures.prepare(home)
-        YamlDoc(home / "settings.yaml").merge_root(
+        YamlDoc(home / "host" / "settings.yaml").merge_root(
             "logging",
             {
                 "level": "INFO",

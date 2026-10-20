@@ -1,4 +1,4 @@
-"""Multi-account GitHub ledger under ``state/serve/`` (mode 0600)."""
+"""Multi-account GitHub ledger under ``host/serve/`` (mode 0600)."""
 
 import json
 import os
@@ -11,7 +11,7 @@ from .account import GithubAccount
 from .pending import GithubPendingOauth
 
 ACCOUNTS_FILENAME = "github-accounts.json"
-SESSION_DIR = Path("state") / "serve"
+SESSION_DIR = Path("host") / "serve"
 LEDGER_VERSION = 1
 
 

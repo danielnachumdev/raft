@@ -6,7 +6,7 @@ Canonical path in a service repo: **`.raft/app.yaml`**. Shape: `apiVersion: raft
 
 ## Name ownership (source identity)
 
-`metadata.name` keys `~/.raft/state/apps/<name>.yaml`. Re-applying the **same** source updates that entry (normal CI / redeploy). Applying a **different** source under the same name is rejected with an `OperatorError` Fix CTA — no silent overwrite.
+`metadata.name` keys `~/.raft/services/*/<name>.yaml`. Re-applying the **same** source updates that entry (normal CI / redeploy). Applying a **different** source under the same name is rejected with an `OperatorError` Fix CTA — no silent overwrite.
 
 | `spec.source` | Identity key (durable; not checkout paths alone) |
 |---------------|--------------------------------------------------|
@@ -61,13 +61,13 @@ spec:
 |------|------|-----------------|
 | `tls: off` | HTTP only (or TLS terminated elsewhere) | None |
 | `tls: acme` | Browser hits the VPS on :443 (direct HTTPS) | DNS A/AAAA for `publicHost` + each `extraHosts` entry → VPS; TCP **80** and **443** open; set `acme.email` in settings; apply. **Do not paste PEMs.** |
-| `tls: origin` | Upstream proxy (e.g. Cloudflare) presents the browser cert; gate uses Origin PEMs | Install `~/.raft/certs/<name>/origin.{pem,key}` **before** deploy |
+| `tls: origin` | Upstream proxy (e.g. Cloudflare) presents the browser cert; gate uses Origin PEMs | Install `~/.raft/services/*/certs/<name>/origin.{pem,key}` **before** deploy |
 
 ### `tls: acme` checklist
 
 1. Point DNS A/AAAA for `publicHost` (and every `extraHosts` name) at the VPS.
 2. Keep `edge.http` (default 80) and `edge.https` (default 443) published — HTTP-01 is answered by the **gate**, not the App (works while scale-to-zero).
-3. Set `acme.email` in `~/.raft/settings.yaml` (see [`examples/settings.yaml`](../examples/settings.yaml)). Production directory is the default; use the Let's Encrypt **staging** URL for labs.
+3. Set `acme.email` in `~/.raft/host/settings.yaml` (see [`examples/settings.yaml`](../examples/settings.yaml)). Production directory is the default; use the Let's Encrypt **staging** URL for labs.
 4. `raft apply …` (deploy on). Issuance is best-effort after the gate is up — apply does **not** fail if ACME is slow/down; check `raft doctor` / `raft doctor <name>`.
 5. Renewal is the always-on controller (`acme:<name>` jobs). Gate reloads nginx only — never `raft gate recreate` for cert rotation.
 
@@ -115,7 +115,7 @@ In `expr`: quoted strings or `${VAR}` / `${VAR:-default}` only; `==` / `!=`; `&&
 | Mechanism | When it runs | What it is for |
 |-----------|--------------|----------------|
 | `--env` / `--env-file` on `apply` | Preprocess (manifest text) | Non-secret stage flags, optional blocks, filling placeholders in the YAML itself |
-| `spec.envFile` | Compose `env_file` for the App container | **Runtime secrets/config** — prefer `~/.raft/secrets/<app>/env` (mode `0600`) |
+| `spec.envFile` | Compose `env_file` for the App container | **Runtime secrets/config** — prefer `~/.raft/services/<app>/secrets/env` (mode `0600`) |
 | `spec.env` | Compose `environment` | Non-secret overrides; do **not** bake DB passwords into registry YAML |
 
 Recommended host path (see [`secrets.md`](secrets.md)):

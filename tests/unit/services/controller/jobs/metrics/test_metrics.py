@@ -1,4 +1,4 @@
-"""Batched metrics recorder (controller → state/metrics JSONL)."""
+"""Batched metrics recorder (controller → host/metrics JSONL)."""
 
 import json
 from datetime import datetime

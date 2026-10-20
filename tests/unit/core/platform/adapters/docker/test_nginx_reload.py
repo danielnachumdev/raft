@@ -88,7 +88,7 @@ class TestDockerNginxReload(DockerTestCase):
     def test_reload_gate_nginx_captures_cert_failure(self) -> None:
         self.shell.compose.return_value = self.ok(
             returncode=1,
-            stderr='cannot load certificate "/etc/nginx/certs/web/origin.pem"',
+            stderr='cannot load certificate "/etc/nginx/services/web/certs/origin.pem"',
         )
         with pytest.raises(RuntimeError, match="could not load Origin TLS certificates"):
             self.docker.reload_gate_nginx()
@@ -96,7 +96,7 @@ class TestDockerNginxReload(DockerTestCase):
     def test_reload_gate_nginx_captures_acme_cert_failure(self) -> None:
         self.shell.compose.return_value = self.ok(
             returncode=1,
-            stderr='cannot load certificate "/etc/nginx/certs/web/acme.pem"',
+            stderr='cannot load certificate "/etc/nginx/services/web/certs/acme.pem"',
         )
         with pytest.raises(RuntimeError, match="ACME TLS certificates"):
             self.docker.reload_gate_nginx()
@@ -104,7 +104,7 @@ class TestDockerNginxReload(DockerTestCase):
     def test_reload_gate_nginx_lists_missing_acme_certs(self) -> None:
         self.shell.compose.return_value = self.ok(
             returncode=1,
-            stderr='cannot load certificate "/etc/nginx/certs/web/acme.pem"',
+            stderr='cannot load certificate "/etc/nginx/services/web/certs/acme.pem"',
         )
         with pytest.raises(RuntimeError, match="ACME TLS certificates"):
             self.docker.reload_gate_nginx()
@@ -112,7 +112,7 @@ class TestDockerNginxReload(DockerTestCase):
     def test_reload_gate_nginx_lists_missing_certs(self) -> None:
         self.shell.compose.return_value = self.ok(
             returncode=1,
-            stderr='cannot load certificate "/etc/nginx/certs/web/origin.pem"',
+            stderr='cannot load certificate "/etc/nginx/services/web/certs/origin.pem"',
         )
         with pytest.raises(RuntimeError, match="Origin TLS certificates"):
             self.docker.reload_gate_nginx()

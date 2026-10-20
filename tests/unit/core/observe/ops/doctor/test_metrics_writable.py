@@ -49,7 +49,7 @@ class TestMetricsWritable(DoctorTestCase):
         )
 
     def _seed_metrics_file(self) -> Path:
-        path = self.tmp_path / "state" / "metrics" / "resources.jsonl"
+        path = self.tmp_path / "host" / "metrics" / "resources.jsonl"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("{}\n", encoding="utf-8")
         return path

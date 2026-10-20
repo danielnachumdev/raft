@@ -92,8 +92,8 @@ class TestLastGaps(RaftTestCase):
 
     def test_status_skip_ok_instance(self) -> None:
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True)
-        (home / "settings.yaml").write_text(
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
+        (home / "host" / "settings.yaml").write_text(
             "alerts: {enabled: true, intervalSeconds: 60}\n"
             "notifications: {enabled: true, channels: []}\n",
             encoding="utf-8",

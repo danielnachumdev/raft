@@ -50,8 +50,8 @@ class TestScalingRender(RaftTestCase):
     def test_custom_holding_page_copied_and_aliased(self) -> None:
         scaling = {**_SCALING, "holdingPage": ".raft/holding.html"}
         AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", extra={"scaling": scaling})
-        page = self.tmp_path / "apps" / "web" / ".raft" / "holding.html"
-        page.parent.mkdir(parents=True)
+        page = self.tmp_path / "services" / "web" / "checkout" / ".raft" / "holding.html"
+        page.parent.mkdir(parents=True, exist_ok=True)
         page.write_text(_CUSTOM_HOLDING, encoding="utf-8")
         gen = self.render_applied(edge=_EDGE)
         dest = gen / "nginx/gate-http/holding/web.html"
@@ -103,7 +103,7 @@ class TestScalingRender(RaftTestCase):
             tls="origin",
             extra={"scaling": _SCALING},
         )
-        (self.tmp_path / "certs" / "web").mkdir(parents=True)
+        (self.tmp_path / "services" / "web" / "certs").mkdir(parents=True, exist_ok=True)
         gen = self.render_applied(edge=_EDGE)
         FileText.contains(
             gen / "nginx/gate-tls/web.conf",
@@ -115,9 +115,9 @@ class TestScalingRender(RaftTestCase):
         gate = ScalingGate()
         ports = (PortSpec(name="http", container_port=80, expose="http"),)
         spec = AppSpec(ports=ports, scaling=ScalingSpec(1, 1, 1))
-        empty = App(name="x", public_host="", source="local", path="apps/x")
+        empty = App(name="x", public_host="", source="local", path="services/x/checkout")
         assert gate.contribute_http(empty, spec, edge=EdgeConfig(http=80)).gate_http == []
-        hosted = App(name="y", public_host="y.test", source="local", path="apps/y")
+        hosted = App(name="y", public_host="y.test", source="local", path="services/y/checkout")
         assert gate.contribute_http(hosted, spec, edge=EdgeConfig(http=None)).gate_http == []
 
     def test_tls_scaling_requires_https(self) -> None:
@@ -150,8 +150,8 @@ class TestScalingRender(RaftTestCase):
             tls="acme",
             extra={"scaling": _SCALING},
         )
-        d = self.tmp_path / "certs" / "web"
-        d.mkdir(parents=True)
+        d = self.tmp_path / "services" / "web" / "certs"
+        d.mkdir(parents=True, exist_ok=True)
         (d / "acme.pem").write_text("pem\n", encoding="utf-8")
         (d / "acme.key").write_text("key\n", encoding="utf-8")
         gen = self.render_applied(edge=_EDGE)

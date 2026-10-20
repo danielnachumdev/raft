@@ -28,7 +28,7 @@ class TestDoctorComposeSnapshot(DoctorTestCase):
 
     def _ctx_with_batch(self):
         AppliedInventory.write_applied_app(self.tmp_path, "app")
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "edge:\n  http: 80\n  https: null\n  streams: []\n",
             encoding="utf-8",
         )

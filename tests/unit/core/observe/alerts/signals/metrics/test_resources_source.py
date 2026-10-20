@@ -43,7 +43,7 @@ class TestResourcesMetricSource(RaftTestCase):
     def _ctx(self) -> SignalContext:
         home = Path(self.tmp_path)
         path = MetricsPaths(home).resources()
-        path.parent.mkdir(parents=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(_sample()) + "\n", encoding="utf-8")
         return SignalContext(home, NOW, app_names=["demo-api"])
 

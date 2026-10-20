@@ -15,7 +15,7 @@ class TestServiceLogsStoreReader:
     def test_reader_tails_across_sealed_archives(self, tmp_path: Path) -> None:
         store = ServiceLogsStore(tmp_path, max_age_days=30, max_bytes=10_000_000)
         active = store.active_path("demo-api")
-        active.parent.mkdir(parents=True)
+        active.parent.mkdir(parents=True, exist_ok=True)
         sealed = active.parent / "current.log.2026-10-13"
         sealed.write_text("old-a\nold-b\n", encoding="utf-8")
         active.write_text("new-a\nnew-b\nnew-c\n", encoding="utf-8")
@@ -37,7 +37,7 @@ class TestServiceLogsStoreReader:
         )
         payload = "x" * 200
         active = store.active_path("demo-api")
-        active.parent.mkdir(parents=True)
+        active.parent.mkdir(parents=True, exist_ok=True)
         active.write_text(payload, encoding="utf-8")
         now = datetime(2026, 10, 14, 12, 0, 0)
         os.utime(active, (now.timestamp(), now.timestamp()))
@@ -54,7 +54,7 @@ class TestServiceLogsStoreReader:
     def test_reader_file_starting_with_newline(self, tmp_path: Path) -> None:
         store = ServiceLogsStore(tmp_path, max_age_days=14, max_bytes=1024)
         active = store.active_path("demo-api")
-        active.parent.mkdir(parents=True)
+        active.parent.mkdir(parents=True, exist_ok=True)
         # Leading newline leaves an empty remainder after reverse split.
         active.write_text("\nonly\n", encoding="utf-8")
         assert ServiceLogsReader(store).tail("demo-api", lines=5) == "only"

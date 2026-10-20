@@ -23,7 +23,7 @@ class AppMakers:
             name=name,
             public_host=public_host or f"{name}.test",
             source=source,
-            path=path or f"apps/{name}",
+            path=path or f"services/{name}/checkout",
             repo=repo,
             ref=ref,
             image=image,
@@ -44,7 +44,7 @@ class AppMakers:
             name,
             public_host=public_host,
             source="git",
-            path=path or f"apps/{name}",
+            path=path or f"services/{name}/checkout",
             repo=repo,
             ref=ref,
         )

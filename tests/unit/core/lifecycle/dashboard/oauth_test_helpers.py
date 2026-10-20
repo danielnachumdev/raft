@@ -7,7 +7,7 @@ from raft.core.lifecycle.dashboard.oauth_ops import DashboardOAuthOps
 
 def seed_oauth_secrets(home: Path) -> DashboardOAuthOps:
     """Init env + demo client secrets + example.com allowlist identity."""
-    settings = home / "settings.yaml"
+    settings = home / "host" / "settings.yaml"
     if not settings.is_file():
         settings.write_text("{}\n", encoding="utf-8")
     ops = DashboardOAuthOps(home)

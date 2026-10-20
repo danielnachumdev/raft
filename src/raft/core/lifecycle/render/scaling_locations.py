@@ -6,7 +6,8 @@ from .acl.nginx_text import AclNginxText
 from .scaling_holding import ScalingHoldingPages
 
 CONTROLLER_WAKE_UPSTREAM = "http://raft-controller:8090"
-MARKERS_DIR = "/etc/nginx/scaling/markers"
+# Per-app markers live under the services bind mount (#313).
+MARKERS_DIR_TMPL = "/etc/nginx/services/{name}/scaling/markers"
 DEFAULT_HOLDING_ALIAS = "/usr/share/nginx/errors/holding.html"
 DEFAULT_TIMEOUT_ALIAS = "/usr/share/nginx/errors/holding-timeout.html"
 
@@ -15,8 +16,9 @@ class ScalingGateLocations:
     """Compose the location{} tree inside a scaling Host server."""
 
     def render(self, app: App, spec: AppSpec, *, acl_include: str = "") -> str:
-        zero = f"{MARKERS_DIR}/{app.name}.zero"
-        timeout = f"{MARKERS_DIR}/{app.name}.timeout"
+        markers = MARKERS_DIR_TMPL.format(name=app.name)
+        zero = f"{markers}/{app.name}.zero"
+        timeout = f"{markers}/{app.name}.timeout"
         return (
             self._acme_challenge_include()
             + self._live_location(app, zero, timeout, acl_include=acl_include)
@@ -107,7 +109,8 @@ class ScalingGateLocations:
 
     @staticmethod
     def _timeout_diag_location(app: App) -> str:
-        path = f"{MARKERS_DIR}/{app.name}.id"
+        markers = MARKERS_DIR_TMPL.format(name=app.name)
+        path = f"{markers}/{app.name}.id"
         return (
             "    location = /_raft_timeout_diag {\n"
             "        internal;\n"

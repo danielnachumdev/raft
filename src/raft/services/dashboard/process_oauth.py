@@ -53,7 +53,7 @@ class DashboardOAuthProxyProcess:
             raise OperatorError(
                 "dashboard oauth missing env: "
                 + ", ".join(missing)
-                + ".\nFix: fill secrets/dashboard/oauth.env and recreate",
+                + ".\nFix: fill host/secrets/dashboard/oauth.env and recreate",
                 has_fix=False,
             )
 

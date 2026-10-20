@@ -16,6 +16,6 @@ class MissingOriginCerts:
     def fix(self) -> str:
         return (
             f"install Cloudflare Origin PEMs for {self.app_name} at "
-            f"~/.raft/certs/{self.app_name}/origin.pem and origin.key "
+            f"~/.raft/services/*/certs/{self.app_name}/origin.pem and origin.key "
             f"(required for tls: origin; then `raft gate recreate` if needed)"
         )

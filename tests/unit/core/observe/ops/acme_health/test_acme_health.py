@@ -31,7 +31,7 @@ class TestAcmeCertHealth(DoctorTestCase):
         if email is not None:
             text += f"  email: {email}\n"
         text += "  renewDaysBeforeExpiry: 30\n"
-        (self.tmp_path / "settings.yaml").write_text(text, encoding="utf-8")
+        (self.tmp_path / "host" / "settings.yaml").write_text(text, encoding="utf-8")
 
     def test_fails_when_edge_http_null(self) -> None:
         self._write_settings(http=None)
@@ -92,8 +92,8 @@ class TestAcmeCertHealth(DoctorTestCase):
     def test_unreadable_pem_fails(self) -> None:
         self._write_settings()
         AppliedInventory.write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="acme")
-        d = self.tmp_path / "certs" / "shop"
-        d.mkdir(parents=True)
+        d = self.tmp_path / "services" / "shop" / "certs"
+        d.mkdir(parents=True, exist_ok=True)
         (d / "acme.pem").write_text("not-a-cert\n", encoding="utf-8")
         (d / "acme.key").write_text("key\n", encoding="utf-8")
         stack = load_stack(self.tmp_path)
@@ -133,7 +133,7 @@ class TestDoctorAppFilter(DoctorTestCase):
         AppliedInventory.write_applied_app(self.tmp_path, "shop", public_host="shop.test", tls="acme")
         AppliedInventory.write_applied_app(self.tmp_path, "other", public_host="other.test", tls="origin")
         plant_live_acme(self.tmp_path, "shop", ["shop.test"], days=60)
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "edge:\n  http: 80\n  https: 443\nacme:\n  email: ops@example.com\n",
             encoding="utf-8",
         )

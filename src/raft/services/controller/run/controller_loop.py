@@ -91,7 +91,7 @@ class ControllerLoop:
         logs_cfg = self._config.service_logs
         if logs_cfg.enabled:
             logger.info(
-                "service-logs enabled interval=%ss path=state/service-logs/",
+                "service-logs enabled interval=%ss path=services/*/logs/",
                 logs_cfg.interval_seconds,
             )
             return
@@ -101,7 +101,7 @@ class ControllerLoop:
         cfg = self._config.alerts
         if cfg.enabled:
             logger.info(
-                "alerts enabled interval=%ss path=state/alerts/",
+                "alerts enabled interval=%ss path=host/alerts/",
                 cfg.interval_seconds,
             )
             return

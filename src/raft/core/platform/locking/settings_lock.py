@@ -1,4 +1,4 @@
-"""Flock for any writer of ``~/.raft/settings.yaml``."""
+"""Flock for any writer of ``~/.raft/host/settings.yaml``."""
 
 from pathlib import Path
 from typing import Optional

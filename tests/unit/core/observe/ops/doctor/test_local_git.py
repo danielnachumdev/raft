@@ -80,8 +80,8 @@ class TestDoctorLocalGit(DoctorTestCase):
 
     def test_git_auth_test_failure_and_non_git_dir(self) -> None:
         self.seed_compose()
-        dest = self.tmp_path / "apps" / "svc"
-        dest.mkdir(parents=True)
+        dest = self.tmp_path / "services" / "svc" / "checkout"
+        dest.mkdir(parents=True, exist_ok=True)
         (dest / "README").write_text("x", encoding="utf-8")
         self._seed_git_svc_app()
         auth = MagicMock()
@@ -133,8 +133,8 @@ class TestDoctorLocalGit(DoctorTestCase):
 
     def test_git_ok_partial_stack_and_gate_owns_port(self) -> None:
         self.seed_compose()
-        dest = self.tmp_path / "apps" / "svc"
-        dest.mkdir(parents=True)
+        dest = self.tmp_path / "services" / "svc" / "checkout"
+        dest.mkdir(parents=True, exist_ok=True)
         (dest / ".git").mkdir()
         self.write_certs("svc")
         self._seed_git_svc_app()

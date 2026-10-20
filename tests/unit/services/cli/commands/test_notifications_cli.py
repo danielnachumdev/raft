@@ -24,7 +24,7 @@ class TestNotificationsCLI(RaftTestCase):
         seed_webhook: bool = True,
     ) -> NotificationsCLI:
         home = Path(self.tmp_path)
-        (home / "settings.yaml").write_text(
+        (home / "host" / "settings.yaml").write_text(
             "edge: {http: 80, https: null}\n", encoding="utf-8"
         )
         reg = registry if registry is not None else NotificationRegistry()

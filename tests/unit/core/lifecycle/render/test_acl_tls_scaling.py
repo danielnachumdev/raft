@@ -29,7 +29,7 @@ class TestAclTlsScalingRender(RaftTestCase):
         assert "scaling:demo-api" in conf
 
     def test_origin_tls_inlines_firewall(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "edge: {http: 80, https: 443}\n", encoding="utf-8"
         )
         AppliedInventory.write_applied_app(
@@ -48,7 +48,7 @@ class TestAclTlsScalingRender(RaftTestCase):
         assert "proxy_router.inc" not in tls
 
     def test_acme_redirect_skips_plain_firewall_host(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "edge: {http: 80, https: 443}\n"
             "acme: {email: ops@example.com}\n",
             encoding="utf-8",
@@ -64,7 +64,7 @@ class TestAclTlsScalingRender(RaftTestCase):
         assert "http-generated/firewall/demo_api_p80.inc" in listeners
 
     def _write_edge_settings(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "edge: {http: 80, https: 443}\n", encoding="utf-8"
         )
 
@@ -85,8 +85,8 @@ class TestAclTlsScalingRender(RaftTestCase):
         return (gen / "nginx/gate-http/listeners.conf").read_text(encoding="utf-8")
 
     def _write_origin_pems(self) -> None:
-        certs = self.tmp_path / "certs" / "demo-api"
-        certs.mkdir(parents=True)
+        certs = self.tmp_path / "services" / "demo-api" / "certs"
+        certs.mkdir(parents=True, exist_ok=True)
         (certs / "origin.pem").write_text("pem", encoding="utf-8")
         (certs / "origin.key").write_text("key", encoding="utf-8")
 

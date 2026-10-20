@@ -19,7 +19,7 @@ class MissingAcmeCerts:
         return (
             f"point DNS A/AAAA for {self.app_name} publicHost (+ extraHosts) at this host; "
             f"keep edge.http (:80) and edge.https (:443) published; set acme.email in "
-            f"~/.raft/settings.yaml; then re-apply so ACME can issue "
-            f"~/.raft/certs/{self.app_name}/acme.pem and acme.key "
+            f"~/.raft/host/settings.yaml; then re-apply so ACME can issue "
+            f"~/.raft/services/*/certs/{self.app_name}/acme.pem and acme.key "
             f"(do not paste Origin PEMs for tls: acme)"
         )

@@ -29,8 +29,8 @@ RULE = {
 class TestServeAlertsApiMore(RaftTestCase):
     def _setup(self):
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True, exist_ok=True)
-        (home / "settings.yaml").write_text(
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
+        (home / "host" / "settings.yaml").write_text(
             "notifications: {enabled: true, channels: []}\n", encoding="utf-8"
         )
         api = ServeAlertsApi(Stack(root=home, apps=()))

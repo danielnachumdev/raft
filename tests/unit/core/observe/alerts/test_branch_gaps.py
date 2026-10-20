@@ -56,7 +56,7 @@ class TestBranchGaps(RaftTestCase):
 
     def test_rules_service_no_channel_check(self) -> None:
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True)
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
         svc = AlertRulesService(home)
         svc.create(RULE)
         svc.replace("demo-api-5xx-rate", RULE)
@@ -93,11 +93,11 @@ class TestBranchGaps(RaftTestCase):
 
     def _alerts_home(self) -> Path:
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True)
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
         return home
 
     def _write_settings(self, home: Path) -> None:
-        (home / "settings.yaml").write_text(_SETTINGS, encoding="utf-8")
+        (home / "host" / "settings.yaml").write_text(_SETTINGS, encoding="utf-8")
 
     def _assert_action_filter(self, home: Path, now: datetime) -> None:
         ctx = SignalContext(home, now, app_names=["demo-api"])

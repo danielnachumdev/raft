@@ -7,7 +7,7 @@ from typing import Optional
 from raft.core.core.config.paths import GENERATED_DIRNAME
 
 _GATE_NGINX_SUBDIRS = ("gate-tls", "gate-http", "gate-stream")
-GATE_NGINX_RELOAD_STAMP = Path("state") / "gate-nginx.fingerprint"
+GATE_NGINX_RELOAD_STAMP = Path("host") / "gate-nginx.fingerprint"
 
 
 class GateNginxStamp:

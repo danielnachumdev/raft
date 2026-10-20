@@ -108,7 +108,7 @@ class TestDoctorProbes(DoctorTestCase):
         assert PublicHostChecks._readiness_path(ctx, ctx.stack.app("app")) == "/ready"
 
     def test_readiness_path_fallbacks(self) -> None:
-        app = App(name="app", public_host="app.test", source="local", path="apps/app")
+        app = App(name="app", public_host="app.test", source="local", path="services/app/checkout")
         broken = MagicMock()
         broken.spec_for.side_effect = RuntimeError("gone")
         assert PublicHostChecks._readiness_path(self._ctx(broken), app) == "/"
@@ -125,7 +125,7 @@ class TestDoctorProbes(DoctorTestCase):
         )
 
     def test_public_host_probe_skips_blank_host(self) -> None:
-        app = App(name="internal", public_host="", source="local", path="apps/internal")
+        app = App(name="internal", public_host="", source="local", path="services/internal/checkout")
         ctx = DoctorContext(
             stack=StackMakers.make_stack(self.tmp_path, (app,)),
             shell=MagicMock(),
@@ -167,8 +167,8 @@ class TestDoctorProbes(DoctorTestCase):
                 "readiness": {"type": "none"},
             },
         )
-        (self.tmp_path / "apps" / "web").mkdir(parents=True, exist_ok=True)
-        (self.tmp_path / "apps" / "mail").mkdir(parents=True, exist_ok=True)
+        (self.tmp_path / "services" / "web").mkdir(parents=True, exist_ok=True)
+        (self.tmp_path / "services" / "mail").mkdir(parents=True, exist_ok=True)
 
     def _assert_spec_missing(self, ctx: DoctorContext) -> None:
         def raise_missing(_self, _app):

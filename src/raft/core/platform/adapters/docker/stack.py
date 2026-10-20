@@ -69,7 +69,7 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
             self.sh,
             ("up", "-d", "--no-deps", "--force-recreate", self.stack.gate),
             action="recreate gate",
-            hint="after edge port changes in ~/.raft/settings.yaml",
+            hint="after edge port changes in ~/.raft/host/settings.yaml",
             stream=True,
         )
 

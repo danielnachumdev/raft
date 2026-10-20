@@ -35,21 +35,21 @@ gate → router → apps
 
 - **Stream** / **host** / **workers** do not use Host→router the same way (stream: gate→app; host: app publishes; workers: no ports). Do not invent dummy ports for workers.
 - **No middle `raft-firewall` hop.** Edge firewall is **policy-on-gate** (design lock #208 / epic #207). A dedicated hop was explicitly rejected.
-- Cutover reloads **router**. Render reloads **gate** when `state/gate-nginx.fingerprint` ≠ on-disk generated gate fragments and gate is running; reloads **router** when `state/router-nginx.fingerprint` ≠ on-disk `router/hosts.conf` + `upstreams/*` and router is running.
+- Cutover reloads **router**. Render reloads **gate** when `host/gate-nginx.fingerprint` ≠ on-disk generated gate fragments and gate is running; reloads **router** when `host/router-nginx.fingerprint` ≠ on-disk `router/hosts.conf` + `upstreams/*` and router is running.
 - Firewall / TLS fragment changes: **render + nginx reload**, never gate container restart for policy-only edits.
 
 ### Locks (correctness, not optional)
 
-Overlapping apply/redeploy/render tears tmp names, upstreams, and `generated/`. Serialize under `~/.raft/state/locks/`:
+Overlapping apply/redeploy/render tears tmp names, upstreams, and `generated/`. Serialize under `~/.raft/host/locks/`:
 
 | Lock | Held by | Guarantees |
 |------|---------|------------|
 | `app-<name>.lock` | apply, redeploy / `ensure_app_deployed`, delete app | One mutative pipeline per app; later waiter wins after wait |
 | `stack.lock` | render, sync, cutover, compose up/recreate, gate recreate, up/down, purge | No torn `generated/` / mid-cutover upstream reset |
 | `acl.lock` | serve firewall writes (before render/reload) | Firewall persist does not race another firewall writer |
-| `alerts.lock` | CLI/serve writes to `state/alerts/rules.yaml` | Alert rules document writers do not tear each other |
-| `settings.lock` | full settings document, notification channels, github OAuth settings writers | No torn `settings.yaml` |
-| `dashboard.lock` | CLI writes to `settings.yaml` `dashboard:` | Dashboard settings writers do not tear each other |
+| `alerts.lock` | CLI/serve writes to `host/alerts/rules.yaml` | Alert rules document writers do not tear each other |
+| `settings.lock` | full settings document, notification channels, github OAuth settings writers | No torn `host/settings.yaml` |
+| `dashboard.lock` | CLI writes to `host/settings.yaml` `dashboard:` | Dashboard settings writers do not tear each other |
 
 Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**). Nesting in-process re-enters. `doctor` / `status` do not take these locks.
 
@@ -61,9 +61,9 @@ Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**). Nesting in-process re-
 2. **Gate recreate ≠ reload:** published `edge:` ports → `raft gate recreate` (brief downtime). Everything else gate-related that only changes generated nginx → **reload**.
 3. **Packaged templates path:** product share lives at `src/raft/core/platform/share/`. `[tool.setuptools.package-data]` **must** list `core/platform/share/**` (not legacy `raft/share/`). Wrong globs → wheels without `compose.yaml` → every CLI command dies (including `raft update`). Meta guard: `tests/meta/test_package_data.py`. Recovery on a broken host: `curl …/install.sh | bash` (update cannot self-heal if stack load fails).
 4. **Console entry:** `raft` → `raft.services.cli.__main__:main`. Also `python -m raft.services.serve` / controller `__main__` where present.
-5. **Registry load is lenient; apply write is strict:** invalid `state/apps/*.yaml` skipped at load (`registry_issues`); apply still rejects bad manifests.
+5. **Registry load is lenient; apply write is strict:** invalid `services/<name>/app.yaml` skipped at load (`registry_issues`); apply still rejects bad manifests.
 6. **Name vs source:** `metadata.name` owned by durable source identity (`local`+path, `git`+normalized remote SSH≡HTTPS, `docker`+image; not `ref`). Same → update; different → `OperatorError` (no `--force` — delete then re-apply). Details: [`docs/app-manifest.md`](docs/app-manifest.md).
-7. **ACME failures do not fail deploy:** best-effort HTTP-01; errors under `state/acme/`.
+7. **ACME failures do not fail deploy:** best-effort HTTP-01; errors under `host/acme/` / `services/<name>/acme/`.
 8. **Healing ≠ scaling:** `healing:` in settings; `spec.scaling` is per-App. Healer skips intentional `scaledToZero`.
 9. **Serve binds localhost only** (`127.0.0.1`). Not an edge listener. Mutative serve actions use the same flock rules as CLI; refuse gate redeploy where CLI refuses.
 10. **SPA poll:** status ~2s while tab visible; `/api/status` reloads registry every call (`refresh_apps=True`).
@@ -97,13 +97,13 @@ Align with the README table; detail for agents:
 | GitHub add-service assist | **Shipped (v1)** | Serve + `raft github …` via `GithubAssistService`; [`docs/serve-github-deploy.md`](docs/serve-github-deploy.md); known gap [#200](https://github.com/danielnachumdev/raft/issues/200) |
 | Notifications channels | **Shipped** | Strategy catalog + channel CRUD + test-send (serve + `raft notifications …`); [`docs/serve-notifications.md`](docs/serve-notifications.md) |
 | Healing | **Shipped** | Settings `healing:`; separate from scaling |
-| Secrets baseline (`~/.raft/secrets/<app>/env`) | **Shipped** | Guidance [`docs/secrets.md`](docs/secrets.md); external materialization epic [#143](https://github.com/danielnachumdev/raft/issues/143) / [#176](https://github.com/danielnachumdev/raft/issues/176) |
-| Past logs when container off | **Shipped** | Retained under `state/service-logs/`; shipper + drain-before-rm; [`docs/serve-logs.md`](docs/serve-logs.md) |
+| Secrets baseline (`~/.raft/services/<app>/secrets/env`) | **Shipped** | Guidance [`docs/secrets.md`](docs/secrets.md); external materialization epic [#143](https://github.com/danielnachumdev/raft/issues/143) / [#176](https://github.com/danielnachumdev/raft/issues/176) |
+| Past logs when container off | **Shipped** | Retained under `services/<name>/logs/` (edge: `host/logs/services/`); shipper + drain-before-rm; [`docs/serve-logs.md`](docs/serve-logs.md) |
 | Trends dashboards (multi-graph) | **Shipped** | [#238](https://github.com/danielnachumdev/raft/issues/238) supersedes #202 named views (migrate removed). Shared range + one fetch per plane fanned out to `TrendsGraph`s; browser-local (`raft-serve-trends-dashboards`); overview embeds the dashboard kit; `src/spa/src/trends/dashboard/`; [`docs/serve-trends.md`](docs/serve-trends.md) |
 | Per-service Trends (default graphs) | **Shipped** | Service inspection uses the same multi-graph UX, pinned to that service; browser-local `raft-serve-service-trends`; `src/spa/src/trends/service/` (kit migration follow-on for [#249](https://github.com/danielnachumdev/raft/issues/249)) |
 | Reusable dashboard kit (Trends shell / embed) | **Shipped (v1)** | [#249](https://github.com/danielnachumdev/raft/issues/249); `src/spa/src/dashboard-kit/`; timeseries panels + embed contract; browser-local persistence; [`docs/serve-dashboard-kit.md`](docs/serve-dashboard-kit.md) |
 | Alert rules engine (metrics/control-plane → notifications) | **Shipped** | [#236](https://github.com/danielnachumdev/raft/issues/236); dual-plane CLI+serve lock [#264](https://github.com/danielnachumdev/raft/issues/264); [`docs/serve-alerts.md`](docs/serve-alerts.md); `AlertRulesService` / engine under `observe/alerts/` |
-| Operator system event timeline | **Shipped** | [#267](https://github.com/danielnachumdev/raft/issues/267); `state/events/ops.jsonl` dual-write with GraphEvents; `raft events` + serve `/events`; [`docs/serve-events.md`](docs/serve-events.md) |
+| Operator system event timeline | **Shipped** | [#267](https://github.com/danielnachumdev/raft/issues/267); `host/events/ops.jsonl` dual-write with GraphEvents; `raft events` + serve `/events`; [`docs/serve-events.md`](docs/serve-events.md) |
 | Firewall-derived alert signals (`edge.denies`) | **Planned** | Observe gate outcomes only; no middle hop (#207) |
 | Always-on Compose dashboard service | **Shipped** | [#36](https://github.com/danielnachumdev/raft/issues/36); `dashboard:` settings + `raft-dashboard` Compose; optional `publicHost` + TLS + auth (`none`/`password`/`oauth`/`external`); OAuth via in-container oauth2-proxy + allowlist; CLI `raft dashboard …` / `oauth …`; [`docs/serve-dashboard.md`](docs/serve-dashboard.md) |
 | Automate SPA bake in CD | **Shipped** | [#41](https://github.com/danielnachumdev/raft/issues/41) — Release wheel + install.sh prefers `.whl`; SPA assets not committed |
@@ -119,21 +119,25 @@ Align with the README table; detail for agents:
 
 ## Data home (roles)
 
+Layout (#313): `host/` (control-plane) + `services/<SERVICE>/` (App-owned) + `generated/` + root `compose.yaml`.
+
 | Path | Role |
 |------|------|
-| `settings.yaml` | logging, edge, healing, metrics, serviceLogs, acme, github, notifications, dashboard, alerts cadence |
-| `state/apps/*.yaml` | Applied App registry |
+| `host/settings.yaml` | logging, edge, healing, metrics, serviceLogs, acme, github, notifications, dashboard, alerts cadence |
+| `services/<name>/app.yaml` | Applied App registry |
 | `generated/` | Compose + nginx (+ `gate-http/firewall/` includes) — **do not hand-edit as source of truth** |
-| `state/locks/` | flock files |
-| `state/firewall/rules.yaml` | Ordered firewall document (#211); always drives render |
-| `state/firewall/dismissed-recommendations.json` | Dismissed baseline firewall suggestions |
-| `state/scaling/`, `state/metrics/`, `state/acme/`, `state/serve/` | Feature state |
-| `state/events/graph.jsonl` | Trends GraphEvents (chart markers) |
-| `state/events/ops.jsonl` | Operator system event timeline (#267) |
-| `state/alerts/rules.yaml`, `state/alerts/runtime.json` | Alert rules (desired) + evaluation runtime |
-| `certs/`, `secrets/`, `apps/`, `deploy/`, `logs/` | TLS material, env files, checkouts, pins, host log |
+| `host/locks/` | flock files |
+| `host/firewall/rules.yaml` | Ordered firewall document (#211); always drives render |
+| `host/firewall/dismissed-recommendations.json` | Dismissed baseline firewall suggestions |
+| `host/metrics/`, `host/acme/`, `host/serve/`, `host/events/` | Shared control-plane state |
+| `host/events/graph.jsonl` | Trends GraphEvents (chart markers) |
+| `host/events/ops.jsonl` | Operator system event timeline (#267) |
+| `host/alerts/rules.yaml`, `host/alerts/runtime.json` | Alert rules (desired) + evaluation runtime |
+| `host/secrets/dashboard/` | Dashboard OAuth material |
+| `host/logs/` | Host raft log + retained edge service stdout |
+| `services/<name>/secrets/`, `certs/`, `checkout/`, `deploy/`, `scaling/`, `logs/`, `acme/` | Per-App durable artifacts |
 
-Product templates sync from `src/raft/core/platform/share/` into the data home on bootstrap/use.
+Product templates sync from `src/raft/core/platform/share/` into the data home on bootstrap/use. Migrate checklist: [`docs/data-home-migrate.md`](docs/data-home-migrate.md).
 
 ---
 
@@ -185,7 +189,7 @@ Service CI should:
 raft apply --file .raft/app.yaml --ref "$SHA" --env …
 ```
 
-(deploy on). Gate is **never** auto-recreated by service CI. Private git: `raft auth setup` before apply. Secrets: `spec.envFile` → `~/.raft/secrets/<app>/env` (0600); never bake DB passwords into manifests or `generated/`.
+(deploy on). Gate is **never** auto-recreated by service CI. Private git: `raft auth setup` before apply. Secrets: `spec.envFile` → `~/.raft/services/<app>/secrets/env` (0600); never bake DB passwords into manifests or `generated/`.
 
 ---
 

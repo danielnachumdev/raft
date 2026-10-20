@@ -33,7 +33,7 @@ class TestOperatorSettingsServiceEdges(RaftTestCase):
         assert out["document"]["edge"]["streams"][0]["port"] == 2222
 
     def test_persist_strips_retired_acl_key(self) -> None:
-        path = self.tmp_path / "settings.yaml"
+        path = self.tmp_path / "host" / "settings.yaml"
         path.write_text(
             "edge: {}\n"
             "acl:\n  gate:\n    mode: whitelist\n"
@@ -52,7 +52,8 @@ class TestOperatorSettingsServiceEdges(RaftTestCase):
         empty.mkdir()
         svc = OperatorSettingsService(empty)
         assert svc._load_root() == {}
-        path = empty / "settings.yaml"
+        path = empty / "host" / "settings.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("- list\n", encoding="utf-8")
         with pytest.raises(OperatorError, match="YAML mapping"):
             svc._load_root()

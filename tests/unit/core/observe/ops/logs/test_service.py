@@ -20,7 +20,12 @@ class TestLogsShow(RaftTestCase):
 
     def test_snapshot_reads_retained_when_offline(self) -> None:
         logs = self._logs()
-        store = ServiceLogsStore(self.tmp_path, max_age_days=14, max_bytes=1024)
+        store = ServiceLogsStore(
+            self.tmp_path,
+            max_age_days=14,
+            max_bytes=1024,
+            compose_to_app={"app": "app"},
+        )
         store.append_lines("app", ["retained-1", "retained-2"])
         out = StringIO()
         with patch.object(logs.docker, "try_service_container_id", return_value=None):

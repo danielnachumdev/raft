@@ -144,7 +144,7 @@ class TestDeleteAndAddAccount(RaftTestCase):
 
     def _assert_empty_disk_ledger(self) -> None:
         disk = json.loads(
-            (self.tmp_path / "state" / "serve" / "github-accounts.json").read_text(
+            (self.tmp_path / "host" / "serve" / "github-accounts.json").read_text(
                 encoding="utf-8"
             )
         )

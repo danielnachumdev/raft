@@ -24,7 +24,7 @@ class TestApplySourceOwnership(ApplyTestCase):
         )
         AppApply(load_stack(self.tmp_path)).apply_file(path, deploy=False)
         AppApply(load_stack(self.tmp_path)).apply_file(path, deploy=False)
-        assert (self.tmp_path / "state" / "apps" / "demo-api.yaml").is_file()
+        assert (self.tmp_path / "services" / "demo-api" / "app.yaml").is_file()
 
     def test_different_source_denied(self) -> None:
         AppliedInventory.write_applied_app(
@@ -53,7 +53,7 @@ class TestApplySourceOwnership(ApplyTestCase):
             self.tmp_path,
             "demo-api",
             source="local",
-            path="apps/demo-api",
+            path="services/demo-api/checkout",
             public_host="demo-api.test",
         )
         with patch("raft.core.lifecycle.apply.service.Orchestrator"):

@@ -13,7 +13,7 @@ from tests.unit.core.lifecycle.dashboard.oauth_test_helpers import seed_oauth_se
 class TestDashboardCLI(RaftTestCase):
     def _cli(self) -> DashboardCLI:
         home = Path(self.tmp_path)
-        (home / "settings.yaml").write_text(
+        (home / "host" / "settings.yaml").write_text(
             "edge: {http: 80, https: 443}\n", encoding="utf-8"
         )
         writer = DashboardSettingsWriter(home)

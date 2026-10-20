@@ -1,4 +1,4 @@
-"""Load operator settings — ``~/.raft/settings.yaml`` (not service inventory)."""
+"""Load operator settings — ``~/.raft/host/settings.yaml`` (not service inventory)."""
 
 from pathlib import Path
 from typing import Any, Optional
@@ -75,7 +75,7 @@ class SettingsLoader:
         if not config_path.is_file():
             raise OperatorError(
                 f"settings path is not a file: {config_path}\n"
-                f"Fix: remove the directory or point at ~/.raft/settings.yaml"
+                f"Fix: remove the directory or point at ~/.raft/host/settings.yaml"
             )
         raw_text = self._read_text(config_path)
         data = self._parse_yaml(config_path, raw_text)
@@ -83,7 +83,7 @@ class SettingsLoader:
             raise OperatorError(
                 f"settings.yaml must be a YAML mapping (key/value document), "
                 f"got {type(data).__name__}.\n"
-                f"Fix: rewrite ~/.raft/settings.yaml as `{{logging: ..., edge: ...}}`"
+                f"Fix: rewrite ~/.raft/host/settings.yaml as `{{logging: ..., edge: ...}}`"
             )
         return data
 
@@ -104,7 +104,7 @@ class SettingsLoader:
         except yaml.YAMLError as exc:
             raise OperatorError(
                 f"invalid YAML in {config_path}: {exc}\n"
-                f"Fix: repair ~/.raft/settings.yaml (logging/edge mapping)"
+                f"Fix: repair ~/.raft/host/settings.yaml (logging/edge mapping)"
             ) from exc
 
 

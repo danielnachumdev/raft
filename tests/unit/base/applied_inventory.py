@@ -50,7 +50,7 @@ class AppliedInventory(OrchestratorRoot):
             "metadata": {"name": name},
             "spec": spec,
         }
-        dest = root / "state" / "apps" / f"{name}.yaml"
+        dest = root / "services" / name / "app.yaml"
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(yaml.safe_dump(doc, sort_keys=False), encoding="utf-8")
         return dest
@@ -63,12 +63,13 @@ class AppliedInventory(OrchestratorRoot):
         for name, raw in services.items():
             if not isinstance(raw, dict):
                 raise ValueError(f"services.{name} must be a mapping")
+            default_path = f"services/{name}/checkout"
             cls.write_applied_app(
                 root,
                 name,
                 public_host=(str(raw["public_host"]) if "public_host" in raw else None),
                 source=str(raw.get("source", "local")),
-                path=str(raw.get("path", f"apps/{name}")),
+                path=str(raw.get("path", default_path)),
                 repo=raw.get("repo"),
                 ref=str(raw.get("ref", "main")),
                 image=raw.get("image"),
@@ -79,8 +80,7 @@ class AppliedInventory(OrchestratorRoot):
     def write_demo_inventory(cls, root: Path) -> Path:
         cls.write_applied_app(root, "app", public_host="app.test", source="local")
         cls.write_applied_app(root, "other", public_host="other.test", source="local")
-        (root / "apps" / "app").mkdir(parents=True, exist_ok=True)
-        (root / "apps" / "other").mkdir(parents=True, exist_ok=True)
+        cls.ensure_app_checkouts(root, "app", "other")
         return root
 
     @classmethod
@@ -103,7 +103,7 @@ class AppliedInventory(OrchestratorRoot):
             "publicHost": f"{name}.test" if public_host is None else public_host,
             "source": source,
             "ref": ref,
-            "path": path or f"apps/{name}",
+            "path": path or f"services/{name}/checkout",
             "tls": tls,
             "ports": [{"name": "http", "containerPort": port, "expose": "http"}],
             "readiness": {"type": "http", "port": "http", "path": "/"},

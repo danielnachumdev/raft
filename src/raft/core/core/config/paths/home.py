@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from raft.core.core.errors.cta import OperatorError
-from .constants import DATA_HOME_ENV, SETTINGS_FILENAME
+from .constants import DATA_HOME_ENV, SETTINGS_REL
 
 
 class RaftHome:
@@ -18,7 +18,7 @@ class RaftHome:
         return (Path.home() / ".raft").resolve()
 
     def settings_path(self, home: Optional[Path] = None) -> Path:
-        return (home or self.resolve()) / SETTINGS_FILENAME
+        return (home or self.resolve()) / SETTINGS_REL
 
     @staticmethod
     def _resolve_override(override: str) -> Path:

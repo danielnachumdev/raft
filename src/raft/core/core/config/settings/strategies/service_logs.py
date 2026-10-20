@@ -26,7 +26,7 @@ class ServiceLogsSettingsParser(SettingsSectionParser[ServiceLogsConfig]):
         if not isinstance(raw, dict):
             raise OperatorError(
                 "settings.yaml serviceLogs must be a mapping.\n"
-                "Fix: set serviceLogs: {enabled: true, ...} in ~/.raft/settings.yaml"
+                "Fix: set serviceLogs: {enabled: true, ...} in ~/.raft/host/settings.yaml"
             )
         return ServiceLogsConfig(
             enabled=bool(raw.get("enabled", True)),

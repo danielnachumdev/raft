@@ -1,4 +1,4 @@
-"""Batched HTTP metrics recorder → state/metrics/http.jsonl."""
+"""Batched HTTP metrics recorder → host/metrics/http.jsonl."""
 
 import json
 from pathlib import Path
@@ -61,7 +61,7 @@ class TestHttpMetricsRecorder(ControllerTestCase):
     def test_flush_noop_when_empty(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
         HttpMetricsRecorder(home, collect_fn=lambda: {}).flush()
-        assert not (home / "state" / "metrics" / "http.jsonl").is_file()
+        assert not (home / "host" / "metrics" / "http.jsonl").is_file()
 
     def test_flush_on_elapsed_time(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)

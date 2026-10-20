@@ -34,7 +34,7 @@ class ManifestTestCase(RaftTestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         if registry_root is not None:
-            reg = Path(registry_root) / "state" / "apps" / f"{name}.yaml"
+            reg = Path(registry_root) / "services" / f"{name}.yaml"
             reg.parent.mkdir(parents=True, exist_ok=True)
             reg.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
 
@@ -47,7 +47,7 @@ class ManifestTestCase(RaftTestCase):
             "spec:",
             f"  publicHost: {public_host or f'{name}.test'}",
             f"  source: {source}",
-            f"  path: apps/{name}",
+            f"  path: services/{name}",
             f"  tls: {tls}",
         ]
 

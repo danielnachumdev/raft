@@ -9,8 +9,8 @@ from tests.unit.core.observe.alerts.sample_rule import RULE
 class TestRulesServiceEdges(RaftTestCase):
     def _svc(self):
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True)
-        (home / "settings.yaml").write_text(
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
+        (home / "host" / "settings.yaml").write_text(
             "notifications:\n  enabled: false\n  channels:\n"
             "    - id: ops\n      type: webhook\n      settings: {url: https://192.0.2.1/x}\n",
             encoding="utf-8",

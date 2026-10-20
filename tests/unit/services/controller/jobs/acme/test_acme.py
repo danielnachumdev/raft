@@ -53,7 +53,7 @@ class TestAcmeJobSync(ControllerTestCase):
         AppliedInventory.write_applied_app(home, "shop", public_host="shop.test", tls="acme")
         sync, orch = self._sync(home)
         sync.tick()
-        (home / "state" / "apps" / "shop.yaml").unlink()
+        (home / "services" / "shop" / "app.yaml").unlink()
         sync.tick()
         assert orch.registered_ids() == frozenset()
 

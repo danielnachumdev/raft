@@ -127,12 +127,12 @@ class EdgeSettingsParser(SettingsSectionParser[EdgeConfig]):
             raise OperatorError(
                 f"settings.yaml edge.streams[{name!r}].port must be an integer "
                 f"(1–65535), got {entry['port']!r}.\n"
-                f"Fix: use a numeric port in edge.streams[] in ~/.raft/settings.yaml"
+                f"Fix: use a numeric port in edge.streams[] in ~/.raft/host/settings.yaml"
             ) from exc
         if not (1 <= port <= 65535):
             raise OperatorError(
                 f"settings.yaml edge.streams[{name!r}].port out of range: {port}.\n"
-                f"Fix: pick a port between 1 and 65535 in ~/.raft/settings.yaml"
+                f"Fix: pick a port between 1 and 65535 in ~/.raft/host/settings.yaml"
             )
         return port
 
@@ -174,11 +174,11 @@ class EdgeSettingsParser(SettingsSectionParser[EdgeConfig]):
                 f"settings.yaml edge.{field_name} must be an integer port (1–65535) "
                 f"or null, got {raw!r}.\n"
                 f"Fix: set edge.{field_name} to a number (e.g. 80) or omit/null "
-                f"in ~/.raft/settings.yaml"
+                f"in ~/.raft/host/settings.yaml"
             ) from exc
         if not (1 <= port <= 65535):
             raise OperatorError(
                 f"settings.yaml edge.{field_name} out of range: {port}.\n"
-                f"Fix: pick a port between 1 and 65535 in ~/.raft/settings.yaml"
+                f"Fix: pick a port between 1 and 65535 in ~/.raft/host/settings.yaml"
             )
         return port

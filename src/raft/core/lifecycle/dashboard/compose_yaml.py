@@ -66,7 +66,7 @@ class DashboardComposeYaml:
             return []
         return [
             "    env_file:",
-            "      - ./secrets/dashboard/oauth.env",
+            "      - ./host/secrets/dashboard/oauth.env",
         ]
 
     def _volume_block(self) -> list[str]:
@@ -89,18 +89,17 @@ class DashboardComposeYaml:
     def _data_home_volumes() -> list[str]:
         return [
             "      - .:/raft:ro",
-            "      - ./settings.yaml:/raft/settings.yaml",
-            "      - ./state/locks:/raft/state/locks",
-            "      - ./state/firewall:/raft/state/firewall",
-            "      - ./state/alerts:/raft/state/alerts",
-            "      - ./state/serve:/raft/state/serve",
-            "      - ./state/events:/raft/state/events",
-            "      - ./state/metrics:/raft/state/metrics",
-            "      - ./state/service-logs:/raft/state/service-logs",
-            "      - ./state/scaling:/raft/state/scaling",
-            "      - ./state/acme:/raft/state/acme",
-            "      - ./certs:/raft/certs",
-            "      - ./secrets:/raft/secrets",
+            "      - ./host/settings.yaml:/raft/host/settings.yaml",
+            "      - ./host/locks:/raft/host/locks",
+            "      - ./host/firewall:/raft/host/firewall",
+            "      - ./host/alerts:/raft/host/alerts",
+            "      - ./host/serve:/raft/host/serve",
+            "      - ./host/events:/raft/host/events",
+            "      - ./host/metrics:/raft/host/metrics",
+            "      - ./host/logs:/raft/host/logs",
+            "      - ./host/acme:/raft/host/acme",
+            "      - ./host/secrets:/raft/host/secrets",
+            "      - ./services:/raft/services",
             "      - ./generated:/raft/generated",
         ]
 

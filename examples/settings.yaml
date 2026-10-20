@@ -1,4 +1,4 @@
-# raft operator settings — copy to ~/.raft/settings.yaml
+# raft operator settings — copy to ~/.raft/host/settings.yaml
 # (created on first use with defaults if missing).
 # Override the data home with RAFT_DATA_HOME (default: ~/.raft).
 #
@@ -215,12 +215,12 @@ edge:
 #     # oauth:
 #     #   provider: google      # google | oidc
 #     #   # issuerUrl: https://login.example.com/   # oidc only
-#     #   allowlistFile: secrets/dashboard/oauth-allowlist.txt
-#     # secrets: ~/.raft/secrets/dashboard/oauth.env (+ allowlist)
+#     #   allowlistFile: host/secrets/dashboard/oauth-allowlist.txt
+#     # secrets: ~/.raft/services/*/secrets/ or host/host/secrets/dashboard/oauth.env (+ allowlist)
 # CLI: raft dashboard status|enable|disable|set-password|oauth …
 
 # ---------------------------------------------------------------------------
-# Edge firewall is ordered rules under state/firewall/rules.yaml (raft serve
+# Edge firewall is ordered rules under host/firewall/rules.yaml (raft serve
 # Settings → Firewall). Not configured here. See docs/serve-firewall.md.
 # ---------------------------------------------------------------------------
 

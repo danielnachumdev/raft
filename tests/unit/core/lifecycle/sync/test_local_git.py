@@ -14,7 +14,9 @@ from tests.unit.core.lifecycle.sync.base import SyncTestCase
 
 class TestSyncLocalGit(SyncTestCase):
     def test_sync_local_ok(self, caplog: pytest.LogCaptureFixture) -> None:
-        (self.tmp_path / "apps" / "app").mkdir(parents=True)
+        (self.tmp_path / "services" / "app" / "checkout").mkdir(
+            parents=True, exist_ok=True
+        )
         with caplog.at_level("INFO"):
             self.syncer.sync([self.app])
         self.shell.git.assert_not_called()
@@ -31,14 +33,14 @@ class TestSyncLocalGit(SyncTestCase):
         self.syncer.sync([self.app], ref_override="deadbeef")
         cmds = [c[0] for c in ShellMocks.git_call_args(self.shell)]
         assert "clone" in cmds and "fetch" in cmds and "checkout" in cmds
-        state = (self.tmp_path / "deploy" / "svc.ref").read_text(encoding="utf-8")
+        state = (self.tmp_path / "services" / "svc" / "deploy" / "svc.ref").read_text(encoding="utf-8")
         assert "abc123def456" in state and "deadbeef" in state
 
     def _clone_fetch_git(self, dest, rev: str):
         def git(*args, **kwargs):
             result = MagicMock(returncode=0, stdout="")
             if args and args[0] == "clone":
-                dest.mkdir(parents=True)
+                dest.mkdir(parents=True, exist_ok=True)
                 (dest / ".git").mkdir()
             elif args[:2] == ("status", "--porcelain"):
                 result.stdout = ""
@@ -91,7 +93,7 @@ class TestSyncLocalGit(SyncTestCase):
             result = MagicMock(returncode=0, stdout="")
             if args and args[0] == "clone":
                 assert args[2] == "git@github.com-raft-svc:org/svc.git"
-                dest.mkdir(parents=True)
+                dest.mkdir(parents=True, exist_ok=True)
                 (dest / ".git").mkdir()
             elif args[:2] == ("rev-parse", "--verify"):
                 result.stdout = "abc123def456\n"
@@ -103,7 +105,7 @@ class TestSyncLocalGit(SyncTestCase):
     def test_sync_git_nonempty_non_git_dir(self) -> None:
         self.git_syncer(repo="git@example.com:org/svc.git")
         dest = self.app.abs_path(self.tmp_path)
-        dest.mkdir(parents=True)
+        dest.mkdir(parents=True, exist_ok=True)
         (dest / "README").write_text("x", encoding="utf-8")
         with pytest.raises(RuntimeError, match="not a git checkout"):
             self.syncer.sync([self.app])
@@ -114,12 +116,12 @@ class TestSyncLocalGit(SyncTestCase):
         self.app = app
         self.syncer = SourceSync(self.stack, self.shell)
         dest = app.abs_path(self.tmp_path)
-        (dest / ".raft").mkdir(parents=True)
+        (dest / ".raft").mkdir(parents=True, exist_ok=True)
         (dest / ".raft" / "app.yaml").write_text("x", encoding="utf-8")
         self.shell.git.side_effect = self._clone_fetch_git(dest, "abc123def456\n")
         self.shell.docker.side_effect = self._docker_missing_then_ok()
         self.syncer.sync([app])
-        assert (self.tmp_path / "deploy" / "demo-api.ref").is_file()
+        assert (self.tmp_path / "services" / "demo-api" / "deploy" / "demo-api.ref").is_file()
         pulls = [c.args for c in self.shell.docker.call_args_list if c.args[:1] == ("pull",)]
         assert pulls
 
@@ -140,7 +142,7 @@ class TestSyncLocalGit(SyncTestCase):
             image="ghcr.io/example/demo-api",
             ref="main",
             repo="git@example.com:org/demo-api.git",
-            path="apps/demo-api",
+            path="services/demo-api/checkout",
         )
 
     def test_sync_git_falls_back_to_origin_ref(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -183,10 +185,14 @@ class TestSyncLocalGit(SyncTestCase):
             self.syncer.sync([self.app])
 
     def test_sync_defaults_to_all_stack_apps(self) -> None:
-        (self.tmp_path / "apps" / "a").mkdir(parents=True)
-        (self.tmp_path / "apps" / "b").mkdir(parents=True)
+        (self.tmp_path / "services" / "a" / "checkout").mkdir(
+            parents=True, exist_ok=True
+        )
+        (self.tmp_path / "services" / "b" / "checkout").mkdir(
+            parents=True, exist_ok=True
+        )
         apps = (
-            AppMakers.make_app("a", public_host="a.test", path="apps/a"),
-            AppMakers.make_app("b", public_host="b.test", path="apps/b"),
+            AppMakers.make_app("a", public_host="a.test", path="services/a/checkout"),
+            AppMakers.make_app("b", public_host="b.test", path="services/b/checkout"),
         )
         SourceSync(StackMakers.make_stack(self.tmp_path, apps), MagicMock()).sync()

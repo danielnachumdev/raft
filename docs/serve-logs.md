@@ -30,7 +30,7 @@ Follow still requires a running container.
 ```
 
 Rotation reuses `LogRotationBootstrap` (same seal/age pattern as host `logs/raft.log`
-and metrics JSONL). Settings: `serviceLogs` in `~/.raft/settings.yaml`
+and metrics JSONL). Settings: `serviceLogs` in `~/.raft/host/settings.yaml`
 (see `examples/settings.yaml`).
 
 ## Capture

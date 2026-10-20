@@ -10,7 +10,7 @@ DEFAULT_DASHBOARD_AUTH_MODE = "none"
 DEFAULT_IDENTITY_HEADER = "X-Raft-Identity"
 DEFAULT_OAUTH_PROVIDER = "google"
 DEFAULT_OAUTH_REDIRECT_PATH = "/oauth2/callback"
-DEFAULT_OAUTH_ALLOWLIST = "secrets/dashboard/oauth-allowlist.txt"
+DEFAULT_OAUTH_ALLOWLIST = "host/secrets/dashboard/oauth-allowlist.txt"
 
 DASHBOARD_TLS_MODES = frozenset({"off", "origin", "acme"})
 DASHBOARD_AUTH_MODES = frozenset({"none", "password", "external", "oauth"})

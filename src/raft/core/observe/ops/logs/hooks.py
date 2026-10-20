@@ -74,7 +74,7 @@ class ServiceLogsHooks:
         cid = engine.try_service_container_id(compose_id)
         if not cid:
             return
-        cls._capture(stack.root, cfg, engine).ship(compose_id, cid)
+        cls._capture(stack.root, cfg, engine, stack=stack).ship(compose_id, cid)
 
     @classmethod
     def _drain_named(
@@ -91,7 +91,7 @@ class ServiceLogsHooks:
         key = ServiceLogsKeys(stack).key_for_container_name(container_name)
         if key is None:
             key = container_name
-        cls._capture(stack.root, cfg, engine).ship(key, container_name)
+        cls._capture(stack.root, cfg, engine, stack=stack).ship(key, container_name)
 
     @classmethod
     def _drain_all(cls, stack: Stack, docker: Optional["DockerStack"]) -> None:
@@ -99,7 +99,7 @@ class ServiceLogsHooks:
         if not cfg.enabled:
             return
         engine = cls._docker(stack, docker)
-        capture = cls._capture(stack.root, cfg, engine)
+        capture = cls._capture(stack.root, cfg, engine, stack=stack)
         keys = ServiceLogsKeys(stack)
         for compose_id in keys.known_compose_ids(include_edge=cfg.include_edge):
             cid = engine.try_service_container_id(compose_id)
@@ -119,13 +119,20 @@ class ServiceLogsHooks:
 
         return DockerStack(stack, Shell(stack.root))
 
-    @staticmethod
+    @classmethod
     def _capture(
-        home: Path, cfg: ServiceLogsConfig, docker: "DockerStack"
+        cls,
+        home: Path,
+        cfg: ServiceLogsConfig,
+        docker: "DockerStack",
+        *,
+        stack: Optional[Stack] = None,
     ) -> ServiceLogsCapture:
+        apps = stack.apps if stack is not None else ()
         store = ServiceLogsStore(
             home,
             max_age_days=cfg.retention_max_age_days,
             max_bytes=cfg.retention_max_bytes,
+            compose_to_app=ServiceLogsStore.compose_map_from_apps(apps),
         )
         return ServiceLogsCapture(store, DockerContainerLogSource(docker))

@@ -20,7 +20,7 @@ from tests.unit.core.lifecycle.acme.cert_helpers import self_signed_pem
 
 class TestDashboardIntegrationGaps(RaftTestCase):
     def _enable_public(self, home: Path) -> None:
-        (home / "settings.yaml").write_text(
+        (home / "host" / "settings.yaml").write_text(
             yaml.safe_dump(
                 {
                     "edge": {"http": 80, "https": 443},
@@ -45,7 +45,7 @@ class TestDashboardIntegrationGaps(RaftTestCase):
 
     def test_dashboard_enabled_tolerates_bad_settings(self) -> None:
         home = Path(self.tmp_path)
-        (home / "settings.yaml").write_text("- bad\n", encoding="utf-8")
+        (home / "host" / "settings.yaml").write_text("- bad\n", encoding="utf-8")
         assert "raft-dashboard" not in load_stack(home).core_services
 
     def test_acme_run_includes_dashboard(self) -> None:
@@ -58,7 +58,7 @@ class TestDashboardIntegrationGaps(RaftTestCase):
             order_runner=runner,
             config=AcmeConfig(email="ops@example.com"),
         ).run()
-        assert (home / "certs" / "raft-dashboard" / "acme.pem").is_file()
+        assert (home / "services" / "raft-dashboard" / "certs" / "acme.pem").is_file()
 
     def test_firewall_dashboard_supported(self) -> None:
         home = Path(self.tmp_path)
@@ -77,7 +77,7 @@ class TestDashboardIntegrationGaps(RaftTestCase):
 
     def test_firewall_dashboard_unsupported(self) -> None:
         home = Path(self.tmp_path)
-        (home / "settings.yaml").write_text(
+        (home / "host" / "settings.yaml").write_text(
             "dashboard: {enabled: true}\n", encoding="utf-8"
         )
         stack = load_stack(home)
@@ -125,7 +125,7 @@ class TestDashboardIntegrationGaps(RaftTestCase):
         urls = Serve(StackMakers.make_stack(home))._always_on_urls()
         assert urls["always_on_url"] == "http://127.0.0.1:8787/"
         assert urls["public_url"] == "https://ops.example.com/"
-        (home / "settings.yaml").write_text(
+        (home / "host" / "settings.yaml").write_text(
             "dashboard: {enabled: true, port: 8787}\n", encoding="utf-8"
         )
         local = Serve(StackMakers.make_stack(home))._always_on_urls()
@@ -134,7 +134,7 @@ class TestDashboardIntegrationGaps(RaftTestCase):
 
     def test_serve_urls_disabled_and_error(self) -> None:
         home = Path(self.tmp_path)
-        (home / "settings.yaml").write_text("{}\n", encoding="utf-8")
+        (home / "host" / "settings.yaml").write_text("{}\n", encoding="utf-8")
         assert Serve(StackMakers.make_stack(home))._always_on_urls() == {}
-        (home / "settings.yaml").write_text("- bad\n", encoding="utf-8")
+        (home / "host" / "settings.yaml").write_text("- bad\n", encoding="utf-8")
         assert Serve(StackMakers.make_stack(home))._always_on_urls() == {}

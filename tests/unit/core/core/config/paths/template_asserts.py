@@ -28,32 +28,33 @@ class TemplateAsserts:
         self.assert_compose_acme_mounts(compose)
         assert (home / "generated" / "compose.apps.yaml").is_file()
         assert (home / "generated" / "compose.edge.yaml").is_file()
-        self._assert_state_dirs(home)
+        self._assert_layout_dirs(home)
 
-    def _assert_state_dirs(self, home) -> None:
-        assert (home / "state" / "apps").is_dir()
-        assert (home / "state" / "metrics").is_dir()
-        assert (home / "state" / "serve").is_dir()
-        assert (home / "state" / "acme" / "http-01").is_dir()
-        assert (home / "state" / "acme" / "apps").is_dir()
+    def _assert_layout_dirs(self, home) -> None:
+        assert (home / "services").is_dir()
+        assert (home / "host" / "metrics").is_dir()
+        assert (home / "host" / "serve").is_dir()
+        assert (home / "host" / "acme" / "http-01").is_dir()
+        assert (home / "host" / "locks").is_dir()
         assert (home / "nginx" / "gate" / "acme_challenge.inc").is_file()
 
     def assert_compose_controller_mounts(self, compose: str) -> None:
         assert "raft-controller:" in compose and "context: ./controller" in compose
         assert "RAFT_DATA_HOME: /raft" in compose
         assert "/var/run/docker.sock:/var/run/docker.sock" in compose
-        assert ".:/raft:ro" in compose and "./state/locks:/raft/state/locks" in compose
-        assert "./state/metrics:/raft/state/metrics" in compose
-        assert "./state/service-logs:/raft/state/service-logs" in compose
-        assert "./state/events:/raft/state/events" in compose
-        assert "./state/alerts:/raft/state/alerts" in compose
-        assert "./certs:/raft/certs" in compose
-        assert "./state/acme:/raft/state/acme" in compose
+        assert ".:/raft:ro" in compose and "./host/locks:/raft/host/locks" in compose
+        assert "./host/metrics:/raft/host/metrics" in compose
+        assert "./host/logs:/raft/host/logs" in compose
+        assert "./host/events:/raft/host/events" in compose
+        assert "./host/alerts:/raft/host/alerts" in compose
+        assert "./services:/raft/services" in compose
+        assert "./host/acme:/raft/host/acme" in compose
         assert "./generated/nginx/upstreams:/raft/generated/nginx/upstreams" in compose
         assert "RAFT_HOST_UID" in compose and "working_dir: /raft" in compose
         assert "RAFT_DOCKER_GID" in compose and "group_add:" in compose
         assert "memory: 128M" in compose
 
     def assert_compose_acme_mounts(self, compose: str) -> None:
-        assert "./state/acme/http-01:/etc/nginx/acme-www:ro" in compose
+        assert "./host/acme/http-01:/etc/nginx/acme-www:ro" in compose
+        assert "./services:/etc/nginx/services:ro" in compose
         assert "acme_challenge.inc" in compose

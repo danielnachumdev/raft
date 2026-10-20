@@ -16,8 +16,8 @@ from tests.unit.core.observe.alerts.sample_rule import RULE
 class TestAlertsCliErrors(RaftTestCase):
     def _cli(self) -> AlertsCLI:
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True, exist_ok=True)
-        (home / "settings.yaml").write_text(
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
+        (home / "host" / "settings.yaml").write_text(
             "alerts:\n  enabled: true\n  intervalSeconds: 30\n"
             "notifications:\n  enabled: true\n  channels: []\n",
             encoding="utf-8",

@@ -11,7 +11,7 @@ Manifest-only sample: `spec.group`, `spec.envFile`, `spec.volumes`, and an inter
 ## Apply
 
 Replace `image` / `ref`, `envFile`, and volume `hostPath` before a real deploy.
-Create `~/.raft/secrets/grouped-volume-app/env` (mode `0600`) before relying on secrets — see [`docs/secrets.md`](../../docs/secrets.md).
+Create `~/.raft/services/*/secrets/ or host/secrets/grouped-volume-app/env` (mode `0600`) before relying on secrets — see [`docs/secrets.md`](../../docs/secrets.md).
 
 ```bash
 raft apply --file examples/grouped-volume-app/.raft/app.yaml --ref "$SHA"

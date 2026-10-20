@@ -13,8 +13,8 @@ from tests.unit.core.observe.alerts.sample_rule import RULE
 class TestStatusViewComplete(RaftTestCase):
     def _home(self) -> Path:
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True, exist_ok=True)
-        (home / "settings.yaml").write_text(
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
+        (home / "host" / "settings.yaml").write_text(
             "alerts:\n  enabled: false\n  intervalSeconds: 60\n"
             "notifications:\n  enabled: true\n  channels: []\n",
             encoding="utf-8",
@@ -23,10 +23,10 @@ class TestStatusViewComplete(RaftTestCase):
 
     def test_document_error_and_suppressed(self) -> None:
         home = self._home()
-        (home / "state" / "alerts" / "rules.yaml").write_text("version: 2\n", encoding="utf-8")
+        (home / "host" / "alerts" / "rules.yaml").write_text("version: 2\n", encoding="utf-8")
         view = AlertStatusView(home).build()
         assert view["documentError"]
-        (home / "state" / "alerts" / "rules.yaml").unlink()
+        (home / "host" / "alerts" / "rules.yaml").unlink()
         AlertRulesService(home).create(RULE)
         rt = AlertRuntimeStore(home).load()
         now = datetime(2026, 1, 1, tzinfo=timezone.utc)

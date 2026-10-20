@@ -120,7 +120,7 @@ class TestExternalUrlBuilder(RaftTestCase):
             name="web",
             public_host="web.test",
             source="local",
-            path="apps/web",
+            path="services/web/checkout",
             group="demo",
         )
         stack = StackMakers.make_stack(self.tmp_path, (app,))

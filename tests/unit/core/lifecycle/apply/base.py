@@ -29,7 +29,7 @@ class ApplyTestCase(DomainTestCase):
         spec = {
             "publicHost": public_host,
             "source": source,
-            "path": f"apps/{name}",
+            "path": f"services/{name}/checkout",
             "ref": "main",
             "ports": [{"name": "http", "containerPort": 80, "expose": "http"}],
             "build": {"context": "."},

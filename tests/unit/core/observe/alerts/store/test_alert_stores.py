@@ -17,13 +17,13 @@ class TestAlertStores(RaftTestCase):
         home = Path(self.tmp_path)
         store = AlertRulesStore(home, registries=AlertCatalogs.default())
         assert store.load().rules == ()
-        (home / "state" / "alerts").mkdir(parents=True)
-        (home / "state" / "alerts" / "rules.yaml").write_text(
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
+        (home / "host" / "alerts" / "rules.yaml").write_text(
             "version: 2\nrules: []\n", encoding="utf-8"
         )
         with pytest.raises(OperatorError):
             store.load()
-        (home / "state" / "alerts" / "rules.yaml").write_text(":::bad\n", encoding="utf-8")
+        (home / "host" / "alerts" / "rules.yaml").write_text(":::bad\n", encoding="utf-8")
         with pytest.raises(OperatorError):
             store.load()
 

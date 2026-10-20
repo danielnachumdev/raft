@@ -17,7 +17,7 @@ from .alerts_output import AlertsCliOutput
 
 
 class AlertsCLI:
-    """Manage alert rules under ``state/alerts/rules.yaml``."""
+    """Manage alert rules under ``host/alerts/rules.yaml``."""
 
     def __init__(self, stack: Stack) -> None:
         self._stack = stack
@@ -202,7 +202,7 @@ class AlertsCLI:
     def _load_raw(self, file: Optional[str]) -> Any:
         if file:
             return self._read_file(file)
-        path = self._stack.root / "state" / "alerts" / "rules.yaml"
+        path = self._stack.root / "host" / "alerts" / "rules.yaml"
         if not path.is_file():
             return {"version": 1, "rules": []}
         return yaml.safe_load(path.read_text(encoding="utf-8")) or {}

@@ -1,4 +1,4 @@
-"""Persistent scale-to-zero state under ``~/.raft/state/scaling/``."""
+"""Persistent scale-to-zero state under ``services/<app>/scaling/``."""
 
 import json
 import os
@@ -9,11 +9,9 @@ import uuid
 from pathlib import Path
 from typing import Any, Optional
 
+from raft.core.core.config.paths.service_paths import ServicePaths
 from .app_scaling_state import AppScalingState
 from .wake_progress import WakeProgress
-
-SCALING_STATE_DIR = Path("state") / "scaling"
-SCALING_MARKERS_DIR = SCALING_STATE_DIR / "markers"
 
 
 class ScalingStore:
@@ -21,16 +19,23 @@ class ScalingStore:
 
     def __init__(self, home: Path) -> None:
         self.home = home
-        self.root = home / SCALING_STATE_DIR
-        self.markers = home / SCALING_MARKERS_DIR
         self._lock = threading.Lock()
 
-    def ensure_dirs(self) -> None:
-        self.root.mkdir(parents=True, exist_ok=True)
-        self.markers.mkdir(parents=True, exist_ok=True)
+    def _paths(self, name: str) -> ServicePaths:
+        return ServicePaths(self.home, name)
+
+    def ensure_dirs(self, name: Optional[str] = None) -> None:
+        if name is None:
+            return
+        paths = self._paths(name)
+        paths.scaling().mkdir(parents=True, exist_ok=True)
+        paths.scaling_markers().mkdir(parents=True, exist_ok=True)
 
     def path_for(self, name: str) -> Path:
-        return self.root / f"{name}.json"
+        return self._paths(name).scaling_state()
+
+    def markers_dir(self, name: str) -> Path:
+        return self._paths(name).scaling_markers()
 
     def load(self, name: str) -> AppScalingState:
         with self._lock:
@@ -99,8 +104,6 @@ class ScalingStore:
             if not state.scaled_to_zero:
                 return None
             when = time.time() if now is None else now
-            # Fresh deadline after timeout (or first request). Sticky only while
-            # the same wake attempt is still in flight.
             if state.wake_requested_at is None or state.wake_timed_out:
                 state.wake_requested_at = when
                 state.wake_id = self._new_wake_id()
@@ -154,7 +157,7 @@ class ScalingStore:
         return AppScalingState.from_mapping(data)
 
     def _save_unlocked(self, name: str, state: AppScalingState) -> None:
-        self.ensure_dirs()
+        self.ensure_dirs(name)
         self._atomic_write_json(self.path_for(name), state.to_mapping())
         self._sync_markers(name, state)
 
@@ -180,16 +183,17 @@ class ScalingStore:
 
     def _sync_markers(self, name: str, state: AppScalingState) -> None:
         """Exclusive markers: ``.zero`` (holding) or ``.timeout``, never both."""
-        self.ensure_dirs()
-        zero = self.markers / f"{name}.zero"
-        timeout = self.markers / f"{name}.timeout"
+        self.ensure_dirs(name)
+        markers = self.markers_dir(name)
+        zero = markers / f"{name}.zero"
+        timeout = markers / f"{name}.timeout"
         timed_out = state.scaled_to_zero and state.wake_timed_out
         self._set_marker(zero, state.scaled_to_zero and not state.wake_timed_out)
         self._set_marker(timeout, timed_out)
         self._sync_id_marker(name, state)
 
     def _sync_id_marker(self, name: str, state: AppScalingState) -> None:
-        ident = self.markers / f"{name}.id"
+        ident = self.markers_dir(name) / f"{name}.id"
         if state.scaled_to_zero and state.wake_id:
             ident.write_text(state.wake_id, encoding="utf-8")
             return

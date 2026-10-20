@@ -67,8 +67,8 @@ class TestEdgeHandlers(RaftTestCase):
         ).gate_tls == {}
 
     def _assert_acme_tls_when_pems(self, app, spec, home) -> None:
-        d = home / "certs" / "web"
-        d.mkdir(parents=True)
+        d = home / "services" / "web" / "certs"
+        d.mkdir(parents=True, exist_ok=True)
         (d / "acme.pem").write_text("pem\n", encoding="utf-8")
         (d / "acme.key").write_text("key\n", encoding="utf-8")
         frag = TlsEdge().contribute_app(app, spec, edge=EdgeConfig(), data_home=home)

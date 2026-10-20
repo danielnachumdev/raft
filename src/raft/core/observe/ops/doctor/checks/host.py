@@ -12,11 +12,11 @@ from raft.core.platform.adapters.host import HostGateway, HostMemory
 from ..context import DoctorContext
 from ..models import INFRA, CheckResult
 
-_METRICS_REL = Path("state") / "metrics" / "resources.jsonl"
+_METRICS_REL = Path("host") / "metrics" / "resources.jsonl"
 _METRICS_CHOWN = (
     'sudo chown "$(whoami):$(whoami)" '
-    '"${RAFT_DATA_HOME:-$HOME/.raft}/state/metrics" '
-    '"${RAFT_DATA_HOME:-$HOME/.raft}/state/metrics/resources.jsonl"'
+    '"${RAFT_DATA_HOME:-$HOME/.raft}/host/metrics" '
+    '"${RAFT_DATA_HOME:-$HOME/.raft}/host/metrics/resources.jsonl"'
 )
 # Warn before apply/pull when the host is nearly out of RAM (proactive; failures
 # still classify OOM via raft.core.core.errors.resource_msgs).

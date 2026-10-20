@@ -147,7 +147,7 @@ class FragmentCollector:
         elif self._edge.https is None:
             raise OperatorError(
                 f"{app.name}: tls=origin requires edge.https in settings.yaml.\n"
-                f"Fix: set edge.https (e.g. 443) in ~/.raft/settings.yaml, then: raft render"
+                f"Fix: set edge.https (e.g. 443) in ~/.raft/host/settings.yaml, then: raft render"
             )
         body = self._scaling.contribute_tls(app, app_spec, acl_include=acl_include)
         return EdgeFragments(gate_tls={f"{app.name}.conf": body})

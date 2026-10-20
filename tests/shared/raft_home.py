@@ -33,13 +33,15 @@ class RaftHomeFixtures:
     @staticmethod
     def prepare(home: Path, *, settings: Optional[dict] = None) -> Path:
         RaftHomeBootstrap().ensure(home)
+        settings_path = home / "host" / "settings.yaml"
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
         if settings is not None:
-            (home / "settings.yaml").write_text(
+            settings_path.write_text(
                 yaml.safe_dump(settings, sort_keys=False),
                 encoding="utf-8",
             )
-        elif not (home / "settings.yaml").is_file():
-            (home / "settings.yaml").write_text(
+        elif not settings_path.is_file():
+            settings_path.write_text(
                 "logging:\n  level: INFO\n" "edge:\n  http: 80\n  https: 443\n  streams: []\n",
                 encoding="utf-8",
             )
@@ -62,7 +64,7 @@ class RaftHomeFixtures:
             apply = AppApply(stack)
         stack = load_stack(home)
         for app in stack.apps:
-            (home / "apps" / app.name).mkdir(parents=True, exist_ok=True)
+            (home / "services" / app.name / "checkout").mkdir(parents=True, exist_ok=True)
         kwargs = {}
         if edge is not None:
             kwargs["edge"] = edge

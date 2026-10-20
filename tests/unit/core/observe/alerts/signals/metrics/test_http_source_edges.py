@@ -16,7 +16,7 @@ class TestHttpSourceEdges(RaftTestCase):
     def test_validate_and_edge(self) -> None:
         home = Path(self.tmp_path)
         path = MetricsPaths(home).http()
-        path.parent.mkdir(parents=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
             json.dumps({"ts": NOW.isoformat(), "requests": 0, "by_service": {}}) + "\n",
             encoding="utf-8",

@@ -95,7 +95,7 @@ class TestRenderEdgeCoverage(RaftTestCase):
         AppliedInventory.write_applied_app(
             self.tmp_path,
             "web",
-            path="apps/web",
+            path="services/web/checkout",
             extra={"build": {"context": "/tmp/outside-raft-build"}},
         )
         with pytest.raises(ValueError, match="outside raft data home"):

@@ -1,4 +1,4 @@
-"""Append-only ops event JSONL under ``~/.raft/state/events/ops.jsonl``."""
+"""Append-only ops event JSONL under ``~/.raft/host/events/ops.jsonl``."""
 
 import json
 import logging
@@ -17,7 +17,7 @@ from .ops_event_records import OpsEventRecords
 
 logger = logging.getLogger(__name__)
 
-EVENTS_STATE_DIR = Path("state") / "events"
+EVENTS_STATE_DIR = Path("host") / "events"
 OPS_EVENTS_FILENAME = "ops.jsonl"
 
 

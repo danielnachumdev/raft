@@ -56,7 +56,7 @@ class TestGithubAccountStore(RaftTestCase):
 
     def test_corrupt_and_bad_raw(self) -> None:
         store = GithubAccountStore(self.tmp_path)
-        path = self.tmp_path / "state" / "serve" / "github-accounts.json"
+        path = self.tmp_path / "host" / "serve" / "github-accounts.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("{not-json", encoding="utf-8")
         assert store.public_snapshot()["accounts"] == []
@@ -66,7 +66,7 @@ class TestGithubAccountStore(RaftTestCase):
         assert GithubAccount.from_raw({"access_token": 1}) is None
 
     def _assert_ledger_mode(self, store: GithubAccountStore) -> None:
-        path = self.tmp_path / "state" / "serve" / "github-accounts.json"
+        path = self.tmp_path / "host" / "serve" / "github-accounts.json"
         assert path.is_file()
         assert oct(path.stat().st_mode & 0o777) == "0o600"
         del store

@@ -60,7 +60,7 @@ class TestDashboardOAuthGaps(RaftTestCase):
 
     def test_ops_bad_provider(self) -> None:
         home = Path(self.tmp_path)
-        (home / "settings.yaml").write_text("{}\n", encoding="utf-8")
+        (home / "host" / "settings.yaml").write_text("{}\n", encoding="utf-8")
         with pytest.raises(OperatorError, match="provider must be"):
             DashboardOAuthOps(home).init(provider="nope")
 

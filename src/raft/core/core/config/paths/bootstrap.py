@@ -3,7 +3,6 @@
 from pathlib import Path
 from typing import Optional
 
-from raft.core.platform.secrets import AppSecretsLayout
 from .constants import DATA_DIR_RELS, GENERATED_DIRNAME
 from .home import RaftHome
 from .package_root import PackageRootFinder
@@ -35,7 +34,6 @@ class RaftHomeBootstrap:
     def _ensure_data_dirs(self, root: Path) -> None:
         for rel in DATA_DIR_RELS:
             (root / rel).mkdir(parents=True, exist_ok=True)
-        AppSecretsLayout(root).ensure_root()
 
     def _ensure_compose_stubs(self, root: Path) -> None:
         gen = root / GENERATED_DIRNAME

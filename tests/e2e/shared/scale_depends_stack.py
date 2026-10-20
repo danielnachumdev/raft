@@ -121,7 +121,7 @@ class ScaleDependsWakeStack:
 
     def visitor_sees_the_holding_page(self) -> bool:
         # Marker is authoritative; HTTP also triggers gate→wake (side effect).
-        marker = self._inner.home / "state" / "scaling" / "markers" / f"{FRONTEND}.zero"
+        marker = self._inner.home / "services" / "markers" / f"{FRONTEND}.zero"
         if not marker.is_file():
             return False
         return "Just a moment" in self._curl().body
@@ -211,7 +211,7 @@ class ScaleDependsWakeStack:
         yamls = RaftHomeFixtures.fixture_app_yamls("multi_app_group")
         ordered = sorted(yamls, key=lambda p: 0 if "redis" in str(p) else 1)
         RaftHomeFixtures.apply_and_render(home, ordered)
-        YamlDoc(home / "state" / "apps" / f"{FRONTEND}.yaml").merge_spec(
+        YamlDoc(home / "services" / f"{FRONTEND}.yaml").merge_spec(
             {"scaling": dict(SCALING)}
         )
         StackRenderer(load_stack(home)).render()

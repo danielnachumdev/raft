@@ -1,4 +1,4 @@
-"""MetricsRead includes GraphEvents from state/events/graph.jsonl."""
+"""MetricsRead includes GraphEvents from host/events/graph.jsonl."""
 
 from __future__ import annotations
 

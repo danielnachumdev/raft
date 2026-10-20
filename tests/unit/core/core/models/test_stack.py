@@ -22,7 +22,7 @@ services:
   app:
     public_host: app.test
     source: local
-    path: apps/app
+    path: services/app/checkout
 """,
         )
         self.stack = load_stack(self.tmp_path)
@@ -37,7 +37,7 @@ services:
             == self.tmp_path / "generated" / "nginx" / "upstreams" / "app-http.conf"
         )
         assert self.stack.upstream_name(self.app, port) == "app_http"
-        assert self.stack.certs_dir == self.tmp_path / "certs"
+        assert self.stack.certs_dir(self.app) == self.tmp_path / "services" / "app" / "certs"
         assert self.stack.core_services == (
             "raft-gate",
             "raft-router",
@@ -53,7 +53,7 @@ services:
             "raft-router",
             "raft-controller",
         )
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "dashboard: {enabled: true}\n", encoding="utf-8"
         )
         stack = load_stack(self.tmp_path)
@@ -71,8 +71,14 @@ services:
         assert self.stack.contract_for(self.app) is spec or True
 
     def test_image_and_ref_state_files(self) -> None:
-        assert self.stack.image_state_file(self.app) == self.tmp_path / "deploy" / "app.image"
-        assert self.stack.ref_state_file(self.app) == self.tmp_path / "deploy" / "app.ref"
+        assert (
+            self.stack.image_state_file(self.app)
+            == self.tmp_path / "services" / "app" / "deploy" / "app.image"
+        )
+        assert (
+            self.stack.ref_state_file(self.app)
+            == self.tmp_path / "services" / "app" / "deploy" / "app.ref"
+        )
 
     def test_load_stack_uses_raft_home_when_root_none(
         self, monkeypatch: pytest.MonkeyPatch, isolated_raft_data_home: Path
@@ -84,7 +90,7 @@ services:
   app:
     public_host: app.test
     source: local
-    path: apps/app
+    path: services/app/checkout
 """,
         )
         stack = load_stack(None)
@@ -95,12 +101,12 @@ services:
 class TestFindPackageRoot(RaftTestCase):
     def test_via_start_walk(self, monkeypatch: pytest.MonkeyPatch) -> None:
         fake = self.tmp_path / "pkg"
-        (fake / "nginx").mkdir(parents=True)
+        (fake / "nginx").mkdir(parents=True, exist_ok=True)
         (fake / "compose.yaml").write_text("name: raft\n", encoding="utf-8")
         finder = PackageRootFinder()
         monkeypatch.setattr(finder, "_bundled_share", lambda: self.tmp_path / "missing")
         nested = fake / "a" / "b"
-        nested.mkdir(parents=True)
+        nested.mkdir(parents=True, exist_ok=True)
         assert finder.find(nested) == fake.resolve()
 
     def test_via_package_parents(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -108,10 +114,10 @@ class TestFindPackageRoot(RaftTestCase):
         import raft.core.core.config.paths.package_root as package_root_mod
 
         pkg_root = self.tmp_path / "pkgroot"
-        (pkg_root / "nginx").mkdir(parents=True)
+        (pkg_root / "nginx").mkdir(parents=True, exist_ok=True)
         (pkg_root / "compose.yaml").write_text("name: raft\n", encoding="utf-8")
         fake_file = pkg_root / "raft" / "config" / "paths" / "package_root.py"
-        fake_file.parent.mkdir(parents=True)
+        fake_file.parent.mkdir(parents=True, exist_ok=True)
         fake_file.write_text("#\n", encoding="utf-8")
         orphan = self.tmp_path / "orphan"
         orphan.mkdir()
@@ -132,9 +138,13 @@ class TestFindPackageRoot(RaftTestCase):
 
 class TestApp(RaftTestCase):
     def test_abs_path(self) -> None:
-        app = AppMakers.make_app("d", public_host="d.example.com", path="apps/d")
-        (self.tmp_path / "apps" / "d").mkdir(parents=True)
-        assert app.abs_path(self.tmp_path) == (self.tmp_path / "apps" / "d").resolve()
+        app = AppMakers.make_app(
+            "d", public_host="d.example.com", path="services/d/checkout"
+        )
+        (self.tmp_path / "services" / "d" / "checkout").mkdir(parents=True, exist_ok=True)
+        assert app.abs_path(self.tmp_path) == (
+            self.tmp_path / "services" / "d" / "checkout"
+        ).resolve()
 
     def test_display_service_label(self) -> None:
         from raft.core.core.models.app import (

@@ -56,7 +56,7 @@ class AcmeCertHealth:
                 "fail",
                 "edge.http is null (ACME HTTP-01 needs published :80)",
                 fix=(
-                    "set edge.http: 80 in ~/.raft/settings.yaml, then "
+                    "set edge.http: 80 in ~/.raft/host/settings.yaml, then "
                     "`raft gate recreate`"
                 ),
             )
@@ -64,7 +64,7 @@ class AcmeCertHealth:
             return AcmeHealthOutcome(
                 "fail",
                 "acme.email is not set in settings.yaml",
-                fix="set acme.email in ~/.raft/settings.yaml, then re-apply",
+                fix="set acme.email in ~/.raft/host/settings.yaml, then re-apply",
             )
         return None
 
@@ -149,7 +149,7 @@ class AcmeCertHealth:
         base = (
             f"controller retries ACME for {app.name} about every 6h; "
             f"check DNS A/AAAA, edge.http (:80), acme.email, and "
-            f"~/.raft/state/acme/apps/{app.name}.json"
+            f"~/.raft/services/{app.name}/acme/state.json"
         )
         if last_error and "rate" in last_error.lower():
             return f"{base}; rate-limited — wait or use acme.directory staging"

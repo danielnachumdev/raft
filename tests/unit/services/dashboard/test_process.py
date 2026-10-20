@@ -66,7 +66,7 @@ class TestDashboardProcess(RaftTestCase):
 
     def test_run_starts_oauth_sidecar(self) -> None:
         home = Path(self.tmp_path)
-        (home / "settings.yaml").write_text(
+        (home / "host" / "settings.yaml").write_text(
             "dashboard:\n  auth:\n    mode: oauth\n", encoding="utf-8"
         )
         proc = DashboardProcess(StackMakers.make_stack(home))
@@ -95,7 +95,7 @@ class TestDashboardProcess(RaftTestCase):
 
     def _proc_with_conf(self):
         home = Path(self.tmp_path)
-        (home / "settings.yaml").write_text(
+        (home / "host" / "settings.yaml").write_text(
             "dashboard:\n  auth:\n    mode: none\n", encoding="utf-8"
         )
         return DashboardProcess(StackMakers.make_stack(home)), home / "nginx.conf"

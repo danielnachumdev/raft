@@ -10,7 +10,7 @@ from tests.unit.base import RaftTestCase
 class TestDashboardAppServer(RaftTestCase):
     def test_main_runs_uvicorn(self) -> None:
         home = Path(self.tmp_path)
-        (home / "settings.yaml").write_text("{}\n", encoding="utf-8")
+        (home / "host" / "settings.yaml").write_text("{}\n", encoding="utf-8")
         with patch("raft.services.dashboard.app_server.RaftHome") as home_cls:
             with patch("raft.services.dashboard.app_server.Stack.load_apps") as load:
                 with patch(

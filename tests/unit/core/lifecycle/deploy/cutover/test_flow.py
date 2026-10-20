@@ -34,7 +34,7 @@ class TestCutoverFlow(CutoverTestCase):
     def _run_snapshot_and_tmp(self, s) -> None:
         s.snapshot_previous_image()
         assert s.previous_image == "img:old"
-        assert (self.tmp_path / "deploy" / "app.image").is_file()
+        assert (self.tmp_path / "services" / "app" / "deploy" / "app.image").is_file()
         s.start_tmp_from_previous()
         s.docker.run_tmp.assert_called_once_with(
             name=s.app.tmp_container,
@@ -54,7 +54,7 @@ class TestCutoverFlow(CutoverTestCase):
         s.nginx.point_at.assert_called_with(s.app, "app")
         s.remove_tmp()
         assert s.tmp_active is False
-        assert "sha_new" in (self.tmp_path / "deploy" / "app.image").read_text(encoding="utf-8")
+        assert "sha_new" in (self.tmp_path / "services" / "app" / "deploy" / "app.image").read_text(encoding="utf-8")
 
     def test_start_tmp_passes_env_file_and_readiness_path(self) -> None:
         env_file = self.tmp_path / "app.env"

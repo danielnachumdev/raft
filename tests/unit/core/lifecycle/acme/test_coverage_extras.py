@@ -60,7 +60,7 @@ class TestAcmeCoverageExtras(RaftTestCase):
     def test_ensure_corrupt_pem_and_san_change(self) -> None:
         AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
         ensure = AcmeEnsure(load_stack(self.tmp_path), config=AcmeConfig(email="ops@x.com"))
-        d = self.tmp_path / "certs" / "web"
+        d = self.tmp_path / "services" / "web" / "certs"
         d.mkdir(parents=True, exist_ok=True)
         (d / "acme.pem").write_text("not-a-cert\n", encoding="utf-8")
         (d / "acme.key").write_text("key\n", encoding="utf-8")

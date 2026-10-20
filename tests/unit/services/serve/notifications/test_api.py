@@ -22,7 +22,7 @@ from tests.unit.core.observe.notify.fakes import FakeStrategy
 class TestServeNotificationsApi(RaftTestCase):
     def _client(self, *, registry: Optional[NotificationRegistry] = None) -> TestClient:
         stack = StackMakers.make_stack(self.tmp_path)
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "edge: {http: 80, https: null}\n", encoding="utf-8"
         )
         status = MagicMock()
@@ -63,7 +63,7 @@ class TestServeNotificationsApi(RaftTestCase):
 
     def _default_catalog_client(self) -> TestClient:
         stack = StackMakers.make_stack(self.tmp_path)
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "edge: {http: 80, https: null}\n", encoding="utf-8"
         )
         status = MagicMock()
@@ -164,7 +164,7 @@ class TestServeNotificationsApi(RaftTestCase):
 
     def _client_with_disk_channel(self) -> TestClient:
         stack = StackMakers.make_stack(self.tmp_path)
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "edge: {http: 80, https: null}\n", encoding="utf-8"
         )
         NotificationsSettingsWriter(self.tmp_path).create(
@@ -212,7 +212,7 @@ class TestServeNotificationsApi(RaftTestCase):
                 "settings": {"token": "disk-secret"},
             },
         )
-        raw = yaml.safe_load((self.tmp_path / "settings.yaml").read_text())
+        raw = yaml.safe_load((self.tmp_path / "host" / "settings.yaml").read_text())
         assert raw["notifications"]["channels"][0]["settings"]["token"] == "disk-secret"
         listed = client.get("/api/notifications/channels").json()["channels"][0]
         assert listed["settings"]["token"] == "***"

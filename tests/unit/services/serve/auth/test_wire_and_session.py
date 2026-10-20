@@ -30,7 +30,7 @@ class TestServeAuthWireAndSession(RaftTestCase):
 
     def test_wire_skips_none_and_password_without_hash(self) -> None:
         home = self.tmp_path
-        (home / "settings.yaml").write_text("{}\n", encoding="utf-8")
+        (home / "host" / "settings.yaml").write_text("{}\n", encoding="utf-8")
         stack = StackMakers.make_stack(home)
         ServeAuthWire(stack, config=DashboardConfig()).apply(FastAPI())
         ServeAuthWire(
@@ -53,7 +53,7 @@ class TestServeAuthWireAndSession(RaftTestCase):
 
     def _password_client(self) -> TestClient:
         home = self.tmp_path
-        (home / "settings.yaml").write_text("{}\n", encoding="utf-8")
+        (home / "host" / "settings.yaml").write_text("{}\n", encoding="utf-8")
         hashed = DashboardPassword().hash("correct-horse")
         cfg = DashboardConfig(
             auth=DashboardAuthConfig(mode="password", password_hash=hashed)

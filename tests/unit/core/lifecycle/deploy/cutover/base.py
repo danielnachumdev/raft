@@ -30,8 +30,9 @@ class CutoverTestCase(DomainTestCase):
         app = AppMakers.make_app("hub", source="docker", image="ghcr.io/org/hub", ref="main")
         stack = StackMakers.make_stack(self.tmp_path, (app,), drain_seconds=0.0, ready_timeout_seconds=1.0)
         if ref_text is not None:
-            (self.tmp_path / "deploy").mkdir(parents=True, exist_ok=True)
-            (self.tmp_path / "deploy" / "hub.ref").write_text(ref_text, encoding="utf-8")
+            ref = self.tmp_path / "services" / "hub" / "deploy" / "hub.ref"
+            ref.parent.mkdir(parents=True, exist_ok=True)
+            ref.write_text(ref_text, encoding="utf-8")
         docker = MagicMock()
         docker.router_can_fetch.return_value = True
         return CutoverSession(

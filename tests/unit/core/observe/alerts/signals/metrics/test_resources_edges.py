@@ -16,7 +16,7 @@ class TestResourcesEdges(RaftTestCase):
     def test_host_metric(self) -> None:
         home = Path(self.tmp_path)
         path = MetricsPaths(home).resources()
-        path.parent.mkdir(parents=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
             json.dumps({"ts": NOW.isoformat(), "host": {"cpus": 1, "memory": {"used_percent": 1}}}) + "\n",
             encoding="utf-8",

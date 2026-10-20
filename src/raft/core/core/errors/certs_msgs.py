@@ -66,7 +66,7 @@ class CertMessages:
     def missing_origin_certs_fallback(*, detail: str = "") -> str:
         text = (
             "gate nginx could not load Origin TLS certificates "
-            "(missing files under ~/.raft/certs/<app>/)."
+            "(missing files under ~/.raft/services/*/certs/<app>/)."
         )
         if detail.strip():
             return f"{text}\n{detail.strip()}"
@@ -76,7 +76,7 @@ class CertMessages:
     def missing_acme_certs_fallback(*, detail: str = "") -> str:
         text = (
             "gate nginx could not load ACME TLS certificates "
-            "(missing files under ~/.raft/certs/<app>/acme.pem). "
+            "(missing files under ~/.raft/services/*/certs/<app>/acme.pem). "
             "Fix: point DNS A/AAAA at this host; keep edge.http (:80) and "
             "edge.https (:443) published; set acme.email; re-apply "
             "(do not paste Origin PEMs for tls: acme)."

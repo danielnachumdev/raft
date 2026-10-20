@@ -66,7 +66,7 @@ class TestProductTemplateSync(RaftTestCase):
 
     def test_sync_skips_controller_package_without_parent_init(self) -> None:
         pkg = self.tmp_path / "share-only"
-        (pkg / "nginx").mkdir(parents=True)
+        (pkg / "nginx").mkdir(parents=True, exist_ok=True)
         (pkg / "controller").mkdir()
         (pkg / "dashboard").mkdir()
         (pkg / "compose.yaml").write_text("name: raft\n", encoding="utf-8")
@@ -90,7 +90,7 @@ class TestProductTemplateSync(RaftTestCase):
     ) -> None:
         home = self.tmp_path / "home"
         dest = home / "controller" / "pyproject.toml"
-        dest.parent.mkdir(parents=True)
+        dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text('name = "kept"\n', encoding="utf-8")
         syncer = ProductTemplateSync()
         monkeypatch.setattr(syncer._deps, "find_raft_pyproject", lambda _p: None)

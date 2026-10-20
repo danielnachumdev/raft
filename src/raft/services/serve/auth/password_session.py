@@ -75,7 +75,7 @@ class PasswordSessionAuth:
 
     @staticmethod
     def _load_or_create_secret(data_home: Path) -> bytes:
-        path = data_home / "state" / "serve" / "dashboard-session.key"
+        path = data_home / "host" / "serve" / "dashboard-session.key"
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.is_file():
             return path.read_bytes()

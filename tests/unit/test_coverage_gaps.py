@@ -46,7 +46,7 @@ class TestCoverageGaps(RaftTestCase):
         assert settings_types.RaftConfig is not None
         home = self.tmp_path / ".raft"
         home.mkdir(parents=True, exist_ok=True)
-        assert settings_path(home) == home / settings_types.CONFIG_FILENAME
+        assert settings_path(home) == home / "host" / settings_types.CONFIG_FILENAME
 
     def test_certs_msgs_doctor_footer_branch(self) -> None:
         missing = [

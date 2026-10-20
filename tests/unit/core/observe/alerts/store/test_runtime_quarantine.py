@@ -13,7 +13,7 @@ from tests.unit.base import RaftTestCase
 class TestRuntimeQuarantine(RaftTestCase):
     def test_corrupt_json_and_non_mapping(self) -> None:
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True)
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
         store = AlertRuntimeStore(home)
         store.path.write_text("not-json", encoding="utf-8")
         assert store.load().instances == {}
@@ -22,7 +22,7 @@ class TestRuntimeQuarantine(RaftTestCase):
 
     def test_quarantine_rename_fails(self) -> None:
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True)
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
         store = AlertRuntimeStore(home)
         store.path.write_text("{", encoding="utf-8")
         with patch.object(Path, "rename", side_effect=OSError("x")):

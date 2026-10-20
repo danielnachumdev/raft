@@ -1,8 +1,10 @@
-"""Lock file paths under ``~/.raft/state/locks/``."""
+"""Lock file paths under ``~/.raft/host/locks/``."""
 
 from pathlib import Path
 
-LOCKS_REL = Path("state") / "locks"
+from raft.core.core.config.paths.constants import LOCKS_DIR
+
+LOCKS_REL = LOCKS_DIR
 STACK_LOCK_NAME = "stack.lock"
 SETTINGS_LOCK_NAME = "settings.lock"
 ACL_LOCK_NAME = "acl.lock"

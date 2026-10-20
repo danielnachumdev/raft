@@ -63,7 +63,7 @@ class TestSyncDocker(SyncTestCase):
         self.shell.docker.assert_any_call(
             "tag", f"{_DEMO_IMAGE}:abc123", f"{_DEMO_IMAGE}:main"
         )
-        state = (self.tmp_path / "deploy" / "demo-api.ref").read_text(encoding="utf-8")
+        state = (self.tmp_path / "services" / "demo-api" / "deploy" / "demo-api.ref").read_text(encoding="utf-8")
         assert "abc123" in state
         assert f"{_DEMO_IMAGE}@sha256:deadbeef" in state
 

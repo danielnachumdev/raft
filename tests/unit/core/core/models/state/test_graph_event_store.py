@@ -70,7 +70,7 @@ class TestGraphEventStore(RaftTestCase):
         self._assert_jsonl_line(home, stored.id)
 
     def _assert_jsonl_line(self, home: Path, event_id: str) -> None:
-        path = home / "state" / "events" / "graph.jsonl"
+        path = home / "host" / "events" / "graph.jsonl"
         payload = json.loads(path.read_text(encoding="utf-8").strip())
         assert payload["id"] == event_id
         assert payload["kind"] == KIND_DEPLOYMENT
@@ -99,8 +99,8 @@ class TestGraphEventStore(RaftTestCase):
         home = self.tmp_path / "raft"
         store = GraphEventStore(home)
         assert store.events_in_window(from_ts=datetime.now(timezone.utc)) == []
-        path = home / "state" / "events" / "graph.jsonl"
-        path.parent.mkdir(parents=True)
+        path = home / "host" / "events" / "graph.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
             "\nnot-json\n{\"kind\":\"x\"}\n[]\n"
             '{"kind":"deployment","ts":"not-a-ts"}\n',

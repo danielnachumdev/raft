@@ -104,7 +104,7 @@ class HealE2EStack:
 
     @staticmethod
     def _write_heal_settings(home: Path) -> None:
-        YamlDoc(home / "settings.yaml").merge_root(
+        YamlDoc(home / "host" / "settings.yaml").merge_root(
             "healing",
             {
                 "enabled": True,

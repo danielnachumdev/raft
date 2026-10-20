@@ -11,7 +11,7 @@ import yaml
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.firewall import FirewallDocument
 
-FIREWALL_STATE_DIR = Path("state") / "firewall"
+FIREWALL_STATE_DIR = Path("host") / "firewall"
 FIREWALL_RULES_NAME = "rules.yaml"
 
 
@@ -33,7 +33,7 @@ class FirewallStore:
                 return None
             raw = self._read_yaml(self.path)
             return FirewallDocument.from_mapping(
-                raw, path="state/firewall/rules.yaml", source="firewall"
+                raw, path="host/firewall/rules.yaml", source="firewall"
             )
 
     def save(self, document: FirewallDocument) -> None:
@@ -65,7 +65,7 @@ class FirewallStore:
             return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         except (OSError, yaml.YAMLError) as exc:
             raise OperatorError(
-                f"cannot read state/firewall/rules.yaml: {exc}.\n"
+                f"cannot read host/firewall/rules.yaml: {exc}.\n"
                 f"Fix: repair the firewall document or delete it to remigrate",
                 has_fix=False,
             ) from exc

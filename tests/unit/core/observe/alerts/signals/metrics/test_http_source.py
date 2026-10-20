@@ -35,7 +35,7 @@ class TestHttpMetricSource(RaftTestCase):
     def _ctx(self) -> SignalContext:
         home = Path(self.tmp_path)
         path = MetricsPaths(home).http()
-        path.parent.mkdir(parents=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         _write_http_sample(path)
         return SignalContext(home, NOW, app_names=["demo-api"])
 

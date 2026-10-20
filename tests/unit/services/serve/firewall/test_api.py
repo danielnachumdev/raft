@@ -16,7 +16,7 @@ from tests.unit.core.lifecycle.firewall.helpers import rule_dict
 
 class TestServeFirewallApi(RaftTestCase):
     def _client(self) -> TestClient:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "edge: {http: 80, https: null}\n", encoding="utf-8"
         )
         AppliedInventory.write_applied_app(

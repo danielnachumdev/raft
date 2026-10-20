@@ -2,7 +2,9 @@
 
 from pathlib import Path
 
-METRICS_DIR = Path("state") / "metrics"
+from .constants import HOST_METRICS_DIR
+
+METRICS_DIR = HOST_METRICS_DIR
 METRICS_FILENAME = "resources.jsonl"
 HTTP_METRICS_FILENAME = "http.jsonl"
 GATE_HTTP_LOG_DIR = METRICS_DIR / "gate-http"
@@ -10,7 +12,7 @@ ACCESS_LOG_NAME = "access.log"
 
 
 class MetricsPaths:
-    """Resolved metrics paths for a raft data home."""
+    """Resolved metrics paths for a data home."""
 
     def __init__(self, home: Path) -> None:
         self._home = home

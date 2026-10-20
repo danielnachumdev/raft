@@ -1,4 +1,4 @@
-"""Operator settings — ``~/.raft/settings.yaml`` loaders and types."""
+"""Operator settings — ``~/.raft/host/settings.yaml`` loaders and types."""
 
 from .document import SettingsDocument
 from .loader import SettingsLoader, load_config

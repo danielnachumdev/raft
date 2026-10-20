@@ -8,7 +8,7 @@ from raft.core.observe.ops.events.service import DEFAULT_HOURS, DEFAULT_LIMIT
 
 
 class ServeEventsApi:
-    """Localhost JSON API over ``state/events/ops.jsonl``."""
+    """Localhost JSON API over ``host/events/ops.jsonl``."""
 
     def __init__(
         self, stack: Stack, *, service: Optional[OpsEventsService] = None

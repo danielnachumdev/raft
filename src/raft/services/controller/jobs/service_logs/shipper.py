@@ -1,4 +1,4 @@
-"""Poll Compose containers and append stdout into ``state/service-logs/``."""
+"""Poll Compose containers and append stdout into service log dirs (#313)."""
 
 import logging
 from pathlib import Path
@@ -44,6 +44,7 @@ class ServiceLogsShipper:
             return
         stack = self._stack_loader()
         self._docker.stack = stack
+        self._store.bind_apps(stack.apps)
         keys = ServiceLogsKeys(stack)
         for compose_id in keys.known_compose_ids(
             include_edge=self._config.include_edge

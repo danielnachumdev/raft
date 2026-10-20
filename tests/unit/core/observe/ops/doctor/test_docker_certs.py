@@ -16,7 +16,7 @@ class TestDoctorDockerCerts(DoctorTestCase):
 
     def _hub_with_repo(self):
         self.seed_generated_apps()
-        return self._hub_docker_app(repo="git@github.com:org/hub.git", path="apps/hub")
+        return self._hub_docker_app(repo="git@github.com:org/hub.git", path="services/hub/checkout")
 
     def test_docker_source_image_checks(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path, (self._hub_docker_app(),))
@@ -46,12 +46,12 @@ class TestDoctorDockerCerts(DoctorTestCase):
         assert "deploy key present" in results[("hub", "auth")].detail
 
     def _write_hub_registry(self) -> None:
-        reg = self.tmp_path / "state" / "apps" / "hub.yaml"
+        reg = self.tmp_path / "services" / "hub" / "app.yaml"
         reg.parent.mkdir(parents=True, exist_ok=True)
         reg.write_text(
             "apiVersion: raft/v1\nkind: App\nmetadata:\n  name: hub\nspec:\n"
             "  publicHost: hub.test\n  source: docker\n  image: ghcr.io/org/hub\n"
-            "  ref: main\n  repo: git@github.com:org/hub.git\n  path: apps/hub\n"
+            "  ref: main\n  repo: git@github.com:org/hub.git\n  path: services/hub/checkout\n"
             "  ports:\n"
             "    - name: http\n      containerPort: 80\n      expose: http\n",
             encoding="utf-8",
@@ -86,7 +86,7 @@ class TestDoctorDockerCerts(DoctorTestCase):
         assert "apiVersion" in results[("app", "contract")].detail
 
     def _write_bad_registry(self) -> None:
-        reg = self.tmp_path / "state" / "apps" / "app.yaml"
+        reg = self.tmp_path / "services" / "app" / "app.yaml"
         reg.parent.mkdir(parents=True, exist_ok=True)
         reg.write_text(
             "apiVersion: nope\nkind: App\nmetadata:\n  name: app\nspec:\n"
@@ -112,8 +112,8 @@ class TestDoctorDockerCerts(DoctorTestCase):
         self.seed_compose()
         self.ensure_checkouts("app")
         AppliedInventory.write_applied_app(self.tmp_path, "app", tls="origin")
-        d = self.tmp_path / "certs" / "app"
-        d.mkdir(parents=True)
+        d = self.tmp_path / "services" / "app" / "certs"
+        d.mkdir(parents=True, exist_ok=True)
         (d / "origin.pem").write_text("pem\n", encoding="utf-8")
         results = self.run_keyed(
             shell=self.mock_shell(), docker=self.mock_docker(), auth=MagicMock()
@@ -126,7 +126,7 @@ class TestDoctorDockerCerts(DoctorTestCase):
         self.seed_compose()
         self.ensure_checkouts("app")
         AppliedInventory.write_applied_app(self.tmp_path, "app", tls="acme")
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "edge:\n  http: 80\n  https: 443\nacme:\n  email: ops@example.com\n",
             encoding="utf-8",
         )
@@ -147,7 +147,7 @@ class TestDoctorDockerCerts(DoctorTestCase):
         from tests.unit.core.lifecycle.acme.cert_helpers import plant_live_acme
 
         plant_live_acme(self.tmp_path, "app", ["app.test"], days=60)
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "edge:\n  http: 80\n  https: 443\nacme:\n  email: ops@example.com\n",
             encoding="utf-8",
         )
@@ -161,7 +161,7 @@ class TestDoctorDockerCerts(DoctorTestCase):
         self.seed_compose()
         self.ensure_checkouts("app")
         AppliedInventory.write_applied_app(self.tmp_path, "app", tls="acme")
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "edge:\n  http: 80\n  https: 443\nacme: {}\n",
             encoding="utf-8",
         )

@@ -69,7 +69,7 @@ class TestManifestResourceCoverage(RaftTestCase):
         assert spec.extra_hosts == ("alias.test",)
 
     def _assert_filename_stem_mismatch(self) -> None:
-        dest = self.tmp_path / "state" / "apps" / "wrong.yaml"
+        dest = self.tmp_path / "services" / "wrong" / "app.yaml"
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(
             "apiVersion: raft/v1\nkind: App\nmetadata:\n  name: a\nspec:\n"
@@ -82,7 +82,7 @@ class TestManifestResourceCoverage(RaftTestCase):
 
         result = AppRegistry(self.tmp_path).load_result()
         assert result.apps == ()
-        assert any("filename stem" in i.error for i in result.issues)
+        assert any("must match metadata.name" in i.error for i in result.issues)
         stack = load_stack(self.tmp_path)
         assert stack.apps == ()
         assert stack.registry_issues

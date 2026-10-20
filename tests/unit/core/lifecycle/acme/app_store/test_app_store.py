@@ -30,7 +30,7 @@ class TestAcmeAppStore(RaftTestCase):
         store = AcmeAppStore(self.tmp_path)
         assert store.load("missing") == AcmeAppState()
         path = store._paths.app_state("bad")
-        path.parent.mkdir(parents=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("not-json", encoding="utf-8")
         assert store.load("bad") == AcmeAppState()
         path.write_text("[]\n", encoding="utf-8")

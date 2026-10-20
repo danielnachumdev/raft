@@ -65,7 +65,7 @@ class TestDashboardCoverageGaps(RaftTestCase):
 
     def _password_svc(self, *, running: list[str]) -> DashboardService:
         home = Path(self.tmp_path)
-        (home / "settings.yaml").write_text("{}\n", encoding="utf-8")
+        (home / "host" / "settings.yaml").write_text("{}\n", encoding="utf-8")
         writer = DashboardSettingsWriter(home)
         writer.set_password("correct-horse")
         svc = DashboardService(
@@ -79,7 +79,7 @@ class TestDashboardCoverageGaps(RaftTestCase):
 
     def test_writer_clear_host_and_http_url(self) -> None:
         home = Path(self.tmp_path)
-        (home / "settings.yaml").write_text("{}\n", encoding="utf-8")
+        (home / "host" / "settings.yaml").write_text("{}\n", encoding="utf-8")
         writer = DashboardSettingsWriter(home)
         writer.set_password("correct-horse")
         writer.enable(
@@ -96,14 +96,14 @@ class TestDashboardCoverageGaps(RaftTestCase):
 
     def test_writer_invalid_yaml(self) -> None:
         home = Path(self.tmp_path)
-        path = home / "settings.yaml"
+        path = home / "host" / "settings.yaml"
         path.write_text(":\n  - !!", encoding="utf-8")
         with pytest.raises(OperatorError, match="cannot update"):
             DashboardSettingsWriter(home)._load_root()
 
     def test_writer_non_mapping_yaml(self) -> None:
         home = Path(self.tmp_path)
-        (home / "settings.yaml").write_text("- list\n", encoding="utf-8")
+        (home / "host" / "settings.yaml").write_text("- list\n", encoding="utf-8")
         with pytest.raises(OperatorError, match="YAML mapping"):
             DashboardSettingsWriter(home)._load_root()
 
@@ -114,7 +114,7 @@ class TestDashboardCoverageGaps(RaftTestCase):
 
     def test_cli_prints_public_url(self) -> None:
         home = Path(self.tmp_path)
-        (home / "settings.yaml").write_text("{}\n", encoding="utf-8")
+        (home / "host" / "settings.yaml").write_text("{}\n", encoding="utf-8")
         writer = DashboardSettingsWriter(home)
         writer.set_password("correct-horse")
         svc = DashboardService(

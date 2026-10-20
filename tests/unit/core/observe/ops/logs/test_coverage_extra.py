@@ -63,7 +63,7 @@ class TestServiceLogsCoverage(RaftTestCase):
     def test_store_append_oserror(self) -> None:
         store = ServiceLogsStore(self.tmp_path, max_age_days=14, max_bytes=1024)
         active = store.active_path("demo-api")
-        active.parent.mkdir(parents=True)
+        active.parent.mkdir(parents=True, exist_ok=True)
         # Directory where a file is required → OSError on open("a").
         active.mkdir()
         with pytest.raises(OSError):
@@ -86,7 +86,7 @@ class TestServiceLogsCoverage(RaftTestCase):
     def test_reader_skips_unreadable_and_meta(self) -> None:
         store = ServiceLogsStore(self.tmp_path, max_age_days=14, max_bytes=1024)
         active = store.active_path("demo-api")
-        active.parent.mkdir(parents=True)
+        active.parent.mkdir(parents=True, exist_ok=True)
         active.write_text("visible\n", encoding="utf-8")
         (active.parent / "meta.json").write_text("{}", encoding="utf-8")
         (active.parent / "noise.txt").write_text("x\n", encoding="utf-8")
@@ -153,7 +153,7 @@ class TestServiceLogsCoverage(RaftTestCase):
 
     def test_hooks_stack_down_disabled_via_settings(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path, ())
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "serviceLogs:\n  enabled: false\n", encoding="utf-8"
         )
         docker = MagicMock()

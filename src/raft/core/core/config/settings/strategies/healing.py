@@ -24,7 +24,7 @@ class HealingSettingsParser(SettingsSectionParser[HealingConfig]):
         if not isinstance(raw, dict):
             raise OperatorError(
                 "settings.yaml healing must be a mapping.\n"
-                "Fix: set healing: {enabled: true, ...} in ~/.raft/settings.yaml"
+                "Fix: set healing: {enabled: true, ...} in ~/.raft/host/settings.yaml"
             )
         return self._from_mapping(raw)
 

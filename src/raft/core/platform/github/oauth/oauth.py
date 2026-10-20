@@ -146,7 +146,7 @@ class GithubOauth:
             return
         raise OperatorError(
             "GitHub OAuth is not configured.\n"
-            "Fix: set github.clientId + github.clientSecret in ~/.raft/settings.yaml "
+            "Fix: set github.clientId + github.clientSecret in ~/.raft/host/settings.yaml "
             "(or RAFT_GITHUB_CLIENT_ID / RAFT_GITHUB_CLIENT_SECRET)",
             has_fix=False,
         )

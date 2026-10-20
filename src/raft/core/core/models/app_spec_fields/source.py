@@ -18,7 +18,8 @@ class AppSourceFields:
                 f"(got {source!r})"
             )
         ref = str(spec.get("ref", "main")).strip() or "main"
-        rel_path = str(spec.get("path", f"apps/{name}")).strip() or f"apps/{name}"
+        default = f"services/{name}/checkout"
+        rel_path = str(spec.get("path", default)).strip() or default
         repo, image = AppSourceFields._repo_image(source, spec, path)
         return source, repo, image, ref, rel_path
 

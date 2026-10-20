@@ -19,7 +19,7 @@ class TestMetricsJsonlReader(RaftTestCase):
         home = self.tmp_path / "raft"
         now = datetime(2026, 10, 2, 12, 0, tzinfo=timezone.utc)
         path = home / METRICS_DIR / METRICS_FILENAME
-        path.parent.mkdir(parents=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         lines = [
             json.dumps(metrics_fx.sample(now - timedelta(hours=2), cpu=1)),
             json.dumps(metrics_fx.sample(now - timedelta(minutes=30), cpu=2)),
@@ -57,7 +57,7 @@ class TestMetricsJsonlReader(RaftTestCase):
         home = self.tmp_path / "raft"
         now = datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)
         path = home / METRICS_DIR / METRICS_FILENAME
-        path.parent.mkdir(parents=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         (path.parent / "noise-dir").mkdir()
         archive = path.parent / f"{METRICS_FILENAME}.2026-10-02"
         archive.write_text(
