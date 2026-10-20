@@ -12,6 +12,7 @@
     "test": "node --test --experimental-strip-types $(find test -name '*.test.ts')"
   },
   "dependencies": {
+    "html-to-image": "^1.11.13",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.4",

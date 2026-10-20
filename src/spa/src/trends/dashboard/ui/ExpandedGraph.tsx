@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Modal } from "../../../chrome/Modal";
+import { exportGraphCsv, exportGraphPng } from "../../export/index.ts";
 import { graphTitle, type TrendsGraphConfig } from "../model/index.ts";
 import { TrendsGraph } from "./TrendsGraph";
 import type { DashboardMetrics } from "./useDashboardMetrics";
@@ -18,11 +19,23 @@ export function ExpandedGraph(props: {
   const index = props.panels.findIndex((p) => p.id === props.id);
   const panel = index >= 0 ? props.panels[index] : null;
   const height = useExpandedHeight();
+  const graphRef = useRef<HTMLElement>(null);
+  const [pngBusy, setPngBusy] = useState(false);
   const step = (delta: number) => {
     const next = props.panels[index + delta];
     if (next) props.onNavigate(next.id);
   };
   useArrowKeys(panel !== null, step);
+
+  const onPng = async () => {
+    if (!panel || pngBusy) return;
+    setPngBusy(true);
+    try {
+      await exportGraphPng(graphRef.current, graphTitle(panel));
+    } finally {
+      setPngBusy(false);
+    }
+  };
 
   return (
     <Modal
@@ -37,7 +50,25 @@ export function ExpandedGraph(props: {
           </span>
           <button
             type="button"
-            className="btn"
+            className="action-btn"
+            id="trends-export-csv"
+            disabled={!panel}
+            onClick={() => panel && exportGraphCsv(panel, props.data)}
+          >
+            Export CSV
+          </button>
+          <button
+            type="button"
+            className="action-btn"
+            id="trends-export-png"
+            disabled={!panel || pngBusy}
+            onClick={() => void onPng()}
+          >
+            {pngBusy ? "Exporting…" : "Export PNG"}
+          </button>
+          <button
+            type="button"
+            className="action-btn"
             disabled={index <= 0}
             onClick={() => step(-1)}
           >
@@ -45,7 +76,7 @@ export function ExpandedGraph(props: {
           </button>
           <button
             type="button"
-            className="btn"
+            className="action-btn"
             disabled={index >= props.panels.length - 1}
             onClick={() => step(1)}
           >
@@ -54,7 +85,7 @@ export function ExpandedGraph(props: {
           {props.onEdit ? (
             <button
               type="button"
-              className="btn"
+              className="action-btn"
               onClick={() => panel && props.onEdit?.(panel.id)}
             >
               Edit…
@@ -70,6 +101,7 @@ export function ExpandedGraph(props: {
           palette={props.palette}
           height={height}
           className="is-expanded"
+          rootRef={graphRef}
         />
       ) : null}
     </Modal>
