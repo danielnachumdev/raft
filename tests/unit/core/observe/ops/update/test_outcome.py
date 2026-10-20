@@ -27,7 +27,9 @@ class TestUpdateOutcome(DomainTestCase):
             lambda self: "raft 0.1.0",
         )
         shell = MagicMock()
-        upd = SelfUpdate(self.stack)
+        gate = MagicMock()
+        gate.ensure = MagicMock()
+        upd = SelfUpdate(self.stack, host_gate=gate)
         upd.sh = shell
         with patch("raft.core.observe.ops.update.announce.OperatorSay.say") as say:
             outcome = upd.run(announce=False)

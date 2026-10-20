@@ -158,6 +158,14 @@ container loads raft via `PYTHONPATH` without wheel dist-info. After
 `raft update`, re-enable or recreate the dashboard so the image rebuilds with
 the new stamp.
 
+## Settings → Update raft
+
+Check-for-updates works in the dashboard (GitHub Release vs stamped version).
+**Apply does not run inside the container** — the image has no host `curl` /
+uv-tool install path, and a naive `curl | bash` would exit 0 without updating
+the host CLI. Use `raft update` on the host, then recreate the dashboard.
+See [`docs/serve-settings.md`](serve-settings.md).
+
 ## Relationship to `raft serve`
 
 `raft serve` remains a foreground localhost helper (useful for development).

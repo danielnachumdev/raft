@@ -2,6 +2,7 @@
 
 from .announce import UpdateAnnounce
 from .check import UpdateCheck, UpdateCheckResult
+from .host_apply import HostApplyGate
 from .identity import InstallIdentity
 from .latest import LatestRelease, LatestReleaseFetcher
 from .outcome import NEXT_STEPS, UpdateOutcome
@@ -10,6 +11,7 @@ from .service import DEFAULT_INSTALL_URL, SelfUpdate
 
 __all__ = [
     "DEFAULT_INSTALL_URL",
+    "HostApplyGate",
     "InstallIdentity",
     "LatestRelease",
     "LatestReleaseFetcher",
