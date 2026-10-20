@@ -290,7 +290,7 @@
 /* Two-column page: sticky section index + content (Settings). */
 .with-aside {
   display: grid;
-  grid-template-columns: 12.5rem minmax(0, 1fr);
+  grid-template-columns: 13rem minmax(0, 1fr);
   align-items: start;
   gap: var(--space-5);
 }
@@ -330,6 +330,7 @@
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   color: var(--muted);
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .side-nav a:hover {
