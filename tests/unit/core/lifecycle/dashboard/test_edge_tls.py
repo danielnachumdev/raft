@@ -39,6 +39,10 @@ class TestDashboardEdgeTls(RaftTestCase):
         text = frag.gate_tls["raft-dashboard.conf"]
         assert "ssl_certificate" in text
         assert "auth_request" not in text
+        # Must exceed default gate 60s so Settings → Update can finish.
+        assert "proxy_read_timeout 600s" in text
+        assert "proxy_send_timeout 600s" in text
+        assert "proxy_router.inc" not in text
 
     def test_origin_needs_https(self) -> None:
         with pytest.raises(OperatorError, match="edge.https"):
@@ -77,3 +81,4 @@ class TestDashboardEdgeTls(RaftTestCase):
         text = frag.gate_tls["raft-dashboard.conf"]
         assert "ssl_certificate" in text
         assert "auth_request" not in text
+        assert "proxy_read_timeout 600s" in text

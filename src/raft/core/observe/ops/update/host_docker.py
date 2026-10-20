@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import Optional
 
@@ -10,8 +11,11 @@ from raft.core.platform.adapters.shell import Shell
 from .install_cmd import DEFAULT_HOST_UPDATE_IMAGE, InstallCmd
 
 _HOST_HOME_ENV = "RAFT_HOST_HOME"
+_HOST_UID_ENV = "RAFT_HOST_UID"
+_HOST_GID_ENV = "RAFT_HOST_GID"
 _IMAGE_ENV = "RAFT_HOST_UPDATE_IMAGE"
 _TIMEOUT_SECONDS = 600.0
+logger = logging.getLogger(__name__)
 
 
 class HostDockerUpdate:
@@ -28,17 +32,37 @@ class HostDockerUpdate:
     ) -> None:
         self._shell = shell
         self._host_home = (host_home or os.environ.get(_HOST_HOME_ENV) or "").strip()
-        self._uid = os.getuid() if uid is None else uid
-        self._gid = os.getgid() if gid is None else gid
+        self._uid = self._resolve_id(uid, _HOST_UID_ENV, os.getuid)
+        self._gid = self._resolve_id(gid, _HOST_GID_ENV, os.getgid)
         self._image = self._resolve_image(image)
 
     def run(self, url: str, ref: Optional[str]) -> None:
+        argv = self.argv(url, ref)
+        logger.info(
+            "host docker update start home=%s user=%s:%s image=%s ref=%s",
+            self._host_home,
+            self._uid,
+            self._gid,
+            self._image,
+            (ref or "").strip() or "(latest)",
+        )
         try:
-            self._shell.run(
-                self.argv(url, ref), timeout=_TIMEOUT_SECONDS, capture=True
-            )
+            self._shell.run(argv, timeout=_TIMEOUT_SECONDS, capture=True)
         except Exception as exc:
+            logger.error("host docker update failed: %s", self._failure_message(exc))
             raise OperatorError(self._failure_message(exc)) from exc
+        logger.info("host docker update finished home=%s", self._host_home)
+
+    @staticmethod
+    def _resolve_id(
+        explicit: Optional[int], env_name: str, fallback
+    ) -> int:
+        if explicit is not None:
+            return explicit
+        raw = (os.environ.get(env_name) or "").strip()
+        if raw.isdigit():
+            return int(raw)
+        return int(fallback())
 
     @staticmethod
     def _failure_message(exc: BaseException) -> str:

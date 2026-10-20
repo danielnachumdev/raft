@@ -33,6 +33,8 @@ class DashboardEdgeRender:
         frag = self._http_upstream(cfg)
         app = self._target.app(cfg)
         assert app is not None
+        # Gate must match router 600s — Settings → Update pulls install.sh.
+        # A 60s gate timeout aborts the browser request (nginx 499) mid-apply.
         frag.merge(
             self._tls.contribute_app(
                 app,
@@ -40,6 +42,8 @@ class DashboardEdgeRender:
                 edge=edge,
                 data_home=data_home,
                 acl_include=acl_include,
+                proxy_read_timeout="600s",
+                proxy_send_timeout="600s",
             )
         )
         return frag

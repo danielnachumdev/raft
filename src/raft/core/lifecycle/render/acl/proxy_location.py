@@ -1,14 +1,27 @@
 """Shared gate ``location /`` proxy body with optional ACL include."""
 
+from typing import Optional
+
 from .nginx_text import AclNginxText
+
+_DEFAULT_READ = "60s"
 
 
 class AclProxyLocation:
     """Render proxy-to-router location + optional forbidden handler."""
 
     @staticmethod
-    def location_slash(*, acl_include: str, indent: str = "    ") -> str:
+    def location_slash(
+        *,
+        acl_include: str,
+        indent: str = "    ",
+        read_timeout: str = _DEFAULT_READ,
+        send_timeout: Optional[str] = None,
+    ) -> str:
         inner = indent + "    "
+        send = ""
+        if send_timeout:
+            send = f"{inner}proxy_send_timeout {send_timeout};\n"
         return (
             f"{indent}location / {{\n"
             f"{acl_include}"
@@ -21,7 +34,8 @@ class AclProxyLocation:
             f"$proxy_add_x_forwarded_for;\n"
             f"{inner}proxy_set_header X-Forwarded-Proto $scheme;\n"
             f"{inner}proxy_connect_timeout 3s;\n"
-            f"{inner}proxy_read_timeout 60s;\n"
+            f"{inner}proxy_read_timeout {read_timeout};\n"
+            f"{send}"
             f"{inner}proxy_intercept_errors on;\n"
             f"{inner}error_page 502 503 504 /offline.html;\n"
             f"{indent}}}\n"
