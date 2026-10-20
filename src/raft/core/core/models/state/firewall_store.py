@@ -1,4 +1,4 @@
-"""Persistent ordered firewall document under ``~/.raft/state/firewall/``."""
+"""Persistent ordered firewall document under ``~/.raft/host/firewall/``."""
 
 import os
 import tempfile
@@ -66,6 +66,6 @@ class FirewallStore:
         except (OSError, yaml.YAMLError) as exc:
             raise OperatorError(
                 f"cannot read host/firewall/rules.yaml: {exc}.\n"
-                f"Fix: repair the firewall document or delete it to remigrate",
+                f"Fix: repair the firewall document or replace it from a known-good copy",
                 has_fix=False,
             ) from exc

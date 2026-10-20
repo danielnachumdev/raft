@@ -8,7 +8,7 @@ Operators read Compose stdout/stderr via shared `raft.core.observe.ops.logs.Logs
 | Mode | When | Source |
 |------|------|--------|
 | **Follow** (`-f` / SSE) | Container running | Live `docker compose logs -f` |
-| **Snapshot** / download | Always (known target) | Retained files under `~/.raft/state/service-logs/<compose-id>/`, with a one-shot Docker fallback if the container still exists and nothing is retained yet |
+| **Snapshot** / download | Always (known target) | Retained files under `services/<name>/logs/` (Apps) or `host/logs/services/<edge-id>/` (gate/router/controller), with a one-shot Docker fallback if the container still exists and nothing is retained yet |
 
 Unknown / never-applied names still fail with the unknown-target CTA (404 on serve).
 
@@ -19,19 +19,20 @@ Follow still requires a running container.
 ## Retention layout
 
 ```text
-~/.raft/state/service-logs/
-  demo-api/
-    current.log              # active append target
-    current.log.2026-10-14   # sealed archives (LogArchiveNames)
-    meta.json                # container id + Docker timestamp cursor
+~/.raft/services/demo-api/logs/
+  current.log
+  current.log.2026-10-14
+  meta.json
+
+~/.raft/host/logs/services/
   raft-gate/
   raft-router/
   raft-controller/
 ```
 
-Rotation reuses `LogRotationBootstrap` (same seal/age pattern as host `logs/raft.log`
-and metrics JSONL). Settings: `serviceLogs` in `~/.raft/host/settings.yaml`
-(see `examples/settings.yaml`).
+Rotation reuses `LogRotationBootstrap` (same seal/age pattern as host
+`host/logs/raft.log` and metrics JSONL). Settings: `serviceLogs` in
+`~/.raft/host/settings.yaml` (see `examples/settings.yaml`).
 
 ## Capture
 
@@ -40,7 +41,8 @@ and metrics JSONL). Settings: `serviceLogs` in `~/.raft/host/settings.yaml`
 2. **Final drain** before `remove_container`, force-recreate, rebuild, gate/router
    recreate, and stack down — best-effort so cutover/`rm` does not race the last lines.
 
-The controller needs a writable bind of `./state/service-logs` (packaged compose).
+The controller needs writable binds of `./services` and `./host/logs` (packaged
+compose).
 
 ## Privacy
 

@@ -17,7 +17,7 @@ export function MetricsSection(props: {
       kind={props.meta?.kind ?? "always"}
       enabled
       source={props.meta?.source}
-      hint="Controller sampling for resources.jsonl and http.jsonl under state/metrics/."
+      hint="Controller sampling for resources.jsonl and http.jsonl under host/metrics/."
     >
       <div className="form-grid">
         <NumberField

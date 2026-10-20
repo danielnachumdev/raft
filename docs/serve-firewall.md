@@ -39,7 +39,7 @@ Examples use documentation CIDRs (`192.0.2.0/24`) and `demo-api` only.
 | Persist | `~/.raft/host/firewall/rules.yaml` |
 | Apply | Persist → `raft render` → **gate nginx reload** (never recreate for rule-only edits) |
 | Compile | Heavy work at Save/render: merge adjacent same-action CIDRs; emit `allow`/`deny` + drop maps |
-| Recommendations | Per published HTTP edge port **permit** + **default deny any**; dismissals in `state/firewall/dismissed-recommendations.json` |
+| Recommendations | Per published HTTP edge port **permit** + **default deny any**; dismissals in `host/firewall/dismissed-recommendations.json` |
 
 ### Actions → nginx
 
@@ -66,7 +66,7 @@ Legacy flat ACL UI/API (`acl.gate`, `state/acl/`, `/api/acl/*`, Settings allow/d
 | `permit-port-<N>` | `0.0.0.0/0` / port `N` / `tcp` / `any` → **permit** (prepended) |
 | `default-deny` | `0.0.0.0/0` / port `any` / protocol `any` / service `any` → **deny** (appended) |
 
-Apply inserts into the local table (Save still required). Dismiss persists under `~/.raft/state/firewall/dismissed-recommendations.json`.
+Apply inserts into the local table (Save still required). Dismiss persists under `~/.raft/host/firewall/dismissed-recommendations.json`.
 
 ## Operator API
 

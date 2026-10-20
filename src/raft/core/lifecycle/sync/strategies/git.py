@@ -6,7 +6,7 @@ from ..strategy import SyncStrategy
 
 
 class GitSyncStrategy(SyncStrategy):
-    """Git-backed App: checkout under ``apps/`` and pin SHA in ``deploy/``."""
+    """Git-backed App: checkout under ``services/<name>/checkout/`` and pin SHA in ``deploy/``."""
 
     @property
     def type_id(self) -> str:

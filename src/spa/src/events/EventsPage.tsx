@@ -13,7 +13,7 @@ import "./EventsPage.css";
 
 const EVENTS_POLL_MS = 15_000;
 
-/** Chronological timeline over ``state/events/ops.jsonl``; quiet poll while visible. */
+/** Chronological timeline over ``host/events/ops.jsonl``; quiet poll while visible. */
 export function EventsPage() {
   const [query, setQuery] = useState<EventsQuery>(DEFAULT_EVENTS_QUERY);
   const [busy, setBusy] = useState(true);

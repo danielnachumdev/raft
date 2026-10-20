@@ -1,4 +1,4 @@
-"""Historical HTTP request series from ``state/metrics/http.jsonl``."""
+"""Historical HTTP request series from ``host/metrics/http.jsonl``."""
 
 from datetime import datetime, timezone
 from pathlib import Path

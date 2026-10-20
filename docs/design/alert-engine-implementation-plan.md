@@ -11,14 +11,14 @@ Audience: the agent implementing the engine. Read [`AGENTS.md`](../../AGENTS.md)
 
 ### 1.1 What we are building
 
-An **in-process alert rules engine** under `src/raft/core/observe/alerts/`. A controller interval job loads durable rules from `~/.raft/host/alerts/rules.yaml`, queries registered **signal sources** (metrics JSONL, control-plane facts, later firewall/edge), evaluates registered **rule kinds** combined with `all` / `any` compositions over time windows, tracks per-instance state (pending / firing / cool-down / recovery) in `~/.raft/state/alerts/runtime.json`, and emits existing `NotificationEvent`s into the existing `Notifier`, which fans out to the channels configured in `settings.yaml` `notifications:`.
+An **in-process alert rules engine** under `src/raft/core/observe/alerts/`. A controller interval job loads durable rules from `~/.raft/host/alerts/rules.yaml`, queries registered **signal sources** (metrics JSONL, control-plane facts, later firewall/edge), evaluates registered **rule kinds** combined with `all` / `any` compositions over time windows, tracks per-instance state (pending / firing / cool-down / recovery) in `~/.raft/host/alerts/runtime.json`, and emits existing `NotificationEvent`s into the existing `Notifier`, which fans out to the channels configured in `settings.yaml` `notifications:`.
 
 Operators manage rules from **both** the CLI (`raft alerts …`) and `raft serve` (new **Alerts** settings page). Both are editors over the same rules document through one shared service class. **Parity lock:** [#264](https://github.com/danielnachumdev/raft/issues/264) / epic [#256](https://github.com/danielnachumdev/raft/issues/256) — satisfied when v1 shipped dual-plane via PR #251 (no serve-first waiver).
 
 ### 1.2 Goals
 
 - Open-closed engine: new signal sources and rule kinds register through registries + catalogs (mirrors `observe/notify/` strategies, `NotificationRegistry`, `NotificationCatalogs`, `CatalogField`) without editing the evaluator.
-- Thresholds on `state/metrics/resources.jsonl` and `state/metrics/http.jsonl` (first proving adapter).
+- Thresholds on `host/metrics/resources.jsonl` and `host/metrics/http.jsonl` (first proving adapter).
 - Control-plane conditions (container status, lifecycle graph events).
 - Compositions (`all` / `any`, nested), aggregation windows, `for` durations, severity, dedupe by fingerprint, cool-down, optional recovery notification, optional repeat.
 - Optional per-rule routing (`channelIds`); empty means all enabled channels.
@@ -42,7 +42,7 @@ Operators manage rules from **both** the CLI (`raft alerts …`) and `raft serve
 ### 2.1 Layering
 
 ```text
-                 ┌────────────────────────── ~/.raft/state/alerts/ ───────────────────────────┐
+                 ┌────────────────────────── ~/.raft/host/alerts/ ───────────────────────────┐
                  │  rules.yaml (desired, versioned)          runtime.json (controller-owned)   │
                  └───────▲──────────────────────────────────────────────▲────────────────────┘
    CLI (raft alerts) ────┤ AlertRulesService (alerts.lock)              │ AlertRuntimeStore
@@ -296,7 +296,7 @@ Persistence: `AlertRulesStore.save` writes `document.to_export()` with `yaml.saf
 
 **Decision — strict load:** unlike the app registry, the rules document is validated as a whole (CLI/serve writes are strict and atomic, so a bad file means a hand edit). A single invalid rule makes the whole document fail to load with a path-qualified message (`rules[2].condition.all[0].params.value`), surfaced by `raft alerts validate`, the serve status endpoint, and `raft doctor` (PR 8).
 
-### 3.2 `~/.raft/state/alerts/runtime.json` (controller-owned)
+### 3.2 `~/.raft/host/alerts/runtime.json` (controller-owned)
 
 Written only by the controller job (single writer; `QueuePolicy.SKIP_IF_RUNNING` prevents overlap). CLI and serve read it; never hand-edited as source of truth. Atomic JSON write, mode `0o600`.
 
@@ -312,7 +312,7 @@ Written only by the controller job (single writer; `QueuePolicy.SKIP_IF_RUNNING`
     "rulesSkippedDisabled": 1,
     "notificationsSent": 1,
     "errors": [
-      {"ruleId": "deploy-churn", "message": "control.events: cannot read state/events/graph.jsonl"}
+      {"ruleId": "deploy-churn", "message": "control.events: cannot read host/events/graph.jsonl"}
     ],
     "documentError": null
   },
@@ -351,7 +351,7 @@ alerts:
   timeoutSeconds: 30     # soft timeout for the job (default 30)
 ```
 
-**Decision:** the interval lives in settings (like `metrics:` / `healing:`), not in `rules.yaml`, because the controller registers its `JobSpec` at startup from `RaftConfig`. Rules stay in `state/alerts/`; channels stay in `notifications:`. Changing `alerts:` needs a controller restart (document it), rules do not (re-read every tick).
+**Decision:** the interval lives in settings (like `metrics:` / `healing:`), not in `rules.yaml`, because the controller registers its `JobSpec` at startup from `RaftConfig`. Rules stay in `host/alerts/`; channels stay in `notifications:`. Changing `alerts:` needs a controller restart (document it), rules do not (re-read every tick).
 
 ### 3.4 `NotificationEvent` mapping
 
@@ -586,7 +586,7 @@ class AlertRulesStore:
 
 class AlertRuntimeStore:
     def __init__(self, home: Path) -> None: ...
-    path: Path                                   # home / "state/alerts/runtime.json"
+    path: Path                                   # home / "host/alerts/runtime.json"
     def load(self) -> AlertRuntime: ...          # missing/corrupt -> AlertRuntime.empty()
     def save(self, runtime: AlertRuntime) -> None: ...
     def ensure_writable(self) -> None: ...       # raise OSError when dir not writable
@@ -670,7 +670,7 @@ Fix: move the three constants (plus `GATE_HTTP_LOG_DIR`, `ACCESS_LOG_NAME` for t
 
 ### 5.1 `metrics.resources` (`ResourcesMetricSource`)
 
-- File: `state/metrics/resources.jsonl` (+ sealed archives) via `MetricsJsonlReader(path).samples_in_window(from_ts=now - window)`.
+- File: `host/metrics/resources.jsonl` (+ sealed archives) via `MetricsJsonlReader(path).samples_in_window(from_ts=now - window)`.
 - Sample shape (from `Status.collect().to_dict()` + `ts`): `host` dict (`cpus`, `loadavg`, `memory.used_percent`, `memory.used_bytes`, …) and `containers` list of rows (`service`, `role`, `app`, `group`, `status`, `uptime_seconds`, `cpu_percent`, `memory.{used_bytes,limit_bytes,used_percent}`, `network.{rx_bytes,tx_bytes}`, `block_io.{read_bytes,write_bytes}`, `pids`).
 - **Reuse, do not re-parse:** call `MetricsSeriesBuilder().build(samples, wanted=…)`; each series has `points` with flat keys. Read the metric key from each point.
 - `select`: `{target: "host" | "<service>" | "*", metric: <key>}`. `"*"` = every series whose `role == "app"` (exclude gate/router/controller).
@@ -679,7 +679,7 @@ Fix: move the three constants (plus `GATE_HTTP_LOG_DIR`, `ACCESS_LOG_NAME` for t
 
 ### 5.2 `metrics.http` (`HttpMetricSource`)
 
-- File: `state/metrics/http.jsonl`. Sample top level = edge window (`requests`, `rps`, `duration_ms.{avg,p50,p95,p99}`, `status_class.{2xx,3xx,4xx,5xx,other}`, `in_flight`, `active_connections`, `interval_seconds`), plus `by_host` and `by_service` maps of the same window shape (from `HttpMetricsAggregator._window`).
+- File: `host/metrics/http.jsonl`. Sample top level = edge window (`requests`, `rps`, `duration_ms.{avg,p50,p95,p99}`, `status_class.{2xx,3xx,4xx,5xx,other}`, `in_flight`, `active_connections`, `interval_seconds`), plus `by_host` and `by_service` maps of the same window shape (from `HttpMetricsAggregator._window`).
 - Reuse `HttpMetricsSeriesBuilder().build(...)`; point keys: `rps`, `requests`, `duration_avg_ms`, `duration_p50_ms`, `duration_p95_ms`, `duration_p99_ms`, `status_2xx`, `status_3xx`, `status_4xx`, `status_5xx`, and edge-only `in_flight`, `active_connections`.
 - Derived per point (computed in the source, not the builder): `error_rate_5xx = status_5xx / requests`, `error_rate_4xx = status_4xx / requests` (`None` when `requests` is 0 or missing, so idle periods are "no data", not 0%).
 - `select`: `{target: "edge" | "<service>" | "*", metric}`; `"*"` = every key in `by_service` seen in the window.
@@ -702,13 +702,13 @@ Per-tick IO: `MetricsSampleCache` memoizes (via `SignalContext.memo`) one read p
 
 ### 5.5 Later phase: control-plane facts not in graph events
 
-Heal escalate, scale wake timeout, ACME `lastError`, serve deploy failed are delivered by `ControlPlaneEvents` directly and are not durable. Follow-on (separate issue): a `ControlPlaneJournal` that `Notifier.notify` appends to (`state/events/control.jsonl`, bounded) plus a `control.notifications` EVENT source. Out of v1 to keep producers untouched.
+Heal escalate, scale wake timeout, ACME `lastError`, serve deploy failed are delivered by `ControlPlaneEvents` directly and are not durable. Follow-on (separate issue): a `ControlPlaneJournal` that `Notifier.notify` appends to (`host/events/control.jsonl`, bounded) plus a `control.notifications` EVENT source. Out of v1 to keep producers untouched.
 
 ### 5.6 Later phase: firewall / edge signals (`edge.denies`)
 
 Policy stays on the gate (#207/#211). Plan for the follow-on PR:
 
-1. Extend `HttpMetricsAggregator` (controller, already tails `state/metrics/gate-http/access.log` with an offset) to also count firewall outcomes per window: `firewall: {"403": n, "444": n, "by_prefix": {"192.0.2.0/24": n, …}}`, with `by_prefix` bucketed by IPv4 `/24` and IPv6 `/64`, bounded top-N (20) to keep JSONL small. Use enriched access-log fields (`client_ip`) via `HttpAccessLineParser`; legacy lines without client IP count only totals.
+1. Extend `HttpMetricsAggregator` (controller, already tails `host/metrics/gate-http/access.log` with an offset) to also count firewall outcomes per window: `firewall: {"403": n, "444": n, "by_prefix": {"192.0.2.0/24": n, …}}`, with `by_prefix` bucketed by IPv4 `/24` and IPv6 `/64`, bounded top-N (20) to keep JSONL small. Use enriched access-log fields (`client_ip`) via `HttpAccessLineParser`; legacy lines without client IP count only totals.
 2. Add `edge.denies` NUMERIC source reading that block from `http.jsonl`: `select: {target: "edge" | "<cidr>", status: "403" | "444" | "any"}`.
 3. Docs: "sustained 403/444 from 192.0.2.0/24" example. No new nginx hop, no gate restart.
 
@@ -739,15 +739,15 @@ class AlertsJob(ControllerJob):
 ```
 
 - Add `JobType.ALERTS = "alerts"` and `JobIds.ALERTS`.
-- Add `AlertsJob(self._home, self._config.alerts)` to `ControllerLoop._jobs` and a `_log_alerts()` startup line (`alerts enabled interval=60s path=state/alerts/`).
+- Add `AlertsJob(self._home, self._config.alerts)` to `ControllerLoop._jobs` and a `_log_alerts()` startup line (`alerts enabled interval=60s path=host/alerts/`).
 - The orchestrator already catches job exceptions; the extra `try` keeps the log line specific and protects direct `tick()` calls in tests.
 
 ### 6.2 Data-home mount and directories
 
 The controller mounts the data home **read-only** (`.:/raft:ro`) with specific writable sub-mounts. Required changes:
 
-- `src/raft/core/platform/share/compose.yaml` `raft-controller.volumes`: add `- ./state/alerts:/raft/state/alerts`.
-- `src/raft/core/core/config/paths/constants.py` `DATA_DIR_RELS`: add `"state/alerts"` (bind-mount source must exist before `compose up`).
+- `src/raft/core/platform/share/compose.yaml` `raft-controller.volumes`: add `- ./host/alerts:/raft/host/alerts`.
+- `src/raft/core/core/config/paths/constants.py` `DATA_DIR_RELS`: add `"host/alerts"` (bind-mount source must exist before `compose up`).
 - Existing installs pick up the mount only when the controller container is recreated (`raft up`). Until then the writability probe (§4.5 step 2) fails closed and logs a Fix CTA; `raft doctor` reports it (PR 8). Document this in the release notes / operator doc.
 
 ### 6.3 Locking
@@ -1014,7 +1014,7 @@ AlertsSettingsPage
 
 - **New** `docs/serve-alerts.md`: what alerts are vs channels ("rules decide *when*, channels decide *where*"); rule document reference (fields table, durations, conditions, subject join for `*`, `noData`); signal source reference (metric keys per scope, derived error rates, latency note); state lifecycle (pending → firing → resolved, cool-down, repeat, suppressed); routing; CLI reference; serve page walkthrough; `alerts:` settings; troubleshooting (stale evaluation → controller mount / `raft up`, document error → `raft alerts validate`); full PII-safe example (§3.1).
 - `docs/serve-notifications.md`: short "Alert rules" section linking to `serve-alerts.md`; mention `channelIds` routing.
-- `AGENTS.md`: feature table row → `Alert rules engine (metrics/control-plane → notifications)` **Shipped**, pointing to #236 and `docs/serve-alerts.md`; keep a **Planned** row for firewall-derived alert signals; add `host/alerts/rules.yaml`, `state/alerts/runtime.json` to the data-home table; add `alerts.lock` to the locks table ("CLI/serve writes to `host/alerts/rules.yaml`"); add "Alert rules" to "Where to change what" (`core/observe/alerts/`, `services/serve/alerts/`, `services/controller/jobs/alerts/`, SPA `src/spa/src/alerts/`).
+- `AGENTS.md`: feature table row → `Alert rules engine (metrics/control-plane → notifications)` **Shipped**, pointing to #236 and `docs/serve-alerts.md`; keep a **Planned** row for firewall-derived alert signals; add `host/alerts/rules.yaml`, `host/alerts/runtime.json` to the data-home table; add `alerts.lock` to the locks table ("CLI/serve writes to `host/alerts/rules.yaml`"); add "Alert rules" to "Where to change what" (`core/observe/alerts/`, `services/serve/alerts/`, `services/controller/jobs/alerts/`, SPA `src/spa/src/alerts/`).
 - `README.md`: update the "Alerts from firewall + graph metrics (via notifications)" row (currently 📋) — metrics/control-plane shipped, firewall planned.
 - `src/raft/core/platform/locking/__init__.py` docstring: add `alerts.lock`.
 - This plan stays in `docs/design/` as the historical record.
@@ -1052,7 +1052,7 @@ SPA (`node --test`, pure TS helpers only — the repo has no React renderer test
 - `src/spa/test/shared/catalogFormHelpers.test.ts`: moved helpers + `select` / `duration` / `string_list`.
 - Visible changes proven by screenshots (§9.7).
 
-E2E: not required for v1 (unit + serve `TestClient` cover the surfaces; the controller mount change is covered by a unit test asserting the compose template contains the `state/alerts` volume). Optional follow-up: extend `tests/e2e/test_compose_up.py` to assert the controller can write `state/alerts/runtime.json` after `raft up`.
+E2E: not required for v1 (unit + serve `TestClient` cover the surfaces; the controller mount change is covered by a unit test asserting the compose template contains the `host/alerts` volume). Optional follow-up: extend `tests/e2e/test_compose_up.py` to assert the controller can write `host/alerts/runtime.json` after `raft up`.
 
 Commands:
 
@@ -1108,7 +1108,7 @@ Each PR is independently reviewable, keeps CI green, and links #236. Branch per 
 
 ### PR 8 — Control-plane sources + doctor + docs
 
-- `control.container_status`, `control.events`; `raft doctor` checks (rules document invalid; alerts enabled with rules but evaluation stale; `state/alerts` not writable from the controller); `docs/serve-alerts.md`, notifications doc link, AGENTS/README rows (§10).
+- `control.container_status`, `control.events`; `raft doctor` checks (rules document invalid; alerts enabled with rules but evaluation stale; `host/alerts` not writable from the controller); `docs/serve-alerts.md`, notifications doc link, AGENTS/README rows (§10).
 - **Accept:** source + doctor unit tests; docs reviewed for PII; AGENTS/README rows updated.
 
 (PRs 5 and 6 can proceed in parallel after PR 3; PR 7 needs PR 6. If reviewers prefer, the docs part of PR 8 can land with PR 7 so the shipped surface is documented at release.)
@@ -1126,7 +1126,7 @@ Each PR is independently reviewable, keeps CI green, and links #236. Branch per 
 
 | # | Item | Proposed stance |
 |---|------|-----------------|
-| 1 | Existing installs keep the old controller container (read-only `state/alerts`) until recreated. | Fail closed (no notifications, logged Fix CTA), doctor check, release note "run `raft up` after updating". Confirm whether `raft update` should trigger a controller recreate in a separate issue. |
+| 1 | Existing installs keep the old controller container (read-only `host/alerts`) until recreated. | Fail closed (no notifications, logged Fix CTA), doctor check, release note "run `raft up` after updating". Confirm whether `raft update` should trigger a controller recreate in a separate issue. |
 | 2 | Unknown `channelIds` at write time: error vs warning. | Error at write (strict like apply), warning at runtime (channel deleted later → deliver to remaining). Deleting a channel referenced by rules: notifications API could warn — follow-up. |
 | 3 | Metrics flush lag (up to ~60 s) delays detection. | Document; validation warning for windows < 2 × interval. Do not change recorder batching in this work. |
 | 4 | `*` subjects with mixed sources (resources app names vs HTTP `by_service` keys). | Both use the Compose service id; verify `by_service` keys equal `ContainerStatus.service` for grouped apps (`GROUP-NAME`) in PR 3 tests; normalize in `MetricTargets` if not. |

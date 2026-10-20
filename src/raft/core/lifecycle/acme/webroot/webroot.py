@@ -1,4 +1,4 @@
-"""HTTP-01 challenge token files under ``state/acme/http-01/``."""
+"""HTTP-01 challenge token files under ``host/acme/http-01/``."""
 
 from pathlib import Path
 

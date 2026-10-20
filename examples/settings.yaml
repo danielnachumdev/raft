@@ -50,7 +50,7 @@ logging:
 #                                 # maxRestarts), raft cutover/redeploy (default: 1)
 
 # ---------------------------------------------------------------------------
-# metrics — raft-controller sampling (JSONL under state/metrics/).
+# metrics — raft-controller sampling (JSONL under host/metrics/).
 # Independent cadence from healing. Defaults: 1 sample/min, soft timeout 30s,
 # flush every 10 samples or 60s. Rotation matches host CLI logs: seal the active
 # file on day change or when the active segment hits retentionMaxBytes
@@ -76,7 +76,7 @@ logging:
 #   retentionMaxBytes: 104857600  # 100 MiB; max size of each active segment
 
 # ---------------------------------------------------------------------------
-# serviceLogs — retained Compose stdout/stderr under state/service-logs/.
+# serviceLogs — retained Compose stdout/stderr under host/logs/services/.
 # Controller shipper appends continuously; lifecycle drains before recreate/rm
 # so cutover does not lose the last lines. Snapshot (CLI/serve/download) reads
 # retained files when the container is gone; follow still needs a live container.
@@ -143,7 +143,7 @@ edge:
 
 # ---------------------------------------------------------------------------
 # github — temporary OAuth for ``raft serve`` deploy assist (v1).
-# Accounts file: ~/.raft/state/serve/github-accounts.json (mode 0600).
+# Accounts file: ~/.raft/host/serve/github-accounts.json (mode 0600).
 # Docs: docs/serve-github-deploy.md
 # ---------------------------------------------------------------------------
 # github:
@@ -216,7 +216,7 @@ edge:
 #     #   provider: google      # google | oidc
 #     #   # issuerUrl: https://login.example.com/   # oidc only
 #     #   allowlistFile: host/secrets/dashboard/oauth-allowlist.txt
-#     # secrets: ~/.raft/services/*/secrets/ or host/host/secrets/dashboard/oauth.env (+ allowlist)
+#     # secrets: ~/.raft/host/secrets/dashboard/oauth.env (+ allowlist)
 # CLI: raft dashboard status|enable|disable|set-password|oauth …
 
 # ---------------------------------------------------------------------------

@@ -32,13 +32,13 @@ plus a ``presentation`` row (including ``external_urls``) for that Compose
 service id (404 if unknown).
 
 Serve ``GET /api/metrics`` returns historical **resource** series from
-``state/metrics/resources.jsonl`` via ``MetricsRead`` (window, optional
+``host/metrics/resources.jsonl`` via ``MetricsRead`` (window, optional
 ``start``/``end`` absolute range, optional ``since`` cursor for SPA polling),
 plus ``events`` from ``host/events/graph.jsonl``. Payload includes ``bounds``
 from metrics retention (``retentionMaxAgeDays`` / earliest sample).
 
 Serve ``GET /api/metrics/http`` returns historical **HTTP edge** series from
-sibling ``state/metrics/http.jsonl`` via ``HttpMetricsRead`` (same window /
+sibling ``host/metrics/http.jsonl`` via ``HttpMetricsRead`` (same window /
 ``since`` shape; ``kind: http``). Percentiles are over the controller sample
 window (``metrics.intervalSeconds``). Live updates use HTTP polling — simpler
 and durable for one FastAPI process than WebSockets. Serve status endpoints
@@ -47,7 +47,7 @@ the next SPA poll (~2s when the tab is visible).
 
 Serve ``GET /api/service/{name}/http-requests`` returns recent **per-request**
 rows for Host-routed Apps (``expose: http`` + ``publicHost``) via
-``HttpRequestsRead`` (tail of ``state/metrics/gate-http/access.log``). Trends
+``HttpRequestsRead`` (tail of ``host/metrics/gate-http/access.log``). Trends
 HTTP stays aggregate-only; see ``docs/serve-http-requests.md``.
 
 Doctor JSON is deferred for a full dashboard health view; see

@@ -35,7 +35,7 @@ Rules:
 
 - `auth.mode: none` cannot set `publicHost`.
 - `publicHost` requires `auth.mode` `password`, `oauth`, or `external`, and `tls` set.
-- Origin PEMs: `~/.raft/services/*/certs/raft-dashboard/origin.{pem,key}`.
+- Origin PEMs: `~/.raft/services/raft-dashboard/certs/origin.{pem,key}`.
 - ACME uses the same HTTP-01 path as Apps; synthetic target name
   `raft-dashboard` (set `acme.email`).
 - Firewall service id is `raft-dashboard` when `publicHost` is set.
@@ -84,8 +84,8 @@ Secrets stay under the data home (never in git / PR bodies):
 
 | File | Role |
 |------|------|
-| `~/.raft/services/*/secrets/ or host/host/secrets/dashboard/oauth.env` | `OAUTH2_PROXY_CLIENT_ID`, `CLIENT_SECRET`, `COOKIE_SECRET`, `REDIRECT_URL` (0600) |
-| `~/.raft/services/*/secrets/ or host/host/secrets/dashboard/oauth-allowlist.txt` | One allowed identity per line |
+| `~/.raft/host/secrets/dashboard/oauth.env` | `OAUTH2_PROXY_CLIENT_ID`, `CLIENT_SECRET`, `COOKIE_SECRET`, `REDIRECT_URL` (0600) |
+| `~/.raft/host/secrets/dashboard/oauth-allowlist.txt` | One allowed identity per line |
 
 ```bash
 raft dashboard oauth init --provider=google

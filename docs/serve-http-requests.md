@@ -14,7 +14,7 @@ Design lock: [issue #197](https://github.com/danielnachumdev/raft/issues/197).
 
 Gate access log (bind-mounted):
 
-`~/.raft/state/metrics/gate-http/access.log`
+`~/.raft/host/metrics/gate-http/access.log`
 
 Enriched `log_format` (product template `nginx/gate/nginx.conf`):
 

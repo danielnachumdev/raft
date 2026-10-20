@@ -1,4 +1,4 @@
-"""Runtime JSON stores under ``~/.raft/state/``."""
+"""Runtime JSON stores under ``~/.raft/host/`` and ``services/<name>/``."""
 
 from .graph_event_kinds import KIND_UPDATE
 from .graph_event_store import GraphEventStore

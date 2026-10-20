@@ -11,7 +11,7 @@ export function RegistryIssues(props: { issues: RegistryIssue[] }) {
           : `${props.issues.length} App manifests could not be loaded`}
       </h2>
       <p className="muted">
-        These files under <code>state/apps/</code> were skipped so other
+        These files under <code>services/</code> were skipped so other
         services keep working. Fix or remove them, then refresh. Apply/deploy
         still rejects bad YAML with a clear error.
       </p>

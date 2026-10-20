@@ -1,4 +1,4 @@
-"""Batched HTTP request metrics under ``state/metrics/http.jsonl``."""
+"""Batched HTTP request metrics under ``host/metrics/http.jsonl``."""
 
 import json
 import logging

@@ -1,4 +1,4 @@
-"""Batched resource utilization recording under ``~/.raft/state/metrics/``."""
+"""Batched resource utilization recording under ``~/.raft/host/metrics/``."""
 
 import json
 import logging

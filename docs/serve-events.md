@@ -4,7 +4,7 @@ Consolidated host activity journal (#267): apply/redeploy, scale wake/idle-stop,
 purge, firewall apply, gate reload, and alert fire/resolve — one append-only
 log for CLI and serve.
 
-Trends chart markers stay on **GraphEvents** (`state/events/graph.jsonl`).
+Trends chart markers stay on **GraphEvents** (`host/events/graph.jsonl`).
 This timeline is complementary; it does not replace Trends markers.
 
 ## Dual-write vs merge (lock)
@@ -24,9 +24,9 @@ Do **not** merge-on-read for v1 (avoids divergent filters and double-counting).
 
 | Path | Role |
 |------|------|
-| `~/.raft/state/events/ops.jsonl` | Active append target |
-| `~/.raft/state/events/ops.jsonl.YYYY-MM-DD[.N]` | Sealed archives (`LogRotationBootstrap`) |
-| `~/.raft/state/events/graph.jsonl` | Trends markers (unchanged) |
+| `~/.raft/host/events/ops.jsonl` | Active append target |
+| `~/.raft/host/events/ops.jsonl.YYYY-MM-DD[.N]` | Sealed archives (`LogRotationBootstrap`) |
+| `~/.raft/host/events/graph.jsonl` | Trends markers (unchanged) |
 
 Default retention: **14 days** age and **5 MiB** active file size (seal + age
 delete archives). Not configurable in settings for v1.

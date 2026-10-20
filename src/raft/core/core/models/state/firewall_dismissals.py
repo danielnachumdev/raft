@@ -1,4 +1,4 @@
-"""Persist dismissed firewall recommendation ids under state/firewall/."""
+"""Persist dismissed firewall recommendation ids under host/firewall/."""
 
 import json
 import os
