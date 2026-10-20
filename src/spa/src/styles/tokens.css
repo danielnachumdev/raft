@@ -55,6 +55,13 @@
   --topbar-height: 3.25rem;
   --shadow-raise: 0 1px 2px var(--shadow);
   --shadow-float: 0 8px 24px var(--shadow);
+  /* Settings YAML highlighter (keys / scalars / comments). */
+  --yh-comment: #6b6358;
+  --yh-key: #0f6b5c;
+  --yh-punct: #5c564c;
+  --yh-string: #6b3d1f;
+  --yh-number: #1a5f8a;
+  --yh-bool: #6b4a12;
 }
 
 :root[data-theme="dark"] {
@@ -92,4 +99,10 @@
   --shadow-strong: rgba(0, 0, 0, 0.5);
   --logs-bg: #0e0c0a;
   --logs-fg: #e8e2d6;
+  --yh-comment: #8a8174;
+  --yh-key: #6ec4b0;
+  --yh-punct: #a39b8e;
+  --yh-string: #d4a574;
+  --yh-number: #7eb8d4;
+  --yh-bool: #d4b86a;
 }
