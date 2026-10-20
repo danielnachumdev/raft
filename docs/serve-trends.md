@@ -37,16 +37,18 @@ The time range belongs to the **dashboard**, not the graph.
 
 - **Toolbar:** dashboard switcher + ⋯ menu (New, Rename, Restore default graphs, Delete), shared **Range**, **+ Add graph**.
 - **Add / edit graph:** modal with preset chips (CPU, Memory, Request rate, Latency p95, Errors, Network, Disk I/O, In-flight, Latency spread, Processes), title, view, width, metric and service/group pickers, and a **live preview** fed by the dashboard's data.
-- **Graph ⋯ menu:** Expand, Edit…, Duplicate, Make full / half width, Move earlier / later, Remove.
+- **Graph ⋯ menu:** Expand, Export CSV, Edit…, Duplicate, Make full / half width, Move earlier / later, Remove.
 - **Reorder:** drag a graph by its ⠿ handle onto another graph's slot (or use Move earlier / later).
 - **Remove** is immediate with an inline **Undo** for a few seconds.
-- **Expand:** click a graph title (or menu → Expand) for a near-fullscreen view; ←/→ step through the dashboard's graphs.
+- **Expand:** click a graph title (or menu → Expand) for a near-fullscreen view; ←/→ step through the dashboard's graphs. The expanded footer offers **Export CSV** (that graph's visible series only) and **Export PNG** (high-resolution screenshot of the expanded chart).
 - **Header number:** each graph shows the latest sample rolled up — **peak now** (max across lines) for percent / latency, **total now** (sum) for rates / counts / bytes, **avg now** in “average of all”. Same-type pairs (4xx + 5xx, RX + TX) fold together; the HTTP edge series is not double-counted in totals.
 - A service keeps the **same color on every graph**; the second metric of a two-metric graph is drawn dashed.
 
 ## Data fetching
 
 The dashboard fetches each metric plane **once** for the shared range — `/api/metrics` (resources) and/or `/api/metrics/http` — only for planes some graph uses, then live-polls with `since` cursors. Every graph filters that shared series client-side; adding graphs does not add requests. Series with no samples for a graph's metrics (e.g. host on HTTP graphs) are left out of that graph.
+
+**Per-graph CSV** (browser) uses the same column dialect as the panel **Download → CSV** / `raft metrics export_metrics` resource table (`t,series_id,label,kind,role,group` + resource point keys), scoped to the series shown on that graph. HTTP-metric graphs append their metric ids (e.g. `rps`) after the resource columns. Filenames look like `raft-trends-cpu.csv` / `raft-trends-request-rate.png` (no hostnames).
 
 CLI (same `MetricsRead` / `HttpMetricsRead` / `ExportService` cores; no browser required):
 

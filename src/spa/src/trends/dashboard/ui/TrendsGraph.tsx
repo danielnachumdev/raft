@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo, type ReactNode, type Ref } from "react";
 import { FlashValue } from "../../../chrome/FlashValue";
 import { ChartLoadingOverlay } from "../../chart/ChartLoadingOverlay";
 import { formatMetricValue } from "../../metricTypes";
@@ -30,6 +30,8 @@ export function TrendsGraph(props: {
   actions?: ReactNode;
   onOpen?: () => void;
   className?: string;
+  /** Root article ref (expanded PNG capture). */
+  rootRef?: Ref<HTMLElement>;
 }) {
   const { series, available } = props.data;
   const view = useMemo(
@@ -39,6 +41,7 @@ export function TrendsGraph(props: {
   const height = props.height ?? GRAPH_HEIGHT;
   return (
     <article
+      ref={props.rootRef}
       className={`trends-graph ${props.className ?? ""}`}
       aria-label={view.title}
     >

@@ -8,7 +8,7 @@ Trends operator UX (default graphs, range controls, persistence keys) remains do
 
 | Piece | Behavior |
 |-------|----------|
-| Shell | Grid (half/full → 12-col `span` 6/12), panels, edit/view, empty/stale, expand, undo-on-remove |
+| Shell | Grid (half/full → 12-col `span` 6/12), panels, edit/view, empty/stale, expand, undo-on-remove, per-graph CSV + expanded PNG export |
 | Panels | `timeseries` against raft metrics (resources + HTTP aggregate). `stat` reserved, not rendered |
 | Time | Shared dashboard range only; live poll on rolling windows; **no** per-panel range |
 | Variables | Embed `variables.service` / `variables.group`; `${service}` / `${group}` in titles; hooks for later dropdown chrome |
@@ -51,6 +51,17 @@ Nothing under `~/.raft/` yet. Clearing site data resets to Overview / default si
 ## Queries vs fetches
 
 Panels declare metrics + view mode + selection. The runtime unions planes (`resources` / `http`) and calls `/api/metrics` and/or `/api/metrics/http` **once each** for the shared range (optionally `services=`), then every panel filters that payload. Adding a graph does not add HTTP requests.
+
+## Per-graph export
+
+Shared Trends graph chrome (`GraphCell` / `ExpandedGraph`) owns export, so Overview kit embeds and service Trends both get it:
+
+| Action | Where | What |
+|--------|-------|------|
+| Export CSV | Graph ⋯ menu and expanded footer | Client CSV of that graph's **visible** series; same dialect as panel Download CSV (HTTP metrics appended when needed) |
+| Export PNG | Expanded footer only | High-DPI (`html-to-image`, 3×) screenshot of the expanded graph card |
+
+Panel-level **Download** in `KitHead` remains the full-window metrics attachment (not per-graph).
 
 ## Non-goals
 
