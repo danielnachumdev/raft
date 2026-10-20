@@ -43,18 +43,28 @@ class SelfUpdate:
     ) -> UpdateOutcome:
         self._host_gate.ensure()
         url = os.environ.get("RAFT_INSTALL_URL", DEFAULT_INSTALL_URL)
-        via = "host-docker" if self._host_gate.uses_host_docker() else "in-process"
+        via = self._via()
+        self._log_start(via, ref, url)
+        try:
+            outcome = self._run_with_progress(url, ref, progress_stream, announce)
+        except Exception:
+            logger.exception("self-update failed via=%s", via)
+            raise
+        self._log_done(via, outcome)
+        return outcome
+
+    def _via(self) -> str:
+        return "host-docker" if self._host_gate.uses_host_docker() else "in-process"
+
+    def _log_start(self, via: str, ref: Optional[str], url: str) -> None:
         logger.info(
             "self-update start via=%s ref=%s url=%s",
             via,
             (ref or "").strip() or "(latest)",
             url,
         )
-        try:
-            outcome = self._run_with_progress(url, ref, progress_stream, announce)
-        except Exception:
-            logger.exception("self-update failed via=%s", via)
-            raise
+
+    def _log_done(self, via: str, outcome: UpdateOutcome) -> None:
         logger.info(
             "self-update done via=%s already_current=%s before=%s after=%s",
             via,
@@ -62,7 +72,6 @@ class SelfUpdate:
             outcome.before_line,
             outcome.after_line,
         )
-        return outcome
 
     def _run_with_progress(
         self,

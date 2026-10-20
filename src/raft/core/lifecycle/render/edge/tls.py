@@ -124,14 +124,34 @@ class TlsEdge:
     ) -> str:
         names = " ".join(spec.server_names(app.public_host))
         head = TlsEdge._tls_server_head(app, names=names, stem=stem)
+        if TlsEdge._use_shared_proxy_include(
+            acl_include, proxy_read_timeout, proxy_send_timeout
+        ):
+            return head + "    include /etc/nginx/gate/proxy_router.inc;\n}\n"
+        return TlsEdge._expanded_tls_proxy(
+            head, acl_include, proxy_read_timeout, proxy_send_timeout
+        )
+
+    @staticmethod
+    def _use_shared_proxy_include(
+        acl_include: str,
+        proxy_read_timeout: str,
+        proxy_send_timeout: Optional[str],
+    ) -> bool:
         # Shared include is 60s-only; expand when ACL or long timeouts apply.
-        use_include = (
+        return (
             not acl_include
             and proxy_read_timeout == _DEFAULT_READ
             and not proxy_send_timeout
         )
-        if use_include:
-            return head + "    include /etc/nginx/gate/proxy_router.inc;\n}\n"
+
+    @staticmethod
+    def _expanded_tls_proxy(
+        head: str,
+        acl_include: str,
+        proxy_read_timeout: str,
+        proxy_send_timeout: Optional[str],
+    ) -> str:
         return (
             head
             + "    resolver 127.0.0.11 valid=10s ipv6=off;\n\n"

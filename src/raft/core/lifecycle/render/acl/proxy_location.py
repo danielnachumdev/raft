@@ -19,9 +19,25 @@ class AclProxyLocation:
         send_timeout: Optional[str] = None,
     ) -> str:
         inner = indent + "    "
-        send = ""
-        if send_timeout:
-            send = f"{inner}proxy_send_timeout {send_timeout};\n"
+        send = AclProxyLocation._send_line(inner, send_timeout)
+        return AclProxyLocation._slash_block(
+            indent, inner, acl_include, read_timeout, send
+        )
+
+    @staticmethod
+    def _send_line(inner: str, send_timeout: Optional[str]) -> str:
+        if not send_timeout:
+            return ""
+        return f"{inner}proxy_send_timeout {send_timeout};\n"
+
+    @staticmethod
+    def _slash_block(
+        indent: str,
+        inner: str,
+        acl_include: str,
+        read_timeout: str,
+        send: str,
+    ) -> str:
         return (
             f"{indent}location / {{\n"
             f"{acl_include}"
