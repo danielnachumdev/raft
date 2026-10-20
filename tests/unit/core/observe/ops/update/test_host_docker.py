@@ -63,6 +63,28 @@ class TestHostDockerUpdate:
         assert shell.run.call_args.kwargs.get("timeout") == 600.0
         assert shell.run.call_args.kwargs.get("capture") is True
 
+    def test_run_succeeds(self) -> None:
+        shell = MagicMock()
+        upd = HostDockerUpdate(
+            shell, host_home="/home/demo", uid=1, gid=1, image="img"
+        )
+        upd.run("https://example.test/install.sh", "v0.14.2")
+        shell.run.assert_called_once()
+
+    def test_resolve_id_falls_back_when_env_not_digit(self, monkeypatch) -> None:
+        monkeypatch.setenv("RAFT_HOST_UID", "not-a-number")
+        monkeypatch.delenv("RAFT_HOST_GID", raising=False)
+        monkeypatch.setenv("RAFT_HOST_HOME", "/home/demo")
+        monkeypatch.setattr(
+            "raft.core.observe.ops.update.host_docker.os.getuid", lambda: 42
+        )
+        monkeypatch.setattr(
+            "raft.core.observe.ops.update.host_docker.os.getgid", lambda: 43
+        )
+        upd = HostDockerUpdate(MagicMock())
+        args = upd.argv("https://example.test/install.sh", None)
+        assert "42:43" in args
+
     def test_default_image_includes_scm_tools(self) -> None:
         assert "bookworm-scm" in DEFAULT_HOST_UPDATE_IMAGE
         assert "bookworm-curl" not in DEFAULT_HOST_UPDATE_IMAGE
