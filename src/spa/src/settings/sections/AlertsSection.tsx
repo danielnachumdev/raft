@@ -25,7 +25,7 @@ export function AlertsSection(props: {
         <>
           Controller evaluation cadence. Rules live under{" "}
           <Link to="/settings/alerts">Settings → Alerts</Link> (
-          <code>state/alerts/rules.yaml</code>).
+          <code>host/alerts/rules.yaml</code>).
         </>
       }
     >

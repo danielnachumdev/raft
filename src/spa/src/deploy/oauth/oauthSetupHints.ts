@@ -70,7 +70,7 @@ export function resolveOauthSetupHints(
         callback_url: callback,
       }),
     settings_path:
-      config?.settings_path || session?.settings_path || "~/.raft/settings.yaml",
+      config?.settings_path || session?.settings_path || "~/.raft/host/settings.yaml",
     scopes: config?.scopes || session?.scopes || "read:user repo workflow",
   };
 }

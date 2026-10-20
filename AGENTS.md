@@ -137,7 +137,7 @@ Layout (#313): `host/` (control-plane) + `services/<SERVICE>/` (App-owned) + `ge
 | `host/logs/` | Host raft log + retained edge service stdout |
 | `services/<name>/secrets/`, `certs/`, `checkout/`, `deploy/`, `scaling/`, `logs/`, `acme/` | Per-App durable artifacts |
 
-Product templates sync from `src/raft/core/platform/share/` into the data home on bootstrap/use. Migrate checklist: [`docs/data-home-migrate.md`](docs/data-home-migrate.md).
+Product templates sync from `src/raft/core/platform/share/` into the data home on bootstrap/use.
 
 ---
 

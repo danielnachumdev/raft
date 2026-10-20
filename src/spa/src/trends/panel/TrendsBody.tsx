@@ -36,8 +36,8 @@ export function TrendsBody(props: {
     const hasHttp = props.metrics.some((m) => m.plane === "http");
     const hasRes = props.metrics.some((m) => m.plane === "resources");
     const files = [
-      hasRes ? "state/metrics/resources.jsonl" : null,
-      hasHttp ? "state/metrics/http.jsonl" : null,
+      hasRes ? "host/metrics/resources.jsonl" : null,
+      hasHttp ? "host/metrics/http.jsonl" : null,
     ].filter(Boolean);
     return (
       <p className="muted">

@@ -96,7 +96,7 @@ class HealingConfig:
 
 @dataclass(frozen=True)
 class MetricsConfig:
-    """Controller resource sampling (JSONL under ``state/metrics/``)."""
+    """Controller resource sampling (JSONL under ``host/metrics/``)."""
 
     interval_seconds: float = DEFAULT_METRICS_INTERVAL_SECONDS
     timeout_seconds: float = DEFAULT_METRICS_TIMEOUT_SECONDS
@@ -108,7 +108,7 @@ class MetricsConfig:
 
 @dataclass(frozen=True)
 class ServiceLogsConfig:
-    """Retained container stdout under ``state/service-logs/`` (issue #196)."""
+    """Retained container stdout under services/<name>/logs and host/logs/services."""
 
     enabled: bool = True
     interval_seconds: float = DEFAULT_SERVICE_LOGS_INTERVAL_SECONDS

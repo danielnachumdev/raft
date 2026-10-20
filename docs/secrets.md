@@ -56,10 +56,8 @@ that file — not by baking secrets into registry YAML).
 
 Gate and router must **never** mount App secret files or receive DB credentials.
 
-## Migration from a flat shared `.env`
+## Moving from a flat shared `.env`
 
 1. Create `~/.raft/services/<app>/secrets/` (apply does this) and copy only that App’s keys into `env` (`0600`).
 2. Point `spec.envFile` at the new path; re-apply.
 3. Remove the shared flat file once nothing references it.
-
-See also [`docs/data-home-migrate.md`](data-home-migrate.md) for the #313 layout cutover.

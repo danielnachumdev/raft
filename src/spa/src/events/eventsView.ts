@@ -10,7 +10,7 @@ export type EventTone = "ok" | "warn" | "bad" | "idle" | "neutral";
 
 export type EventKindGroup = { label: string; kinds: string[] };
 
-/** Known ``state/events/ops.jsonl`` kinds, grouped for the filter picker. */
+/** Known ``host/events/ops.jsonl`` kinds, grouped for the filter picker. */
 export const EVENT_KIND_GROUPS: EventKindGroup[] = [
   { label: "Deploy", kinds: ["deploy.apply", "deploy.redeploy"] },
   { label: "Services", kinds: ["service.start", "service.stop"] },

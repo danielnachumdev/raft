@@ -1,4 +1,4 @@
-"""Controller job: retain Compose stdout under ``state/service-logs/``."""
+"""Controller job: retain Compose stdout under ``host/logs/services/``."""
 
 from .job import ServiceLogsJob
 from .shipper import ServiceLogsShipper

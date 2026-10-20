@@ -77,7 +77,7 @@ Appearance, Updates, and Storage are UI-only (not `settings.yaml` sections).
 | `acme` | Let's Encrypt HTTP-01 | Apply/renew jobs; email when enabled / apps use `tls: acme` |
 | `github` | Serve OAuth (Add from GitHub) | `RAFT_GITHUB_*` env overrides when set |
 | `notifications` | Global enable + channels | Channel secrets redacted; prefer Notifications page for CRUD |
-| `alerts` | Evaluation cadence | Rules stay under `state/alerts/` |
+| `alerts` | Evaluation cadence | Rules stay under `host/alerts/` |
 | `dashboard` | Always-on `raft-dashboard` | Compose / public Host / auth — see [`serve-dashboard.md`](serve-dashboard.md) |
 | Storage | Purge unused Docker images / build cache | Confirm → `POST /api/purge` (same as `raft purge`); toasts for success/error |
 

@@ -44,7 +44,7 @@ export type StatusPayload = {
   containers: unknown[];
   control_plane: StatusRow[];
   apps: StatusRow[];
-  /** Applied manifests under state/apps that failed to parse (others still load). */
+  /** Applied manifests under services/ that failed to parse (others still load). */
   registry_issues?: RegistryIssue[];
   /** Running raft install; omit only on stale cached payloads. */
   version?: RaftVersion;

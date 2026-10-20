@@ -26,7 +26,7 @@ This is **not** a public multi-user console and **not** a full App lifecycle UI.
 3. With one or more connected accounts, the UI lists identities (per-row
    **trash** delete, header **`+`** → `/api/github/login?add=1` with GitHub
    `prompt=select_account`). **Delete** hard-removes the account from
-   `state/serve/github-accounts.json` (tokens included); a serve refresh or
+   `host/serve/github-accounts.json` (tokens included); a serve refresh or
    restart does **not** resurrect it. Zero accounts show **Continue to GitHub**
    (no silent auto-login). Expired rows stay visible with a badge until deleted.
 4. If OAuth is **not configured**, `/deploy` shows the same ordered checklist
@@ -131,7 +131,7 @@ separately and must not wipe existing accounts. Token refresh is not shipped in 
 
 | Item | Location | Mode |
 |------|----------|------|
-| Connected accounts + pending OAuth | `~/.raft/state/serve/github-accounts.json` | `0600` |
+| Connected accounts + pending OAuth | `~/.raft/host/serve/github-accounts.json` | `0600` |
 
 - Pre-multi-account `github-session.json` is no longer migrated — re-login via Add from GitHub if that file is all you have.
 - Public session JSON never includes `access_token` or client secrets.

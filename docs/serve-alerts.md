@@ -1,6 +1,6 @@
 # Alert rules
 
-Alert rules decide **when** something is wrong. Notification channels decide **where** to send. Rules evaluate metrics (`state/metrics/resources.jsonl`, `http.jsonl`) and control-plane signals, then emit `NotificationEvent`s into the existing `Notifier` (no parallel delivery stack).
+Alert rules decide **when** something is wrong. Notification channels decide **where** to send. Rules evaluate metrics (`host/metrics/resources.jsonl`, `http.jsonl`) and control-plane signals, then emit `NotificationEvent`s into the existing `Notifier` (no parallel delivery stack).
 
 ## Dual-plane lock (#264 / epic #256)
 
@@ -15,7 +15,7 @@ alert business logic lives in FastAPI handlers. Shipped with [#236](https://gith
 | Path | Role |
 |------|------|
 | `~/.raft/host/alerts/rules.yaml` | Desired rules document (versioned) |
-| `~/.raft/state/alerts/runtime.json` | Controller-owned firing / pending / cool-down state |
+| `~/.raft/host/alerts/runtime.json` | Controller-owned firing / pending / cool-down state |
 | `~/.raft/host/settings.yaml` `alerts:` | Master switch + evaluation interval only |
 
 ## Settings
@@ -27,7 +27,7 @@ alerts:
   timeoutSeconds: 30
 ```
 
-After installing a raft version that adds the controller `state/alerts` mount, run `raft up` so the controller can write `runtime.json`. Until then evaluation fails closed (no notifications) with a Fix CTA in the logs.
+After installing a raft version that adds the controller `host/alerts` mount, run `raft up` so the controller can write `runtime.json`. Until then evaluation fails closed (no notifications) with a Fix CTA in the logs.
 
 ## Example (PII-safe)
 
@@ -77,6 +77,6 @@ Firewall-derived edge deny alerts are a follow-on (still policy-on-gate; no midd
 
 ## Troubleshooting
 
-- **Stale evaluation** in the SPA: controller not running or missing writable `state/alerts` mount → `raft doctor` / `raft up`.
+- **Stale evaluation** in the SPA: controller not running or missing writable `host/alerts` mount → `raft doctor` / `raft up`.
 - **Document error**: hand-edited invalid `rules.yaml` → `raft alerts validate`.
 - Metrics windows shorter than ~2× `metrics.intervalSeconds` may warn about flush lag.

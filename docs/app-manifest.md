@@ -125,7 +125,7 @@ spec:
   envFile: /home/raft/.raft/secrets/demo-api/env
 ```
 
-Bridge non-secret CI flags into the manifest with apply `--env`. Materialize real secrets into the per-App env file on the host (not into `state/apps` / `generated/`). Gate/router must never mount App secret files.
+Bridge non-secret CI flags into the manifest with apply `--env`. Materialize real secrets into the per-App env file on the host (not into `services/` / `generated/`). Gate/router must never mount App secret files.
 
 ## Ship path
 

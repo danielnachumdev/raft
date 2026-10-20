@@ -1,4 +1,4 @@
-"""Historical resource series from ``state/metrics/resources.jsonl``."""
+"""Historical resource series from ``host/metrics/resources.jsonl``."""
 
 from datetime import datetime, timezone
 from pathlib import Path

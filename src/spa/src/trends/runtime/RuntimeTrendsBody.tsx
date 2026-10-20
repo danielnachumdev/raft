@@ -45,7 +45,7 @@ function RuntimeChartContent(props: {
     return (
       <p className="muted">
         No metrics samples yet for this service. The controller writes{" "}
-        <code>state/metrics/resources.jsonl</code> on its metrics interval.
+        <code>host/metrics/resources.jsonl</code> on its metrics interval.
       </p>
     );
   }

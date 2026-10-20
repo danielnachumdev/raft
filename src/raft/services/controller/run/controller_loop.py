@@ -82,7 +82,7 @@ class ControllerLoop:
         metrics_cfg = self._config.metrics
         logger.info(
             "metrics enabled interval=%ss timeout=%ss "
-            "path=state/metrics/resources.jsonl+http.jsonl",
+            "path=host/metrics/resources.jsonl+http.jsonl",
             metrics_cfg.interval_seconds,
             metrics_cfg.timeout_seconds,
         )

@@ -1,6 +1,6 @@
 """Cross-cutting flock helpers for mutative raft operations.
 
-Locks live under ``~/.raft/state/locks/`` (``RAFT_DATA_HOME``):
+Locks live under ``~/.raft/host/locks/`` (``RAFT_DATA_HOME``):
 
 * ``app-<name>.lock`` — one mutative deploy/apply for that app at a time
 * ``stack.lock`` — render, nginx reload, cutover, compose up/recreate, gate,

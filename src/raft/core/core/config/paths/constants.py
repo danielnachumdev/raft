@@ -61,26 +61,6 @@ DATA_DIR_RELS = (
     f"{GENERATED_DIRNAME}/nginx/upstreams",
 )
 
-# Old layout roots doctor treats as unmigrated (#313).
-OLD_LAYOUT_MARKERS = (
-    Path("state") / "apps",
-    Path("settings.yaml"),
-    Path("secrets"),
-    Path("certs"),
-    Path("apps"),
-    Path("deploy"),
-    Path("logs"),
-    Path("state") / "locks",
-    Path("state") / "firewall",
-    Path("state") / "alerts",
-    Path("state") / "events",
-    Path("state") / "metrics",
-    Path("state") / "scaling",
-    Path("state") / "service-logs",
-    Path("state") / "serve",
-    Path("state") / "acme",
-)
-
 TEMPLATE_FILES = ("compose.yaml",)
 TEMPLATE_DIRS = ("nginx", "controller", "dashboard")
 CONTROLLER_BUILD_DIR = "controller"

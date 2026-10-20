@@ -71,7 +71,7 @@ After install, `install.sh` prints the resolved source (Release tag + wheel asse
 
 When a release ships deprecation cleanup (see issue #312), operators should:
 
-1. **Backup** `~/.raft/` (especially `settings.yaml`, `state/firewall/`, `services/`, leftover `state/acl/` if present).
+1. **Backup** `~/.raft/` (especially `settings.yaml`, `host/firewall/`, `services/`, leftover `state/acl/` if present).
 2. **Before upgrade** (recommended): open serve **Settings → Firewall** and **Save** once so durable `host/firewall/rules.yaml` exists. Flat ACL migrate-on-load is removed — leftover `acl.gate` / `state/acl/` is ignored.
 3. **Upgrade** (`raft update` / install from latest Release wheel). Replace automation using **`RAFT_BRANCH`** with **`RAFT_REF`** / `--ref`.
 4. Re-save **Settings** once (drops any leftover `acl:` key from `settings.yaml`). Confirm GitHub assist uses OAuth accounts only (`github-accounts.json`; old `github-session.json` is no longer migrated — re-login if needed).
