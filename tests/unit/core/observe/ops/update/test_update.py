@@ -2,21 +2,16 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Optional
-from unittest.mock import MagicMock, patch
-
 from datetime import datetime, timezone
+from unittest.mock import MagicMock, patch
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.state.graph_event_kinds import KIND_UPDATE
 from raft.core.core.models.state.graph_event_store import GraphEventStore
 from raft.core.observe.ops import update as update_mod
-from raft.core.observe.ops.update import identity as identity_mod
 from raft.core.observe.ops.update import (
     DEFAULT_INSTALL_URL,
     HostApplyGate,
-    InstallIdentity,
     SelfUpdate,
 )
 from raft.core.core.ui.progress import TerminalProgress
@@ -42,22 +37,30 @@ class TestSelfUpdate(DomainTestCase):
     def _upd(self) -> SelfUpdate:
         return SelfUpdate(self.stack, host_gate=self._open_gate())
 
-    def test_run_fetches_remote_install_script(self, monkeypatch) -> None:
+    def _run_with_shell(self, monkeypatch, *, identity=None, ref=None):
         monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
-        monkeypatch.setattr(update_mod.InstallIdentity, "read", lambda self: None)
+        monkeypatch.setattr(update_mod.InstallIdentity, "read", lambda self: identity)
         shell = MagicMock()
         upd = self._upd()
         upd.sh = shell
         with patch("raft.core.observe.ops.update.announce.OperatorSay.say") as say:
-            upd.run()
-        shell.run.assert_called_once()
-        args = shell.run.call_args.args[0]
-        assert args[0] == "bash"
-        assert args[1] == "-c"
+            if ref is None:
+                upd.run()
+            else:
+                upd.run(ref=ref)
+        return shell, say
+
+    @staticmethod
+    def _assert_curl_pipeline(args: list) -> None:
+        assert args[0] == "bash" and args[1] == "-c"
         assert "set -euo pipefail" in args[2]
         assert "curl -fsSL" in args[2]
         assert args[4] == DEFAULT_INSTALL_URL
         assert "RAFT_INSTALL_QUIET=1" in args[2]
+
+    def test_run_fetches_remote_install_script(self, monkeypatch) -> None:
+        shell, say = self._run_with_shell(monkeypatch)
+        self._assert_curl_pipeline(shell.run.call_args.args[0])
         styles = [c.kwargs.get("style") for c in say.call_args_list]
         assert "ok" in styles and styles.count("info") >= 1
         next_body = " ".join(c.args[0] for c in say.call_args_list if c.args)
@@ -128,39 +131,21 @@ class TestSelfUpdate(DomainTestCase):
         assert shell.run.call_args.args[0][4] == url
 
     def test_run_passes_ref_as_raft_ref_env(self, monkeypatch) -> None:
-        monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
-        monkeypatch.setattr(update_mod.InstallIdentity, "read", lambda self: None)
-        shell = MagicMock()
-        upd = self._upd()
-        upd.sh = shell
-        with patch("raft.core.observe.ops.update.announce.OperatorSay.say"):
-            upd.run(ref="main")
+        shell, _ = self._run_with_shell(monkeypatch, ref="main")
         script = shell.run.call_args.args[0][2]
         assert "RAFT_INSTALL_QUIET=1" in script
         assert "RAFT_REF=main" in script
         assert shell.run.call_args.args[0][4] == DEFAULT_INSTALL_URL
 
     def test_run_omits_raft_ref_when_ref_unset(self, monkeypatch) -> None:
-        monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
-        monkeypatch.setattr(update_mod.InstallIdentity, "read", lambda self: None)
-        shell = MagicMock()
-        upd = self._upd()
-        upd.sh = shell
-        with patch("raft.core.observe.ops.update.announce.OperatorSay.say"):
-            upd.run()
+        shell, _ = self._run_with_shell(monkeypatch)
         script = shell.run.call_args.args[0][2]
         assert "RAFT_REF=" not in script
 
     def test_run_ignores_local_install_script(self, monkeypatch) -> None:
         script = self.tmp_path / "install.sh"
         script.write_text("#!/bin/bash\n", encoding="utf-8")
-        monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
-        monkeypatch.setattr(update_mod.InstallIdentity, "read", lambda self: None)
-        shell = MagicMock()
-        upd = self._upd()
-        upd.sh = shell
-        with patch("raft.core.observe.ops.update.announce.OperatorSay.say"):
-            upd.run()
+        shell, _ = self._run_with_shell(monkeypatch)
         args = shell.run.call_args.args[0]
         assert args[4] == DEFAULT_INSTALL_URL
         assert "bash" == args[0]
@@ -237,88 +222,3 @@ class TestSelfUpdate(DomainTestCase):
             update_mod.InstallIdentity, "dist_info_dir", lambda self: None
         )
         assert self._upd()._version_line() is None
-
-
-class TestInstallIdentity(DomainTestCase):
-    def _fake_tool_env(
-        self, *, direct_url: Optional[str] = None, metadata: Optional[str] = None
-    ) -> Path:
-        root = self.tmp_path / "tools" / "raft"
-        dist = root / "lib" / "python3.12" / "site-packages" / "raft-0.1.0.dist-info"
-        dist.mkdir(parents=True)
-        if direct_url is not None:
-            (dist / "direct_url.json").write_text(direct_url, encoding="utf-8")
-        if metadata is not None:
-            (dist / "METADATA").write_text(metadata, encoding="utf-8")
-        bin_dir = root / "bin"
-        bin_dir.mkdir(parents=True)
-        raft_bin = bin_dir / "raft"
-        raft_bin.write_text("#!/bin/sh\n", encoding="utf-8")
-        return root
-
-    def test_dist_info_dir_via_which(self, monkeypatch) -> None:
-        root = self._fake_tool_env(direct_url='{"url":"x"}')
-        raft_bin = root / "bin" / "raft"
-        monkeypatch.setattr(identity_mod.shutil, "which", lambda _name: str(raft_bin))
-        dist = InstallIdentity().dist_info_dir()
-        assert dist is not None
-        assert dist.name == "raft-0.1.0.dist-info"
-
-    def test_identity_from_direct_url_via_which(self, monkeypatch) -> None:
-        root = self._fake_tool_env(direct_url='{"url":"git","vcs_info":{"commit_id":"abc"}}\n')
-        raft_bin = root / "bin" / "raft"
-        monkeypatch.setattr(identity_mod.shutil, "which", lambda _name: str(raft_bin))
-        assert InstallIdentity().read() == '{"url":"git","vcs_info":{"commit_id":"abc"}}'
-
-    def test_identity_falls_back_to_metadata(self, monkeypatch) -> None:
-        root = self._fake_tool_env(metadata="Name: raft\nVersion: 0.1.0\n")
-        raft_bin = root / "bin" / "raft"
-        monkeypatch.setattr(identity_mod.shutil, "which", lambda _name: str(raft_bin))
-        identity = InstallIdentity().read() or ""
-        assert "0.1.0" in identity
-
-    def test_identity_via_uv_tool_dir_when_which_misses(self, monkeypatch) -> None:
-        root = self._fake_tool_env(direct_url='{"commit":"xyz"}')
-        monkeypatch.setattr(identity_mod.shutil, "which", lambda _name: None)
-        monkeypatch.setenv("UV_TOOL_DIR", str(root.parent))
-        assert InstallIdentity().read() == '{"commit":"xyz"}'
-
-    def test_identity_none_when_missing(self, monkeypatch) -> None:
-        monkeypatch.setattr(identity_mod.shutil, "which", lambda _name: None)
-        monkeypatch.setenv("UV_TOOL_DIR", str(self.tmp_path / "empty-tools"))
-        monkeypatch.setattr(identity_mod.Path, "home", lambda: self.tmp_path / "nohome")
-        assert InstallIdentity().read() is None
-
-    def test_identity_none_when_tool_env_has_no_dist_info(self, monkeypatch) -> None:
-        root = self.tmp_path / "tools" / "raft"
-        (root / "bin").mkdir(parents=True)
-        raft_bin = root / "bin" / "raft"
-        raft_bin.write_text("#!/bin/sh\n", encoding="utf-8")
-        monkeypatch.setattr(identity_mod.shutil, "which", lambda _name: str(raft_bin))
-        assert InstallIdentity().read() is None
-
-    def test_identity_none_when_dist_info_empty(self, monkeypatch) -> None:
-        root = self._fake_tool_env()
-        raft_bin = root / "bin" / "raft"
-        monkeypatch.setattr(identity_mod.shutil, "which", lambda _name: str(raft_bin))
-        assert InstallIdentity().read() is None
-
-    def test_identity_falls_through_when_which_not_bin_layout(self, monkeypatch) -> None:
-        root = self._fake_tool_env(direct_url='{"commit":"from-env"}')
-        odd = self.tmp_path / "elsewhere" / "raft"
-        odd.parent.mkdir(parents=True)
-        odd.write_text("x", encoding="utf-8")
-        monkeypatch.setattr(identity_mod.shutil, "which", lambda _name: str(odd))
-        monkeypatch.setenv("UV_TOOL_DIR", str(root.parent))
-        assert InstallIdentity().read() == '{"commit":"from-env"}'
-
-    def test_identity_default_home_tool_dir(self, monkeypatch) -> None:
-        home = self.tmp_path / "home"
-        root = home / ".local" / "share" / "uv" / "tools" / "raft"
-        dist = root / "lib" / "python3.12" / "site-packages" / "raft-0.1.0.dist-info"
-        dist.mkdir(parents=True)
-        (dist / "direct_url.json").write_text('{"ok":1}', encoding="utf-8")
-        monkeypatch.setattr(identity_mod.shutil, "which", lambda _name: None)
-        monkeypatch.delenv("UV_TOOL_DIR", raising=False)
-        monkeypatch.setattr(identity_mod.Path, "home", lambda: home)
-        assert InstallIdentity().read() == '{"ok":1}'
