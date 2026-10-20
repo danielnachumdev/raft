@@ -1,16 +1,35 @@
 import { toggleMetricId } from "../../panel/metricSelection.ts";
-import type { RuntimeMetricId } from "../../runtimeMetrics.ts";
+import type { SeriesViewMode } from "../../panel/trendsView.ts";
+import { parseRange } from "../../range/validate.ts";
 import {
-  isRuntimeMetricId,
-  isSelected,
-  isViewMode,
-  parseRange,
-} from "../../views/validate.ts";
+  RUNTIME_METRICS,
+  type RuntimeMetricId,
+} from "../../runtimeMetrics.ts";
 import type {
   TrendsDashboard,
   TrendsDashboardStore,
   TrendsGraphConfig,
 } from "./types.ts";
+
+const METRIC_IDS = new Set<string>(RUNTIME_METRICS.map((m) => m.id));
+
+function isRuntimeMetricId(v: unknown): v is RuntimeMetricId {
+  return typeof v === "string" && METRIC_IDS.has(v);
+}
+
+function isViewMode(v: unknown): v is SeriesViewMode {
+  return (
+    v === "per_service" ||
+    v === "per_group" ||
+    v === "avg_all" ||
+    v === "avg_group"
+  );
+}
+
+function isSelected(v: unknown): v is string[] | null {
+  if (v === null) return true;
+  return Array.isArray(v) && v.every((x) => typeof x === "string");
+}
 
 /** Validate a stored v2 payload; null when it is not a usable store. */
 export function parseDashboardStore(raw: unknown): TrendsDashboardStore | null {

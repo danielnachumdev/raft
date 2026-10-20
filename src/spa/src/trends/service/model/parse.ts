@@ -1,6 +1,6 @@
 import { parseGraph } from "../../dashboard/model/parse.ts";
-import { parseRange } from "../../views/validate.ts";
 import type { TrendsGraphConfig } from "../../dashboard/model/types.ts";
+import { parseRange } from "../../range/validate.ts";
 import type { ServiceTrendsLayout, ServiceTrendsStore } from "./types.ts";
 
 /** Validate a stored v1 payload; null when it is not a usable store. */
