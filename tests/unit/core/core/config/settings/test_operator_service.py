@@ -62,16 +62,6 @@ class TestOperatorSettingsService(RaftTestCase):
         with pytest.raises(OperatorError):
             svc.replace({"document": doc})
 
-    def test_acl_off_round_trips_as_string(self) -> None:
-        svc = OperatorSettingsService(self.tmp_path)
-        doc = svc.get_public()["document"]
-        doc["acl"] = {"gate": {"mode": "off", "entries": []}}
-        svc.replace({"document": doc})
-        text = (self.tmp_path / "settings.yaml").read_text(encoding="utf-8")
-        assert "mode: 'off'" in text or 'mode: "off"' in text
-        loaded = SettingsLoader().load(self.tmp_path).acl.gate
-        assert loaded.mode == "off"
-
     def test_notifications_channel_secret_merge(self) -> None:
         svc = OperatorSettingsService(self.tmp_path)
         doc = svc.get_public()["document"]

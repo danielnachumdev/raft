@@ -1,6 +1,4 @@
-import { loadTrendsViewsStore } from "../../views/storage.ts";
 import { defaultDashboard } from "./defaults.ts";
-import { migrateLegacyViews } from "./migrate.ts";
 import { parseDashboardStore } from "./parse.ts";
 import {
   TRENDS_DASHBOARDS_STORAGE_KEY,
@@ -16,14 +14,14 @@ export function defaultDashboardStore(
 }
 
 /**
- * Load dashboards from localStorage. A missing key migrates #202 named
- * views; a corrupt payload falls back to defaults (never throws).
+ * Load dashboards from localStorage. A missing or corrupt payload falls
+ * back to defaults (never throws).
  */
 export function loadDashboardStore(): TrendsDashboardStore {
   try {
     if (typeof localStorage === "undefined") return defaultDashboardStore();
     const raw = localStorage.getItem(TRENDS_DASHBOARDS_STORAGE_KEY);
-    if (raw === null) return migrateLegacyViews(loadTrendsViewsStore());
+    if (raw === null) return defaultDashboardStore();
     return parseDashboardStore(JSON.parse(raw)) ?? defaultDashboardStore();
   } catch {
     return defaultDashboardStore();

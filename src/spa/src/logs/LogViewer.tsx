@@ -63,7 +63,7 @@ export function LogViewer(props: {
       {props.controls}
       <button
         type="button"
-        className="action-btn"
+        className="btn"
         aria-expanded={expanded}
         onClick={() => setExpanded((v) => !v)}
       >

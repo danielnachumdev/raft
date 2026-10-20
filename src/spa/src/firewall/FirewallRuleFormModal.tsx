@@ -89,7 +89,7 @@ export function FirewallRuleFormModal(props: Props) {
         <div className="modal-actions">
           <button
             type="button"
-            className="action-btn"
+            className="btn"
             disabled={props.busy}
             onClick={props.onClose}
           >
@@ -98,13 +98,13 @@ export function FirewallRuleFormModal(props: Props) {
           <button
             type="submit"
             form="firewall-rule-form"
-            className={props.busy ? "action-btn is-loading" : "action-btn"}
+            className={props.busy ? "btn is-loading" : "btn"}
             disabled={!canSave}
             aria-busy={props.busy}
             id="firewall-rule-save"
           >
             {props.busy ? (
-              <span className="spinner refresh-spinner" aria-hidden="true" />
+              <span className="spinner btn-spinner" aria-hidden="true" />
             ) : null}
             Save
           </button>

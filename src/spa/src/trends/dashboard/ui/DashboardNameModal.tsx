@@ -28,12 +28,12 @@ function NameModalBody(props: Props) {
       title={props.title}
       footer={
         <div className="modal-actions">
-          <button type="button" className="action-btn" onClick={props.onCancel}>
+          <button type="button" className="btn" onClick={props.onCancel}>
             Cancel
           </button>
           <button
             type="button"
-            className="action-btn btn-primary"
+            className="btn btn-primary"
             disabled={!canSave}
             onClick={() => {
               if (canSave) props.onConfirm(trimmed);

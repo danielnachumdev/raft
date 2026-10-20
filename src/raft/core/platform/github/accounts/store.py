@@ -11,7 +11,6 @@ from .account import GithubAccount
 from .pending import GithubPendingOauth
 
 ACCOUNTS_FILENAME = "github-accounts.json"
-LEGACY_SESSION_FILENAME = "github-session.json"
 SESSION_DIR = Path("state") / "serve"
 LEDGER_VERSION = 1
 
@@ -22,7 +21,6 @@ class GithubAccountStore:
     def __init__(self, data_home: Path) -> None:
         self._dir = data_home / SESSION_DIR
         self._path = self._dir / ACCOUNTS_FILENAME
-        self._legacy = self._dir / LEGACY_SESSION_FILENAME
 
     def public_snapshot(self) -> dict[str, Any]:
         ledger = self._load_ledger()
@@ -128,7 +126,6 @@ class GithubAccountStore:
         return secrets.token_urlsafe(12)
 
     def _load_ledger(self) -> dict[str, Any]:
-        self._migrate_legacy()
         if not self._path.is_file():
             return self._empty_ledger()
         try:
@@ -141,40 +138,6 @@ class GithubAccountStore:
             self._unlink(self._path)
             return self._empty_ledger()
         return parsed
-
-    def _migrate_legacy(self) -> None:
-        if self._path.is_file() or not self._legacy.is_file():
-            return
-        try:
-            raw = json.loads(self._legacy.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            self._unlink(self._legacy)
-            return
-        account = self._account_from_legacy(raw)
-        ledger = self._empty_ledger()
-        if account is not None:
-            ledger["accounts"] = [account]
-            ledger["active_account_id"] = account.id
-        self._write_ledger(ledger)
-        self._unlink(self._legacy)
-
-    def _account_from_legacy(self, raw: Any) -> Optional[GithubAccount]:
-        if not isinstance(raw, dict):
-            return None
-        token = str(raw.get("access_token") or "")
-        login = str(raw.get("login") or "")
-        if not token or not login:
-            return None
-        try:
-            return GithubAccount(
-                id=self.new_account_id(),
-                login=login,
-                access_token=token,
-                expires_at=float(raw["expires_at"]),
-                created_at=time.time(),
-            )
-        except (KeyError, TypeError, ValueError):
-            return None
 
     def _write_ledger(self, ledger: dict[str, Any]) -> None:
         self._dir.mkdir(parents=True, exist_ok=True)

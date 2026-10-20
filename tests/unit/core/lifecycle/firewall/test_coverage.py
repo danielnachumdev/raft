@@ -19,16 +19,10 @@ class TestFirewallCoverage(RaftTestCase):
         store.delete()
         assert not store.exists()
 
-    def test_effective_migrates_when_absent(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
-            "edge: {http: 80, https: null}\n"
-            "acl:\n  gate:\n    mode: blacklist\n"
-            "    entries:\n      - id: bad\n        cidr: 198.51.100.10\n",
-            encoding="utf-8",
-        )
+    def test_effective_empty_when_absent(self) -> None:
         eff = FirewallEffective(self.tmp_path)
-        assert not eff.adopted and eff.is_active()
-        assert eff.document.source == "acl-v1-migrated"
+        assert not eff.adopted and not eff.is_active()
+        assert eff.document.rules == ()
 
     def test_writer_and_compiler_edges(self) -> None:
         writer = FirewallDocumentWriter(self.tmp_path)

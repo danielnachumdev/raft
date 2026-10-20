@@ -234,7 +234,7 @@ function FormFooter(props: { busy: boolean; invalid: boolean; onCancel: () => vo
         disabled={props.busy || props.invalid}
         aria-busy={props.busy}
       >
-        {props.busy ? <span className="spinner refresh-spinner" aria-hidden="true" /> : null}
+        {props.busy ? <span className="spinner btn-spinner" aria-hidden="true" /> : null}
         Save rule
       </button>
     </div>

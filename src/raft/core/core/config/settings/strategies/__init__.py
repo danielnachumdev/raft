@@ -1,7 +1,6 @@
 """Concrete parsers for each ``settings.yaml`` top-level section."""
 
 from .acme import AcmeSettingsParser
-from .acl import AclSettingsParser
 from .alerts import AlertsSettingsParser
 from .dashboard import DashboardSettingsParser
 from .edge import EdgeSettingsParser
@@ -14,7 +13,6 @@ from .service_logs import ServiceLogsSettingsParser
 
 __all__ = [
     "AcmeSettingsParser",
-    "AclSettingsParser",
     "AlertsSettingsParser",
     "DashboardSettingsParser",
     "EdgeSettingsParser",

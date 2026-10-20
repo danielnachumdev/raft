@@ -33,7 +33,6 @@ export {
   type GraphView,
 } from "./fanout.ts";
 export { headlineStat, type Headline, type HeadlineHow } from "./headline.ts";
-export { migrateLegacyViews } from "./migrate.ts";
 export { capMetricTypes, parseDashboardStore, parseGraph } from "./parse.ts";
 export {
   addPanel,

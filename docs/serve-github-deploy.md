@@ -133,7 +133,7 @@ separately and must not wipe existing accounts. Token refresh is not shipped in 
 |------|----------|------|
 | Connected accounts + pending OAuth | `~/.raft/state/serve/github-accounts.json` | `0600` |
 
-- Legacy `github-session.json` migrates to one account on first load, then is deleted.
+- Pre-multi-account `github-session.json` is no longer migrated — re-login via Add from GitHub if that file is all you have.
 - Public session JSON never includes `access_token` or client secrets.
 - Not written into `generated/`, git, or world-readable dumps.
 - Per-account delete removes that row from durable storage; active falls back when another remains.
@@ -148,11 +148,9 @@ separately and must not wipe existing accounts. Token refresh is not shipped in 
 | `POST` | `/api/github/config` | `{clientId, clientSecret}` → write settings + reload |
 | `GET` | `/api/github/login` | Start OAuth (add account; preserves others) |
 | `GET` | `/api/github/callback` | Finish login → upsert account, set active → `/deploy` |
-| `POST` | `/api/github/logout` | Delete active browsing account (compat) |
+| `POST` | `/api/github/logout` | Delete active browsing account |
 | `POST` | `/api/github/accounts/select` | `{account_id}` → set browsing account for repos/deploy |
 | `DELETE` | `/api/github/accounts/{id}` | Hard-delete one connected account from durable storage |
-| `POST` | `/api/github/accounts/{id}/delete` | Same as `DELETE` (alias) |
-| `POST` | `/api/github/accounts/{id}/logout` | Compat alias for delete |
 | `GET` | `/api/github/repos?q=` | List the selected account’s repos (`/user/repos` affiliation=owner,collaborator,organization_member); optional `q` filters that set locally (never global GitHub search) |
 | `POST` | `/api/github/deploy` | `{full_name, ref}` → job (apply + CI PR step) |
 | `GET` | `/api/github/deploy/{id}` | Poll progress / `ci_pr` / next steps |

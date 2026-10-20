@@ -42,17 +42,6 @@ class TestGithubAccountStore(RaftTestCase):
         assert store.get_pending() is None
         assert store.public_snapshot()["login"] == "alice"
 
-    def test_migrate_legacy_session(self) -> None:
-        legacy = self.tmp_path / "state" / "serve" / "github-session.json"
-        legacy.parent.mkdir(parents=True, exist_ok=True)
-        legacy.write_text(json.dumps(self._legacy_payload()), encoding="utf-8")
-        store = GithubAccountStore(self.tmp_path)
-        snap = store.public_snapshot()
-        assert snap["authenticated"] is True and snap["login"] == "carol"
-        assert store.active_usable().access_token == "legacy-tok"
-        assert not legacy.exists()
-        assert (self.tmp_path / "state" / "serve" / "github-accounts.json").is_file()
-
     def test_expired_kept_not_usable(self) -> None:
         store = GithubAccountStore(self.tmp_path)
         store.upsert_account(
@@ -81,14 +70,6 @@ class TestGithubAccountStore(RaftTestCase):
         assert path.is_file()
         assert oct(path.stat().st_mode & 0o777) == "0o600"
         del store
-
-    @staticmethod
-    def _legacy_payload() -> dict:
-        return {
-            "access_token": "legacy-tok",
-            "login": "carol",
-            "expires_at": time.time() + 120,
-        }
 
     @staticmethod
     def _acct(

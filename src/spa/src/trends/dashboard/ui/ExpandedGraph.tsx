@@ -37,7 +37,7 @@ export function ExpandedGraph(props: {
           </span>
           <button
             type="button"
-            className="action-btn"
+            className="btn"
             disabled={index <= 0}
             onClick={() => step(-1)}
           >
@@ -45,7 +45,7 @@ export function ExpandedGraph(props: {
           </button>
           <button
             type="button"
-            className="action-btn"
+            className="btn"
             disabled={index >= props.panels.length - 1}
             onClick={() => step(1)}
           >
@@ -54,7 +54,7 @@ export function ExpandedGraph(props: {
           {props.onEdit ? (
             <button
               type="button"
-              className="action-btn"
+              className="btn"
               onClick={() => panel && props.onEdit?.(panel.id)}
             >
               Edit…

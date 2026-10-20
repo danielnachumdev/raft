@@ -42,8 +42,6 @@ class ServeGithubApi:
         app.post("/api/github/logout")(self.api_logout)
         app.post("/api/github/accounts/select")(self.api_select_account)
         app.delete("/api/github/accounts/{account_id}")(self.api_delete_account)
-        app.post("/api/github/accounts/{account_id}/delete")(self.api_delete_account)
-        app.post("/api/github/accounts/{account_id}/logout")(self.api_delete_account)
         app.get("/api/github/repos")(self.api_repos)
         app.post("/api/github/deploy")(self.api_deploy)
         app.get("/api/github/deploy/{job_id}")(self.api_deploy_status)

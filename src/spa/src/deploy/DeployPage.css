@@ -116,7 +116,7 @@
   }
 
   .deploy-cta,
-  .deploy-panel .refresh {
+  .deploy-panel .btn {
     width: 100%;
   }
 }

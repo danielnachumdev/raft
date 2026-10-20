@@ -27,7 +27,7 @@ export function PurgeButton() {
         id="stack-purge"
       >
         {busy ? (
-          <span className="spinner refresh-spinner" aria-hidden="true" />
+          <span className="spinner btn-spinner" aria-hidden="true" />
         ) : null}
         Purge unused images
       </button>

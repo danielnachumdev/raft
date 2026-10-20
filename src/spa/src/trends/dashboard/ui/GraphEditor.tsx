@@ -41,12 +41,12 @@ function EditorModal(props: EditorProps & { target: EditorTarget }) {
       footer={
         <div className="modal-actions graph-editor-actions">
           {blocker ? <p className="muted graph-editor-blocker">{blocker}</p> : null}
-          <button type="button" className="action-btn" onClick={props.onCancel}>
+          <button type="button" className="btn" onClick={props.onCancel}>
             Cancel
           </button>
           <button
             type="button"
-            className="action-btn btn-primary"
+            className="btn btn-primary"
             disabled={blocker !== null}
             onClick={() => props.onSave(draft)}
           >

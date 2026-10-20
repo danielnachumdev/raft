@@ -166,9 +166,6 @@ export function FirewallPanel(props: Props) {
           <h2>Firewall rules</h2>
           <p className="muted">
             First match wins. Drag the grip or use the arrows to reorder.
-            {props.document.source === "acl-v1-migrated"
-              ? " Showing migrated ACL v1 rules until you Save."
-              : null}
           </p>
           {dirty ? (
             <p className="fw-dirty" id="firewall-dirty" role="status">
@@ -179,7 +176,7 @@ export function FirewallPanel(props: Props) {
         <div className="fw-panel-actions">
           <button
             type="button"
-            className="action-btn"
+            className="btn"
             id="firewall-add"
             disabled={locked}
             onClick={() => {
@@ -193,7 +190,7 @@ export function FirewallPanel(props: Props) {
           </button>
           <button
             type="button"
-            className="action-btn"
+            className="btn"
             id="firewall-import"
             disabled={locked}
             onClick={() => setImportOpen(true)}
@@ -202,7 +199,7 @@ export function FirewallPanel(props: Props) {
           </button>
           <button
             type="button"
-            className="action-btn"
+            className="btn"
             id="firewall-export"
             disabled={locked}
             onClick={() => void onExportClick()}
@@ -211,14 +208,14 @@ export function FirewallPanel(props: Props) {
           </button>
           <button
             type="button"
-            className={saving ? "action-btn btn-primary is-loading" : "action-btn btn-primary"}
+            className={saving ? "btn btn-primary is-loading" : "btn btn-primary"}
             id="firewall-save"
             disabled={locked || !dirty}
             aria-busy={saving}
             onClick={() => void persist(rules)}
           >
             {saving ? (
-              <span className="spinner refresh-spinner" aria-hidden="true" />
+              <span className="spinner btn-spinner" aria-hidden="true" />
             ) : null}
             Save &amp; apply
           </button>
@@ -365,7 +362,7 @@ export function FirewallPanel(props: Props) {
           <div className="fw-import-actions">
             <button
               type="button"
-              className="action-btn"
+              className="btn"
               disabled={importBusy}
               onClick={() => setImportOpen(false)}
             >
@@ -373,7 +370,7 @@ export function FirewallPanel(props: Props) {
             </button>
             <button
               type="button"
-              className="action-btn"
+              className="btn"
               id="firewall-import-confirm"
               disabled={importBusy || !importText.trim()}
               onClick={() => void onImportConfirm()}

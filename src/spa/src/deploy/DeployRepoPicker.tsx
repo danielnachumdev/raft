@@ -109,7 +109,7 @@ export function DeployRepoPicker(props: {
           </p>
           <button
             type="button"
-            className="refresh btn-primary deploy-cta"
+            className="btn btn-primary deploy-cta"
             disabled={busy}
             onClick={onDeploy}
             id="deploy-confirm-btn"

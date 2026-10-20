@@ -41,7 +41,7 @@ export function ServiceTrendsToolbar(props: {
       />
       <button
         type="button"
-        className="action-btn btn-primary trends-add-graph"
+        className="btn btn-primary trends-add-graph"
         onClick={props.onAdd}
       >
         + Add graph

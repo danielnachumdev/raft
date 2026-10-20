@@ -76,7 +76,7 @@ export function NotificationsSettingsPage() {
         actions={
           <button
             type="button"
-            className="refresh btn-primary"
+            className="btn btn-primary"
             id="notifications-add"
             disabled={busy || catalogEmpty}
             title={

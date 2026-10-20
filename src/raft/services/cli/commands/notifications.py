@@ -17,7 +17,7 @@ from .notifications_output import NotificationsCliOutput
 class NotificationsCLI:
     """Manage ``notifications:`` channels in ``~/.raft/settings.yaml``.
 
-    Same redaction and ``notifications.lock`` as Settings → Notifications.
+    Same redaction and ``settings.lock`` as Settings → Notifications.
     Test-send uses the shared ``NotificationsTester`` (serve API too).
     """
 

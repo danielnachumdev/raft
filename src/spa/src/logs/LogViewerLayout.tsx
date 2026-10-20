@@ -31,7 +31,7 @@ export function LogViewerBody(props: {
       ) : null}
       {props.connecting ? (
         <div className="logs-loading" role="status" aria-busy="true">
-          <span className="spinner refresh-spinner" aria-hidden="true" />
+          <span className="spinner btn-spinner" aria-hidden="true" />
           <span>{props.connectingLabel}</span>
         </div>
       ) : null}

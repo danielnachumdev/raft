@@ -208,7 +208,7 @@
     justify-content: stretch;
   }
 
-  .fw-import-actions .action-btn {
+  .fw-import-actions .btn {
     flex: 1 1 auto;
   }
 
@@ -216,7 +216,7 @@
     width: 100%;
   }
 
-  .fw-rec-actions .action-btn {
+  .fw-rec-actions .btn {
     flex: 1 1 auto;
   }
 }

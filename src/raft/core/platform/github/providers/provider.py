@@ -20,4 +20,4 @@ class GithubProvider(ABC):
 
     @abstractmethod
     def resolve_local_tree(self, full_name: str) -> Optional[Path]:
-        """Return a local checkout path when the provider has one (mock)."""
+        """Return a local checkout path when the provider has one."""

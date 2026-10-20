@@ -40,7 +40,7 @@
     width: 100%;
   }
 
-  .channel-row-actions .action-btn {
+  .channel-row-actions .btn {
     flex: 1 1 auto;
   }
 }

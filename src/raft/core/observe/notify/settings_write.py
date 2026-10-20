@@ -12,7 +12,7 @@ from raft.core.core.config.settings import SettingsLoader
 from raft.core.core.config.settings.strategies.notifications import NotificationsSettingsParser
 from raft.core.core.config.settings.types import NotificationChannelConfig, NotificationsConfig
 from raft.core.core.errors.cta import OperatorError
-from raft.core.platform.locking import NotificationsLock
+from raft.core.platform.locking import SettingsLock
 from raft.core.observe.notify.catalogs import NotificationCatalogs
 from raft.core.observe.notify.settings_redactor import SettingsRedactor
 from raft.core.observe.notify.registry import NotificationRegistry
@@ -44,7 +44,7 @@ class NotificationsSettingsWriter:
         return self._public(self._require(self._load(), channel_id))
 
     def create(self, body: Mapping[str, Any]) -> Dict[str, Any]:
-        with NotificationsLock(self._home):
+        with SettingsLock(self._home):
             cfg = self._load()
             channel = self._channel_from_body(body, path="create")
             self._reject_duplicate(cfg, channel.id)
@@ -54,7 +54,7 @@ class NotificationsSettingsWriter:
             return self._public(channel)
 
     def update(self, channel_id: str, body: Mapping[str, Any]) -> Dict[str, Any]:
-        with NotificationsLock(self._home):
+        with SettingsLock(self._home):
             cfg = self._load()
             current = self._require(cfg, channel_id)
             updated = self._merge_channel(current, body)
@@ -66,7 +66,7 @@ class NotificationsSettingsWriter:
             return self._public(updated)
 
     def delete(self, channel_id: str) -> None:
-        with NotificationsLock(self._home):
+        with SettingsLock(self._home):
             cfg = self._load()
             self._require(cfg, channel_id)
             kept = [ch for ch in cfg.channels if ch.id != channel_id]

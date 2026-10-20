@@ -116,10 +116,10 @@ class TestNotificationsSettingsWriter(RaftTestCase):
         out = writer.create({"id": "x", "type": "future-backend"})
         assert out["type"] == "future-backend"
 
-    def test_mutative_uses_notifications_lock(self) -> None:
+    def test_mutative_uses_settings_lock(self) -> None:
         writer = NotificationsSettingsWriter(self.tmp_path)
         with patch(
-            "raft.core.observe.notify.settings_write.NotificationsLock"
+            "raft.core.observe.notify.settings_write.SettingsLock"
         ) as lock:
             lock.return_value.__enter__ = lambda s: None
             lock.return_value.__exit__ = lambda s, *a: None

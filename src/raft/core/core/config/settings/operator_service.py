@@ -100,7 +100,6 @@ class OperatorSettingsService:
             notifications=self._secrets.notifications(
                 parsed.notifications, prior.notifications
             ),
-            acl=parsed.acl,
             alerts=parsed.alerts,
             dashboard=self._secrets.dashboard(parsed.dashboard, prior.dashboard),
         )
@@ -109,6 +108,7 @@ class OperatorSettingsService:
         root = self._load_root()
         for key, value in self._document.to_raw(cfg).items():
             root[key] = value
+        root.pop("acl", None)  # retired flat ACL; firewall SoT only
         self._write_root(root)
 
     def _load_root(self) -> Dict[str, Any]:

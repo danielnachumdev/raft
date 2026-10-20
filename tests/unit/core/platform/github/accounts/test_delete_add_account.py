@@ -31,7 +31,7 @@ class TestDeleteAndAddAccount(RaftTestCase):
         """Serve restart must not resurrect a deleted account (issue #200)."""
         store = GithubAccountStore(self.tmp_path)
         expired = store.upsert_account(self._expired_sample())
-        self._client().post(f"/api/github/accounts/{expired.id}/delete")
+        self._client().delete(f"/api/github/accounts/{expired.id}")
         restarted = GithubAccountStore(self.tmp_path)
         snap = restarted.public_snapshot()
         assert snap["accounts"] == []

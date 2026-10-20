@@ -81,28 +81,10 @@ class TestAccountsCoverage(RaftTestCase):
             "expires_at": time.time() + 60,
         }
 
-    def test_legacy_corrupt_and_empty(self) -> None:
+    def test_orphan_active_falls_back(self) -> None:
         store = GithubAccountStore(self.tmp_path)
-        legacy = self.tmp_path / "state" / "serve" / "github-session.json"
         accounts = self.tmp_path / "state" / "serve" / "github-accounts.json"
-        legacy.parent.mkdir(parents=True, exist_ok=True)
-        legacy.write_text("{bad", encoding="utf-8")
-        assert store.public_snapshot()["accounts"] == []
-        assert not legacy.exists()
-        self._write_legacy(legacy, accounts, ["x"])
-        assert store.public_snapshot()["accounts"] == []
-        self._write_legacy(
-            legacy, accounts, {"access_token": "", "login": "x", "expires_at": 1}
-        )
-        assert store.public_snapshot()["accounts"] == []
-
-    def test_legacy_missing_expiry_and_orphan_active(self) -> None:
-        store = GithubAccountStore(self.tmp_path)
-        legacy = self.tmp_path / "state" / "serve" / "github-session.json"
-        accounts = self.tmp_path / "state" / "serve" / "github-accounts.json"
-        legacy.parent.mkdir(parents=True, exist_ok=True)
-        self._write_legacy(legacy, accounts, {"access_token": "t", "login": "x"})
-        assert store.public_snapshot()["accounts"] == []
+        accounts.parent.mkdir(parents=True, exist_ok=True)
         accounts.write_text(json.dumps(self._orphan_payload()), encoding="utf-8")
         assert store.public_snapshot()["active_account_id"] == "alive"
 
@@ -112,7 +94,6 @@ class TestAccountsCoverage(RaftTestCase):
         bad = client.post("/api/github/accounts/select", json={"account_id": "nope"})
         assert bad.status_code == 404
         assert client.delete("/api/github/accounts/nope").status_code == 404
-        assert client.post("/api/github/accounts/nope/delete").status_code == 404
 
     def _client(self) -> TestClient:
         stack = StackMakers.make_stack(self.tmp_path)
@@ -142,12 +123,6 @@ class TestAccountsCoverage(RaftTestCase):
                 }
             ],
         }
-
-    @staticmethod
-    def _write_legacy(legacy, accounts, payload) -> None:
-        if accounts.is_file():
-            accounts.unlink()
-        legacy.write_text(json.dumps(payload), encoding="utf-8")
 
     @staticmethod
     def _acct(

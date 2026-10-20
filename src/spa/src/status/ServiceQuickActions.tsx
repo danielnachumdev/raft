@@ -97,7 +97,7 @@ function QuickActionButton(props: {
       }}
     >
       {loading ? (
-        <span className="spinner refresh-spinner" aria-hidden="true" />
+        <span className="spinner btn-spinner" aria-hidden="true" />
       ) : (
         props.children
       )}

@@ -10,7 +10,7 @@
     width: 100%;
   }
 
-  .actions-row .action-btn {
+  .actions-row .btn {
     flex: 1 1 0;
     min-width: 0;
   }

@@ -74,7 +74,7 @@ export function ChannelFormModal(props: Props) {
         <div className="modal-actions">
           <button
             type="button"
-            className="action-btn"
+            className="btn"
             disabled={props.busy}
             onClick={props.onClose}
           >
@@ -83,13 +83,13 @@ export function ChannelFormModal(props: Props) {
           <button
             type="submit"
             form="channel-form"
-            className={props.busy ? "action-btn is-loading" : "action-btn"}
+            className={props.busy ? "btn is-loading" : "btn"}
             disabled={saveDisabled}
             aria-busy={props.busy}
             id="channel-form-save"
           >
             {props.busy ? (
-              <span className="spinner refresh-spinner" aria-hidden="true" />
+              <span className="spinner btn-spinner" aria-hidden="true" />
             ) : null}
             Save
           </button>

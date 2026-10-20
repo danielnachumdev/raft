@@ -40,7 +40,7 @@ export function FirewallRecommendations(props: Props) {
             <div className="fw-rec-actions">
               <button
                 type="button"
-                className="action-btn"
+                className="btn"
                 id={`firewall-rec-apply-${item.id}`}
                 disabled={props.busy}
                 onClick={() => props.onApply(item)}
@@ -49,7 +49,7 @@ export function FirewallRecommendations(props: Props) {
               </button>
               <button
                 type="button"
-                className="action-btn"
+                className="btn"
                 id={`firewall-rec-dismiss-${item.id}`}
                 disabled={props.busy}
                 onClick={() => void dismiss(item.id)}

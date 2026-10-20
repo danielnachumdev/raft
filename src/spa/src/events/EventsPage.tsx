@@ -75,7 +75,7 @@ export function EventsPage() {
             disabled={busy}
             aria-busy={busy}
           >
-            {busy ? <span className="spinner refresh-spinner" aria-hidden="true" /> : null}
+            {busy ? <span className="spinner btn-spinner" aria-hidden="true" /> : null}
             Refresh
           </button>
         }
