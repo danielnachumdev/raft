@@ -58,6 +58,31 @@ class TestHostDockerUpdate:
         assert "bookworm-scm" in DEFAULT_HOST_UPDATE_IMAGE
         assert "bookworm-curl" not in DEFAULT_HOST_UPDATE_IMAGE
 
+    def test_failure_message_prefers_stderr(self) -> None:
+        exc = RuntimeError("ignored")
+        exc.stderr = "line1\ninstall.sh: git is required\n"
+        msg = HostDockerUpdate._failure_message(exc)
+        assert "git is required" in msg
+        assert "ignored" not in msg
+
+    def test_failure_message_uses_output_when_no_stderr(self) -> None:
+        exc = RuntimeError("ignored")
+        exc.stderr = None
+        exc.output = "docker: pull failed\n"
+        msg = HostDockerUpdate._failure_message(exc)
+        assert "pull failed" in msg
+
+    def test_failure_message_ignores_non_str_output(self) -> None:
+        exc = RuntimeError("fallback-msg")
+        exc.stderr = None
+        exc.output = 1
+        msg = HostDockerUpdate._failure_message(exc)
+        assert "fallback-msg" in msg
+
+    def test_failure_message_unknown_when_empty(self) -> None:
+        msg = HostDockerUpdate._failure_message(RuntimeError("   "))
+        assert "unknown error" in msg
+
     @staticmethod
     def _argv(*, ref: str | None) -> list[str]:
         upd = HostDockerUpdate(
