@@ -121,7 +121,14 @@ class ScaleDependsWakeStack:
 
     def visitor_sees_the_holding_page(self) -> bool:
         # Marker is authoritative; HTTP also triggers gate→wake (side effect).
-        marker = self._inner.home / "services" / "markers" / f"{FRONTEND}.zero"
+        marker = (
+            self._inner.home
+            / "services"
+            / FRONTEND
+            / "scaling"
+            / "markers"
+            / f"{FRONTEND}.zero"
+        )
         if not marker.is_file():
             return False
         return "Just a moment" in self._curl().body
