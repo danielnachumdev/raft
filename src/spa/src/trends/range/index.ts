@@ -27,3 +27,4 @@ export type {
   RangeMode,
   TrendsRangeState,
 } from "./types.ts";
+export { parseRange } from "./validate.ts";
