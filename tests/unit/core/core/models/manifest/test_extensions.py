@@ -20,7 +20,7 @@ GROUP_VOL_DOC = {
         "source": "docker",
         "image": "redis",
         "ref": "alpine",
-        "path": "apps/stack-redis",
+        "path": "services/stack-redis/checkout",
         "group": "demo",
         "dependsOn": ["stack-front"],
         "envFile": "/home/raft/.raft/demo.env",
@@ -45,7 +45,7 @@ BAD_BASE = {
     "spec": {
         "source": "docker",
         "image": "redis",
-        "path": "apps/x",
+        "path": "services/x/checkout",
         "ports": [{"name": "redis", "containerPort": 6379, "expose": "none"}],
         "readiness": {"type": "none"},
     },

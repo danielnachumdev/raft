@@ -34,9 +34,9 @@ def data_home() -> Path:
     return (Path.home() / ".raft").resolve()
 
 
-def public_hosts_from_registry(registry_dir: Path) -> tuple[str, ...]:
+def public_hosts_from_registry(services_dir: Path) -> tuple[str, ...]:
     names: list[str] = []
-    for path in sorted(registry_dir.glob("*.yaml")):
+    for path in sorted(services_dir.glob("*/app.yaml")):
         names.extend(_hostnames_from_app_yaml(path))
     return tuple(_unique(names))
 
@@ -128,16 +128,16 @@ class HostsPlan:
 
     @classmethod
     def from_applied_apps(cls) -> HostsPlan:
-        registry = data_home() / "state" / "apps"
+        services = data_home() / "services"
         names: tuple[str, ...] = ()
-        if registry.is_dir():
+        if services.is_dir():
             try:
-                names = public_hosts_from_registry(registry)
+                names = public_hosts_from_registry(services)
             except OSError:
                 names = ()
         if not names:
             raise ValueError(
-                "no applied apps under ~/.raft/services/*/*.yaml; "
+                "no applied apps under ~/.raft/services/*/app.yaml; "
                 "apply an App first or pass --entry IP,hostname[,hostname...]"
             )
         return cls(bindings=(HostBinding(ip="127.0.0.1", names=names),))

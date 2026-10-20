@@ -1,4 +1,4 @@
-"""App secret material under ``~/.raft/secrets``."""
+"""App secret material under ``~/.raft/services/<app>/secrets/``."""
 
 from .layout import AppSecretsLayout, ENV_FILE_MODE, SECRETS_DIRNAME
 

@@ -8,7 +8,7 @@ spec:
   source: docker
   image: hashicorp/http-echo
   ref: "1.0.0"
-  path: apps/tls-acme
+  path: services/tls-acme/checkout
   ports:
     - name: http
       containerPort: 5678

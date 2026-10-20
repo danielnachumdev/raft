@@ -14,7 +14,7 @@ class ControllerLogging:
     """Controller: stdout only (mounted data home must stay host-owned)."""
 
     def configure(self, config: RaftConfig) -> None:
-        # Do not open ``~/.raft/logs``: the controller runs as root with a
+        # Do not open ``~/.raft/host/logs``: the controller runs as root with a
         # bind-mounted data home; file handlers would create root-owned files.
         level = getattr(logging, config.logging.level.upper(), logging.INFO)
         root = RaftLogger().configure(level)

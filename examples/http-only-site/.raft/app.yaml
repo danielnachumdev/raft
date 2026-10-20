@@ -16,7 +16,7 @@
 apiVersion: raft/v1
 kind: App
 metadata:
-  # Stable app id used in registry, Compose service names, certs/<name>/, etc.
+  # Stable app id used in registry, Compose service names, services/<name>/certs/, etc.
   name: http-only-site
 
 spec:
@@ -36,19 +36,19 @@ spec:
   #         A/AAAA, edge.http+https, acme.email — do not paste PEMs.
   #         See examples/https-acme-site/.
   # origin → Cloudflare Origin (or similar) PEMs on the host; needs
-  #          ~/.raft/services/*/certs/<metadata.name>/origin.pem + origin.key
+  #          ~/.raft/services/<metadata.name>/certs/origin.pem + origin.key
   #          and edge.https. See examples/https-origin-site/.
   tls: off
 
   # How raft obtains the app tree / image.
-  # local  — tree already on disk at spec.path (relative to data home apps/, or absolute)
-  # git    — clone/fetch spec.repo @ spec.ref into apps/; Compose build: from contract
+  # local  — tree already on disk at spec.path (relative to data home, or absolute)
+  # git    — clone/fetch spec.repo @ spec.ref into services/<name>/checkout; Compose build: from contract
   # docker — pull spec.image:spec.ref (image has no tag; tag/pin lives in ref)
   source: git
   repo: git@github.com:example/http-only-site.git
   ref: main
-  # Checkout / working tree path under the data home (default apps/<name>).
-  path: apps/http-only-site
+  # Checkout / working tree path under the data home (default services/<name>/checkout).
+  path: services/http-only-site/checkout
   # For source: docker only (image without tag):
   # image: ghcr.io/example/http-only-site
 

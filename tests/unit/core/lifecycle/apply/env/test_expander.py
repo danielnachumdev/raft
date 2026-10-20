@@ -117,5 +117,5 @@ class TestMultiplePlaceholders:
         assert data["spec"]["publicHost"] in ("", None)
         assert data["spec"]["group"] == "demo-stack"
         assert data["spec"]["ref"] == "abc123"
-        assert data["spec"]["path"] == "apps/frontend-dev"
+        assert data["spec"]["path"] == "services/frontend-dev/checkout"
         assert "${" not in expanded

@@ -23,8 +23,7 @@ spec:
   image: ghcr.io/example/mail-ui
   ref: "1.2.3"
   repo: git@github.com:example/http-plus-stream.git
-  path: apps/http-plus-stream
-
+  path: services/http-plus-stream/checkout
   ports:
     - name: http
       containerPort: 8080

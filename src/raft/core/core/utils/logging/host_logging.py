@@ -1,4 +1,4 @@
-"""Host CLI logging: structured file under ``~/.raft/logs`` with rotation."""
+"""Host CLI logging: structured file under ``~/.raft/host/logs`` with rotation."""
 
 import logging
 from pathlib import Path
@@ -14,7 +14,7 @@ _FILE_DATEFMT = "%Y-%m-%d %H:%M:%S"
 
 
 class HostLogging:
-    """Host CLI: structured file under ``~/.raft/logs`` with rotation."""
+    """Host CLI: structured file under ``~/.raft/host/logs`` with rotation."""
 
     def configure(self, data_home: Path, config: RaftConfig) -> Path:
         log_cfg = config.logging

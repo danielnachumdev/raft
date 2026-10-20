@@ -3,7 +3,7 @@
 from typing import Any
 
 from raft.core.core.errors.cta import OperatorError
-from ...paths.constants import LOGS_DIRNAME
+from ...paths.constants import HOST_LOGS_DIR
 from ..scalars import SettingsScalars
 from ..section import SettingsSectionParser
 from ..types import (
@@ -13,6 +13,7 @@ from ..types import (
 )
 
 _LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"})
+_DEFAULT_DIR = str(HOST_LOGS_DIR)
 
 
 class LoggingSettingsParser(SettingsSectionParser[LoggingConfig]):
@@ -31,7 +32,7 @@ class LoggingSettingsParser(SettingsSectionParser[LoggingConfig]):
 
     def _from_mapping(self, raw: dict) -> LoggingConfig:
         return LoggingConfig(
-            dir=str(raw.get("dir", LOGS_DIRNAME)).strip() or LOGS_DIRNAME,
+            dir=str(raw.get("dir", _DEFAULT_DIR)).strip() or _DEFAULT_DIR,
             file=str(raw.get("file", "raft.log")).strip() or "raft.log",
             level=self._parse_level(raw),
             retention_max_age_days=self._scalars.pos_int(

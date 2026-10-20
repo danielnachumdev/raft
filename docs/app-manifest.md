@@ -61,7 +61,7 @@ spec:
 |------|------|-----------------|
 | `tls: off` | HTTP only (or TLS terminated elsewhere) | None |
 | `tls: acme` | Browser hits the VPS on :443 (direct HTTPS) | DNS A/AAAA for `publicHost` + each `extraHosts` entry → VPS; TCP **80** and **443** open; set `acme.email` in settings; apply. **Do not paste PEMs.** |
-| `tls: origin` | Upstream proxy (e.g. Cloudflare) presents the browser cert; gate uses Origin PEMs | Install `~/.raft/services/*/certs/<name>/origin.{pem,key}` **before** deploy |
+| `tls: origin` | Upstream proxy (e.g. Cloudflare) presents the browser cert; gate uses Origin PEMs | Install `~/.raft/services/<name>/certs/origin.{pem,key}` **before** deploy |
 
 ### `tls: acme` checklist
 
@@ -122,7 +122,7 @@ Recommended host path (see [`secrets.md`](secrets.md)):
 
 ```yaml
 spec:
-  envFile: /home/raft/.raft/secrets/demo-api/env
+  envFile: /home/raft/.raft/services/demo-api/secrets/env
 ```
 
 Bridge non-secret CI flags into the manifest with apply `--env`. Materialize real secrets into the per-App env file on the host (not into `services/` / `generated/`). Gate/router must never mount App secret files.

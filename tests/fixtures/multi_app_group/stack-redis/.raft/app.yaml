@@ -7,7 +7,7 @@ spec:
   source: docker
   image: redis
   ref: alpine
-  path: apps/stack-redis
+  path: services/stack-redis/checkout
   ports:
     - name: redis
       containerPort: 6379

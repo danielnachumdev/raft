@@ -44,12 +44,12 @@ class TestLogRetentionFromSettings:
         LoggingReset().for_tests()
         HostLogging().configure(home, SettingsLoader().load(home))
         day = datetime.now().strftime("%Y-%m-%d")
-        sealed = home / "logs" / f"raft.log.{day}"
+        sealed = home / "host" / "logs" / f"raft.log.{day}"
         assert sealed.read_text(encoding="utf-8") == payload
         assert "old-noise" not in log_file.read_text(encoding="utf-8")
 
     def _write_oversized(self, home: Path) -> Path:
-        log_dir = home / "logs"
+        log_dir = home / "host" / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         log_file = log_dir / "raft.log"
         stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

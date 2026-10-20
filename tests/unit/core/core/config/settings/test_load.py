@@ -186,7 +186,7 @@ class TestConfig(RaftTestCase):
 
     def test_load_logging_null(self) -> None:
         self.write_home_settings("# no logging mapping\n")
-        assert load_config(self.tmp_path).logging.dir == "logs"
+        assert load_config(self.tmp_path).logging.dir == "host/logs"
 
     def test_resolve_dir_relative_absolute_and_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("RAFT_LOG_DIR", raising=False)

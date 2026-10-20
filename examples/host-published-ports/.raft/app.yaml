@@ -24,8 +24,7 @@ spec:
   ref: master
   # Optional: keep repo so apply --git can refresh the manifest from git.
   repo: git@github.com:example/mail-stack.git
-  path: apps/host-published-ports
-
+  path: services/host-published-ports/checkout
   ports:
     - name: http
       containerPort: 80

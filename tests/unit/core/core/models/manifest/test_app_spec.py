@@ -48,7 +48,7 @@ REGISTRY_DOC = {
     "spec": {
         "publicHost": "web.test",
         "source": "local",
-        "path": "apps/web",
+        "path": "services/web/checkout",
         "ports": [{"name": "http", "containerPort": 80, "expose": "http"}],
         "build": {"context": "."},
     },
@@ -155,7 +155,7 @@ class TestAppSpec(ManifestTestCase):
                     "spec": {
                         **REGISTRY_DOC["spec"],
                         "publicHost": "web.test",
-                        "path": "apps/other",
+                        "path": "services/other/checkout",
                     },
                 }
             )
@@ -209,7 +209,7 @@ class TestAppSpec(ManifestTestCase):
             "spec": {
                 "source": "local",
                 "publicHost": "a.test",
-                "path": "apps/a",
+                "path": "services/a/checkout",
                 "ports": [{"name": "http", "containerPort": 80}],
             },
         }

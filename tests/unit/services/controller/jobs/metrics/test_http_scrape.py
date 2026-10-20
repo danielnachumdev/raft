@@ -128,7 +128,7 @@ class TestGateHttpScraper(ControllerTestCase):
             "spec": {
                 "publicHost": "demo-api.test",
                 "source": "local",
-                "path": "apps/demo-api",
+                "path": "services/demo-api/checkout",
                 "extraHosts": ["www.demo-api.test"],
                 "ports": [{"name": "http", "containerPort": 80, "expose": "http"}],
             },

@@ -24,7 +24,7 @@ Manifest preprocess (`${VAR}`, `${{ if }}`, `--env`) is documented in [`docs/app
 2. Pick a folder that matches how you expose the app.
 3. TLS prep:
    - `tls: acme` — DNS A/AAAA, ports 80/443, set `acme.email` (no PEMs to paste).
-   - `tls: origin` — install `origin.{pem,key}` under `~/.raft/services/*/certs/<metadata.name>/` **before** deploy.
+   - `tls: origin` — install `origin.{pem,key}` under `~/.raft/services/<metadata.name>/certs/` **before** deploy.
 4. Apply (deploy is **on** by default — first boot or cutover):
 
 ```bash

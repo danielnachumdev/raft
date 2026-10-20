@@ -18,14 +18,13 @@ spec:
   # extraHosts:
   #   - www.secure.example.com
 
-  # origin → gate includes TLS snippets from certs/<name>/ for this host.
+  # origin → gate includes TLS snippets from services/<name>/certs/ for this host.
   tls: origin
 
   source: git
   repo: git@github.com:example/https-origin-site.git
   ref: main
-  path: apps/https-origin-site
-
+  path: services/https-origin-site/checkout
   build:
     context: .
     dockerfile: Dockerfile

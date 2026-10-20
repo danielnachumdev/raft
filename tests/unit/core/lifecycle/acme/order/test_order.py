@@ -44,7 +44,7 @@ class TestAcmeOrderRunner(RaftTestCase):
         pem = AcmeOrderRunner(self.tmp_path, client_factory=lambda: client).issue(b"csr")
         assert b"BEGIN CERTIFICATE" in pem
         client.answer_challenge.assert_called_once()
-        assert not (self.tmp_path / "state" / "acme" / "http-01" / token).is_file()
+        assert not (self.tmp_path / "host" / "acme" / "http-01" / token).is_file()
 
     def test_skips_already_valid_authorization(self) -> None:
         order, challb, _token = _http01_order(b"v")

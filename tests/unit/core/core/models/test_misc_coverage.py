@@ -25,7 +25,7 @@ UNIQ_DOC = {
     "spec": {
         "publicHost": "shared.test",
         "source": "local",
-        "path": "apps/uniq",
+        "path": "services/uniq/checkout",
         "ports": [{"name": "http", "containerPort": 80, "expose": "http"}],
         "build": {"context": "."},
     },
