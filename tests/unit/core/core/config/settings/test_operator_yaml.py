@@ -39,6 +39,45 @@ class TestOperatorSettingsYaml(RaftTestCase):
         with pytest.raises(OperatorError, match="invalid settings YAML"):
             svc.replace_yaml({"yaml": "logging: [\n"})
 
+    def test_null_yaml_document_decodes_to_defaults(self) -> None:
+        svc = OperatorSettingsService(self.tmp_path)
+        out = svc.decode_yaml({"yaml": "# empty\n"})
+        assert "edge" in out["document"]
+
+    def test_yaml_non_mapping_raises(self) -> None:
+        svc = OperatorSettingsService(self.tmp_path)
+        with pytest.raises(OperatorError, match="must be a mapping"):
+            svc.decode_yaml({"yaml": "- just\n- a\n- list\n"})
+
+    def test_yaml_missing_field_raises(self) -> None:
+        svc = OperatorSettingsService(self.tmp_path)
+        with pytest.raises(OperatorError, match="non-empty string field"):
+            svc.decode_yaml({"yaml": "   "})
+
+    def test_encode_accepts_bare_document_body(self) -> None:
+        svc = OperatorSettingsService(self.tmp_path)
+        doc = svc.get_public()["document"]
+        encoded = svc.encode_yaml(doc)
+        assert "logging:" in encoded["yaml"]
+
+    def test_redact_dashboard_without_auth_mapping(self) -> None:
+        svc = OperatorSettingsService(self.tmp_path)
+        doc = svc.get_public()["document"]
+        doc["dashboard"] = {
+            "enabled": True,
+            "port": 8787,
+            "publicHost": None,
+            "tls": "off",
+            "auth": "broken",
+        }
+        # Persist may reject; exercise public redact path via get after raw write.
+        from raft.core.core.config.settings.secrets_merge import SettingsSecretsMerge
+
+        redacted = SettingsSecretsMerge().redact_document(
+            {"dashboard": {"enabled": True, "auth": "broken"}}
+        )
+        assert redacted["dashboard"]["auth"] == "broken"
+
     def test_dashboard_round_trip_and_password_mask(self) -> None:
         svc = OperatorSettingsService(self.tmp_path)
         doc = svc.get_public()["document"]
