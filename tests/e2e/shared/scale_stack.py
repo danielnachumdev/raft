@@ -190,9 +190,8 @@ def _gate_volumes() -> list:
         "./generated/nginx/gate-stream:/etc/nginx/stream-generated:ro",
         "./generated/nginx/gate-tls:/etc/nginx/gate-tls:ro",
         "./nginx/errors:/usr/share/nginx/errors:ro",
-        "./certs:/etc/nginx/certs:ro",
+        "./services:/etc/nginx/services:ro",
         "./host/acme/http-01:/etc/nginx/acme-www:ro",
-        "./state/scaling/markers:/etc/nginx/scaling/markers:ro",
         "./host/metrics/gate-http:/var/log/nginx/raft-http",
     ]
 

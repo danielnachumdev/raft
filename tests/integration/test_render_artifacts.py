@@ -108,7 +108,7 @@ class TestRenderTlsOrigin:
         FileText.contains(
             gen.path("nginx", "gate-tls", "tls-origin.conf"),
             "listen 443 ssl",
-            "certs/tls-origin/origin.pem",
+            "services/tls-origin/certs/origin.pem",
         )
 
 
@@ -132,7 +132,7 @@ class TestRenderTlsAcme:
 
     def test_int_tls_acme_with_pems(self, isolated_raft_env: Path) -> None:
         RaftHomeFixtures.prepare(isolated_raft_env)
-        d = isolated_raft_env / "certs" / "tls-acme"
+        d = isolated_raft_env / "services" / "tls-acme" / "certs"
         d.mkdir(parents=True, exist_ok=True)
         (d / "acme.pem").write_text("pem\n", encoding="utf-8")
         (d / "acme.key").write_text("key\n", encoding="utf-8")

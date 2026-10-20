@@ -12,7 +12,10 @@ class MissingAcmeCerts:
 
     @property
     def detail(self) -> str:
-        return f"missing {', '.join(self.missing)} under certs/{self.app_name}/"
+        return (
+            f"missing {', '.join(self.missing)} under "
+            f"services/{self.app_name}/certs/"
+        )
 
     @property
     def fix(self) -> str:
@@ -20,6 +23,6 @@ class MissingAcmeCerts:
             f"point DNS A/AAAA for {self.app_name} publicHost (+ extraHosts) at this host; "
             f"keep edge.http (:80) and edge.https (:443) published; set acme.email in "
             f"~/.raft/host/settings.yaml; then re-apply so ACME can issue "
-            f"~/.raft/services/*/certs/{self.app_name}/acme.pem and acme.key "
+            f"~/.raft/services/{self.app_name}/certs/acme.pem and acme.key "
             f"(do not paste Origin PEMs for tls: acme)"
         )

@@ -16,6 +16,7 @@ from raft.core.platform.adapters.docker import DockerStack
 from raft.core.platform.adapters.shell import Shell
 from raft.core.core.models.stack import load_stack
 from raft.core.core.models.state.scaling_store import ScalingStore
+from raft.core.core.config.paths.service_paths import ServicePaths
 from raft.core.lifecycle.acme.ensure import AcmeEnsure
 from raft.core.lifecycle.acme.install import AcmeGateInstall
 from raft.core.lifecycle.acme.paths import AcmePaths
@@ -146,11 +147,11 @@ class AcmeE2EStack:
         )
 
     def pem_digest(self) -> str:
-        pem = (self.home / "certs" / APP / "acme.pem").read_bytes()
+        pem = ServicePaths(self.home, APP).certs().joinpath("acme.pem").read_bytes()
         return hashlib.sha256(pem).hexdigest()
 
     def assert_challenge_token(self, token: str, body: str) -> None:
-        webroot = self.home / "state" / "acme" / "http-01"
+        webroot = AcmePaths(self.home).http01_webroot
         webroot.mkdir(parents=True, exist_ok=True)
         (webroot / token).write_text(body, encoding="utf-8")
         resp = self.http.get(
