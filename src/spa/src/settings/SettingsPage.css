@@ -106,13 +106,76 @@
   font-size: var(--text-md);
 }
 
-.settings-yaml-editor {
+.settings-yaml-shell {
+  position: relative;
   width: 100%;
+  min-height: 24rem;
+}
+
+.settings-yaml-highlight,
+.settings-yaml-editor {
+  margin: 0;
+  width: 100%;
+  min-height: 24rem;
+  box-sizing: border-box;
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   line-height: 1.45;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.55rem;
+  background: var(--input);
+}
+
+.settings-yaml-highlight {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: var(--ink);
+  z-index: 0;
+}
+
+.settings-yaml-editor {
+  position: relative;
+  z-index: 1;
   resize: vertical;
-  min-height: 24rem;
+  color: transparent;
+  caret-color: var(--ink);
+  -webkit-text-fill-color: transparent;
+  background: transparent;
+}
+
+.settings-yaml-editor::selection {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  color: transparent;
+}
+
+.settings-yaml-highlight .yh-comment {
+  color: var(--yh-comment);
+}
+
+.settings-yaml-highlight .yh-key {
+  color: var(--yh-key);
+}
+
+.settings-yaml-highlight .yh-punct {
+  color: var(--yh-punct);
+}
+
+.settings-yaml-highlight .yh-string {
+  color: var(--yh-string);
+}
+
+.settings-yaml-highlight .yh-number {
+  color: var(--yh-number);
+}
+
+.settings-yaml-highlight .yh-bool,
+.settings-yaml-highlight .yh-null {
+  color: var(--yh-bool);
 }
 
 .settings-checks {
