@@ -33,7 +33,7 @@ export function DashboardToolbar(props: {
       {showAdd ? (
         <button
           type="button"
-          className="action-btn btn-primary trends-add-graph"
+          className="btn btn-primary trends-add-graph"
           onClick={props.onAdd}
           id="trends-add-graph"
         >

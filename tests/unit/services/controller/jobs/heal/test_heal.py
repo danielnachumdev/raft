@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from raft.core.core.config.settings.types import HealingConfig
-from raft.services.controller.jobs.heal import HealForever, Healer
+from raft.services.controller.jobs.heal import Healer
 from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.core.core.errors.cta import OperatorError
 
@@ -157,14 +157,6 @@ class TestHealer(ControllerTestCase):
             healer.tick(now=1.0)
         assert healer.restart_counts.get(self.APP, 0) == 0
 
-    def test_run_heal_forever_one_iteration(self, tmp_path: Path) -> None:
-        self._run_forever_once(tmp_path, HealingConfig(enabled=False, interval_seconds=0.01))
-
-    def test_run_heal_forever_swallows_tick_errors(self, tmp_path: Path) -> None:
-        cfg = HealingConfig(enabled=True, interval_seconds=0.01)
-        with patch.object(Healer, "tick", side_effect=RuntimeError("tick boom")):
-            self._run_forever_once(tmp_path, cfg)
-
     def test_nudge_on_needs_heal_once(self, tmp_path: Path) -> None:
         nudge = MagicMock()
         cfg = HealingConfig(enabled=True, fail_threshold=5, cooldown_seconds=0)
@@ -178,7 +170,9 @@ class TestHealer(ControllerTestCase):
         home = self.applied_home(tmp_path)
         docker = MagicMock()
         docker.service_runtime.return_value = ("running", "healthy")
-        Healer(home, HealingConfig(enabled=True), docker, on_needs_heal=nudge).tick(now=1.0)
+        Healer(home, HealingConfig(enabled=True), docker, on_needs_heal=nudge).tick(
+            now=1.0
+        )
         nudge.assert_not_called()
 
     def test_nudge_not_called_when_disabled(self, tmp_path: Path) -> None:
@@ -203,15 +197,3 @@ class TestHealer(ControllerTestCase):
         ).tick(now=1.0)
         nudge.assert_not_called()
 
-    def _run_forever_once(self, tmp_path: Path, cfg: HealingConfig) -> None:
-        home = self.raft_home(tmp_path)
-        docker = MagicMock()
-        calls = {"n": 0}
-
-        def sleep(_s: float) -> None:
-            calls["n"] += 1
-            if calls["n"] >= 1:
-                raise StopIteration
-
-        with pytest.raises(StopIteration):
-            HealForever(home, cfg, docker, sleep_fn=sleep).run()

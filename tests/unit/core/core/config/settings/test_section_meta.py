@@ -37,7 +37,6 @@ class TestSettingsSectionMeta(RaftTestCase):
             acme=base.acme,
             github=base.github,
             notifications=base.notifications,
-            acl=base.acl,
             alerts=base.alerts,
             dashboard=base.dashboard,
         )

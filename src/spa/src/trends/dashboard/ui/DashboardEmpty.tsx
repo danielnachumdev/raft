@@ -19,10 +19,10 @@ export function DashboardEmpty(props: {
         default overview layout.
       </p>
       <div className="trends-dash-empty-actions">
-        <button type="button" className="action-btn btn-primary" onClick={props.onAdd}>
+        <button type="button" className="btn btn-primary" onClick={props.onAdd}>
           + Add graph
         </button>
-        <button type="button" className="action-btn" onClick={props.onRestoreDefaults}>
+        <button type="button" className="btn" onClick={props.onRestoreDefaults}>
           Use default graphs
         </button>
       </div>

@@ -62,15 +62,9 @@ raft metrics export_logs demo-api --format=txt --file=demo-api.log
 
 Browser **`localStorage`** key `raft-serve-trends-dashboards` (version 2; same machine/browser only). Not written under `~/.raft/` (kit v1 stance: browser-local; see [dashboard kit](serve-dashboard-kit.md)). Clearing site data resets to Overview. Corrupt or foreign payloads are ignored and fall back to Overview; graphs with unknown metrics or more than two metric types are trimmed on load.
 
-## Migration from named views (#202)
+## Named views (#202) retired
 
-On first load, when `raft-serve-trends-dashboards` does not exist yet, saved named views under `raft-serve-trends-views` are migrated:
-
-- Overview (defaults) comes first.
-- Each named view becomes its **own dashboard** with the view's name and range and one full-width graph (its metrics, view mode and selection) — nothing saved before is lost.
-- The last active named view opens; otherwise Overview.
-
-The legacy key is left untouched (read-only) and is not consulted again once dashboards exist.
+Only `raft-serve-trends-dashboards` is loaded. The old `raft-serve-trends-views` key is ignored (safe to clear from browser localStorage). Operators who never opened dashboards after #238 may need to recreate graphs once.
 
 ## Removed services / groups
 

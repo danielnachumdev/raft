@@ -85,13 +85,6 @@ export type SettingsDocument = {
     enabled: boolean;
     channels: NotificationChannel[];
   };
-  /** Legacy ``acl.gate`` — API round-trip only; not editable in Settings UI. */
-  acl: {
-    gate: {
-      mode: string;
-      entries: Array<{ id: string; cidr: string; comment?: string }>;
-    };
-  };
   alerts: {
     enabled: boolean;
     intervalSeconds: number;

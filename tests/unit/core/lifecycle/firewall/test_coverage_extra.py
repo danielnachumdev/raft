@@ -6,13 +6,9 @@ from fastapi.testclient import TestClient
 
 from raft.core.core.config.settings.types import EdgeConfig
 from raft.core.core.errors.cta import OperatorError
-from raft.core.core.models.acl_policy import AclPolicy
-from raft.core.core.models.firewall import AclV1Migrator, FirewallDocument
+from raft.core.core.models.firewall import FirewallDocument
 from raft.core.core.models.stack import load_stack
-from raft.core.core.models.state.acl_store import AppAclStore
 from raft.core.core.models.state.firewall_store import FirewallStore
-from raft.core.lifecycle.render.acl.effective import AclEffective
-from raft.core.lifecycle.render.acl.inc_writer import AclIncWriter
 from raft.core.lifecycle.render.firewall import (
     CompiledFragment,
     FirewallCompiler,
@@ -73,14 +69,6 @@ class TestFirewallCoverageExtra(RaftTestCase):
             FirewallCompiler._collapse_cidrs("192.0.2.0/24", "198.51.100.0/24") is None
         )
 
-    def test_migrate_skips_inactive_app_acl(self) -> None:
-        self._settings("edge: {http: 80}\n")
-        AppAclStore(self.tmp_path).save("demo-api", AclPolicy())
-        path = AppAclStore(self.tmp_path).path_for("idle")
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text('{"mode": "off", "entries": []}\n', encoding="utf-8")
-        assert AclV1Migrator(self.tmp_path, ports=()).migrate().rules == ()
-
     def test_document_rules_none_and_store_cleanup(self) -> None:
         doc = FirewallDocument.from_mapping({"version": 1, "rules": None}, path="fw")
         assert doc.rules == ()
@@ -90,16 +78,14 @@ class TestFirewallCoverageExtra(RaftTestCase):
             store.save(FirewallDocument())
             assert unlink.called
 
-    def test_acl_clear_all_and_api_put_error(self) -> None:
+    def test_legacy_acl_includes_cleared_and_api_put_error(self) -> None:
         self._settings("edge: {http: 80}\n")
-        writer = AclIncWriter(
-            self.tmp_path / "generated/nginx/gate-http", AclEffective(self.tmp_path)
-        )
-        writer.clear_all()
-        writer._dir.mkdir(parents=True)
-        (writer._dir / "x.inc").write_text("y", encoding="utf-8")
-        writer.clear_all()
-        assert list(writer._dir.glob("*.inc")) == []
+        gate_http = self.tmp_path / "generated" / "nginx" / "gate-http"
+        acl_dir = gate_http / "acl"
+        acl_dir.mkdir(parents=True)
+        (acl_dir / "x.inc").write_text("y", encoding="utf-8")
+        PolicyIncludes(self.tmp_path, EdgeConfig(http=80), gate_http).write_all([])
+        assert list(acl_dir.glob("*.inc")) == []
         bad = self._put_client().put("/api/firewall", json={"rules": [rule_dict()]})
         assert bad.status_code == 400
 
@@ -137,7 +123,6 @@ class TestFirewallCoverageExtra(RaftTestCase):
 
     def test_remaining_branches(self) -> None:
         self._settings("edge: {http: null, https: 443}\n")
-        assert FirewallEffective(self.tmp_path)._edge_ports() == (443,)
         FirewallStore(self.tmp_path).delete()
         FirewallStore(self.tmp_path).save(document(rule_dict("p", port=443)))
         gate = self.tmp_path / "generated/nginx/gate-http"
@@ -149,11 +134,13 @@ class TestFirewallCoverageExtra(RaftTestCase):
         )
         assert policy._listen_ports(EdgeConfig(http=None, https=None)) == (80,)
         assert policy._listen_ports(EdgeConfig(http=80, https=443)) == (80, 443)
+        assert policy._listen_ports(EdgeConfig(http=None, https=443)) == (443,)
         fresh = self.tmp_path / "generated/nginx/empty-gate"
         fresh.mkdir(parents=True)
         FirewallIncWriter(
             fresh, FirewallEffective(self.tmp_path), ports=(80,)
         ).clear_all()
+        PolicyIncludes(self.tmp_path, EdgeConfig(http=80), fresh).write_all([])
 
     def _exercise_writer(self, writer: FirewallIncWriter, gate) -> None:
         writer.write_all([])

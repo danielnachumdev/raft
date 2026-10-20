@@ -63,8 +63,8 @@ function ActionButton(props: {
 }) {
   const loading = props.busy === props.action;
   const className = [
-    "action-btn",
-    props.danger ? "action-btn-danger" : "",
+    "btn",
+    props.danger ? "btn-danger" : "",
     loading ? "is-loading" : "",
   ]
     .filter(Boolean)
@@ -80,7 +80,7 @@ function ActionButton(props: {
       onClick={props.onClick}
     >
       {loading ? (
-        <span className="spinner refresh-spinner" aria-hidden="true" />
+        <span className="spinner btn-spinner" aria-hidden="true" />
       ) : null}
       {props.label}
     </button>

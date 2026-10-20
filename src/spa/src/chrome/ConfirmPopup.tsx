@@ -37,7 +37,7 @@ export function ConfirmPopup(props: ConfirmPopupProps) {
         <div className="modal-actions">
           <button
             type="button"
-            className="action-btn"
+            className="btn"
             disabled={busy}
             onClick={props.onCancel}
           >
@@ -46,8 +46,8 @@ export function ConfirmPopup(props: ConfirmPopupProps) {
           <button
             type="button"
             className={[
-              "action-btn",
-              props.danger ? "action-btn-danger" : "",
+              "btn",
+              props.danger ? "btn-danger" : "",
               busy ? "is-loading" : "",
             ]
               .filter(Boolean)
@@ -57,7 +57,7 @@ export function ConfirmPopup(props: ConfirmPopupProps) {
             onClick={() => void handleConfirm()}
           >
             {busy ? (
-              <span className="spinner refresh-spinner" aria-hidden="true" />
+              <span className="spinner btn-spinner" aria-hidden="true" />
             ) : null}
             {confirmLabel}
           </button>

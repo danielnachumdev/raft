@@ -81,7 +81,7 @@ function ChannelRow(props: {
       <div className="channel-row-actions">
         <button
           type="button"
-          className="action-btn"
+          className="btn"
           disabled={props.busy}
           onClick={props.onToggle}
           id={`channel-toggle-${channel.id}`}
@@ -90,7 +90,7 @@ function ChannelRow(props: {
         </button>
         <button
           type="button"
-          className="action-btn"
+          className="btn"
           disabled={props.busy}
           onClick={props.onEdit}
           id={`channel-edit-${channel.id}`}
@@ -99,7 +99,7 @@ function ChannelRow(props: {
         </button>
         <button
           type="button"
-          className="action-btn"
+          className="btn"
           disabled={!sendOk || props.busy}
           title={sendTitle}
           id={`channel-test-${channel.id}`}
@@ -109,7 +109,7 @@ function ChannelRow(props: {
         </button>
         <button
           type="button"
-          className="action-btn action-btn-danger"
+          className="btn btn-danger"
           disabled={props.busy}
           onClick={props.onDelete}
           id={`channel-delete-${channel.id}`}

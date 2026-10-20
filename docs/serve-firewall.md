@@ -55,13 +55,9 @@ ACME HTTP-01 stays on a sibling `location ^~ /.well-known/acme-challenge/` **out
 
 Host-routed HTTP edge only (`expose: http` + `publicHost`) for **service**-scoped rules. Stream / host / worker are out of scope for service dropdown; use `service: any` for edge-wide policy.
 
-### Migration from ACL v1 (#195)
+### Flat ACL retired (#195 / #312)
 
-Legacy flat ACL UI/API (`/api/acl/*`, Settings allow/deny lists, per-App Access control) are **removed**.
-
-- Until `state/firewall/rules.yaml` exists, GET `/api/firewall` returns an **in-memory migration** of leftover `acl.gate` + `state/acl/apps/*.json` (`source: acl-v1-migrated`).
-- Render **always** uses ordered-firewall includes (and clears leftover `gate-http/acl/*.inc`).
-- **Save** (or import) writes the durable firewall document.
+Legacy flat ACL UI/API (`acl.gate`, `state/acl/`, `/api/acl/*`, Settings allow/deny lists) are **removed**. Edge policy is **only** the ordered firewall document under `state/firewall/rules.yaml`. Leftover ACL files on disk are ignored; render clears stale `gate-http/acl/*.inc` and uses firewall includes. Operators who still need old ACL policy must reconstruct rules under Settings → Firewall (or import) after upgrade — see [releases.md](releases.md) upgrade notes.
 
 ### Recommendation defaults
 
@@ -118,4 +114,4 @@ Example document:
 }
 ```
 
-Epic [#207](https://github.com/danielnachumdev/raft/issues/207), delivery [#211](https://github.com/danielnachumdev/raft/issues/211). Former flat ACL notes: [`docs/serve-acl.md`](serve-acl.md) (retired).
+Epic [#207](https://github.com/danielnachumdev/raft/issues/207), delivery [#211](https://github.com/danielnachumdev/raft/issues/211). Former flat ACL path removed in #312.

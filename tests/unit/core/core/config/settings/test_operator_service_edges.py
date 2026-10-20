@@ -32,19 +32,20 @@ class TestOperatorSettingsServiceEdges(RaftTestCase):
         out = svc.replace({"document": doc})
         assert out["document"]["edge"]["streams"][0]["port"] == 2222
 
-    def test_active_acl_emits_legacy_note_on_get_and_put(self) -> None:
+    def test_persist_strips_retired_acl_key(self) -> None:
+        path = self.tmp_path / "settings.yaml"
+        path.write_text(
+            "edge: {}\n"
+            "acl:\n  gate:\n    mode: whitelist\n"
+            "    entries:\n      - {id: lab, cidr: 192.0.2.0/24}\n",
+            encoding="utf-8",
+        )
         svc = OperatorSettingsService(self.tmp_path)
         doc = svc.get_public()["document"]
-        doc["acl"] = {
-            "gate": {
-                "mode": "whitelist",
-                "entries": [{"id": "lab", "cidr": "192.0.2.0/24"}],
-            }
-        }
-        put = svc.replace({"document": doc})
-        assert any(n["code"] == "acl.gate" for n in put["notes"])
-        got = svc.get_public()
-        assert any(n["code"] == "acl.gate" for n in got["notes"])
+        assert "acl" not in doc
+        svc.replace({"document": doc})
+        saved = path.read_text(encoding="utf-8")
+        assert "acl:" not in saved
 
     def test_load_root_missing_invalid_and_non_mapping(self) -> None:
         empty = self.tmp_path / "empty-home"

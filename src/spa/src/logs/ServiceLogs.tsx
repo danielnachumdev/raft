@@ -113,13 +113,13 @@ function ServiceLogControls(props: {
       </label>
       <button
         type="button"
-        className={`refresh${props.busy ? " is-loading" : ""}`}
+        className={`btn${props.busy ? " is-loading" : ""}`}
         disabled={loading}
         aria-busy={props.busy}
         onClick={props.onRefresh}
       >
         {props.busy ? (
-          <span className="spinner refresh-spinner" aria-hidden="true" />
+          <span className="spinner btn-spinner" aria-hidden="true" />
         ) : null}
         Refresh
       </button>

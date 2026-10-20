@@ -222,6 +222,5 @@ edge:
 # ---------------------------------------------------------------------------
 # Edge firewall is ordered rules under state/firewall/rules.yaml (raft serve
 # Settings → Firewall). Not configured here. See docs/serve-firewall.md.
-# Legacy acl.gate / state/acl/apps are retired (read only for one-time migrate).
 # ---------------------------------------------------------------------------
 

@@ -105,7 +105,7 @@ export function Dashboard() {
           <>
             <button
               type="button"
-              className={busy ? "refresh is-loading" : "refresh"}
+              className={busy ? "btn is-loading" : "btn"}
               onClick={() => void load()}
               disabled={busy || updating}
               aria-busy={busy || updating}
@@ -113,11 +113,11 @@ export function Dashboard() {
               id="status-refresh"
             >
               {busy ? (
-                <span className="spinner refresh-spinner" aria-hidden="true" />
+                <span className="spinner btn-spinner" aria-hidden="true" />
               ) : null}
               Refresh
             </button>
-            <Link className="refresh btn-primary" to="/add-service" id="add-service">
+            <Link className="btn btn-primary" to="/add-service" id="add-service">
               Add service
             </Link>
           </>
@@ -176,7 +176,7 @@ function AppsEmpty() {
         Deploy one from GitHub here, or from a service repo run{" "}
         <code>raft apply --file .raft/app.yaml</code>.
       </p>
-      <Link className="refresh btn-primary" to="/add-service">
+      <Link className="btn btn-primary" to="/add-service">
         Add your first service
       </Link>
     </div>

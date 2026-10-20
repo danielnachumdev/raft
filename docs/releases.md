@@ -63,9 +63,20 @@ RAFT_PREFER_WHEEL=0 bash install.sh   # force git+ even when a wheel exists
 raft update --ref main
 ```
 
-`RAFT_BRANCH` remains a deprecated alias for `RAFT_REF`. VMs stay **Node-free** on the wheel path. Contributors with an editable checkout still run `npm run build` locally so `raft serve` has UI assets.
+Use **`RAFT_REF`** or `--ref` only (`RAFT_BRANCH` is removed). VMs stay **Node-free** on the wheel path. Contributors with an editable checkout still run `npm run build` locally so `raft serve` has UI assets.
 
 After install, `install.sh` prints the resolved source (Release tag + wheel asset, or `git+…@ref`). When replacing an existing install, it also prints `OK: <previous> → <current>` (same shape as `raft update`). Check anytime with `raft --version` (package semver; includes git ref/commit or wheel name when `direct_url.json` is present).
+
+## Upgrade notes (cleanup / breaking removals)
+
+When a release ships deprecation cleanup (see issue #312), operators should:
+
+1. **Backup** `~/.raft/` (especially `settings.yaml`, `state/firewall/`, `state/apps/`, leftover `state/acl/` if present).
+2. **Before upgrade** (recommended): open serve **Settings → Firewall** and **Save** once so durable `state/firewall/rules.yaml` exists. Flat ACL migrate-on-load is removed — leftover `acl.gate` / `state/acl/` is ignored.
+3. **Upgrade** (`raft update` / install from latest Release wheel). Replace automation using **`RAFT_BRANCH`** with **`RAFT_REF`** / `--ref`.
+4. Re-save **Settings** once (drops any leftover `acl:` key from `settings.yaml`). Confirm GitHub assist uses OAuth accounts only (`github-accounts.json`; old `github-session.json` is no longer migrated — re-login if needed).
+5. Trends: only `raft-serve-trends-dashboards` is read; clear stale `raft-serve-trends-views` localStorage if desired.
+6. Run **`raft doctor`** / **`raft status`**; prefer gate **reload** unless published edge ports changed (`raft gate recreate`).
 
 ## Merge enforcement
 

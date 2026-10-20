@@ -5,8 +5,6 @@ from pathlib import Path
 LOCKS_REL = Path("state") / "locks"
 STACK_LOCK_NAME = "stack.lock"
 SETTINGS_LOCK_NAME = "settings.lock"
-# Historical name — same flock as ``settings.lock`` (settings.yaml writers).
-NOTIFICATIONS_LOCK_NAME = SETTINGS_LOCK_NAME
 ACL_LOCK_NAME = "acl.lock"
 ALERTS_LOCK_NAME = "alerts.lock"
 DASHBOARD_LOCK_NAME = "dashboard.lock"
@@ -26,9 +24,6 @@ class LockPaths:
 
     def settings(self) -> Path:
         return self.directory() / SETTINGS_LOCK_NAME
-
-    def notifications(self) -> Path:
-        return self.settings()
 
     def acl(self) -> Path:
         return self.directory() / ACL_LOCK_NAME

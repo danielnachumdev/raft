@@ -7,7 +7,6 @@ set -euo pipefail
 RAFT_REPO_URL="${RAFT_REPO_URL:-https://github.com/danielnachumdev/raft.git}"
 # Capture explicit overrides before any defaults (empty = resolve latest Release).
 _RAFT_REF_ENV="${RAFT_REF:-}"
-_RAFT_BRANCH_ENV="${RAFT_BRANCH:-}"
 RAFT_KEEP_CHECKOUT="${RAFT_KEEP_CHECKOUT:-0}"
 RAFT_INSTALL_QUIET="${RAFT_INSTALL_QUIET:-0}"
 RAFT_PREFER_WHEEL="${RAFT_PREFER_WHEEL:-1}"
@@ -80,7 +79,6 @@ Options:
 
 Env:
   RAFT_REF                 Same as --ref (wins over latest; --ref wins over env)
-  RAFT_BRANCH              Deprecated alias for RAFT_REF
   RAFT_REPO_URL            Git remote (default: github.com/danielnachumdev/raft.git)
   RAFT_PREFER_WHEEL=0      Skip Release wheel; always git+@ref
   RAFT_KEEP_CHECKOUT=1     Clone to RAFT_HOME (default ~/raft) and editable-install
@@ -156,11 +154,6 @@ resolve_install_ref() {
   fi
   if [[ -n "${_RAFT_REF_ENV}" ]]; then
     RAFT_REF="${_RAFT_REF_ENV}"
-    return 0
-  fi
-  if [[ -n "${_RAFT_BRANCH_ENV}" ]]; then
-    log_warn "RAFT_BRANCH is deprecated; use RAFT_REF or --ref"
-    RAFT_REF="${_RAFT_BRANCH_ENV}"
     return 0
   fi
   log "Resolving latest GitHub Release…"

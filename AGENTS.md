@@ -48,7 +48,7 @@ Overlapping apply/redeploy/render tears tmp names, upstreams, and `generated/`. 
 | `stack.lock` | render, sync, cutover, compose up/recreate, gate recreate, up/down, purge | No torn `generated/` / mid-cutover upstream reset |
 | `acl.lock` | serve firewall writes (before render/reload) | Firewall persist does not race another firewall writer |
 | `alerts.lock` | CLI/serve writes to `state/alerts/rules.yaml` | Alert rules document writers do not tear each other |
-| `settings.lock` | full settings document, notification channels, github OAuth settings writers | No torn `settings.yaml` (historical `notifications.lock` name aliases this path) |
+| `settings.lock` | full settings document, notification channels, github OAuth settings writers | No torn `settings.yaml` |
 | `dashboard.lock` | CLI writes to `settings.yaml` `dashboard:` | Dashboard settings writers do not tear each other |
 
 Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**). Nesting in-process re-enters. `doctor` / `status` do not take these locks.
@@ -91,7 +91,7 @@ Align with the README table; detail for agents:
 | Full operator settings UI (`settings.yaml` / `RaftConfig`) | **Shipped** | `OperatorSettingsService` + `GET/PUT /api/settings` + SPA `/settings`; [`docs/serve-settings.md`](docs/serve-settings.md). Edge port changes note `raft gate recreate`. |
 | Settings → Check for updates | **Shipped** | `UpdateCheck` + `SelfUpdate` via `GET/POST /api/update`; same GitHub Release wheel SoT as `raft update` / `install.sh` |
 | HTTP request inspection (per App) | **Shipped** | Gate access log → `/api/service/{name}/http-requests` + `raft http_requests show`; [`docs/serve-http-requests.md`](docs/serve-http-requests.md) |
-| Flat gate / App IP ACL (allow/deny lists) | **Retired** | Removed as operator path; leftover `#195` data migrates into firewall GET until Save; [`docs/serve-acl.md`](docs/serve-acl.md) |
+| Flat gate / App IP ACL (allow/deny lists) | **Retired** | Removed; firewall SoT only ([`docs/serve-firewall.md`](docs/serve-firewall.md)). Leftover `acl.gate` / `state/acl/` ignored. |
 | **Ordered firewall rules** (CIDR, port, protocol, service, action) | **Shipped** | Epic [#207](https://github.com/danielnachumdev/raft/issues/207), [#211](https://github.com/danielnachumdev/raft/issues/211); CLI [#258](https://github.com/danielnachumdev/raft/issues/258) (`raft firewall …`). On gate; Save/CLI → compile → reload; import/export; recommendations; [`docs/serve-firewall.md`](docs/serve-firewall.md). |
 | Inspection → add firewall rule | **Shipped** | [#198](https://github.com/danielnachumdev/raft/issues/198); row actions → `#211` model; prepend + reload |
 | GitHub add-service assist | **Shipped (v1)** | Serve + `raft github …` via `GithubAssistService`; [`docs/serve-github-deploy.md`](docs/serve-github-deploy.md); known gap [#200](https://github.com/danielnachumdev/raft/issues/200) |
@@ -99,7 +99,7 @@ Align with the README table; detail for agents:
 | Healing | **Shipped** | Settings `healing:`; separate from scaling |
 | Secrets baseline (`~/.raft/secrets/<app>/env`) | **Shipped** | Guidance [`docs/secrets.md`](docs/secrets.md); external materialization epic [#143](https://github.com/danielnachumdev/raft/issues/143) / [#176](https://github.com/danielnachumdev/raft/issues/176) |
 | Past logs when container off | **Shipped** | Retained under `state/service-logs/`; shipper + drain-before-rm; [`docs/serve-logs.md`](docs/serve-logs.md) |
-| Trends dashboards (multi-graph) | **Shipped** | [#238](https://github.com/danielnachumdev/raft/issues/238) supersedes #202 named views (migrated on load). Shared range + one fetch per plane fanned out to `TrendsGraph`s; browser-local (`raft-serve-trends-dashboards`); overview embeds the dashboard kit; `src/spa/src/trends/dashboard/`; [`docs/serve-trends.md`](docs/serve-trends.md) |
+| Trends dashboards (multi-graph) | **Shipped** | [#238](https://github.com/danielnachumdev/raft/issues/238) supersedes #202 named views (migrate removed). Shared range + one fetch per plane fanned out to `TrendsGraph`s; browser-local (`raft-serve-trends-dashboards`); overview embeds the dashboard kit; `src/spa/src/trends/dashboard/`; [`docs/serve-trends.md`](docs/serve-trends.md) |
 | Per-service Trends (default graphs) | **Shipped** | Service inspection uses the same multi-graph UX, pinned to that service; browser-local `raft-serve-service-trends`; `src/spa/src/trends/service/` (kit migration follow-on for [#249](https://github.com/danielnachumdev/raft/issues/249)) |
 | Reusable dashboard kit (Trends shell / embed) | **Shipped (v1)** | [#249](https://github.com/danielnachumdev/raft/issues/249); `src/spa/src/dashboard-kit/`; timeseries panels + embed contract; browser-local persistence; [`docs/serve-dashboard-kit.md`](docs/serve-dashboard-kit.md) |
 | Alert rules engine (metrics/control-plane → notifications) | **Shipped** | [#236](https://github.com/danielnachumdev/raft/issues/236); dual-plane CLI+serve lock [#264](https://github.com/danielnachumdev/raft/issues/264); [`docs/serve-alerts.md`](docs/serve-alerts.md); `AlertRulesService` / engine under `observe/alerts/` |
@@ -111,7 +111,7 @@ Align with the README table; detail for agents:
 
 ### Firewall
 
-- **Ordered firewall (#211, shipped):** ordered rule table — **CIDR**, **port** (number or `any`), **protocol** (dropdown + other), **service** (dropdown + any), **action** (`deny` \| `permit` \| `drop`); Save → persist → compile → **gate nginx reload**; import/export; baseline recommendations (per-port permit + default deny); leftover `#195` ACL migrates on GET until Save.
+- **Ordered firewall (#211, shipped):** ordered rule table — **CIDR**, **port** (number or `any`), **protocol** (dropdown + other), **service** (dropdown + any), **action** (`deny` \| `permit` \| `drop`); Save → persist → compile → **gate nginx reload**; import/export; baseline recommendations (per-port permit + default deny). Flat ACL migrate path removed (#312).
 - Flat ACL UI/API removed — not an operator path.
 - **Never** require gate recreate/restart for rule-only changes.
 
@@ -121,7 +121,7 @@ Align with the README table; detail for agents:
 
 | Path | Role |
 |------|------|
-| `settings.yaml` | logging, edge, healing, metrics, serviceLogs, acme, github, notifications, dashboard, alerts cadence (legacy `acl.gate` for migrate) |
+| `settings.yaml` | logging, edge, healing, metrics, serviceLogs, acme, github, notifications, dashboard, alerts cadence |
 | `state/apps/*.yaml` | Applied App registry |
 | `generated/` | Compose + nginx (+ `gate-http/firewall/` includes) — **do not hand-edit as source of truth** |
 | `state/locks/` | flock files |

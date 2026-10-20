@@ -77,7 +77,7 @@ Appearance, Updates, and Storage are UI-only (not `settings.yaml` sections).
 | `dashboard` | Always-on `raft-dashboard` | Compose / public Host / auth — see [`serve-dashboard.md`](serve-dashboard.md) |
 | Storage | Purge unused Docker images / build cache | Confirm → `POST /api/purge` (same as `raft purge`); toasts for success/error |
 
-Legacy `acl.gate` may still appear in the API document for round-trip and migrate-on-GET into Firewall until Save — it is **not** an editable Settings section. Prefer [Settings → Firewall](serve-firewall.md).
+Edge IP policy is **not** configured here — use [Settings → Firewall](serve-firewall.md). A leftover `acl:` key in `settings.yaml` is ignored on load and stripped on the next Settings save.
 
 ## API
 
@@ -156,4 +156,3 @@ Fixtures, docs, and screenshots use only documentation hosts (`ops.example.com`,
 - [`serve-notifications.md`](serve-notifications.md)
 - [`serve-alerts.md`](serve-alerts.md)
 - [`serve-firewall.md`](serve-firewall.md)
-- [`serve-acl.md`](serve-acl.md) (legacy)

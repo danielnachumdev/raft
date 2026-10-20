@@ -14,7 +14,7 @@ from raft.core.platform.locking import (
     ExclusiveLock,
     LockPaths,
     AclLock,
-    NotificationsLock,
+    SettingsLock,
     StackLock,
 )
 
@@ -99,11 +99,10 @@ class TestExclusiveLock(RaftTestCase):
     def test_app_lock_sanitizes_name(self) -> None:
         assert self.paths.app("a/b\\c").name == "app-a_b_c.lock"
 
-    def test_notifications_lock_helper(self) -> None:
-        with NotificationsLock(self.root, timeout=1):
-            assert self.paths.notifications() == self.paths.settings()
-            assert self.paths.notifications().name == "settings.lock"
-            assert self.paths.notifications().is_file()
+    def test_settings_lock_helper(self) -> None:
+        with SettingsLock(self.root, timeout=1):
+            assert self.paths.settings().name == "settings.lock"
+            assert self.paths.settings().is_file()
 
     def test_acl_lock_helper(self) -> None:
         with AclLock(self.root, timeout=1):

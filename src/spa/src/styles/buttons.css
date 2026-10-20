@@ -1,7 +1,5 @@
-/* `.btn` is canonical; `.refresh` / `.action-btn` are long-standing aliases. */
+/* Shared button primitives: `.btn` (+ modifiers). */
 .btn,
-.refresh,
-.action-btn,
 .btn-primary {
   display: inline-flex;
   align-items: center;
@@ -24,21 +22,21 @@
     color 120ms ease;
 }
 
-:is(.btn, .refresh, .action-btn):hover:not(:disabled) {
+.btn:hover:not(:disabled) {
   border-color: var(--accent);
 }
 
-:is(.btn, .refresh, .action-btn, .btn-primary):disabled {
+.btn:disabled,
+.btn-primary:disabled {
   opacity: 0.6;
   cursor: default;
 }
 
-:is(.btn, .refresh, .action-btn).is-loading {
+.btn.is-loading {
   border-color: var(--accent);
 }
 
-.btn-primary,
-:is(.btn, .refresh, .action-btn).btn-primary {
+.btn-primary {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--on-accent);
@@ -55,18 +53,16 @@
   border-top-color: var(--on-accent);
 }
 
-.btn-danger,
-.action-btn-danger {
+.btn-danger {
   color: var(--danger);
   border-color: var(--bad-border);
 }
 
-:is(.btn-danger, .action-btn-danger):hover:not(:disabled) {
+.btn-danger:hover:not(:disabled) {
   border-color: var(--danger);
   background: var(--bad-bg);
 }
 
-/* Quiet button for secondary affordances inside dense rows. */
 .btn-ghost {
   border-color: transparent;
   background: transparent;
@@ -93,7 +89,7 @@
   gap: 0.4rem;
 }
 
-.refresh-spinner {
+.btn-spinner {
   width: 0.9rem;
   height: 0.9rem;
   border-width: 2px;

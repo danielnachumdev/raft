@@ -5,29 +5,15 @@ import {
   defaultDashboardStore,
   defaultPanels,
   loadDashboardStore,
-  migrateLegacyViews,
   parseDashboardStore,
   parseGraph,
   saveDashboardStore,
   TRENDS_DASHBOARDS_STORAGE_KEY,
 } from "../../../src/trends/dashboard/model/index.ts";
 import { defaultRangeState } from "../../../src/trends/range/index.ts";
-import {
-  TRENDS_VIEWS_STORAGE_KEY,
-  type TrendsViewsStore,
-} from "../../../src/trends/views/types.ts";
 import { installMemoryStorage } from "../memoryStorage.ts";
 
 let memory: Map<string, string>;
-
-const legacy = (): TrendsViewsStore => ({
-  version: 1,
-  activeId: "view-b",
-  views: [
-    view("view-a", "demo cpu", ["cpu_percent"], null),
-    view("view-b", "demo http", ["rps", "duration_p95_ms"], ["demo-api"]),
-  ],
-});
 
 describe("default dashboard layout", () => {
   it("ships six half-width, all-service graphs in a stable order", () => {
@@ -108,7 +94,7 @@ describe("dashboard store parse", () => {
   });
 });
 
-describe("dashboard store load + migrate", () => {
+describe("dashboard store load", () => {
   beforeEach(() => {
     memory = installMemoryStorage();
   });
@@ -124,50 +110,4 @@ describe("dashboard store load + migrate", () => {
     memory.set(TRENDS_DASHBOARDS_STORAGE_KEY, "{not-json");
     assert.equal(loadDashboardStore().dashboards[0].name, "Overview");
   });
-
-  it("migrates #202 named views into one dashboard each", () => {
-    memory.set(TRENDS_VIEWS_STORAGE_KEY, JSON.stringify(legacy()));
-    const got = loadDashboardStore();
-    assert.deepEqual(
-      got.dashboards.map((d) => d.name),
-      ["Overview", "demo cpu", "demo http"],
-    );
-    assert.equal(got.activeId, "view-b");
-    const http = got.dashboards[2];
-    assert.equal(http.range.windowSec, 21600);
-    assert.equal(http.panels.length, 1);
-    assert.equal(http.panels[0].size, "full");
-    assert.deepEqual(http.panels[0].metricIds, ["rps", "duration_p95_ms"]);
-    assert.deepEqual(http.panels[0].selected, ["demo-api"]);
-  });
-
-  it("keeps Overview active when no legacy view was active", () => {
-    const got = migrateLegacyViews({ ...legacy(), activeId: null });
-    assert.equal(got.activeId, "overview");
-  });
-
-  it("prefers the v2 store over legacy views once it exists", () => {
-    memory.set(TRENDS_VIEWS_STORAGE_KEY, JSON.stringify(legacy()));
-    saveDashboardStore(defaultDashboardStore());
-    assert.equal(loadDashboardStore().dashboards.length, 1);
-  });
 });
-
-function view(
-  id: string,
-  name: string,
-  metricIds: string[],
-  selected: string[] | null,
-) {
-  return {
-    id,
-    name,
-    updatedAt: "2026-10-01T00:00:00.000Z",
-    config: {
-      metricIds,
-      viewMode: "per_service",
-      selected,
-      range: { ...defaultRangeState(), windowSec: 21600 },
-    },
-  } as TrendsViewsStore["views"][number];
-}

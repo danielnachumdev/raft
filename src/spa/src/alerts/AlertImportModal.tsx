@@ -37,7 +37,7 @@ export function AlertImportModal(props: {
             disabled={!!busy}
             onClick={() => void run(true)}
           >
-            {busy === "replace" ? <span className="spinner refresh-spinner" aria-hidden="true" /> : null}
+            {busy === "replace" ? <span className="spinner btn-spinner" aria-hidden="true" /> : null}
             Replace all
           </button>
           <button
@@ -47,7 +47,7 @@ export function AlertImportModal(props: {
             disabled={!!busy}
             onClick={() => void run(false)}
           >
-            {busy === "merge" ? <span className="spinner refresh-spinner" aria-hidden="true" /> : null}
+            {busy === "merge" ? <span className="spinner btn-spinner" aria-hidden="true" /> : null}
             Merge
           </button>
         </div>

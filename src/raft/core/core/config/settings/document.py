@@ -6,10 +6,8 @@ from .alerts_config import AlertsConfig
 from .dashboard_config import DashboardAuthConfig, DashboardConfig, DashboardOAuthConfig
 from .types import (
     AcmeConfig,
-    AclConfig,
     EdgeConfig,
     EdgeStream,
-    GateAclConfig,
     GithubServeConfig,
     HealingConfig,
     LoggingConfig,
@@ -34,7 +32,6 @@ class SettingsDocument:
             "acme": self._acme(cfg.acme),
             "github": self._github(cfg.github),
             "notifications": self._notifications(cfg.notifications),
-            "acl": self._acl(cfg.acl),
             "alerts": self._alerts(cfg.alerts),
             "dashboard": self._dashboard(cfg.dashboard),
         }
@@ -123,13 +120,6 @@ class SettingsDocument:
             "enabled": channel.enabled,
             "settings": dict(channel.settings),
         }
-
-    def _acl(self, cfg: AclConfig) -> dict[str, Any]:
-        return {"gate": self._gate(cfg.gate)}
-
-    @staticmethod
-    def _gate(gate: GateAclConfig) -> dict[str, Any]:
-        return gate.to_policy().to_public()
 
     @staticmethod
     def _alerts(cfg: AlertsConfig) -> dict[str, Any]:

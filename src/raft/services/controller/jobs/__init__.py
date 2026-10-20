@@ -3,7 +3,7 @@
 from .acme import ACME_INTERVAL_SECONDS, ACME_TIMEOUT_SECONDS, AcmeJobSync
 from .alerts import AlertsJob
 from .controller_job import ControllerJob
-from .heal import HealForever, HealJob, Healer
+from .heal import HealJob, Healer
 from .metrics import (
     HTTP_METRICS_FILENAME,
     METRICS_DIR,
@@ -22,7 +22,6 @@ __all__ = [
     "AlertsJob",
     "ControllerJob",
     "HTTP_METRICS_FILENAME",
-    "HealForever",
     "HealJob",
     "Healer",
     "HttpMetricsRecorder",
