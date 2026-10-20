@@ -131,8 +131,3 @@ class SelfUpdate:
                 f"Fix: check outbound HTTPS, then retry `raft update`\n"
                 f"     or run manually: curl -fsSL {url} | bash"
             ) from exc
-
-    # Kept for unit tests that assert argv shape on the in-process path.
-    @staticmethod
-    def _installer_argv(url: str, ref: Optional[str]) -> list:
-        return InstallCmd.in_process_argv(url, ref)
