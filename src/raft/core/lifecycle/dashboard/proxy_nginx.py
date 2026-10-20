@@ -7,6 +7,8 @@ from raft.core.core.config.settings.dashboard_config import DashboardConfig
 # Baked into the dashboard image; share path used when generating outside Docker.
 IMAGE_LOGIN_HTML = Path("/opt/dashboard/login.html")
 DEFAULT_APP_PORT = 18787
+# Settings → Update may pull an image and run install.sh (host one-shot).
+_UPDATE_PROXY_TIMEOUT = "600s"
 
 
 class DashboardProxyNginx:
@@ -20,20 +22,30 @@ class DashboardProxyNginx:
         app_port: int = DEFAULT_APP_PORT,
         login_html: Path = IMAGE_LOGIN_HTML,
     ) -> str:
+        return self._wrap(
+            self._server_for(
+                cfg, listen=listen, app_port=app_port, login_html=login_html
+            )
+        )
+
+    def _server_for(
+        self,
+        cfg: DashboardConfig,
+        *,
+        listen: int,
+        app_port: int,
+        login_html: Path,
+    ) -> str:
         mode = cfg.auth.mode
         if mode == "password":
-            server = self._password(listen=listen, app_port=app_port, login=login_html)
-        elif mode == "external":
-            server = self._external(cfg, listen=listen, app_port=app_port)
-        elif mode == "oauth":
+            return self._password(listen=listen, app_port=app_port, login=login_html)
+        if mode == "external":
+            return self._external(cfg, listen=listen, app_port=app_port)
+        if mode == "oauth":
             from .proxy_nginx_oauth import DashboardOAuthNginx
 
-            server = DashboardOAuthNginx().server(
-                cfg, listen=listen, app_port=app_port
-            )
-        else:
-            server = self._open(listen=listen, app_port=app_port)
-        return self._wrap(server)
+            return DashboardOAuthNginx().server(cfg, listen=listen, app_port=app_port)
+        return self._open(listen=listen, app_port=app_port)
 
     @staticmethod
     def _wrap(server_body: str) -> str:
@@ -59,16 +71,22 @@ class DashboardProxyNginx:
         )
 
     def _open(self, *, listen: int, app_port: int) -> str:
-        return self._server(listen, self._location_slash(app_port, auth=""))
+        inner = (
+            f"{self.location_update(app_port, auth='')}"
+            f"{self._location_slash(app_port, auth='')}"
+        )
+        return self._server(listen, inner)
 
     def _password(self, *, listen: int, app_port: int, login: Path) -> str:
+        auth = self._password_auth()
         inner = (
             f"{self._auth_subrequest_app(app_port)}"
             f"{self._login_page(login)}"
             f"{self._public_api(app_port, '/api/dashboard/login')}"
             f"{self._public_api(app_port, '/api/dashboard/logout')}"
             f"{self._public_api(app_port, '/api/dashboard/session')}"
-            f"{self._location_slash(app_port, auth=self._password_auth())}"
+            f"{self.location_update(app_port, auth=auth)}"
+            f"{self._location_slash(app_port, auth=auth)}"
             "        location @raft_dashboard_signin {\n"
             "            return 302 /login;\n"
             "        }\n"
@@ -76,10 +94,12 @@ class DashboardProxyNginx:
         return self._server(listen, inner)
 
     def _external(self, cfg: DashboardConfig, *, listen: int, app_port: int) -> str:
+        auth = self._external_auth(cfg)
         inner = (
             "        resolver 127.0.0.11 valid=10s ipv6=off;\n"
             f"{self._auth_subrequest_url(str(cfg.auth.verify_url))}"
-            f"{self._location_slash(app_port, auth=self._external_auth(cfg))}"
+            f"{self.location_update(app_port, auth=auth)}"
+            f"{self._location_slash(app_port, auth=auth)}"
             "        location @raft_dashboard_signin {\n"
             f"            return 302 {cfg.auth.sign_in_url};\n"
             "        }\n"
@@ -105,6 +125,15 @@ class DashboardProxyNginx:
             "        location / {\n"
             f"{auth}"
             f"{self._proxy_pass(app_port)}"
+            "        }\n"
+        )
+
+    def location_update(self, app_port: int, *, auth: str) -> str:
+        """Longer timeouts for Settings → Update (Docker one-shot + install.sh)."""
+        return (
+            "        location = /api/update {\n"
+            f"{auth}"
+            f"{self._proxy_pass(app_port, read_timeout=_UPDATE_PROXY_TIMEOUT)}"
             "        }\n"
         )
 
@@ -168,7 +197,7 @@ class DashboardProxyNginx:
         )
 
     @staticmethod
-    def _proxy_pass(app_port: int) -> str:
+    def _proxy_pass(app_port: int, *, read_timeout: str = "60s") -> str:
         return (
             f"            proxy_pass http://127.0.0.1:{app_port};\n"
             "            proxy_http_version 1.1;\n"
@@ -178,4 +207,6 @@ class DashboardProxyNginx:
             "$proxy_add_x_forwarded_for;\n"
             "            proxy_set_header X-Forwarded-Proto $raft_fwd_proto;\n"
             "            proxy_set_header Cookie $http_cookie;\n"
+            f"            proxy_read_timeout {read_timeout};\n"
+            f"            proxy_send_timeout {read_timeout};\n"
         )

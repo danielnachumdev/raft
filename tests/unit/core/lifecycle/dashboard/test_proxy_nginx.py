@@ -20,6 +20,8 @@ class TestDashboardProxyNginx(RaftTestCase):
         assert "proxy_pass http://127.0.0.1:18787" in text
         assert "map $http_x_forwarded_proto $raft_fwd_proto" in text
         assert "X-Forwarded-Proto $raft_fwd_proto" in text
+        assert "location = /api/update" in text
+        assert "proxy_read_timeout 600s" in text
 
     def test_password_gates_spa(self) -> None:
         cfg = DashboardConfig(

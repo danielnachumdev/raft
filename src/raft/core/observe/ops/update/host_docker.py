@@ -34,14 +34,29 @@ class HostDockerUpdate:
 
     def run(self, url: str, ref: Optional[str]) -> None:
         try:
-            self._shell.run(self.argv(url, ref), timeout=_TIMEOUT_SECONDS)
+            self._shell.run(
+                self.argv(url, ref), timeout=_TIMEOUT_SECONDS, capture=True
+            )
         except Exception as exc:
-            raise OperatorError(
-                "raft update failed (host Docker one-shot could not run "
-                "install.sh).\n"
-                "Fix: check Docker, outbound HTTPS, and RAFT_HOST_HOME, "
-                "then retry Settings → Update or run `raft update` on the host"
-            ) from exc
+            raise OperatorError(self._failure_message(exc)) from exc
+
+    @staticmethod
+    def _failure_message(exc: BaseException) -> str:
+        detail = str(exc).strip()
+        stderr = getattr(exc, "stderr", None)
+        if isinstance(stderr, str) and stderr.strip():
+            detail = stderr.strip()
+        elif getattr(exc, "output", None):
+            out = getattr(exc, "output", "")
+            if isinstance(out, str) and out.strip():
+                detail = out.strip()
+        tail = detail.splitlines()[-1] if detail else "unknown error"
+        return (
+            "raft update failed (host Docker one-shot could not run "
+            f"install.sh): {tail}\n"
+            "Fix: check Docker, outbound HTTPS, and RAFT_HOST_HOME, "
+            "then retry Settings → Update or run `raft update` on the host"
+        )
 
     def argv(self, url: str, ref: Optional[str]) -> list[str]:
         return [

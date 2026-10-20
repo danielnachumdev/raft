@@ -22,11 +22,13 @@ class DashboardOAuthNginx:
         unauthorized: Path = IMAGE_UNAUTHORIZED,
     ) -> str:
         auth = self._auth_directives(cfg.auth.identity_header)
+        proxy = DashboardProxyNginx()
         inner = (
             f"{self._auth_subrequest()}"
             f"{self._oauth_locations()}"
             f"{self._unauthorized_page(unauthorized)}"
-            f"{DashboardProxyNginx()._location_slash(app_port, auth=auth)}"
+            f"{proxy.location_update(app_port, auth=auth)}"
+            f"{proxy._location_slash(app_port, auth=auth)}"
             f"{self._named_locations()}"
         )
         return DashboardProxyNginx._server(listen, inner)

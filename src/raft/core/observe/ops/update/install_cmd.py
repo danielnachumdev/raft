@@ -9,8 +9,9 @@ DEFAULT_INSTALL_URL = (
     "https://raw.githubusercontent.com/danielnachumdev/raft/main/install.sh"
 )
 
-# curl + bash + CA certs; override with ``RAFT_HOST_UPDATE_IMAGE``.
-DEFAULT_HOST_UPDATE_IMAGE = "docker.io/library/buildpack-deps:bookworm-curl"
+# curl + bash + git (install.sh always calls ensure_git); override with
+# ``RAFT_HOST_UPDATE_IMAGE``. bookworm-curl lacks git and fails apply.
+DEFAULT_HOST_UPDATE_IMAGE = "docker.io/library/buildpack-deps:bookworm-scm"
 
 
 class InstallCmd:

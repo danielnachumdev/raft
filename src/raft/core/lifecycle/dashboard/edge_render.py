@@ -64,17 +64,25 @@ class DashboardEdgeRender:
             f"    server_name {host};",
             "",
             "    location / {",
+            *self._proxy_lines(upstream),
+            "    }",
+            "}",
+            "",
+        ]
+
+    @staticmethod
+    def _proxy_lines(upstream: str) -> list[str]:
+        # 600s: Settings → Update may pull a one-shot image + run install.sh.
+        # X-Forwarded-Proto: preserve gate TLS for in-container oauth2-proxy.
+        return [
             f"        proxy_pass http://{upstream};",
             "        proxy_set_header Host $host;",
             "        proxy_set_header X-Real-IP $remote_addr;",
             "        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;",
-            # Preserve gate TLS proto for in-container oauth2-proxy / cookies.
             "        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;",
             "        proxy_connect_timeout 3s;",
-            "        proxy_read_timeout 60s;",
-            "    }",
-            "}",
-            "",
+            "        proxy_read_timeout 600s;",
+            "        proxy_send_timeout 600s;",
         ]
 
     @staticmethod
