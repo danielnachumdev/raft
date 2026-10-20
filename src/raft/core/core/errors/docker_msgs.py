@@ -57,7 +57,7 @@ class DockerMessages:
         return CtaFormatter.format(
             "a published port is already in use on this VPS.",
             (
-                "stop the other process, or change edge ports in ~/.raft/settings.yaml",
+                "stop the other process, or change edge ports in ~/.raft/host/settings.yaml",
                 "raft gate recreate   # after edge port changes",
                 "raft doctor",
             ),

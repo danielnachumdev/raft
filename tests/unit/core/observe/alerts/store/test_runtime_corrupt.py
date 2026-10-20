@@ -7,15 +7,15 @@ from tests.unit.base import RaftTestCase
 class TestRuntimeCorrupt(RaftTestCase):
     def test_bad_json_quarantine(self) -> None:
         home = Path(self.tmp_path)
-        path = home / "state" / "alerts" / "runtime.json"
-        path.parent.mkdir(parents=True)
+        path = home / "host" / "alerts" / "runtime.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("{bad", encoding="utf-8")
         rt = AlertRuntimeStore(home).load()
         assert rt.instances == {}
 
     def test_non_mapping(self) -> None:
         home = Path(self.tmp_path)
-        path = home / "state" / "alerts" / "runtime.json"
-        path.parent.mkdir(parents=True)
+        path = home / "host" / "alerts" / "runtime.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("[]", encoding="utf-8")
         assert AlertRuntimeStore(home).load().instances == {}

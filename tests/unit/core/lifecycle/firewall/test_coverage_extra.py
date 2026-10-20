@@ -28,13 +28,13 @@ from tests.unit.core.lifecycle.firewall.helpers import document, rule, rule_dict
 
 class TestFirewallCoverageExtra(RaftTestCase):
     def _settings(self, text: str = "edge: {http: 80, https: null}\n") -> None:
-        (self.tmp_path / "settings.yaml").write_text(text, encoding="utf-8")
+        (self.tmp_path / "host" / "settings.yaml").write_text(text, encoding="utf-8")
 
     def test_policy_includes_and_clear(self) -> None:
         self._settings()
         FirewallStore(self.tmp_path).save(document(rule_dict("svc", service="demo-api")))
         gate_http = self.tmp_path / "generated" / "nginx" / "gate-http"
-        gate_http.mkdir(parents=True)
+        gate_http.mkdir(parents=True, exist_ok=True)
         policy = PolicyIncludes(
             self.tmp_path, EdgeConfig(http=80, https=None), gate_http
         )
@@ -82,7 +82,7 @@ class TestFirewallCoverageExtra(RaftTestCase):
         self._settings("edge: {http: 80}\n")
         gate_http = self.tmp_path / "generated" / "nginx" / "gate-http"
         acl_dir = gate_http / "acl"
-        acl_dir.mkdir(parents=True)
+        acl_dir.mkdir(parents=True, exist_ok=True)
         (acl_dir / "x.inc").write_text("y", encoding="utf-8")
         PolicyIncludes(self.tmp_path, EdgeConfig(http=80), gate_http).write_all([])
         assert list(acl_dir.glob("*.inc")) == []
@@ -136,7 +136,7 @@ class TestFirewallCoverageExtra(RaftTestCase):
         assert policy._listen_ports(EdgeConfig(http=80, https=443)) == (80, 443)
         assert policy._listen_ports(EdgeConfig(http=None, https=443)) == (443,)
         fresh = self.tmp_path / "generated/nginx/empty-gate"
-        fresh.mkdir(parents=True)
+        fresh.mkdir(parents=True, exist_ok=True)
         FirewallIncWriter(
             fresh, FirewallEffective(self.tmp_path), ports=(80,)
         ).clear_all()

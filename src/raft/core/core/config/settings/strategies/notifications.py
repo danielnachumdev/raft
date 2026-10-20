@@ -17,7 +17,7 @@ class NotificationsSettingsParser(SettingsSectionParser[NotificationsConfig]):
             raise OperatorError(
                 "settings.yaml notifications must be a mapping.\n"
                 "Fix: set notifications: {enabled: true, channels: [...]} "
-                "in ~/.raft/settings.yaml",
+                "in ~/.raft/host/settings.yaml",
                 has_fix=False,
             )
         return NotificationsConfig(
@@ -32,7 +32,7 @@ class NotificationsSettingsParser(SettingsSectionParser[NotificationsConfig]):
             raise OperatorError(
                 "settings.yaml notifications.channels must be a list.\n"
                 "Fix: set notifications.channels: [{id: …, type: …}] "
-                "in ~/.raft/settings.yaml",
+                "in ~/.raft/host/settings.yaml",
                 has_fix=False,
             )
         channels = [self._one(item, index) for index, item in enumerate(raw)]
@@ -97,7 +97,7 @@ class NotificationsSettingsParser(SettingsSectionParser[NotificationsConfig]):
                 raise OperatorError(
                     f"settings.yaml notifications.channels duplicate id "
                     f"{channel.id!r}.\n"
-                    f"Fix: give each channel a unique id in ~/.raft/settings.yaml",
+                    f"Fix: give each channel a unique id in ~/.raft/host/settings.yaml",
                     has_fix=False,
                 )
             seen.add(channel.id)

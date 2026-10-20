@@ -1,4 +1,4 @@
-"""Read/write ``secrets/dashboard/oauth.env`` (0600)."""
+"""Read/write ``host/secrets/dashboard/oauth.env`` (0600)."""
 
 import os
 import secrets

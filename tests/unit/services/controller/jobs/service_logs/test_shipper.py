@@ -29,7 +29,10 @@ class TestServiceLogsShipper(ControllerTestCase):
             home, cfg, docker, stack_loader=lambda: stack
         ).tick()
         text = ServiceLogsStore(
-            home, max_age_days=14, max_bytes=1024
+            home,
+            max_age_days=14,
+            max_bytes=1024,
+            compose_to_app={"demo-api": "demo-api"},
         ).active_path("demo-api").read_text(encoding="utf-8")
         assert "shipped-line" in text
 

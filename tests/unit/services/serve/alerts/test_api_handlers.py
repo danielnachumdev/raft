@@ -12,7 +12,7 @@ from tests.unit.core.observe.alerts.sample_rule import RULE
 class TestServeAlertsApiHandlers(RaftTestCase):
     def _client(self):
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True)
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
         stack = Stack(root=home, apps=[])
         api = ServeAlertsApi(stack)
         app = FastAPI()
@@ -35,7 +35,7 @@ class TestServeAlertsApiHandlers(RaftTestCase):
 
     def test_catalog_with_apps(self) -> None:
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True)
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
         stack = Stack(root=home, apps=[type("A", (), {"name": "demo-api"})()])
         app = FastAPI()
         ServeAlertsApi(stack).register(app)

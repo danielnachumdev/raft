@@ -10,7 +10,7 @@ from tests.unit.services.cli.base import CliTestCase
 
 class TestNotificationsCliArgv(CliTestCase):
     def _seed_settings(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "edge: {http: 80, https: null}\n", encoding="utf-8"
         )
 

@@ -36,7 +36,7 @@ spec:
   #         A/AAAA, edge.http+https, acme.email — do not paste PEMs.
   #         See examples/https-acme-site/.
   # origin → Cloudflare Origin (or similar) PEMs on the host; needs
-  #          ~/.raft/certs/<metadata.name>/origin.pem + origin.key
+  #          ~/.raft/services/*/certs/<metadata.name>/origin.pem + origin.key
   #          and edge.https. See examples/https-origin-site/.
   tls: off
 

@@ -6,8 +6,8 @@
 # host ports. HTTP admin UI still goes through gate+router via expose: http.
 #
 # This example uses tls: origin for the web UI — install PEMs before first deploy:
-#   ~/.raft/certs/host-published-ports/origin.pem
-#   ~/.raft/certs/host-published-ports/origin.key
+#   ~/.raft/services/*/certs/host-published-ports/origin.pem
+#   ~/.raft/services/*/certs/host-published-ports/origin.key
 # Use tls: off if you do not want HTTPS for the admin host.
 
 apiVersion: raft/v1

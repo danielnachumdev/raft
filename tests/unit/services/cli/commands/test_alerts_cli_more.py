@@ -17,8 +17,8 @@ from tests.unit.core.observe.alerts.sample_rule import RULE
 class TestAlertsCliMore(RaftTestCase):
     def _cli(self) -> AlertsCLI:
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True, exist_ok=True)
-        (home / "settings.yaml").write_text(
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
+        (home / "host" / "settings.yaml").write_text(
             "alerts: {enabled: true, intervalSeconds: 30}\n"
             "notifications: {enabled: true, channels: []}\n",
             encoding="utf-8",
@@ -63,7 +63,7 @@ class TestAlertsCliMore(RaftTestCase):
             Tester.return_value.send.return_value = [fail]
             with pytest.raises(SystemExit):
                 cli.test("demo-api-5xx-rate")
-        (Path(self.tmp_path) / "state" / "alerts" / "rules.yaml").unlink()
+        (Path(self.tmp_path) / "host" / "alerts" / "rules.yaml").unlink()
         assert cli._load_raw(None) == {"version": 1, "rules": []}
         with pytest.raises(OperatorError):
             cli._read_file(str(Path(self.tmp_path) / "missing.yaml"))

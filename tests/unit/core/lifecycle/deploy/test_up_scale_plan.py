@@ -45,7 +45,7 @@ class TestStackUpScalePlan(ControllerTestCase):
         self, tmp_path: Path
     ) -> None:
         home = self.raft_home(tmp_path)
-        (home / "settings.yaml").write_text(
+        (home / "host" / "settings.yaml").write_text(
             "dashboard: {enabled: true}\n", encoding="utf-8"
         )
         AppliedInventory.write_applied_app(home, self.APP, extra=self.scaling_extra())
@@ -111,7 +111,7 @@ class TestStackUpScalePlan(ControllerTestCase):
     def test_missing_spec_file_skips_app(self, tmp_path: Path) -> None:
         home = self.applied_home(tmp_path, extra=self.scaling_extra())
         stack = load_stack(home)
-        path = home / "state" / "apps" / f"{self.APP}.yaml"
+        path = home / "services" / self.APP / "app.yaml"
         path.unlink()
         plan = StackUpScalePlan(stack)
         assert not plan.has_deferred()

@@ -36,7 +36,7 @@ class TestAcmeEnsure(RaftTestCase):
             store=store,
             config=AcmeConfig(email="ops@example.com"),
         ).run(["web"])
-        assert (self.tmp_path / "certs" / "web" / "acme.pem").is_file()
+        assert (self.tmp_path / "services" / "web" / "certs" / "acme.pem").is_file()
         assert store.load("web").last_error is None
         installer.apply.assert_called_once()
 
@@ -97,7 +97,7 @@ class TestAcmeEnsure(RaftTestCase):
         runner.issue.assert_not_called()
 
     def test_named_dashboard_issues_when_acme(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "dashboard:\n  enabled: true\n  publicHost: ops.example.com\n"
             "  tls: acme\n  auth: {mode: password, passwordHash: pbkdf2_sha256$1$a$b}\n",
             encoding="utf-8",
@@ -110,4 +110,4 @@ class TestAcmeEnsure(RaftTestCase):
             config=AcmeConfig(email="ops@example.com"),
         ).run(["raft-dashboard"])
         runner.issue.assert_called_once()
-        assert (self.tmp_path / "certs" / "raft-dashboard" / "acme.pem").is_file()
+        assert (self.tmp_path / "services" / "raft-dashboard" / "certs" / "acme.pem").is_file()

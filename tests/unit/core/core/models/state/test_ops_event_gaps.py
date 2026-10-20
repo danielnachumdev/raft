@@ -66,8 +66,8 @@ class TestOpsEventGaps(RaftTestCase):
     def test_sources_without_active_file(self) -> None:
         home = self.tmp_path / "raft"
         store = OpsEventStore(home)
-        parent = home / "state" / "events"
-        parent.mkdir(parents=True)
+        parent = home / "host" / "events"
+        parent.mkdir(parents=True, exist_ok=True)
         when = datetime(2026, 10, 2, 12, 0, tzinfo=timezone.utc)
         archive = parent / "ops.jsonl.2026-10-02"
         archive.write_text(

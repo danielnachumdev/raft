@@ -22,7 +22,7 @@ _STATUS = {
 class TestAlertsCliStatusInstances(RaftTestCase):
     def test_status_lists_instances(self) -> None:
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True, exist_ok=True)
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
         cli = AlertsCLI(Stack(root=home, apps=()))
         path = home / "rules.yaml"
         path.write_text(yaml.safe_dump({"version": 1, "rules": [RULE]}), encoding="utf-8")

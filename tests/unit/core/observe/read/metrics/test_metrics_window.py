@@ -140,7 +140,9 @@ class TestMetricsReadRange(RaftTestCase):
     def test_history_clamps_window_using_settings(self) -> None:
         home = self.tmp_path / "raft"
         home.mkdir()
-        (home / "settings.yaml").write_text(
+        settings = home / "host" / "settings.yaml"
+        settings.parent.mkdir(parents=True, exist_ok=True)
+        settings.write_text(
             "metrics:\n  retentionMaxAgeDays: 2\n", encoding="utf-8"
         )
         now = datetime(2026, 10, 6, 12, 0, tzinfo=timezone.utc)
@@ -174,7 +176,7 @@ class TestMetricsReadRange(RaftTestCase):
     def test_first_sample_ts_skips_junk_and_errors(self) -> None:
         home = self.tmp_path / "raft"
         path = home / METRICS_DIR / METRICS_FILENAME
-        path.parent.mkdir(parents=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         archive = path.parent / f"{METRICS_FILENAME}.2026-10-05"
         archive.write_text("not-json\n", encoding="utf-8")
         ts = _NOW - timedelta(minutes=5)

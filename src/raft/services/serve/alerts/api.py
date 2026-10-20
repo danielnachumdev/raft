@@ -15,7 +15,7 @@ from raft.core.observe.notify.delivery_status import DeliveryStatus
 
 
 class ServeAlertsApi:
-    """Localhost JSON API over ``state/alerts/rules.yaml``."""
+    """Localhost JSON API over ``host/alerts/rules.yaml``."""
 
     def __init__(
         self,

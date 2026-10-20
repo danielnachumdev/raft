@@ -25,7 +25,7 @@ class LoggingSettingsParser(SettingsSectionParser[LoggingConfig]):
         if not isinstance(raw, dict):
             raise OperatorError(
                 "settings.yaml logging must be a mapping.\n"
-                "Fix: set logging: {level: INFO, ...} in ~/.raft/settings.yaml"
+                "Fix: set logging: {level: INFO, ...} in ~/.raft/host/settings.yaml"
             )
         return self._from_mapping(raw)
 
@@ -55,6 +55,6 @@ class LoggingSettingsParser(SettingsSectionParser[LoggingConfig]):
             raise OperatorError(
                 f"settings.yaml logging.level must be one of {sorted(_LEVELS)}, "
                 f"got {level!r}.\n"
-                f"Fix: set logging.level in ~/.raft/settings.yaml"
+                f"Fix: set logging.level in ~/.raft/host/settings.yaml"
             )
         return level

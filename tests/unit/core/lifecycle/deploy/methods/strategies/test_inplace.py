@@ -56,7 +56,7 @@ class TestInPlaceDeployment(RaftTestCase):
             name="demo-api",
             public_host="demo.test",
             source=source,
-            path="apps/x",
+            path="services/x/checkout",
             image="ghcr.io/example/demo" if source == "docker" else None,
             ref="main",
         )

@@ -13,7 +13,7 @@ For Cloudflare Origin PEMs, use [`../https-origin-site/`](../https-origin-site/)
 
 1. DNS A/AAAA for `publicHost` (and every `extraHosts` name) → this VPS
 2. TCP **80** and **443** reachable (keep `edge.http` / `edge.https` in settings)
-3. Uncomment / set `acme.email` in `~/.raft/settings.yaml` (see [`../settings.yaml`](../settings.yaml))
+3. Uncomment / set `acme.email` in `~/.raft/host/settings.yaml` (see [`../settings.yaml`](../settings.yaml))
 4. Optional labs: set `acme.directory` to Let's Encrypt **staging**
 5. Apply, then `raft doctor` / `raft doctor https-acme-site`
 

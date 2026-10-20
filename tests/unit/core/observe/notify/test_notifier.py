@@ -54,7 +54,7 @@ class TestNotifier(RaftTestCase):
 
     @staticmethod
     def _write_two_channels(home: Path) -> None:
-        (home / "settings.yaml").write_text(
+        (home / "host" / "settings.yaml").write_text(
             "notifications:\n  enabled: true\n  channels:\n"
             "    - id: ops-primary\n      type: webhook\n"
             "      settings: {url: https://hooks.example.invalid/x}\n"
@@ -66,7 +66,7 @@ class TestNotifier(RaftTestCase):
     def _write_channels(
         self, home: Path, *, enabled: bool, type_id: str = "webhook"
     ) -> None:
-        path = home / "settings.yaml"
+        path = home / "host" / "settings.yaml"
         flag = "true" if enabled else "false"
         path.write_text(
             "notifications:\n"

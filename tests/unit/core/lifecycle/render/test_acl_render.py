@@ -24,7 +24,7 @@ class TestAclRender(RaftTestCase):
         assert "deny all;" in text
 
     def test_gate_firewall_in_default_server(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "edge: {http: 80, https: null}\n", encoding="utf-8"
         )
         AppliedInventory.write_applied_app(
@@ -43,7 +43,7 @@ class TestAclRender(RaftTestCase):
         assert not (gen / "nginx/gate-http/acl/_gate.inc").exists()
 
     def test_service_firewall_emits_host_server(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "edge: {http: 80, https: null}\n", encoding="utf-8"
         )
         AppliedInventory.write_applied_app(

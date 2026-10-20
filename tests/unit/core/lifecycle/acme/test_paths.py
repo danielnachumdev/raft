@@ -14,7 +14,7 @@ class TestAcmePaths(RaftTestCase):
         assert pem.name == "acme.pem"
         assert key.name == "acme.key"
         assert paths.live_material_present("web") is False
-        pem.parent.mkdir(parents=True)
+        pem.parent.mkdir(parents=True, exist_ok=True)
         pem.write_text("pem\n", encoding="utf-8")
         key.write_text("key\n", encoding="utf-8")
         assert paths.live_material_present("web") is True

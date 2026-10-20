@@ -137,7 +137,7 @@ class HostsPlan:
                 names = ()
         if not names:
             raise ValueError(
-                "no applied apps under ~/.raft/state/apps/*.yaml; "
+                "no applied apps under ~/.raft/services/*/*.yaml; "
                 "apply an App first or pass --entry IP,hostname[,hostname...]"
             )
         return cls(bindings=(HostBinding(ip="127.0.0.1", names=names),))

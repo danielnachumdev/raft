@@ -40,11 +40,11 @@ services:
       - ./generated/nginx/gate-stream:/etc/nginx/stream-generated:ro
       - ./generated/nginx/gate-tls:/etc/nginx/gate-tls:ro
       - ./nginx/errors:/usr/share/nginx/errors:ro
-      - ./certs:/etc/nginx/certs:ro
-      - ./state/acme/http-01:/etc/nginx/acme-www:ro
-      - ./state/scaling/markers:/etc/nginx/scaling/markers:ro
+      # Per-app certs + scaling markers under services/<name>/ (#313).
+      - ./services:/etc/nginx/services:ro
+      - ./host/acme/http-01:/etc/nginx/acme-www:ro
       # Access log for HTTP request metrics (controller scrapes; reload-only after first attach).
-      - ./state/metrics/gate-http:/var/log/nginx/raft-http
+      - ./host/metrics/gate-http:/var/log/nginx/raft-http
     restart: unless-stopped
     <<: *resources-edge
 
@@ -76,20 +76,16 @@ services:
       - "8090"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      # Data home read-only (avoid root-owned template files). Locks need write
-      # for flock during heal/scale; scaling + metrics + events dirs are writable.
-      # Upstreams must be writable so idle-stop can park and wake can restore
-      # Compose DNS names (gate holding stays up until restore + router reload).
-      # Host Shell injects RAFT_HOST_UID/GID so this process matches the operator.
+      # Data home read-only (avoid root-owned template files). Overlay writable
+      # host/ + services/ for locks, metrics, events, alerts, ACME, scaling, logs.
       - .:/raft:ro
-      - ./state/locks:/raft/state/locks
-      - ./state/scaling:/raft/state/scaling
-      - ./state/metrics:/raft/state/metrics
-      - ./state/service-logs:/raft/state/service-logs
-      - ./state/events:/raft/state/events
-      - ./state/alerts:/raft/state/alerts
-      - ./certs:/raft/certs
-      - ./state/acme:/raft/state/acme
+      - ./host/locks:/raft/host/locks
+      - ./host/metrics:/raft/host/metrics
+      - ./host/events:/raft/host/events
+      - ./host/alerts:/raft/host/alerts
+      - ./host/acme:/raft/host/acme
+      - ./host/logs:/raft/host/logs
+      - ./services:/raft/services
       - ./generated/nginx/upstreams:/raft/generated/nginx/upstreams
     restart: unless-stopped
     <<: *resources-controller

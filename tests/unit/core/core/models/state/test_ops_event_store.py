@@ -98,8 +98,8 @@ class TestOpsEventStore(RaftTestCase):
         home = self.tmp_path / "raft"
         store = OpsEventStore(home)
         assert store.events_in_window(from_ts=datetime.now(timezone.utc)) == []
-        path = home / "state" / "events" / "ops.jsonl"
-        path.parent.mkdir(parents=True)
+        path = home / "host" / "events" / "ops.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
             "\nbad\n{\"kind\":\"x\"}\n[]\n"
             '{"kind":"stack.purge","ts":"not-a-ts","summary":"x"}\n',
@@ -122,7 +122,7 @@ class TestOpsEventStore(RaftTestCase):
                     summary=f"purge-{i}-padding-xxxxxxxx",
                 )
             )
-        parent = home / "state" / "events"
+        parent = home / "host" / "events"
         archives = [
             p for p in parent.iterdir() if p.name.startswith("ops.jsonl.")
         ]
@@ -130,8 +130,8 @@ class TestOpsEventStore(RaftTestCase):
 
     def test_reads_sealed_archives(self) -> None:
         home = self.tmp_path / "raft"
-        path = home / "state" / "events" / "ops.jsonl"
-        path.parent.mkdir(parents=True)
+        path = home / "host" / "events" / "ops.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
         archive = path.parent / "ops.jsonl.2026-10-02"
         when = datetime(2026, 10, 2, 12, 0, tzinfo=timezone.utc)
         row = OpsEvent(

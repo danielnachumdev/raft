@@ -39,13 +39,15 @@ class TestApplyEnv(ApplyTestCase):
         self._assert_expanded_registry(applied)
 
     def _assert_expanded_registry(self, applied_name: str) -> None:
-        registry_path = self.tmp_path / "state" / "apps" / f"{applied_name}.yaml"
+        registry_path = (
+            self.tmp_path / "services" / applied_name / "app.yaml"
+        )
         registry_text = registry_path.read_text(encoding="utf-8")
         registry = yaml.safe_load(registry_text)
         assert applied_name == "expanded-web"
         assert registry["metadata"]["name"] == "expanded-web"
         assert registry["spec"]["publicHost"] == "web.test"
-        assert registry["spec"]["path"] == "apps/expanded-web"
+        assert registry["spec"]["path"] == "services/expanded-web"
         assert "${" not in registry_text
 
     def test_apply_file_missing_var_fails(self) -> None:
@@ -68,7 +70,7 @@ class TestApplyEnv(ApplyTestCase):
 
     def _assert_ci_registry(self, applied_name: str) -> None:
         registry = yaml.safe_load(
-            (self.tmp_path / "state" / "apps" / f"{applied_name}.yaml").read_text(encoding="utf-8")
+            (self.tmp_path / "services" / applied_name / "app.yaml").read_text(encoding="utf-8")
         )
         env = registry["spec"]["env"]
         assert applied_name == "api-dev"
@@ -94,11 +96,11 @@ class TestApplyEnv(ApplyTestCase):
             "git@github.com:org/x.git", deploy=False, env={"APP_NAME": "from-git"}
         )
         registry = yaml.safe_load(
-            (self.tmp_path / "state" / "apps" / f"{applied}.yaml").read_text(encoding="utf-8")
+            (self.tmp_path / "services" / applied / "app.yaml").read_text(encoding="utf-8")
         )
         assert applied == "from-git"
         assert registry["metadata"]["name"] == "from-git"
-        assert registry["spec"]["path"] == "apps/from-git"
+        assert registry["spec"]["path"] == "services/from-git"
 
     def test_apply_git_missing_var_fails(self) -> None:
         shell = MagicMock()

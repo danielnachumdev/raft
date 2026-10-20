@@ -19,8 +19,8 @@ class TestApplyFile(ApplyTestCase):
         stack = load_stack(self.tmp_path)
         name = AppApply(stack).apply_file(path, deploy=False)
         assert name == "web"
-        assert (self.tmp_path / "state" / "apps" / "web.yaml").is_file()
-        secrets_dir = self.tmp_path / "secrets" / "web"
+        assert (self.tmp_path / "services" / "web" / "app.yaml").is_file()
+        secrets_dir = self.tmp_path / "services" / "web" / "secrets"
         assert secrets_dir.is_dir()
         assert secrets_dir.stat().st_mode & 0o777 == 0o700
         assert "applied web" in capsys.readouterr().out
@@ -39,7 +39,7 @@ class TestApplyFile(ApplyTestCase):
         )
         with pytest.raises(OperatorError, match="dependsOn cycle"):
             AppApply(load_stack(self.tmp_path)).apply_file(path, deploy=False)
-        assert not (self.tmp_path / "state" / "apps" / "beta.yaml").is_file()
+        assert not (self.tmp_path / "services" / "beta" / "app.yaml").is_file()
 
     def test_apply_file_rejects_non_mapping(self) -> None:
         path = self.tmp_path / "bad.yaml"
@@ -64,7 +64,7 @@ class TestApplyFile(ApplyTestCase):
         )
         AppApply(load_stack(self.tmp_path)).apply_file(path, ref_override="v2", deploy=False)
         data = yaml.safe_load(
-            (self.tmp_path / "state" / "apps" / "web.yaml").read_text(encoding="utf-8")
+            (self.tmp_path / "services" / "web" / "app.yaml").read_text(encoding="utf-8")
         )
         assert data["spec"]["ref"] == "v2"
 

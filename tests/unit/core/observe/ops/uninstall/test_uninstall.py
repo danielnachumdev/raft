@@ -42,8 +42,9 @@ class TestUninstall(DomainTestCase):
     def test_full_cleanup(self, capsys, monkeypatch) -> None:
         home = self.stack.root
         (home / "compose.yaml").write_text("name: raft\n", encoding="utf-8")
-        (home / "state" / "apps").mkdir(parents=True, exist_ok=True)
-        (home / "state" / "apps" / "web.yaml").write_text("x\n", encoding="utf-8")
+        web = home / "services" / "web"
+        web.mkdir(parents=True, exist_ok=True)
+        (web / "app.yaml").write_text("x\n", encoding="utf-8")
         ssh, config, checkout = self._seed_full_cleanup(monkeypatch)
         mgr = self._wire_full_cleanup_mgr()
         mgr.run(yes=True)
@@ -52,7 +53,7 @@ class TestUninstall(DomainTestCase):
     def _seed_full_cleanup(self, monkeypatch):
         ssh = Path(str(self.tmp_path) + "-ssh")
         keys = ssh / "raft"
-        keys.mkdir(parents=True)
+        keys.mkdir(parents=True, exist_ok=True)
         (keys / "web_ed25519").write_text("priv\n", encoding="utf-8")
         config = ssh / "config"
         config.write_text(
@@ -114,13 +115,13 @@ class TestUninstall(DomainTestCase):
     def _seed_uv_home(self, monkeypatch, suffix: str):
         fake_home = Path(str(self.tmp_path) + suffix)
         bin_dir = fake_home / ".local" / "bin"
-        bin_dir.mkdir(parents=True)
+        bin_dir.mkdir(parents=True, exist_ok=True)
         uv_bin = bin_dir / "uv"
         uvx_bin = bin_dir / "uvx"
         uv_bin.write_text("#!/bin/sh\n", encoding="utf-8")
         uvx_bin.write_text("#!/bin/sh\n", encoding="utf-8")
         share = fake_home / ".local" / "share" / "uv"
-        share.mkdir(parents=True)
+        share.mkdir(parents=True, exist_ok=True)
         (share / "tools").mkdir()
         tool_dir = Path(str(self.tmp_path) + suffix + "-tool")
         tool_dir.mkdir()

@@ -2,7 +2,9 @@
 
 from pathlib import Path
 
-OAUTH_SECRETS_DIR = Path("secrets") / "dashboard"
+from raft.core.core.config.paths.constants import HOST_SECRETS_DIR
+
+OAUTH_SECRETS_DIR = HOST_SECRETS_DIR / "dashboard"
 OAUTH_ENV_REL = OAUTH_SECRETS_DIR / "oauth.env"
 OAUTH_ALLOWLIST_REL = OAUTH_SECRETS_DIR / "oauth-allowlist.txt"
 OAUTH_PROXY_PORT = 4180

@@ -30,12 +30,17 @@ class TestAppSourceIdentity(RaftTestCase):
 
     def test_local_path_normalized(self) -> None:
         a = AppSourceIdentity.from_app(
-            AppMakers.make_app(path="apps/demo-api/nested/../")
+            AppMakers.make_app(path="services/demo-api/checkout/nested/../")
         )
-        b = AppSourceIdentity.from_app(AppMakers.make_app(path="apps/demo-api"))
+        b = AppSourceIdentity.from_app(
+            AppMakers.make_app(path="services/demo-api/checkout")
+        )
         assert a == b
-        assert a.label() == "local path=apps/demo-api"
-        assert AppSourceIdentity._normalize_local_path("../apps/x") == "apps/x"
+        assert a.label() == "local path=services/demo-api/checkout"
+        assert (
+            AppSourceIdentity._normalize_local_path("../services/x/checkout")
+            == "services/x/checkout"
+        )
         assert AppSourceIdentity._normalize_local_path("..") == "."
         assert AppSourceIdentity._normalize_local_path("a/../../b") == "b"
         assert AppSourceIdentity._normalize_local_path("  ") == "."
@@ -106,7 +111,7 @@ class TestRegistrySourceOwnership(RaftTestCase):
 
     def test_local_vs_git_denied(self) -> None:
         AppliedInventory.write_applied_app(
-            self.tmp_path, "demo-api", source="local", path="apps/demo-api"
+            self.tmp_path, "demo-api", source="local", path="services/demo-api/checkout"
         )
         with pytest.raises(OperatorError, match="different source") as caught:
             AppRegistry(self.tmp_path).write(
@@ -118,7 +123,7 @@ class TestRegistrySourceOwnership(RaftTestCase):
             )
         CtaAsserts.operator(
             caught.value,
-            contains=("local path=apps/demo-api", "git repo=", "Fix:"),
+            contains=("local path=services/demo-api/checkout", "git repo=", "Fix:"),
         )
 
     def test_docker_vs_docker_different_image_denied(self) -> None:
@@ -153,11 +158,11 @@ class TestRegistrySourceOwnership(RaftTestCase):
         assert path.is_file()
 
     def test_corrupt_existing_allows_overwrite(self) -> None:
-        dest = self.tmp_path / "state" / "apps" / "demo-api.yaml"
+        dest = self.tmp_path / "services" / "demo-api" / "app.yaml"
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text("- not a mapping\n", encoding="utf-8")
         path = AppRegistry(self.tmp_path).write(
-            self._local_doc("demo-api", "apps/demo-api")
+            self._local_doc("demo-api", "services/demo-api/checkout")
         )
         assert path.is_file()
 
@@ -172,7 +177,7 @@ class TestRegistrySourceOwnership(RaftTestCase):
                 "source": "git",
                 "repo": repo,
                 "ref": ref,
-                "path": f"apps/{name}",
+                "path": f"services/{name}/checkout",
                 "ports": [{"name": "http", "containerPort": 80, "expose": "http"}],
             },
         }
@@ -213,12 +218,12 @@ class TestRejectTakeover(RaftTestCase):
         AppSourceIdentity.reject_takeover(app, app)
 
     def test_mismatch_raises(self) -> None:
-        existing = AppMakers.make_app("demo-api", source="local", path="apps/demo-api")
+        existing = AppMakers.make_app("demo-api", source="local", path="services/demo-api/checkout")
         incoming = App(
             name="demo-api",
             public_host="demo-api.test",
             source="docker",
-            path="apps/demo-api",
+            path="services/demo-api/checkout",
             image="ghcr.io/demo-org/demo-api",
         )
         with pytest.raises(OperatorError, match="different source"):

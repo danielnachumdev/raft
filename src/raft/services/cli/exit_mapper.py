@@ -63,7 +63,7 @@ class CliExitMapper:
 
     def _map_operator_exc(self, exc: BaseException) -> Optional[BaseException]:
         if isinstance(exc, yaml.YAMLError):
-            return DomainErrors.invalid_yaml("~/.raft/settings.yaml or an App manifest", exc)
+            return DomainErrors.invalid_yaml("~/.raft/host/settings.yaml or an App manifest", exc)
         if isinstance(exc, OSError):
             return DomainErrors.filesystem_error(exc)
         if isinstance(exc, OperatorError):

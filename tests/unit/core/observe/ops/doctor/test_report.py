@@ -162,7 +162,7 @@ class TestDoctorReport(DoctorTestCase):
         assert "other\n" in out
 
     def test_report_lists_enabled_dashboard_under_raft(self, capsys) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "dashboard: {enabled: true}\n", encoding="utf-8"
         )
         d = self.doctor(stack=load_stack(self.tmp_path))

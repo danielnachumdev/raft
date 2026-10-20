@@ -137,7 +137,7 @@ class TestManifestCoverage(RaftTestCase):
 
     def test_resources_memory_helpers(self) -> None:
         checkout = self.tmp_path / "app"
-        (checkout / ".raft").mkdir(parents=True)
+        (checkout / ".raft").mkdir(parents=True, exist_ok=True)
         (checkout / ".raft" / "app.yaml").write_text(NULL_RESOURCES_YAML, encoding="utf-8")
         c = AppDocument.load_contract(checkout)
         assert c.cpus_limit == "0.50"

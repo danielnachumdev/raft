@@ -76,7 +76,12 @@ class TestServiceLogsHooks(RaftTestCase):
 
     def _assert_retained(self, key: str, needle: str) -> None:
         text = (
-            ServiceLogsStore(self.tmp_path, max_age_days=14, max_bytes=1024)
+            ServiceLogsStore(
+                self.tmp_path,
+                max_age_days=14,
+                max_bytes=1024,
+                compose_to_app={key: key},
+            )
             .active_path(key)
             .read_text(encoding="utf-8")
         )

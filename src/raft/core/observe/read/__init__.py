@@ -23,7 +23,7 @@ Serve ``GET /api/status`` returns that snapshot **plus** presentation lists
 strings, Compose ``service`` id for deep links, ``external_urls`` from
 ``publicHost`` + edge scheme/port, and ``depends_on`` Compose ids from App
 ``spec.dependsOn`` for SPA parent/child tree layout), ``registry_issues``
-(skipped invalid ``state/apps/*.yaml`` entries), and ``version``
+(skipped invalid ``services/<name>/app.yaml`` entries), and ``version``
 (``package`` + human ``line`` from ``InstalledVersion``) for SPA chrome.
 Prefer ``containers`` for new FE work (#35/#9).
 
@@ -34,7 +34,7 @@ service id (404 if unknown).
 Serve ``GET /api/metrics`` returns historical **resource** series from
 ``state/metrics/resources.jsonl`` via ``MetricsRead`` (window, optional
 ``start``/``end`` absolute range, optional ``since`` cursor for SPA polling),
-plus ``events`` from ``state/events/graph.jsonl``. Payload includes ``bounds``
+plus ``events`` from ``host/events/graph.jsonl``. Payload includes ``bounds``
 from metrics retention (``retentionMaxAgeDays`` / earliest sample).
 
 Serve ``GET /api/metrics/http`` returns historical **HTTP edge** series from
@@ -42,7 +42,7 @@ sibling ``state/metrics/http.jsonl`` via ``HttpMetricsRead`` (same window /
 ``since`` shape; ``kind: http``). Percentiles are over the controller sample
 window (``metrics.intervalSeconds``). Live updates use HTTP polling — simpler
 and durable for one FastAPI process than WebSockets. Serve status endpoints
-reload ``state/apps/`` on each call so out-of-band apply/delete is visible on
+reload ``services/`` on each call so out-of-band apply/delete is visible on
 the next SPA poll (~2s when the tab is visible).
 
 Serve ``GET /api/service/{name}/http-requests`` returns recent **per-request**

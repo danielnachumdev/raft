@@ -37,7 +37,7 @@ class TestFirewallCoverage(RaftTestCase):
         assert not CompiledFragment(access=(), drop_cidrs=(), scope="x").is_active()
 
     def test_store_corrupt_yaml(self) -> None:
-        path = self.tmp_path / "state" / "firewall" / "rules.yaml"
+        path = self.tmp_path / "host" / "firewall" / "rules.yaml"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(":\n  - bad", encoding="utf-8")
         try:

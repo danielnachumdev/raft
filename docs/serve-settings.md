@@ -1,6 +1,6 @@
 # Serve operator settings
 
-Edit the full host document `~/.raft/settings.yaml` (`RaftConfig`) from **Settings** in `raft serve`, or via `GET` / `PUT /api/settings` (JSON) and `GET` / `PUT /api/settings/yaml` (YAML text).
+Edit the full host document `~/.raft/host/settings.yaml` (`RaftConfig`) from **Settings** in `raft serve`, or via `GET` / `PUT /api/settings` (JSON) and `GET` / `PUT /api/settings/yaml` (YAML text).
 
 Specialized pages remain for deep workflows:
 
@@ -9,8 +9,8 @@ Specialized pages remain for deep workflows:
 | **Settings** (this page) | Full `settings.yaml` sections |
 | Settings → Updates | Host CLI package (GitHub Releases); not in `settings.yaml` |
 | Settings → Notifications | Channel CRUD (`notifications.channels`) |
-| Settings → Alerts | Rules under `state/alerts/rules.yaml` |
-| Settings → Firewall | Ordered rules under `state/firewall/rules.yaml` |
+| Settings → Alerts | Rules under `host/alerts/rules.yaml` |
+| Settings → Firewall | Ordered rules under `host/firewall/rules.yaml` |
 | Settings → Storage | Host cleanup (`POST /api/purge` / `raft purge`) — not in `settings.yaml` |
 
 ## Updates (Check for updates)

@@ -188,7 +188,7 @@ class AlertEngine:
             if not self._unwritable_logged:
                 logger.error(
                     "alerts runtime not writable; skipping notifications. "
-                    "Fix: raft up to recreate the controller with state/alerts mount"
+                    "Fix: raft up to recreate the controller with host/alerts mount"
                 )
                 self._unwritable_logged = True
             return False

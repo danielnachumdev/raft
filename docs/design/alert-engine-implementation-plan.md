@@ -11,7 +11,7 @@ Audience: the agent implementing the engine. Read [`AGENTS.md`](../../AGENTS.md)
 
 ### 1.1 What we are building
 
-An **in-process alert rules engine** under `src/raft/core/observe/alerts/`. A controller interval job loads durable rules from `~/.raft/state/alerts/rules.yaml`, queries registered **signal sources** (metrics JSONL, control-plane facts, later firewall/edge), evaluates registered **rule kinds** combined with `all` / `any` compositions over time windows, tracks per-instance state (pending / firing / cool-down / recovery) in `~/.raft/state/alerts/runtime.json`, and emits existing `NotificationEvent`s into the existing `Notifier`, which fans out to the channels configured in `settings.yaml` `notifications:`.
+An **in-process alert rules engine** under `src/raft/core/observe/alerts/`. A controller interval job loads durable rules from `~/.raft/host/alerts/rules.yaml`, queries registered **signal sources** (metrics JSONL, control-plane facts, later firewall/edge), evaluates registered **rule kinds** combined with `all` / `any` compositions over time windows, tracks per-instance state (pending / firing / cool-down / recovery) in `~/.raft/state/alerts/runtime.json`, and emits existing `NotificationEvent`s into the existing `Notifier`, which fans out to the channels configured in `settings.yaml` `notifications:`.
 
 Operators manage rules from **both** the CLI (`raft alerts …`) and `raft serve` (new **Alerts** settings page). Both are editors over the same rules document through one shared service class. **Parity lock:** [#264](https://github.com/danielnachumdev/raft/issues/264) / epic [#256](https://github.com/danielnachumdev/raft/issues/256) — satisfied when v1 shipped dual-plane via PR #251 (no serve-first waiver).
 
@@ -196,7 +196,7 @@ src/spa/test/shared/
 
 ## 3. Data model
 
-### 3.1 `~/.raft/state/alerts/rules.yaml` (desired, versioned)
+### 3.1 `~/.raft/host/alerts/rules.yaml` (desired, versioned)
 
 Top level:
 
@@ -578,7 +578,7 @@ class AlertDispatch:
 ```python
 class AlertRulesStore:
     def __init__(self, home: Path, *, registries: Optional[AlertRegistries] = None) -> None: ...
-    path: Path                                   # home / "state/alerts/rules.yaml"
+    path: Path                                   # home / "host/alerts/rules.yaml"
     def exists(self) -> bool: ...
     def load(self) -> AlertRulesDocument: ...    # missing -> empty document
     def load_raw(self) -> Any: ...               # for validate without raising on first error
@@ -1014,7 +1014,7 @@ AlertsSettingsPage
 
 - **New** `docs/serve-alerts.md`: what alerts are vs channels ("rules decide *when*, channels decide *where*"); rule document reference (fields table, durations, conditions, subject join for `*`, `noData`); signal source reference (metric keys per scope, derived error rates, latency note); state lifecycle (pending → firing → resolved, cool-down, repeat, suppressed); routing; CLI reference; serve page walkthrough; `alerts:` settings; troubleshooting (stale evaluation → controller mount / `raft up`, document error → `raft alerts validate`); full PII-safe example (§3.1).
 - `docs/serve-notifications.md`: short "Alert rules" section linking to `serve-alerts.md`; mention `channelIds` routing.
-- `AGENTS.md`: feature table row → `Alert rules engine (metrics/control-plane → notifications)` **Shipped**, pointing to #236 and `docs/serve-alerts.md`; keep a **Planned** row for firewall-derived alert signals; add `state/alerts/rules.yaml`, `state/alerts/runtime.json` to the data-home table; add `alerts.lock` to the locks table ("CLI/serve writes to `state/alerts/rules.yaml`"); add "Alert rules" to "Where to change what" (`core/observe/alerts/`, `services/serve/alerts/`, `services/controller/jobs/alerts/`, SPA `src/spa/src/alerts/`).
+- `AGENTS.md`: feature table row → `Alert rules engine (metrics/control-plane → notifications)` **Shipped**, pointing to #236 and `docs/serve-alerts.md`; keep a **Planned** row for firewall-derived alert signals; add `host/alerts/rules.yaml`, `state/alerts/runtime.json` to the data-home table; add `alerts.lock` to the locks table ("CLI/serve writes to `host/alerts/rules.yaml`"); add "Alert rules" to "Where to change what" (`core/observe/alerts/`, `services/serve/alerts/`, `services/controller/jobs/alerts/`, SPA `src/spa/src/alerts/`).
 - `README.md`: update the "Alerts from firewall + graph metrics (via notifications)" row (currently 📋) — metrics/control-plane shipped, firewall planned.
 - `src/raft/core/platform/locking/__init__.py` docstring: add `alerts.lock`.
 - This plan stays in `docs/design/` as the historical record.

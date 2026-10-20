@@ -26,7 +26,7 @@ class AlertRulesDocument:
         raw: Any,
         *,
         registries: AlertRegistries,
-        path: str = "state/alerts/rules.yaml",
+        path: str = "host/alerts/rules.yaml",
     ) -> "AlertRulesDocument":
         if raw is None:
             return cls.empty()

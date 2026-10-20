@@ -10,7 +10,7 @@ from typing import Optional, Tuple
 from raft.core.core.errors.domain import DomainErrors
 from .lease import ServeLease
 
-SERVE_STATE_DIR = Path("state") / "serve"
+SERVE_STATE_DIR = Path("host") / "serve"
 _POLL_SECONDS = 0.05
 _STOP_WAIT_SECONDS = 5.0
 

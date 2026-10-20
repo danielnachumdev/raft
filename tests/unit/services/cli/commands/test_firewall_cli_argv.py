@@ -12,10 +12,10 @@ from tests.unit.services.cli.base import CliTestCase
 
 class TestFirewallCliArgv(CliTestCase):
     def _seed_settings(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "edge: {http: 80, https: null}\n", encoding="utf-8"
         )
-        (self.tmp_path / "state" / "firewall").mkdir(parents=True, exist_ok=True)
+        (self.tmp_path / "host" / "firewall").mkdir(parents=True, exist_ok=True)
 
     def _rules_path(self) -> Path:
         path = self.tmp_path / "rules.yaml"

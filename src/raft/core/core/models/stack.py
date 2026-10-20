@@ -1,15 +1,14 @@
-"""Stack model — applied apps live in ``~/.raft/state/apps/*.yaml``."""
+"""Stack model — applied apps live in ``~/.raft/services/<name>/app.yaml``."""
 
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
 from raft.core.core.config.paths import (
-    CERTS_DIRNAME,
-    DEPLOY_DIRNAME,
     GENERATED_DIRNAME,
     RaftHome,
     RaftHomeBootstrap,
+    ServicePaths,
 )
 from raft.core.core.errors.domain import DomainErrors
 from .app import (
@@ -47,7 +46,6 @@ class Stack:
     controller: str = CONTROLLER_COMPOSE_ID
     dashboard: str = DASHBOARD_COMPOSE_ID
     public_base_url: str = "http://127.0.0.1"
-    state_dir: str = DEPLOY_DIRNAME
     drain_seconds: float = 3.0
     # Fallback only; App ``spec.readiness.timeoutSeconds`` (default 120s) wins.
     ready_timeout_seconds: float = 120.0
@@ -90,9 +88,8 @@ class Stack:
     def upstreams_dir(self) -> Path:
         return self.generated_dir() / "nginx" / "upstreams"
 
-    @property
-    def certs_dir(self) -> Path:
-        return self.root / CERTS_DIRNAME
+    def certs_dir(self, app: App) -> Path:
+        return ServicePaths(self.root, app.name).certs()
 
     def upstream_file(self, app: App, port: PortSpec) -> Path:
         return self.upstreams_dir / f"{app.name}-{port.name}.conf"
@@ -101,14 +98,14 @@ class Stack:
         return f"{app.name}_{port.name}"
 
     def cert_files(self, app: App) -> tuple[Path, Path]:
-        base = self.certs_dir / app.name
+        base = self.certs_dir(app)
         return (base / "origin.pem", base / "origin.key")
 
     def image_state_file(self, app: App) -> Path:
-        return self.root / self.state_dir / f"{app.name}.image"
+        return ServicePaths(self.root, app.name).deploy_image()
 
     def ref_state_file(self, app: App) -> Path:
-        return self.root / self.state_dir / f"{app.name}.ref"
+        return ServicePaths(self.root, app.name).deploy_ref()
 
     def generated_dir(self) -> Path:
         return self.root / GENERATED_DIRNAME

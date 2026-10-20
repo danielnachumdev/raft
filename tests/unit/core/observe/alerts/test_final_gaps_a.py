@@ -45,7 +45,7 @@ class TestFinalGapsA(RaftTestCase):
         home = Path(self.tmp_path)
         store = AlertRulesStore(home)
         assert store.exists() is False
-        (home / "state" / "alerts").mkdir(parents=True)
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
         store.path.write_bytes(b"\xff\xfe")
         with pytest.raises(OperatorError):
             store.load_raw()

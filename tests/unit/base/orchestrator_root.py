@@ -13,9 +13,18 @@ DEFAULT_SETTINGS_YAML = (
 class OrchestratorRoot:
     @classmethod
     def ensure_orchestrator_root(cls, root: Path) -> None:
-        if not (root / "settings.yaml").is_file():
+        settings = root / "host" / "settings.yaml"
+        if not settings.is_file():
             cls.write_settings(root, DEFAULT_SETTINGS_YAML)
-        for name in ("state/apps", "generated", "deploy", "certs", "apps", "logs"):
+        for name in (
+            "services",
+            "generated",
+            "host",
+            "host/locks",
+            "host/metrics",
+            "host/logs",
+            "host/acme/http-01",
+        ):
             (root / name).mkdir(parents=True, exist_ok=True)
 
     @classmethod
@@ -25,7 +34,8 @@ class OrchestratorRoot:
         body: Union[str, Mapping[str, Any]],
     ) -> Path:
         root.mkdir(parents=True, exist_ok=True)
-        path = root / "settings.yaml"
+        path = root / "host" / "settings.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
         if isinstance(body, Mapping):
             text = yaml.safe_dump(dict(body), sort_keys=False)
         else:
@@ -36,4 +46,4 @@ class OrchestratorRoot:
     @classmethod
     def ensure_app_checkouts(cls, root: Path, *names: str) -> None:
         for name in names:
-            (root / "apps" / name).mkdir(parents=True, exist_ok=True)
+            (root / "services" / name / "checkout").mkdir(parents=True, exist_ok=True)

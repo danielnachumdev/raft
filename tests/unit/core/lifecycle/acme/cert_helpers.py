@@ -49,7 +49,7 @@ def self_signed_pem(names: list[str], *, days: int = 90) -> bytes:
 
 def plant_live_acme(home: Path, app: str, names: list[str], *, days: int) -> None:
     key = _key()
-    d = home / "certs" / app
+    d = home / "services" / app / "certs"
     d.mkdir(parents=True, exist_ok=True)
     (d / "acme.pem").write_bytes(_cert(key, names, days=days).public_bytes(serialization.Encoding.PEM))
     (d / "acme.key").write_bytes(

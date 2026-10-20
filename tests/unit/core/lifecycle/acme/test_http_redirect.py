@@ -20,8 +20,8 @@ class TestAcmeHttpRedirect(RaftTestCase):
 
     def test_redirect_when_pems_exist(self) -> None:
         AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
-        d = self.tmp_path / "certs" / "web"
-        d.mkdir(parents=True)
+        d = self.tmp_path / "services" / "web" / "certs"
+        d.mkdir(parents=True, exist_ok=True)
         (d / "acme.pem").write_text("pem\n", encoding="utf-8")
         (d / "acme.key").write_text("key\n", encoding="utf-8")
         gen = self.render_applied(edge=_EDGE)
@@ -43,13 +43,13 @@ class TestAcmeHttpRedirect(RaftTestCase):
         from raft.core.core.models.manifest import AppSpec
         from raft.core.core.models.ports import PortSpec
 
-        app = App(name="web", public_host="web.test", source="local", path="apps/web")
+        app = App(name="web", public_host="web.test", source="local", path="services/web/checkout")
         spec = AppSpec(
             ports=(PortSpec(name="http", container_port=80, expose="http"),),
             tls="acme",
         )
-        d = self.tmp_path / "certs" / "web"
-        d.mkdir(parents=True)
+        d = self.tmp_path / "services" / "web" / "certs"
+        d.mkdir(parents=True, exist_ok=True)
         (d / "acme.pem").write_text("pem\n", encoding="utf-8")
         (d / "acme.key").write_text("key\n", encoding="utf-8")
         empty = AcmeHttpRedirect().contribute(

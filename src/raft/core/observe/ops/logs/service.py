@@ -71,6 +71,7 @@ class Logs:
             self.stack.root,
             max_age_days=cfg.retention_max_age_days,
             max_bytes=cfg.retention_max_bytes,
+            compose_to_app=ServiceLogsStore.compose_map_from_apps(self.stack.apps),
         )
         return ServiceLogsReader(store).tail(compose_id, lines=tail)
 

@@ -38,7 +38,7 @@ class StreamEdge:
                 f"{app.name}: ports[{port.name!r}] publicPort {public} is not "
                 f"declared in settings edge.streams "
                 f"(known: {sorted(declared) or 'none'}).\n"
-                f"Fix: add the port under edge.streams in ~/.raft/settings.yaml, "
+                f"Fix: add the port under edge.streams in ~/.raft/host/settings.yaml, "
                 f"then: raft render && raft gate recreate"
             )
         return self._match_stream_protocol(app, port, declared[public])
@@ -50,7 +50,7 @@ class StreamEdge:
                 f"{app.name}: ports[{port.name!r}] protocol {port.protocol!r} "
                 f"does not match edge.streams entry {stream.name!r} "
                 f"({stream.protocol!r}).\n"
-                f"Fix: align protocol in .raft/app.yaml and ~/.raft/settings.yaml, "
+                f"Fix: align protocol in .raft/app.yaml and ~/.raft/host/settings.yaml, "
                 f"then: raft render"
             )
         return stream

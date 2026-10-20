@@ -13,7 +13,7 @@ from tests.unit.core.platform.github import fixtures as github_fx
 
 class TestGithubCLI(RaftTestCase):
     def _cli(self) -> GithubCLI:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "edge: {http: 80, https: null}\n"
             "github: {clientId: cid, clientSecret: sec}\n",
             encoding="utf-8",
@@ -74,7 +74,7 @@ class TestGithubCLI(RaftTestCase):
             cli.config_save(client_id="cid", client_secret="sec")
 
     def test_empty_accounts_and_complete(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "edge: {http: 80}\ngithub: {clientId: cid, clientSecret: sec}\n",
             encoding="utf-8",
         )

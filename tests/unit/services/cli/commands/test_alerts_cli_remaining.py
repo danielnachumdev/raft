@@ -11,8 +11,8 @@ from tests.unit.core.observe.alerts.sample_rule import RULE
 class TestAlertsCliRemaining(RaftTestCase):
     def _cli(self):
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True)
-        (home / "settings.yaml").write_text("notifications:\n  enabled: true\n  channels: []\n", encoding="utf-8")
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
+        (home / "host" / "settings.yaml").write_text("notifications:\n  enabled: true\n  channels: []\n", encoding="utf-8")
         return AlertsCLI(Stack(root=home, apps=()))
 
     def test_test_keyerror_and_export_file(self) -> None:

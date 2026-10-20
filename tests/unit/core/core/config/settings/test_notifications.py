@@ -51,7 +51,7 @@ class TestNotificationsSettingsParser(RaftTestCase):
         assert cfg.channels[0].type == "future-backend"
 
     def test_load_config_reads_file(self) -> None:
-        path = Path(self.tmp_path) / "settings.yaml"
+        path = Path(self.tmp_path) / "host" / "settings.yaml"
         path.write_text(
             "notifications:\n"
             "  channels:\n"

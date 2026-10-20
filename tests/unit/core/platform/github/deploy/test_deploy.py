@@ -20,7 +20,7 @@ from tests.unit.core.platform.github import fixtures as github_fx
 
 class TestDeployNextSteps(RaftTestCase):
     def test_builds_dns_tls_env_volume_key(self) -> None:
-        app = App(name="web", public_host="web.test", source="local", path="apps/web")
+        app = App(name="web", public_host="web.test", source="local", path="services/web/checkout")
         spec = AppSpec(
             ports=(PortSpec(name="http", container_port=80, expose="http"),),
             tls="origin",
@@ -35,7 +35,7 @@ class TestDeployNextSteps(RaftTestCase):
         acme = DeployNextSteps().build(app, AppSpec(ports=(), tls="acme"))
         assert any(s["title"] == "ACME prerequisites" for s in acme)
         bare = DeployNextSteps().build(
-            App(name="w", public_host="", source="local", path="apps/w"),
+            App(name="w", public_host="", source="local", path="services/w/checkout"),
             AppSpec(ports=()),
         )
         assert bare[0]["title"] == "Verify the site"
@@ -74,7 +74,9 @@ class TestGithubDeployRunner(RaftTestCase):
         assert job.status == "succeeded"
         assert job.app_name == "http-only-site"
         assert job.ci_pr and job.ci_pr["status"] == "opened"
-        assert (self.tmp_path / "apps" / "http-only-site" / ".raft" / "app.yaml").is_file()
+        assert (
+            self.tmp_path / "services" / "http-only-site" / "checkout" / ".raft" / "app.yaml"
+        ).is_file()
 
     def test_missing_manifest_fails(self) -> None:
         runner = GithubDeployRunner(
@@ -131,7 +133,7 @@ class TestGithubDeployRunner(RaftTestCase):
         assert "settings/keys/new" in GithubDeployRunner._deploy_key_url(job)
 
     def _write_registry_manifest(self) -> dict:
-        apps = self.tmp_path / "state" / "apps"
+        apps = self.tmp_path / "services"
         apps.mkdir(parents=True, exist_ok=True)
         manifest = {
             "apiVersion": "raft/v1",
@@ -140,11 +142,11 @@ class TestGithubDeployRunner(RaftTestCase):
             "spec": {
                 "publicHost": "site.example.com",
                 "source": "local",
-                "path": "apps/http-only-site",
+                "path": "services/http-only-site/checkout",
                 "ports": [{"name": "http", "containerPort": 80, "expose": "http"}],
                 "readiness": {"type": "http", "port": "http", "path": "/"},
             },
         }
         (apps / "http-only-site.yaml").write_text(yaml.safe_dump(manifest), encoding="utf-8")
-        (self.tmp_path / "apps" / "http-only-site").mkdir(parents=True, exist_ok=True)
+        (self.tmp_path / "services" / "http-only-site").mkdir(parents=True, exist_ok=True)
         return manifest

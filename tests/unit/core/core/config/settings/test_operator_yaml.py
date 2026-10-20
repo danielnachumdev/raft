@@ -109,7 +109,7 @@ class TestOperatorSettingsYaml(RaftTestCase):
                 "oauth": {
                     "provider": "google",
                     "redirectPath": "/oauth2/callback",
-                    "allowlistFile": "secrets/dashboard/oauth-allowlist.txt",
+                    "allowlistFile": "host/secrets/dashboard/oauth-allowlist.txt",
                     "issuerUrl": None,
                 },
             },

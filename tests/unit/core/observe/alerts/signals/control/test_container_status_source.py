@@ -17,7 +17,7 @@ class TestContainerStatusSource(RaftTestCase):
     def test_wildcard_and_scaled_zero(self) -> None:
         home = Path(self.tmp_path)
         path = MetricsPaths(home).resources()
-        path.parent.mkdir(parents=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         sample = {
             "ts": NOW.isoformat(),
             "containers": [{"service": "demo-api", "status": "running"}],

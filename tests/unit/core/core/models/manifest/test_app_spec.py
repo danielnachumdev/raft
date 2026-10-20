@@ -93,7 +93,7 @@ class TestAppSpec(ManifestTestCase):
 
     def test_rejects_kind_service_and_legacy_port(self) -> None:
         checkout = self.tmp_path / "app"
-        (checkout / ".raft").mkdir(parents=True)
+        (checkout / ".raft").mkdir(parents=True, exist_ok=True)
         (checkout / ".raft" / "app.yaml").write_text(
             "apiVersion: raft/v1\nkind: Service\nmetadata:\n  name: web\nspec:\n"
             "  publicHost: web.test\n  source: local\n  ports:\n"
@@ -113,7 +113,7 @@ class TestAppSpec(ManifestTestCase):
 
     def test_rejects_readiness_probe_legacy(self) -> None:
         checkout = self.tmp_path / "app"
-        (checkout / ".raft").mkdir(parents=True)
+        (checkout / ".raft").mkdir(parents=True, exist_ok=True)
         (checkout / ".raft" / "app.yaml").write_text(
             "apiVersion: raft/v1\nkind: App\nmetadata:\n  name: web\nspec:\n"
             "  publicHost: web.test\n  source: local\n"
@@ -126,7 +126,7 @@ class TestAppSpec(ManifestTestCase):
 
     def test_rejects_service_yaml_only(self) -> None:
         checkout = self.tmp_path / "app"
-        (checkout / ".raft").mkdir(parents=True)
+        (checkout / ".raft").mkdir(parents=True, exist_ok=True)
         (checkout / ".raft" / "service.yaml").write_text(
             "apiVersion: raft/v1\nkind: App\nmetadata:\n  name: web\nspec:\n"
             "  publicHost: web.test\n  source: local\n"
@@ -138,7 +138,7 @@ class TestAppSpec(ManifestTestCase):
 
     def test_stream_and_host_ports(self) -> None:
         checkout = self.tmp_path / "app"
-        (checkout / ".raft").mkdir(parents=True)
+        (checkout / ".raft").mkdir(parents=True, exist_ok=True)
         (checkout / ".raft" / "app.yaml").write_text(MAIL_PORTS_YAML, encoding="utf-8")
         c = AppDocument.load_contract(checkout)
         assert c.tls == "origin"

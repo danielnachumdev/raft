@@ -17,7 +17,7 @@ from tests.unit.core.observe.alerts.sample_rule import RULE
 class TestEnginePrune(RaftTestCase):
     def test_prune_stale_instance(self) -> None:
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True)
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
         svc = AlertRulesService(home)
         svc.create({**RULE, "enabled": False})
         rt = AlertRuntimeStore(home).load()
@@ -35,7 +35,7 @@ class TestEnginePrune(RaftTestCase):
 
     def test_rule_hash_reset(self) -> None:
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True)
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
         fake = FakeHttp(0.1)
         engine = _engine(home, fake)
         now = datetime(2026, 10, 17, 12, 0, tzinfo=timezone.utc)

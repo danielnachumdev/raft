@@ -66,7 +66,7 @@ class TestScalingSpec(ManifestTestCase):
         path = self.tmp_path / "stream.yaml"
         path.write_text(
             "apiVersion: raft/v1\nkind: App\nmetadata:\n  name: mail\n"
-            "spec:\n  source: local\n  path: apps/mail\n  ports:\n"
+            "spec:\n  source: local\n  path: services/mail/checkout\n  ports:\n"
             "    - name: smtp\n      containerPort: 25\n"
             "      expose: stream\n      publicPort: 25\n"
             "  scaling:\n    idleSeconds: 10\n"

@@ -129,7 +129,7 @@ class TestNotificationsSettingsWriter(RaftTestCase):
         assert lock.call_count == 3
 
     def test_preserves_other_settings_keys(self) -> None:
-        path = self.tmp_path / "settings.yaml"
+        path = self.tmp_path / "host" / "settings.yaml"
         path.write_text("edge: {http: 80}\n", encoding="utf-8")
         NotificationsSettingsWriter(self.tmp_path).create(self._channel("ops"))
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -155,7 +155,7 @@ class TestNotificationsSettingsWriter(RaftTestCase):
             writer.update("ops", {"settings": []})
 
     def test_load_root_errors(self) -> None:
-        path = self.tmp_path / "settings.yaml"
+        path = self.tmp_path / "host" / "settings.yaml"
         path.unlink()
         writer = NotificationsSettingsWriter(self.tmp_path)
         assert writer._load_root() == {}

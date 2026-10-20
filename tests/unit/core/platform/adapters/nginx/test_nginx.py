@@ -25,7 +25,7 @@ class TestNginxUpstreams(AdapterTestCase):
         assert path.read_text(encoding="utf-8") == text
 
     def test_point_at_ok_and_fail(self) -> None:
-        self.stack.upstreams_dir.mkdir(parents=True)
+        self.stack.upstreams_dir.mkdir(parents=True, exist_ok=True)
         docker = MagicMock()
         docker.router_sees_upstream_target.return_value = True
         nginx = NginxUpstreams(self.stack, docker)
@@ -39,7 +39,7 @@ class TestNginxUpstreams(AdapterTestCase):
     def test_point_absent_and_steady(self) -> None:
         from raft.core.platform.adapters.nginx import NginxUpstreamText
 
-        self.stack.upstreams_dir.mkdir(parents=True)
+        self.stack.upstreams_dir.mkdir(parents=True, exist_ok=True)
         nginx = NginxUpstreams(self.stack, MagicMock())
         port = PortSpec(name="http", container_port=80, expose="http")
         nginx.point_absent(self.app)

@@ -16,7 +16,7 @@ from .scaling_spec import ScalingSpec
 CONTRACT_API_VERSION = "raft/v1"
 CONTRACT_KIND = "App"
 CONTRACT_REL_PATH = Path(".raft") / "app.yaml"
-REGISTRY_DIR = Path("state") / "apps"
+REGISTRY_DIR = Path("services")
 TLS_MODES = frozenset({"off", "origin", "acme"})
 
 

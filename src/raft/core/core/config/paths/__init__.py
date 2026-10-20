@@ -7,6 +7,7 @@ from .bootstrap import RaftHomeBootstrap
 from .constants import (
     APPS_DIRNAME,
     CERTS_DIRNAME,
+    CHECKOUT_DIRNAME,
     CONTROLLER_BUILD_DIR,
     CONTROLLER_PACKAGE_DIR,
     CONTROLLER_PYPROJECT,
@@ -14,8 +15,10 @@ from .constants import (
     DATA_HOME_ENV,
     DEPLOY_DIRNAME,
     GENERATED_DIRNAME,
+    HOST_DIRNAME,
     LOCKS_DIR,
     LOGS_DIRNAME,
+    SERVICES_DIRNAME,
     SETTINGS_FILENAME,
     STATE_DIR,
     TEMPLATE_DIRS,
@@ -23,12 +26,15 @@ from .constants import (
 )
 from .dir_tree_sync import DirTreeSync
 from .home import RaftHome
+from .host_paths import HostPaths
 from .package_root import PackageRootFinder
+from .service_paths import ServicePaths
 from .templates import ProductTemplateSync
 
 __all__ = [
     "APPS_DIRNAME",
     "CERTS_DIRNAME",
+    "CHECKOUT_DIRNAME",
     "CONTROLLER_BUILD_DIR",
     "CONTROLLER_PACKAGE_DIR",
     "CONTROLLER_PYPROJECT",
@@ -37,14 +43,18 @@ __all__ = [
     "DEPLOY_DIRNAME",
     "DirTreeSync",
     "GENERATED_DIRNAME",
+    "HOST_DIRNAME",
+    "HostPaths",
     "LOCKS_DIR",
     "LOGS_DIRNAME",
     "PackageRootFinder",
     "ProductTemplateSync",
     "RaftHome",
     "RaftHomeBootstrap",
+    "SERVICES_DIRNAME",
     "SETTINGS_FILENAME",
     "STATE_DIR",
+    "ServicePaths",
     "TEMPLATE_DIRS",
     "TEMPLATE_FILES",
     "ensure_raft_home",

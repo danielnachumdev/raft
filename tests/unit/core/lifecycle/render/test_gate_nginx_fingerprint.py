@@ -18,20 +18,20 @@ class TestFingerprintGateNginx(RaftTestCase):
     def test_empty_dirs_and_missing_are_stable(self) -> None:
         empty = self._stamp().fingerprint()
         assert empty == self._stamp().fingerprint()
-        (self._nginx_root() / "gate-tls").mkdir(parents=True)
+        (self._nginx_root() / "gate-tls").mkdir(parents=True, exist_ok=True)
         assert self._stamp().fingerprint() == empty
 
     def test_adding_file_changes_hash(self) -> None:
         before = self._stamp().fingerprint()
         tls = self._nginx_root() / "gate-tls"
-        tls.mkdir(parents=True)
+        tls.mkdir(parents=True, exist_ok=True)
         (tls / "app.conf").write_text("server {}\n", encoding="utf-8")
         after = self._stamp().fingerprint()
         assert after != before
 
     def test_same_bytes_unchanged(self) -> None:
         http = self._nginx_root() / "gate-http"
-        http.mkdir(parents=True)
+        http.mkdir(parents=True, exist_ok=True)
         path = http / "app.conf"
         path.write_text("listen 80;\n", encoding="utf-8")
         first = self._stamp().fingerprint()
@@ -40,7 +40,7 @@ class TestFingerprintGateNginx(RaftTestCase):
 
     def test_content_change_updates_hash(self) -> None:
         stream = self._nginx_root() / "gate-stream"
-        stream.mkdir(parents=True)
+        stream.mkdir(parents=True, exist_ok=True)
         path = stream / "game.conf"
         path.write_text("listen 25565;\n", encoding="utf-8")
         before = self._stamp().fingerprint()
@@ -49,7 +49,7 @@ class TestFingerprintGateNginx(RaftTestCase):
 
     def test_nested_directories_are_skipped(self) -> None:
         tls = self._nginx_root() / "gate-tls"
-        (tls / "nested").mkdir(parents=True)
+        (tls / "nested").mkdir(parents=True, exist_ok=True)
         (tls / "app.conf").write_text("server {}\n", encoding="utf-8")
         assert self._stamp().fingerprint() == self._stamp().fingerprint()
 

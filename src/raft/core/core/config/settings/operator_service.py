@@ -119,13 +119,13 @@ class OperatorSettingsService:
         except (OSError, yaml.YAMLError) as exc:
             raise OperatorError(
                 f"cannot update settings.yaml: {self._path}\n"
-                f"Fix: repair ~/.raft/settings.yaml then retry",
+                f"Fix: repair ~/.raft/host/settings.yaml then retry",
                 has_fix=False,
             ) from exc
         if not isinstance(raw, dict):
             raise OperatorError(
                 "settings.yaml must be a YAML mapping.\n"
-                "Fix: repair ~/.raft/settings.yaml",
+                "Fix: repair ~/.raft/host/settings.yaml",
                 has_fix=False,
             )
         return raw

@@ -12,8 +12,8 @@ from tests.unit.core.observe.alerts.sample_rule import RULE
 class TestAlertsCliTest(RaftTestCase):
     def test_test_command(self) -> None:
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True)
-        (home / "settings.yaml").write_text("notifications:\n  enabled: true\n  channels: []\n", encoding="utf-8")
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
+        (home / "host" / "settings.yaml").write_text("notifications:\n  enabled: true\n  channels: []\n", encoding="utf-8")
         cli = AlertsCLI(Stack(root=home, apps=()))
         path = Path(self.tmp_path) / "rules.yaml"
         path.write_text(yaml.safe_dump({"version": 1, "rules": [RULE]}), encoding="utf-8")

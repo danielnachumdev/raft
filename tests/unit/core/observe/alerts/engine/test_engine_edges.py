@@ -18,7 +18,7 @@ from tests.unit.core.observe.alerts.sample_rule import RULE
 class TestAlertEngineEdges(RaftTestCase):
     def _home(self) -> Path:
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True, exist_ok=True)
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
         return home
 
     def test_document_error_persisted(self) -> None:

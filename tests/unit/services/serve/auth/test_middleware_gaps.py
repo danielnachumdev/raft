@@ -58,8 +58,8 @@ class TestMiddlewareGaps(RaftTestCase):
     def test_session_bad_payload_and_reload_key(self) -> None:
         home = Path(self.tmp_path)
         hashed = DashboardPassword().hash("correct-horse")
-        key_path = home / "state" / "serve" / "dashboard-session.key"
-        key_path.parent.mkdir(parents=True)
+        key_path = home / "host" / "serve" / "dashboard-session.key"
+        key_path.parent.mkdir(parents=True, exist_ok=True)
         key_path.write_bytes(b"01234567890123456789012345678901")
         sessions = PasswordSessionAuth(home, password_hash=hashed)
         secret = key_path.read_bytes()
@@ -68,7 +68,7 @@ class TestMiddlewareGaps(RaftTestCase):
     def test_wire_loads_settings(self) -> None:
         home = Path(self.tmp_path)
         hashed = DashboardPassword().hash("correct-horse")
-        (home / "settings.yaml").write_text(
+        (home / "host" / "settings.yaml").write_text(
             yaml.safe_dump(
                 {
                     "dashboard": {
@@ -84,7 +84,7 @@ class TestMiddlewareGaps(RaftTestCase):
 
     def test_wire_external_mode(self) -> None:
         home = Path(self.tmp_path)
-        (home / "settings.yaml").write_text("{}\n", encoding="utf-8")
+        (home / "host" / "settings.yaml").write_text("{}\n", encoding="utf-8")
         ext = DashboardConfig(
             auth=DashboardAuthConfig(
                 mode="external",
@@ -100,7 +100,7 @@ class TestMiddlewareGaps(RaftTestCase):
 
     def test_wire_oauth_session_logout_hint(self) -> None:
         home = Path(self.tmp_path)
-        (home / "settings.yaml").write_text("{}\n", encoding="utf-8")
+        (home / "host" / "settings.yaml").write_text("{}\n", encoding="utf-8")
         cfg = DashboardConfig(auth=DashboardAuthConfig(mode="oauth"))
         app = self._plain_app()
         ServeAuthWire(StackMakers.make_stack(home), config=cfg).apply(app)

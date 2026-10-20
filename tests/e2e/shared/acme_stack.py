@@ -135,7 +135,7 @@ class AcmeE2EStack:
                 os.environ[key] = value
 
     def force_renew_window(self) -> None:
-        YamlDoc(self.home / "settings.yaml").merge_root(
+        YamlDoc(self.home / "host" / "settings.yaml").merge_root(
             "acme",
             {
                 "email": "raft-e2e@example.com",
@@ -179,7 +179,7 @@ class AcmeE2EStack:
         )
 
     def _acme_error(self) -> str:
-        path = self.home / "state" / "acme" / "apps" / f"{APP}.json"
+        path = self.home / "state" / "acme" / "services" / f"{APP}.json"
         if path.is_file():
             return path.read_text(encoding="utf-8")
         return "no acme app state"
@@ -189,7 +189,7 @@ class AcmeE2EStack:
         RaftHomeFixtures.apply_and_render(
             home, RaftHomeFixtures.fixture_app_yamls("http_only")
         )
-        YamlDoc(home / "state" / "apps" / f"{APP}.yaml").merge_spec(
+        YamlDoc(home / "services" / f"{APP}.yaml").merge_spec(
             {"tls": "acme", "publicHost": PUBLIC_HOST, "scaling": dict(SCALING)}
         )
         StackRenderer(load_stack(home)).render()
@@ -197,7 +197,7 @@ class AcmeE2EStack:
 
     @staticmethod
     def _write_acme_settings(home: Path, directory: str) -> None:
-        YamlDoc(home / "settings.yaml").merge_root(
+        YamlDoc(home / "host" / "settings.yaml").merge_root(
             "acme",
             {
                 "email": "raft-e2e@example.com",

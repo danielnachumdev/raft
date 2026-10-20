@@ -89,7 +89,7 @@ class DashboardOAuthOps:
         if self.secrets_ready(cfg):
             return
         raise OperatorError(
-            "dashboard oauth requires secrets/dashboard/oauth.env and allowlist.\n"
+            "dashboard oauth requires host/secrets/dashboard/oauth.env and allowlist.\n"
             "Fix: raft dashboard oauth init, fill client id/secret, "
             "then raft dashboard oauth allowlist-set --file …",
             has_fix=False,

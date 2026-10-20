@@ -25,7 +25,7 @@ class TestHostLogging:
         monkeypatch.delenv("RAFT_LOG_DIR", raising=False)
         LoggingReset().for_tests()
         log_file = HostLogging().configure(tmp_path, RaftConfig())
-        assert log_file == tmp_path / "logs" / "raft.log"
+        assert log_file == tmp_path / "host" / "logs" / "raft.log"
         assert log_file.parent.is_dir()
         root = logging.getLogger("raft")
         assert len(root.handlers) == 1
@@ -60,7 +60,7 @@ class TestHostLogging:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.delenv("RAFT_LOG_DIR", raising=False)
-        log_dir = tmp_path / "logs"
+        log_dir = tmp_path / "host" / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         log_file = log_dir / "raft.log"
         stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

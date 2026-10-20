@@ -32,7 +32,7 @@ class AlertRulesStore:
             return AlertRulesDocument.empty()
         raw = self.load_raw()
         return AlertRulesDocument.from_mapping(
-            raw, registries=self._registries, path="state/alerts/rules.yaml"
+            raw, registries=self._registries, path="host/alerts/rules.yaml"
         )
 
     def load_raw(self) -> Any:
@@ -40,7 +40,7 @@ class AlertRulesStore:
             return yaml.safe_load(self.path.read_text(encoding="utf-8")) or {}
         except (OSError, UnicodeError, yaml.YAMLError) as exc:
             raise OperatorError(
-                f"cannot read state/alerts/rules.yaml: {exc}.\n"
+                f"cannot read host/alerts/rules.yaml: {exc}.\n"
                 f"Fix: repair the rules document or delete it"
             ) from exc
 

@@ -1,4 +1,4 @@
-"""Flock for CLI/serve writes to ``state/alerts/rules.yaml``."""
+"""Flock for CLI/serve writes to ``host/alerts/rules.yaml``."""
 
 from pathlib import Path
 from typing import Optional

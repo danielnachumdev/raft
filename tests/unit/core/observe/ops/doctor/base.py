@@ -60,7 +60,7 @@ class DoctorTestCase(DomainTestCase):
 
     def write_certs(self, *names: str) -> None:
         for name in names:
-            d = self.tmp_path / "certs" / name
+            d = self.tmp_path / "services" / name / "certs"
             d.mkdir(parents=True, exist_ok=True)
             (d / "origin.pem").write_text("pem\n", encoding="utf-8")
             (d / "origin.key").write_text("key\n", encoding="utf-8")

@@ -77,7 +77,7 @@ class TestDoctorLogObservability:
 
     @staticmethod
     def _write_logging_settings(home: Path, *, max_bytes: int) -> None:
-        YamlDoc(home / "settings.yaml").merge_root(
+        YamlDoc(home / "host" / "settings.yaml").merge_root(
             "logging",
             {
                 "level": "INFO",

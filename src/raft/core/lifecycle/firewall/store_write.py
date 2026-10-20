@@ -9,7 +9,7 @@ from raft.core.platform.locking import AclLock
 
 
 class FirewallDocumentWriter:
-    """Validate + write ``state/firewall/rules.yaml`` under ``acl.lock``."""
+    """Validate + write ``host/firewall/rules.yaml`` under ``acl.lock``."""
 
     def __init__(self, data_home: Path) -> None:
         self._home = data_home

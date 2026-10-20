@@ -36,7 +36,7 @@ Examples use documentation CIDRs (`192.0.2.0/24`) and `demo-api` only.
 | Enforcement | **Gate nginx** (`$remote_addr`) |
 | Model | Ordered rules; **first match wins** |
 | Fields | CIDR, port (`number` or `any`), protocol, service (`any` or App), action |
-| Persist | `~/.raft/state/firewall/rules.yaml` |
+| Persist | `~/.raft/host/firewall/rules.yaml` |
 | Apply | Persist → `raft render` → **gate nginx reload** (never recreate for rule-only edits) |
 | Compile | Heavy work at Save/render: merge adjacent same-action CIDRs; emit `allow`/`deny` + drop maps |
 | Recommendations | Per published HTTP edge port **permit** + **default deny any**; dismissals in `state/firewall/dismissed-recommendations.json` |
@@ -57,7 +57,7 @@ Host-routed HTTP edge only (`expose: http` + `publicHost`) for **service**-scope
 
 ### Flat ACL retired (#195 / #312)
 
-Legacy flat ACL UI/API (`acl.gate`, `state/acl/`, `/api/acl/*`, Settings allow/deny lists) are **removed**. Edge policy is **only** the ordered firewall document under `state/firewall/rules.yaml`. Leftover ACL files on disk are ignored; render clears stale `gate-http/acl/*.inc` and uses firewall includes. Operators who still need old ACL policy must reconstruct rules under Settings → Firewall (or import) after upgrade — see [releases.md](releases.md) upgrade notes.
+Legacy flat ACL UI/API (`acl.gate`, `state/acl/`, `/api/acl/*`, Settings allow/deny lists) are **removed**. Edge policy is **only** the ordered firewall document under `host/firewall/rules.yaml`. Leftover ACL files on disk are ignored; render clears stale `gate-http/acl/*.inc` and uses firewall includes. Operators who still need old ACL policy must reconstruct rules under Settings → Firewall (or import) after upgrade — see [releases.md](releases.md) upgrade notes.
 
 ### Recommendation defaults
 

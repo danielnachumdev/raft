@@ -16,10 +16,10 @@ class TestScalingStore(ControllerTestCase):
         home = self.raft_home(tmp_path)
         store = ScalingStore(home)
         store.mark_scaled_to_zero(self.APP)
-        assert (home / "state/scaling/markers/web.zero").is_file()
+        assert (home / "services" / "web" / "scaling" / "markers" / "web.zero").is_file()
         assert store.is_scaled_to_zero(self.APP)
         store.mark_awake(self.APP, min_up_seconds=5, now=100.0)
-        assert not (home / "state/scaling/markers/web.zero").is_file()
+        assert not (home / "services" / "web" / "scaling" / "markers" / "web.zero").is_file()
         state = store.load(self.APP)
         assert state.min_up_until == 105.0
         assert state.last_activity_at == 100.0
@@ -58,16 +58,16 @@ class TestScalingStore(ControllerTestCase):
         store.mark_wake_timeout(self.APP)
         assert store.load(self.APP).wake_timed_out is True
         assert store.load(self.APP).wake_id == first_id
-        assert (home / "state/scaling/markers/web.timeout").is_file()
-        assert not (home / "state/scaling/markers/web.zero").is_file()
+        assert (home / "services" / "web" / "scaling" / "markers" / "web.timeout").is_file()
+        assert not (home / "services" / "web" / "scaling" / "markers" / "web.zero").is_file()
         store.request_wake(self.APP, now=50.0)
         state = store.load(self.APP)
         assert state.wake_timed_out is False
         assert state.wake_requested_at == 50.0
         assert state.wake_id and state.wake_id != first_id
-        assert (home / "state/scaling/markers/web.zero").is_file()
-        assert not (home / "state/scaling/markers/web.timeout").is_file()
-        assert (home / "state/scaling/markers/web.id").read_text(
+        assert (home / "services" / "web" / "scaling" / "markers" / "web.zero").is_file()
+        assert not (home / "services" / "web" / "scaling" / "markers" / "web.timeout").is_file()
+        assert (home / "services" / "web" / "scaling" / "markers" / "web.id").read_text(
             encoding="utf-8"
         ) == state.wake_id
 
@@ -78,7 +78,7 @@ class TestScalingStore(ControllerTestCase):
         store.mark_scaled_to_zero(self.APP)
         store.clear_scaled_to_zero(self.APP)
         assert not store.is_scaled_to_zero(self.APP)
-        assert not (home / "state/scaling/markers/web.zero").is_file()
+        assert not (home / "services" / "web" / "scaling" / "markers" / "web.zero").is_file()
 
     def test_save_is_atomic(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
@@ -104,10 +104,10 @@ class TestScalingStore(ControllerTestCase):
         minted = store.request_wake(self.APP, now=2.0)
         assert minted
         assert store.load(self.APP).wake_requested_at == 1.0
-        assert (home / "state/scaling/markers/web.id").read_text(encoding="utf-8") == minted
+        assert (home / "services" / "web" / "scaling" / "markers" / "web.id").read_text(encoding="utf-8") == minted
         store.mark_awake(self.APP, min_up_seconds=1, now=3.0)
         assert store.load(self.APP).wake_id is None
-        assert not (home / "state/scaling/markers/web.id").is_file()
+        assert not (home / "services" / "web" / "scaling" / "markers" / "web.id").is_file()
 
     def test_wake_id_blank_json_is_none(self) -> None:
         state = AppScalingState.from_mapping({"wakeId": "  "})
@@ -143,17 +143,17 @@ class TestScalingStore(ControllerTestCase):
     def test_atomic_write_cleans_temp_on_replace_failure(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
         store = ScalingStore(home)
-        store.ensure_dirs()
+        store.ensure_dirs(self.APP)
         path = store.path_for(self.APP)
         with patch("raft.core.core.models.state.scaling_store.os.replace", side_effect=OSError("boom")):
             with pytest.raises(OSError, match="boom"):
                 store._atomic_write_json(path, {"scaledToZero": False})
-        assert list(path.parent.glob(".web.json.*.tmp")) == []
+        assert list(path.parent.glob(".state.json.*.tmp")) == []
 
     def test_atomic_write_ignores_unlink_errors(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
         store = ScalingStore(home)
-        store.ensure_dirs()
+        store.ensure_dirs(self.APP)
         path = store.path_for(self.APP)
         with patch("raft.core.core.models.state.scaling_store.os.replace", side_effect=OSError("boom")):
             with patch("raft.core.core.models.state.scaling_store.os.unlink", side_effect=OSError("gone")):

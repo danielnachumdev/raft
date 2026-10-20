@@ -7,7 +7,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
-FIREWALL_STATE_DIR = Path("state") / "firewall"
+FIREWALL_STATE_DIR = Path("host") / "firewall"
 DISMISSALS_NAME = "dismissed-recommendations.json"
 
 

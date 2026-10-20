@@ -68,7 +68,7 @@ class TestConfig(RaftTestCase):
         self._assert_acme_defaults(cfg)
 
     def _assert_logging_defaults(self, cfg) -> None:
-        assert cfg.logging.dir == "logs"
+        assert cfg.logging.dir == "host/logs"
         assert cfg.logging.file == "raft.log"
         assert cfg.logging.level == "INFO"
         assert cfg.logging.retention_max_age_days == 30
@@ -165,7 +165,7 @@ class TestConfig(RaftTestCase):
                 load_config(self.tmp_path)
 
     def test_load_missing_uses_defaults(self) -> None:
-        settings = self.tmp_path / "settings.yaml"
+        settings = self.tmp_path / "host" / "settings.yaml"
         if settings.is_file():
             settings.unlink()
         assert load_config(self.tmp_path) == default_config()

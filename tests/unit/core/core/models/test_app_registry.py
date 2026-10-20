@@ -13,13 +13,13 @@ services:
   app:
     public_host: app.test
     source: local
-    path: apps/app
+    path: services/app/checkout
   other:
     public_host: other.test
     source: git
     repo: "git@example.com:org/other.git"
     ref: develop
-    path: apps/other
+    path: services/other/checkout
 """
 
 
@@ -115,7 +115,7 @@ services:
         assert any("without a tag" in i.error for i in result.issues)
 
     def test_skips_missing_public_host_for_http(self) -> None:
-        dest = self.tmp_path / "state" / "apps" / "x.yaml"
+        dest = self.tmp_path / "services" / "x" / "app.yaml"
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(
             "apiVersion: raft/v1\nkind: App\nmetadata:\n  name: x\nspec:\n"
@@ -135,17 +135,18 @@ services:
   app:
     public_host: app.test
     source: local
-    path: apps/app
+    path: services/app/checkout
 """,
         )
-        bad = self.tmp_path / "state" / "apps" / "broken.yaml"
+        bad = self.tmp_path / "services" / "broken" / "app.yaml"
+        bad.parent.mkdir(parents=True, exist_ok=True)
         bad.write_text("not: [valid\n", encoding="utf-8")
         result = AppRegistry(self.tmp_path).load_result()
         assert [a.name for a in result.apps] == ["app"]
-        assert any(i.file == "broken.yaml" for i in result.issues)
+        assert any(i.file == "broken" for i in result.issues)
         stack = load_stack(self.tmp_path)
         assert stack.app("app").name == "app"
-        assert stack.registry_issues and stack.registry_issues[0].file == "broken.yaml"
+        assert stack.registry_issues and stack.registry_issues[0].file == "broken"
 
     def test_empty_registry(self) -> None:
         assert AppRegistry(self.tmp_path).load() == ()
@@ -167,11 +168,11 @@ services:
 """,
         )
         apps = AppRegistry(self.tmp_path).load()
-        assert apps[0].path == "apps/app"
+        assert apps[0].path == "services/app/checkout"
         assert apps[0].ref == "main"
 
     def test_skips_non_mapping(self) -> None:
-        dest = self.tmp_path / "state" / "apps" / "app.yaml"
+        dest = self.tmp_path / "services" / "app" / "app.yaml"
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text("- not a mapping\n", encoding="utf-8")
         result = AppRegistry(self.tmp_path).load_result()
@@ -179,9 +180,9 @@ services:
         assert any("mapping" in i.error for i in result.issues)
 
     def test_write_skips_corrupt_host_peer(self) -> None:
-        apps = self.tmp_path / "state" / "apps"
-        apps.mkdir(parents=True, exist_ok=True)
-        (apps / "junk.yaml").write_text("- not a mapping\n", encoding="utf-8")
+        junk = self.tmp_path / "services" / "junk" / "app.yaml"
+        junk.parent.mkdir(parents=True, exist_ok=True)
+        junk.write_text("- not a mapping\n", encoding="utf-8")
         path = AppRegistry(self.tmp_path).write(
             {
                 "apiVersion": "raft/v1",
@@ -190,17 +191,18 @@ services:
                 "spec": {
                     "publicHost": "ok.test",
                     "source": "local",
-                    "path": "apps/ok",
+                    "path": "services/ok/checkout",
                     "ports": [{"name": "http", "containerPort": 80, "expose": "http"}],
                 },
             }
         )
-        assert path.name == "ok.yaml"
+        assert path.name == "app.yaml"
+        assert path.parent.name == "ok"
 
     def test_write_round_trips_yaml11_tls_off(self) -> None:
         raw = (
             "apiVersion: raft/v1\nkind: App\nmetadata:\n  name: app\nspec:\n"
-            "  publicHost: app.test\n  source: local\n  path: apps/app\n"
+            "  publicHost: app.test\n  source: local\n  path: services/app/checkout\n"
             "  tls: off\n"
             "  ports:\n    - name: http\n      containerPort: 80\n      expose: http\n"
         )
@@ -240,7 +242,7 @@ services:
             "spec": {
                 "publicHost": f"{name}.test",
                 "source": "local",
-                "path": f"apps/{name}",
+                "path": f"services/{name}/checkout",
                 "tls": tls,
                 "ports": [{"name": "http", "containerPort": 80, "expose": "http"}],
             },

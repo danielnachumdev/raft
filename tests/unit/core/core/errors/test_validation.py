@@ -34,7 +34,7 @@ class TestValidationCTAs(RaftTestCase):
             RaftHome().resolve()
 
     def test_settings_bad_ports_and_shapes(self) -> None:
-        path = self.tmp_path / "settings.yaml"
+        path = self.tmp_path / "host" / "settings.yaml"
         for body, match in SETTINGS_BAD_CASES:
             path.write_text(body, encoding="utf-8")
             with pytest.raises(RuntimeError, match=match):
@@ -82,7 +82,7 @@ class TestValidationCTAs(RaftTestCase):
         CtaAsserts.operator(caught.value, contains=("raft update",))
 
     def test_settings_unreadable(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        path = self.tmp_path / "settings.yaml"
+        path = self.tmp_path / "host" / "settings.yaml"
         path.write_text("logging:\n  level: INFO\n", encoding="utf-8")
         monkeypatch.setattr(
             Path,

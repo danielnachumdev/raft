@@ -109,7 +109,7 @@ def _local_app_yaml(name: str) -> str:
         "  publicHost: site.example.com\n"
         "  tls: off\n"
         "  source: local\n"
-        f"  path: apps/{name}\n"
+        f"  path: services/{name}\n"
         "  build:\n    context: .\n"
         "  ports:\n"
         "    - name: http\n"

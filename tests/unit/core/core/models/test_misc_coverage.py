@@ -34,7 +34,7 @@ UNIQ_DOC = {
 
 class TestMiscCoverage(RaftTestCase):
     def test_null_streams_loads_empty(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text("edge:\n  streams: null\n", encoding="utf-8")
+        (self.tmp_path / "host" / "settings.yaml").write_text("edge:\n  streams: null\n", encoding="utf-8")
         assert SettingsLoader().load(self.tmp_path).edge.streams == ()
 
     def test_parse_expect_name_and_bad_source(self) -> None:
@@ -82,7 +82,7 @@ class TestMiscCoverage(RaftTestCase):
             build_context=None,
             extra={"build": {"context": "."}},
         )
-        (self.tmp_path / "apps" / "web").mkdir(parents=True)
+        (self.tmp_path / "services" / "web").mkdir(parents=True, exist_ok=True)
         stack = load_stack(self.tmp_path)
         with patch("raft.core.lifecycle.render.stack_renderer.logger") as log:
             StackRenderer(stack).render()
@@ -113,7 +113,7 @@ class TestMiscCoverage(RaftTestCase):
         )
 
     def _test_render_host_udp_and_none_readiness_p2(self) -> None:
-        (self.tmp_path / "apps" / "mail").mkdir(parents=True)
+        (self.tmp_path / "services" / "mail").mkdir(parents=True, exist_ok=True)
         stack = load_stack(self.tmp_path)
         StackRenderer(
             stack,
@@ -135,7 +135,7 @@ class TestMiscCoverage(RaftTestCase):
             name="hub",
             public_host="hub.test",
             source="docker",
-            path="apps/hub",
+            path="services/hub/checkout",
             image="ghcr.io/org/hub",
             ref="main",
         )
@@ -206,7 +206,7 @@ class TestMiscCoverage(RaftTestCase):
                 {
                     **doc,
                     "metadata": {"name": "other"},
-                    "spec": {**doc["spec"], "path": "apps/other"},
+                    "spec": {**doc["spec"], "path": "services/other/checkout"},
                 }
             )
         self._write_clash_host()
@@ -214,7 +214,8 @@ class TestMiscCoverage(RaftTestCase):
             load_stack(self.tmp_path)
 
     def _write_clash_host(self) -> None:
-        other = self.tmp_path / "state" / "apps" / "clash.yaml"
+        other = self.tmp_path / "services" / "clash" / "app.yaml"
+        other.parent.mkdir(parents=True, exist_ok=True)
         other.write_text(
             "apiVersion: raft/v1\nkind: App\nmetadata:\n  name: clash\nspec:\n"
             "  publicHost: shared.test\n  source: local\n"

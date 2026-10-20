@@ -38,7 +38,7 @@ def _engine(home: Path, fake: FakeHttp) -> AlertEngine:
 class TestAlertEngine(RaftTestCase):
     def test_fires(self) -> None:
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True)
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
         fake = FakeHttp(0.1)
         engine = _engine(home, fake)
         notifier = engine._dispatch._notifier
@@ -49,7 +49,7 @@ class TestAlertEngine(RaftTestCase):
 
     def test_resolves(self) -> None:
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True)
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
         fake = FakeHttp(0.1)
         engine = _engine(home, fake)
         notifier = engine._dispatch._notifier

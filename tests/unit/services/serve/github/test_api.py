@@ -208,7 +208,7 @@ class TestServeGithubApi(RaftTestCase):
 
     def _github_and_status(self):
         stack = StackMakers.make_stack(self.tmp_path)
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "github: {clientId: cid, clientSecret: csec}\n", encoding="utf-8"
         )
         self._seed_account()
@@ -221,7 +221,7 @@ class TestServeGithubApi(RaftTestCase):
 
     def _authed_client(self, jobs: DeployJobStore) -> TestClient:
         stack = StackMakers.make_stack(self.tmp_path)
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "github: {clientId: cid, clientSecret: csec}\n", encoding="utf-8"
         )
         self._seed_account()

@@ -166,13 +166,13 @@ class TestApplyGit(ApplyTestCase):
         with patch("raft.core.lifecycle.apply.service.Orchestrator") as orch_cls:
             AppApply(load_stack(self.tmp_path)).delete("web")
             orch_cls.return_value.render.assert_called_once()
-        assert not (self.tmp_path / "state" / "apps" / "web.yaml").is_file()
+        assert not (self.tmp_path / "services" / "web" / "app.yaml").is_file()
         assert "deleted web" in capsys.readouterr().out
         self._delete_leftovers_and_ghost(capsys)
 
     def _delete_leftovers_and_ghost(self, capsys) -> None:
         for leftover in ("other", "app"):
-            path = self.tmp_path / "state" / "apps" / f"{leftover}.yaml"
+            path = self.tmp_path / "services" / leftover / "app.yaml"
             if path.is_file():
                 with patch("raft.core.lifecycle.apply.service.Orchestrator") as orch_cls:
                     AppApply(load_stack(self.tmp_path)).delete(leftover)
@@ -202,7 +202,7 @@ class TestApplyGit(ApplyTestCase):
             "spec": {
                 "publicHost": "img.test",
                 "image": "ghcr.io/org/img",
-                "path": "apps/img",
+                "path": "services/img/checkout",
                 "ports": [{"name": "http", "containerPort": 80, "expose": "http"}],
             },
         }

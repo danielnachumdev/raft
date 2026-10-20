@@ -46,7 +46,7 @@ class TestAccountsCoverage(RaftTestCase):
         store.select(a.id)
         store.delete(b.id)
         assert store.public_snapshot()["active_account_id"] == a.id
-        store._unlink(self.tmp_path / "state" / "serve" / "missing.json")
+        store._unlink(self.tmp_path / "host" / "serve" / "missing.json")
 
     def test_store_upsert_match(self) -> None:
         store = GithubAccountStore(self.tmp_path)
@@ -63,7 +63,7 @@ class TestAccountsCoverage(RaftTestCase):
     def test_legacy_mock_field_loads_without_mock_key(self) -> None:
         store = GithubAccountStore(self.tmp_path)
         store.upsert_account(self._acct("a", "alice", "t1", uid="1"))
-        raw_path = self.tmp_path / "state" / "serve" / "github-accounts.json"
+        raw_path = self.tmp_path / "host" / "serve" / "github-accounts.json"
         data = json.loads(raw_path.read_text(encoding="utf-8"))
         data["accounts"].append(self._legacy_mock_row())
         raw_path.write_text(json.dumps(data), encoding="utf-8")
@@ -83,7 +83,7 @@ class TestAccountsCoverage(RaftTestCase):
 
     def test_orphan_active_falls_back(self) -> None:
         store = GithubAccountStore(self.tmp_path)
-        accounts = self.tmp_path / "state" / "serve" / "github-accounts.json"
+        accounts = self.tmp_path / "host" / "serve" / "github-accounts.json"
         accounts.parent.mkdir(parents=True, exist_ok=True)
         accounts.write_text(json.dumps(self._orphan_payload()), encoding="utf-8")
         assert store.public_snapshot()["active_account_id"] == "alive"
@@ -97,7 +97,7 @@ class TestAccountsCoverage(RaftTestCase):
 
     def _client(self) -> TestClient:
         stack = StackMakers.make_stack(self.tmp_path)
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "github: {clientId: id, clientSecret: sec}\n", encoding="utf-8"
         )
         api = ServeGithubApi(stack, provider=MagicMock())

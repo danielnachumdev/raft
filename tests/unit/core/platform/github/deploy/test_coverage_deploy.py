@@ -46,7 +46,7 @@ class TestCoverageDeploy(RaftTestCase):
         assert job.next_steps
 
     def test_api_callback_oauth(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "github: {clientId: id, clientSecret: sec}\n", encoding="utf-8"
         )
         api = ServeGithubApi(StackMakers.make_stack(self.tmp_path), provider=MagicMock(), port=9999)
@@ -66,7 +66,7 @@ class TestCoverageDeploy(RaftTestCase):
         assert "oauth_error=" in denied.headers["location"]
 
     def test_api_port_and_repos_deploy(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text("github: {clientId: id, clientSecret: sec}\n", encoding="utf-8")
+        (self.tmp_path / "host" / "settings.yaml").write_text("github: {clientId: id, clientSecret: sec}\n", encoding="utf-8")
         provider = MagicMock()
         api = ServeGithubApi(StackMakers.make_stack(self.tmp_path), provider=provider, jobs=DeployJobStore())
         GithubAccountStore(self.tmp_path).upsert_account(github_fx.sample_account())
@@ -126,7 +126,7 @@ class TestCoverageDeploy(RaftTestCase):
         runner._run("missing", github_fx.sample_account(), github_fx.sample_repo())
 
     def test_remaining_api_hints(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "github: {clientId: id, clientSecret: sec}\n", encoding="utf-8"
         )
         api = ServeGithubApi(StackMakers.make_stack(self.tmp_path), port=8787)
@@ -143,7 +143,7 @@ class TestCoverageDeploy(RaftTestCase):
         assert api._request_port(req) == 8787
 
     def test_default_provider_is_real(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "github: {clientId: id, clientSecret: sec}\n", encoding="utf-8"
         )
         api = ServeGithubApi(StackMakers.make_stack(self.tmp_path), port=8787)
@@ -166,8 +166,8 @@ class TestCoverageDeploy(RaftTestCase):
             runner._deploy_local(job, tree, {"metadata": {"name": "web"}, "spec": {}}, "web")
 
     def _stage_local_tree(self, stack) -> Path:
-        dest = stack.root / "apps" / "web"
-        dest.mkdir(parents=True)
+        dest = stack.root / "services" / "web"
+        dest.mkdir(parents=True, exist_ok=True)
         (dest / "keep").write_text("x", encoding="utf-8")
         tree = self.tmp_path / "fixture-tree"
         tree.mkdir()

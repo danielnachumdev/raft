@@ -17,7 +17,7 @@ from tests.unit.base import RaftTestCase
 class TestGithubSettingsWriter(RaftTestCase):
     def test_save_oauth_and_reload(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._clear_env(monkeypatch)
-        path = self.tmp_path / "settings.yaml"
+        path = self.tmp_path / "host" / "settings.yaml"
         path.write_text("edge: {http: 80}\n", encoding="utf-8")
         writer = GithubSettingsWriter(self.tmp_path)
         assert writer.public_status(port=8787)["oauth_configured"] is False
@@ -51,7 +51,7 @@ class TestGithubSettingsWriter(RaftTestCase):
 
     def test_load_root_errors(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._clear_env(monkeypatch)
-        path = self.tmp_path / "settings.yaml"
+        path = self.tmp_path / "host" / "settings.yaml"
         path.unlink()
         writer = GithubSettingsWriter(self.tmp_path)
         assert writer._load_root() == {}
@@ -71,7 +71,7 @@ class TestGithubSettingsWriter(RaftTestCase):
 
     def test_strips_legacy_mock_on_save(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._clear_env(monkeypatch)
-        path = self.tmp_path / "settings.yaml"
+        path = self.tmp_path / "host" / "settings.yaml"
         path.write_text("github: {mock: true}\n", encoding="utf-8")
         GithubSettingsWriter(self.tmp_path).save(client_id="id", client_secret="sec")
         data = yaml.safe_load(path.read_text(encoding="utf-8"))

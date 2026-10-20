@@ -25,7 +25,7 @@ class AcmeSettingsParser(SettingsSectionParser[AcmeConfig]):
         if not isinstance(raw, dict):
             raise OperatorError(
                 "settings.yaml acme must be a mapping.\n"
-                "Fix: set acme: {email: ops@example.com, ...} in ~/.raft/settings.yaml"
+                "Fix: set acme: {email: ops@example.com, ...} in ~/.raft/host/settings.yaml"
             )
         return AcmeConfig(
             email=self._scalars.optional_str(raw.get("email")),
@@ -47,7 +47,7 @@ class AcmeSettingsParser(SettingsSectionParser[AcmeConfig]):
         if not text:
             raise OperatorError(
                 "settings.yaml acme.directory must be a non-empty URL.\n"
-                "Fix: set acme.directory in ~/.raft/settings.yaml "
+                "Fix: set acme.directory in ~/.raft/host/settings.yaml "
                 f"(default {DEFAULT_ACME_DIRECTORY})"
             )
         return text
@@ -62,6 +62,6 @@ class AcmeSettingsParser(SettingsSectionParser[AcmeConfig]):
                 f"settings.yaml acme.challenge must be {DEFAULT_ACME_CHALLENGE!r} "
                 f"(v1), got {text!r}.\n"
                 f"Fix: set acme.challenge: {DEFAULT_ACME_CHALLENGE} "
-                f"or omit the key in ~/.raft/settings.yaml"
+                f"or omit the key in ~/.raft/host/settings.yaml"
             )
         return text

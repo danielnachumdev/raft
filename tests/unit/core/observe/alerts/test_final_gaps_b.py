@@ -38,7 +38,7 @@ def _rule() -> AlertRule:
 class TestFinalGapsB(RaftTestCase):
     def test_prune(self) -> None:
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True)
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
         engine = AlertEngine(home)
         runtime = AlertRuntime.empty()
         runtime.instances["gone:x"] = AlertInstanceState(
@@ -49,7 +49,7 @@ class TestFinalGapsB(RaftTestCase):
 
     def test_notify_skip_and_writable(self) -> None:
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True)
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
         engine = AlertEngine(home)
         step = MagicMock(notify="firing", instance=None)
         assert (

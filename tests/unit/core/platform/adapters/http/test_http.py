@@ -62,7 +62,7 @@ class TestHttpProbe(AdapterTestCase):
         assert HttpProbe(self.stack, http=http).public_host_ok(self.app) is False
 
     def test_public_host_ok_empty_host(self) -> None:
-        app = App(name="x", public_host="", source="local", path="apps/x")
+        app = App(name="x", public_host="", source="local", path="services/x/checkout")
         assert HttpProbe(self.stack).public_host_ok(app) is True
 
     def test_tcp_port_ok(self) -> None:

@@ -42,7 +42,7 @@ class TestDashboardComposeAndWriter(RaftTestCase):
                 auth=DashboardAuthConfig(mode="oauth"),
             )
         )
-        assert "./secrets/dashboard/oauth.env" in oauth
+        assert "./host/secrets/dashboard/oauth.env" in oauth
 
     def test_password_roundtrip_and_bad(self) -> None:
         pw = DashboardPassword()
@@ -55,7 +55,7 @@ class TestDashboardComposeAndWriter(RaftTestCase):
 
     def test_writer_enable_disable_password(self) -> None:
         home = Path(self.tmp_path)
-        (home / "settings.yaml").write_text("edge: {http: 80}\n", encoding="utf-8")
+        (home / "host" / "settings.yaml").write_text("edge: {http: 80}\n", encoding="utf-8")
         writer = DashboardSettingsWriter(home)
         writer.set_password("correct-horse")
         writer.enable(
@@ -72,13 +72,13 @@ class TestDashboardComposeAndWriter(RaftTestCase):
 
     def test_writer_short_password(self) -> None:
         home = Path(self.tmp_path)
-        (home / "settings.yaml").write_text("{}\n", encoding="utf-8")
+        (home / "host" / "settings.yaml").write_text("{}\n", encoding="utf-8")
         with pytest.raises(OperatorError, match="at least 8"):
             DashboardSettingsWriter(home).set_password("short")
 
     def test_writer_enable_public_needs_password(self) -> None:
         home = Path(self.tmp_path)
-        (home / "settings.yaml").write_text("{}\n", encoding="utf-8")
+        (home / "host" / "settings.yaml").write_text("{}\n", encoding="utf-8")
         with pytest.raises(OperatorError, match="requires a password"):
             DashboardSettingsWriter(home).enable(
                 public_host="ops.example.com",
@@ -100,7 +100,7 @@ class TestDashboardComposeAndWriter(RaftTestCase):
 
     def test_writer_corrupt_settings(self) -> None:
         home = Path(self.tmp_path)
-        path = home / "settings.yaml"
+        path = home / "host" / "settings.yaml"
         path.write_text("- not a mapping\n", encoding="utf-8")
         with pytest.raises(OperatorError, match="YAML mapping"):
             DashboardSettingsWriter(home).enable()

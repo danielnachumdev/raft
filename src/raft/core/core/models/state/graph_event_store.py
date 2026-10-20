@@ -1,4 +1,4 @@
-"""Append-only GraphEvent JSONL under ``~/.raft/state/events/``.
+"""Append-only GraphEvent JSONL under ``~/.raft/host/events/``.
 
 Lifecycle producers append here; ``MetricsRead`` filters by the metrics window
 so Trends / Runtime charts can draw markers without inferring history from
@@ -16,7 +16,7 @@ from .graph_event import GraphEvent
 from .graph_event_kinds import RaftLevelEvent
 from .graph_event_records import GraphEventRecords
 
-EVENTS_STATE_DIR = Path("state") / "events"
+EVENTS_STATE_DIR = Path("host") / "events"
 EVENTS_FILENAME = "graph.jsonl"
 
 

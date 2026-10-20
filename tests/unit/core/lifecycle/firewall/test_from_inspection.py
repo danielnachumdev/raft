@@ -19,7 +19,7 @@ from tests.unit.core.lifecycle.firewall.helpers import document, rule, rule_dict
 
 class TestInspectionFirewall(RaftTestCase):
     def _stack(self, *, edge: str = "edge: {http: 80, https: 443}\n"):
-        (self.tmp_path / "settings.yaml").write_text(edge, encoding="utf-8")
+        (self.tmp_path / "host" / "settings.yaml").write_text(edge, encoding="utf-8")
         AppliedInventory.write_applied_app(
             self.tmp_path, "demo-api", public_host="demo-api.test"
         )
@@ -72,7 +72,7 @@ class TestInspectionFirewall(RaftTestCase):
 
 class TestInspectionFirewallApi(RaftTestCase):
     def _client(self) -> TestClient:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "edge: {http: 80, https: 443}\n", encoding="utf-8"
         )
         AppliedInventory.write_applied_app(

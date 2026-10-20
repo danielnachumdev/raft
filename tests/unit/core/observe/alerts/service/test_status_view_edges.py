@@ -11,8 +11,8 @@ from tests.unit.core.observe.alerts.sample_rule import RULE
 class TestStatusViewEdges(RaftTestCase):
     def _home(self):
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True)
-        (home / "settings.yaml").write_text(
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
+        (home / "host" / "settings.yaml").write_text(
             "alerts:\n  enabled: true\n  intervalSeconds: 60\nnotifications:\n  enabled: true\n  channels: []\n",
             encoding="utf-8",
         )

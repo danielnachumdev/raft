@@ -53,7 +53,7 @@ class TestFinalGapsD(RaftTestCase):
 
     def test_notify_false_and_prune_orphan(self) -> None:
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True)
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
         engine = AlertEngine(home)
         step = MagicMock(notify=None, instance=None)
         assert (

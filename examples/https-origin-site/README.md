@@ -5,7 +5,7 @@ Same shape as the HTTP-only sample, but `tls: origin` so the gate terminates HTT
 ## When to use
 
 - An upstream proxy presents the browser-trusted cert; the gate only needs Origin material
-- `edge.https` is enabled in `~/.raft/settings.yaml` (default 443)
+- `edge.https` is enabled in `~/.raft/host/settings.yaml` (default 443)
 
 For **direct** browser → VPS HTTPS (Let's Encrypt on the gate), use [`../https-acme-site/`](../https-acme-site/) (`tls: acme`) instead — that path does **not** use `origin.*` PEMs.
 
@@ -14,8 +14,8 @@ For **direct** browser → VPS HTTPS (Let's Encrypt on the gate), use [`../https
 Install PEMs **before** first deploy:
 
 ```text
-~/.raft/certs/https-origin-site/origin.pem
-~/.raft/certs/https-origin-site/origin.key
+~/.raft/services/*/certs/https-origin-site/origin.pem
+~/.raft/services/*/certs/https-origin-site/origin.key
 ```
 
 `raft doctor` fails `tls: origin` apps when these are missing. If PEMs are not ready yet: `raft apply … --no-deploy`, install certs, then apply again without `--no-deploy` (or `raft up`).

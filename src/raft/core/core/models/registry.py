@@ -1,4 +1,4 @@
-"""On-disk applied App registry under ``~/.raft/state/apps/``."""
+"""On-disk applied App registry under ``~/.raft/services/<name>/app.yaml``."""
 
 import logging
 from pathlib import Path
@@ -6,6 +6,8 @@ from typing import Any, Optional
 
 import yaml
 
+from raft.core.core.config.paths.constants import APP_MANIFEST_FILENAME
+from raft.core.core.config.paths.service_paths import ServicePaths
 from raft.core.core.errors.cta import OperatorError
 from .app import App
 from .app_document import AppDocument
@@ -26,7 +28,7 @@ class AppRegistry:
         return self.root / REGISTRY_DIR
 
     def path_for(self, name: str) -> Path:
-        return self.directory() / f"{name}.yaml"
+        return ServicePaths(self.root, name).app_yaml()
 
     def load(self) -> tuple[App, ...]:
         return self.load_result().apps
@@ -37,7 +39,7 @@ class AppRegistry:
             return RegistryLoadResult((), ())
         apps: list[App] = []
         issues: list[RegistryIssue] = []
-        for path in sorted(directory.glob("*.yaml")):
+        for path in sorted(self._iter_manifests(directory)):
             app = self._try_load_named(path, issues)
             if app is not None:
                 apps.append(app)
@@ -46,11 +48,11 @@ class AppRegistry:
 
     def write(self, document: dict[str, Any]) -> Path:
         app, app_spec = AppDocument.parse(document, path=Path("<apply>"))
-        directory = self.directory()
-        directory.mkdir(parents=True, exist_ok=True)
         dest = self.path_for(app.name)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        ServicePaths(self.root, app.name).ensure_scaffold()
         self._assert_source_owned(app, dest)
-        self._assert_host_available(app, directory)
+        self._assert_host_available(app)
         payload = self._canonical_for_dump(document, tls=app_spec.tls)
         dest.write_text(
             yaml.safe_dump(payload, sort_keys=False, default_flow_style=False),
@@ -74,23 +76,36 @@ class AppRegistry:
         path.unlink()
         return True
 
+    @staticmethod
+    def _iter_manifests(directory: Path) -> list[Path]:
+        found: list[Path] = []
+        for child in sorted(directory.iterdir()):
+            if not child.is_dir():
+                continue
+            manifest = child / APP_MANIFEST_FILENAME
+            if manifest.is_file():
+                found.append(manifest)
+        return found
+
     def _try_load_named(
         self, path: Path, issues: list[RegistryIssue]
     ) -> Optional[App]:
         try:
             return self._load_named(path)
         except (OperatorError, ValueError, OSError) as exc:
-            issue = RegistryIssue(file=path.name, error=str(exc))
+            issue = RegistryIssue(file=path.parent.name, error=str(exc))
             issues.append(issue)
-            logger.warning("skipping invalid registry manifest %s: %s", path.name, exc)
+            logger.warning(
+                "skipping invalid registry manifest %s: %s", path.parent.name, exc
+            )
             return None
 
     @staticmethod
     def _load_named(path: Path) -> App:
         app, _ = AppDocument.load(path)
-        if path.stem != app.name:
+        if path.parent.name != app.name:
             raise ValueError(
-                f"{path}: filename stem {path.stem!r} must match "
+                f"{path}: service directory {path.parent.name!r} must match "
                 f"metadata.name {app.name!r}"
             )
         return app
@@ -112,17 +127,19 @@ class AppRegistry:
                 "registry: publicHost values must be unique across applied apps"
             )
 
-    @staticmethod
-    def _assert_host_available(app: App, directory: Path) -> None:
+    def _assert_host_available(self, app: App) -> None:
         if not app.public_host:
             return
-        for other in directory.glob("*.yaml"):
-            if other.stem == app.name:
+        for other_path in self._iter_manifests(self.directory()):
+            if other_path.parent.name == app.name:
                 continue
-            other_app = AppRegistry._peek_app(other)
+            other_app = AppRegistry._peek_app(other_path)
             if other_app is None:
                 continue
-            if other_app.public_host and other_app.public_host.lower() == app.public_host.lower():
+            if (
+                other_app.public_host
+                and other_app.public_host.lower() == app.public_host.lower()
+            ):
                 raise ValueError(
                     f"publicHost {app.public_host!r} already used by applied app "
                     f"{other_app.name!r}"

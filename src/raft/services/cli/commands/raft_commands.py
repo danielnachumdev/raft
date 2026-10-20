@@ -151,7 +151,7 @@ class RaftCLICommands:
         OperatorSay.say(f"Stopped {result['service']}.")
 
     def render(self) -> None:
-        """Generate Compose/nginx from ~/.raft/state/apps/*.yaml."""
+        """Generate Compose/nginx from ~/.raft/services/*/*.yaml."""
         Orchestrator(self._stack).render()
 
     def doctor(self, name: Optional[str] = None) -> None:
@@ -163,6 +163,19 @@ class RaftCLICommands:
         code = Doctor(self._stack).report(app_name=name)
         if code:
             raise SystemExit(code)
+
+    def migrate(self, dry_run: bool = False) -> None:
+        """One-shot move of pre-#313 data-home paths (operator-initiated).
+
+        See ``docs/data-home-migrate.md`` / GitHub issue #313. Does not
+        dual-read old paths at runtime — run once after upgrading, then
+        ``raft doctor``.
+        """
+        from raft.core.observe.ops.migrate import LayoutMigrate
+
+        helper = LayoutMigrate(self._stack.root)
+        actions = helper.run(dry_run=dry_run)
+        helper.report(actions, dry_run=dry_run)
 
     def status(self, json: bool = False, live: bool = False) -> None:
         """Show host and container resource usage (point-in-time snapshot).

@@ -63,7 +63,7 @@ class TestStackRenderer(ManifestTestCase):
         FileText.contains(
             gen.path("nginx", "gate-tls", "web.conf"),
             "listen 443 ssl",
-            "certs/web/origin.pem",
+            "services/web/certs/origin.pem",
         )
 
     def test_render_tls_acme_without_pems_skips_gate_tls(self) -> None:
@@ -73,14 +73,14 @@ class TestStackRenderer(ManifestTestCase):
 
     def test_render_tls_acme_with_pems_writes_acme_paths(self) -> None:
         AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
-        d = self.tmp_path / "certs" / "web"
-        d.mkdir(parents=True)
+        d = self.tmp_path / "services" / "web" / "certs"
+        d.mkdir(parents=True, exist_ok=True)
         (d / "acme.pem").write_text("pem\n", encoding="utf-8")
         (d / "acme.key").write_text("key\n", encoding="utf-8")
         gen = GeneratedArtifacts(self.render_applied())
         FileText.contains(
             gen.path("nginx", "gate-tls", "web.conf"),
-            "certs/web/acme.pem",
+            "services/web/certs/acme.pem",
         )
         body = gen.path("nginx", "gate-tls", "web.conf").read_text(encoding="utf-8")
         assert "origin.pem" not in body

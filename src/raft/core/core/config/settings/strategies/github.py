@@ -61,7 +61,7 @@ class GithubSettingsParser(SettingsSectionParser[GithubServeConfig]):
             raise OperatorError(
                 f"settings.yaml github.sessionTtlSeconds must be an integer, "
                 f"got {raw!r}.\n"
-                f"Fix: set github.sessionTtlSeconds in ~/.raft/settings.yaml",
+                f"Fix: set github.sessionTtlSeconds in ~/.raft/host/settings.yaml",
                 has_fix=False,
             ) from exc
         if value < 60:

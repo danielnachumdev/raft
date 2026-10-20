@@ -21,8 +21,8 @@ class TestOriginCerts(RaftTestCase):
         with pytest.raises(RuntimeError, match="Origin certs missing"):
             CertProbe(stack).require_origin()
 
-        d = self.tmp_path / "certs" / "web"
-        d.mkdir(parents=True)
+        d = self.tmp_path / "services" / "web" / "certs"
+        d.mkdir(parents=True, exist_ok=True)
         (d / "origin.pem").write_text("pem\n", encoding="utf-8")
         (d / "origin.key").write_text("key\n", encoding="utf-8")
         assert CertProbe(load_stack(self.tmp_path)).missing_origin() == []
@@ -50,12 +50,12 @@ class TestOriginCerts(RaftTestCase):
 
     def test_looks_like_missing_origin_cert(self) -> None:
         nginx = (
-            'cannot load certificate "/etc/nginx/certs/web/origin.pem": ' "BIO_new_file() failed"
+            'cannot load certificate "/etc/nginx/services/web/certs/origin.pem": ' "BIO_new_file() failed"
         )
         assert CertMessages.looks_like_missing_origin_cert(nginx)
         assert CertMessages.looks_like_missing_origin_cert("BIO_new_file() failed while opening origin.pem")
         assert not CertMessages.looks_like_missing_origin_cert("connection refused")
-        acme = 'cannot load certificate "/etc/nginx/certs/web/acme.pem"'
+        acme = 'cannot load certificate "/etc/nginx/services/web/certs/acme.pem"'
         assert not CertMessages.looks_like_missing_origin_cert(acme)
         assert CertMessages.looks_like_missing_acme_cert(acme)
         assert CertMessages.looks_like_missing_acme_cert("BIO_new_file() failed while opening acme.key")

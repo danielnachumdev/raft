@@ -31,7 +31,7 @@ class TestScalingHoldingPages(RaftTestCase):
         assert not dest.is_file()
 
     def test_missing_checkout_errors(self) -> None:
-        app = App(name="web", public_host="web.test", source="local", path="apps/web")
+        app = App(name="web", public_host="web.test", source="local", path="services/web/checkout")
         spec = AppSpec(
             ports=_PORTS,
             scaling=ScalingSpec(60, 60, 30, ".raft/holding.html"),
@@ -40,21 +40,23 @@ class TestScalingHoldingPages(RaftTestCase):
             ScalingHoldingPages().install(self.tmp_path, [app], {"web": spec})
 
     def test_symlink_escape_errors(self) -> None:
-        app_root = self.tmp_path / "apps" / "web"
-        app_root.mkdir(parents=True)
+        app_root = self.tmp_path / "services" / "web" / "checkout"
+        app_root.mkdir(parents=True, exist_ok=True)
         outside = self.tmp_path / "outside.html"
         outside.write_text("<html>nope</html>", encoding="utf-8")
         link = app_root / "hold.html"
         link.symlink_to(outside)
-        app = App(name="web", public_host="web.test", source="local", path="apps/web")
+        app = App(name="web", public_host="web.test", source="local", path="services/web/checkout")
         spec = AppSpec(ports=_PORTS, scaling=ScalingSpec(60, 60, 30, "hold.html"))
         with pytest.raises(OperatorError, match="escapes"):
             ScalingHoldingPages().install(self.tmp_path, [app], {"web": spec})
 
     def _render_with_holding(self) -> Path:
         self._apply_scaling({**_TIMING, "holdingPage": ".raft/holding.html"})
-        page = self.tmp_path / "apps" / "web" / ".raft" / "holding.html"
-        page.parent.mkdir(parents=True)
+        page = (
+            self.tmp_path / "services" / "web" / "checkout" / ".raft" / "holding.html"
+        )
+        page.parent.mkdir(parents=True, exist_ok=True)
         page.write_text("<html>demo-api</html>", encoding="utf-8")
         self.render_applied(edge=_EDGE)
         return self.tmp_path / "generated/nginx/gate-http/holding/web.html"

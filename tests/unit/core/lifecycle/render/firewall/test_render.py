@@ -31,7 +31,7 @@ class TestFirewallRender(RaftTestCase):
         assert "198.51.100.10/32 1;" in maps
 
     def _prep(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "edge: {http: 80, https: null}\n", encoding="utf-8"
         )
         AppliedInventory.write_applied_app(

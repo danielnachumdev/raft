@@ -8,7 +8,7 @@ Locks live under ``~/.raft/state/locks/`` (``RAFT_DATA_HOME``):
 * ``settings.lock`` — any rewrite of ``settings.yaml`` (full document, notifications,
   github OAuth)
 * ``acl.lock`` — serve API rewrites of ordered firewall before render/reload
-* ``alerts.lock`` — CLI/serve writes to ``state/alerts/rules.yaml``
+* ``alerts.lock`` — CLI/serve writes to ``host/alerts/rules.yaml``
 * ``dashboard.lock`` — CLI writes to ``settings.yaml`` ``dashboard:``
 
 Wait (with timeout) so a later-started deploy still runs after an earlier one

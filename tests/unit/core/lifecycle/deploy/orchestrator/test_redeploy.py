@@ -79,7 +79,7 @@ class TestOrchRedeploy(OrchestratorTestCase):
         from raft.core.lifecycle.deploy.orchestrator.ready import AppReadyWait
 
         orch = self.orchestrator()
-        app = App(name="internal", public_host="", source="local", path="apps/x")
+        app = App(name="internal", public_host="", source="local", path="services/x/checkout")
         assert AppReadyWait(orch)._skip_scaled_host_wait(app) is False
 
     def test_wait_app_ready_label_includes_readiness_path(self) -> None:

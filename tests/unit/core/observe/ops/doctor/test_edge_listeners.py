@@ -102,8 +102,8 @@ class TestDoctorEdgeCoverage(RaftTestCase):
         }
 
     def _write_mail_origin_files(self) -> None:
-        d = self.tmp_path / "certs" / "mail"
-        d.mkdir(parents=True)
+        d = self.tmp_path / "services" / "mail" / "certs"
+        d.mkdir(parents=True, exist_ok=True)
         (d / "origin.pem").write_text("p", encoding="utf-8")
         (d / "origin.key").write_text("k", encoding="utf-8")
         (self.tmp_path / "compose.yaml").write_text("name: x\n", encoding="utf-8")

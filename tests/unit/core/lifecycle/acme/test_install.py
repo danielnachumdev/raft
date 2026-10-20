@@ -13,8 +13,8 @@ from tests.unit.base import RaftTestCase, AppliedInventory
 class TestAcmeGateInstall(RaftTestCase):
     def test_render_and_reload_when_gate_running(self) -> None:
         AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test", tls="acme")
-        d = self.tmp_path / "certs" / "web"
-        d.mkdir(parents=True)
+        d = self.tmp_path / "services" / "web" / "certs"
+        d.mkdir(parents=True, exist_ok=True)
         (d / "acme.pem").write_text("pem\n", encoding="utf-8")
         (d / "acme.key").write_text("key\n", encoding="utf-8")
         stack = load_stack(self.tmp_path)

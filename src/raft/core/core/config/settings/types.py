@@ -1,4 +1,4 @@
-"""Dataclasses for ``~/.raft/settings.yaml``."""
+"""Dataclasses for ``~/.raft/host/settings.yaml``."""
 
 import os
 from dataclasses import dataclass, field
@@ -6,7 +6,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Mapping, Optional, Tuple
 
-from ..paths.constants import LOGS_DIRNAME, SETTINGS_FILENAME
+from ..paths.constants import HOST_LOGS_DIR, SETTINGS_FILENAME
 from .alerts_config import AlertsConfig
 from .dashboard_config import DashboardConfig
 
@@ -35,7 +35,7 @@ DEFAULT_GITHUB_SESSION_TTL_SECONDS = 3600
 
 @dataclass(frozen=True)
 class LoggingConfig:
-    dir: str = LOGS_DIRNAME
+    dir: str = str(HOST_LOGS_DIR)
     file: str = "raft.log"
     level: str = "INFO"
     retention_max_age_days: int = DEFAULT_LOGGING_RETENTION_MAX_AGE_DAYS

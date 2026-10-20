@@ -15,10 +15,10 @@ from tests.unit.core.lifecycle.firewall.helpers import document, rule_dict
 class TestFirewallCLI(RaftTestCase):
     def _cli(self) -> FirewallCLI:
         home = Path(self.tmp_path)
-        (home / "settings.yaml").write_text(
+        (home / "host" / "settings.yaml").write_text(
             "edge: {http: 80, https: null}\n", encoding="utf-8"
         )
-        (home / "state" / "firewall").mkdir(parents=True, exist_ok=True)
+        (home / "host" / "firewall").mkdir(parents=True, exist_ok=True)
         return FirewallCLI(Stack(root=home, apps=()), orchestrator=MagicMock())
 
     def _rules_file(self, name: str = "rules.yaml") -> Path:

@@ -3,7 +3,7 @@
 Optional first-party Compose service that hosts the same ops UI as `raft serve`,
 without a long-lived SSH-held Python process.
 
-Not an App YAML in operator repos. Controlled from `~/.raft/settings.yaml`
+Not an App YAML in operator repos. Controlled from `~/.raft/host/settings.yaml`
 under `dashboard:` and the CLI `raft dashboard …`.
 
 ## Defaults (safe)
@@ -35,7 +35,7 @@ Rules:
 
 - `auth.mode: none` cannot set `publicHost`.
 - `publicHost` requires `auth.mode` `password`, `oauth`, or `external`, and `tls` set.
-- Origin PEMs: `~/.raft/certs/raft-dashboard/origin.{pem,key}`.
+- Origin PEMs: `~/.raft/services/*/certs/raft-dashboard/origin.{pem,key}`.
 - ACME uses the same HTTP-01 path as Apps; synthetic target name
   `raft-dashboard` (set `acme.email`).
 - Firewall service id is `raft-dashboard` when `publicHost` is set.
@@ -77,15 +77,15 @@ dashboard:
       provider: google   # google | oidc
       # oidc also needs: issuerUrl: https://login.example.com/
       redirectPath: /oauth2/callback
-      allowlistFile: secrets/dashboard/oauth-allowlist.txt
+      allowlistFile: host/secrets/dashboard/oauth-allowlist.txt
 ```
 
 Secrets stay under the data home (never in git / PR bodies):
 
 | File | Role |
 |------|------|
-| `~/.raft/secrets/dashboard/oauth.env` | `OAUTH2_PROXY_CLIENT_ID`, `CLIENT_SECRET`, `COOKIE_SECRET`, `REDIRECT_URL` (0600) |
-| `~/.raft/secrets/dashboard/oauth-allowlist.txt` | One allowed identity per line |
+| `~/.raft/services/*/secrets/ or host/host/secrets/dashboard/oauth.env` | `OAUTH2_PROXY_CLIENT_ID`, `CLIENT_SECRET`, `COOKIE_SECRET`, `REDIRECT_URL` (0600) |
+| `~/.raft/services/*/secrets/ or host/host/secrets/dashboard/oauth-allowlist.txt` | One allowed identity per line |
 
 ```bash
 raft dashboard oauth init --provider=google

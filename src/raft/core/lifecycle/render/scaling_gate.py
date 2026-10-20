@@ -81,7 +81,7 @@ class ScalingGate:
     def _tls_certs(app: App, spec: AppSpec) -> str:
         stem = "acme" if spec.tls == "acme" else "origin"
         return (
-            f"    ssl_certificate     /etc/nginx/certs/{app.name}/{stem}.pem;\n"
-            f"    ssl_certificate_key /etc/nginx/certs/{app.name}/{stem}.key;\n"
+            f"    ssl_certificate     /etc/nginx/services/{app.name}/certs/{stem}.pem;\n"
+            f"    ssl_certificate_key /etc/nginx/services/{app.name}/certs/{stem}.key;\n"
             "\n"
         )

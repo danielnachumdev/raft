@@ -37,7 +37,7 @@ class TestDashboardOAuth(RaftTestCase):
     def test_proxy_cfg_google_and_oidc(self) -> None:
         google = DashboardOAuthProxyCfg().render(self._oauth_cfg())
         assert 'provider = "google"' in google
-        assert "/raft/secrets/dashboard/oauth-allowlist.txt" in google
+        assert "/raft/host/secrets/dashboard/oauth-allowlist.txt" in google
         oidc = DashboardOAuthProxyCfg().render(
             self._oauth_cfg(provider="oidc", issuer="https://login.example.com/")
         )
@@ -68,7 +68,7 @@ class TestDashboardOAuth(RaftTestCase):
 
     def test_ops_require_ready_fails_without_secrets(self) -> None:
         home = Path(self.tmp_path)
-        (home / "settings.yaml").write_text("{}\n", encoding="utf-8")
+        (home / "host" / "settings.yaml").write_text("{}\n", encoding="utf-8")
         with pytest.raises(OperatorError, match="oauth.env"):
             DashboardOAuthOps(home).require_ready(self._oauth_cfg())
 

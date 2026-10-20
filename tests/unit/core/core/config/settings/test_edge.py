@@ -35,7 +35,7 @@ EDGE_ERROR_CASES = [
 
 class TestSettingsEdge(RaftTestCase):
     def test_load_edge_section(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             """
 logging:
   level: INFO
@@ -57,7 +57,7 @@ edge:
         assert cfg.edge.published_ports() == [(8080, "tcp"), (25, "tcp")]
 
     def test_edge_rejects_duplicate_stream_port(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             """
 edge:
   streams:
@@ -75,6 +75,6 @@ edge:
 class TestSettingsEdgeErrors(RaftTestCase):
     def test_edge_validation_errors(self) -> None:
         for body, match in EDGE_ERROR_CASES:
-            (self.tmp_path / "settings.yaml").write_text(body, encoding="utf-8")
+            (self.tmp_path / "host" / "settings.yaml").write_text(body, encoding="utf-8")
             with pytest.raises(RuntimeError, match=match):
                 load_config(self.tmp_path)

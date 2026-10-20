@@ -43,7 +43,7 @@ class TestDoctorHealth(DoctorTestCase):
         assert results[("raft-router", "running")].status == "fail"
 
     def test_enabled_dashboard_probed_like_edge(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "dashboard: {enabled: true}\n", encoding="utf-8"
         )
         docker = self.mock_docker(

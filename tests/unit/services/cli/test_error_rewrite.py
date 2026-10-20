@@ -138,7 +138,7 @@ class TestCliErrorRewrite(CliTestCase):
             1,
             ["docker", "compose", "exec", "-T", "raft-gate", "nginx", "-t"],
             stderr=(
-                'cannot load certificate "/etc/nginx/certs/web/origin.pem": '
+                'cannot load certificate "/etc/nginx/services/web/certs/origin.pem": '
                 "BIO_new_file() failed (SSL: error:80000002:system library::No such file)\n"
             ),
         )
@@ -191,7 +191,7 @@ class TestCliErrorRewrite(CliTestCase):
         err = subprocess.CalledProcessError(
             1,
             ["docker", "compose", "exec", "-T", "raft-gate", "nginx", "-t"],
-            stderr='cannot load certificate "/etc/nginx/certs/web/origin.pem"\n',
+            stderr='cannot load certificate "/etc/nginx/services/web/certs/origin.pem"\n',
         )
         self.orch.stop.side_effect = err
         with patch("raft.services.cli.exit_mapper.load_stack", side_effect=RuntimeError("no home")):
@@ -205,7 +205,7 @@ class TestCliErrorRewrite(CliTestCase):
         err = subprocess.CalledProcessError(
             1,
             ["docker", "compose", "exec", "-T", "raft-gate", "nginx", "-t"],
-            stderr='cannot load certificate "/etc/nginx/certs/web/origin.pem"\n',
+            stderr='cannot load certificate "/etc/nginx/services/web/certs/origin.pem"\n',
         )
         self.orch.stop.side_effect = err
         with patch("raft.services.cli.exit_mapper.load_stack", return_value=self.stack):
@@ -243,5 +243,5 @@ class TestCliErrorRewrite(CliTestCase):
             "gate",
             "nginx",
             "-t",
-            'cannot load certificate "/etc/nginx/certs/web/origin.pem"',
+            'cannot load certificate "/etc/nginx/services/web/certs/origin.pem"',
         ]

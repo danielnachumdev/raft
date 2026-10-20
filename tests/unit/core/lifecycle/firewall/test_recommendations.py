@@ -14,7 +14,7 @@ from tests.unit.core.lifecycle.firewall.helpers import document, rule_dict
 
 class TestFirewallRecommendations(RaftTestCase):
     def _prep(self, edge: str = "edge: {http: 80, https: 443}\n") -> None:
-        (self.tmp_path / "settings.yaml").write_text(edge, encoding="utf-8")
+        (self.tmp_path / "host" / "settings.yaml").write_text(edge, encoding="utf-8")
 
     def test_baseline_and_dismiss(self) -> None:
         self._prep()

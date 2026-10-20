@@ -51,7 +51,7 @@ class DomainErrors:
         return OperatorError(
             f"could not stop raft serve on 127.0.0.1:{port} ({who}): {detail}.\n"
             f"Fix: raft serve --stop --port={port}\n"
-            f"     # or stop the process holding ~/.raft/state/serve/port-{port}.lock"
+            f"     # or stop the process holding ~/.raft/host/serve/port-{port}.lock"
         )
 
     @staticmethod

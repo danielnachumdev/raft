@@ -66,7 +66,7 @@ class AppDocument:
             raise OperatorError(
                 f"missing applied App manifest: {path}\n"
                 f"Fix: re-apply the app (`raft apply …`) or restore the file under "
-                f"~/.raft/state/apps/"
+                f"~/.raft/services/*/"
             )
         return cls.parse(cls._load_yaml_mapping(path), path=path, expect_name=expect_name)
 

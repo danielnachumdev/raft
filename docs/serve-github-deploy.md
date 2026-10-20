@@ -31,7 +31,7 @@ This is **not** a public multi-user console and **not** a full App lifecycle UI.
    (no silent auto-login). Expired rows stay visible with a badge until deleted.
 4. If OAuth is **not configured**, `/deploy` shows the same ordered checklist
    and paste-in controls for `clientId` / `clientSecret`. Saving writes
-   `github:` into `~/.raft/settings.yaml` and reloads serve’s in-process config
+   `github:` into `~/.raft/host/settings.yaml` and reloads serve’s in-process config
    (no restart).
 5. **Other OAuth failures** redirect to `/deploy?oauth_error=…` with a clear
    error and retry control (not a bare API error page).
@@ -172,8 +172,8 @@ Bad manifests are **rejected at deploy/apply** with a clear error (job step /
 `OperatorError` Fix CTA). They must not cascade-fail the rest of the stack:
 
 - `AppRegistry.load` / `Stack.load_apps` **skip** unreadable or invalid
-  `state/apps/*.yaml` files and record them as `registry_issues`.
+  `services/<name>/app.yaml` files and record them as `registry_issues`.
 - `GET /api/status` includes `registry_issues: [{file, error}, …]`.
 - Stack status shows an **Invalid App manifests** panel when any issues exist.
 
-Fix or remove the bad file under `~/.raft/state/apps/`, then refresh.
+Fix or remove the bad file under `~/.raft/services/*/`, then refresh.

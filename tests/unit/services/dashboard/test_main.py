@@ -11,7 +11,7 @@ from tests.unit.base import RaftTestCase
 class TestDashboardMain(RaftTestCase):
     def test_main_runs_process_without_bootstrap(self) -> None:
         home = Path(self.tmp_path)
-        (home / "settings.yaml").write_text("{}\n", encoding="utf-8")
+        (home / "host" / "settings.yaml").write_text("{}\n", encoding="utf-8")
         with patch("raft.services.dashboard.__main__.RaftHome") as home_cls:
             with patch("raft.services.dashboard.__main__.Stack.load_apps") as load:
                 with patch(

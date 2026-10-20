@@ -1,4 +1,4 @@
-"""Fire component: ``raft events`` (ops timeline over ``state/events/ops.jsonl``)."""
+"""Fire component: ``raft events`` (ops timeline over ``host/events/ops.jsonl``)."""
 
 import json as json_lib
 from typing import Optional

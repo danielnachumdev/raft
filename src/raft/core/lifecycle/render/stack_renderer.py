@@ -88,7 +88,7 @@ class StackRenderer:
                     f"missing AppSpec for {app.name!r} "
                     f"(corrupt or incomplete registry entry).\n"
                     f"Fix: re-apply the app (`raft apply …`) or repair "
-                    f"~/.raft/state/apps/{app.name}.yaml; then raft render"
+                    f"~/.raft/services/*/{app.name}.yaml; then raft render"
                 )
             self._validate_app_spec(app, resolved[app.name])
 

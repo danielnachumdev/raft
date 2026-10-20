@@ -22,8 +22,8 @@ NOW = datetime(2024, 1, 1, tzinfo=timezone.utc)
 class TestFinalGapsC(RaftTestCase):
     def _home(self) -> Path:
         home = Path(self.tmp_path)
-        (home / "state" / "alerts").mkdir(parents=True)
-        (home / "settings.yaml").write_text(
+        (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
+        (home / "host" / "settings.yaml").write_text(
             "alerts: {enabled: true, intervalSeconds: 30}\n"
             "notifications: {enabled: false, channels: []}\n",
             encoding="utf-8",

@@ -10,6 +10,7 @@ from typing import Optional
 
 import yaml
 
+from raft.core.core.config.paths.service_paths import ServicePaths
 from raft.core.lifecycle.apply.service import AppApply
 from raft.core.platform.auth.manager import GitAuthManager
 from raft.core.core.errors.cta import OperatorError
@@ -111,9 +112,10 @@ class GithubDeployRunner:
         self, job: DeployJob, tree: Path, data: dict, app_name: str
     ) -> None:
         self._step(job, "Stage local tree", "running")
-        dest = self._stack.root / "apps" / app_name
+        dest = ServicePaths(self._stack.root, app_name).checkout()
         if dest.exists():
             shutil.rmtree(dest)
+        dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(tree, dest)
         self._step(job, "Stage local tree", "ok", str(dest))
         self._step(job, "Apply + deploy", "running")
@@ -168,7 +170,7 @@ class GithubDeployRunner:
     def _fill_next_steps(self, job: DeployJob, data: dict) -> None:
         if not job.app_name:
             return
-        path = self._stack.root / "state" / "apps" / f"{job.app_name}.yaml"
+        path = ServicePaths(self._stack.root, job.app_name).app_yaml()
         data = self._registry_or(data, path)
         app, spec = AppDocument.parse(data, path=path if path.is_file() else Path("."))
         steps = self._next.build(
@@ -199,7 +201,7 @@ class GithubDeployRunner:
         if not isinstance(spec, dict):
             raise OperatorError("manifest spec must be a mapping", has_fix=False)
         spec["source"] = "local"
-        spec["path"] = f"apps/{app_name}"
+        spec["path"] = f"services/{app_name}/checkout"
         path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
 
     @staticmethod

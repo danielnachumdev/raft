@@ -11,7 +11,7 @@ from .firewall_output import FirewallCliOutput
 
 
 class FirewallCLI:
-    """Manage ordered gate firewall rules under ``state/firewall/rules.yaml``.
+    """Manage ordered gate firewall rules under ``host/firewall/rules.yaml``.
 
     Same validation and ``acl.lock`` as Settings → Firewall Save: persist →
     render → gate nginx **reload** (never recreate for rule-only edits).

@@ -8,6 +8,7 @@ from .certs import CertChecks
 from .edge import EdgeChecks
 from .env_file import EnvFileChecks
 from .host import HostChecks
+from .layout import LayoutChecks
 from .ports_summary import PortSummaryChecks
 from .public_host import PublicHostChecks
 from .runtime import RuntimeChecks
@@ -15,6 +16,7 @@ from .upstreams import UpstreamChecks
 
 # Composition order for Doctor.run — add suites here.
 CHECK_SUITES: tuple[CheckSuite, ...] = (
+    LayoutChecks(),
     HostChecks(),
     AppChecks(),
     EnvFileChecks(),
@@ -34,6 +36,7 @@ __all__ = [
     "EdgeChecks",
     "EnvFileChecks",
     "HostChecks",
+    "LayoutChecks",
     "PortSummaryChecks",
     "PublicHostChecks",
     "RuntimeChecks",

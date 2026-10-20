@@ -1,10 +1,10 @@
 # Serve notifications
 
-Outbound alert channels for this host. Operators manage them under **Settings → Notifications** in `raft serve`, or via **`raft notifications …`** (same shared core service: `NotificationsSettingsWriter` / `NotificationsTester`). Durable config lives in `~/.raft/settings.yaml` under `notifications:` (not under `state/`).
+Outbound alert channels for this host. Operators manage them under **Settings → Notifications** in `raft serve`, or via **`raft notifications …`** (same shared core service: `NotificationsSettingsWriter` / `NotificationsTester`). Durable config lives in `~/.raft/host/settings.yaml` under `notifications:` (not under `state/`).
 
 ## Alert rules
 
-Rules that decide *when* to notify live separately under **Settings → Alerts** / `raft alerts` (`state/alerts/rules.yaml`). They emit into these channels (optional per-rule `channelIds`; empty means all enabled channels). See [`serve-alerts.md`](serve-alerts.md).
+Rules that decide *when* to notify live separately under **Settings → Alerts** / `raft alerts` (`host/alerts/rules.yaml`). They emit into these channels (optional per-rule `channelIds`; empty means all enabled channels). See [`serve-alerts.md`](serve-alerts.md).
 
 ## Shipped strategies
 

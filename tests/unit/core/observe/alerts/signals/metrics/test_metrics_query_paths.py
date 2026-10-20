@@ -16,7 +16,7 @@ class TestMetricsQueryPaths(RaftTestCase):
     def test_http_wildcard_and_bad_ts(self) -> None:
         home = Path(self.tmp_path)
         path = MetricsPaths(home).http()
-        path.parent.mkdir(parents=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
             json.dumps(
                 {
@@ -38,7 +38,7 @@ class TestMetricsQueryPaths(RaftTestCase):
     def test_resources_wildcard_missing_host(self) -> None:
         home = Path(self.tmp_path)
         path = MetricsPaths(home).resources()
-        path.parent.mkdir(parents=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
             json.dumps({"ts": NOW.isoformat(), "host": {"memory": {"used_percent": 1}}}) + "\n",
             encoding="utf-8",

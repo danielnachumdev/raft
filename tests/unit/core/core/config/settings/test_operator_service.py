@@ -30,7 +30,7 @@ class TestOperatorSettingsService(RaftTestCase):
         assert out["document"]["github"]["clientSecret"] == "***"
         assert out["document"]["acme"]["email"] == "ops@example.com"
         disk = yaml.safe_load(
-            (self.tmp_path / "settings.yaml").read_text(encoding="utf-8")
+            (self.tmp_path / "host" / "settings.yaml").read_text(encoding="utf-8")
         )
         assert disk["github"]["clientSecret"] == "super-secret"
 

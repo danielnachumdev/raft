@@ -49,7 +49,7 @@ class TestHttpRequestsRead(RaftTestCase):
         AppliedInventory.write_applied_app(
             self.tmp_path, "demo-api", public_host="demo-api.test"
         )
-        app = App(name="demo-api", public_host="", source="local", path="apps/demo-api")
+        app = App(name="demo-api", public_host="", source="local", path="services/demo-api/checkout")
         stack = Stack(root=self.tmp_path, apps=(app,))
         target = HttpRequestsEligibility(stack).resolve("demo-api")
         assert target.eligible is False

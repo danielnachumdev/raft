@@ -2,7 +2,7 @@
 # Apply: raft apply --file examples/https-acme-site/.raft/app.yaml
 #
 # Before deploy: DNS A/AAAA for publicHost (+ extraHosts) → VPS; TCP 80+443;
-# set acme.email in ~/.raft/settings.yaml (see examples/settings.yaml).
+# set acme.email in ~/.raft/host/settings.yaml (see examples/settings.yaml).
 # Do NOT paste PEMs — live material is certs/<name>/acme.{pem,key}.
 # For Cloudflare Origin PEMs use examples/https-origin-site/ (tls: origin).
 

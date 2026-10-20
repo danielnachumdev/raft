@@ -28,7 +28,7 @@ class MetricsSettingsParser(SettingsSectionParser[MetricsConfig]):
         if not isinstance(raw, dict):
             raise OperatorError(
                 "settings.yaml metrics must be a mapping.\n"
-                "Fix: set metrics: {intervalSeconds: 60, ...} in ~/.raft/settings.yaml"
+                "Fix: set metrics: {intervalSeconds: 60, ...} in ~/.raft/host/settings.yaml"
             )
         return MetricsConfig(
             **self._timing_fields(raw),

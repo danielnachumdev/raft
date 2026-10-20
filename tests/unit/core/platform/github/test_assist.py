@@ -18,7 +18,7 @@ from tests.unit.core.platform.github import fixtures as github_fx
 
 class TestGithubAssistService(RaftTestCase):
     def _svc(self) -> GithubAssistService:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "edge: {http: 80, https: null}\n"
             "github: {clientId: id, clientSecret: sec}\n",
             encoding="utf-8",
@@ -82,7 +82,7 @@ class TestGithubAssistService(RaftTestCase):
         assert out == {"ok": True, "account": {"login": "u"}}
 
     def test_login_url_requires_oauth(self) -> None:
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "edge: {http: 80, https: null}\n", encoding="utf-8"
         )
         svc = GithubAssistService(

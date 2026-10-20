@@ -30,7 +30,7 @@ class TestOrchUpScale(OrchestratorTestCase, ControllerTestCase):
 
     def test_start_with_deferred_includes_enabled_dashboard(self) -> None:
         """Selective ``up --no-deps`` must still start raft-dashboard when enabled."""
-        (self.tmp_path / "settings.yaml").write_text(
+        (self.tmp_path / "host" / "settings.yaml").write_text(
             "dashboard: {enabled: true}\n", encoding="utf-8"
         )
         AppliedInventory.write_applied_app(self.tmp_path, "app", extra=self.scaling_extra())
