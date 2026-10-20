@@ -11,10 +11,16 @@ export function DashboardToolbar(props: {
   clampMessage: string | null;
   onRange: (next: TrendsRangeState) => void;
   onAdd: () => void;
+  /** Overview embeds show the named-dashboard picker (default true). */
+  showPicker?: boolean;
+  /** View-mode embeds hide + Add graph (default true). */
+  showAdd?: boolean;
 }) {
+  const showPicker = props.showPicker !== false;
+  const showAdd = props.showAdd !== false;
   return (
     <div className="trends-toolbar" role="toolbar" aria-label="Dashboard controls">
-      <DashboardPicker api={props.api} />
+      {showPicker ? <DashboardPicker api={props.api} /> : null}
       <div className="trends-toolbar-range">
         <TrendsRangeControls
           range={props.api.dashboard.range}
@@ -24,14 +30,16 @@ export function DashboardToolbar(props: {
           onChange={props.onRange}
         />
       </div>
-      <button
-        type="button"
-        className="action-btn btn-primary trends-add-graph"
-        onClick={props.onAdd}
-        id="trends-add-graph"
-      >
-        + Add graph
-      </button>
+      {showAdd ? (
+        <button
+          type="button"
+          className="action-btn btn-primary trends-add-graph"
+          onClick={props.onAdd}
+          id="trends-add-graph"
+        >
+          + Add graph
+        </button>
+      ) : null}
     </div>
   );
 }

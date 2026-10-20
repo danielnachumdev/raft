@@ -1,3 +1,4 @@
+import { gridCellClass } from "../../../dashboard-kit/model/layout.ts";
 import type { TrendsGraphConfig } from "../model/index.ts";
 import { MenuButton, type MenuItem } from "./MenuButton";
 import { TrendsGraph } from "./TrendsGraph";
@@ -26,7 +27,7 @@ export function GraphCell(props: {
   const { panel, drag, actions } = props;
   const classes = [
     "trends-grid-cell",
-    panel.size === "full" ? "is-full" : "is-half",
+    gridCellClass(panel.size),
     drag.dragId === panel.id ? "is-dragging" : "",
     drag.overId === panel.id ? "is-drop-target" : "",
   ].filter(Boolean);

@@ -11,7 +11,8 @@ export function ExpandedGraph(props: {
   data: DashboardMetrics;
   palette: Map<string, number>;
   onNavigate: (id: string) => void;
-  onEdit: (id: string) => void;
+  /** Omitted in view-mode embeds (#249). */
+  onEdit?: (id: string) => void;
   onClose: () => void;
 }) {
   const index = props.panels.findIndex((p) => p.id === props.id);
@@ -50,13 +51,15 @@ export function ExpandedGraph(props: {
           >
             Next →
           </button>
-          <button
-            type="button"
-            className="action-btn"
-            onClick={() => panel && props.onEdit(panel.id)}
-          >
-            Edit…
-          </button>
+          {props.onEdit ? (
+            <button
+              type="button"
+              className="action-btn"
+              onClick={() => panel && props.onEdit?.(panel.id)}
+            >
+              Edit…
+            </button>
+          ) : null}
         </div>
       }
     >
