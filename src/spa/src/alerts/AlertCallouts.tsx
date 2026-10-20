@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { EmptyState } from "../chrome/StateViews";
 import type { AlertStatusPayload } from "./alertsApi";
 
 /** Stale / document-error / no-channel callouts above the alert panels. */
@@ -28,14 +29,9 @@ export function AlertCallouts(props: { status: AlertStatusPayload | null; hasCha
 
 export function RulesEmpty() {
   return (
-    <div className="empty-state" id="alerts-empty">
-      <p>
-        <strong>No alert rules yet.</strong>
-      </p>
-      <p className="muted">
-        Use <em>Add rule</em>, import an exported file, or run <code>raft alerts apply --file rules.yaml</code> on the
-        host.
-      </p>
-    </div>
+    <EmptyState id="alerts-empty" title="No alert rules yet.">
+      Use <em>Add rule</em>, import an exported file, or run <code>raft alerts apply --file rules.yaml</code> on the
+      host.
+    </EmptyState>
   );
 }

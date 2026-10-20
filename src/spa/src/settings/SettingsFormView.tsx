@@ -34,13 +34,6 @@ export function SettingsFormView(props: {
 
   return (
     <>
-      <nav className="settings-toc" aria-label="Settings sections">
-        {TOC.map((item) => (
-          <a key={item.href} href={item.href}>
-            {item.label}
-          </a>
-        ))}
-      </nav>
       <LoggingSection
         value={d.logging}
         meta={meta("logging")}
@@ -111,18 +104,3 @@ export function SettingsFormView(props: {
     </>
   );
 }
-
-const TOC = [
-  { href: "#settings-updates", label: "Updates" },
-  { href: "#settings-logging", label: "Logging" },
-  { href: "#settings-edge", label: "Edge" },
-  { href: "#settings-healing", label: "Healing" },
-  { href: "#settings-metrics", label: "Metrics" },
-  { href: "#settings-service-logs", label: "Service logs" },
-  { href: "#settings-acme", label: "ACME" },
-  { href: "#settings-github", label: "GitHub" },
-  { href: "#settings-notifications", label: "Notifications" },
-  { href: "#settings-alerts", label: "Alerts" },
-  { href: "#settings-dashboard", label: "Dashboard" },
-  { href: "#settings-storage", label: "Storage" },
-];

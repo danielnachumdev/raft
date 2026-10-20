@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { EmptyState, ErrorState, LoadingState } from "../chrome/StateViews";
 import { LiveIndicator } from "../chrome/LiveIndicator";
 import type { StatusPayload } from "../shared/api/index.ts";
 import { peekStatus, refreshStatus } from "../shared/dashboardCache";
@@ -89,15 +90,10 @@ export function EventsPage() {
         </div>
         <EventsFilters query={query} services={services.names} onChange={applyQuery} />
         {error ? (
-          <p className="callout callout-bad error" id="events-error" role="alert">
-            {error}
-          </p>
+          <ErrorState message={error} id="events-error" onRetry={() => void load()} />
         ) : null}
         {busy && !payload ? (
-          <div className="loading" role="status">
-            <span className="spinner" aria-hidden="true" />
-            <p>Loading events…</p>
-          </div>
+          <LoadingState label="Loading events…" />
         ) : null}
         {payload && events.length === 0 ? <EventsEmpty filtered={query.kind !== "" || query.service !== ""} /> : null}
         {events.length > 0 ? (
@@ -110,16 +106,11 @@ export function EventsPage() {
 
 function EventsEmpty(props: { filtered: boolean }) {
   return (
-    <div className="empty-state" id="events-empty">
-      <p>
-        <strong>No events in this window.</strong>
-      </p>
-      <p className="muted">
-        {props.filtered
-          ? "Try a wider window or clear the filters."
-          : "Deploys, scaling, service actions, firewall saves, and alerts appear here as they happen."}
-      </p>
-    </div>
+    <EmptyState id="events-empty" title="No events in this window.">
+      {props.filtered
+        ? "Try a wider window or clear the filters."
+        : "Deploys, scaling, service actions, firewall saves, and alerts appear here as they happen."}
+    </EmptyState>
   );
 }
 

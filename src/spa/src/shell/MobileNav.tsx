@@ -11,7 +11,15 @@ import {
 import { createPortal } from "react-dom";
 import { NavLink, useLocation } from "react-router-dom";
 import { LogoutButton } from "./LogoutButton";
-import { matchesNavExtra, TOPBAR_NAV } from "./navItems";
+import {
+  ADD_SERVICE_NAV,
+  groupNav,
+  isNavActive,
+  NAV_GROUP_LABELS,
+  SETTINGS_NAV,
+  TOPBAR_NAV,
+  type NavItem,
+} from "./navItems";
 import "./MobileNav.css";
 
 /** Hamburger + panel with the same destinations as the desktop top-bar nav. */
@@ -86,22 +94,33 @@ export function MobileNav() {
                 onKeyDown={trapTab}
               >
                 <nav className="mobile-nav-list" aria-label="Primary">
-                  {TOPBAR_NAV.map((item) => (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      id={`mobile-${item.id}`}
-                      end
-                      className={({ isActive }) =>
-                        isActive || matchesNavExtra(pathname, item)
-                          ? "mobile-nav-link is-active"
-                          : "mobile-nav-link"
-                      }
-                      onClick={close}
-                    >
-                      {item.label}
-                    </NavLink>
+                  {groupNav(TOPBAR_NAV).map((section) => (
+                    <div className="mobile-nav-group" key={section.group}>
+                      <p className="mobile-nav-group-label">
+                        {NAV_GROUP_LABELS[section.group]}
+                      </p>
+                      {section.items.map((item) => (
+                        <MobileLink
+                          key={item.to}
+                          item={item}
+                          pathname={pathname}
+                          onClick={close}
+                        />
+                      ))}
+                    </div>
                   ))}
+                  <div className="mobile-nav-group">
+                    <MobileLink
+                      item={ADD_SERVICE_NAV}
+                      pathname={pathname}
+                      onClick={close}
+                    />
+                    <MobileLink
+                      item={SETTINGS_NAV}
+                      pathname={pathname}
+                      onClick={close}
+                    />
+                  </div>
                 </nav>
                 <div className="mobile-nav-footer">
                   <LogoutButton
@@ -115,6 +134,29 @@ export function MobileNav() {
           )
         : null}
     </div>
+  );
+}
+
+function MobileLink(props: {
+  item: NavItem;
+  pathname: string;
+  onClick: () => void;
+}) {
+  const { item } = props;
+  return (
+    <NavLink
+      to={item.to}
+      id={`mobile-${item.id}`}
+      end
+      className={() =>
+        isNavActive(props.pathname, item)
+          ? "mobile-nav-link is-active"
+          : "mobile-nav-link"
+      }
+      onClick={props.onClick}
+    >
+      {item.label}
+    </NavLink>
   );
 }
 

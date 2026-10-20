@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { ConfirmPopup } from "../chrome/ConfirmPopup";
+import { ErrorState, LoadingState } from "../chrome/StateViews";
 import { PageHeader } from "../shell/PageHeader";
 import { toast } from "../chrome/toast";
 import { ChannelFormModal, type ChannelFormSubmit } from "./ChannelFormModal";
@@ -64,13 +66,14 @@ export function NotificationsSettingsPage() {
         subtitle="Where raft sends alerts for this host. Secrets stay redacted."
         meta={
           !busy && !error ? (
-            <span
-              className={globalEnabled ? "chip chip-ok" : "chip"}
+            <Link
+              className={globalEnabled ? "chip chip-ok" : "chip chip-warn"}
               id="notifications-global"
               title="Global switch in settings.yaml"
+              to="/settings#settings-notifications"
             >
               Global notifications {globalEnabled ? "on" : "off"}
-            </span>
+            </Link>
           ) : undefined
         }
         actions={
@@ -92,16 +95,15 @@ export function NotificationsSettingsPage() {
       />
 
       {busy ? (
-        <div className="loading" role="status" aria-busy="true">
-          <span className="spinner" aria-hidden="true" />
-          <p>Loading notifications…</p>
-        </div>
+        <LoadingState label="Loading notifications…" />
       ) : null}
 
       {error ? (
-        <p className="error" role="alert" id="notifications-error">
-          {error}
-        </p>
+        <ErrorState
+          message={error}
+          id="notifications-error"
+          onRetry={() => void load()}
+        />
       ) : null}
 
       {!busy && !error ? (

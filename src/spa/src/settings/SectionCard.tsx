@@ -17,7 +17,7 @@ export function SectionCard(props: {
   const canToggle = kind !== "always" && props.onEnabledChange;
   return (
     <section
-      className={`settings-section${enabled ? "" : " settings-section-disabled"}`}
+      className={`panel settings-section${enabled ? "" : " settings-section-disabled"}`}
       id={props.id}
       aria-labelledby={`${props.id}-title`}
       data-enabled={enabled ? "true" : "false"}
@@ -27,7 +27,13 @@ export function SectionCard(props: {
         <div className="settings-section-title-row">
           <h2 id={`${props.id}-title`}>{props.title}</h2>
           {canToggle ? (
-            <label className="check settings-section-enable">
+            <label
+              className={
+                enabled
+                  ? "chip chip-ok settings-section-enable"
+                  : "chip settings-section-enable"
+              }
+            >
               <input
                 type="checkbox"
                 id={`${props.id}-enabled`}
@@ -36,9 +42,7 @@ export function SectionCard(props: {
               />
               {enabled ? "Enabled" : "Disabled"}
             </label>
-          ) : (
-            <span className="settings-section-badge muted">Always on</span>
-          )}
+          ) : null}
         </div>
         {props.hint ? (
           <p className="muted settings-section-hint">{props.hint}</p>

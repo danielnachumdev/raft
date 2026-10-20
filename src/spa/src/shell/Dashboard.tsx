@@ -6,6 +6,7 @@ import {
 } from "../shared/api/index.ts";
 import { peekStatus, refreshStatus } from "../shared/dashboardCache";
 import { LiveIndicator } from "../chrome/LiveIndicator";
+import { EmptyState, ErrorState, LoadingState } from "../chrome/StateViews";
 import { TrendsDashboard } from "../trends/dashboard/ui/TrendsDashboard";
 import { DashboardSection } from "./DashboardSection";
 import { PageHeader } from "./PageHeader";
@@ -117,24 +118,20 @@ export function Dashboard() {
               ) : null}
               Refresh
             </button>
-            <Link className="btn btn-primary" to="/add-service" id="add-service">
-              Add service
-            </Link>
           </>
         }
       />
 
       {busy && data === null ? (
-        <div className="loading" role="status" aria-busy="true" id="status-loading">
-          <span className="spinner" aria-hidden="true" />
-          <p>Loading status…</p>
-        </div>
+        <LoadingState label="Loading status…" id="status-loading" />
       ) : null}
 
       {error ? (
-        <p className="callout callout-bad error" role="alert" id="status-error">
-          {error}
-        </p>
+        <ErrorState
+          message={error}
+          id="status-error"
+          onRetry={() => void load()}
+        />
       ) : null}
 
       <RegistryIssues issues={data?.registry_issues ?? []} />
@@ -168,17 +165,17 @@ export function Dashboard() {
 
 function AppsEmpty() {
   return (
-    <div className="empty-state" id="apps-empty">
-      <p>
-        <strong>No apps applied yet.</strong>
-      </p>
-      <p className="muted">
-        Deploy one from GitHub here, or from a service repo run{" "}
-        <code>raft apply --file .raft/app.yaml</code>.
-      </p>
-      <Link className="btn btn-primary" to="/add-service">
-        Add your first service
-      </Link>
-    </div>
+    <EmptyState
+      id="apps-empty"
+      title="No apps applied yet."
+      action={
+        <Link className="btn btn-primary" to="/add-service">
+          Add your first service
+        </Link>
+      }
+    >
+      Deploy one from GitHub here, or from a service repo run{" "}
+      <code>raft apply --file .raft/app.yaml</code>.
+    </EmptyState>
   );
 }

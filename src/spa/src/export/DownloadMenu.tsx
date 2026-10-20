@@ -16,7 +16,7 @@ export function DownloadMenu(props: {
       {items.map((item) => (
         <a
           key={item.id}
-          className="btn download-link"
+          className="btn btn-sm download-link"
           href={item.href}
           download
           aria-disabled={props.disabled ? true : undefined}

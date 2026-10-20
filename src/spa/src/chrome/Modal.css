@@ -80,8 +80,17 @@
 }
 
 .modal-footer {
-  padding: 0 1.1rem 1.1rem;
+  padding: 0.85rem 1.1rem 1rem;
+  border-top: 1px solid var(--line);
   flex-shrink: 0;
+}
+
+/* Footer button row: Cancel first, confirm (primary / danger) last. */
+.modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
 }
 
 @media (max-width: 519px) {
@@ -95,5 +104,13 @@
   .modal-footer {
     padding-left: 0.9rem;
     padding-right: 0.9rem;
+  }
+
+  .modal-actions {
+    justify-content: stretch;
+  }
+
+  .modal-actions .btn {
+    flex: 1 1 auto;
   }
 }

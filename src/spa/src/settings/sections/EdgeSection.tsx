@@ -99,7 +99,7 @@ function StreamsEditor(props: {
         <h3>Streams</h3>
         <button
           type="button"
-          className="btn-secondary"
+          className="btn btn-sm"
           id="edge-stream-add"
           onClick={() =>
             props.onChange([
@@ -144,7 +144,7 @@ function StreamsEditor(props: {
             <span className="settings-invisible">Remove</span>
             <button
               type="button"
-              className="btn-secondary"
+              className="btn btn-sm btn-danger"
               onClick={() =>
                 props.onChange(props.streams.filter((_, i) => i !== index))
               }

@@ -1,21 +1,7 @@
-.alert-rule-list,
 .alert-instance-list {
   list-style: none;
   margin: 0;
   padding: 0;
-}
-
-.alert-rule-list {
-  border-top: 1px solid var(--line);
-}
-
-.alert-rule-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.5rem 1.25rem;
-  align-items: center;
-  padding: 0.8rem 0.25rem;
-  border-bottom: 1px solid var(--line);
 }
 
 .alert-rule-row.is-disabled .alert-rule-main {
@@ -74,10 +60,6 @@
   font-size: 0.8rem;
 }
 
-.alert-rule-actions {
-  flex-wrap: nowrap;
-}
-
 .alerts-last-eval {
   font-size: 0.85rem;
 }
@@ -95,13 +77,6 @@
   gap: 0.35rem 0.6rem;
   padding: 0.5rem 0;
   border-bottom: 1px solid var(--line);
-}
-
-.alerts-error {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
 }
 
 .alert-form .field {
@@ -148,7 +123,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .alert-rule-actions {
+  .alert-rule-row .item-row-actions {
     flex-wrap: wrap;
   }
 }
