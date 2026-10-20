@@ -1,5 +1,6 @@
 """Re-install the raft CLI from GitHub (`raft update`)."""
 
+import logging
 import os
 from typing import Optional, TextIO
 
@@ -15,6 +16,8 @@ from .host_docker import HostDockerUpdate
 from .identity import InstallIdentity
 from .install_cmd import DEFAULT_INSTALL_URL, InstallCmd
 from .outcome import UpdateOutcome
+
+logger = logging.getLogger(__name__)
 
 
 class SelfUpdate:
@@ -40,7 +43,26 @@ class SelfUpdate:
     ) -> UpdateOutcome:
         self._host_gate.ensure()
         url = os.environ.get("RAFT_INSTALL_URL", DEFAULT_INSTALL_URL)
-        return self._run_with_progress(url, ref, progress_stream, announce)
+        via = "host-docker" if self._host_gate.uses_host_docker() else "in-process"
+        logger.info(
+            "self-update start via=%s ref=%s url=%s",
+            via,
+            (ref or "").strip() or "(latest)",
+            url,
+        )
+        try:
+            outcome = self._run_with_progress(url, ref, progress_stream, announce)
+        except Exception:
+            logger.exception("self-update failed via=%s", via)
+            raise
+        logger.info(
+            "self-update done via=%s already_current=%s before=%s after=%s",
+            via,
+            outcome.already_current,
+            outcome.before_line,
+            outcome.after_line,
+        )
+        return outcome
 
     def _run_with_progress(
         self,

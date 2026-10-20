@@ -47,4 +47,11 @@ describe("updateFailureMessage", () => {
       "Update failed: outbound HTTPS blocked",
     );
   });
+
+  it("explains browser disconnect / proxy timeout", () => {
+    const msg = updateFailureMessage("Failed to fetch");
+    assert.match(msg, /lost the connection/i);
+    assert.match(msg, /raft update/);
+    assert.match(msg, /raft\.log/);
+  });
 });

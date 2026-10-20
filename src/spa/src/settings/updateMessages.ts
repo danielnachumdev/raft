@@ -26,5 +26,13 @@ export function updateSuccessMessage(result: {
 }
 
 export function updateFailureMessage(detail: string): string {
-  return `Update failed: ${detail}`;
+  const trimmed = detail.trim();
+  if (/failed to fetch|networkerror|load failed/i.test(trimmed)) {
+    return (
+      "Update failed: the browser lost the connection before install finished " +
+      "(often a proxy timeout). Retry Settings → Update, or run `raft update` " +
+      "on the host and check host/logs/raft.log."
+    );
+  }
+  return `Update failed: ${trimmed || "unknown error"}`;
 }

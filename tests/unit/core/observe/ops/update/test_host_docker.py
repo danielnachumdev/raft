@@ -42,6 +42,15 @@ class TestHostDockerUpdate:
         assert "RAFT_REF=" not in script
         assert script == InstallCmd.pipeline_script(None)
 
+    def test_argv_prefers_raft_host_uid_gid_env(self, monkeypatch) -> None:
+        monkeypatch.setenv("RAFT_HOST_UID", "1001")
+        monkeypatch.setenv("RAFT_HOST_GID", "1002")
+        monkeypatch.setenv("RAFT_HOST_HOME", "/home/demo")
+        monkeypatch.delenv("RAFT_HOST_UPDATE_IMAGE", raising=False)
+        upd = HostDockerUpdate(MagicMock())
+        args = upd.argv("https://example.test/install.sh", None)
+        assert "1001:1002" in args
+
     def test_run_wraps_shell_failure(self) -> None:
         shell = MagicMock()
         shell.run.side_effect = RuntimeError("install.sh: git is required")

@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 from raft.core.lifecycle.acme.paths import AcmePaths
 from raft.core.lifecycle.render.acl.proxy_location import AclProxyLocation
@@ -10,6 +11,8 @@ from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.app import App
 from raft.core.core.models.manifest import AppSpec
 from .fragments import EdgeFragments
+
+_DEFAULT_READ = "60s"
 
 
 @dataclass(frozen=True)
@@ -22,24 +25,53 @@ class TlsEdge:
         edge: EdgeConfig,
         data_home: Path,
         acl_include: str = "",
+        proxy_read_timeout: str = _DEFAULT_READ,
+        proxy_send_timeout: Optional[str] = None,
     ) -> EdgeFragments:
         if spec.tls == "origin":
-            return self._origin_fragments(app, spec, edge, acl_include=acl_include)
+            return self._origin_fragments(
+                app,
+                spec,
+                edge,
+                acl_include=acl_include,
+                proxy_read_timeout=proxy_read_timeout,
+                proxy_send_timeout=proxy_send_timeout,
+            )
         if spec.tls == "acme":
             return self._acme_fragments(
-                app, spec, edge, data_home, acl_include=acl_include
+                app,
+                spec,
+                edge,
+                data_home,
+                acl_include=acl_include,
+                proxy_read_timeout=proxy_read_timeout,
+                proxy_send_timeout=proxy_send_timeout,
             )
         return EdgeFragments()
 
     def _origin_fragments(
-        self, app: App, spec: AppSpec, edge: EdgeConfig, *, acl_include: str
+        self,
+        app: App,
+        spec: AppSpec,
+        edge: EdgeConfig,
+        *,
+        acl_include: str,
+        proxy_read_timeout: str,
+        proxy_send_timeout: Optional[str],
     ) -> EdgeFragments:
         if edge.https is None:
             raise OperatorError(
                 f"{app.name}: tls=origin requires edge.https in settings.yaml.\n"
                 f"Fix: set edge.https (e.g. 443) in ~/.raft/host/settings.yaml, then: raft render"
             )
-        body = self._tls_server_body(app, spec, stem="origin", acl_include=acl_include)
+        body = self._tls_server_body(
+            app,
+            spec,
+            stem="origin",
+            acl_include=acl_include,
+            proxy_read_timeout=proxy_read_timeout,
+            proxy_send_timeout=proxy_send_timeout,
+        )
         return EdgeFragments(gate_tls={f"{app.name}.conf": body})
 
     def _acme_fragments(
@@ -50,11 +82,20 @@ class TlsEdge:
         data_home: Path,
         *,
         acl_include: str,
+        proxy_read_timeout: str,
+        proxy_send_timeout: Optional[str],
     ) -> EdgeFragments:
         self.require_acme_edge(app, edge)
         if not AcmePaths(data_home).live_material_present(app.name):
             return EdgeFragments()
-        body = self._tls_server_body(app, spec, stem="acme", acl_include=acl_include)
+        body = self._tls_server_body(
+            app,
+            spec,
+            stem="acme",
+            acl_include=acl_include,
+            proxy_read_timeout=proxy_read_timeout,
+            proxy_send_timeout=proxy_send_timeout,
+        )
         return EdgeFragments(gate_tls={f"{app.name}.conf": body})
 
     @staticmethod
@@ -73,17 +114,33 @@ class TlsEdge:
 
     @staticmethod
     def _tls_server_body(
-        app: App, spec: AppSpec, *, stem: str, acl_include: str = ""
+        app: App,
+        spec: AppSpec,
+        *,
+        stem: str,
+        acl_include: str = "",
+        proxy_read_timeout: str = _DEFAULT_READ,
+        proxy_send_timeout: Optional[str] = None,
     ) -> str:
         names = " ".join(spec.server_names(app.public_host))
         head = TlsEdge._tls_server_head(app, names=names, stem=stem)
-        if not acl_include:
+        # Shared include is 60s-only; expand when ACL or long timeouts apply.
+        use_include = (
+            not acl_include
+            and proxy_read_timeout == _DEFAULT_READ
+            and not proxy_send_timeout
+        )
+        if use_include:
             return head + "    include /etc/nginx/gate/proxy_router.inc;\n}\n"
         return (
             head
             + "    resolver 127.0.0.11 valid=10s ipv6=off;\n\n"
             + "    include /etc/nginx/gate/acme_challenge.inc;\n\n"
-            + AclProxyLocation.location_slash(acl_include=acl_include)
+            + AclProxyLocation.location_slash(
+                acl_include=acl_include,
+                read_timeout=proxy_read_timeout,
+                send_timeout=proxy_send_timeout,
+            )
             + "\n"
             + AclProxyLocation.offline_and_forbidden(acl_include=acl_include)
             + "}\n"
