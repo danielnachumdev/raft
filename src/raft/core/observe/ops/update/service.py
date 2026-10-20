@@ -1,7 +1,6 @@
 """Re-install the raft CLI from GitHub (`raft update`)."""
 
 import os
-import shlex
 from typing import Optional, TextIO
 
 from raft.core.platform.adapters.shell import Shell
@@ -12,10 +11,10 @@ from raft.core.core.ui.progress import TerminalProgress
 from raft.core.observe.ops.version import InstalledVersion
 from .announce import UpdateAnnounce
 from .host_apply import HostApplyGate
+from .host_docker import HostDockerUpdate
 from .identity import InstallIdentity
+from .install_cmd import DEFAULT_INSTALL_URL, InstallCmd
 from .outcome import UpdateOutcome
-
-DEFAULT_INSTALL_URL = "https://raw.githubusercontent.com/danielnachumdev/raft/main/install.sh"
 
 
 class SelfUpdate:
@@ -67,6 +66,7 @@ class SelfUpdate:
         self._set_label("verifying")
         after_id = self._identity.read()
         after_line = self._version_line()
+        self._reject_empty_host_identity(after_id)
         TerminalProgress.finish_active()
         return self._finish(before_id, after_id, before_line, after_line, announce)
 
@@ -96,6 +96,18 @@ class SelfUpdate:
             return None
         return self._versions.line_for_dist_info(dist)
 
+    def _reject_empty_host_identity(self, after_id: Optional[str]) -> None:
+        if after_id is not None or not self._host_gate.uses_host_docker():
+            return
+        home = (os.environ.get("RAFT_HOST_HOME") or "").strip() or "(unset)"
+        TerminalProgress.finish_active()
+        raise OperatorError(
+            "Host raft update finished but the CLI was not found under "
+            f"RAFT_HOST_HOME ({home}).\n"
+            "Fix: confirm the host home /.local mount, then retry, "
+            "or run `raft update` on the host."
+        )
+
     @staticmethod
     def _already_current(before: Optional[str], after: Optional[str]) -> bool:
         return before is not None and before == after
@@ -107,8 +119,11 @@ class SelfUpdate:
             active.set_text(label)
 
     def _run_installer(self, url: str, ref: Optional[str]) -> None:
+        if self._host_gate.uses_host_docker():
+            HostDockerUpdate(self.sh).run(url, ref)
+            return
         try:
-            self.sh.run(self._installer_argv(url, ref))
+            self.sh.run(InstallCmd.in_process_argv(url, ref))
         except Exception as exc:
             TerminalProgress.finish_active()
             raise OperatorError(
@@ -117,17 +132,7 @@ class SelfUpdate:
                 f"     or run manually: curl -fsSL {url} | bash"
             ) from exc
 
+    # Kept for unit tests that assert argv shape on the in-process path.
     @staticmethod
     def _installer_argv(url: str, ref: Optional[str]) -> list:
-        """Build ``bash -c`` argv; optional ``RAFT_REF`` for install.sh.
-
-        ``pipefail`` is required: without it, a missing ``curl`` still exits 0
-        (empty stdin to bash), which made dashboard Settings report a false
-        success while the host CLI stayed unchanged.
-        """
-        export = "export RAFT_INSTALL_QUIET=1"
-        cleaned = (ref or "").strip()
-        if cleaned:
-            export = f"{export}; export RAFT_REF={shlex.quote(cleaned)}"
-        script = f'set -euo pipefail; {export}; curl -fsSL "$1" | bash'
-        return ["bash", "-c", script, "_", url]
+        return InstallCmd.in_process_argv(url, ref)

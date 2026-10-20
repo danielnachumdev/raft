@@ -161,9 +161,19 @@ the new stamp.
 ## Settings → Update raft
 
 Check-for-updates works in the dashboard (GitHub Release vs stamped version).
-**Apply does not run inside the container** — the image has no host `curl` /
-uv-tool install path, and a naive `curl | bash` would exit 0 without updating
-the host CLI. Use `raft update` on the host, then recreate the dashboard.
+**Update** reinstalls the **host** uv-tool `raft` CLI (same `install.sh` /
+Release wheel path as `raft update`) via a one-shot container: Compose injects
+`RAFT_HOST_HOME`, the dashboard mounts host `~/.local` read-only for identity
+checks, and apply uses `docker.sock` with an image that has `curl`+`bash`
+(not the dashboard image). After a successful update, recreate the dashboard
+so the image rebuilds with the new install stamp:
+
+```bash
+raft dashboard disable
+raft dashboard enable
+raft doctor
+```
+
 See [`docs/serve-settings.md`](serve-settings.md).
 
 ## Relationship to `raft serve`

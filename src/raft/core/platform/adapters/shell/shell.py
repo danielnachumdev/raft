@@ -90,9 +90,11 @@ class Shell:
     def _inject_compose_host_ids(env: dict) -> None:
         # Compose runs raft-controller as the host operator (not root) and adds
         # the docker socket group so /var/run/docker.sock stays usable.
+        # RAFT_HOST_HOME lets the always-on dashboard update the host uv-tool CLI.
         env.setdefault("RAFT_HOST_UID", str(os.getuid()))
         env.setdefault("RAFT_HOST_GID", str(os.getgid()))
         env.setdefault("RAFT_DOCKER_GID", Shell._docker_socket_gid())
+        env.setdefault("RAFT_HOST_HOME", str(Path.home()))
 
     @staticmethod
     def _docker_socket_gid() -> str:

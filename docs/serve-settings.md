@@ -22,9 +22,9 @@ Specialized pages remain for deep workflows:
 | Check for updates | `GET /api/update/status` | Latest Release tag vs installed semver; includes `canApply` / `applyBlockReason` |
 | Update raft | `POST /api/update` | Runs the shared `SelfUpdate` path (`install.sh`); optional JSON `{ "ref": "<tag\|branch\|sha>" }` matches CLI `--ref` |
 
-**Always-on dashboard:** Check works inside `raft-dashboard`, but **Apply is host-only**. The dashboard image has no host `curl` / uv-tool env, so Settings refuses apply (`canApply: false`) and asks the operator to run `raft update` on the host, then recreate the dashboard so the image rebuilds with the new install stamp. Host `raft serve` can still apply (same path as CLI).
+**Always-on dashboard:** Check works inside `raft-dashboard` (GitHub Release API). **Update** runs a host-targeted Docker one-shot (dashboard has `docker.sock` + `RAFT_HOST_HOME`) so `install.sh` writes into the operator’s host uv-tool env — same outcome as SSH + `raft update`. Apply is blocked only when `RAFT_HOST_HOME`, the Docker socket, or the `docker` CLI is missing (`canApply` / `applyBlockReason`). Host `raft serve` / CLI still apply in-process (curl pipeline).
 
-Confirm before apply (when `canApply`). After a successful update, align the running stack the same way as CLI (`raft render` / targeted `redeploy` / `down`+`up` when schemas shifted, then `raft doctor`). Restart `raft serve` or recreate the dashboard process so the UI loads the new package.
+Confirm before apply (when `canApply`). After a successful update, align the running stack the same way as CLI (`raft render` / targeted `redeploy` / `down`+`up` when schemas shifted, then `raft doctor`). Recreate the dashboard (`raft dashboard disable` then `raft dashboard enable`) so the image rebuilds with the new install stamp; restart `raft serve` if you use it.
 
 ## Form ↔ YAML
 

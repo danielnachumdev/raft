@@ -32,6 +32,7 @@ class TestSelfUpdate(DomainTestCase):
     def _open_gate() -> MagicMock:
         gate = MagicMock(spec=HostApplyGate)
         gate.ensure = MagicMock()
+        gate.uses_host_docker.return_value = False
         return gate
 
     def _upd(self) -> SelfUpdate:
@@ -65,6 +66,7 @@ class TestSelfUpdate(DomainTestCase):
         assert "ok" in styles and styles.count("info") >= 1
         next_body = " ".join(c.args[0] for c in say.call_args_list if c.args)
         assert "raft render" in next_body and "raft doctor" in next_body
+        assert "raft dashboard disable" in next_body
         events = GraphEventStore(self.stack.root).events_in_window(from_ts=_EPOCH)
         assert [e.kind for e in events] == [KIND_UPDATE]
 
@@ -205,6 +207,7 @@ class TestSelfUpdate(DomainTestCase):
     def test_run_refuses_when_host_gate_blocks(self) -> None:
         gate = MagicMock(spec=HostApplyGate)
         gate.ensure.side_effect = OperatorError("blocked\nFix: host raft update")
+        gate.uses_host_docker.return_value = False
         upd = SelfUpdate(self.stack, host_gate=gate)
         upd.sh = MagicMock()
         try:
@@ -213,6 +216,55 @@ class TestSelfUpdate(DomainTestCase):
         except OperatorError as exc:
             assert "blocked" in str(exc)
         upd.sh.run.assert_not_called()
+
+    def test_run_uses_host_docker_when_gate_says_so(self, monkeypatch) -> None:
+        fake = self._patch_host_docker_path(monkeypatch, identity="after-id")
+        identities = iter(["before-id", "after-id"])
+        monkeypatch.setattr(
+            update_mod.InstallIdentity, "read", lambda self: next(identities)
+        )
+        monkeypatch.setattr(
+            update_mod.SelfUpdate, "_version_line", lambda self: "raft 0.2.0"
+        )
+        upd = SelfUpdate(self.stack, host_gate=self._docker_gate())
+        upd.sh = MagicMock()
+        with patch("raft.core.observe.ops.update.announce.OperatorSay.say"):
+            outcome = upd.run(announce=False)
+        fake.run.assert_called_once()
+        upd.sh.run.assert_not_called()
+        assert outcome.already_current is False
+        assert outcome.after_line == "raft 0.2.0"
+
+    def test_run_rejects_empty_host_identity_after_docker(self, monkeypatch) -> None:
+        monkeypatch.setenv("RAFT_HOST_HOME", "/home/demo")
+        fake = self._patch_host_docker_path(monkeypatch, identity=None)
+        upd = SelfUpdate(self.stack, host_gate=self._docker_gate())
+        upd.sh = MagicMock()
+        try:
+            upd.run(announce=False)
+            raise AssertionError("expected OperatorError")
+        except OperatorError as exc:
+            assert "RAFT_HOST_HOME" in str(exc)
+        fake.run.assert_called_once()
+
+    @staticmethod
+    def _docker_gate() -> MagicMock:
+        gate = MagicMock(spec=HostApplyGate)
+        gate.ensure = MagicMock()
+        gate.uses_host_docker.return_value = True
+        return gate
+
+    def _patch_host_docker_path(self, monkeypatch, *, identity) -> MagicMock:
+        monkeypatch.delenv("RAFT_INSTALL_URL", raising=False)
+        monkeypatch.setattr(
+            update_mod.InstallIdentity, "read", lambda self: identity
+        )
+        fake = MagicMock()
+        monkeypatch.setattr(
+            "raft.core.observe.ops.update.service.HostDockerUpdate",
+            lambda sh: fake,
+        )
+        return fake
 
     def test_set_label_noop_without_active_spinner(self) -> None:
         SelfUpdate._set_label("checking install")

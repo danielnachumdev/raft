@@ -10,8 +10,9 @@ NEXT_STEPS = (
     "Compose ids can change. Typical path: `raft render`, then "
     "`raft redeploy <app|router>` for targeted updates, or "
     "`raft down && raft up` when edge/service names or schemas shifted. "
-    "Finish with `raft doctor`. Restart `raft serve` / the dashboard "
-    "process to load the new CLI package."
+    "Finish with `raft doctor`. Recreate the always-on dashboard "
+    "(`raft dashboard disable` then `raft dashboard enable`) so the image "
+    "rebuilds with the new install stamp; restart `raft serve` if you use it."
 )
 
 
