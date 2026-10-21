@@ -12,7 +12,6 @@ from raft.core.platform.adapters.docker import (
     HostOneshot,
 )
 from raft.core.platform.adapters.docker import host_oneshot_ids as ids_mod
-from raft.core.platform.adapters.docker import host_oneshot_mounts as mounts_mod
 
 
 class TestHostOneshot:
@@ -27,20 +26,33 @@ class TestHostOneshot:
         assert args[-2:] == ["raft", "version"]
 
     def test_start_argv_with_docker(self, monkeypatch) -> None:
-        monkeypatch.setattr(
-            mounts_mod.shutil, "which", lambda _n: "/usr/bin/docker"
-        )
-        monkeypatch.setattr(
-            mounts_mod.os.path, "isfile", lambda _p: True
-        )
-        monkeypatch.setattr(
-            mounts_mod.os.path, "isdir", lambda _p: False
+        monkeypatch.setenv("RAFT_HOST_DOCKER_BIN", "/usr/bin/docker")
+        monkeypatch.setenv(
+            "RAFT_HOST_DOCKER_PLUGIN_DIR",
+            "/usr/libexec/docker/cli-plugins",
         )
         args = self._argv(with_docker=True, detach=True)
         assert args[:4] == ["docker", "run", "-d", "--rm"]
         assert "--group-add" in args and "988" in args
         assert "/var/run/docker.sock:/var/run/docker.sock" in args
         assert "/usr/bin/docker:/usr/bin/docker:ro" in args
+        assert (
+            "/usr/libexec/docker/cli-plugins:"
+            "/usr/libexec/docker/cli-plugins:ro"
+            in args
+        )
+
+    def test_docker_mounts_use_host_env_not_which(self, monkeypatch) -> None:
+        """Container which() must not become a host volume source."""
+        monkeypatch.setenv(
+            "RAFT_HOST_DOCKER_BIN", "/host/usr/bin/docker"
+        )
+        monkeypatch.setenv(
+            "RAFT_HOST_DOCKER_PLUGIN_DIR", "/host/plugins"
+        )
+        args = self._argv(with_docker=True, detach=False)
+        assert "/host/usr/bin/docker:/usr/bin/docker:ro" in args
+        assert "/host/plugins:/host/plugins:ro" in args
 
     def test_run_calls_shell_with_timeout(self) -> None:
         shell = MagicMock()
@@ -137,16 +149,14 @@ class TestHostOneshot:
         with pytest.raises(OperatorError, match="cannot start"):
             oneshot.start(["raft", "version"])
 
-    def test_plugin_dirs_mounted_when_present(self, monkeypatch) -> None:
-        monkeypatch.setattr(mounts_mod.shutil, "which", lambda _n: None)
-        monkeypatch.setattr(
-            mounts_mod.os.path,
-            "isdir",
-            lambda p: p == "/usr/libexec/docker/cli-plugins",
-        )
+    def test_docker_mount_defaults_when_env_unset(self, monkeypatch) -> None:
+        monkeypatch.delenv("RAFT_HOST_DOCKER_BIN", raising=False)
+        monkeypatch.delenv("RAFT_HOST_DOCKER_PLUGIN_DIR", raising=False)
         args = self._argv(with_docker=True, detach=False)
+        assert "/usr/bin/docker:/usr/bin/docker:ro" in args
         assert (
-            "/usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins:ro"
+            "/usr/libexec/docker/cli-plugins:"
+            "/usr/libexec/docker/cli-plugins:ro"
             in args
         )
 

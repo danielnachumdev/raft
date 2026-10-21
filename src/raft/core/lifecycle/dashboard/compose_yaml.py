@@ -54,6 +54,11 @@ class DashboardComposeYaml:
             '      RAFT_DASHBOARD_APP_PORT: "18787"',
             # Absolute host home for Settings → Update (Docker one-shot + identity).
             '      RAFT_HOST_HOME: "${RAFT_HOST_HOME}"',
+            # Host paths for self-Redeploy one-shot (docker run -v is host-scoped).
+            '      RAFT_HOST_DOCKER_BIN: '
+            '"${RAFT_HOST_DOCKER_BIN:-/usr/bin/docker}"',
+            '      RAFT_HOST_DOCKER_PLUGIN_DIR: '
+            '"${RAFT_HOST_DOCKER_PLUGIN_DIR:-/usr/libexec/docker/cli-plugins}"',
             *self._oauth_env_file(cfg),
             "    ports:",
             f'      - "127.0.0.1:{port}:{port}"',
