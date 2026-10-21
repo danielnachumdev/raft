@@ -1,7 +1,13 @@
 import { useRef, useState } from "react";
 import type { ServiceAction } from "../shared/api";
-import { postServiceAction, servicePath } from "../shared/api";
+import { fetchService, postServiceAction, servicePath } from "../shared/api";
 import { toast } from "../chrome/toast";
+import {
+  dashboardRedeployTimeoutMessage,
+  isAsyncDashboardRedeploy,
+  isDashboardService,
+  waitForDashboardReconnect,
+} from "./dashboardRedeploy";
 
 export type ServiceConfirmRequest = {
   action: ServiceAction;
@@ -35,13 +41,7 @@ export function useServiceActionRunner(
     if (!(await askConfirm(action, service))) return;
     setBusy(action);
     try {
-      await postServiceAction(service, action);
-      toast.good({
-        message: `${labelFor(action)} succeeded for ${service}.`,
-        href: servicePath(service),
-        linkLabel: "View service",
-      });
-      onDone();
+      await runAction(service, action, onDone);
     } catch (err) {
       const detail =
         err instanceof Error ? err.message : `${labelFor(action)} failed.`;
@@ -80,6 +80,51 @@ export function useServiceActionRunner(
   }
 }
 
+async function runAction(
+  service: string,
+  action: ServiceAction,
+  onDone: () => void,
+): Promise<void> {
+  const result = await postServiceAction(service, action);
+  if (isAsyncDashboardRedeploy(service, action, result)) {
+    await finishDashboardRedeploy(service, onDone);
+    return;
+  }
+  toast.good({
+    message: `${labelFor(action)} succeeded for ${service}.`,
+    href: servicePath(service),
+    linkLabel: "View service",
+  });
+  onDone();
+}
+
+async function finishDashboardRedeploy(
+  service: string,
+  onDone: () => void,
+): Promise<void> {
+  toast.good({ message: "Redeploying…" });
+  const outcome = await waitForDashboardReconnect({
+    probe: () => probeDashboardHealthy(service),
+  });
+  if (outcome === "timeout") {
+    toast.bad(dashboardRedeployTimeoutMessage());
+    return;
+  }
+  toast.good({
+    message: `Redeploy succeeded for ${service}.`,
+    href: servicePath(service),
+    linkLabel: "View service",
+  });
+  onDone();
+  window.location.reload();
+}
+
+async function probeDashboardHealthy(service: string): Promise<boolean> {
+  const detail = await fetchService(service);
+  const status = (detail.presentation?.status || "").toLowerCase();
+  return status === "running" || status.startsWith("up");
+}
+
 function confirmRequestFor(
   action: ServiceAction,
   service: string,
@@ -98,11 +143,20 @@ function confirmRequestFor(
   return {
     action,
     title: `Redeploy ${service}?`,
-    message:
-      "This re-renders and updates the service (brief disruption).",
+    message: redeployMessage(service),
     confirmLabel: "Redeploy",
     danger: false,
   };
+}
+
+function redeployMessage(service: string): string {
+  if (isDashboardService(service)) {
+    return (
+      "Rebuilds the dashboard image on the host. This UI disconnects " +
+      "briefly, then reconnects when ready."
+    );
+  }
+  return "This re-renders and updates the service (brief disruption).";
 }
 
 function labelFor(action: ServiceAction): string {

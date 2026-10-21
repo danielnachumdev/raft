@@ -5,13 +5,14 @@ from __future__ import annotations
 import shlex
 from typing import Optional
 
+from raft.core.platform.adapters.docker import DEFAULT_HOST_ONESHOT_IMAGE
+
 DEFAULT_INSTALL_URL = (
     "https://raw.githubusercontent.com/danielnachumdev/raft/main/install.sh"
 )
 
-# curl + bash + git (install.sh always calls ensure_git); override with
-# ``RAFT_HOST_UPDATE_IMAGE``. bookworm-curl lacks git and fails apply.
-DEFAULT_HOST_UPDATE_IMAGE = "docker.io/library/buildpack-deps:bookworm-scm"
+# Re-export: Settings → Update and HostOneshot share the same default image.
+DEFAULT_HOST_UPDATE_IMAGE = DEFAULT_HOST_ONESHOT_IMAGE
 
 
 class InstallCmd:

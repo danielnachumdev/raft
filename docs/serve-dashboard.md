@@ -147,7 +147,23 @@ Redeploy do **not** mutate `dashboard:` settings or secrets. Redeploy while
 When enabled, `raft doctor` lists `dashboard` under the `raft` group with the
 other control-plane members (gate / router / controller).
 
-## Version badge
+### UI self-Redeploy (always-on dashboard)
+
+Redeploy from inside `raft-dashboard` cannot rebuild in-process: the API runs
+in the container being rebuilt. Serve detects the dashboard container
+(`RAFT_DASHBOARD_APP_PORT`), enqueues a **detached host Docker one-shot**
+(`docker run -d` → host `raft redeploy dashboard` with `HOME` + `docker.sock`),
+and returns **202** `{ started: true, job_id }` immediately. The SPA shows
+“Redeploying…”, polls until the service is healthy again, then soft-reloads
+with a success toast. On timeout it points at Events / host CLI. Host
+`raft serve` and CLI Redeploy stay **in-process** (sync). Restart remains
+`--no-build` (stop→start).
+
+Shared runner: `HostOneshot` under `platform/adapters/docker/` (also used by
+Settings → Update). Preflight refuses clearly when `RAFT_HOST_HOME`, the
+Docker socket, or the `docker` CLI is missing.
+
+### Version badge
 
 The SPA top bar shows the same install identity as `raft version` on the host.
 Template sync stamps that identity into `~/.raft/dashboard/raft/` (and the
@@ -160,12 +176,14 @@ stamp — do not flip `dashboard.enabled` off and on.
 
 Check-for-updates works in the dashboard (GitHub Release vs stamped version).
 **Update** reinstalls the **host** uv-tool `raft` CLI (same `install.sh` /
-Release wheel path as `raft update`) via a one-shot container: Compose injects
-`RAFT_HOST_HOME`, the dashboard mounts host `~/.local` read-only for identity
-checks, and apply uses `docker.sock` with `buildpack-deps:bookworm-scm`
-(`curl`+`bash`+`git`; not the dashboard image). Nginx allows up to 600s for
-`/api/update` (image pull + install). After a successful update, Redeploy the
-dashboard so the image rebuilds with the new install stamp:
+Release wheel path as `raft update`) via the shared host one-shot
+(`HostOneshot.run`, sync wait, no docker.sock inside the install container):
+Compose injects `RAFT_HOST_HOME`, the dashboard mounts host `~/.local`
+read-only for identity checks, and apply uses `docker.sock` on the dashboard
+to launch `buildpack-deps:bookworm-scm` (`curl`+`bash`+`git`). Nginx allows
+up to 600s for `/api/update` (image pull + install). After a successful
+update, Redeploy the dashboard so the image rebuilds with the new install
+stamp:
 
 ```bash
 raft redeploy dashboard

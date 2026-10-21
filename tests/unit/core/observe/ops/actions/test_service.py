@@ -154,9 +154,46 @@ class TestServiceActions(RaftTestCase):
     def test_redeploy_dashboard_when_enabled(self) -> None:
         self._write_dashboard_enabled(True)
         actions, _docker, orch = self._actions()
-        result = actions.redeploy("dashboard")
+        with patch(
+            "raft.core.observe.ops.actions.service.HostOneshotGate"
+        ) as gate_cls:
+            gate_cls.return_value.in_dashboard.return_value = False
+            result = actions.redeploy("dashboard")
         orch.redeploy_dashboard.assert_called_once()
         assert result["service"] == "raft-dashboard"
+        assert result.get("started") is not True
+
+    def test_redeploy_dashboard_oneshot_when_in_dashboard(self) -> None:
+        self._write_dashboard_enabled(True)
+        actions, _docker, orch = self._actions()
+        result, gate, oneshot = self._redeploy_dashboard_oneshot(actions)
+        orch.redeploy_dashboard.assert_not_called()
+        gate.ensure.assert_called_once()
+        oneshot.start.assert_called_once_with(
+            ["raft", "redeploy", "dashboard"],
+            with_docker=True,
+        )
+        assert result == {
+            "ok": True,
+            "action": "redeploy",
+            "service": "raft-dashboard",
+            "started": True,
+            "job_id": "job-abc",
+        }
+
+    def _redeploy_dashboard_oneshot(self, actions: ServiceActions):
+        with patch(
+            "raft.core.observe.ops.actions.service.HostOneshotGate"
+        ) as gate_cls:
+            gate = gate_cls.return_value
+            gate.in_dashboard.return_value = True
+            with patch(
+                "raft.core.observe.ops.actions.service.HostOneshot"
+            ) as oneshot_cls:
+                oneshot = oneshot_cls.return_value
+                oneshot.start.return_value = "job-abc"
+                with patch("raft.core.observe.ops.actions.service.Shell"):
+                    return actions.redeploy("dashboard"), gate, oneshot
 
     def test_redeploy_dashboard_refused_when_disabled(self) -> None:
         self._write_dashboard_enabled(False)

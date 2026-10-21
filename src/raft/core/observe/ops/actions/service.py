@@ -1,5 +1,6 @@
 """Mutative per-service actions (start / stop / redeploy / purge)."""
 
+import logging
 from typing import Any, Dict, Optional, Tuple
 
 from raft.core.core.errors.cta import OperatorError
@@ -11,9 +12,11 @@ from raft.core.lifecycle.deploy.orchestrator import Orchestrator
 from raft.core.observe.ops.actions.start_depends import StartDepends
 from raft.core.observe.ops.logs.targets import LogsTargets
 from raft.core.observe.ops.purge import Purge
-from raft.core.platform.adapters.docker import DockerStack
+from raft.core.platform.adapters.docker import DockerStack, HostOneshot, HostOneshotGate
 from raft.core.platform.adapters.shell import Shell
 from raft.core.platform.locking import AppAndStackLocks, AppsAndStackLocks, StackLock
+
+logger = logging.getLogger(__name__)
 
 
 class ServiceActions:
@@ -84,24 +87,55 @@ class ServiceActions:
             orch.redeploy_router()
             return self._ok("redeploy", compose_id)
         if compose_id == self.stack.dashboard:
-            self._redeploy_dashboard(orch)
-            return self._ok("redeploy", compose_id)
+            return self._redeploy_dashboard(orch, compose_id)
         self._refuse_controller_redeploy(compose_id)
         assert app is not None
         orch.redeploy_app(app.name)
         return self._ok("redeploy", compose_id)
 
-    def _redeploy_dashboard(self, orch: Orchestrator) -> None:
-        if self.stack.dashboard not in self.stack.control_plane_services:
-            raise OperatorError(
-                "refusing to redeploy `dashboard` while dashboard.enabled "
-                "is false.\n"
-                "Fix: enable the dashboard in Settings "
-                "(dashboard.enabled: true), run `raft render`, then "
-                "`raft start dashboard` or `raft redeploy dashboard`.",
-                has_fix=False,
-            )
+    def _redeploy_dashboard(
+        self, orch: Orchestrator, compose_id: str
+    ) -> Dict[str, Any]:
+        self._ensure_dashboard_enabled()
+        gate = HostOneshotGate()
+        if gate.in_dashboard():
+            return self._start_dashboard_redeploy_oneshot(gate, compose_id)
         orch.redeploy_dashboard()
+        return self._ok("redeploy", compose_id)
+
+    def _ensure_dashboard_enabled(self) -> None:
+        if self.stack.dashboard in self.stack.control_plane_services:
+            return
+        raise OperatorError(
+            "refusing to redeploy `dashboard` while dashboard.enabled "
+            "is false.\n"
+            "Fix: enable the dashboard in Settings "
+            "(dashboard.enabled: true), run `raft render`, then "
+            "`raft start dashboard` or `raft redeploy dashboard`.",
+            has_fix=False,
+        )
+
+    def _start_dashboard_redeploy_oneshot(
+        self, gate: HostOneshotGate, compose_id: str
+    ) -> Dict[str, Any]:
+        """Detach host ``raft redeploy dashboard`` so this process can die."""
+        gate.ensure()
+        job_id = HostOneshot(Shell(self.stack.root)).start(
+            ["raft", "redeploy", "dashboard"],
+            with_docker=True,
+        )
+        logger.info(
+            "dashboard self-redeploy oneshot started id=%s service=%s",
+            job_id,
+            compose_id,
+        )
+        return {
+            "ok": True,
+            "action": "redeploy",
+            "service": compose_id,
+            "started": True,
+            "job_id": job_id,
+        }
 
     def _start_with_deps(
         self,

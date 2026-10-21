@@ -43,6 +43,9 @@ export type ServiceActionResult = {
   ok: boolean;
   action: ServiceAction;
   service: string;
+  /** Present when always-on dashboard enqueued a detached host one-shot. */
+  started?: boolean;
+  job_id?: string;
 };
 
 export type PurgeResult = {
