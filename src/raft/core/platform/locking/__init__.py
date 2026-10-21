@@ -9,7 +9,7 @@ Locks live under ``~/.raft/host/locks/`` (``RAFT_DATA_HOME``):
   github OAuth)
 * ``acl.lock`` — serve API rewrites of ordered firewall before render/reload
 * ``alerts.lock`` — CLI/serve writes to ``host/alerts/rules.yaml``
-* ``dashboard.lock`` — CLI writes to ``host/settings.yaml`` ``dashboard:``
+* ``dashboard.lock`` — writers of ``host/settings.yaml`` ``dashboard:``
 
 Wait (with timeout) so a later-started deploy still runs after an earlier one
 and becomes the final live state. Contended waiters log ``waiting for … lock``

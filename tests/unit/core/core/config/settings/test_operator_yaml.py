@@ -93,6 +93,36 @@ class TestOperatorSettingsYaml(RaftTestCase):
         assert loaded["port"] == 8790
         assert loaded["auth"]["passwordHash"] == "***"
 
+    def test_dashboard_plaintext_password_hashed_on_save(self) -> None:
+        svc = OperatorSettingsService(self.tmp_path)
+        doc = svc.get_public()["document"]
+        doc["dashboard"] = self._dashboard("correct-horse")
+        out = svc.replace({"document": doc})
+        assert out["document"]["dashboard"]["auth"]["passwordHash"] == "***"
+        notes = [n["code"] for n in out.get("notes") or []]
+        assert "dashboard.enabled" in notes
+        raw = (self.tmp_path / "host" / "settings.yaml").read_text(encoding="utf-8")
+        assert "pbkdf2_sha256$" in raw
+        assert "correct-horse" not in raw
+
+    def test_dashboard_short_password_rejected(self) -> None:
+        svc = OperatorSettingsService(self.tmp_path)
+        doc = svc.get_public()["document"]
+        doc["dashboard"] = self._dashboard("short")
+        with pytest.raises(OperatorError, match="8 characters"):
+            svc.replace({"document": doc})
+
+    def test_dashboard_disable_note(self) -> None:
+        svc = OperatorSettingsService(self.tmp_path)
+        doc = svc.get_public()["document"]
+        doc["dashboard"] = self._dashboard("pbkdf2$demo")
+        svc.replace({"document": doc})
+        doc = svc.get_public()["document"]
+        doc["dashboard"]["enabled"] = False
+        out = svc.replace({"document": doc})
+        messages = [n["message"] for n in out.get("notes") or []]
+        assert any("enabled is now false" in m for m in messages)
+
     @staticmethod
     def _dashboard(password_hash: str) -> dict:
         return {

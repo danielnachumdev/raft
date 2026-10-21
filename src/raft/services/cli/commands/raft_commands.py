@@ -27,7 +27,6 @@ from ..utils.deps import (
 )
 from .alerts import AlertsCLI
 from .auth import AuthCLI
-from .dashboard import DashboardCLI
 from .events import EventsCLI
 from .firewall import FirewallCLI
 from .gate import GateCLI
@@ -38,6 +37,13 @@ from .metrics import MetricsCLI
 from .notifications import NotificationsCLI
 
 logger = logging.getLogger(__name__)
+
+_CONTROL_PLANE_REDEPLOY = frozenset(
+    {
+        "router", "raft-router", "dashboard", "raft-dashboard",
+        "gate", "raft-gate", "controller", "raft-controller",
+    }
+)
 
 
 class RaftCLICommands:
@@ -57,7 +63,6 @@ class RaftCLICommands:
         self.metrics = MetricsCLI(self._stack)
         self.github = GithubCLI(self._stack)
         self.events = EventsCLI(self._stack)
-        self.dashboard = DashboardCLI(self._stack)
 
     @property
     def _app_names(self) -> list[str]:
@@ -261,17 +266,17 @@ class RaftCLICommands:
         ref: Optional[str] = None,
         force_sync: bool = False,
     ) -> None:
-        """Redeploy one running app, or recreate inner router."""
+        """Redeploy one running app, router, or enabled always-on dashboard."""
         name = (app or "").strip()
         if not name:
             raise DomainErrors.redeploy_requires_app()
-        orch = Orchestrator(self._stack)
-        if name == "router":
-            orch.redeploy_router()
+        if name in _CONTROL_PLANE_REDEPLOY:
+            result = ServiceActions(self._stack).redeploy(name)
+            OperatorSay.say(f"Redeployed {result['service']}.")
             return
         if name not in self._app_names:
             raise DomainErrors.unknown_app(name, self._known)
-        orch.redeploy_app(name, ref_override=ref, force_sync=force_sync)
+        Orchestrator(self._stack).redeploy_app(name, ref_override=ref, force_sync=force_sync)
 
     @staticmethod
     def _build_apply_env(

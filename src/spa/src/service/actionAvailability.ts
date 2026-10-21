@@ -13,7 +13,7 @@ const HINTS: Record<ServiceAction, string> = {
   start: "Start this service with Compose (clears scale-to-zero idle).",
   stop: "Stop this service with Compose (scale-to-zero apps are marked idle).",
   redeploy:
-    "Re-render and cut over a running app, or recreate the router. Gate redeploy is refused.",
+    "Cut over a running app, recreate the router, or rebuild the dashboard. Gate and controller redeploy are refused.",
 };
 
 export function actionAvailability(

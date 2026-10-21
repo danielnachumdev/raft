@@ -23,8 +23,9 @@ class ServiceActions:
     flock locks as apply/redeploy. Default start also brings up transitive
     ``spec.dependsOn`` first (wake order); pass ``no_deps=True`` to skip.
     For apps with ``spec.scaling``, stop marks ``scaledToZero`` (healer skips;
-    gate holding page) and start clears it. Redeploy mirrors ``raft redeploy``:
-    apps cutover (must be running), router recreates, gate is refused.
+    gate holding page) and start clears it. Redeploy mirrors ``raft
+    redeploy``: apps cutover (must be running), router recreates, dashboard
+    rebuilds when ``dashboard.enabled``, gate and controller are refused.
     ``purge`` removes unused Docker images/cache.
     """
 
@@ -82,10 +83,25 @@ class ServiceActions:
         if compose_id == self.stack.router:
             orch.redeploy_router()
             return self._ok("redeploy", compose_id)
-        self._refuse_control_plane_redeploy(compose_id)
+        if compose_id == self.stack.dashboard:
+            self._redeploy_dashboard(orch)
+            return self._ok("redeploy", compose_id)
+        self._refuse_controller_redeploy(compose_id)
         assert app is not None
         orch.redeploy_app(app.name)
         return self._ok("redeploy", compose_id)
+
+    def _redeploy_dashboard(self, orch: Orchestrator) -> None:
+        if self.stack.dashboard not in self.stack.control_plane_services:
+            raise OperatorError(
+                "refusing to redeploy `dashboard` while dashboard.enabled "
+                "is false.\n"
+                "Fix: enable the dashboard in Settings "
+                "(dashboard.enabled: true), run `raft render`, then "
+                "`raft start dashboard` or `raft redeploy dashboard`.",
+                has_fix=False,
+            )
+        orch.redeploy_dashboard()
 
     def _start_with_deps(
         self,
@@ -128,19 +144,14 @@ class ServiceActions:
             started.append(dep_name)
         return tuple(started)
 
-    def _refuse_control_plane_redeploy(self, compose_id: str) -> None:
-        if compose_id == self.stack.controller:
-            raise OperatorError(
-                "refusing to redeploy `controller` — restart it with Start "
-                "after Stop, or recreate the stack with `raft down` / `raft up`.",
-                has_fix=False,
-            )
-        if compose_id == self.stack.dashboard:
-            raise OperatorError(
-                "refusing to redeploy `dashboard` — restart it with Start "
-                "after Stop, or use `raft dashboard enable`.",
-                has_fix=False,
-            )
+    def _refuse_controller_redeploy(self, compose_id: str) -> None:
+        if compose_id != self.stack.controller:
+            return
+        raise OperatorError(
+            "refusing to redeploy `controller` — restart it with Start "
+            "after Stop, or recreate the stack with `raft down` / `raft up`.",
+            has_fix=False,
+        )
 
     def _resolve(self, name: str) -> tuple[str, Optional[App]]:
         compose_id = self._targets.resolve(name)[0]

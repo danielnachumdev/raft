@@ -24,7 +24,7 @@ Specialized pages remain for deep workflows:
 
 **Always-on dashboard:** Check works inside `raft-dashboard` (GitHub Release API). **Update** runs a host-targeted Docker one-shot (dashboard has `docker.sock` + `RAFT_HOST_HOME`) so `install.sh` writes into the operator’s host uv-tool env — same outcome as SSH + `raft update`. The one-shot image is `buildpack-deps:bookworm-scm` (needs `git` for `install.sh`). Gate + router + in-container nginx allow **600s** for Settings → Update (pull + install); a 60s gate timeout aborts the browser mid-apply. Apply is blocked only when `RAFT_HOST_HOME`, the Docker socket, or the `docker` CLI is missing (`canApply` / `applyBlockReason`). Host `raft serve` / CLI still apply in-process (curl pipeline). Progress / failures are logged under `raft.core.observe.ops.update` in `host/logs/raft.log`.
 
-Confirm before apply (when `canApply`). After a successful update, align the running stack the same way as CLI (`raft render` / targeted `redeploy` / `down`+`up` when schemas shifted, then `raft doctor`). Recreate the dashboard (`raft dashboard disable` then `raft dashboard enable`) so the image rebuilds with the new install stamp; restart `raft serve` if you use it.
+Confirm before apply (when `canApply`). After a successful update, align the running stack the same way as CLI (`raft render` / targeted `redeploy` / `down`+`up` when schemas shifted, then `raft doctor`). When the always-on dashboard is enabled, `raft redeploy dashboard` rebuilds its image with the new install stamp (do not flip `dashboard.enabled`); restart `raft serve` if you use it.
 
 ## Form ↔ YAML
 

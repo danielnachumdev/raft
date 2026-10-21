@@ -3,8 +3,11 @@
 Optional first-party Compose service that hosts the same ops UI as `raft serve`,
 without a long-lived SSH-held Python process.
 
-Not an App YAML in operator repos. Controlled from `~/.raft/host/settings.yaml`
-under `dashboard:` and the CLI `raft dashboard …`.
+Not an App YAML in operator repos. Config lives only under
+`~/.raft/host/settings.yaml` `dashboard:` (Settings UI / `PUT /api/settings`).
+Lifecycle is the same as other services: **Start / Stop / Redeploy**
+(`raft start|stop|redeploy dashboard` or the serve UI). Saving settings alone
+does not start or stop the container.
 
 ## Defaults (safe)
 
@@ -15,6 +18,11 @@ dashboard:
   auth:
     mode: none
 ```
+
+When `enabled: true`, render / `raft up` include `raft-dashboard` in Compose.
+When `false`, it is omitted. Bring a running container up with Start or Redeploy
+after enable + `raft render`. Redeploy while disabled refuses (enable in Settings
+first — no silent enable).
 
 When enabled, Compose publishes **localhost only**:
 `127.0.0.1:<port>:<port>`. Tunnel with SSH the same way as `raft serve`.
@@ -49,10 +57,10 @@ receive SPA bytes.
 
 ### Password auth
 
-```bash
-raft dashboard set-password
-raft dashboard enable --public-host=ops.example.com --tls=acme --auth-mode=password
-```
+In Settings → Dashboard, set `auth.mode: password` and enter a plaintext password
+in the password-hash field (≥8 characters); Save hashes it
+(`pbkdf2_sha256$…`). Leave the redaction mask (`***`) to keep the stored hash.
+Then enable, `raft render`, and Start or Redeploy.
 
 In-container nginx uses `auth_request` against `/api/dashboard/auth`. Browsers
 without a session cookie get `/login` (static HTML in the image). Login posts to
@@ -87,15 +95,10 @@ Secrets stay under the data home (never in git / PR bodies):
 | `~/.raft/host/secrets/dashboard/oauth.env` | `OAUTH2_PROXY_CLIENT_ID`, `CLIENT_SECRET`, `COOKIE_SECRET`, `REDIRECT_URL` (0600) |
 | `~/.raft/host/secrets/dashboard/oauth-allowlist.txt` | One allowed identity per line |
 
-```bash
-raft dashboard oauth init --provider=google
-# fill client id/secret in the printed env path; redirect URL is printed
-# add allowlist lines (example identity only in docs):
-printf '%s\n' 'ops@example.com' > /tmp/dashboard-allowlist.txt
-raft dashboard oauth allowlist-set --file=/tmp/dashboard-allowlist.txt
-# or: echo ops@example.com | raft dashboard oauth allowlist-add
-raft dashboard enable --public-host=ops.example.com --tls=acme --auth-mode=oauth
-```
+Create the env file and allowlist under `host/secrets/dashboard/`, set
+`auth.mode: oauth` + `enabled: true` in Settings, then `raft render` and Start
+or Redeploy. Redirect URL is typically
+`https://<publicHost>/oauth2/callback`.
 
 Runtime shape:
 
@@ -127,24 +130,19 @@ dashboard:
     identityHeader: X-Raft-Identity
 ```
 
-## CLI
+## Lifecycle
 
 ```bash
-raft dashboard status
-raft dashboard enable
-raft dashboard disable
-raft dashboard set-password
-raft dashboard oauth init
-raft dashboard oauth allowlist-set --file=…
-raft dashboard oauth allowlist-add
+# After enabling in Settings:
+raft render
+raft start dashboard          # Compose up --no-build (Restart = stop→start)
+raft stop dashboard
+raft redeploy dashboard       # rebuild image (picks up host install stamp)
 ```
 
-`enable` persists settings, runs `raft render` (which reloads gate/router nginx
-when generated edge fragments changed), `compose up` for `raft-dashboard`, then
-reloads the router and gate again so Compose DNS for the new service (and
-gate→router) is fresh. A brief public 502/offline window during that join is
-expected; if it persists, `raft render` then `raft doctor`. `disable` stops the
-service and clears `enabled`.
+`enabled: true` only includes the service in render / `raft up`. Start and
+Redeploy do **not** mutate `dashboard:` settings or secrets. Redeploy while
+`enabled: false` refuses with a CTA to enable in Settings.
 
 When enabled, `raft doctor` lists `dashboard` under the `raft` group with the
 other control-plane members (gate / router / controller).
@@ -155,8 +153,8 @@ The SPA top bar shows the same install identity as `raft version` on the host.
 Template sync stamps that identity into `~/.raft/dashboard/raft/` (and the
 controller build context) before Compose builds the image, because the
 container loads raft via `PYTHONPATH` without wheel dist-info. After
-`raft update`, re-enable or recreate the dashboard so the image rebuilds with
-the new stamp.
+`raft update`, **Redeploy** the dashboard so the image rebuilds with the new
+stamp — do not flip `dashboard.enabled` off and on.
 
 ## Settings → Update raft
 
@@ -166,12 +164,11 @@ Release wheel path as `raft update`) via a one-shot container: Compose injects
 `RAFT_HOST_HOME`, the dashboard mounts host `~/.local` read-only for identity
 checks, and apply uses `docker.sock` with `buildpack-deps:bookworm-scm`
 (`curl`+`bash`+`git`; not the dashboard image). Nginx allows up to 600s for
-`/api/update` (image pull + install). After a successful update, recreate the
+`/api/update` (image pull + install). After a successful update, Redeploy the
 dashboard so the image rebuilds with the new install stamp:
 
 ```bash
-raft dashboard disable
-raft dashboard enable
+raft redeploy dashboard
 raft doctor
 ```
 

@@ -247,3 +247,37 @@ class Orchestrator(OrchestratorDeploy):
                 action="redeploy",
             )
             OperatorSay.say("router redeployed", style="ok")
+
+    def redeploy_dashboard(self) -> None:
+        """Rebuild ``raft-dashboard`` so the host install stamp is in the image."""
+        with StackLock(self.stack.root):
+            self._rebuild_dashboard_locked()
+
+    def _rebuild_dashboard_locked(self) -> None:
+        from raft.core.lifecycle.acme.ensure import AcmeEnsure
+        from raft.core.lifecycle.acme.install import AcmeGateInstall
+
+        name = self.stack.dashboard
+        logger.info("rebuilding always-on dashboard %s", name)
+        StackRenderer(self.stack).render()
+        self.docker.rebuild_service(name)
+        self._reload_edge_after_dashboard()
+        AcmeEnsure(
+            self.stack,
+            installer=AcmeGateInstall(self.stack, self.docker),
+        ).run([name])
+        GraphEventStore(self.stack.root).record_deployment(
+            service=name,
+            app="dashboard",
+            ref="-",
+            label="Redeploy dashboard",
+            action="redeploy",
+        )
+        OperatorSay.say("dashboard redeployed", style="ok")
+
+    def _reload_edge_after_dashboard(self) -> None:
+        running = set(self.docker.running_services())
+        if self.stack.router in running:
+            self.docker.reload_router_nginx()
+        if self.stack.gate in running:
+            self.docker.reload_gate_nginx()

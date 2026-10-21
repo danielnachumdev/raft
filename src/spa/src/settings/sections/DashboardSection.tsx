@@ -29,8 +29,10 @@ export function DashboardSection(props: {
       onEnabledChange={props.onEnabledChange}
       hint={
         <>
-          Always-on <code>raft-dashboard</code> Compose service. Prefer{" "}
-          <code>raft dashboard …</code> for password / OAuth secrets.
+          Always-on <code>raft-dashboard</code> Compose membership. After
+          enabling, run <code>raft render</code> then Start / Redeploy — saving
+          settings alone does not start the container. OAuth secrets live under{" "}
+          <code>host/secrets/dashboard/</code>.
         </>
       }
     >
@@ -85,7 +87,7 @@ export function DashboardSection(props: {
           onChange={(passwordHash) =>
             setAuth({ passwordHash: passwordHash.trim() || null })
           }
-          hint={`Leave as ${SECRET_MASK} to keep stored hash; prefer raft dashboard set-password`}
+          hint={`Leave as ${SECRET_MASK} to keep stored hash; plaintext (≥8 chars) is hashed on save`}
         />
         <TextField
           id="dashboard-verify-url"

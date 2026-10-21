@@ -91,7 +91,10 @@ class DomainErrors:
 
     @staticmethod
     def redeploy_requires_app() -> OperatorError:
-        return OperatorError("redeploy requires APP.\n" "Fix: raft redeploy <app>|router")
+        return OperatorError(
+            "redeploy requires APP.\n"
+            "Fix: raft redeploy <app>|router|dashboard"
+        )
 
     @staticmethod
     def apply_requires_source() -> OperatorError:

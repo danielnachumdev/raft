@@ -1,7 +1,7 @@
 """Always-on ``raft-dashboard`` Compose + edge helpers.
 
-Import ``DashboardService`` / ``DashboardEdgeRender`` from their modules
-(``…dashboard.service`` / ``…dashboard.edge_render``) to avoid render↔acme cycles.
+Import ``DashboardEdgeRender`` from ``…dashboard.edge_render`` to avoid
+render↔acme cycles. Config is settings-only; lifecycle via Start/Stop/Redeploy.
 """
 
 from .compose_yaml import DashboardComposeYaml

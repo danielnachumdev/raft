@@ -49,8 +49,9 @@ class DashboardOAuthOps:
             "redirectUrl": self._env.redirect_url(next_cfg),
             "hint": (
                 "Fill OAUTH2_PROXY_CLIENT_ID/SECRET in the env file, "
-                "add identities to the allowlist, then "
-                "raft dashboard enable --auth-mode=oauth"
+                "add identities to the allowlist, set "
+                "dashboard.auth.mode: oauth and enabled: true in Settings, "
+                "then raft render + raft start dashboard"
             ),
         }
 
@@ -90,8 +91,9 @@ class DashboardOAuthOps:
             return
         raise OperatorError(
             "dashboard oauth requires host/secrets/dashboard/oauth.env and allowlist.\n"
-            "Fix: raft dashboard oauth init, fill client id/secret, "
-            "then raft dashboard oauth allowlist-set --file …",
+            "Fix: write oauth.env under host/secrets/dashboard/, add "
+            "identities to the allowlist file, set auth.mode: oauth in "
+            "Settings, then raft render",
             has_fix=False,
         )
 
