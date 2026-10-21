@@ -27,12 +27,46 @@ class TestShell(RaftTestCase):
         assert "RAFT_HOST_UID" in env and "RAFT_HOST_GID" in env
         assert "RAFT_DOCKER_GID" in env
         assert "RAFT_HOST_HOME" in env
+        assert "RAFT_HOST_DOCKER_BIN" in env
+        assert "RAFT_HOST_DOCKER_PLUGIN_DIR" in env
 
     def test_docker_socket_gid_from_stat(self) -> None:
         st = MagicMock(st_gid=988)
         with patch("raft.core.platform.adapters.shell.shell.os.stat", return_value=st) as stat:
             assert Shell._docker_socket_gid() == "988"
         stat.assert_called_once_with("/var/run/docker.sock")
+
+    def test_host_docker_bin_prefers_which(self) -> None:
+        with patch(
+            "raft.core.platform.adapters.shell.shell.shutil.which",
+            return_value="/opt/docker",
+        ):
+            assert Shell._host_docker_bin() == "/opt/docker"
+
+    def test_host_docker_bin_fallback(self) -> None:
+        with patch(
+            "raft.core.platform.adapters.shell.shell.shutil.which",
+            return_value=None,
+        ):
+            assert Shell._host_docker_bin() == "/usr/bin/docker"
+
+    def test_host_docker_plugin_dir_prefers_existing(self) -> None:
+        with patch(
+            "raft.core.platform.adapters.shell.shell.os.path.isdir",
+            side_effect=lambda p: p.endswith("/usr/local/lib/docker/cli-plugins"),
+        ):
+            assert Shell._host_docker_plugin_dir() == (
+                "/usr/local/lib/docker/cli-plugins"
+            )
+
+    def test_host_docker_plugin_dir_fallback(self) -> None:
+        with patch(
+            "raft.core.platform.adapters.shell.shell.os.path.isdir",
+            return_value=False,
+        ):
+            assert Shell._host_docker_plugin_dir() == (
+                "/usr/libexec/docker/cli-plugins"
+            )
 
     def test_docker_socket_gid_missing_socket(self) -> None:
         with patch("raft.core.platform.adapters.shell.shell.os.stat", side_effect=FileNotFoundError):

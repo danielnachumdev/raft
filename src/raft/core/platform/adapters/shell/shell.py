@@ -2,6 +2,7 @@
 
 import logging
 import os
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Optional
@@ -91,10 +92,30 @@ class Shell:
         # Compose runs raft-controller as the host operator (not root) and adds
         # the docker socket group so /var/run/docker.sock stays usable.
         # RAFT_HOST_HOME lets the always-on dashboard update the host uv-tool CLI.
+        # Host docker bin/plugin paths are for dashboard self-Redeploy one-shots
+        # (volume sources must be host paths, not in-container which()).
         env.setdefault("RAFT_HOST_UID", str(os.getuid()))
         env.setdefault("RAFT_HOST_GID", str(os.getgid()))
         env.setdefault("RAFT_DOCKER_GID", Shell._docker_socket_gid())
         env.setdefault("RAFT_HOST_HOME", str(Path.home()))
+        env.setdefault("RAFT_HOST_DOCKER_BIN", Shell._host_docker_bin())
+        env.setdefault(
+            "RAFT_HOST_DOCKER_PLUGIN_DIR", Shell._host_docker_plugin_dir()
+        )
+
+    @staticmethod
+    def _host_docker_bin() -> str:
+        return shutil.which("docker") or "/usr/bin/docker"
+
+    @staticmethod
+    def _host_docker_plugin_dir() -> str:
+        for path in (
+            "/usr/libexec/docker/cli-plugins",
+            "/usr/local/lib/docker/cli-plugins",
+        ):
+            if os.path.isdir(path):
+                return path
+        return "/usr/libexec/docker/cli-plugins"
 
     @staticmethod
     def _docker_socket_gid() -> str:
