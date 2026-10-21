@@ -4,7 +4,7 @@
 from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 from raft.core.core.errors.cta import OperatorError
 
@@ -137,8 +137,14 @@ class ServePage:
     def api_service_stop(self, name: str) -> Dict[str, Any]:
         return self._run_action(self._actions.stop, name)
 
-    def api_service_redeploy(self, name: str) -> Dict[str, Any]:
-        return self._run_action(self._actions.redeploy, name)
+    def api_service_redeploy(self, name: str) -> JSONResponse:
+        """Redeploy one service; dashboard self-Redeploy returns 202 started."""
+        try:
+            result = self._actions.redeploy(name)
+        except OperatorError as exc:
+            raise self._http_for_operator(exc) from exc
+        code = 202 if result.get("started") else 200
+        return JSONResponse(result, status_code=code)
 
     def api_purge(self) -> Dict[str, Any]:
         """Purge unused Docker images/build cache; return reclaim summary."""

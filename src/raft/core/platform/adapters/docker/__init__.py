@@ -3,6 +3,9 @@
 from .compose_service_row import ComposeServiceRow
 from .compose_status import ComposeStatusTable
 from .crash_loop import CrashLoopDetector
+from .host_oneshot import HostOneshot
+from .host_oneshot_gate import HostOneshotGate
+from .host_oneshot_image import DEFAULT_HOST_ONESHOT_IMAGE
 from .prune import DockerPrune
 from .prune_reclaim import DockerPruneReclaim
 from .runtime import ContainerRuntimeGateway
@@ -15,7 +18,10 @@ __all__ = [
     "ContainerRuntimeGateway",
     "ContainerRuntimeRow",
     "CrashLoopDetector",
+    "DEFAULT_HOST_ONESHOT_IMAGE",
     "DockerPrune",
     "DockerPruneReclaim",
     "DockerStack",
+    "HostOneshot",
+    "HostOneshotGate",
 ]

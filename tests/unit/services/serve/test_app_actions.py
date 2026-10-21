@@ -62,6 +62,23 @@ class TestServeAppActions(RaftTestCase):
         assert response.status_code == 200
         actions.redeploy.assert_called_once_with("site")
 
+    def test_api_service_redeploy_dashboard_started_is_202(self) -> None:
+        stack = StackMakers.make_stack(self.tmp_path)
+        actions = MagicMock()
+        actions.redeploy.return_value = {
+            "ok": True,
+            "action": "redeploy",
+            "service": "raft-dashboard",
+            "started": True,
+            "job_id": "job-abc",
+        }
+        client = serve_fx.client_with_actions(stack, actions)
+        response = client.post("/api/service/raft-dashboard/redeploy")
+        assert response.status_code == 202
+        body = response.json()
+        assert body["started"] is True
+        assert body["job_id"] == "job-abc"
+
     def test_api_service_action_operator_error_is_400(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))
         actions = MagicMock()
@@ -72,6 +89,17 @@ class TestServeAppActions(RaftTestCase):
         response = client.post("/api/service/raft-gate/redeploy")
         assert response.status_code == 400
         assert "gate" in response.json()["detail"]
+
+    def test_api_service_stop_operator_error_is_400(self) -> None:
+        stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))
+        actions = MagicMock()
+        actions.stop.side_effect = OperatorError(
+            "cannot stop site", has_fix=False
+        )
+        client = serve_fx.client_with_actions(stack, actions)
+        response = client.post("/api/service/site/stop")
+        assert response.status_code == 400
+        assert "cannot stop" in response.json()["detail"]
 
     def test_api_service_action_unknown_is_404(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path)
