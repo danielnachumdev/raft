@@ -49,7 +49,7 @@ Overlapping apply/redeploy/render tears tmp names, upstreams, and `generated/`. 
 | `acl.lock` | serve firewall writes (before render/reload) | Firewall persist does not race another firewall writer |
 | `alerts.lock` | CLI/serve writes to `host/alerts/rules.yaml` | Alert rules document writers do not tear each other |
 | `settings.lock` | full settings document, notification channels, github OAuth settings writers | No torn `host/settings.yaml` |
-| `dashboard.lock` | CLI writes to `host/settings.yaml` `dashboard:` | Dashboard settings writers do not tear each other |
+| `dashboard.lock` | Dashboard settings helpers writing `host/settings.yaml` `dashboard:` | Dashboard settings writers do not tear each other |
 
 Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**). Nesting in-process re-enters. `doctor` / `status` do not take these locks.
 
@@ -105,7 +105,7 @@ Align with the README table; detail for agents:
 | Alert rules engine (metrics/control-plane → notifications) | **Shipped** | [#236](https://github.com/danielnachumdev/raft/issues/236); dual-plane CLI+serve lock [#264](https://github.com/danielnachumdev/raft/issues/264); [`docs/serve-alerts.md`](docs/serve-alerts.md); `AlertRulesService` / engine under `observe/alerts/` |
 | Operator system event timeline | **Shipped** | [#267](https://github.com/danielnachumdev/raft/issues/267); `host/events/ops.jsonl` dual-write with GraphEvents; `raft events` + serve `/events`; [`docs/serve-events.md`](docs/serve-events.md) |
 | Firewall-derived alert signals (`edge.denies`) | **Planned** | Observe gate outcomes only; no middle hop (#207) |
-| Always-on Compose dashboard service | **Shipped** | [#36](https://github.com/danielnachumdev/raft/issues/36); `dashboard:` settings + `raft-dashboard` Compose; optional `publicHost` + TLS + auth (`none`/`password`/`oauth`/`external`); OAuth via in-container oauth2-proxy + allowlist; CLI `raft dashboard …` / `oauth …`; [`docs/serve-dashboard.md`](docs/serve-dashboard.md) |
+| Always-on Compose dashboard service | **Shipped** | [#36](https://github.com/danielnachumdev/raft/issues/36); `dashboard:` settings-only + `raft-dashboard` Compose; lifecycle via Start/Stop/Redeploy ([#340](https://github.com/danielnachumdev/raft/issues/340)); optional `publicHost` + TLS + auth (`none`/`password`/`oauth`/`external`); OAuth via in-container oauth2-proxy + allowlist; [`docs/serve-dashboard.md`](docs/serve-dashboard.md) |
 | Automate SPA bake in CD | **Shipped** | [#41](https://github.com/danielnachumdev/raft/issues/41) — Release wheel + install.sh prefers `.whl`; SPA assets not committed |
 | Middle nginx firewall hop | **Rejected** | Do not re-open without new engine requirements |
 
@@ -163,7 +163,7 @@ Product templates sync from `src/raft/core/platform/share/` into the data home o
 | Reusable dashboard kit (Trends / embeds) | `src/spa/src/dashboard-kit/`; Trends overview consumer in `trends/dashboard/ui/TrendsDashboard.tsx`; [`docs/serve-dashboard-kit.md`](docs/serve-dashboard-kit.md) |
 | Alert rules | `core/observe/alerts/` + `services/serve/alerts/` + `services/controller/jobs/alerts/` + SPA `src/spa/src/alerts/` |
 | Ops event timeline | `core/models/state/ops_event*` + `observe/ops/events/`; dual-write from `GraphEventStore`; serve `services/serve/events/`; CLI `services/cli/commands/events.py` (`raft events`); SPA `src/spa/src/events/` |
-| Always-on dashboard | `lifecycle/dashboard/` + `share/dashboard/`; settings `dashboard:`; serve auth `services/serve/auth/`; CLI `services/cli/commands/dashboard.py`; docs [`docs/serve-dashboard.md`](docs/serve-dashboard.md) |
+| Always-on dashboard | `lifecycle/dashboard/` + `share/dashboard/`; settings `dashboard:` (Settings UI); lifecycle Start/Stop/Redeploy via `ServiceActions`; serve auth `services/serve/auth/`; docs [`docs/serve-dashboard.md`](docs/serve-dashboard.md) |
 | Notification strategies | `observe/notify/strategies/` + `catalogs.py`; SPA `src/spa/src/notifications/` |
 | Operator docs for serve features | `docs/serve-*.md` (notifications / alerts / events: `docs/serve-events.md`) |
 

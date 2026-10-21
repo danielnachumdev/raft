@@ -151,7 +151,9 @@ class DashboardSettingsWriter:
         if cfg.requires_password_hash() and not cfg.auth.password_hash:
             raise OperatorError(
                 "dashboard public password auth requires a password.\n"
-                "Fix: raft dashboard set-password, then raft dashboard enable",
+                "Fix: set dashboard.auth.passwordHash in Settings "
+                "(plaintext is hashed on save), set enabled: true, "
+                "then raft render + raft start dashboard",
                 has_fix=False,
             )
         if cfg.auth.mode == "oauth":
@@ -164,7 +166,7 @@ class DashboardSettingsWriter:
         if not password or len(password) < 8:
             raise OperatorError(
                 "dashboard password must be at least 8 characters.\n"
-                "Fix: raft dashboard set-password with a longer secret",
+                "Fix: set a longer password in Settings → Dashboard",
                 has_fix=False,
             )
 

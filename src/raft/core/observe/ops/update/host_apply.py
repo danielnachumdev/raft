@@ -16,22 +16,21 @@ _DOCKER_SOCK = "/var/run/docker.sock"
 _MISSING_HOST_HOME = (
     "Cannot apply raft update from the always-on dashboard: "
     "RAFT_HOST_HOME is unset or not an absolute path.\n"
-    "Fix: on the host run `raft render`, then recreate the dashboard "
-    "(`raft dashboard disable` then `raft dashboard enable`) so Compose "
-    "injects the operator home. Or run `raft update` on the host."
+    "Fix: on the host run `raft render`, then `raft redeploy dashboard` "
+    "so Compose injects the operator home. Or run `raft update` on the host."
 )
 
 _MISSING_DOCKER_SOCK = (
     "Cannot apply raft update from the always-on dashboard: "
     "Docker socket is not available at /var/run/docker.sock.\n"
-    "Fix: recreate the dashboard with the docker.sock volume, or run "
+    "Fix: `raft redeploy dashboard` (docker.sock volume), or run "
     "`raft update` on the host."
 )
 
 _MISSING_DOCKER_CLI = (
     "Cannot apply raft update from the always-on dashboard: "
     "`docker` is not on PATH.\n"
-    "Fix: recreate the dashboard image (docker CLI is baked in), or run "
+    "Fix: `raft redeploy dashboard` (docker CLI is baked in), or run "
     "`raft update` on the host."
 )
 

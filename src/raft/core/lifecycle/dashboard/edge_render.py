@@ -94,6 +94,7 @@ class DashboardEdgeRender:
         if cfg.requires_password_hash() and not cfg.auth.password_hash:
             raise OperatorError(
                 "dashboard public password auth requires passwordHash.\n"
-                "Fix: raft dashboard set-password, then raft render",
+                "Fix: set dashboard.auth.passwordHash in Settings "
+                "(plaintext is hashed on save), then raft render",
                 has_fix=False,
             )

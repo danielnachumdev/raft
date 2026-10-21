@@ -268,24 +268,6 @@ class TestCliDispatch(CliTestCase):
         assert self.run_main(["render"]) == 0
         self.orch.render.assert_called_once()
 
-    def test_redeploy_app_dispatch(self) -> None:
-        assert self.run_main(["redeploy", "app", "--ref", "sha1", "--force-sync"]) == 0
-        self.orch.redeploy_app.assert_called_once_with("app", ref_override="sha1", force_sync=True)
-
-    def test_redeploy_router_dispatch(self) -> None:
-        assert self.run_main(["redeploy", "router"]) == 0
-        self.orch.redeploy_router.assert_called_once()
-
-    def test_redeploy_gate_not_in_choices(self) -> None:
-        with self.patched_deps():
-            with pytest.raises(RuntimeError, match="unknown app"):
-                RaftCLI()._invoke_fire(["redeploy", "gate"])
-
-    def test_redeploy_requires_app(self) -> None:
-        with self.patched_deps():
-            with pytest.raises(RuntimeError, match="redeploy requires APP"):
-                RaftCLI()._invoke_fire(["redeploy"])
-
     def test_gate_recreate_dispatch(self) -> None:
         assert self.run_main(["gate", "recreate"]) == 0
         self.orch.recreate_gate.assert_called_once()

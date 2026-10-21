@@ -2,11 +2,12 @@
 
 from typing import Any, Mapping, Optional
 
+from raft.core.core.errors.cta import OperatorError
+from raft.core.lifecycle.dashboard.password import DashboardPassword
 from raft.core.observe.notify.settings_redactor import SettingsRedactor
 
 from .dashboard_config import DashboardAuthConfig, DashboardConfig
 from .types import GithubServeConfig, NotificationChannelConfig, NotificationsConfig
-
 
 class SettingsSecretsMerge:
     """Re-apply stored secrets when the client sends the redaction mask."""
@@ -73,6 +74,8 @@ class SettingsSecretsMerge:
         password = incoming.password_hash
         if password == SettingsRedactor._MASK and prior.password_hash:
             password = prior.password_hash
+        else:
+            password = self._hash_dashboard_password(password)
         return DashboardAuthConfig(
             mode=incoming.mode,
             password_hash=password,
@@ -81,6 +84,18 @@ class SettingsSecretsMerge:
             identity_header=incoming.identity_header,
             oauth=incoming.oauth,
         )
+
+    def _hash_dashboard_password(self, value: Optional[str]) -> Optional[str]:
+        # Leave encoded hashes alone (pbkdf2_sha256$… or legacy fixtures).
+        if not value or value.startswith("pbkdf2"):
+            return value
+        if len(value) < 8:
+            raise OperatorError(
+                "dashboard password must be at least 8 characters.\n"
+                "Fix: set a longer password in Settings → Dashboard",
+                has_fix=False,
+            )
+        return DashboardPassword().hash(value)
 
     def redact_document(self, raw: Mapping[str, Any]) -> dict[str, Any]:
         out = dict(raw)

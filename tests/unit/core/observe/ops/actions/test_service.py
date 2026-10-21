@@ -151,10 +151,25 @@ class TestServiceActions(RaftTestCase):
         with pytest.raises(OperatorError, match="controller"):
             actions.redeploy("controller")
 
-    def test_redeploy_dashboard_refused(self) -> None:
-        actions, _docker, _orch = self._actions()
-        with pytest.raises(OperatorError, match="dashboard"):
+    def test_redeploy_dashboard_when_enabled(self) -> None:
+        self._write_dashboard_enabled(True)
+        actions, _docker, orch = self._actions()
+        result = actions.redeploy("dashboard")
+        orch.redeploy_dashboard.assert_called_once()
+        assert result["service"] == "raft-dashboard"
+
+    def test_redeploy_dashboard_refused_when_disabled(self) -> None:
+        self._write_dashboard_enabled(False)
+        actions, _docker, orch = self._actions()
+        with pytest.raises(OperatorError, match="dashboard.enabled"):
             actions.redeploy("dashboard")
+        orch.redeploy_dashboard.assert_not_called()
+
+    def _write_dashboard_enabled(self, enabled: bool) -> None:
+        path = self.tmp_path / "host" / "settings.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        flag = "true" if enabled else "false"
+        path.write_text(f"dashboard:\n  enabled: {flag}\n", encoding="utf-8")
 
     def test_unknown_service(self) -> None:
         actions, _docker, _orch = self._actions()

@@ -1,11 +1,9 @@
 """Remaining dashboard coverage gaps."""
 
-import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-import yaml
 
 from raft.core.core.config.settings.dashboard_config import (
     DashboardAuthConfig,
@@ -15,9 +13,8 @@ from raft.core.core.config.settings.strategies.dashboard import DashboardSetting
 from raft.core.core.config.settings.types import EdgeConfig
 from raft.core.core.errors.cta import OperatorError
 from raft.core.lifecycle.dashboard.edge_render import DashboardEdgeRender
-from raft.core.lifecycle.dashboard.service import DashboardService
 from raft.core.lifecycle.dashboard.settings_write import DashboardSettingsWriter
-from raft.services.cli.commands.dashboard import DashboardCLI
+from raft.core.lifecycle.deploy.orchestrator import Orchestrator
 from tests.unit.base import RaftTestCase, StackMakers
 
 
@@ -44,38 +41,46 @@ class TestDashboardCoverageGaps(RaftTestCase):
         )
         assert frag.gate_tls == {}
 
-    def test_service_enable_all_kwargs(self) -> None:
-        svc = self._password_svc(running=["raft-gate", "raft-router"])
-        snap = svc.enable(
-            public_host="ops.example.com",
-            tls="acme",
-            auth_mode="password",
-            verify_url="http://auth.demo.example/v",
-            sign_in_url="https://auth.demo.example/s",
-        )
-        assert snap["enabled"] is True
-        svc._docker.reload_router_nginx.assert_called_once()
-        svc._docker.reload_gate_nginx.assert_called_once()
+    def test_redeploy_dashboard_reloads_edge_when_up(self) -> None:
+        orch = self._orch(running=["raft-gate", "raft-router"])
+        self._run_redeploy(orch)
+        orch.docker.rebuild_service.assert_called_once_with("raft-dashboard")
+        orch.docker.reload_router_nginx.assert_called_once()
+        orch.docker.reload_gate_nginx.assert_called_once()
 
-    def test_service_enable_skips_router_reload_when_router_down(self) -> None:
-        svc = self._password_svc(running=[])
-        svc.enable(public_host="ops.example.com", tls="acme", auth_mode="password")
-        svc._docker.reload_router_nginx.assert_not_called()
-        svc._docker.reload_gate_nginx.assert_not_called()
+    def test_redeploy_dashboard_skips_reload_when_edge_down(self) -> None:
+        orch = self._orch(running=[])
+        self._run_redeploy(orch)
+        orch.docker.reload_router_nginx.assert_not_called()
+        orch.docker.reload_gate_nginx.assert_not_called()
 
-    def _password_svc(self, *, running: list[str]) -> DashboardService:
+    def _run_redeploy(self, orch: Orchestrator) -> None:
+        with patch("raft.core.lifecycle.deploy.orchestrator.service.StackLock"):
+            with patch(
+                "raft.core.lifecycle.deploy.orchestrator.service.StackRenderer"
+            ) as renderer:
+                renderer.return_value.render = MagicMock()
+                with patch("raft.core.lifecycle.acme.ensure.AcmeEnsure"):
+                    with patch("raft.core.lifecycle.acme.install.AcmeGateInstall"):
+                        with patch(
+                            "raft.core.lifecycle.deploy.orchestrator.service."
+                            "GraphEventStore"
+                        ):
+                            with patch(
+                                "raft.core.lifecycle.deploy.orchestrator.service."
+                                "OperatorSay.say"
+                            ):
+                                orch.redeploy_dashboard()
+
+    def _orch(self, *, running: list[str]) -> Orchestrator:
         home = Path(self.tmp_path)
-        (home / "host" / "settings.yaml").write_text("{}\n", encoding="utf-8")
-        writer = DashboardSettingsWriter(home)
-        writer.set_password("correct-horse")
-        svc = DashboardService(
-            StackMakers.make_stack(home),
-            orchestrator=MagicMock(),
-            docker=MagicMock(),
-            writer=writer,
+        (home / "host" / "settings.yaml").write_text(
+            "dashboard:\n  enabled: true\n", encoding="utf-8"
         )
-        svc._docker.running_services.return_value = running
-        return svc
+        orch = Orchestrator(StackMakers.make_stack(home))
+        orch.docker = MagicMock()
+        orch.docker.running_services.return_value = running
+        return orch
 
     def test_writer_clear_host_and_http_url(self) -> None:
         home = Path(self.tmp_path)
@@ -112,20 +117,12 @@ class TestDashboardCoverageGaps(RaftTestCase):
         raw = DashboardSettingsWriter._auth_raw(auth)
         assert "identityHeader" not in raw
 
-    def test_cli_prints_public_url(self) -> None:
+    def test_writer_status_public_url(self) -> None:
         home = Path(self.tmp_path)
         (home / "host" / "settings.yaml").write_text("{}\n", encoding="utf-8")
         writer = DashboardSettingsWriter(home)
         writer.set_password("correct-horse")
-        svc = DashboardService(
-            StackMakers.make_stack(home),
-            orchestrator=MagicMock(),
-            docker=MagicMock(),
-            writer=writer,
+        writer.enable(
+            public_host="ops.example.com", tls="acme", auth_mode="password"
         )
-        cli = DashboardCLI(StackMakers.make_stack(home), service=svc)
-        with patch("raft.services.cli.commands.dashboard.OperatorSay.say") as say:
-            cli.enable(
-                public_host="ops.example.com", tls="acme", auth_mode="password"
-            )
-        assert any("ops.example.com" in str(c) for c in say.call_args_list)
+        assert "ops.example.com" in (writer.status_public()["publicUrl"] or "")

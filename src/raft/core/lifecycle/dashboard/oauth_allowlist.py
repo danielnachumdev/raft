@@ -69,7 +69,8 @@ class DashboardOAuthAllowlist:
         if not text or text.startswith("#"):
             raise OperatorError(
                 "allowlist identity must be a non-empty line.\n"
-                "Fix: echo ops@example.com | raft dashboard oauth allowlist-add",
+                "Fix: append ops@example.com to "
+                "host/secrets/dashboard/oauth-allowlist.txt",
                 has_fix=False,
             )
         existing = self.read(relative)

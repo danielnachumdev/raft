@@ -47,7 +47,8 @@ class TestUpdateOutcome(DomainTestCase):
         public = changed.as_public()
         assert public["alreadyCurrent"] is False
         assert "raft render" in (public["nextSteps"] or "")
-        assert "raft dashboard disable" in (public["nextSteps"] or "")
+        assert "raft redeploy dashboard" in (public["nextSteps"] or "")
+        assert "dashboard.enabled" in (public["nextSteps"] or "")
         same = UpdateOutcome(
             already_current=True, before_line="raft 0.11.0", after_line="raft 0.11.0"
         )

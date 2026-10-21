@@ -8,11 +8,12 @@ from typing import Optional
 NEXT_STEPS = (
     "Next: align the running stack with this release — templates and "
     "Compose ids can change. Typical path: `raft render`, then "
-    "`raft redeploy <app|router>` for targeted updates, or "
+    "`raft redeploy <app|router|dashboard>` for targeted updates, or "
     "`raft down && raft up` when edge/service names or schemas shifted. "
-    "Finish with `raft doctor`. Recreate the always-on dashboard "
-    "(`raft dashboard disable` then `raft dashboard enable`) so the image "
-    "rebuilds with the new install stamp; restart `raft serve` if you use it."
+    "Finish with `raft doctor`. When the always-on dashboard is enabled, "
+    "`raft redeploy dashboard` rebuilds its image with the new install "
+    "stamp (do not flip dashboard.enabled); restart `raft serve` if you "
+    "use it."
 )
 
 
