@@ -49,6 +49,11 @@ class TestCliRedeploy(CliTestCase):
             with pytest.raises(RuntimeError, match="redeploy requires APP"):
                 RaftCLI()._invoke_fire(["redeploy"])
 
+    def test_redeploy_unknown_app(self) -> None:
+        with self.patched_deps():
+            with pytest.raises(RuntimeError, match="unknown"):
+                RaftCLI()._invoke_fire(["redeploy", "missing-app"])
+
     @staticmethod
     def _actions_ok(service: str) -> MagicMock:
         actions = MagicMock()
