@@ -64,6 +64,14 @@ class TestDashboardOAuthGaps(RaftTestCase):
         with pytest.raises(OperatorError, match="provider must be"):
             DashboardOAuthOps(home).init(provider="nope")
 
+    def test_ops_allowlist_add(self) -> None:
+        home = Path(self.tmp_path)
+        (home / "host" / "settings.yaml").write_text("{}\n", encoding="utf-8")
+        ops = DashboardOAuthOps(home)
+        result = ops.allowlist_add("ops@example.com")
+        assert result["count"] == 1
+        assert "ops@example.com" in DashboardOAuthAllowlist(home).read()
+
     def test_writer_oauth_provider_only(self) -> None:
         home = Path(self.tmp_path)
         seed_oauth_secrets(home)

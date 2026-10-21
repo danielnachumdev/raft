@@ -117,6 +117,16 @@ class TestDashboardCoverageGaps(RaftTestCase):
         raw = DashboardSettingsWriter._auth_raw(auth)
         assert "identityHeader" not in raw
 
+    def test_auth_raw_external_urls(self) -> None:
+        auth = DashboardAuthConfig(
+            mode="external",
+            verify_url="http://auth.demo.example/verify",
+            sign_in_url="https://auth.demo.example/sign-in",
+        )
+        raw = DashboardSettingsWriter._auth_raw(auth)
+        assert raw["verifyUrl"] == "http://auth.demo.example/verify"
+        assert raw["signInUrl"] == "https://auth.demo.example/sign-in"
+
     def test_writer_status_public_url(self) -> None:
         home = Path(self.tmp_path)
         (home / "host" / "settings.yaml").write_text("{}\n", encoding="utf-8")
