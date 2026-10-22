@@ -140,7 +140,7 @@ export function AlertRuleFormModal(props: Props) {
           />
           <span className={conditionError ? "form-error" : "form-hint"}>
             {conditionError ??
-              "Signal, select, kind, and params. Nested all/any groups are supported; see docs/serve-alerts.md."}
+              "Signal, select, kind, and params. Nested all/any groups are supported."}
           </span>
         </label>
         {shownError ? (

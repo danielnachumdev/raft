@@ -48,7 +48,7 @@ the next SPA poll (~2s when the tab is visible).
 Serve ``GET /api/service/{name}/http-requests`` returns recent **per-request**
 rows for Host-routed Apps (``expose: http`` + ``publicHost``) via
 ``HttpRequestsRead`` (tail of ``host/metrics/gate-http/access.log``). Trends
-HTTP stays aggregate-only; see ``docs/serve-http-requests.md``.
+HTTP stays aggregate-only.
 
 Doctor JSON is deferred for a full dashboard health view; see
 ``DoctorRead.intended_payload_shape`` and ``DoctorRead.from_results``.
