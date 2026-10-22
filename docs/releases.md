@@ -17,7 +17,7 @@ Every PR into `main` must carry **exactly one** of:
 - **Multiple labels:** fail closed with a clear error.
 - **Base version:** latest GitHub Release tag; if none exist yet, treat as `0.0.0`.
 
-Logic lives in [`scripts/release_semver.py`](../scripts/release_semver.py). Top-level workflows: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) (validation only) and [`.github/workflows/cd.yml`](../.github/workflows/cd.yml) (label check + **semver**). The **semver** job runs only after **CI** succeeds for a `push` to `main` (`workflow_run` gate) — it cannot create a tag/Release/wheel while tests are still failing. Dry-run via **Actions → CD → Run workflow**. Label checks cancel superseded runs for the same PR; **semver** publish does not cancel in progress so a late label event cannot kill SPA bake / wheel attach. Re-running CI on an already-tagged commit is a no-op (idempotent).
+Logic lives in [`scripts/release/release_semver.py`](../scripts/release/release_semver.py). Top-level workflows: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) (validation only) and [`.github/workflows/cd.yml`](../.github/workflows/cd.yml) (label check + **semver**). The **semver** job runs only after **CI** succeeds for a `push` to `main` (`workflow_run` gate) — it cannot create a tag/Release/wheel while tests are still failing. Dry-run via **Actions → CD → Run workflow**. Label checks cancel superseded runs for the same PR; **semver** publish does not cancel in progress so a late label event cannot kill SPA bake / wheel attach. Re-running CI on an already-tagged commit is a no-op (idempotent).
 
 ### CI pre-merge vs post-merge
 
@@ -42,7 +42,7 @@ On each bump publish (not `noBump`, not dry-run), the **semver** job:
 
 1. Runs `cd src/spa && npm ci && npm run build` into `src/raft/core/platform/share/serve/spa/` (transient; **not** committed).
 2. Sets `pyproject.toml` `version` to the Release semver (tag without `v`).
-3. Builds a wheel via [`scripts/build_release_wheel.sh`](../scripts/build_release_wheel.sh) and **fails the job** if bake/build fails or the wheel lacks SPA assets.
+3. Builds a wheel via [`scripts/release/build_release_wheel.sh`](../scripts/release/build_release_wheel.sh) and **fails the job** if bake/build fails or the wheel lacks SPA assets.
 4. Creates the GitHub Release and attaches the `.whl` (no JSON placeholder).
 
 Hashed SPA files under `share/serve/spa/` stay **out of git** (`.gitkeep` + `.gitignore` only). FE PRs change `src/spa/` only.

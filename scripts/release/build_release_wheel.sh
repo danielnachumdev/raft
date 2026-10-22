@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Usage: scripts/build_release_wheel.sh <vX.Y.Z> [out-dir]
+# Usage: scripts/release/build_release_wheel.sh <vX.Y.Z> [out-dir]
 set -euo pipefail
 
 TAG="${1:?usage: build_release_wheel.sh <vX.Y.Z> [out-dir]}"
 OUT_DIR="${2:-dist}"
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 VERSION="${TAG#v}"
 
 if [[ ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then

@@ -54,7 +54,7 @@ jobs:
           LABELS_JSON: ${{ toJson(github.event.pull_request.labels) }}
         run: |
           set -euo pipefail
-          python3 scripts/release_semver.py --latest-tag v0.0.0 --labels-json "${LABELS_JSON}"
+          python3 scripts/release/release_semver.py --latest-tag v0.0.0 --labels-json "${LABELS_JSON}"
 
   semver:
     name: semver
@@ -174,7 +174,7 @@ jobs:
             latest="$(gh release view --json tagName -q .tagName 2>/dev/null || true)"
           fi
           echo "latest_tag=${latest:-<none>}"
-          out="$(python3 scripts/release_semver.py --latest-tag "${latest}" --labels-json "${labels_json}")"
+          out="$(python3 scripts/release/release_semver.py --latest-tag "${latest}" --labels-json "${labels_json}")"
           echo "${out}"
           skip="$(echo "${out}" | sed -n 's/^skip=//p')"
           tag="$(echo "${out}" | sed -n 's/^tag=//p')"
@@ -216,7 +216,7 @@ jobs:
           TAG: ${{ steps.bump.outputs.tag }}
         run: |
           set -euo pipefail
-          out="$(bash scripts/build_release_wheel.sh "${TAG}" dist)"
+          out="$(bash scripts/release/build_release_wheel.sh "${TAG}" dist)"
           echo "${out}"
           wheel="$(echo "${out}" | sed -n 's/^wheel=//p' | tail -1)"
           [[ -n "${wheel}" && -f "${wheel}" ]]

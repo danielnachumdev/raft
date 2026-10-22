@@ -1,0 +1,47 @@
+# Source of truth for agent skills, MCP servers, rules, and hooks.
+# Edit this file, then run: ./scripts/setup/setup.sh  (or ./scripts/setup/prerequisites.sh then capa install)
+# Docs: https://capa.sh/ — project skills/rules live under agents/; providers are generated.
+
+providers:
+  - cursor
+  - claude-code
+
+options:
+  toolExposure: search
+  # Host CLIs required for this repo. capa install fails if any missing.
+  requiresCommands:
+    - cli: gh
+      description: GitHub CLI (issues, PRs, releases). Install from https://cli.github.com/
+    - cli: uv
+      description: Python package manager (uv sync / pytest). Install from https://docs.astral.sh/uv/
+    - cli: node
+      description: Node.js (SPA build + MCP npx). Install via nvm or system package
+    - cli: npm
+      description: npm (SPA deps, agent-browser). Ships with Node.js
+    - cli: agent-browser
+      description: QA browser harness for SPA screenshots. Install via npm i -g agent-browser
+    - cli: docker
+      description: Docker Engine / Compose for local stack and e2e. Install Docker Desktop or engine separately
+
+skills:
+  - id: capabilities-manager
+    type: github
+    def:
+      repo: infragate/capa@capabilities-manager
+      description: Guide for managing capabilities with capa CLI
+
+servers: []
+
+tools: []
+
+plugins:
+  - id: office-kit
+    type: github
+    def:
+      repo: Minitour/office-kit::plugins/office-kit
+      description: Create branded standalone HTML documents, Slidev decks, and
+        HyperFrames videos in an isolated OfficeKit workspace.
+
+rules: []
+
+hooks: []
