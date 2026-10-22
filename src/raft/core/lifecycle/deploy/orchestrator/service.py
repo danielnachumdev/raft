@@ -113,7 +113,7 @@ class Orchestrator(OrchestratorDeploy):
         self.docker.reload_router_nginx()
         self._mark_router_nginx_loaded()
 
-    def start(self) -> None:
+    def up(self) -> None:
         with StackLock(self.stack.root):
             running = self.docker.running_services()
             if running:
@@ -136,7 +136,7 @@ class Orchestrator(OrchestratorDeploy):
         missing = [name for name in expected if name not in running]
         if missing:
             message = (
-                f"stack start incomplete — missing running services: {missing}.\n"
+                f"stack up incomplete — missing running services: {missing}.\n"
                 f"Fix: docker compose -f ~/.raft/compose.yaml logs "
                 f"{' '.join(expected)}\n"
                 f"     raft render && raft doctor"
@@ -151,22 +151,22 @@ class Orchestrator(OrchestratorDeploy):
     def _expected_edge_running(self) -> tuple[str, ...]:
         return self.stack.control_plane_services
 
-    def stop(self) -> None:
+    def down(self) -> None:
         with StackLock(self.stack.root):
             running = self.docker.running_services()
             if not running:
-                OperatorSay.say("stack already stopped", style="info")
+                OperatorSay.say("stack already down", style="info")
                 for app in self.stack.apps:
                     self.docker.remove_container(app.tmp_container)
                 self.docker.stop_stack()
                 self._assert_stack_stopped()
                 GraphEventStore(self.stack.root).record_stack_down()
                 return
-            logger.info("stopping stack (%s)", ", ".join(running))
+            logger.info("bringing stack down (%s)", ", ".join(running))
             self.docker.stop_stack()
             self._assert_stack_stopped()
             GraphEventStore(self.stack.root).record_stack_down()
-            OperatorSay.say("stack stopped", style="ok")
+            OperatorSay.say("stack is down", style="ok")
 
     def _assert_stack_stopped(self) -> None:
         still = self.docker.running_services()
@@ -188,12 +188,12 @@ class Orchestrator(OrchestratorDeploy):
             self.redeploy_router()
             return
         if target in ("gate", self.stack.gate):
-            self.recreate_gate()
+            self.redeploy_gate()
             return
         self.redeploy_app(target)
 
-    def recreate_gate(self) -> None:
-        """Recreate the gate container (brief public-edge downtime)."""
+    def redeploy_gate(self) -> None:
+        """Redeploy the gate container (brief public-edge downtime)."""
         with StackLock(self.stack.root):
             if self.stack.gate not in self.docker.running_services():
                 raise OperatorError(
@@ -208,10 +208,10 @@ class Orchestrator(OrchestratorDeploy):
                 "(brief edge downtime — typically 1–2s)",
                 style="warn",
             )
-            self.docker.recreate_gate()
+            self.docker.redeploy_gate()
             self._mark_gate_nginx_loaded()
             self._wait_edge_listeners()
-            GraphEventStore(self.stack.root).record_gate_recreate()
+            GraphEventStore(self.stack.root).record_gate_redeploy()
             OperatorSay.say("gate redeployed", style="ok")
 
     def _wait_edge_listeners(self) -> None:

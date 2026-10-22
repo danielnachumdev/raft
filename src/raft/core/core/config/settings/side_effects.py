@@ -8,7 +8,7 @@ from .types import EdgeConfig, RaftConfig
 class SettingsSideEffects:
     """Describe host actions required after a settings document change."""
 
-    GATE_RECREATE = (
+    GATE_REDEPLOY = (
         "Published edge ports (http / https / streams) changed. "
         "Run `raft redeploy gate` so the gate container publishes the new "
         "listeners (reload alone is not enough; brief edge downtime)."
@@ -36,7 +36,7 @@ class SettingsSideEffects:
     ) -> List[dict[str, Any]]:
         notes: List[dict[str, Any]] = []
         if self._edge_ports_changed(before.edge, after.edge):
-            notes.append(self._note("edge.ports", self.GATE_RECREATE, severity="warn"))
+            notes.append(self._note("edge.ports", self.GATE_REDEPLOY, severity="warn"))
         dash = self._dashboard_enabled_note(before, after)
         if dash is not None:
             notes.append(dash)

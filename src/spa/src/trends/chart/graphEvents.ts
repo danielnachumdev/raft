@@ -16,7 +16,8 @@ const RAFT_LEVEL_KINDS = new Set([
   "up",
   "down",
   "update",
-  "gate_recreate",
+  "gate_redeploy",
+  "gate_recreate", // legacy dual-read
 ]);
 
 /** Hex strokes (SVG attrs do not always resolve CSS variables). */
@@ -28,6 +29,7 @@ const KIND_STROKE: Record<string, string> = {
   up: "#0e7490",
   down: "#9a3412",
   update: "#a16207",
+  gate_redeploy: "#1e3a5f",
   gate_recreate: "#1e3a5f",
 };
 
@@ -93,13 +95,15 @@ function seriesGroupKey(group: string | null | undefined): string {
 export function eventMarkerLabel(event: GraphEvent): string {
   if (event.label && event.label.trim()) return event.label.trim();
   if (event.kind === "deployment") return "Deploy";
-  if (event.kind === "stop") return "Stop";
-  if (event.kind === "start") return "Start";
+  if (event.kind === "stop") return "Down";
+  if (event.kind === "start") return "Up";
   if (event.kind === "scaling") return scalingMarkerLabel(event);
   if (event.kind === "up") return "Stack up";
   if (event.kind === "down") return "Stack down";
   if (event.kind === "update") return "Raft update";
-  if (event.kind === "gate_recreate") return "Gate recreate";
+  if (event.kind === "gate_redeploy" || event.kind === "gate_recreate") {
+    return "Gate redeploy";
+  }
   return event.kind;
 }
 

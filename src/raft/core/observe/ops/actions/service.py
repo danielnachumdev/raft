@@ -1,4 +1,4 @@
-"""Mutative per-service actions (start / stop / redeploy / purge)."""
+"""Mutative per-service actions (up / down / redeploy / purge)."""
 
 import logging
 from typing import Any, Dict, Optional, Tuple
@@ -9,7 +9,7 @@ from raft.core.core.models.stack import Stack
 from raft.core.core.models.state.graph_event_store import GraphEventStore
 from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.core.lifecycle.deploy.orchestrator import Orchestrator
-from raft.core.observe.ops.actions.start_depends import StartDepends
+from raft.core.observe.ops.actions.up_depends import UpDepends
 from raft.core.observe.ops.logs.targets import LogsTargets
 from raft.core.observe.ops.purge import Purge
 from raft.core.platform.adapters.docker import DockerStack, HostOneshot, HostOneshotGate
@@ -28,7 +28,7 @@ class ServiceActions:
     For apps with ``spec.scaling``, down marks ``scaledToZero`` (healer skips;
     gate holding page) and up clears it. Redeploy mirrors ``raft redeploy``:
     apps cutover (must be running), router recreates, dashboard rebuilds when
-    ``dashboard.enabled``, gate recreates (brief edge downtime), controller
+    ``dashboard.enabled``, gate redeploys (brief edge downtime), controller
     is refused. ``purge`` removes unused Docker images/cache.
     """
 
@@ -59,30 +59,30 @@ class ServiceActions:
         """Purge unused Docker images/build cache; same path as ``raft purge``."""
         return self._purge_svc().execute().as_api()
 
-    def start(self, name: str, *, no_deps: bool = False) -> Dict[str, Any]:
+    def up(self, name: str, *, no_deps: bool = False) -> Dict[str, Any]:
         compose_id, app = self._resolve(name)
         if app is None or no_deps:
-            return self._start_one(compose_id, app, no_deps=no_deps, started_deps=())
-        deps_helper = StartDepends(self.stack, self._docker_stack())
+            return self._up_one(compose_id, app, no_deps=no_deps, started_deps=())
+        deps_helper = UpDepends(self.stack, self._docker_stack())
         chain = deps_helper.wake_chain(app.name)
         if len(chain) <= 1:
-            return self._start_one(compose_id, app, no_deps=False, started_deps=())
-        return self._start_with_deps(compose_id, app, deps_helper, chain)
+            return self._up_one(compose_id, app, no_deps=False, started_deps=())
+        return self._up_with_deps(compose_id, app, deps_helper, chain)
 
-    def stop(self, name: str) -> Dict[str, Any]:
+    def down(self, name: str) -> Dict[str, Any]:
         compose_id, app = self._resolve(name)
         with self._locks(app):
             self._docker_stack().stop_service(compose_id)
             if app is not None:
                 self._mark_scaled_to_zero(app)
-            self._record_stop_event(compose_id, app)
-        return self._ok("stop", compose_id)
+            self._record_down_event(compose_id, app)
+        return self._ok("down", compose_id)
 
     def redeploy(self, name: str) -> Dict[str, Any]:
         compose_id, app = self._resolve(name)
         orch = self._orchestrator()
         if compose_id == self.stack.gate:
-            orch.recreate_gate()
+            orch.redeploy_gate()
             return self._ok("redeploy", compose_id)
         if compose_id == self.stack.router:
             orch.redeploy_router()
@@ -138,22 +138,22 @@ class ServiceActions:
             "job_id": job_id,
         }
 
-    def _start_with_deps(
+    def _up_with_deps(
         self,
         compose_id: str,
         app: App,
-        deps_helper: StartDepends,
+        deps_helper: UpDepends,
         chain: Tuple[str, ...],
     ) -> Dict[str, Any]:
         with AppsAndStackLocks(self.stack.root, chain):
-            started = self._start_dep_names(deps_helper, chain[:-1])
+            started = self._up_dep_names(deps_helper, chain[:-1])
             self._docker_stack().start_service(compose_id)
             self._clear_scaled_to_zero(app)
             deps_helper.restore_upstreams(chain)
-            self._record_start_event(compose_id, app)
-        return self._ok("start", compose_id, no_deps=False, started_deps=started)
+            self._record_up_event(compose_id, app)
+        return self._ok("up", compose_id, no_deps=False, started_deps=started)
 
-    def _start_one(
+    def _up_one(
         self,
         compose_id: str,
         app: Optional[App],
@@ -165,17 +165,17 @@ class ServiceActions:
             self._docker_stack().start_service(compose_id)
             if app is not None:
                 self._clear_scaled_to_zero(app)
-            self._record_start_event(compose_id, app)
+            self._record_up_event(compose_id, app)
         return self._ok(
-            "start", compose_id, no_deps=no_deps, started_deps=started_deps
+            "up", compose_id, no_deps=no_deps, started_deps=started_deps
         )
 
-    def _start_dep_names(
-        self, deps_helper: StartDepends, dep_names: Tuple[str, ...]
+    def _up_dep_names(
+        self, deps_helper: UpDepends, dep_names: Tuple[str, ...]
     ) -> Tuple[str, ...]:
         started: list[str] = []
         for dep_name in dep_names:
-            deps_helper.start_dep(dep_name)
+            deps_helper.up_dep(dep_name)
             started.append(dep_name)
         return tuple(started)
 
@@ -188,6 +188,7 @@ class ServiceActions:
             "recreate the stack with `raft down` / `raft up`.",
             has_fix=False,
         )
+
     def _resolve(self, name: str) -> tuple[str, Optional[App]]:
         compose_id = self._targets.resolve(name)[0]
         for app in self.stack.apps:
@@ -227,16 +228,16 @@ class ServiceActions:
             return
         ScalingStore(self.stack.root).mark_scaled_to_zero(app.name)
 
-    def _record_stop_event(self, compose_id: str, app: Optional[App]) -> None:
-        """Append a GraphEvent so Trends charts mark intentional stops."""
-        GraphEventStore(self.stack.root).record_stop(
+    def _record_down_event(self, compose_id: str, app: Optional[App]) -> None:
+        """Append a GraphEvent so Trends charts mark intentional downs."""
+        GraphEventStore(self.stack.root).record_service_down(
             service=compose_id,
             app=None if app is None else app.name,
         )
 
-    def _record_start_event(self, compose_id: str, app: Optional[App]) -> None:
-        """Append a GraphEvent so Trends charts mark intentional starts."""
-        GraphEventStore(self.stack.root).record_start(
+    def _record_up_event(self, compose_id: str, app: Optional[App]) -> None:
+        """Append a GraphEvent so Trends charts mark intentional ups."""
+        GraphEventStore(self.stack.root).record_service_up(
             service=compose_id,
             app=None if app is None else app.name,
         )
@@ -262,7 +263,7 @@ class ServiceActions:
         started_deps: Tuple[str, ...] = (),
     ) -> Dict[str, Any]:
         payload: Dict[str, Any] = {"ok": True, "action": action, "service": service}
-        if action == "start":
+        if action == "up":
             payload["no_deps"] = no_deps
             payload["started_deps"] = list(started_deps)
         return payload

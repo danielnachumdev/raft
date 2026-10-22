@@ -25,4 +25,4 @@ raft apply --file examples/host-published-ports/.raft/app.yaml --ref "$SHA"
 raft doctor
 ```
 
-Deploy is on by default. After changing gate-published `edge:` ports (not host-exposed ones), run `raft gate recreate`.
+Deploy is on by default. After changing gate-published `edge:` ports (not host-exposed ones), run `raft redeploy gate`.

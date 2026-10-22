@@ -24,7 +24,7 @@ edge:
 ```
 
 ```bash
-raft gate recreate
+raft redeploy gate
 ```
 
 ## Apply

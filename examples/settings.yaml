@@ -3,7 +3,7 @@
 # Override the data home with RAFT_DATA_HOME (default: ~/.raft).
 #
 # After changing edge published ports (http / https / streams), run:
-#   raft gate recreate
+#   raft redeploy gate
 # (not `raft redeploy gate` — that command refuses).
 
 # ---------------------------------------------------------------------------
@@ -113,7 +113,7 @@ edge:
   # Extra gate listeners for expose: stream apps (L4 proxy).
   # Empty list (default) means no stream listeners.
   streams: []
-  # Example — uncomment (and gate recreate) when an app uses expose: stream:
+  # Example — uncomment (and gate redeploy) when an app uses expose: stream:
   # streams:
   #   - name: smtp          # label only (for humans / docs)
   #     port: 25            # host port published by the gate
@@ -217,7 +217,7 @@ edge:
 #     #   # issuerUrl: https://login.example.com/   # oidc only
 #     #   allowlistFile: host/secrets/dashboard/oauth-allowlist.txt
 #     # secrets: ~/.raft/host/secrets/dashboard/oauth.env (+ allowlist)
-# Lifecycle: raft start|stop|redeploy dashboard (after enabled: true + render)
+# Lifecycle: raft up|down|redeploy dashboard (after enabled: true + render)
 
 # ---------------------------------------------------------------------------
 # Edge firewall is ordered rules under host/firewall/rules.yaml (raft serve

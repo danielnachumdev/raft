@@ -1,4 +1,4 @@
-"""Unit tests for ServiceActions start / stop / redeploy wiring."""
+"""Unit tests for ServiceActions up / down / redeploy wiring."""
 
 from __future__ import annotations
 
@@ -10,8 +10,8 @@ from datetime import datetime, timezone
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.state.graph_event_kinds import (
-    KIND_START,
-    KIND_STOP,
+    KIND_SERVICE_UP,
+    KIND_SERVICE_DOWN,
 )
 from raft.core.core.models.state.graph_event_store import GraphEventStore
 from raft.core.core.models.state.scaling_store import ScalingStore
@@ -50,30 +50,30 @@ class TestServiceActions(RaftTestCase):
         actions, docker, _orch = self._actions()
         with self._with_app_locks() as locks:
             self._enter(locks)
-            result = actions.start("site")
+            result = actions.up("site")
         docker.start_service.assert_called_once_with("site")
         assert result == {
             "ok": True,
-            "action": "start",
+            "action": "up",
             "service": "site",
             "no_deps": False,
             "started_deps": [],
         }
         events = GraphEventStore(self.tmp_path).events_in_window(from_ts=_EPOCH)
         assert len(events) == 1
-        assert events[0].kind == KIND_START
+        assert events[0].kind == KIND_SERVICE_UP
         assert events[0].service == "site"
 
     def test_stop_calls_docker(self) -> None:
         actions, docker, _orch = self._actions()
         with self._with_app_locks() as locks:
             self._enter(locks)
-            result = actions.stop("site")
+            result = actions.down("site")
         docker.stop_service.assert_called_once_with("site")
-        assert result["action"] == "stop"
+        assert result["action"] == "down"
         events = GraphEventStore(self.tmp_path).events_in_window(from_ts=_EPOCH)
         assert len(events) == 1
-        assert events[0].kind == KIND_STOP
+        assert events[0].kind == KIND_SERVICE_DOWN
         assert events[0].service == "site"
         assert events[0].metadata["app"] == "site"
 
@@ -81,18 +81,18 @@ class TestServiceActions(RaftTestCase):
         actions, docker, _orch = self._actions()
         with self._with_stack_lock() as locks:
             self._enter(locks)
-            actions.start("gate")
+            actions.up("gate")
         docker.start_service.assert_called_once_with("raft-gate")
 
     def test_stop_edge_uses_stack_lock(self) -> None:
         actions, docker, _orch = self._actions()
         with self._with_stack_lock() as locks:
             self._enter(locks)
-            actions.stop("router")
+            actions.down("router")
         docker.stop_service.assert_called_once_with("raft-router")
         events = GraphEventStore(self.tmp_path).events_in_window(from_ts=_EPOCH)
         assert len(events) == 1
-        assert events[0].kind == KIND_STOP
+        assert events[0].kind == KIND_SERVICE_DOWN
         assert events[0].service == "raft-router"
         assert events[0].metadata == {}
 
@@ -102,7 +102,7 @@ class TestServiceActions(RaftTestCase):
         actions, docker, _orch = self._actions(apps=(AppMakers.make_app("site"),))
         with self._with_app_locks() as locks:
             self._enter(locks)
-            actions.start("site")
+            actions.up("site")
         docker.start_service.assert_called_once_with("site")
         assert not ScalingStore(self.tmp_path).is_scaled_to_zero("site")
 
@@ -113,7 +113,7 @@ class TestServiceActions(RaftTestCase):
         actions, _docker, _orch = self._actions(apps=(AppMakers.make_app("site"),))
         with self._with_app_locks() as locks:
             self._enter(locks)
-            actions.start("site")
+            actions.up("site")
         assert not ScalingStore(self.tmp_path).is_scaled_to_zero("site")
 
     def test_stop_marks_scaled_to_zero_when_scaling(self) -> None:
@@ -121,7 +121,7 @@ class TestServiceActions(RaftTestCase):
         actions, docker, _orch = self._actions(apps=(AppMakers.make_app("site"),))
         with self._with_app_locks() as locks:
             self._enter(locks)
-            actions.stop("site")
+            actions.down("site")
         docker.stop_service.assert_called_once_with("site")
         assert ScalingStore(self.tmp_path).is_scaled_to_zero("site")
 
@@ -137,10 +137,10 @@ class TestServiceActions(RaftTestCase):
         orch.redeploy_router.assert_called_once()
         assert result["service"] == "raft-router"
 
-    def test_redeploy_gate_recreates(self) -> None:
+    def test_redeploy_gate_calls_redeploy(self) -> None:
         actions, _docker, orch = self._actions()
         result = actions.redeploy("gate")
-        orch.recreate_gate.assert_called_once()
+        orch.redeploy_gate.assert_called_once()
         orch.redeploy.assert_not_called()
         assert result["action"] == "redeploy"
         assert result["service"] == "raft-gate"
@@ -210,7 +210,7 @@ class TestServiceActions(RaftTestCase):
     def test_unknown_service(self) -> None:
         actions, _docker, _orch = self._actions()
         with pytest.raises(OperatorError, match="unknown"):
-            actions.start("missing")
+            actions.up("missing")
 
     def test_default_docker_and_orchestrator(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))
@@ -222,7 +222,7 @@ class TestServiceActions(RaftTestCase):
                     orch_cls.return_value = MagicMock()
                     with self._with_app_locks() as locks:
                         self._enter(locks)
-                        actions.start("site")
+                        actions.up("site")
                         actions.redeploy("site")
         docker_cls.assert_called()
         orch_cls.assert_called_once_with(stack)

@@ -79,15 +79,15 @@ class TestOrchestratorPolicy(DomainTestCase):
     def _policy_setup(self, _applied_stack) -> None:
         self.orch = self.orchestrator(mock_deps=False)
 
-    def test_redeploy_gate_recreates(self) -> None:
-        with patch.object(self.orch, "recreate_gate") as recreate:
+    def test_redeploy_gate_calls_redeploy(self) -> None:
+        with patch.object(self.orch, "redeploy_gate") as recreate:
             self.orch.redeploy("gate")
         recreate.assert_called_once()
 
-    def test_recreate_gate_requires_running(self) -> None:
+    def test_redeploy_gate_requires_running(self) -> None:
         with patch.object(self.orch.docker, "running_services", return_value=["router"]):
             with pytest.raises(OperatorError, match="gate"):
-                self.orch.recreate_gate()
+                self.orch.redeploy_gate()
 
     def test_start_refuses_if_running(self) -> None:
         with patch.object(
@@ -101,7 +101,7 @@ class TestOrchestratorPolicy(DomainTestCase):
                 return_value=["cling-on"],
             ):
                 with pytest.raises(OperatorError, match="already running") as caught:
-                    self.orch.start()
+                    self.orch.up()
         assert "Network holders" in str(caught.value)
         assert "cling-on" in str(caught.value)
         assert "compose.yaml ps" in str(caught.value)

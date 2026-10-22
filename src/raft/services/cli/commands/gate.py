@@ -17,4 +17,4 @@ class GateCLI:
             "`raft gate recreate` is deprecated; use `raft redeploy gate` instead.",
             style="warn",
         )
-        Orchestrator(self._stack).recreate_gate()
+        Orchestrator(self._stack).redeploy_gate()

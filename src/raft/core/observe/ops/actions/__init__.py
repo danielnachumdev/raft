@@ -1,6 +1,6 @@
-"""Per-service up / down / redeploy / purge (shared by serve + CLI)."""
+"""Mutative per-service operator actions."""
 
 from .service import ServiceActions
-from .start_depends import StartDepends
+from .up_depends import UpDepends
 
-__all__ = ["ServiceActions", "StartDepends"]
+__all__ = ["ServiceActions", "UpDepends"]

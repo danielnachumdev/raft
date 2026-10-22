@@ -22,7 +22,7 @@ export function EdgeSection(props: {
       hint={
         <>
           Public listeners published by the gate. Changing http / https / streams
-          requires <code>raft gate recreate</code> (not reload).
+          requires <code>raft redeploy gate</code> (not reload).
         </>
       }
     >

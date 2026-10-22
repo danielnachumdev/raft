@@ -196,7 +196,7 @@ class TestCliDispatch(CliTestCase):
             with pytest.raises(SystemExit) as exc:
                 RaftCLI()._invoke_fire(["up", "--bogus"])
         assert exc.value.code == 2
-        self.orch.start.assert_not_called()
+        self.orch.up.assert_not_called()
         assert "Could not consume arg: --bogus" in capsys.readouterr().err
 
     def test_purge_dispatches(self) -> None:
@@ -243,46 +243,46 @@ class TestCliDispatch(CliTestCase):
     def test_up_down_dispatch(self) -> None:
         assert self.run_main(["up"]) == 0
         assert self.run_main(["down"]) == 0
-        self.orch.start.assert_called_once()
-        self.orch.stop.assert_called_once()
+        self.orch.up.assert_called_once()
+        self.orch.down.assert_called_once()
 
     def test_up_down_name_dispatch(self) -> None:
         actions = MagicMock()
-        actions.start.return_value = {
+        actions.up.return_value = {
             "ok": True,
-            "action": "start",
+            "action": "up",
             "service": "app",
             "no_deps": False,
             "started_deps": [],
         }
-        actions.stop.return_value = {"ok": True, "action": "stop", "service": "app"}
+        actions.down.return_value = {"ok": True, "action": "down", "service": "app"}
         with patch("raft.core.core.ui.OperatorSay.say"), self.patched_deps(
             ServiceActions=actions
         ):
             assert RaftCLI()._invoke_fire(["up", "app"]) == 0
             assert RaftCLI()._invoke_fire(["down", "app"]) == 0
-        actions.start.assert_called_once_with("app", no_deps=False)
-        actions.stop.assert_called_once_with("app")
-        self.orch.start.assert_not_called()
-        self.orch.stop.assert_not_called()
+        actions.up.assert_called_once_with("app", no_deps=False)
+        actions.down.assert_called_once_with("app")
+        self.orch.up.assert_not_called()
+        self.orch.down.assert_not_called()
 
     def test_start_stop_aliases_dispatch(self) -> None:
         actions = MagicMock()
-        actions.start.return_value = {
+        actions.up.return_value = {
             "ok": True,
-            "action": "start",
+            "action": "up",
             "service": "app",
             "no_deps": False,
             "started_deps": [],
         }
-        actions.stop.return_value = {"ok": True, "action": "stop", "service": "app"}
+        actions.down.return_value = {"ok": True, "action": "down", "service": "app"}
         with patch("raft.core.core.ui.OperatorSay.say") as say, self.patched_deps(
             ServiceActions=actions
         ):
             assert RaftCLI()._invoke_fire(["start", "app"]) == 0
             assert RaftCLI()._invoke_fire(["stop", "app"]) == 0
-        actions.start.assert_called_once_with("app", no_deps=False)
-        actions.stop.assert_called_once_with("app")
+        actions.up.assert_called_once_with("app", no_deps=False)
+        actions.down.assert_called_once_with("app")
         assert any("deprecated" in str(c) and "raft up" in str(c) for c in say.call_args_list)
         assert any("deprecated" in str(c) and "raft down" in str(c) for c in say.call_args_list)
 
@@ -290,10 +290,10 @@ class TestCliDispatch(CliTestCase):
         assert self.run_main(["render"]) == 0
         self.orch.render.assert_called_once()
 
-    def test_gate_recreate_alias_dispatch(self) -> None:
+    def test_gate_redeploy_alias_dispatch(self) -> None:
         with patch("raft.core.core.ui.OperatorSay.say") as say:
             assert self.run_main(["gate", "recreate"]) == 0
-        self.orch.recreate_gate.assert_called_once()
+        self.orch.redeploy_gate.assert_called_once()
         assert any(
             "deprecated" in str(c) and "raft redeploy gate" in str(c)
             for c in say.call_args_list

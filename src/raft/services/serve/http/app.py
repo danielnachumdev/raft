@@ -136,9 +136,12 @@ class ServeAppFactory:
 
     @staticmethod
     def _register_action_api(app: FastAPI, page: ServePage) -> None:
-        app.post("/api/service/{name}/start")(page.api_service_start)
-        app.post("/api/service/{name}/stop")(page.api_service_stop)
+        app.post("/api/service/{name}/up")(page.api_service_up)
+        app.post("/api/service/{name}/down")(page.api_service_down)
         app.post("/api/service/{name}/redeploy")(page.api_service_redeploy)
+        # Deprecated aliases (pre-glossary start/stop paths).
+        app.post("/api/service/{name}/start")(page.api_service_up)
+        app.post("/api/service/{name}/stop")(page.api_service_down)
         app.post("/api/purge")(page.api_purge)
 
     @staticmethod

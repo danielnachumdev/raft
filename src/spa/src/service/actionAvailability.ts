@@ -10,8 +10,8 @@ export type ActionAvailability = Record<
 const STOPPED = new Set(["exited", "not running", "dead", "created"]);
 
 const HINTS: Record<ServiceAction, string> = {
-  start: "Bring this service up with Compose (clears scale-to-zero idle).",
-  stop: "Bring this service down with Compose (scale-to-zero apps are marked idle).",
+  up: "Bring this service up with Compose (clears scale-to-zero idle).",
+  down: "Bring this service down with Compose (scale-to-zero apps are marked idle).",
   redeploy:
     "Refresh generation: cut over a running app, recreate the router/gate, or rebuild the dashboard. Controller redeploy is refused. Gate redeploy briefly drops the public edge.",
 };
@@ -23,12 +23,12 @@ export function actionAvailability(
   const running = key === "running";
   const stopped = STOPPED.has(key);
   return {
-    start: running
+    up: running
       ? { enabled: false, hint: "Already running." }
-      : { enabled: true, hint: HINTS.start },
-    stop: stopped
-      ? { enabled: false, hint: "Already stopped." }
-      : { enabled: true, hint: HINTS.stop },
+      : { enabled: true, hint: HINTS.up },
+    down: stopped
+      ? { enabled: false, hint: "Already down." }
+      : { enabled: true, hint: HINTS.down },
     redeploy: { enabled: true, hint: HINTS.redeploy },
   };
 }

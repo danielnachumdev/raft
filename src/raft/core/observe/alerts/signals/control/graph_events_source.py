@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Mapping, Optional
 
+from raft.core.core.models.state.graph_event_kinds import GraphKindAliases
 from raft.core.core.models.state.graph_event_store import GraphEventStore
 
 from ...model.issues import ValidationIssue
@@ -19,7 +20,8 @@ _KINDS = (
     "up",
     "down",
     "update",
-    "gate_recreate",
+    "gate_redeploy",
+    "gate_recreate",  # legacy dual-read
 )
 
 
@@ -73,7 +75,7 @@ class GraphEventsSource(SignalSource):
         return [
             e
             for e in events
-            if e.kind == kind
+            if GraphKindAliases.matches(e.kind, kind)
             and (not action or (e.metadata or {}).get("action") == action)
         ]
 

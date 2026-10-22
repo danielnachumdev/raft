@@ -698,7 +698,7 @@ Per-tick IO: `MetricsSampleCache` memoizes (via `SignalContext.memo`) one read p
 ### 5.4 `control.events` (`GraphEventsSource`, EVENT)
 
 - Reads `GraphEventStore(home).events_in_window(from_ts=now - window, to_ts=now)`.
-- `select`: `{target: "<service>" | "*" | "-", eventKind: <GraphEvent kind>, action?: <metadata.action>}`. Kinds from `graph_event_kinds.py`: `deployment`, `stop`, `start`, `scaling`, `up`, `down`, `update`, `gate_recreate`; `action` filters scaling (`idle_stop`, `wake`). `"-"` = stack-level events (no service); `"*"` = per-service subjects.
+- `select`: `{target: "<service>" | "*" | "-", eventKind: <GraphEvent kind>, action?: <metadata.action>}`. Kinds from `graph_event_kinds.py`: `deployment`, `stop`, `start`, `scaling`, `up`, `down`, `update`, `gate_redeploy`; `action` filters scaling (`idle_stop`, `wake`). `"-"` = stack-level events (no service); `"*"` = per-service subjects.
 
 ### 5.5 Later phase: control-plane facts not in graph events
 

@@ -46,7 +46,7 @@ class TestOperatorSettingsService(RaftTestCase):
         assert loaded.client_secret == "keep-me"
         assert loaded.session_ttl_seconds == 7200
 
-    def test_edge_port_change_emits_gate_recreate_note(self) -> None:
+    def test_edge_port_change_emits_gate_redeploy_note(self) -> None:
         svc = OperatorSettingsService(self.tmp_path)
         doc = svc.get_public()["document"]
         doc["edge"]["http"] = 8080
