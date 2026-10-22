@@ -13,7 +13,7 @@ Implementation guide for coding agents changing **raft**. Operator pitch and fea
 | Where is product code? | `src/raft/services/` = runnable fronts (cli, serve, controller). `src/raft/core/` = libraries (models, lifecycle, platform, observe). |
 | Where is the SPA? | Source `src/spa/` only in git. Bake is **Release CD** (and local/CI `npm run build`) into `share/serve/spa/` — hashed assets are **not** committed (`.gitkeep` + gitignore). Operators get UI from the wheel. |
 | Human samples? | [`examples/`](examples/) + docs under [`docs/`](docs/). |
-| Agent capabilities (capa)? | [`capabilities.yaml`](capabilities.yaml) — skills/rules under [`agents/`](agents/AGENTS.md); install via [`scripts/setup/setup.sh`](scripts/setup/setup.sh) (prereqs: [`scripts/setup/prerequisites.sh`](scripts/setup/prerequisites.sh); [capa.sh](https://capa.sh/)). Do not hand-edit generated `.cursor/` / `.claude/`. |
+| Agent capabilities (capa)? | [`capabilities.yaml`](capabilities.yaml) — install via [`scripts/setup/setup.sh`](scripts/setup/setup.sh) (prereqs: [`scripts/setup/prerequisites.sh`](scripts/setup/prerequisites.sh); [capa.sh](https://capa.sh/)). Do not hand-edit generated `.cursor/` / `.claude/`. |
 | Package layout convention? | Class-first, ~200-line files, ≤20-line methods; see **Code style** and the writing-python skill. |
 
 **CI order:** Meta → then Unit+Integration and E2E **in parallel** (SPA job parallel with Meta when spa paths change). Path filters skip Python vs SPA sides when irrelevant; concurrency cancels superseded PR/main runs; every `runs-on` job has `timeout-minutes`. Fresh-install e2e installs from the **workspace** build context after SPA bake (`RAFT_E2E_REF=workspace`); operators stay on Release wheels.
