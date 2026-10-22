@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 _ROOT = Path(__file__).resolve().parents[3]
-_SCRIPT = _ROOT / "scripts" / "release_semver.py"
+_SCRIPT = _ROOT / "scripts" / "release" / "release_semver.py"
 
 
 def _load():

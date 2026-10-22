@@ -9,7 +9,7 @@ raft sits between a full cluster and hand-rolled Docker Compose + nginx. You des
 </p>
 
 <p align="center">
-  <img src="media/dashboard.png" alt="raft serve dashboard: control plane, apps, and resource trends" width="900" />
+  <img src="assets/dashboard.png" alt="raft serve dashboard: control plane, apps, and resource trends" width="900" />
 </p>
 
 <p align="center"><em>Localhost ops UI — live status, actions, and resource trends for the edge and every applied app.</em></p>
@@ -99,7 +99,7 @@ Same command for first boot and later cutovers. raft syncs, renders, and switche
 When a terminal snapshot is not enough, run **`raft serve`**. One localhost process: live tables, quick actions, logs, and trends. It never listens on the public gate — open it on the host, or forward `127.0.0.1:8787` from wherever you operate.
 
 <p align="center">
-  <img src="media/service-detail.png" alt="raft serve service detail: actions, logs, overview, limits, and runtime trends" width="900" />
+  <img src="assets/service-detail.png" alt="raft serve service detail: actions, logs, overview, limits, and runtime trends" width="900" />
 </p>
 
 <p align="center"><em>Service detail — actions, follow logs, overview, limits, and historical runtime charts.</em></p>

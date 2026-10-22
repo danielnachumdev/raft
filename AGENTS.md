@@ -13,6 +13,7 @@ Implementation guide for coding agents changing **raft**. Operator pitch and fea
 | Where is product code? | `src/raft/services/` = runnable fronts (cli, serve, controller). `src/raft/core/` = libraries (models, lifecycle, platform, observe). |
 | Where is the SPA? | Source `src/spa/` only in git. Bake is **Release CD** (and local/CI `npm run build`) into `share/serve/spa/` — hashed assets are **not** committed (`.gitkeep` + gitignore). Operators get UI from the wheel. |
 | Human samples? | [`examples/`](examples/) + docs under [`docs/`](docs/). |
+| Agent capabilities (capa)? | [`capabilities.yaml`](capabilities.yaml) — skills/rules under [`agents/`](agents/AGENTS.md); install via [`scripts/setup/setup.sh`](scripts/setup/setup.sh) (prereqs: [`scripts/setup/prerequisites.sh`](scripts/setup/prerequisites.sh); [capa.sh](https://capa.sh/)). Do not hand-edit generated `.cursor/` / `.claude/`. |
 | Package layout convention? | Class-first, ~200-line files, ≤20-line methods; see **Code style** and the writing-python skill. |
 
 **CI order:** Meta → then Unit+Integration and E2E **in parallel** (SPA job parallel with Meta when spa paths change). Path filters skip Python vs SPA sides when irrelevant; concurrency cancels superseded PR/main runs; every `runs-on` job has `timeout-minutes`. Fresh-install e2e installs from the **workspace** build context after SPA bake (`RAFT_E2E_REF=workspace`); operators stay on Release wheels.
@@ -174,7 +175,7 @@ Upstream files: `generated/nginx/upstreams/<app>-<port>.conf` mounted into the r
 ## Packaging & install pitfalls
 
 - **Release tags + wheels are the operator SoT** (`vX.Y.Z` GitHub Releases via PR labels `bumpMajor` / `bumpMinor` / `bumpPatch` / `noBump`). Publish bakes SPA and attaches a version-aligned `.whl`. See [`docs/releases.md`](docs/releases.md). Do not commit hashed `share/serve/spa/` assets.
-- **`package-data`** must track `core/platform/share/…` (see `pyproject.toml`). Meta test fails if globs match nothing; Release/`build_release_wheel.sh` asserts the wheel contains SPA assets.
+- **`package-data`** must track `core/platform/share/…` (see `pyproject.toml`). Meta test fails if globs match nothing; Release/`scripts/release/build_release_wheel.sh` asserts the wheel contains SPA assets.
 - **`raft update`** curls `install.sh` and prefers the **latest Release wheel** (same as bare `install.sh`; git@tag fallback). Use `raft update --ref <tag\|branch\|sha>` (or `RAFT_REF`) to pin. Broken wheel/package-data on a released tag bricks installs of that tag; recovery: `curl …/install.sh | bash -s -- --ref main` then fix forward.
 - Fresh-install e2e: `tests/e2e/fresh_install/` — bake SPA then `RAFT_E2E_REF=workspace` (CI and local packaging check).
 - README demo video: GitHub only plays `<video>` when `src` is a **user-attachments** URL; keep `assets/raft-demo.mp4` as clone fallback. Do not call it “promo” in user-facing copy.

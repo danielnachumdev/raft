@@ -30,4 +30,19 @@ src/raft/core/platform/share/serve/spa/**
 
 # Local-only notes / plans (not committed)
 /local/
-.cursor/
+
+# Cursor — local logs; capa-generated provider dirs (source of truth: capabilities.yaml + agents/)
+.cursor/*.log
+.cursor/**/*.log
+/.cursor/cli.json.bak
+/.claude/settings.local.json
+/.claude/settings.json
+.claude/skills/
+.claude/agents/
+.claude/rules/
+.cursor/skills/
+.cursor/rules/
+.cursor/mcp.json
+.cursor/hooks.json
+.cursor/reports/
+.mcp.json
