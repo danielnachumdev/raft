@@ -32,7 +32,7 @@ Top-bar IA: primary nav is grouped **Monitor** (Status, Events) and **Configure*
 ```bash
 cd src/spa
 npm ci
-npm run dev          # Vite on :5173; proxies /api → raft serve :8787
+npm run dev # Vite on :5173; proxies /api → raft serve :8787
 ```
 
 In another terminal: `raft serve` (or `uv run raft serve`). For editable installs, bake once so the packaged path has assets:
@@ -45,6 +45,6 @@ cd src/spa && npm ci && npm run build
 
 Change **`src/spa/` only**. Do **not** commit hashed files under `share/serve/spa/` (gitignored; `.gitkeep` keeps the directory).
 
-Operators get the UI from the **Release wheel** (bake happens in the Release job — see [`docs/releases.md`](../../docs/releases.md)). PR CI builds the SPA for tests; a failed bake/build on Release publish fails the release.
+Operators get the UI from the **Release wheel** (bake happens in the Release job). PR CI builds the SPA for tests; a failed bake/build on Release publish fails the release.
 
 Local packaging / `raft serve` in a checkout still needs `npm run build` into the share path before you exercise the packaged UI.

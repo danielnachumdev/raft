@@ -144,7 +144,6 @@ edge:
 # ---------------------------------------------------------------------------
 # github — temporary OAuth for ``raft serve`` deploy assist (v1).
 # Accounts file: ~/.raft/host/serve/github-accounts.json (mode 0600).
-# Docs: docs/serve-github-deploy.md
 # ---------------------------------------------------------------------------
 # github:
 #   clientId: Iv1.example      # OAuth App; callback http://127.0.0.1:<port>/api/github/callback
@@ -160,7 +159,7 @@ edge:
 # webhook, email, whatsapp (GREEN-API). Unknown type values may be persisted
 # and are validated when a matching strategy is registered for dispatch.
 # Secret-like settings keys are redacted in serve API responses (never log
-# tokens/passwords in cleartext). See docs/serve-notifications.md.
+# tokens/passwords in cleartext).
 # ---------------------------------------------------------------------------
 # notifications:
 #   enabled: true
@@ -199,7 +198,6 @@ edge:
 # dashboard — always-on Compose service raft-dashboard (same UI as raft serve).
 # Disabled by default. When enabled, publishes 127.0.0.1:<port> only.
 # Optional publicHost + tls + auth for gate/router exposure.
-# Docs: docs/serve-dashboard.md
 # ---------------------------------------------------------------------------
 # dashboard:
 #   enabled: true
@@ -221,6 +219,6 @@ edge:
 
 # ---------------------------------------------------------------------------
 # Edge firewall is ordered rules under host/firewall/rules.yaml (raft serve
-# Settings → Firewall). Not configured here. See docs/serve-firewall.md.
+# Settings → Firewall). Not configured here.
 # ---------------------------------------------------------------------------
 

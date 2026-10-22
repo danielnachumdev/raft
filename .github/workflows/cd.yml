@@ -6,7 +6,7 @@ name: CD
 #
 # Labels (exactly one required on every PR into main):
 #   bumpMajor | bumpMinor | bumpPatch | noBump
-# On bump publish: bake SPA → version-aligned wheel → attach .whl (docs/releases.md).
+# On bump publish: bake SPA → version-aligned wheel → attach .whl.
 # noBump → semver succeeds without creating a Release.
 
 on:

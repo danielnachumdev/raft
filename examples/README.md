@@ -16,15 +16,15 @@ These folders are **operator-facing samples**, not the minimal trees under `test
 | [`host-published-ports/`](host-published-ports/) | HTTP + `expose: host` ports (gate not involved for those) |
 | [`grouped-volume-app/`](grouped-volume-app/) | `spec.group` + `volumes` + `expose: none` (manifest-only sample) |
 
-Manifest preprocess (`${VAR}`, `${{ if }}`, `--env`) is documented in [`docs/app-manifest.md`](../docs/app-manifest.md). Healing and per-app scale-to-zero are independent opt-ins — off until you enable `healing:` in settings or add `spec.scaling` on an HTTP + `publicHost` App.
+Manifest preprocess (`${VAR}`, `${{ if }}`, `--env`) is described in AGENTS.md. Healing and per-app scale-to-zero are independent opt-ins — off until you enable `healing:` in settings or add `spec.scaling` on an HTTP + `publicHost` App.
 
 ## Try one
 
 1. Copy ideas from [`settings.yaml`](settings.yaml) into `~/.raft/host/settings.yaml`.
 2. Pick a folder that matches how you expose the app.
 3. TLS prep:
-   - `tls: acme` — DNS A/AAAA, ports 80/443, set `acme.email` (no PEMs to paste).
-   - `tls: origin` — install `origin.{pem,key}` under `~/.raft/services/<metadata.name>/certs/` **before** deploy.
+ - `tls: acme` — DNS A/AAAA, ports 80/443, set `acme.email` (no PEMs to paste).
+ - `tls: origin` — install `origin.{pem,key}` under `~/.raft/services/<metadata.name>/certs/` **before** deploy.
 4. Apply (deploy is **on** by default — first boot or cutover):
 
 ```bash

@@ -1,6 +1,6 @@
 # AGENTS.md — scripts/release
 
-CI / CD helpers for GitHub Releases. See [`docs/releases.md`](../../docs/releases.md).
+CI / CD helpers for GitHub Releases (label-driven semver + wheel bake).
 
 | Script | Purpose |
 |--------|---------|

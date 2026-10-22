@@ -54,5 +54,5 @@ class AppSpecKnownKeys:
         raise OperatorError(
             f"{path}: unsupported spec field(s): {keys}\n"
             f"Fix: remove unknown keys from spec "
-            f"(see docs/app-manifest.md for supported fields)"
+            f"(supported fields: see AGENTS.md / core models)"
         )

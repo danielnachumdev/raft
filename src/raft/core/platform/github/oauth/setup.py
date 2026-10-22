@@ -5,9 +5,7 @@ from typing import Any, Dict
 from urllib.parse import urlencode
 
 GITHUB_OAUTH_APP_NEW = "https://github.com/settings/applications/new"
-SETUP_DOCS_URL = (
-    "https://github.com/danielnachumdev/raft/blob/main/docs/serve-github-deploy.md"
-)
+SETUP_DOCS_URL = "https://github.com/danielnachumdev/raft/blob/main/README.md"
 APPLICATION_NAME = "raft serve"
 DESCRIPTION = (
     "Localhost raft serve ops UI — temporary GitHub login to pick a repo and deploy."

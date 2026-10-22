@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Implementation guide for coding agents changing **raft**. Operator pitch and feature status table: [`README.md`](README.md). Exhaustive App manifest / preprocess contract: [`docs/app-manifest.md`](docs/app-manifest.md) (do not duplicate that schema here).
+Implementation guide for coding agents changing **raft**. Operator pitch and feature status table: [`README.md`](README.md). App manifest / preprocess contract lives in code under `core/models/` (do not invent parallel schema docs).
 
 ---
 
@@ -12,7 +12,7 @@ Implementation guide for coding agents changing **raft**. Operator pitch and fea
 | Where is durable state? | **`~/.raft/`** (`RAFT_DATA_HOME`). Never put operator inventory, upstreams, or PEMs in this git repo. |
 | Where is product code? | `src/raft/services/` = runnable fronts (cli, serve, controller). `src/raft/core/` = libraries (models, lifecycle, platform, observe). |
 | Where is the SPA? | Source `src/spa/` only in git. Bake is **Release CD** (and local/CI `npm run build`) into `share/serve/spa/` — hashed assets are **not** committed (`.gitkeep` + gitignore). Operators get UI from the wheel. |
-| Human samples? | [`examples/`](examples/) + docs under [`docs/`](docs/). |
+| Human samples? | [`examples/`](examples/). |
 | Agent capabilities (capa)? | [`capabilities.yaml`](capabilities.yaml) — install via [`scripts/setup/setup.sh`](scripts/setup/setup.sh) (prereqs: [`scripts/setup/prerequisites.sh`](scripts/setup/prerequisites.sh); [capa.sh](https://capa.sh/)). Do not hand-edit generated `.cursor/` / `.claude/`. |
 | Package layout convention? | Class-first, ~200-line files, ≤20-line methods; see **Code style** and the writing-python skill. |
 
@@ -63,7 +63,7 @@ Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**). Nesting in-process re-
 3. **Packaged templates path:** product share lives at `src/raft/core/platform/share/`. `[tool.setuptools.package-data]` **must** list `core/platform/share/**` (not legacy `raft/share/`). Wrong globs → wheels without `compose.yaml` → every CLI command dies (including `raft update`). Meta guard: `tests/meta/test_package_data.py`. Recovery on a broken host: `curl …/install.sh | bash` (update cannot self-heal if stack load fails).
 4. **Console entry:** `raft` → `raft.services.cli.__main__:main`. Also `python -m raft.services.serve` / controller `__main__` where present.
 5. **Registry load is lenient; apply write is strict:** invalid `services/<name>/app.yaml` skipped at load (`registry_issues`); apply still rejects bad manifests.
-6. **Name vs source:** `metadata.name` owned by durable source identity (`local`+path, `git`+normalized remote SSH≡HTTPS, `docker`+image; not `ref`). Same → update; different → `OperatorError` (no `--force` — delete then re-apply). Details: [`docs/app-manifest.md`](docs/app-manifest.md).
+6. **Name vs source:** `metadata.name` owned by durable source identity (`local`+path, `git`+normalized remote SSH≡HTTPS, `docker`+image; not `ref`). Same → update; different → `OperatorError` (no `--force` — delete then re-apply).
 7. **ACME failures do not fail deploy:** best-effort HTTP-01; errors under `host/acme/` / `services/<name>/acme/`.
 8. **Healing ≠ scaling:** `healing:` in settings; `spec.scaling` is per-App. Healer skips intentional `scaledToZero`.
 9. **Serve binds localhost only** (`127.0.0.1`). Not an edge listener. Mutative serve actions use the same flock rules as CLI; gate redeploy matches CLI (edge-downtime warning).
@@ -89,24 +89,24 @@ Align with the README table; detail for agents:
 | Doctor / status / logs / purge | **Shipped** | |
 | Metrics JSONL + Trends (resources + HTTP aggregate) | **Shipped** | Controller scrape; `http.jsonl` contract in observe/docs; CLI `raft metrics history|catalog|export_*` |
 | `raft serve` ops UI | **Shipped** | FastAPI + packaged SPA |
-| Full operator settings UI (`settings.yaml` / `RaftConfig`) | **Shipped** | `OperatorSettingsService` + `GET/PUT /api/settings` + SPA `/settings`; [`docs/serve-settings.md`](docs/serve-settings.md). Edge port changes note `raft redeploy gate`. |
+| Full operator settings UI (`settings.yaml` / `RaftConfig`) | **Shipped** | `OperatorSettingsService` + `GET/PUT /api/settings` + SPA `/settings`. Edge port changes note `raft redeploy gate`. |
 | Settings → Check for updates | **Shipped** | `UpdateCheck` + `SelfUpdate` via `GET/POST /api/update`; same GitHub Release wheel SoT as `raft update` / `install.sh` |
-| HTTP request inspection (per App) | **Shipped** | Gate access log → `/api/service/{name}/http-requests` + `raft http_requests show`; [`docs/serve-http-requests.md`](docs/serve-http-requests.md) |
-| Flat gate / App IP ACL (allow/deny lists) | **Retired** | Removed; firewall SoT only ([`docs/serve-firewall.md`](docs/serve-firewall.md)). Leftover `acl.gate` / `state/acl/` ignored. |
-| **Ordered firewall rules** (CIDR, port, protocol, service, action) | **Shipped** | Epic [#207](https://github.com/danielnachumdev/raft/issues/207), [#211](https://github.com/danielnachumdev/raft/issues/211); CLI [#258](https://github.com/danielnachumdev/raft/issues/258) (`raft firewall …`). On gate; Save/CLI → compile → reload; import/export; recommendations; [`docs/serve-firewall.md`](docs/serve-firewall.md). |
+| HTTP request inspection (per App) | **Shipped** | Gate access log → `/api/service/{name}/http-requests` + `raft http_requests show`. |
+| Flat gate / App IP ACL (allow/deny lists) | **Retired** | Removed; firewall SoT only. Leftover `acl.gate` / `state/acl/` ignored. |
+| **Ordered firewall rules** (CIDR, port, protocol, service, action) | **Shipped** | Epic [#207](https://github.com/danielnachumdev/raft/issues/207), [#211](https://github.com/danielnachumdev/raft/issues/211); CLI [#258](https://github.com/danielnachumdev/raft/issues/258) (`raft firewall …`). On gate; Save/CLI → compile → reload; import/export; recommendations. |
 | Inspection → add firewall rule | **Shipped** | [#198](https://github.com/danielnachumdev/raft/issues/198); row actions → `#211` model; prepend + reload |
-| GitHub add-service assist | **Shipped (v1)** | Serve + `raft github …` via `GithubAssistService`; [`docs/serve-github-deploy.md`](docs/serve-github-deploy.md); known gap [#200](https://github.com/danielnachumdev/raft/issues/200) |
-| Notifications channels | **Shipped** | Strategy catalog + channel CRUD + test-send (serve + `raft notifications …`); [`docs/serve-notifications.md`](docs/serve-notifications.md) |
+| GitHub add-service assist | **Shipped (v1)** | Serve + `raft github …` via `GithubAssistService`; known gap [#200](https://github.com/danielnachumdev/raft/issues/200) |
+| Notifications channels | **Shipped** | Strategy catalog + channel CRUD + test-send (serve + `raft notifications …`). |
 | Healing | **Shipped** | Settings `healing:`; separate from scaling |
-| Secrets baseline (`~/.raft/services/<app>/secrets/env`) | **Shipped** | Guidance [`docs/secrets.md`](docs/secrets.md); external materialization epic [#143](https://github.com/danielnachumdev/raft/issues/143) / [#176](https://github.com/danielnachumdev/raft/issues/176) |
-| Past logs when container off | **Shipped** | Retained under `services/<name>/logs/` (edge: `host/logs/services/`); shipper + drain-before-rm; [`docs/serve-logs.md`](docs/serve-logs.md) |
-| Trends dashboards (multi-graph) | **Shipped** | [#238](https://github.com/danielnachumdev/raft/issues/238) supersedes #202 named views (migrate removed). Shared range + one fetch per plane fanned out to `TrendsGraph`s; browser-local (`raft-serve-trends-dashboards`); overview embeds the dashboard kit; `src/spa/src/trends/dashboard/`; [`docs/serve-trends.md`](docs/serve-trends.md) |
+| Secrets baseline (`~/.raft/services/<app>/secrets/env`) | **Shipped** | External materialization epic [#143](https://github.com/danielnachumdev/raft/issues/143) / [#176](https://github.com/danielnachumdev/raft/issues/176) |
+| Past logs when container off | **Shipped** | Retained under `services/<name>/logs/` (edge: `host/logs/services/`); shipper + drain-before-rm. |
+| Trends dashboards (multi-graph) | **Shipped** | [#238](https://github.com/danielnachumdev/raft/issues/238) supersedes #202 named views (migrate removed). Shared range + one fetch per plane fanned out to `TrendsGraph`s; browser-local (`raft-serve-trends-dashboards`); overview embeds the dashboard kit; `src/spa/src/trends/dashboard/`. |
 | Per-service Trends (default graphs) | **Shipped** | Service inspection uses the same multi-graph UX, pinned to that service; browser-local `raft-serve-service-trends`; `src/spa/src/trends/service/` (kit migration follow-on for [#249](https://github.com/danielnachumdev/raft/issues/249)) |
-| Reusable dashboard kit (Trends shell / embed) | **Shipped (v1)** | [#249](https://github.com/danielnachumdev/raft/issues/249); `src/spa/src/dashboard-kit/`; timeseries panels + embed contract; browser-local persistence; [`docs/serve-dashboard-kit.md`](docs/serve-dashboard-kit.md) |
-| Alert rules engine (metrics/control-plane → notifications) | **Shipped** | [#236](https://github.com/danielnachumdev/raft/issues/236); dual-plane CLI+serve lock [#264](https://github.com/danielnachumdev/raft/issues/264); [`docs/serve-alerts.md`](docs/serve-alerts.md); `AlertRulesService` / engine under `observe/alerts/` |
-| Operator system event timeline | **Shipped** | [#267](https://github.com/danielnachumdev/raft/issues/267); `host/events/ops.jsonl` dual-write with GraphEvents; `raft events` + serve `/events`; [`docs/serve-events.md`](docs/serve-events.md) |
+| Reusable dashboard kit (Trends shell / embed) | **Shipped (v1)** | [#249](https://github.com/danielnachumdev/raft/issues/249); `src/spa/src/dashboard-kit/`; timeseries panels + embed contract; browser-local persistence. |
+| Alert rules engine (metrics/control-plane → notifications) | **Shipped** | [#236](https://github.com/danielnachumdev/raft/issues/236); dual-plane CLI+serve lock [#264](https://github.com/danielnachumdev/raft/issues/264); `AlertRulesService` / engine under `observe/alerts/` |
+| Operator system event timeline | **Shipped** | [#267](https://github.com/danielnachumdev/raft/issues/267); `host/events/ops.jsonl` dual-write with GraphEvents; `raft events` + serve `/events`. |
 | Firewall-derived alert signals (`edge.denies`) | **Planned** | Observe gate outcomes only; no middle hop (#207) |
-| Always-on Compose dashboard service | **Shipped** | [#36](https://github.com/danielnachumdev/raft/issues/36); `dashboard:` settings-only + `raft-dashboard` Compose; lifecycle via Up/Down/Redeploy ([#340](https://github.com/danielnachumdev/raft/issues/340)); optional `publicHost` + TLS + auth (`none`/`password`/`oauth`/`external`); OAuth via in-container oauth2-proxy + allowlist; [`docs/serve-dashboard.md`](docs/serve-dashboard.md) |
+| Always-on Compose dashboard service | **Shipped** | [#36](https://github.com/danielnachumdev/raft/issues/36); `dashboard:` settings-only + `raft-dashboard` Compose; lifecycle via Up/Down/Redeploy ([#340](https://github.com/danielnachumdev/raft/issues/340)); optional `publicHost` + TLS + auth (`none`/`password`/`oauth`/`external`); OAuth via in-container oauth2-proxy + allowlist. |
 | Automate SPA bake in CD | **Shipped** | [#41](https://github.com/danielnachumdev/raft/issues/41) — Release wheel + install.sh prefers `.whl`; SPA assets not committed |
 | Middle nginx firewall hop | **Rejected** | Do not re-open without new engine requirements |
 
@@ -156,17 +156,16 @@ Product templates sync from `src/raft/core/platform/share/` into the data home o
 | **Shared mutative capabilities** (CLI + serve) | Business rules in `core/`; serve/CLI only invoke. New capabilities: put the service under the matching core area below, keep FastAPI/Fire as adapters. |
 | Per-service up/down/redeploy/purge | `observe/ops/actions/` (`ServiceActions`); CLI `raft up|down [NAME]` + serve actions (`/up` `/down` `/redeploy`; deprecated `/start` `/stop` aliases); default `up NAME` brings up `dependsOn` (wake order), `--no-deps` skips; `redeploy gate` = edge container force-recreate |
 | Ordered firewall (CRUD / recommendations / from-inspection) | `lifecycle/firewall/` + nginx compile in `lifecycle/render/firewall/`; serve adapter `services/serve/firewall/`; CLI `services/cli/commands/firewall.py` (`raft firewall …`); SPA `src/spa/src/firewall/` |
-| Full operator settings (`settings.yaml`) | `core/config/settings/operator_service.py` (`OperatorSettingsService`); serve adapter `services/serve/settings/`; SPA `src/spa/src/settings/`; [`docs/serve-settings.md`](docs/serve-settings.md) |
+| Full operator settings (`settings.yaml`) | `core/config/settings/operator_service.py` (`OperatorSettingsService`); serve adapter `services/serve/settings/`; SPA `src/spa/src/settings/`. |
 | Check for updates (Settings) | `observe/ops/update/` (`UpdateCheck`, `SelfUpdate`); serve `services/serve/update/`; SPA `src/spa/src/settings/sections/UpdatesSection.tsx` |
 | Notification channel CRUD / test-send | `observe/notify/settings_write.py` + `tester.py`; serve adapter `services/serve/notifications/`; CLI `services/cli/commands/notifications.py` (`raft notifications …`); SPA `src/spa/src/notifications/` |
 | GitHub OAuth / deploy assist | `platform/github/` (`GithubAssistService`); serve `services/serve/github/`; CLI `services/cli/commands/github.py` (`raft github …`) |
 | Dashboard UI | `src/spa/` only (Release bakes; local `npm run build` for editable/`raft serve`) |
-| Reusable dashboard kit (Trends / embeds) | `src/spa/src/dashboard-kit/`; Trends overview consumer in `trends/dashboard/ui/TrendsDashboard.tsx`; [`docs/serve-dashboard-kit.md`](docs/serve-dashboard-kit.md) |
+| Reusable dashboard kit (Trends / embeds) | `src/spa/src/dashboard-kit/`; Trends overview consumer in `trends/dashboard/ui/TrendsDashboard.tsx`. |
 | Alert rules | `core/observe/alerts/` + `services/serve/alerts/` + `services/controller/jobs/alerts/` + SPA `src/spa/src/alerts/` |
 | Ops event timeline | `core/models/state/ops_event*` + `observe/ops/events/`; dual-write from `GraphEventStore`; serve `services/serve/events/`; CLI `services/cli/commands/events.py` (`raft events`); SPA `src/spa/src/events/` |
-| Always-on dashboard | `lifecycle/dashboard/` + `share/dashboard/`; settings `dashboard:` (Settings UI); lifecycle Up/Down/Redeploy via `ServiceActions`; serve auth `services/serve/auth/`; docs [`docs/serve-dashboard.md`](docs/serve-dashboard.md) |
+| Always-on dashboard | `lifecycle/dashboard/` + `share/dashboard/`; settings `dashboard:` (Settings UI); lifecycle Up/Down/Redeploy via `ServiceActions`; serve auth `services/serve/auth/`. |
 | Notification strategies | `observe/notify/strategies/` + `catalogs.py`; SPA `src/spa/src/notifications/` |
-| Operator docs for serve features | `docs/serve-*.md` (notifications / alerts / events: `docs/serve-events.md`) |
 
 Upstream files: `generated/nginx/upstreams/<app>-<port>.conf` mounted into the router.
 
@@ -174,7 +173,7 @@ Upstream files: `generated/nginx/upstreams/<app>-<port>.conf` mounted into the r
 
 ## Packaging & install pitfalls
 
-- **Release tags + wheels are the operator SoT** (`vX.Y.Z` GitHub Releases via PR labels `bumpMajor` / `bumpMinor` / `bumpPatch` / `noBump`). Publish bakes SPA and attaches a version-aligned `.whl`. See [`docs/releases.md`](docs/releases.md). Do not commit hashed `share/serve/spa/` assets.
+- **Release tags + wheels are the operator SoT** (`vX.Y.Z` GitHub Releases via PR labels `bumpMajor` / `bumpMinor` / `bumpPatch` / `noBump`). Publish bakes SPA and attaches a version-aligned `.whl`. Do not commit hashed `share/serve/spa/` assets.
 - **`package-data`** must track `core/platform/share/…` (see `pyproject.toml`). Meta test fails if globs match nothing; Release/`scripts/release/build_release_wheel.sh` asserts the wheel contains SPA assets.
 - **`raft update`** curls `install.sh` and prefers the **latest Release wheel** (same as bare `install.sh`; git@tag fallback). Use `raft update --ref <tag\|branch\|sha>` (or `RAFT_REF`) to pin. Broken wheel/package-data on a released tag bricks installs of that tag; recovery: `curl …/install.sh | bash -s -- --ref main` then fix forward.
 - Fresh-install e2e: `tests/e2e/fresh_install/` — bake SPA then `RAFT_E2E_REF=workspace` (CI and local packaging check).
@@ -209,7 +208,7 @@ Under `src/raft/`:
 
 ```bash
 uv sync --extra dev
-uv run pytest tests/unit          # 100% cov
+uv run pytest tests/unit # 100% cov
 uv run pytest tests/meta --no-cov
 uv run pytest tests/e2e -m e2e --no-cov -n0
 ```

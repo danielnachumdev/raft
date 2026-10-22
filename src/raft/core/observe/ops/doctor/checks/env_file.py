@@ -75,7 +75,7 @@ class EnvFileChecks:
             f"envFile path is group/world-readable ({mode}): {path}",
             fix=(
                 f"chmod {ENV_FILE_MODE:04o} on the env file and "
-                f"chmod 0700 on its directory (see docs/secrets.md)"
+                f"chmod 0700 on its directory"
             ),
         )
 

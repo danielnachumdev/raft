@@ -5,11 +5,11 @@
 raft sits between a full cluster and hand-rolled Docker Compose + nginx. You describe each service in `.raft/app.yaml`; raft turns that desired state into Compose and nginx artifacts, then deploys and cutovers them on a single VPS — light on resources, heavy on operator UX.
 
 <p align="center">
-  <video src="https://github.com/user-attachments/assets/c0f96eeb-8654-469e-8981-cfa7e0fb067e" controls width="900"></video>
+ <video src="https://github.com/user-attachments/assets/c0f96eeb-8654-469e-8981-cfa7e0fb067e" controls width="900"></video>
 </p>
 
 <p align="center">
-  <img src="assets/dashboard.png" alt="raft serve dashboard: control plane, apps, and resource trends" width="900" />
+ <img src="assets/dashboard.png" alt="raft serve dashboard: control plane, apps, and resource trends" width="900" />
 </p>
 
 <p align="center"><em>Localhost ops UI — live status, actions, and resource trends for the edge and every applied app.</em></p>
@@ -30,7 +30,7 @@ You keep services in their own repos. On the VPS you `apply` a manifest. raft sy
 
 - **One ship command** — `raft apply` registers desired state and deploys (first boot and later releases)
 - **Managed artifacts** — Compose apps, upstreams, and gate/router nginx are generated for you, not edited by hand each release
-- **Adaptive manifests** — apply-time `${VAR}` / `${{ if }}` and `--env` so one `.raft/app.yaml` can serve stages (see [`docs/app-manifest.md`](docs/app-manifest.md))
+- **Adaptive manifests** — apply-time `${VAR}` / `${{ if }}` and `--env` so one `.raft/app.yaml` can serve stages
 - **Safer cutovers** — tmp cutover + router reload; published edge ports only need `raft redeploy gate`
 - **Operator feedback** — `raft doctor` with fix hints; `raft status` / `raft logs` for the live plane
 - **Localhost ops UI** — `raft serve` for tables, actions, logs, trends, and edge access control (never on the public gate)
@@ -80,7 +80,7 @@ raft apply --file .raft/app.yaml --ref "$SHA"
 raft status
 ```
 
-Copy-paste scenarios live in [`examples/`](examples/). Manifest env / conditional blocks: [`docs/app-manifest.md`](docs/app-manifest.md).
+Copy-paste scenarios live in [`examples/`](examples/). Manifest env / conditional blocks: see `examples/` and AGENTS.md.
 
 Later: `raft update` to refresh the CLI, `raft uninstall --yes` to remove everything.
 
@@ -99,13 +99,13 @@ Same command for first boot and later cutovers. raft syncs, renders, and switche
 When a terminal snapshot is not enough, run **`raft serve`**. One localhost process: live tables, quick actions, logs, and trends. It never listens on the public gate — open it on the host, or forward `127.0.0.1:8787` from wherever you operate.
 
 <p align="center">
-  <img src="assets/service-detail.png" alt="raft serve service detail: actions, logs, overview, limits, and runtime trends" width="900" />
+ <img src="assets/service-detail.png" alt="raft serve service detail: actions, logs, overview, limits, and runtime trends" width="900" />
 </p>
 
 <p align="center"><em>Service detail — actions, follow logs, overview, limits, and historical runtime charts.</em></p>
 
 ```bash
-raft serve                 # http://127.0.0.1:8787/
+raft serve # http://127.0.0.1:8787/
 raft serve --stop
 ```
 
@@ -141,9 +141,9 @@ uv run pytest
 uv run raft -- --help
 ```
 
-CI runs the suite across Python 3.9–3.13. Dashboard source is in **`src/spa/`** (Release CD bakes into `share/serve/spa/` inside the wheel; hashed assets are not committed — see [`docs/releases.md`](docs/releases.md)).
+CI runs the suite across Python 3.9–3.13. Dashboard source is in **`src/spa/`** (Release CD bakes into `share/serve/spa/` inside the wheel; hashed assets are not committed).
 
-Changing the product? **[AGENTS.md](AGENTS.md)** is the implementation guide (architecture invariants, packaging pitfalls, planned vs shipped detail). Manifest contract: [`docs/app-manifest.md`](docs/app-manifest.md).
+Changing the product? **[AGENTS.md](AGENTS.md)** is the implementation guide (architecture invariants, packaging pitfalls, planned vs shipped detail). Manifest contract: see AGENTS.md / `core/models/`.
 
 ## License
 
