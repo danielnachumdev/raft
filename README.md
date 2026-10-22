@@ -44,7 +44,6 @@ You keep services in their own repos. On the VPS you `apply` a manifest. raft sy
 | Managed public edge (TLS, Host routing, multi-app stacks) | ✅ |
 | Scale-to-zero and healing | ✅ |
 | Localhost ops console (status, actions, logs, trends, request inspection) | ✅ |
-| Edge access control (IP allow/deny on the gate) | ✅ |
 | GitHub-assisted add service | ✅ |
 | Operator notifications | ✅ |
 | Ordered edge firewall (rich rules, import/export) | ✅ |
@@ -80,7 +79,7 @@ raft apply --file .raft/app.yaml --ref "$SHA"
 raft status
 ```
 
-Copy-paste scenarios live in [`examples/`](examples/). Manifest env / conditional blocks: see `examples/` and AGENTS.md.
+Copy-paste scenarios live in [`examples/`](examples/) (richest field comments in `examples/http-only-site/`).
 
 Later: `raft update` to refresh the CLI, `raft uninstall --yes` to remove everything.
 
@@ -121,6 +120,9 @@ raft serve --stop
 | `raft up` / `raft down` | Whole stack; with `NAME` = per-service power (down stops, does not remove) |
 | `raft redeploy <name>` | Refresh a running app, router, dashboard, or **gate** (edge ports; brief downtime) |
 | `raft sync` / `raft render` | Pipeline only (sources / Compose+nginx); not substitutes for redeploy |
+| `raft firewall …` | Ordered gate rules (`host/firewall/rules.yaml`); Save/CLI → reload, never recreate |
+| `raft alerts …` | Alert rules (`host/alerts/rules.yaml`) → notification channels |
+| `raft notifications …` | Notification channel CRUD + test-send |
 
 ### Lifecycle glossary
 
@@ -143,7 +145,7 @@ uv run raft -- --help
 
 CI runs the suite across Python 3.9–3.13. Dashboard source is in **`src/spa/`** (Release CD bakes into `share/serve/spa/` inside the wheel; hashed assets are not committed).
 
-Changing the product? **[AGENTS.md](AGENTS.md)** is the implementation guide (architecture invariants, packaging pitfalls, planned vs shipped detail). Manifest contract: see AGENTS.md / `core/models/`.
+Changing the product? **[AGENTS.md](AGENTS.md)** is the implementation guide (architecture invariants, packaging pitfalls, planned vs shipped detail). Operator manifest samples: [`examples/`](examples/).
 
 ## License
 

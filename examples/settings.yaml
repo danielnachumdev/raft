@@ -4,7 +4,8 @@
 #
 # After changing edge published ports (http / https / streams), run:
 #   raft redeploy gate
-# (not `raft redeploy gate` — that command refuses).
+# (brief edge downtime). Rule-only or TLS-fragment edits use render + nginx
+# reload — never recreate the gate container for those.
 
 # ---------------------------------------------------------------------------
 # logging — file logging only; the terminal stays plain text.
@@ -198,6 +199,19 @@ edge:
 # dashboard — always-on Compose service raft-dashboard (same UI as raft serve).
 # Disabled by default. When enabled, publishes 127.0.0.1:<port> only.
 # Optional publicHost + tls + auth for gate/router exposure.
+#
+# publicHost requires auth.mode password | oauth | external (not none).
+# tls: off | origin | acme (origin PEMs for raft-dashboard under
+#   ~/.raft/services/raft-dashboard/certs/origin.{pem,key} when tls: origin).
+# password: paste plaintext ≥8 in Settings (hashed on save); leave *** to keep.
+# oauth: write host/secrets/dashboard/oauth.env (0600) with:
+#   OAUTH2_PROXY_CLIENT_ID, OAUTH2_PROXY_CLIENT_SECRET,
+#   OAUTH2_PROXY_COOKIE_SECRET, OAUTH2_PROXY_REDIRECT_URL
+#   + allowlist file (one identity per line), default
+#   host/secrets/dashboard/oauth-allowlist.txt
+# After enable / auth / tls / publicHost changes: save settings → raft render →
+#   raft up dashboard  (or Redeploy in the SPA). Settings save alone does not
+#   start or recreate the container.
 # ---------------------------------------------------------------------------
 # dashboard:
 #   enabled: true
@@ -214,7 +228,6 @@ edge:
 #     #   provider: google      # google | oidc
 #     #   # issuerUrl: https://login.example.com/   # oidc only
 #     #   allowlistFile: host/secrets/dashboard/oauth-allowlist.txt
-#     # secrets: ~/.raft/host/secrets/dashboard/oauth.env (+ allowlist)
 # Lifecycle: raft up|down|redeploy dashboard (after enabled: true + render)
 
 # ---------------------------------------------------------------------------

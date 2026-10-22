@@ -124,7 +124,7 @@ class FirewallRule:
         if action not in FIREWALL_ACTIONS:
             raise OperatorError(
                 f"{path} must be deny, permit, or drop (got {action!r}).\n"
-                f"Fix: set action: deny | permit | drop",
+                f"Fix: set action: permit (allow) | deny (HTTP 403) | drop (444)",
                 has_fix=False,
             )
         return action

@@ -96,7 +96,7 @@ export function AlertsSettingsPage() {
     <div className="alerts-page" id="alerts-page">
       <PageHeader
         title="Alerts"
-        subtitle="Rules that watch metrics and control-plane signals and send through your notification channels."
+        subtitle="Rules that watch metrics and control-plane signals and send through your notification channels. For = sustain before fire; Cool-down = silence before re-notify; empty channel list = every enabled channel. Controller evaluates host/alerts/ — stale means check raft doctor / raft up."
         meta={
           <>
             <span className={status?.enabled === false ? "chip chip-warn" : "chip"}>

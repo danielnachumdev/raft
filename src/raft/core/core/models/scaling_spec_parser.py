@@ -3,6 +3,8 @@
 from pathlib import Path
 from typing import Any, Optional
 
+from raft.core.core.errors.cta import OperatorError
+
 from .ports import PortSpec
 from .scaling_spec import DEFAULT_WAKE_TIMEOUT_SECONDS, ScalingSpec
 
@@ -51,9 +53,10 @@ class ScalingSpecParser:
     def _require_http_eligible(ports: tuple[PortSpec, ...], path: Path) -> None:
         if any(p.expose == "http" for p in ports):
             return
-        raise ValueError(
+        raise OperatorError(
             f"{path}: spec.scaling requires at least one port with expose: http "
-            f"(and publicHost). Non-HTTP expose modes are not scale-to-zero eligible."
+            f"(and publicHost). Non-HTTP expose modes are not scale-to-zero eligible.\n"
+            f"Fix: add expose: http + publicHost, or omit scaling (workers use ports: [])"
         )
 
     @classmethod

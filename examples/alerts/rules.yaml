@@ -1,0 +1,57 @@
+# Alert rules sample → host/alerts/rules.yaml
+# Apply: raft alerts apply --file examples/alerts/rules.yaml
+# (or Settings → Alerts → Import). Configure notification channels first
+# (Settings → Notifications / raft notifications …).
+#
+# Primer:
+#   signal   — catalog source (metrics.http, metrics.resources,
+#              control.container_status, …)
+#   for      — condition must stay true this long before the rule fires
+#   cooldown — silence before re-notifying the same instance
+#   channelIds — deliver to these channel ids; omit / [] = every enabled channel
+#
+# Controller evaluates under host/alerts/ (rules + runtime). If status shows
+# stale: raft doctor, then raft up (controller needs the host/alerts mount).
+# DEMO names only (demo-api).
+
+version: 1
+rules:
+  - id: demo-api-5xx-rate
+    name: demo-api 5xx rate
+    description: High 5xx share on demo-api over a short window.
+    enabled: true
+    severity: error
+    for: 2m
+    cooldown: 15m
+    channelIds: []
+    notifyOnRecovery: true
+    condition:
+      signal: metrics.http
+      select:
+        target: demo-api
+        metric: error_rate_5xx
+      kind: threshold
+      params:
+        aggregate: avg
+        window: 5m
+        op: gt
+        value: 0.05
+
+  - id: demo-api-container-down
+    name: demo-api container down
+    description: demo-api Compose service not running.
+    enabled: true
+    severity: critical
+    for: 1m
+    cooldown: 30m
+    channelIds: []
+    notifyOnRecovery: true
+    condition:
+      signal: control.container_status
+      select:
+        target: demo-api
+      kind: state
+      params:
+        match: notIn
+        values:
+          - running

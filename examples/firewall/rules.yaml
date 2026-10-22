@@ -1,0 +1,46 @@
+# Ordered edge firewall sample → host/firewall/rules.yaml
+# Apply: raft firewall replace --file examples/firewall/rules.yaml
+# (or Settings → Firewall → Import / paste). Save/CLI → gate nginx reload;
+# never recreate the gate for rule-only edits.
+#
+# Semantics:
+#   - First match wins, top to bottom.
+#   - permit → allow; deny → HTTP 403; drop → nginx 444 (connection closed).
+#   - ACME HTTP-01 challenge locations sit outside firewall locations on the
+#     gate. Still avoid a broad deny/drop on port 80 for service: any if you
+#     rely on Let's Encrypt — prefer port 443 or service-scoped rules.
+#   - service: any = edge-wide. Named service = Host-scoped; that App needs
+#     expose: http + publicHost (else use service: any).
+#
+# DEMO CIDRs only (RFC 5737). Replace before a real deploy.
+
+version: 1
+rules:
+  - id: office-443
+    cidr: 192.0.2.0/24
+    port: 443
+    protocol: tcp
+    service: any
+    action: permit
+
+  - id: demo-api-permit
+    cidr: 192.0.2.0/24
+    port: 443
+    protocol: tcp
+    service: demo-api
+    action: permit
+
+  - id: default-deny-443
+    cidr: 0.0.0.0/0
+    port: 443
+    protocol: tcp
+    service: any
+    action: deny
+
+  # drop closes the connection (444) instead of a 403 page — use sparingly.
+  # - id: scrapers-drop
+  #   cidr: 198.51.100.0/24
+  #   port: any
+  #   protocol: tcp
+  #   service: any
+  #   action: drop

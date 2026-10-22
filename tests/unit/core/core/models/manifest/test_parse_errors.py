@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.app_document import AppDocument
 
 from tests.unit.base import RaftTestCase
@@ -132,7 +133,7 @@ spec:
 class TestManifestCoverage(RaftTestCase):
     def test_more_parse_errors(self) -> None:
         for doc, match in PARSE_ERROR_DOCS:
-            with pytest.raises(ValueError, match=match):
+            with pytest.raises((ValueError, OperatorError), match=match):
                 AppDocument.parse(doc, path=PATH)
 
     def test_resources_memory_helpers(self) -> None:

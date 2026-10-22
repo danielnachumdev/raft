@@ -91,9 +91,11 @@ class DashboardOAuthOps:
             return
         raise OperatorError(
             "dashboard oauth requires host/secrets/dashboard/oauth.env and allowlist.\n"
-            "Fix: write oauth.env under host/secrets/dashboard/, add "
-            "identities to the allowlist file, set auth.mode: oauth in "
-            "Settings, then raft render",
+            "Fix: write oauth.env with OAUTH2_PROXY_CLIENT_ID, "
+            "OAUTH2_PROXY_CLIENT_SECRET, OAUTH2_PROXY_COOKIE_SECRET, "
+            "OAUTH2_PROXY_REDIRECT_URL; add identities to the allowlist "
+            "file; set auth.mode: oauth in Settings; then raft render "
+            "and redeploy dashboard",
             has_fix=False,
         )
 

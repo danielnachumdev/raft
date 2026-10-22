@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.port_list_parser import PortListParser
 from raft.core.core.models.ports import PortSpec
 from raft.core.core.models.readiness_parser import ReadinessParser
@@ -62,9 +63,9 @@ class TestPortsAndReadinessCoverage(RaftTestCase):
         assert PortListParser().parse({}, PATH) == ()
         assert PortListParser().parse({"ports": []}, PATH) == ()
         assert ReadinessParser().parse({}, (), PATH).type == "none"
-        with pytest.raises(ValueError, match="readiness requires a named port"):
+        with pytest.raises(OperatorError, match="readiness requires a named port"):
             ReadinessParser().parse({"readiness": {"type": "tcp"}}, (), PATH)
-        with pytest.raises(ValueError, match="readiness requires a named port"):
+        with pytest.raises(OperatorError, match="readiness requires a named port"):
             ReadinessParser().parse({"readiness": {"type": "http"}}, (), PATH)
 
     def _ports(self):

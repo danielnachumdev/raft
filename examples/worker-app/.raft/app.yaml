@@ -1,0 +1,32 @@
+# Worker App — no public listeners (ports: []).
+# Apply (deploy on by default): raft apply --file examples/worker-app/.raft/app.yaml
+#
+# When to use: background jobs / queue consumers with no Host routing and no
+# published ports. Workers are Compose services only (no gate/router upstreams).
+#
+# Constraints (apply rejects otherwise):
+#   - ports: [] (or omit ports) → readiness defaults to none
+#   - tls: off only (no origin / acme)
+#   - no spec.scaling (scale-to-zero needs expose: http + publicHost)
+#   - readiness: none (http/tcp need a named port)
+
+apiVersion: raft/v1
+kind: App
+metadata:
+  name: worker-app
+
+spec:
+  source: docker
+  image: ghcr.io/example/demo-worker
+  ref: latest
+  path: services/worker-app/checkout
+
+  ports: []
+
+  readiness:
+    type: none
+
+  tls: off
+
+  # Optional durable secrets (same model as other Apps):
+  # envFile: /home/raft/.raft/services/worker-app/secrets/env

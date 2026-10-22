@@ -38,7 +38,14 @@ logger = logging.getLogger(__name__)
 
 
 class RaftCLICommands:
-    """raft — low-budget single-VPS orchestrator (apply App manifests, sync, redeploy)."""
+    """raft — low-budget single-VPS orchestrator (apply App manifests, sync, redeploy).
+
+    ``apply``: deploy on by default; preprocess is ``${{ if }}`` then ``${VAR}``
+    (``--env`` / ``--env-file``, not durable secrets). Durable secrets via
+    ``spec.envFile`` → ``~/.raft/services/<name>/secrets/env`` (0700/0600);
+    never bake into git / ``spec.env`` / ``--env``. Workers: ``ports: []``,
+    ``readiness: none``, ``tls: off``, no ``spec.scaling``.
+    """
 
     def __init__(self) -> None:
         self._stack = load_stack()
