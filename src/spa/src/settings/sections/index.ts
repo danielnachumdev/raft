@@ -1,3 +1,4 @@
+export { AboutSection } from "./AboutSection";
 export { AcmeSection } from "./AcmeSection";
 export { AlertsSection } from "./AlertsSection";
 export { AppearanceSection } from "./AppearanceSection";

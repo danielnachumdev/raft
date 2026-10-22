@@ -31,6 +31,7 @@ class TestDashboardComposeAndWriter(RaftTestCase):
         assert 'RAFT_DASHBOARD_APP_PORT: "18787"' in text
         assert 'RAFT_HOST_HOME: "${RAFT_HOST_HOME}"' in text
         assert '"${RAFT_HOST_HOME}/.local:${RAFT_HOST_HOME}/.local:ro"' in text
+        assert "/etc/hostname:/etc/host_hostname:ro" in text
         assert "RAFT_HOST_DOCKER_BIN" in text
         assert "RAFT_HOST_DOCKER_PLUGIN_DIR" in text
         assert "RAFT_SERVE_BIND" not in text

@@ -86,6 +86,8 @@ class DashboardComposeYaml:
     def _host_volumes() -> list[str]:
         return [
             "      - /var/run/docker.sock:/var/run/docker.sock",
+            # VM OS hostname (Docker defaults container hostname to short ID).
+            "      - /etc/hostname:/etc/host_hostname:ro",
             # Host uv-tool env (read-only) so Update can verify the host CLI.
             '      - "${RAFT_HOST_HOME}/.local:${RAFT_HOST_HOME}/.local:ro"',
         ]

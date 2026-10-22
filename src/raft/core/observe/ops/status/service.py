@@ -242,6 +242,7 @@ class Status:
         disk = resources.disk
         return HostStatus(
             hostname=gateway.hostname(),
+            fqdn=gateway.fqdn(),
             cpus=resources.cpus,
             loadavg=resources.loadavg,
             memory=mem,

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import {
-  documentTitleForHost,
+  DASHBOARD_DOCUMENT_TITLE,
   fetchService,
   type ServiceDetailPayload,
 } from "../shared/api";
@@ -65,11 +65,8 @@ export function ServicePage() {
   }, [load]);
 
   useEffect(() => {
-    const label = data?.presentation.name ?? service;
-    document.title = label
-      ? `raft - ${label}`
-      : documentTitleForHost(data?.host?.hostname);
-  }, [data, service]);
+    document.title = DASHBOARD_DOCUMENT_TITLE;
+  }, []);
 
   useHashScroll(hash, data !== null);
 

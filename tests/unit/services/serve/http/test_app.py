@@ -21,7 +21,7 @@ class TestServeAppFactory(RaftTestCase):
         status.collect.assert_not_called()
         assert 'id="root"' in body
         assert "/assets/" in body
-        assert "raft serve" in body
+        assert "raft dashboard" in body
 
     def test_api_status_returns_json_from_collect(self) -> None:
         client, status = serve_fx.client_and_status(

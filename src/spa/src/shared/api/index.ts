@@ -5,12 +5,13 @@ export {
   readJsonBody,
 } from "./http.ts";
 export {
+  DASHBOARD_DOCUMENT_TITLE,
   STATUS_POLL_MS,
-  documentTitleForHost,
   fetchStatus,
   serviceLogsPath,
   servicePath,
   versionChromeText,
+  type HostStatus,
   type RaftVersion,
   type RegistryIssue,
   type StatusPayload,
