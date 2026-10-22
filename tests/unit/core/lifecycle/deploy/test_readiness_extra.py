@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from raft.core.core.errors.cta import OperatorError
 from raft.core.platform.adapters.docker import DockerStack
 from raft.core.core.models.ports import PortSpec
 from raft.core.core.models.readiness_parser import ReadinessParser
@@ -26,7 +27,7 @@ class TestReadinessExtraCoverage(RaftTestCase):
             path,
         )
         assert r.port == "http"
-        with pytest.raises(ValueError, match="requires a named port"):
+        with pytest.raises(OperatorError, match="requires a named port"):
             ReadinessParser().parse(
                 {"readiness": {"type": "tcp"}},
                 (),
