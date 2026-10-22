@@ -18,11 +18,13 @@ class TestStatusReportDegraded(RaftTestCase):
     def test_report_degraded_host(self) -> None:
         gateway = MagicMock()
         gateway.hostname.return_value = "degraded-host"
+        gateway.fqdn.return_value = None
         gateway.resources.return_value = HostResources(
             cpus=None, loadavg=None, memory=None, disk=None, uptime_seconds=None
         )
         empty = Status._host_status(gateway)
         assert empty.hostname == "degraded-host"
+        assert empty.fqdn is None
         assert empty.memory is None and empty.disk_path is None
         text = self._render(self._degraded_snapshot(empty))
         assert "Name: degraded-host" in text

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  documentTitleForHost,
+  DASHBOARD_DOCUMENT_TITLE,
   type StatusPayload,
 } from "../shared/api/index.ts";
 import { peekStatus, refreshStatus } from "../shared/dashboardCache";
@@ -71,24 +71,16 @@ export function Dashboard() {
   }, [fetchedAt]);
 
   useEffect(() => {
-    document.title = documentTitleForHost(data?.host?.hostname);
-  }, [data]);
+    document.title = DASHBOARD_DOCUMENT_TITLE;
+  }, []);
 
   const metaLabel = statusMetaLabel({ updating, fetchedAt, now });
-  const hostname = data?.host?.hostname;
   const quietReload = () => void load({ quiet: true });
 
   return (
     <>
       <PageHeader
         title="Stack status"
-        subtitle={
-          typeof hostname === "string" && hostname ? (
-            <>
-              Host <code>{hostname}</code>
-            </>
-          ) : undefined
-        }
         meta={
           <>
             <LiveIndicator

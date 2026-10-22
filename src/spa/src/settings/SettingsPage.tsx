@@ -4,6 +4,7 @@ import { ErrorState, LoadingState } from "../chrome/StateViews";
 import { useHashScroll } from "../chrome/useHashScroll";
 import { useUnsavedGuard } from "../chrome/useUnsavedGuard";
 import { PageHeader } from "../shell/PageHeader";
+import { AboutSection } from "./sections/AboutSection";
 import { AppearanceSection } from "./sections/AppearanceSection";
 import { UpdatesSection } from "./sections/UpdatesSection";
 import { SettingsFormView } from "./SettingsFormView";
@@ -87,6 +88,7 @@ export function SettingsPage() {
               <>
                 <AppearanceSection />
                 <UpdatesSection />
+                <AboutSection />
                 <SettingsFormView
                   draft={draft}
                   sections={editor.sections}

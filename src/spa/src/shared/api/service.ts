@@ -5,7 +5,7 @@ import {
   resourceId,
 } from "../cache/index.ts";
 import { detailFromBody, readJsonBody } from "./http.ts";
-import type { StatusRow } from "./status.ts";
+import type { HostStatus, StatusRow } from "./status.ts";
 
 export type ContainerDetail = {
   service: string;
@@ -32,7 +32,7 @@ export type ContainerDetail = {
 };
 
 export type ServiceDetailPayload = {
-  host: { hostname?: string; [key: string]: unknown };
+  host: HostStatus;
   container: ContainerDetail;
   presentation: StatusRow;
 };

@@ -5,7 +5,7 @@ Canonical status JSON matches ``raft status --json`` / ``StatusSnapshot.to_dict(
 .. code-block:: json
 
     {
-      "host": { "hostname", "cpus", "loadavg", "memory", "disk", "uptime_seconds" },
+      "host": { "hostname", "fqdn", "cpus", "loadavg", "memory", "disk", "uptime_seconds" },
       "containers": [
         {
           "service", "role", "app", "group", "status", "uptime_seconds",

@@ -122,6 +122,8 @@ class StatusReportWriter:
         title = TerminalColor.paint("Host", BOLD, stream=stream, color=color)
         print(title, file=stream)
         print(f"  Name: {host.hostname or '-'}", file=stream)
+        if host.fqdn:
+            print(f"  FQDN: {host.fqdn}", file=stream)
         cpus = str(host.cpus) if host.cpus is not None else "-"
         print(
             f"  CPUs: {cpus}   load: {StatusFormatters.load(host.loadavg)}",

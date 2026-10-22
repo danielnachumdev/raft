@@ -39,8 +39,31 @@ export function versionChromeText(version: RaftVersion): string {
   return version.package;
 }
 
+/** Host facts from ``GET /api/status`` (VM identity + resource snapshot). */
+export type HostStatus = {
+  hostname?: string;
+  fqdn?: string | null;
+  cpus?: number | null;
+  loadavg?: number[] | null;
+  uptime_seconds?: number | null;
+  memory?: {
+    total_bytes?: number | null;
+    available_bytes?: number | null;
+    used_bytes?: number | null;
+    used_percent?: number | null;
+  } | null;
+  disk?: {
+    path?: string | null;
+    total_bytes?: number | null;
+    used_bytes?: number | null;
+    free_bytes?: number | null;
+    used_percent?: number | null;
+  } | null;
+  [key: string]: unknown;
+};
+
 export type StatusPayload = {
-  host: { hostname?: string; [key: string]: unknown };
+  host: HostStatus;
   containers: unknown[];
   control_plane: StatusRow[];
   apps: StatusRow[];
@@ -53,14 +76,8 @@ export type StatusPayload = {
 /** Dashboard status poll while the tab is visible (tight bound for out-of-band apply). */
 export const STATUS_POLL_MS = 2000;
 
-const FALLBACK_TITLE = "raft serve";
-
-export function documentTitleForHost(hostname: unknown): string {
-  if (typeof hostname === "string" && hostname.trim()) {
-    return `raft - ${hostname.trim()}`;
-  }
-  return FALLBACK_TITLE;
-}
+/** Fixed browser tab title — never includes hostname or service name. */
+export const DASHBOARD_DOCUMENT_TITLE = "raft dashboard";
 
 export function servicePath(service: string): string {
   return `/service/${encodeURIComponent(service)}`;

@@ -116,10 +116,12 @@ class HostStatus:
     disk_free_bytes: Optional[int]
     disk_used_percent: Optional[float]
     uptime_seconds: Optional[float]
+    fqdn: Optional[str] = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "hostname": self.hostname,
+            "fqdn": self.fqdn,
             "cpus": self.cpus,
             "loadavg": list(self.loadavg) if self.loadavg is not None else None,
             "memory": {

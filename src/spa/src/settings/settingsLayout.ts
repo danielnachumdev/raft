@@ -19,6 +19,7 @@ export const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
     items: [
       { id: "settings-appearance", label: "Appearance" },
       { id: "settings-updates", label: "Updates" },
+      { id: "settings-about", label: "About" },
     ],
   },
   {

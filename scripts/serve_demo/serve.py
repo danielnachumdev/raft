@@ -57,10 +57,18 @@ def collect(self, *, refresh_apps=False):
     containers = tuple(_container(*t) for t in self._targets())
     gib = 1024 ** 3
     host = HostStatus(
-        hostname="demo-host", cpus=4, loadavg=(0.82, 0.71, 0.66),
-        memory=MemoryUsage(5 * gib, 8 * gib, 62.5), memory_total_bytes=8 * gib,
-        memory_available_bytes=3 * gib, disk_path="/", disk_total_bytes=80 * gib,
-        disk_used_bytes=34 * gib, disk_free_bytes=46 * gib, disk_used_percent=42.5,
+        hostname="demo-host",
+        fqdn="demo-host.example.test",
+        cpus=4,
+        loadavg=(0.82, 0.71, 0.66),
+        memory=MemoryUsage(5 * gib, 8 * gib, 62.5),
+        memory_total_bytes=8 * gib,
+        memory_available_bytes=3 * gib,
+        disk_path="/",
+        disk_total_bytes=80 * gib,
+        disk_used_bytes=34 * gib,
+        disk_free_bytes=46 * gib,
+        disk_used_percent=42.5,
         uptime_seconds=1_200_000.0,
     )
     return StatusSnapshot(host=host, containers=containers)

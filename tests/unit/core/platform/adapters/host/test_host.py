@@ -130,10 +130,51 @@ class TestHostGateway:
         )
         (proc / "loadavg").write_text("0.10 0.20 0.30 1/100 1\n", encoding="utf-8")
         (proc / "uptime").write_text("10.0 1.0\n", encoding="utf-8")
+        missing = tmp_path / "no-host-hostname"
         gateway = HostGateway(
-            disk_path=tmp_path, proc=proc, gethostname=lambda: "raft-vm"
+            disk_path=tmp_path,
+            proc=proc,
+            gethostname=lambda: "raft-vm",
+            getfqdn=lambda name: f"{name}.example.test",
+            host_hostname_path=missing,
         )
         assert gateway.hostname() == "raft-vm"
+        assert gateway.fqdn() == "raft-vm.example.test"
         resources = gateway.resources()
         assert resources.loadavg == (0.10, 0.20, 0.30)
         assert resources.uptime_seconds == 10.0
+
+    def test_prefers_mounted_host_hostname_over_container_id(
+        self, tmp_path: Path
+    ) -> None:
+        host_file = tmp_path / "host_hostname"
+        host_file.write_text("demo-host\n", encoding="utf-8")
+        gateway = HostGateway(
+            gethostname=lambda: "a1b2c3d4e5f6",
+            getfqdn=lambda name: f"{name}.example.test",
+            host_hostname_path=host_file,
+        )
+        assert gateway.hostname() == "demo-host"
+        assert gateway.fqdn() == "demo-host.example.test"
+
+    def test_shortens_fqdn_file_and_exposes_full_as_fqdn(
+        self, tmp_path: Path
+    ) -> None:
+        host_file = tmp_path / "host_hostname"
+        host_file.write_text("demo-host.example.test\n", encoding="utf-8")
+        gateway = HostGateway(
+            gethostname=lambda: "a1b2c3d4e5f6",
+            getfqdn=lambda _name: "ignored",
+            host_hostname_path=host_file,
+        )
+        assert gateway.hostname() == "demo-host"
+        assert gateway.fqdn() == "demo-host.example.test"
+
+    def test_fqdn_omitted_when_same_as_short(self, tmp_path: Path) -> None:
+        gateway = HostGateway(
+            gethostname=lambda: "demo-host",
+            getfqdn=lambda name: name,
+            host_hostname_path=tmp_path / "missing",
+        )
+        assert gateway.hostname() == "demo-host"
+        assert gateway.fqdn() is None
