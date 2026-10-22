@@ -1,15 +1,20 @@
-"""CLI for deliberate gate container recreate (published edge ports)."""
+"""Deprecated ``raft gate recreate`` alias (prefer ``raft redeploy gate``)."""
 
 from raft.core.core.models.stack import Stack
+from raft.core.core.ui import OperatorSay
 from ..utils.deps import Orchestrator
 
 
 class GateCLI:
-    """gate — recreate the public edge container when published ports change."""
+    """Deprecated gate subcommands; use ``raft redeploy gate``."""
 
     def __init__(self, stack: Stack) -> None:
         self._stack = stack
 
     def recreate(self) -> None:
-        """Recreate gate to pick up settings edge: ports (brief downtime)."""
+        """Deprecated alias for ``raft redeploy gate`` (brief edge downtime)."""
+        OperatorSay.say(
+            "`raft gate recreate` is deprecated; use `raft redeploy gate` instead.",
+            style="warn",
+        )
         Orchestrator(self._stack).recreate_gate()

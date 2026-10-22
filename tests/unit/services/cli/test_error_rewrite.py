@@ -56,7 +56,7 @@ class TestCliErrorRewrite(CliTestCase):
         with pytest.raises(SystemExit) as exc:
             self.run_cli(["down"])
         assert exc.value.code == 1
-        assert "gate recreate" in capsys.readouterr().err
+        assert "redeploy gate" in capsys.readouterr().err
 
     def test_run_rewrites_compose_and_git_and_pull(self, capsys) -> None:
         self._assert_compose_fail(capsys)

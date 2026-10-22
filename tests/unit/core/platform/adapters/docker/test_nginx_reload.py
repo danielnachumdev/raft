@@ -169,7 +169,7 @@ class TestDockerNginxReload(DockerTestCase):
             self.ok(),  # -t ok
             self.ok(returncode=1, stderr=""),  # reload fail empty
         ]
-        with pytest.raises(RuntimeError, match="gate recreate"):
+        with pytest.raises(RuntimeError, match="redeploy gate"):
             self.docker.reload_gate_nginx()
 
     def test_router_sees_upstream_target(self) -> None:

@@ -5,8 +5,8 @@ without a long-lived SSH-held Python process.
 
 Not an App YAML in operator repos. Config lives only under
 `~/.raft/host/settings.yaml` `dashboard:` (Settings UI / `PUT /api/settings`).
-Lifecycle is the same as other services: **Start / Stop / Redeploy**
-(`raft start|stop|redeploy dashboard` or the serve UI). Saving settings alone
+Lifecycle is the same as other services: **Up / Down / Redeploy**
+(`raft up|down|redeploy dashboard` or the serve UI). Saving settings alone
 does not start or stop the container.
 
 ## Defaults (safe)
@@ -20,7 +20,7 @@ dashboard:
 ```
 
 When `enabled: true`, render / `raft up` include `raft-dashboard` in Compose.
-When `false`, it is omitted. Bring a running container up with Start or Redeploy
+When `false`, it is omitted. Bring a running container up with Up or Redeploy
 after enable + `raft render`. Redeploy while disabled refuses (enable in Settings
 first — no silent enable).
 
@@ -60,7 +60,7 @@ receive SPA bytes.
 In Settings → Dashboard, set `auth.mode: password` and enter a plaintext password
 in the password-hash field (≥8 characters); Save hashes it
 (`pbkdf2_sha256$…`). Leave the redaction mask (`***`) to keep the stored hash.
-Then enable, `raft render`, and Start or Redeploy.
+Then enable, `raft render`, and Up or Redeploy.
 
 In-container nginx uses `auth_request` against `/api/dashboard/auth`. Browsers
 without a session cookie get `/login` (static HTML in the image). Login posts to
@@ -96,7 +96,7 @@ Secrets stay under the data home (never in git / PR bodies):
 | `~/.raft/host/secrets/dashboard/oauth-allowlist.txt` | One allowed identity per line |
 
 Create the env file and allowlist under `host/secrets/dashboard/`, set
-`auth.mode: oauth` + `enabled: true` in Settings, then `raft render` and Start
+`auth.mode: oauth` + `enabled: true` in Settings, then `raft render` and Up
 or Redeploy. Redirect URL is typically
 `https://<publicHost>/oauth2/callback`.
 
@@ -135,12 +135,12 @@ dashboard:
 ```bash
 # After enabling in Settings:
 raft render
-raft start dashboard          # Compose up --no-build (Restart = stop→start)
-raft stop dashboard
+raft up dashboard          # Compose up --no-build
+raft down dashboard
 raft redeploy dashboard       # rebuild image (picks up host install stamp)
 ```
 
-`enabled: true` only includes the service in render / `raft up`. Start and
+`enabled: true` only includes the service in render / `raft up`. Up and
 Redeploy do **not** mutate `dashboard:` settings or secrets. Redeploy while
 `enabled: false` refuses with a CTA to enable in Settings.
 
@@ -156,8 +156,8 @@ in the container being rebuilt. Serve detects the dashboard container
 and returns **202** `{ started: true, job_id }` immediately. The SPA shows
 “Redeploying…”, polls until the service is healthy again, then soft-reloads
 with a success toast. On timeout it points at Events / host CLI. Host
-`raft serve` and CLI Redeploy stay **in-process** (sync). Restart remains
-`--no-build` (stop→start).
+`raft serve` and CLI Redeploy stay **in-process** (sync). --no-build remains
+`--no-build` (down→up).
 
 Shared runner: `HostOneshot` under `platform/adapters/docker/` (also used by
 Settings → Update). Preflight refuses clearly when `RAFT_HOST_HOME`, the

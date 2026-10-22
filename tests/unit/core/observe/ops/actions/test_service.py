@@ -137,14 +137,13 @@ class TestServiceActions(RaftTestCase):
         orch.redeploy_router.assert_called_once()
         assert result["service"] == "raft-router"
 
-    def test_redeploy_gate_refused(self) -> None:
+    def test_redeploy_gate_recreates(self) -> None:
         actions, _docker, orch = self._actions()
-        orch.redeploy.side_effect = OperatorError(
-            "refusing to redeploy `gate`", has_fix=False
-        )
-        with pytest.raises(OperatorError, match="gate"):
-            actions.redeploy("gate")
-        orch.redeploy.assert_called_once_with("gate")
+        result = actions.redeploy("gate")
+        orch.recreate_gate.assert_called_once()
+        orch.redeploy.assert_not_called()
+        assert result["action"] == "redeploy"
+        assert result["service"] == "raft-gate"
 
     def test_redeploy_controller_refused(self) -> None:
         actions, _docker, _orch = self._actions()

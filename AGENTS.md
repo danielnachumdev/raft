@@ -29,7 +29,7 @@ gate → router → apps
 
 | Layer | Compose id (typical) | Role | Mutative ops |
 |-------|----------------------|------|----------------|
-| **gate** | `raft-gate` | Public listeners from settings; TLS; ACME HTTP-01; offline; scale holding/wake; **ordered edge firewall**; HTTP access log + stub_status | **reload** when generated gate nginx changes; **`raft gate recreate`** only for published ports; **`redeploy gate` refused** |
+| **gate** | `raft-gate` | Public listeners from settings; TLS; ACME HTTP-01; offline; scale holding/wake; **ordered edge firewall**; HTTP access log + stub_status | **reload** when generated gate nginx changes; **`raft redeploy gate`** only for published ports (brief edge downtime) |
 | **router** | `raft-router` | Host → upstream | `raft redeploy router` / reload on cutover |
 | **apps** | `GROUP-NAME` / name | One Compose service per applied App | `apply` / `redeploy <name>` |
 
@@ -45,7 +45,7 @@ Overlapping apply/redeploy/render tears tmp names, upstreams, and `generated/`. 
 | Lock | Held by | Guarantees |
 |------|---------|------------|
 | `app-<name>.lock` | apply, redeploy / `ensure_app_deployed`, delete app | One mutative pipeline per app; later waiter wins after wait |
-| `stack.lock` | render, sync, cutover, compose up/recreate, gate recreate, up/down, purge | No torn `generated/` / mid-cutover upstream reset |
+| `stack.lock` | render, sync, cutover, compose up/recreate, redeploy gate, up/down, purge | No torn `generated/` / mid-cutover upstream reset |
 | `acl.lock` | serve firewall writes (before render/reload) | Firewall persist does not race another firewall writer |
 | `alerts.lock` | CLI/serve writes to `host/alerts/rules.yaml` | Alert rules document writers do not tear each other |
 | `settings.lock` | full settings document, notification channels, github OAuth settings writers | No torn `host/settings.yaml` |
@@ -58,14 +58,14 @@ Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**). Nesting in-process re-
 ## Invariants you cannot infer from a quick skim
 
 1. **Ship path:** default `raft apply` **deploys**. Do not teach `--no-deploy` + `redeploy` as the happy path — `redeploy` fails if the service is not already running.
-2. **Gate recreate ≠ reload:** published `edge:` ports → `raft gate recreate` (brief downtime). Everything else gate-related that only changes generated nginx → **reload**.
+2. **Gate redeploy ≠ reload:** published `edge:` ports → `raft redeploy gate` (brief downtime). Everything else gate-related that only changes generated nginx → **reload**.
 3. **Packaged templates path:** product share lives at `src/raft/core/platform/share/`. `[tool.setuptools.package-data]` **must** list `core/platform/share/**` (not legacy `raft/share/`). Wrong globs → wheels without `compose.yaml` → every CLI command dies (including `raft update`). Meta guard: `tests/meta/test_package_data.py`. Recovery on a broken host: `curl …/install.sh | bash` (update cannot self-heal if stack load fails).
 4. **Console entry:** `raft` → `raft.services.cli.__main__:main`. Also `python -m raft.services.serve` / controller `__main__` where present.
 5. **Registry load is lenient; apply write is strict:** invalid `services/<name>/app.yaml` skipped at load (`registry_issues`); apply still rejects bad manifests.
 6. **Name vs source:** `metadata.name` owned by durable source identity (`local`+path, `git`+normalized remote SSH≡HTTPS, `docker`+image; not `ref`). Same → update; different → `OperatorError` (no `--force` — delete then re-apply). Details: [`docs/app-manifest.md`](docs/app-manifest.md).
 7. **ACME failures do not fail deploy:** best-effort HTTP-01; errors under `host/acme/` / `services/<name>/acme/`.
 8. **Healing ≠ scaling:** `healing:` in settings; `spec.scaling` is per-App. Healer skips intentional `scaledToZero`.
-9. **Serve binds localhost only** (`127.0.0.1`). Not an edge listener. Mutative serve actions use the same flock rules as CLI; refuse gate redeploy where CLI refuses.
+9. **Serve binds localhost only** (`127.0.0.1`). Not an edge listener. Mutative serve actions use the same flock rules as CLI; gate redeploy matches CLI (edge-downtime warning).
 10. **SPA poll:** status ~2s while tab visible; `/api/status` reloads registry every call (`refresh_apps=True`).
 11. **No PII / no live inventory in fixtures, screenshots, or PR bodies** — use `demo-api`, `192.0.2.0/24`, etc.
 12. **UI PRs need screenshots** (agent-browser + `gh pr edit --attach`) — unit tests alone are not Proof for visible SPA changes.
@@ -88,7 +88,7 @@ Align with the README table; detail for agents:
 | Doctor / status / logs / purge | **Shipped** | |
 | Metrics JSONL + Trends (resources + HTTP aggregate) | **Shipped** | Controller scrape; `http.jsonl` contract in observe/docs; CLI `raft metrics history|catalog|export_*` |
 | `raft serve` ops UI | **Shipped** | FastAPI + packaged SPA |
-| Full operator settings UI (`settings.yaml` / `RaftConfig`) | **Shipped** | `OperatorSettingsService` + `GET/PUT /api/settings` + SPA `/settings`; [`docs/serve-settings.md`](docs/serve-settings.md). Edge port changes note `raft gate recreate`. |
+| Full operator settings UI (`settings.yaml` / `RaftConfig`) | **Shipped** | `OperatorSettingsService` + `GET/PUT /api/settings` + SPA `/settings`; [`docs/serve-settings.md`](docs/serve-settings.md). Edge port changes note `raft redeploy gate`. |
 | Settings → Check for updates | **Shipped** | `UpdateCheck` + `SelfUpdate` via `GET/POST /api/update`; same GitHub Release wheel SoT as `raft update` / `install.sh` |
 | HTTP request inspection (per App) | **Shipped** | Gate access log → `/api/service/{name}/http-requests` + `raft http_requests show`; [`docs/serve-http-requests.md`](docs/serve-http-requests.md) |
 | Flat gate / App IP ACL (allow/deny lists) | **Retired** | Removed; firewall SoT only ([`docs/serve-firewall.md`](docs/serve-firewall.md)). Leftover `acl.gate` / `state/acl/` ignored. |
@@ -105,7 +105,7 @@ Align with the README table; detail for agents:
 | Alert rules engine (metrics/control-plane → notifications) | **Shipped** | [#236](https://github.com/danielnachumdev/raft/issues/236); dual-plane CLI+serve lock [#264](https://github.com/danielnachumdev/raft/issues/264); [`docs/serve-alerts.md`](docs/serve-alerts.md); `AlertRulesService` / engine under `observe/alerts/` |
 | Operator system event timeline | **Shipped** | [#267](https://github.com/danielnachumdev/raft/issues/267); `host/events/ops.jsonl` dual-write with GraphEvents; `raft events` + serve `/events`; [`docs/serve-events.md`](docs/serve-events.md) |
 | Firewall-derived alert signals (`edge.denies`) | **Planned** | Observe gate outcomes only; no middle hop (#207) |
-| Always-on Compose dashboard service | **Shipped** | [#36](https://github.com/danielnachumdev/raft/issues/36); `dashboard:` settings-only + `raft-dashboard` Compose; lifecycle via Start/Stop/Redeploy ([#340](https://github.com/danielnachumdev/raft/issues/340)); optional `publicHost` + TLS + auth (`none`/`password`/`oauth`/`external`); OAuth via in-container oauth2-proxy + allowlist; [`docs/serve-dashboard.md`](docs/serve-dashboard.md) |
+| Always-on Compose dashboard service | **Shipped** | [#36](https://github.com/danielnachumdev/raft/issues/36); `dashboard:` settings-only + `raft-dashboard` Compose; lifecycle via Up/Down/Redeploy ([#340](https://github.com/danielnachumdev/raft/issues/340)); optional `publicHost` + TLS + auth (`none`/`password`/`oauth`/`external`); OAuth via in-container oauth2-proxy + allowlist; [`docs/serve-dashboard.md`](docs/serve-dashboard.md) |
 | Automate SPA bake in CD | **Shipped** | [#41](https://github.com/danielnachumdev/raft/issues/41) — Release wheel + install.sh prefers `.whl`; SPA assets not committed |
 | Middle nginx firewall hop | **Rejected** | Do not re-open without new engine requirements |
 
@@ -113,7 +113,7 @@ Align with the README table; detail for agents:
 
 - **Ordered firewall (#211, shipped):** ordered rule table — **CIDR**, **port** (number or `any`), **protocol** (dropdown + other), **service** (dropdown + any), **action** (`deny` \| `permit` \| `drop`); Save → persist → compile → **gate nginx reload**; import/export; baseline recommendations (per-port permit + default deny). Flat ACL migrate path removed (#312).
 - Flat ACL UI/API removed — not an operator path.
-- **Never** require gate recreate/restart for rule-only changes.
+- **Never** require gate redeploy/restart for rule-only changes.
 
 ---
 
@@ -153,7 +153,7 @@ Product templates sync from `src/raft/core/platform/share/` into the data home o
 | Docker / nginx adapters, share templates | `src/raft/core/platform/` |
 | Doctor, status, logs, update | `src/raft/core/observe/` |
 | **Shared mutative capabilities** (CLI + serve) | Business rules in `core/`; serve/CLI only invoke. New capabilities: put the service under the matching core area below, keep FastAPI/Fire as adapters. |
-| Per-service start/stop/redeploy/purge | `observe/ops/actions/` (`ServiceActions`); CLI `raft start|stop NAME` + serve actions; default `start` brings up `dependsOn` (wake order), `--no-deps` skips; redeploy/purge already on CLI |
+| Per-service up/down/redeploy/purge | `observe/ops/actions/` (`ServiceActions`); CLI `raft up|down [NAME]` + serve actions (API ids may stay start/stop); default `up NAME` brings up `dependsOn` (wake order), `--no-deps` skips; `redeploy gate` = edge recreate |
 | Ordered firewall (CRUD / recommendations / from-inspection) | `lifecycle/firewall/` + nginx compile in `lifecycle/render/firewall/`; serve adapter `services/serve/firewall/`; CLI `services/cli/commands/firewall.py` (`raft firewall …`); SPA `src/spa/src/firewall/` |
 | Full operator settings (`settings.yaml`) | `core/config/settings/operator_service.py` (`OperatorSettingsService`); serve adapter `services/serve/settings/`; SPA `src/spa/src/settings/`; [`docs/serve-settings.md`](docs/serve-settings.md) |
 | Check for updates (Settings) | `observe/ops/update/` (`UpdateCheck`, `SelfUpdate`); serve `services/serve/update/`; SPA `src/spa/src/settings/sections/UpdatesSection.tsx` |
@@ -163,7 +163,7 @@ Product templates sync from `src/raft/core/platform/share/` into the data home o
 | Reusable dashboard kit (Trends / embeds) | `src/spa/src/dashboard-kit/`; Trends overview consumer in `trends/dashboard/ui/TrendsDashboard.tsx`; [`docs/serve-dashboard-kit.md`](docs/serve-dashboard-kit.md) |
 | Alert rules | `core/observe/alerts/` + `services/serve/alerts/` + `services/controller/jobs/alerts/` + SPA `src/spa/src/alerts/` |
 | Ops event timeline | `core/models/state/ops_event*` + `observe/ops/events/`; dual-write from `GraphEventStore`; serve `services/serve/events/`; CLI `services/cli/commands/events.py` (`raft events`); SPA `src/spa/src/events/` |
-| Always-on dashboard | `lifecycle/dashboard/` + `share/dashboard/`; settings `dashboard:` (Settings UI); lifecycle Start/Stop/Redeploy via `ServiceActions`; serve auth `services/serve/auth/`; docs [`docs/serve-dashboard.md`](docs/serve-dashboard.md) |
+| Always-on dashboard | `lifecycle/dashboard/` + `share/dashboard/`; settings `dashboard:` (Settings UI); lifecycle Up/Down/Redeploy via `ServiceActions`; serve auth `services/serve/auth/`; docs [`docs/serve-dashboard.md`](docs/serve-dashboard.md) |
 | Notification strategies | `observe/notify/strategies/` + `catalogs.py`; SPA `src/spa/src/notifications/` |
 | Operator docs for serve features | `docs/serve-*.md` (notifications / alerts / events: `docs/serve-events.md`) |
 

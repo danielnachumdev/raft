@@ -39,7 +39,7 @@ class StreamEdge:
                 f"declared in settings edge.streams "
                 f"(known: {sorted(declared) or 'none'}).\n"
                 f"Fix: add the port under edge.streams in ~/.raft/host/settings.yaml, "
-                f"then: raft render && raft gate recreate"
+                f"then: raft render && raft redeploy gate"
             )
         return self._match_stream_protocol(app, port, declared[public])
 

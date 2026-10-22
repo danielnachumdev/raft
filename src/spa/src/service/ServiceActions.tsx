@@ -10,7 +10,7 @@ type Props = {
   onDone: () => void;
 };
 
-/** Start / Stop / Redeploy toolbar for one Compose service (page header). */
+/** Up / Down / Redeploy toolbar for one Compose service (page header). */
 export function ServiceActions(props: Props) {
   const runner = useServiceActionRunner(
     props.service,
@@ -23,7 +23,7 @@ export function ServiceActions(props: Props) {
   return (
     <div className="actions-row" role="group" aria-label="Service actions">
       <ActionButton
-        label="Start"
+        label="Up"
         action="start"
         busy={busy}
         disabled={locked || !avail.start.enabled}
@@ -31,7 +31,7 @@ export function ServiceActions(props: Props) {
         onClick={() => void run("start")}
       />
       <ActionButton
-        label="Stop"
+        label="Down"
         action="stop"
         busy={busy}
         disabled={locked || !avail.stop.enabled}

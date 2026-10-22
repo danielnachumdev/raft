@@ -53,7 +53,7 @@ class TestOperatorSettingsService(RaftTestCase):
         out = svc.replace({"document": doc})
         warn = next(n for n in out["notes"] if n["code"] == "edge.ports")
         assert warn["severity"] == "warn"
-        assert "gate recreate" in warn["message"]
+        assert "redeploy gate" in warn["message"]
 
     def test_invalid_section_raises(self) -> None:
         svc = OperatorSettingsService(self.tmp_path)

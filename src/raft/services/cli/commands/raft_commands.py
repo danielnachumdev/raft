@@ -129,41 +129,63 @@ class RaftCLICommands:
             return
         raise SystemExit(f"unknown resource {resource!r} (try: app)")
 
-    def up(self) -> None:
-        """Sync applied apps, then bring the stack up."""
-        Orchestrator(self._stack).start()
+    def up(self, name: Optional[str] = None, no_deps: bool = False) -> None:
+        """Bring the stack up, or one Compose service when ``NAME`` is given.
 
-    def down(self) -> None:
-        """Stop and remove the stack."""
-        Orchestrator(self._stack).stop()
+        No args: sync applied apps, then bring the whole stack up.
+        With ``NAME``: same as today's per-service start (dependsOn / scale-to-zero
+        clear). Names: App, ``gate`` / ``router`` / ``controller`` / ``dashboard``,
+        or Compose ids. Default brings transitive ``spec.dependsOn`` first; pass
+        ``--no-deps`` to bring up only ``name``.
+        """
+        if name is None:
+            if no_deps:
+                raise OperatorError(
+                    "`--no-deps` requires a service name.\n"
+                    "Fix: raft up NAME --no-deps",
+                    has_fix=False,
+                )
+            Orchestrator(self._stack).start()
+            return
+        result = ServiceActions(self._stack).start(name, no_deps=no_deps)
+        self._say_up_result(result)
+
+    def down(self, name: Optional[str] = None) -> None:
+        """Tear the stack down, or stop one Compose service when ``NAME`` is given.
+
+        No args: stop and remove the stack.
+        With ``NAME``: Compose ``stop`` only (does not remove the unit). Apps with
+        ``spec.scaling`` mark ``scaledToZero`` — same as today's per-service stop.
+        """
+        if name is None:
+            Orchestrator(self._stack).stop()
+            return
+        result = ServiceActions(self._stack).stop(name)
+        OperatorSay.say(f"Brought down {result['service']}.")
 
     def start(self, name: str, no_deps: bool = False) -> None:
-        """Start one Compose service (App name, edge/control-plane, or Compose id).
+        """Deprecated alias for ``raft up NAME``."""
+        OperatorSay.say(
+            "`raft start` is deprecated; use `raft up NAME` instead.",
+            style="warn",
+        )
+        self.up(name, no_deps=no_deps)
 
-        Names: ``gate`` / ``router`` / ``controller`` / ``dashboard``, or Compose
-        ids. Same flock locks, scale-to-zero clear, and GraphEvents as serve Start.
-        Default starts transitive ``spec.dependsOn`` first (wake order); pass
-        ``--no-deps`` to start only ``name``.
-        """
-        result = ServiceActions(self._stack).start(name, no_deps=no_deps)
-        self._say_start_result(result)
-
-    def _say_start_result(self, result: Dict[str, Any]) -> None:
+    def _say_up_result(self, result: Dict[str, Any]) -> None:
         if result.get("no_deps"):
             OperatorSay.say("Skipping dependsOn (--no-deps).")
         for dep in result.get("started_deps") or ():
-            OperatorSay.say(f"Starting dependency {dep}…")
-            OperatorSay.say(f"Started {dep}.")
-        OperatorSay.say(f"Started {result['service']}.")
+            OperatorSay.say(f"Bringing up dependency {dep}…")
+            OperatorSay.say(f"Brought up {dep}.")
+        OperatorSay.say(f"Brought up {result['service']}.")
 
     def stop(self, name: str) -> None:
-        """Stop one Compose service.
-
-        Apps with ``spec.scaling`` mark ``scaledToZero`` (healer skips; holding
-        page) — same as serve Stop.
-        """
-        result = ServiceActions(self._stack).stop(name)
-        OperatorSay.say(f"Stopped {result['service']}.")
+        """Deprecated alias for ``raft down NAME``."""
+        OperatorSay.say(
+            "`raft stop` is deprecated; use `raft down NAME` instead.",
+            style="warn",
+        )
+        self.down(name)
 
     def render(self) -> None:
         """Generate Compose/nginx from ~/.raft/services/*/app.yaml."""
@@ -266,13 +288,18 @@ class RaftCLICommands:
         ref: Optional[str] = None,
         force_sync: bool = False,
     ) -> None:
-        """Redeploy one running app, router, or enabled always-on dashboard."""
+        """Redeploy one running app, router, gate, or enabled always-on dashboard.
+
+        ``gate`` recreates the public edge container (brief downtime — same as
+        today's ``raft gate recreate``). Controller redeploy stays refused.
+        """
         name = (app or "").strip()
         if not name:
             raise DomainErrors.redeploy_requires_app()
         if name in _CONTROL_PLANE_REDEPLOY:
             result = ServiceActions(self._stack).redeploy(name)
-            OperatorSay.say(f"Redeployed {result['service']}.")
+            if not result.get("started"):
+                OperatorSay.say(f"Redeployed {result['service']}.")
             return
         if name not in self._app_names:
             raise DomainErrors.unknown_app(name, self._known)

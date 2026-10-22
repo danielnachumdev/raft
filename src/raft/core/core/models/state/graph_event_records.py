@@ -102,7 +102,7 @@ class GraphEventRecords:
         return self._record(KIND_UPDATE, label="Raft update", metadata={}, ts=ts)
 
     def record_gate_recreate(self, *, ts: Optional[datetime] = None) -> GraphEvent:
-        """Published-edge recreate (``raft gate recreate``)."""
+        """Published-edge recreate (``raft redeploy gate``)."""
         return self._record(
             KIND_GATE_RECREATE,
             service=GATE_COMPOSE_ID,

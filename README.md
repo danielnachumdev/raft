@@ -31,7 +31,7 @@ You keep services in their own repos. On the VPS you `apply` a manifest. raft sy
 - **One ship command** — `raft apply` registers desired state and deploys (first boot and later releases)
 - **Managed artifacts** — Compose apps, upstreams, and gate/router nginx are generated for you, not edited by hand each release
 - **Adaptive manifests** — apply-time `${VAR}` / `${{ if }}` and `--env` so one `.raft/app.yaml` can serve stages (see [`docs/app-manifest.md`](docs/app-manifest.md))
-- **Safer cutovers** — tmp cutover + router reload; published edge ports only need `raft gate recreate`
+- **Safer cutovers** — tmp cutover + router reload; published edge ports only need `raft redeploy gate`
 - **Operator feedback** — `raft doctor` with fix hints; `raft status` / `raft logs` for the live plane
 - **Localhost ops UI** — `raft serve` for tables, actions, logs, trends, and edge access control (never on the public gate)
 - **Optional scale-to-zero and healing** — idle-stop/wake when you declare `spec.scaling`; healing stays in settings
@@ -92,7 +92,7 @@ CI (or you) points at a commit and applies:
 raft apply --file .raft/app.yaml --ref "$SHA"
 ```
 
-Same command for first boot and later cutovers. raft syncs, renders, and switches traffic through the router. Changing published edge listeners in settings is the exception — that needs `raft gate recreate` (brief edge downtime).
+Same command for first boot and later cutovers. raft syncs, renders, and switches traffic through the router. Changing published edge listeners in settings is the exception — that needs `raft redeploy gate` (brief edge downtime).
 
 ## Ops UI
 
@@ -118,9 +118,19 @@ raft serve --stop
 | `raft status` | CPU/memory snapshot (`--live` to watch) |
 | `raft serve` | Localhost ops dashboard (default `:8787`) |
 | `raft logs [name…]` | Container stdout/stderr (`-f` to follow) |
-| `raft redeploy <app>` | Cutover when the app is already running |
-| `raft gate recreate` | After changing published edge ports |
-| `raft up` / `raft down` | Bring the whole stack up or tear it down |
+| `raft up` / `raft down` | Whole stack; with `NAME` = per-service power (down stops, does not remove) |
+| `raft redeploy <name>` | Refresh a running app, router, dashboard, or **gate** (edge ports; brief downtime) |
+| `raft sync` / `raft render` | Pipeline only (sources / Compose+nginx); not substitutes for redeploy |
+
+### Lifecycle glossary
+
+| Verb | Meaning |
+|------|---------|
+| **up** / **down** | Power: stack (no args) or one service (`NAME`). Per-service down = Compose stop, not remove. |
+| **redeploy** | Generation refresh / cutover for a running unit. Includes `gate` (container recreate). |
+| **sync** | Clone/update sources for applied apps. Does not cut over traffic by itself. |
+| **render** | Regenerate Compose/nginx under `~/.raft/`. May reload nginx; does not replace redeploy. |
+| **reload** | Automatic side effect of render / firewall Save — not a separate operator verb. |
 
 ## Develop
 

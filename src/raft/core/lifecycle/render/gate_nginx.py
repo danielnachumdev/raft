@@ -20,7 +20,7 @@ class GateNginxStamp:
         """Stable hash of generated gate nginx fragments (tls / http / stream).
 
         Missing directories count as empty. Does not include ``compose.edge.yaml``
-        (published-port changes still require ``raft gate recreate``).
+        (published-port changes still require ``raft redeploy gate``).
         """
         base = self.root / GENERATED_DIRNAME / "nginx"
         entries = self._collect_entries(base)

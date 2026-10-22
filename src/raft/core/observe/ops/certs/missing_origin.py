@@ -20,5 +20,5 @@ class MissingOriginCerts:
         return (
             f"install Cloudflare Origin PEMs for {self.app_name} at "
             f"~/.raft/services/{self.app_name}/certs/origin.pem and origin.key "
-            f"(required for tls: origin; then `raft gate recreate` if needed)"
+            f"(required for tls: origin; then `raft redeploy gate` if needed)"
         )

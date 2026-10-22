@@ -1,4 +1,4 @@
-"""High-level up / down / sync / redeploy / gate recreate orchestration."""
+"""High-level up / down / sync / redeploy orchestration (gate via redeploy)."""
 
 import logging
 from typing import Optional
@@ -188,25 +188,23 @@ class Orchestrator(OrchestratorDeploy):
             self.redeploy_router()
             return
         if target in ("gate", self.stack.gate):
-            raise OperatorError(
-                "refusing to redeploy `gate` — it is the stable public edge. "
-                "To change published edge ports, run `raft gate recreate` "
-                "(brief edge downtime).",
-                has_fix=False,
-            )
+            self.recreate_gate()
+            return
         self.redeploy_app(target)
 
     def recreate_gate(self) -> None:
+        """Recreate the gate container (brief public-edge downtime)."""
         with StackLock(self.stack.root):
             if self.stack.gate not in self.docker.running_services():
                 raise OperatorError(
-                    "gate is not running — bring the stack up first",
+                    "gate is not running — bring the stack up first "
+                    "(`raft up`).",
                     has_fix=False,
                 )
             CertProbe(self.stack).require_origin()
             self.render()
             OperatorSay.say(
-                "recreating gate to pick up published edge ports "
+                "redeploying gate to pick up published edge ports "
                 "(brief edge downtime — typically 1–2s)",
                 style="warn",
             )
@@ -214,7 +212,7 @@ class Orchestrator(OrchestratorDeploy):
             self._mark_gate_nginx_loaded()
             self._wait_edge_listeners()
             GraphEventStore(self.stack.root).record_gate_recreate()
-            OperatorSay.say("gate recreated", style="ok")
+            OperatorSay.say("gate redeployed", style="ok")
 
     def _wait_edge_listeners(self) -> None:
         edge = SettingsLoader().load(self.stack.root).edge

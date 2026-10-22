@@ -47,7 +47,7 @@ class TestDoctorEdgeCoverage(RaftTestCase):
         docker.gate_published_ports.return_value = [80, 999]
         results = self._run(load_stack(self.tmp_path), self._ok_shell(), docker)
         assert results[("raft-gate", "ports")].status == "fail"
-        assert "raft gate recreate" in results[("raft-gate", "ports")].fix
+        assert "raft redeploy gate" in results[("raft-gate", "ports")].fix
         assert results[(INFRA, "port 53/udp")].status == "ok"
 
     def test_doctor_no_edge_and_gate_up_not_listening(self) -> None:
