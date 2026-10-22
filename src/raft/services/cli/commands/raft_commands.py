@@ -7,9 +7,7 @@ from typing import Any, Dict, Optional, Sequence, Union
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.errors.domain import DomainErrors
 from raft.core.core.ui import OperatorSay
-from raft.core.lifecycle.apply import ApplyEnvSources
 
-from ..utils.argv import ApplyEnvOverrides
 from ..utils.deps import (
     AppApply,
     Doctor,
@@ -26,6 +24,7 @@ from ..utils.deps import (
     load_stack,
 )
 from .alerts import AlertsCLI
+from .apply_env_cli import CONTROL_PLANE_REDEPLOY, ApplyEnvCli
 from .auth import AuthCLI
 from .events import EventsCLI
 from .firewall import FirewallCLI
@@ -36,13 +35,6 @@ from .metrics import MetricsCLI
 from .notifications import NotificationsCLI
 
 logger = logging.getLogger(__name__)
-
-_CONTROL_PLANE_REDEPLOY = frozenset(
-    {
-        "router", "raft-router", "dashboard", "raft-dashboard",
-        "gate", "raft-gate", "controller", "raft-controller",
-    }
-)
 
 
 class RaftCLICommands:
@@ -81,21 +73,36 @@ class RaftCLICommands:
         env_file: Optional[str] = None,
         env: Optional[Union[str, Sequence[str]]] = None,
     ) -> None:
-        """Register an App from ``--file`` or ``--git``; preprocess, then deploy.
+        """Register an App from ``--file`` or ``--git``; preprocess, then deploy."""
+        apply_env = ApplyEnvCli.build(env_file=env_file, env=env)
+        self._apply_source(
+            file=file,
+            git=git,
+            ref=ref,
+            deploy=not no_deploy,
+            force_sync=force_sync,
+            env=apply_env,
+        )
 
-        ``--env-file`` / ``--env`` feed preprocess only (process → file → ``--env``).
-        """
+    def _apply_source(
+        self,
+        *,
+        file: Optional[str],
+        git: Optional[str],
+        ref: Optional[str],
+        deploy: bool,
+        force_sync: bool,
+        env: dict[str, str],
+    ) -> None:
         applier = AppApply(self._stack)
-        apply_env = self._build_apply_env(env_file=env_file, env=env)
-        deploy = not no_deploy
         if file is not None:
             applier.apply_file(
-                Path(file), ref_override=ref, deploy=deploy, force_sync=force_sync, env=apply_env
+                Path(file), ref_override=ref, deploy=deploy, force_sync=force_sync, env=env
             )
             return
         if git:
             applier.apply_git(
-                git, ref=ref or "main", deploy=deploy, force_sync=force_sync, env=apply_env
+                git, ref=ref or "main", deploy=deploy, force_sync=force_sync, env=env
             )
             return
         raise DomainErrors.apply_requires_source()
@@ -128,14 +135,7 @@ class RaftCLICommands:
         raise SystemExit(f"unknown resource {resource!r} (try: app)")
 
     def up(self, name: Optional[str] = None, no_deps: bool = False) -> None:
-        """Bring the stack up, or one Compose service when ``NAME`` is given.
-
-        No args: sync applied apps, then bring the whole stack up.
-        With ``NAME``: per-service up (dependsOn / scale-to-zero clear). Names:
-        App, ``gate`` / ``router`` / ``controller`` / ``dashboard``, or Compose
-        ids. Default brings transitive ``spec.dependsOn`` first; pass
-        ``--no-deps`` to bring up only ``name``.
-        """
+        """Bring the stack up, or one Compose service when ``NAME`` is given."""
         if name is None:
             if no_deps:
                 raise OperatorError(
@@ -149,12 +149,7 @@ class RaftCLICommands:
         self._say_up_result(result)
 
     def down(self, name: Optional[str] = None) -> None:
-        """Tear the stack down, or bring one Compose service down when ``NAME`` is given.
-
-        No args: stop and remove the stack.
-        With ``NAME``: Compose ``stop`` only (does not remove the unit). Apps with
-        ``spec.scaling`` mark ``scaledToZero``.
-        """
+        """Tear the stack down, or bring one Compose service down when ``NAME`` is given."""
         if name is None:
             Orchestrator(self._stack).down()
             return
@@ -174,32 +169,17 @@ class RaftCLICommands:
         Orchestrator(self._stack).render()
 
     def doctor(self, name: Optional[str] = None) -> None:
-        """Check docker, auth, sync, upstreams, and stack status; print fixes.
-
-        Optional ``name`` filters to one applied App (CI: ``raft doctor shop``).
-        Exit status then reflects that App's checks only.
-        """
+        """Check docker, auth, sync, upstreams, and stack status; print fixes."""
         code = Doctor(self._stack).report(app_name=name)
         if code:
             raise SystemExit(code)
 
     def status(self, json: bool = False, live: bool = False) -> None:
-        """Show host and container resource usage (point-in-time snapshot).
-
-        Pass ``--json`` for a machine-readable snapshot (basis for future scaling).
-        Pass ``--live`` to clear and refresh the human table until Ctrl+C
-        (not combinable with ``--json``).
-        """
+        """Show host and container resource usage (point-in-time snapshot)."""
         Status(self._stack).report(as_json=json, live=live)
 
     def serve(self, port: int = 8787, stop: bool = False) -> None:
-        """Start a localhost-only SSR UI for stack and control-plane visibility.
-
-        Binds ``127.0.0.1`` (default port 8787). Prints connection /
-        port-forward instructions on start. Stop with Ctrl+C or
-        ``raft serve --stop``. Not published via gate/edge.
-        Pass ``--stop`` to terminate an already-running serve on this port.
-        """
+        """Start a localhost-only SSR UI (``127.0.0.1``; ``--stop`` to terminate)."""
         serve = Serve(self._stack)
         if stop:
             serve.stop(port=port)
@@ -212,39 +192,19 @@ class RaftCLICommands:
         tail: int = 100,
         follow: bool = False,
     ) -> None:
-        """Show container stdout/stderr for apps or edge services.
-
-        Snapshot (default): recent lines, like ``docker compose logs --tail``.
-        Pass ``-f`` / ``--follow`` to stream until Ctrl+C (like ``tail -f``).
-        Names: app registry name, ``gate`` / ``router`` / ``controller`` /
-        ``dashboard``, or Compose ids (``raft-gate``, ``GROUP-NAME``). Omit
-        names for all services.
-        """
+        """Show container stdout/stderr for apps or edge services."""
         Logs(self._stack).show(*services, tail=tail, follow=follow)
 
     def purge(self) -> None:
-        """Remove Docker images unused by any container, plus build cache.
-
-        Holds ``stack.lock``. Does not prune volumes (App data). Prints how
-        much space Docker reclaimed.
-        """
+        """Remove unused Docker images plus build cache."""
         Purge(self._stack).run()
 
     def update(self, ref: Optional[str] = None) -> None:
-        """Re-install raft from GitHub (re-run install.sh / uv tool install).
-
-        Default follows the latest GitHub Release. Pass ``--ref`` (tag, branch,
-        or sha) to pin, e.g. ``raft update --ref main``.
-        """
+        """Re-install raft from GitHub (latest Release, or ``--ref``)."""
         SelfUpdate(self._stack).run(ref=ref)
 
     def uninstall(self, yes: bool = False, uv: bool = False) -> None:
-        """Remove raft from this machine (stack, ~/.raft, deploy keys, uv tool).
-
-        Requires ``--yes``. Pass ``--uv`` to also remove the ``uv`` installer
-        (left installed by default — other tools may need it). Does not revoke
-        git-host deploy keys or CDN certs.
-        """
+        """Remove raft from this machine (requires ``--yes``)."""
         Uninstall(self._stack).run(yes=yes, uv=uv)
 
     def sync(
@@ -270,33 +230,17 @@ class RaftCLICommands:
         ref: Optional[str] = None,
         force_sync: bool = False,
     ) -> None:
-        """Redeploy one running app, router, gate, or enabled always-on dashboard.
-
-        ``gate`` redeploys the public edge container (brief downtime). Controller
-        redeploy stays refused.
-        """
+        """Redeploy one running app, router, gate, or enabled always-on dashboard."""
         name = (app or "").strip()
         if not name:
             raise DomainErrors.redeploy_requires_app()
-        if name in _CONTROL_PLANE_REDEPLOY:
+        if name in CONTROL_PLANE_REDEPLOY:
             result = ServiceActions(self._stack).redeploy(name)
             if not result.get("started"):
                 OperatorSay.say(f"Redeployed {result['service']}.")
             return
         if name not in self._app_names:
             raise DomainErrors.unknown_app(name, self._known)
-        Orchestrator(self._stack).redeploy_app(name, ref_override=ref, force_sync=force_sync)
-
-    @staticmethod
-    def _build_apply_env(
-        *,
-        env_file: Optional[str],
-        env: Optional[Union[str, Sequence[str]]],
-    ) -> dict[str, str]:
-        """Merge process → ``--env-file`` → peeled/Fire ``--env`` once for apply."""
-        peeled = ApplyEnvOverrides.get()
-        overrides: Union[None, str, Sequence[str]] = list(peeled) if peeled else env
-        return ApplyEnvSources.from_apply(
-            env_file=Path(env_file) if env_file else None,
-            env_overrides=overrides,
-        ).build()
+        Orchestrator(self._stack).redeploy_app(
+            name, ref_override=ref, force_sync=force_sync
+        )
