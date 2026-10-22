@@ -9,6 +9,7 @@ import pytest
 
 from raft.core.core.config.settings import SettingsLoader
 from raft.core.core.config.settings.types import EdgeConfig, EdgeStream
+from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.app import App
 from raft.core.core.models.app_document import AppDocument
 from raft.core.core.models.app_spec_fields import AppResourceFields
@@ -164,7 +165,7 @@ class TestMiscCoverage(RaftTestCase):
         assert spec.ports == () and spec.readiness.type == "none" and spec.tls == "off"
 
     def _test_parse_null_spec_tls_and_empty_extra_hosts_p2(self) -> None:
-        with pytest.raises(ValueError, match="spec.tls must be"):
+        with pytest.raises((ValueError, OperatorError), match="spec.tls must be"):
             AppDocument.parse(
                 {
                     "apiVersion": "raft/v1",

@@ -17,7 +17,14 @@ from .alerts_output import AlertsCliOutput
 
 
 class AlertsCLI:
-    """Manage alert rules under ``host/alerts/rules.yaml``."""
+    """Manage alert rules under ``host/alerts/rules.yaml``.
+
+    Primer: each rule has a catalog ``signal`` (e.g. metrics.http),
+    ``for`` (sustain before fire), ``cooldown`` (silence before re-notify),
+    and ``channelIds`` (omit / empty = every enabled notification channel).
+    The controller evaluates rules under ``host/alerts/``; if status is
+    stale, run ``raft doctor`` then ``raft up`` (controller needs the mount).
+    """
 
     def __init__(self, stack: Stack) -> None:
         self._stack = stack

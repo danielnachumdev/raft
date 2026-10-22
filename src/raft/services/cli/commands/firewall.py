@@ -15,6 +15,12 @@ class FirewallCLI:
 
     Same validation and ``acl.lock`` as Settings → Firewall Save: persist →
     render → gate nginx **reload** (never recreate for rule-only edits).
+
+    Semantics: first match wins (top to bottom). ``permit`` allows;
+    ``deny`` → HTTP 403; ``drop`` → nginx 444. ACME HTTP-01 locations sit
+    outside firewall locations — still avoid a broad port-80 deny/drop on
+    ``service: any`` if you use Let's Encrypt. Named ``service`` needs an
+    App with ``expose: http`` + ``publicHost`` (else use ``service: any``).
     """
 
     def __init__(

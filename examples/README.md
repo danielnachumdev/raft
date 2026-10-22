@@ -8,15 +8,18 @@ These folders are **operator-facing samples**, not the minimal trees under `test
 
 | Path | When |
 |------|------|
-| [`settings.yaml`](settings.yaml) | Operator settings (`logging` + `edge` + optional `healing` / `metrics` / `acme`) → `~/.raft/host/settings.yaml` |
+| [`settings.yaml`](settings.yaml) | Operator settings (`logging`, `edge`, `healing`, `metrics`, `serviceLogs`, `acme`, `github`, `notifications`, `dashboard`, …) → `~/.raft/host/settings.yaml` |
 | [`http-only-site/`](http-only-site/) | Single Host-routed HTTP app (`tls: off`); richest field comments + optional `${{ if }}` scaling snippet |
 | [`https-acme-site/`](https-acme-site/) | Direct HTTPS via `tls: acme` (Let's Encrypt on the gate; DNS + ports 80/443 + `acme.email`) |
 | [`https-origin-site/`](https-origin-site/) | HTTPS via `tls: origin` (Cloudflare Origin PEMs on the host) |
 | [`http-plus-stream/`](http-plus-stream/) | HTTP + gate `expose: stream` (needs `edge.streams`) |
 | [`host-published-ports/`](host-published-ports/) | HTTP + `expose: host` ports (gate not involved for those) |
-| [`grouped-volume-app/`](grouped-volume-app/) | `spec.group` + `volumes` + `expose: none` (manifest-only sample) |
+| [`grouped-volume-app/`](grouped-volume-app/) | `spec.group` + `volumes` + `envFile` + `expose: none` |
+| [`worker-app/`](worker-app/) | Worker App (`ports: []`, `readiness: none`, `tls: off`) |
+| [`firewall/rules.yaml`](firewall/rules.yaml) | Ordered edge firewall sample → `raft firewall replace --file …` |
+| [`alerts/rules.yaml`](alerts/rules.yaml) | Alert rules sample → `raft alerts apply --file …` (needs notification channels) |
 
-Manifest preprocess (`${VAR}`, `${{ if }}`, `--env`) is described in AGENTS.md. Healing and per-app scale-to-zero are independent opt-ins — off until you enable `healing:` in settings or add `spec.scaling` on an HTTP + `publicHost` App.
+Manifest preprocess (`${VAR}`, `${{ if }}`, `--env` vs durable `spec.envFile`) and name↔source identity live in [`http-only-site/.raft/app.yaml`](http-only-site/.raft/app.yaml) header comments. Secrets modes: [`grouped-volume-app/`](grouped-volume-app/). Healing and per-app scale-to-zero are independent opt-ins — off until you enable `healing:` in settings or add `spec.scaling` on an HTTP + `publicHost` App.
 
 ## Try one
 

@@ -89,12 +89,20 @@ export function AlertRuleFormModal(props: Props) {
               ))}
             </select>
           </label>
-          <DurationField label="For" id="alert-for" value={draft.for} busy={props.busy} onChange={(v) => set({ for: v })} />
+          <DurationField
+            label="For"
+            id="alert-for"
+            value={draft.for}
+            busy={props.busy}
+            hint="How long the condition must stay true before firing"
+            onChange={(v) => set({ for: v })}
+          />
           <DurationField
             label="Cool-down"
             id="alert-cooldown"
             value={draft.cooldown}
             busy={props.busy}
+            hint="Silence before re-notifying the same firing instance"
             onChange={(v) => set({ cooldown: v })}
           />
         </div>
@@ -171,6 +179,7 @@ function DurationField(props: {
   id: string;
   value: string;
   busy: boolean;
+  hint?: string;
   onChange: (value: string) => void;
 }) {
   return (
@@ -183,6 +192,7 @@ function DurationField(props: {
         disabled={props.busy}
         onChange={(e) => props.onChange(e.target.value)}
       />
+      {props.hint ? <span className="form-hint">{props.hint}</span> : null}
     </label>
   );
 }

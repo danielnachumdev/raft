@@ -69,7 +69,7 @@ class TestDashboardOAuth(RaftTestCase):
     def test_ops_require_ready_fails_without_secrets(self) -> None:
         home = Path(self.tmp_path)
         (home / "host" / "settings.yaml").write_text("{}\n", encoding="utf-8")
-        with pytest.raises(OperatorError, match="oauth.env"):
+        with pytest.raises(OperatorError, match="OAUTH2_PROXY_CLIENT_ID"):
             DashboardOAuthOps(home).require_ready(self._oauth_cfg())
 
     @staticmethod

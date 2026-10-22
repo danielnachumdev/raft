@@ -8,7 +8,7 @@ One Host-routed HTTP port with `tls: off`. No Origin PEMs on the VPS. Use when t
 - No host-side HTTPS for this app
 - You want the richest commented manifest in one place (resources, optional scaling)
 
-Optional scale-to-zero via apply-time `${{ if }}`: see [`optional-block.snippet.yaml`](optional-block.snippet.yaml). Broader preprocess: see AGENTS.md.
+Optional scale-to-zero via apply-time `${{ if }}`: see [`optional-block.snippet.yaml`](optional-block.snippet.yaml). Preprocess, name↔source, and secrets notes are in the `app.yaml` header comments.
 
 ## Apply
 

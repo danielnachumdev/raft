@@ -6,12 +6,20 @@
 # When to use: a normal website/API behind the gate+router with no HTTPS
 # Origin certs on the VPS (Cloudflare Flexible, or TLS terminated elsewhere).
 #
-# Apply-time preprocess: ${{ if }} then ${VAR} expand, then YAML.
+# Apply-time preprocess (not re-run on render): ${{ if }} then ${VAR}, then YAML.
 # Full-line # comments are ignored by preprocess (single-$ demos OK):
 #   ${{ if ${INCLUDE_SCALING} == 'true' }}
 #   scaling: …
 #   ${{ endif }}
-# Pasteable block: optional-block.snippet.yaml. Pass --env (values only).
+# Pasteable block: optional-block.snippet.yaml.
+# --env / --env-file = preprocess values only (do not put secrets there).
+# Durable secrets: spec.envFile → ~/.raft/services/<name>/secrets/env
+#   (directory 0700, file 0600). Never bake secrets into git, spec.env, or --env.
+#   Gate/router must not mount App secrets.
+#
+# Name ↔ source identity: metadata.name is owned by durable source
+# (local+path, git+remote, docker+image — not ref). Same name + different
+# source → raft delete <name> then re-apply (v1 has no --force).
 
 apiVersion: raft/v1
 kind: App
@@ -124,4 +132,4 @@ spec:
   #   minUpSeconds: 60
   #   holdingPage: .raft/holding.html   # optional; relative to app root
   #
-  # Optional keys via ${{ if }}: see AGENTS.md / optional-block.snippet.yaml.
+  # Optional keys via ${{ if }}: see optional-block.snippet.yaml.

@@ -30,9 +30,14 @@ export function DashboardSection(props: {
       hint={
         <>
           Always-on <code>raft-dashboard</code> Compose membership. After
-          enabling, run <code>raft render</code> then Start / Redeploy — saving
-          settings alone does not start the container. OAuth secrets live under{" "}
-          <code>host/secrets/dashboard/</code>.
+          enabling (or changing auth / TLS / publicHost), save then{" "}
+          <code>raft render</code> and Start / Redeploy — settings save alone
+          does not start the container. OAuth:{" "}
+          <code>host/secrets/dashboard/oauth.env</code> needs{" "}
+          <code>OAUTH2_PROXY_CLIENT_ID</code>,{" "}
+          <code>OAUTH2_PROXY_CLIENT_SECRET</code>,{" "}
+          <code>OAUTH2_PROXY_COOKIE_SECRET</code>,{" "}
+          <code>OAUTH2_PROXY_REDIRECT_URL</code> plus an allowlist file.
         </>
       }
     >
@@ -52,7 +57,7 @@ export function DashboardSection(props: {
             set({ publicHost: publicHost.trim() || null })
           }
           placeholder="ops.example.com"
-          hint="Leave empty for localhost-only"
+          hint="Leave empty for localhost-only. When set, auth.mode must be password, oauth, or external (not none)."
         />
         <label className="field" htmlFor="dashboard-tls">
           TLS
@@ -61,10 +66,14 @@ export function DashboardSection(props: {
             value={v.tls}
             onChange={(e) => set({ tls: e.target.value })}
           >
-            <option value="off">off</option>
-            <option value="origin">origin</option>
-            <option value="acme">acme</option>
+            <option value="off">off (HTTP only)</option>
+            <option value="origin">origin (PEMs on host)</option>
+            <option value="acme">acme (Let&apos;s Encrypt)</option>
           </select>
+          <span className="form-hint">
+            origin PEMs:{" "}
+            <code>~/.raft/services/raft-dashboard/certs/origin.{"{pem,key}"}</code>
+          </span>
         </label>
         <label className="field" htmlFor="dashboard-auth-mode">
           Auth mode
@@ -73,10 +82,10 @@ export function DashboardSection(props: {
             value={v.auth.mode}
             onChange={(e) => setAuth({ mode: e.target.value })}
           >
-            <option value="none">none</option>
+            <option value="none">none (localhost only)</option>
             <option value="password">password</option>
-            <option value="oauth">oauth</option>
-            <option value="external">external</option>
+            <option value="oauth">oauth (oauth2-proxy)</option>
+            <option value="external">external (forward auth)</option>
           </select>
         </label>
         <TextField
@@ -96,6 +105,7 @@ export function DashboardSection(props: {
           onChange={(verifyUrl) =>
             setAuth({ verifyUrl: verifyUrl.trim() || null })
           }
+          hint="Forward-auth verify endpoint when mode is external"
         />
         <TextField
           id="dashboard-signin-url"
@@ -129,6 +139,19 @@ export function DashboardSection(props: {
           onChange={(issuerUrl) =>
             setOauth({ issuerUrl: issuerUrl.trim() || null })
           }
+        />
+        <TextField
+          id="dashboard-oauth-allowlist"
+          label="OAuth allowlist file"
+          value={v.auth.oauth.allowlistFile ?? ""}
+          onChange={(allowlistFile) =>
+            setOauth({
+              allowlistFile:
+                allowlistFile.trim() ||
+                "host/secrets/dashboard/oauth-allowlist.txt",
+            })
+          }
+          hint="One identity per line under the data home (mode 0600)"
         />
       </div>
     </SectionCard>

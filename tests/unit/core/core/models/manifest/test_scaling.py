@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.app_document import AppDocument
 from raft.core.core.models.scaling_spec import ScalingSpec
 
@@ -74,7 +75,7 @@ class TestScalingSpec(ManifestTestCase):
             "  build:\n    context: .\n",
             encoding="utf-8",
         )
-        with pytest.raises(ValueError, match="expose: http"):
+        with pytest.raises(OperatorError, match="expose: http"):
             AppDocument.load(path)
 
     def test_rejects_non_object_and_bad_number(self) -> None:

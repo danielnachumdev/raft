@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from .alerts import AlertsChecks
 from .apps import AppChecks
 from .base import CheckSuite
 from .certs import CertChecks
+from .dashboard_oauth import DashboardOauthChecks
 from .edge import EdgeChecks
 from .env_file import EnvFileChecks
 from .host import HostChecks
@@ -24,13 +26,17 @@ CHECK_SUITES: tuple[CheckSuite, ...] = (
     EdgeChecks(),
     PortSummaryChecks(),
     PublicHostChecks(),
+    DashboardOauthChecks(),
+    AlertsChecks(),
 )
 
 __all__ = [
     "CHECK_SUITES",
     "CheckSuite",
+    "AlertsChecks",
     "AppChecks",
     "CertChecks",
+    "DashboardOauthChecks",
     "EdgeChecks",
     "EnvFileChecks",
     "HostChecks",

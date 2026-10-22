@@ -9,7 +9,6 @@ import type {
 import "./FirewallPanel.css";
 
 const PROTOCOLS = ["tcp", "udp", "http", "https", "icmp", "any", "other"] as const;
-const ACTIONS: FirewallAction[] = ["permit", "deny", "drop"];
 
 export type FirewallRuleFormSubmit = FirewallRule;
 
@@ -202,6 +201,10 @@ export function FirewallRuleFormModal(props: Props) {
               </option>
             ))}
           </select>
+          <span className="form-hint">
+            any = edge-wide; an App name is Host-scoped (needs expose: http +
+            publicHost).
+          </span>
         </label>
         <label className="field">
           Action
@@ -211,11 +214,9 @@ export function FirewallRuleFormModal(props: Props) {
             disabled={props.busy}
             onChange={(e) => setAction(e.target.value as FirewallAction)}
           >
-            {ACTIONS.map((a) => (
-              <option key={a} value={a}>
-                {a}
-              </option>
-            ))}
+            <option value="permit">permit (allow)</option>
+            <option value="deny">deny (HTTP 403)</option>
+            <option value="drop">drop (nginx 444)</option>
           </select>
         </label>
       </form>

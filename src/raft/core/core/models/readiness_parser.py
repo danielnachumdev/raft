@@ -3,6 +3,8 @@
 from pathlib import Path
 from typing import Any, Optional
 
+from raft.core.core.errors.cta import OperatorError
+
 from .ports import PortSpec
 from .readiness_spec import READINESS_TYPES, ReadinessSpec
 from .readiness_timing import (
@@ -76,12 +78,7 @@ class ReadinessParser:
         probe_path: str,
         timing: dict[str, Any],
     ) -> ReadinessSpec:
-        try:
-            resolved = readiness.resolve_port(ports)
-        except KeyError as exc:
-            raise ValueError(f"{path}: {exc}") from exc
-        if resolved is None:
-            raise ValueError(f"{path}: readiness requires a named port")
+        resolved = self._resolve_named_port(readiness, ports, path)
         if readiness.type == "http" and resolved.expose != "http":
             raise ValueError(
                 f"{path}: readiness.type=http requires an expose=http port "
@@ -95,6 +92,22 @@ class ReadinessParser:
                 **timing,
             )
         return readiness
+
+    @staticmethod
+    def _resolve_named_port(
+        readiness: ReadinessSpec, ports: tuple[PortSpec, ...], path: Path
+    ) -> PortSpec:
+        try:
+            resolved = readiness.resolve_port(ports)
+        except KeyError as exc:
+            raise ValueError(f"{path}: {exc}") from exc
+        if resolved is None:
+            raise OperatorError(
+                f"{path}: readiness requires a named port.\n"
+                f"Fix: set readiness.type: none for workers (ports: []), "
+                f"or name a ports[].name"
+            )
+        return resolved
 
     def _timing_from_raw(self, raw: dict[str, Any], path: Path) -> dict[str, Any]:
         return self._resolve_timing(path, **self._raw_timing_fields(raw, path))

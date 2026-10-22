@@ -35,6 +35,10 @@ export function AddServicePage() {
         <p className="muted add-service-cli">
           Prefer the CLI or CI? From a service repo run{" "}
           <code>raft apply --file .raft/app.yaml --ref "$SHA"</code>.
+          Durable secrets: materialize{" "}
+          <code>~/.raft/services/&lt;name&gt;/secrets/env</code> (mode{" "}
+          <code>0600</code>) and point <code>spec.envFile</code> at it — never
+          bake secrets into the manifest or <code>--env</code>.
         </p>
       </section>
     </div>

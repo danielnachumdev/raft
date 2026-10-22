@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.app_document import AppDocument
 
 from tests.unit.core.core.models.manifest.base import ManifestTestCase
@@ -40,7 +41,7 @@ class TestEmptyPortsWorker(ManifestTestCase):
 
     def test_deny_http_or_tcp_readiness(self) -> None:
         for rtype in ("http", "tcp"):
-            with pytest.raises(ValueError, match="readiness requires a named port"):
+            with pytest.raises(OperatorError, match="readiness requires a named port"):
                 AppDocument.parse(
                     _doc({"source": "local", "ports": [], "readiness": {"type": rtype}}),
                     path=PATH,
@@ -48,7 +49,7 @@ class TestEmptyPortsWorker(ManifestTestCase):
 
     def test_deny_tls_origin_and_acme(self) -> None:
         for tls in ("origin", "acme"):
-            with pytest.raises(ValueError, match="empty ports use tls: off"):
+            with pytest.raises(OperatorError, match="empty ports use tls: off"):
                 AppDocument.parse(
                     _doc(
                         {
@@ -62,7 +63,7 @@ class TestEmptyPortsWorker(ManifestTestCase):
                 )
 
     def test_deny_scaling(self) -> None:
-        with pytest.raises(ValueError, match="expose: http"):
+        with pytest.raises(OperatorError, match="expose: http"):
             AppDocument.parse(
                 _doc(
                     {

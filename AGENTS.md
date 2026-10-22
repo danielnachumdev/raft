@@ -87,7 +87,7 @@ Align with the README table; detail for agents:
 | Multi-app `group` / `dependsOn` / volumes / `envFile` / `expose: none` | **Shipped** | |
 | Worker Apps (`ports: []`) | **Shipped** | `readiness: none`; no scaling/TLS origin\|acme |
 | Doctor / status / logs / purge | **Shipped** | |
-| Metrics JSONL + Trends (resources + HTTP aggregate) | **Shipped** | Controller scrape; `http.jsonl` contract in observe/docs; CLI `raft metrics history|catalog|export_*` |
+| Metrics JSONL + Trends (resources + HTTP aggregate) | **Shipped** | Controller scrape; `http.jsonl` via `core/observe/read/metrics/` (`HttpMetricsRead`); CLI `raft metrics history|catalog|export_*` |
 | `raft serve` ops UI | **Shipped** | FastAPI + packaged SPA |
 | Full operator settings UI (`settings.yaml` / `RaftConfig`) | **Shipped** | `OperatorSettingsService` + `GET/PUT /api/settings` + SPA `/settings`. Edge port changes note `raft redeploy gate`. |
 | Settings → Check for updates | **Shipped** | `UpdateCheck` + `SelfUpdate` via `GET/POST /api/update`; same GitHub Release wheel SoT as `raft update` / `install.sh` |

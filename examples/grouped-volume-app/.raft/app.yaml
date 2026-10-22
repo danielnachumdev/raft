@@ -4,6 +4,10 @@
 #
 # Demonstrates: spec.group, spec.envFile, spec.volumes, expose: none.
 # Replace image/ref/paths for a real service before production use.
+#
+# Secrets: create ~/.raft/services/grouped-volume-app/secrets/env (mode 0600;
+# directory 0700) before deploy. Never bake secrets into git, spec.env, or
+# --env. Gate/router must not mount this file.
 
 apiVersion: raft/v1
 kind: App
