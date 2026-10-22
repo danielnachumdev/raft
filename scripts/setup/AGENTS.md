@@ -14,4 +14,4 @@ Contributor bootstrap for raft tooling and agent capabilities.
 
 Optional env: **`NODE_VERSION`**, **`NO_COLOR`**, **`CAPA_INSTALL_ARGS`** (extra flags for `capa install`, e.g. `-e`).
 
-Skill/rule **content** stays under [`agents/`](../../agents/AGENTS.md); do not hand-edit generated `.cursor/` / `.claude/` provider files.
+Do not hand-edit generated `.cursor/` / `.claude/` provider files — edit `capabilities.yaml` and re-run setup.
