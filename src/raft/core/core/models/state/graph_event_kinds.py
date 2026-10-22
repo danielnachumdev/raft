@@ -5,23 +5,20 @@ from .graph_event import GraphEvent
 
 KIND_DEPLOYMENT = "deployment"
 # Per-service power (distinct from stack KIND_UP / KIND_DOWN).
-# Wire values stay ``start`` / ``stop`` so they do not collide with stack up/down.
-KIND_SERVICE_DOWN = "stop"
-KIND_SERVICE_UP = "start"
+KIND_SERVICE_DOWN = "service_down"
+KIND_SERVICE_UP = "service_up"
 KIND_SCALING = "scaling"
 KIND_UP = "up"
 KIND_DOWN = "down"
 KIND_UPDATE = "update"
 KIND_GATE_REDEPLOY = "gate_redeploy"
-# Pre-glossary wire values still present in ~/.raft graph JSONL.
-LEGACY_KIND_GATE_RECREATE = "gate_recreate"
 SCALING_ACTION_IDLE_STOP = "idle_stop"
 SCALING_ACTION_WAKE = "wake"
 RAFT_LEVEL_SERVICES = frozenset(
     {GATE_COMPOSE_ID, ROUTER_COMPOSE_ID, CONTROLLER_COMPOSE_ID}
 )
 RAFT_LEVEL_KINDS = frozenset(
-    {KIND_UP, KIND_DOWN, KIND_UPDATE, KIND_GATE_REDEPLOY, LEGACY_KIND_GATE_RECREATE}
+    {KIND_UP, KIND_DOWN, KIND_UPDATE, KIND_GATE_REDEPLOY}
 )
 
 
@@ -36,19 +33,3 @@ class RaftLevelEvent:
         if event.kind in RAFT_LEVEL_KINDS:
             return True
         return event.service in RAFT_LEVEL_SERVICES
-
-
-class GraphKindAliases:
-    """Normalize persisted graph kinds for readers (dual-read legacy wires)."""
-
-    _CANONICAL = {
-        LEGACY_KIND_GATE_RECREATE: KIND_GATE_REDEPLOY,
-    }
-
-    @classmethod
-    def canonical(cls, kind: str) -> str:
-        return cls._CANONICAL.get(kind, kind)
-
-    @classmethod
-    def matches(cls, stored: str, wanted: str) -> bool:
-        return cls.canonical(stored) == cls.canonical(wanted)

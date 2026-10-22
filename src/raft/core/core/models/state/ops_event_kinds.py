@@ -22,16 +22,12 @@ KIND_STACK_PURGE = "stack.purge"
 KIND_FIREWALL_APPLY = "firewall.apply"
 KIND_GATE_RELOAD = "gate.reload"
 KIND_GATE_REDEPLOY = "gate.redeploy"
-# Pre-glossary wire still present in ~/.raft ops JSONL.
-LEGACY_KIND_GATE_RECREATE = "gate.recreate"
 KIND_SCALE_WAKE = "scale.wake"
 KIND_SCALE_IDLE_STOP = "scale.idle_stop"
 KIND_ALERT_FIRED = "alert.fired"
 KIND_ALERT_RESOLVED = "alert.resolved"
 KIND_SERVICE_UP = "service.up"
 KIND_SERVICE_DOWN = "service.down"
-LEGACY_KIND_SERVICE_START = "service.start"
-LEGACY_KIND_SERVICE_STOP = "service.stop"
 KIND_STACK_UP = "stack.up"
 KIND_STACK_DOWN = "stack.down"
 KIND_RAFT_UPDATE = "raft.update"
@@ -41,24 +37,6 @@ DEPLOY_ACTION_REDEPLOY = "redeploy"
 
 DEFAULT_OPS_RETENTION_MAX_AGE_DAYS = 14
 DEFAULT_OPS_RETENTION_MAX_BYTES = 5 * 1024 * 1024
-
-
-class OpsKindAliases:
-    """Normalize persisted ops kinds for readers (dual-read legacy wires)."""
-
-    _CANONICAL = {
-        LEGACY_KIND_GATE_RECREATE: KIND_GATE_REDEPLOY,
-        LEGACY_KIND_SERVICE_START: KIND_SERVICE_UP,
-        LEGACY_KIND_SERVICE_STOP: KIND_SERVICE_DOWN,
-    }
-
-    @classmethod
-    def canonical(cls, kind: str) -> str:
-        return cls._CANONICAL.get(kind, kind)
-
-    @classmethod
-    def matches(cls, stored: str, wanted: str) -> bool:
-        return cls.canonical(stored) == cls.canonical(wanted)
 
 
 class OpsKindFromGraph:

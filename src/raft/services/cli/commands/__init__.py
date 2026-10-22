@@ -1,9 +1,8 @@
-"""Fire command components (root + auth/gate/get/firewall/notifications)."""
+"""Fire command components (root + auth/get/firewall/notifications)."""
 
 from .alerts import AlertsCLI
 from .auth import AuthCLI
 from .firewall import FirewallCLI
-from .gate import GateCLI
 from .get import GetCLI
 from .github import GithubCLI
 from .http_requests import HttpRequestsCLI
@@ -15,7 +14,6 @@ __all__ = [
     "AlertsCLI",
     "AuthCLI",
     "FirewallCLI",
-    "GateCLI",
     "GetCLI",
     "GithubCLI",
     "HttpRequestsCLI",

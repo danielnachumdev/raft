@@ -17,20 +17,18 @@ const RAFT_LEVEL_KINDS = new Set([
   "down",
   "update",
   "gate_redeploy",
-  "gate_recreate", // legacy dual-read
 ]);
 
 /** Hex strokes (SVG attrs do not always resolve CSS variables). */
 const KIND_STROKE: Record<string, string> = {
   deployment: "#0f6b5c",
-  start: "#1a6b45",
-  stop: "#8b2e1f",
+  service_up: "#1a6b45",
+  service_down: "#8b2e1f",
   scaling: "#3d5a6c",
   up: "#0e7490",
   down: "#9a3412",
   update: "#a16207",
   gate_redeploy: "#1e3a5f",
-  gate_recreate: "#1e3a5f",
 };
 
 /** Keep events that apply to the plotted series (or raft-level / global). */
@@ -95,15 +93,13 @@ function seriesGroupKey(group: string | null | undefined): string {
 export function eventMarkerLabel(event: GraphEvent): string {
   if (event.label && event.label.trim()) return event.label.trim();
   if (event.kind === "deployment") return "Deploy";
-  if (event.kind === "stop") return "Down";
-  if (event.kind === "start") return "Up";
+  if (event.kind === "service_down") return "Down";
+  if (event.kind === "service_up") return "Up";
   if (event.kind === "scaling") return scalingMarkerLabel(event);
   if (event.kind === "up") return "Stack up";
   if (event.kind === "down") return "Stack down";
   if (event.kind === "update") return "Raft update";
-  if (event.kind === "gate_redeploy" || event.kind === "gate_recreate") {
-    return "Gate redeploy";
-  }
+  if (event.kind === "gate_redeploy") return "Gate redeploy";
   return event.kind;
 }
 

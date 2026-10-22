@@ -29,13 +29,10 @@ const TONES: Record<string, EventTone> = {
   "deploy.apply": "ok",
   "deploy.redeploy": "ok",
   "service.up": "ok",
-  "service.start": "ok", // legacy
   "stack.up": "ok",
   "service.down": "warn",
-  "service.stop": "warn", // legacy
   "stack.down": "warn",
   "gate.redeploy": "warn",
-  "gate.recreate": "warn", // legacy
   "scale.wake": "idle",
   "scale.idle_stop": "idle",
 };

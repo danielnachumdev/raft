@@ -266,35 +266,8 @@ class TestCliDispatch(CliTestCase):
         self.orch.up.assert_not_called()
         self.orch.down.assert_not_called()
 
-    def test_start_stop_aliases_dispatch(self) -> None:
-        actions = MagicMock()
-        actions.up.return_value = {
-            "ok": True,
-            "action": "up",
-            "service": "app",
-            "no_deps": False,
-            "started_deps": [],
-        }
-        actions.down.return_value = {"ok": True, "action": "down", "service": "app"}
-        with patch("raft.core.core.ui.OperatorSay.say") as say, self.patched_deps(
-            ServiceActions=actions
-        ):
-            assert RaftCLI()._invoke_fire(["start", "app"]) == 0
-            assert RaftCLI()._invoke_fire(["stop", "app"]) == 0
-        actions.up.assert_called_once_with("app", no_deps=False)
-        actions.down.assert_called_once_with("app")
-        assert any("deprecated" in str(c) and "raft up" in str(c) for c in say.call_args_list)
-        assert any("deprecated" in str(c) and "raft down" in str(c) for c in say.call_args_list)
 
     def test_render_dispatch(self) -> None:
         assert self.run_main(["render"]) == 0
         self.orch.render.assert_called_once()
 
-    def test_gate_redeploy_alias_dispatch(self) -> None:
-        with patch("raft.core.core.ui.OperatorSay.say") as say:
-            assert self.run_main(["gate", "recreate"]) == 0
-        self.orch.redeploy_gate.assert_called_once()
-        assert any(
-            "deprecated" in str(c) and "raft redeploy gate" in str(c)
-            for c in say.call_args_list
-        )

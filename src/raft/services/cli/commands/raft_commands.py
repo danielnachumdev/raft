@@ -29,7 +29,6 @@ from .alerts import AlertsCLI
 from .auth import AuthCLI
 from .events import EventsCLI
 from .firewall import FirewallCLI
-from .gate import GateCLI
 from .get import GetCLI
 from .github import GithubCLI
 from .http_requests import HttpRequestsCLI
@@ -55,7 +54,6 @@ class RaftCLICommands:
         log_file = HostLogging().configure(self._stack.root, config)
         logger.debug("config loaded; log_file=%s", log_file)
         self.auth = AuthCLI(self._stack)
-        self.gate = GateCLI(self._stack)
         self.alerts = AlertsCLI(self._stack)
         self.firewall = FirewallCLI(self._stack)
         self.notifications = NotificationsCLI(self._stack)
@@ -163,14 +161,6 @@ class RaftCLICommands:
         result = ServiceActions(self._stack).down(name)
         OperatorSay.say(f"Brought down {result['service']}.")
 
-    def start(self, name: str, no_deps: bool = False) -> None:
-        """Deprecated alias for ``raft up NAME``."""
-        OperatorSay.say(
-            "`raft start` is deprecated; use `raft up NAME` instead.",
-            style="warn",
-        )
-        self.up(name, no_deps=no_deps)
-
     def _say_up_result(self, result: Dict[str, Any]) -> None:
         if result.get("no_deps"):
             OperatorSay.say("Skipping dependsOn (--no-deps).")
@@ -178,14 +168,6 @@ class RaftCLICommands:
             OperatorSay.say(f"Bringing up dependency {dep}…")
             OperatorSay.say(f"Brought up {dep}.")
         OperatorSay.say(f"Brought up {result['service']}.")
-
-    def stop(self, name: str) -> None:
-        """Deprecated alias for ``raft down NAME``."""
-        OperatorSay.say(
-            "`raft stop` is deprecated; use `raft down NAME` instead.",
-            style="warn",
-        )
-        self.down(name)
 
     def render(self) -> None:
         """Generate Compose/nginx from ~/.raft/services/*/app.yaml."""
