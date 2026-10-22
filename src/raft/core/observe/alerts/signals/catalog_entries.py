@@ -56,14 +56,13 @@ def container_status_catalog(type_id: str) -> Dict[str, Any]:
 
 _EVENT_KINDS = (
     "deployment",
-    "stop",
-    "start",
+    "service_down",
+    "service_up",
     "scaling",
     "up",
     "down",
     "update",
     "gate_redeploy",
-    "gate_recreate",  # legacy dual-read
 )
 
 

@@ -20,7 +20,6 @@ _DEP_TARGETS = {
     "AppApply": ("raft.services.cli.commands.raft_commands",),
     "Orchestrator": (
         "raft.services.cli.commands.raft_commands",
-        "raft.services.cli.commands.gate",
         "raft.services.cli.commands.firewall",
     ),
     "Doctor": ("raft.services.cli.commands.raft_commands",),

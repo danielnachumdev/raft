@@ -12,7 +12,6 @@ from .ops_event import OpsEvent
 from .ops_event_kinds import (
     DEFAULT_OPS_RETENTION_MAX_AGE_DAYS,
     DEFAULT_OPS_RETENTION_MAX_BYTES,
-    OpsKindAliases,
 )
 from .ops_event_records import OpsEventRecords
 
@@ -168,7 +167,7 @@ class OpsEventStore(OpsEventRecords):
     def _kind_wanted(event: OpsEvent, wanted: Optional[Set[str]]) -> bool:
         if wanted is None:
             return True
-        return any(OpsKindAliases.matches(event.kind, kind) for kind in wanted)
+        return event.kind in wanted
 
     @staticmethod
     def _parse_ts(value: str) -> Optional[datetime]:

@@ -30,24 +30,24 @@ describe("ChartHoverHighlight event-kind grouping", () => {
   it("emphasizes every event of the hovered kind across timestamps", () => {
     const events: GraphEvent[] = [
       { kind: "deployment", ts: "t1", service: "web" },
-      { kind: "stop", ts: "t2", service: "web" },
+      { kind: "service_down", ts: "t2", service: "web" },
       { kind: "deployment", ts: "t3", service: "api" },
     ];
     const hover = new ChartHoverHighlight(eventKindHover("deployment"));
     const kinds = events.map((e) => e.kind);
     assert.deepEqual(hover.emphasizedEventKinds(kinds), ["deployment"]);
     assert.equal(hover.eventTone("deployment"), "active");
-    assert.equal(hover.eventTone("stop"), "dim");
+    assert.equal(hover.eventTone("service_down"), "dim");
     assert.ok(
-      hover.eventStrokeWidth("deployment") > hover.eventStrokeWidth("stop"),
+      hover.eventStrokeWidth("deployment") > hover.eventStrokeWidth("service_down"),
     );
-    assert.ok(hover.eventOpacity("deployment") > hover.eventOpacity("stop"));
+    assert.ok(hover.eventOpacity("deployment") > hover.eventOpacity("service_down"));
   });
 
   it("dims events while a series is hovered", () => {
     const hover = new ChartHoverHighlight(seriesHover("svc-a"));
     assert.equal(hover.eventTone("deployment"), "dim");
-    assert.deepEqual(hover.emphasizedEventKinds(["deployment", "stop"]), []);
+    assert.deepEqual(hover.emphasizedEventKinds(["deployment", "service_down"]), []);
   });
 });
 

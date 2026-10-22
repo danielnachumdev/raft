@@ -1,4 +1,4 @@
-"""Self-heal: Compose restart/start, then escalate to raft redeploy/cutover."""
+"""Self-heal: Compose up, then escalate to raft redeploy/cutover."""
 
 import logging
 import time
