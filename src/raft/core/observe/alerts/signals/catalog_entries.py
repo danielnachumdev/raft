@@ -62,7 +62,8 @@ _EVENT_KINDS = (
     "up",
     "down",
     "update",
-    "gate_recreate",
+    "gate_redeploy",
+    "gate_recreate",  # legacy dual-read
 )
 
 

@@ -179,9 +179,9 @@ class TestDockerNginxReload(DockerTestCase):
         self.shell.compose.return_value = self.ok(returncode=1)
         assert self.docker.router_sees_upstream_target(self.app, "app_tmp", port) is False
 
-    def test_recreate_gate_and_published_ports(self) -> None:
+    def test_redeploy_gate_and_published_ports(self) -> None:
         self.shell.compose.return_value = self.ok("gatecid\n")
-        self.docker.recreate_gate()
+        self.docker.redeploy_gate()
         self.shell.compose.assert_any_call(
             "up",
             "-d",

@@ -57,7 +57,7 @@ class TestCliBootstrap(CliTestCase):
             before = list(root.handlers)
             RaftCLI()._ensure_logging_bootstrap()
             assert root.handlers == before
-            self.orch.start.side_effect = RuntimeError("already running")
+            self.orch.up.side_effect = RuntimeError("already running")
             with pytest.raises(SystemExit) as exc:
                 self.run_cli(["up"])
             assert exc.value.code == 1
@@ -85,7 +85,7 @@ class TestCliBootstrap(CliTestCase):
 
     def test_run_maps_called_process_error(self) -> None:
         err = subprocess.CalledProcessError(9, ["docker", "compose"], stderr="boom\n")
-        self.orch.stop.side_effect = err
+        self.orch.down.side_effect = err
         with pytest.raises(SystemExit) as exc:
             self.run_cli(["down"])
         assert exc.value.code == 9

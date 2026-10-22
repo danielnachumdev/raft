@@ -133,9 +133,9 @@ class RaftCLICommands:
         """Bring the stack up, or one Compose service when ``NAME`` is given.
 
         No args: sync applied apps, then bring the whole stack up.
-        With ``NAME``: same as today's per-service start (dependsOn / scale-to-zero
-        clear). Names: App, ``gate`` / ``router`` / ``controller`` / ``dashboard``,
-        or Compose ids. Default brings transitive ``spec.dependsOn`` first; pass
+        With ``NAME``: per-service up (dependsOn / scale-to-zero clear). Names:
+        App, ``gate`` / ``router`` / ``controller`` / ``dashboard``, or Compose
+        ids. Default brings transitive ``spec.dependsOn`` first; pass
         ``--no-deps`` to bring up only ``name``.
         """
         if name is None:
@@ -145,22 +145,22 @@ class RaftCLICommands:
                     "Fix: raft up NAME --no-deps",
                     has_fix=False,
                 )
-            Orchestrator(self._stack).start()
+            Orchestrator(self._stack).up()
             return
-        result = ServiceActions(self._stack).start(name, no_deps=no_deps)
+        result = ServiceActions(self._stack).up(name, no_deps=no_deps)
         self._say_up_result(result)
 
     def down(self, name: Optional[str] = None) -> None:
-        """Tear the stack down, or stop one Compose service when ``NAME`` is given.
+        """Tear the stack down, or bring one Compose service down when ``NAME`` is given.
 
         No args: stop and remove the stack.
         With ``NAME``: Compose ``stop`` only (does not remove the unit). Apps with
-        ``spec.scaling`` mark ``scaledToZero`` — same as today's per-service stop.
+        ``spec.scaling`` mark ``scaledToZero``.
         """
         if name is None:
-            Orchestrator(self._stack).stop()
+            Orchestrator(self._stack).down()
             return
-        result = ServiceActions(self._stack).stop(name)
+        result = ServiceActions(self._stack).down(name)
         OperatorSay.say(f"Brought down {result['service']}.")
 
     def start(self, name: str, no_deps: bool = False) -> None:
@@ -290,8 +290,8 @@ class RaftCLICommands:
     ) -> None:
         """Redeploy one running app, router, gate, or enabled always-on dashboard.
 
-        ``gate`` recreates the public edge container (brief downtime — same as
-        today's ``raft gate recreate``). Controller redeploy stays refused.
+        ``gate`` redeploys the public edge container (brief downtime). Controller
+        redeploy stays refused.
         """
         name = (app or "").strip()
         if not name:

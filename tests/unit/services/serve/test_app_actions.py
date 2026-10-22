@@ -1,4 +1,4 @@
-"""Serve API service action routes (start/stop/redeploy)."""
+"""Serve API service action routes (up/down/redeploy)."""
 
 from unittest.mock import MagicMock
 
@@ -9,45 +9,45 @@ from tests.unit.services.serve import fixtures as serve_fx
 
 
 class TestServeAppActions(RaftTestCase):
-    def test_api_service_start_ok(self) -> None:
+    def test_api_service_up_ok(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))
         actions = MagicMock()
-        actions.start.return_value = {
+        actions.up.return_value = {
             "ok": True,
-            "action": "start",
+            "action": "up",
             "service": "site",
             "no_deps": False,
             "started_deps": [],
         }
         client = serve_fx.client_with_actions(stack, actions)
-        response = client.post("/api/service/site/start")
+        response = client.post("/api/service/site/up")
         assert response.status_code == 200
-        assert response.json()["action"] == "start"
-        actions.start.assert_called_once_with("site", no_deps=False)
+        assert response.json()["action"] == "up"
+        actions.up.assert_called_once_with("site", no_deps=False)
 
-    def test_api_service_start_no_deps(self) -> None:
+    def test_api_service_up_no_deps(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))
         actions = MagicMock()
-        actions.start.return_value = {
+        actions.up.return_value = {
             "ok": True,
-            "action": "start",
+            "action": "up",
             "service": "site",
             "no_deps": True,
             "started_deps": [],
         }
         client = serve_fx.client_with_actions(stack, actions)
-        response = client.post("/api/service/site/start?no_deps=true")
+        response = client.post("/api/service/site/up?no_deps=true")
         assert response.status_code == 200
-        actions.start.assert_called_once_with("site", no_deps=True)
+        actions.up.assert_called_once_with("site", no_deps=True)
 
-    def test_api_service_stop_ok(self) -> None:
+    def test_api_service_down_ok(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))
         actions = MagicMock()
-        actions.stop.return_value = {"ok": True, "action": "stop", "service": "site"}
+        actions.down.return_value = {"ok": True, "action": "down", "service": "site"}
         client = serve_fx.client_with_actions(stack, actions)
-        response = client.post("/api/service/site/stop")
+        response = client.post("/api/service/site/down")
         assert response.status_code == 200
-        actions.stop.assert_called_once_with("site")
+        actions.down.assert_called_once_with("site")
 
     def test_api_service_redeploy_ok(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))
@@ -90,23 +90,23 @@ class TestServeAppActions(RaftTestCase):
         assert response.status_code == 400
         assert "controller" in response.json()["detail"]
 
-    def test_api_service_stop_operator_error_is_400(self) -> None:
+    def test_api_service_down_operator_error_is_400(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))
         actions = MagicMock()
-        actions.stop.side_effect = OperatorError(
+        actions.down.side_effect = OperatorError(
             "cannot stop site", has_fix=False
         )
         client = serve_fx.client_with_actions(stack, actions)
-        response = client.post("/api/service/site/stop")
+        response = client.post("/api/service/site/down")
         assert response.status_code == 400
         assert "cannot stop" in response.json()["detail"]
 
     def test_api_service_action_unknown_is_404(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path)
         actions = MagicMock()
-        actions.start.side_effect = OperatorError(
+        actions.up.side_effect = OperatorError(
             "unknown logs target 'missing' (known: gate)",
         )
         client = serve_fx.client_with_actions(stack, actions)
-        response = client.post("/api/service/missing/start")
+        response = client.post("/api/service/missing/up")
         assert response.status_code == 404

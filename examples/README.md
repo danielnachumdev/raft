@@ -35,4 +35,4 @@ raft doctor
 
 Use `--no-deploy` only when you intentionally register without starting (e.g. several apps, then one `raft up`). Do not treat `--no-deploy` + `raft redeploy` as the default path — `redeploy` needs the app service already running.
 
-After changing gate-published ports in settings, run `raft gate recreate`.
+After changing gate-published ports in settings, run `raft redeploy gate`.

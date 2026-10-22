@@ -62,13 +62,13 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
             stream=True,
         )
 
-    def recreate_gate(self) -> None:
+    def redeploy_gate(self) -> None:
         logger.info("force-recreate gate (published edge ports)")
         self._drain_compose(self.stack.gate)
         CheckedCommands.run_compose(
             self.sh,
             ("up", "-d", "--no-deps", "--force-recreate", self.stack.gate),
-            action="recreate gate",
+            action="redeploy gate",
             hint="after edge port changes in ~/.raft/host/settings.yaml",
             stream=True,
         )

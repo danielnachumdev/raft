@@ -129,8 +129,8 @@ function confirmRequestFor(
   action: ServiceAction,
   service: string,
 ): ServiceConfirmRequest | null {
-  if (action === "start") return null;
-  if (action === "stop") {
+  if (action === "up") return null;
+  if (action === "down") {
     return {
       action,
       title: `Down ${service}?`,
@@ -158,7 +158,7 @@ function redeployMessage(service: string): string {
   }
   if (isGateService(service)) {
     return (
-      "Recreates the public edge container to pick up published ports " +
+      "Redeploys the public edge container to pick up published ports " +
       "(brief edge downtime — typically 1–2s). Not a substitute for " +
       "sync or render alone."
     );
@@ -175,7 +175,7 @@ function isGateService(service: string): boolean {
 }
 
 function labelFor(action: ServiceAction): string {
-  if (action === "start") return "Up";
-  if (action === "stop") return "Down";
+  if (action === "up") return "Up";
+  if (action === "down") return "Down";
   return "Redeploy";
 }

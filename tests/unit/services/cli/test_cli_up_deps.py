@@ -14,9 +14,9 @@ from tests.unit.services.cli.base import CliTestCase
 class TestCliUpDeps(CliTestCase):
     def test_up_no_deps_flag(self) -> None:
         actions = MagicMock()
-        actions.start.return_value = {
+        actions.up.return_value = {
             "ok": True,
-            "action": "start",
+            "action": "up",
             "service": "app",
             "no_deps": True,
             "started_deps": [],
@@ -25,14 +25,14 @@ class TestCliUpDeps(CliTestCase):
             ServiceActions=actions
         ):
             assert RaftCLI()._invoke_fire(["up", "app", "--no-deps"]) == 0
-        actions.start.assert_called_once_with("app", no_deps=True)
+        actions.up.assert_called_once_with("app", no_deps=True)
         say.assert_any_call("Skipping dependsOn (--no-deps).")
 
     def test_up_reports_started_deps(self) -> None:
         actions = MagicMock()
-        actions.start.return_value = {
+        actions.up.return_value = {
             "ok": True,
-            "action": "start",
+            "action": "up",
             "service": "frontend",
             "no_deps": False,
             "started_deps": ["demo-api"],

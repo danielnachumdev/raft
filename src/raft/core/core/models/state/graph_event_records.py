@@ -8,10 +8,10 @@ from .graph_event import GraphEvent
 from .graph_event_kinds import (
     KIND_DEPLOYMENT,
     KIND_DOWN,
-    KIND_GATE_RECREATE,
+    KIND_GATE_REDEPLOY,
     KIND_SCALING,
-    KIND_START,
-    KIND_STOP,
+    KIND_SERVICE_DOWN,
+    KIND_SERVICE_UP,
     KIND_UP,
     KIND_UPDATE,
     SCALING_ACTION_IDLE_STOP,
@@ -45,7 +45,7 @@ class GraphEventRecords:
             ts=ts,
         )
 
-    def record_stop(
+    def record_service_down(
         self,
         *,
         service: str,
@@ -53,12 +53,17 @@ class GraphEventRecords:
         ts: Optional[datetime] = None,
         label: Optional[str] = None,
     ) -> GraphEvent:
-        """Operator stop (serve/CLI) — not transient docker blips or heal restarts."""
+        """Operator down (serve/CLI) — not transient docker blips or heal restarts."""
         return self._record_named(
-            KIND_STOP, service=service, app=app, ts=ts, label=label, verb="Stop"
+            KIND_SERVICE_DOWN,
+            service=service,
+            app=app,
+            ts=ts,
+            label=label,
+            verb="Down",
         )
 
-    def record_start(
+    def record_service_up(
         self,
         *,
         service: str,
@@ -66,9 +71,14 @@ class GraphEventRecords:
         ts: Optional[datetime] = None,
         label: Optional[str] = None,
     ) -> GraphEvent:
-        """Operator start (serve) after an intentional stop / wake-adjacent start."""
+        """Operator up (serve/CLI) after an intentional down / wake-adjacent up."""
         return self._record_named(
-            KIND_START, service=service, app=app, ts=ts, label=label, verb="Start"
+            KIND_SERVICE_UP,
+            service=service,
+            app=app,
+            ts=ts,
+            label=label,
+            verb="Up",
         )
 
     def record_scaling(
@@ -101,12 +111,12 @@ class GraphEventRecords:
         """CLI self-update when the installed identity actually changed."""
         return self._record(KIND_UPDATE, label="Raft update", metadata={}, ts=ts)
 
-    def record_gate_recreate(self, *, ts: Optional[datetime] = None) -> GraphEvent:
-        """Published-edge recreate (``raft redeploy gate``)."""
+    def record_gate_redeploy(self, *, ts: Optional[datetime] = None) -> GraphEvent:
+        """Published-edge redeploy (``raft redeploy gate``)."""
         return self._record(
-            KIND_GATE_RECREATE,
+            KIND_GATE_REDEPLOY,
             service=GATE_COMPOSE_ID,
-            label="Gate recreate",
+            label="Gate redeploy",
             metadata={},
             ts=ts,
         )

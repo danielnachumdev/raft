@@ -24,20 +24,20 @@ export function ServiceActions(props: Props) {
     <div className="actions-row" role="group" aria-label="Service actions">
       <ActionButton
         label="Up"
-        action="start"
+        action="up"
         busy={busy}
-        disabled={locked || !avail.start.enabled}
-        hint={avail.start.hint}
-        onClick={() => void run("start")}
+        disabled={locked || !avail.up.enabled}
+        hint={avail.up.hint}
+        onClick={() => void run("up")}
       />
       <ActionButton
         label="Down"
-        action="stop"
+        action="down"
         busy={busy}
-        disabled={locked || !avail.stop.enabled}
-        hint={avail.stop.hint}
+        disabled={locked || !avail.down.enabled}
+        hint={avail.down.hint}
         danger
-        onClick={() => void run("stop")}
+        onClick={() => void run("down")}
       />
       <ActionButton
         label="Redeploy"

@@ -199,9 +199,9 @@ describe("github + service + exports cache consumers", () => {
           presentation: { service: "demo-api", name: "demo-api", status },
         };
       }
-      if (url === "/api/service/demo-api/stop" && init?.method === "POST") {
+      if (url === "/api/service/demo-api/down" && init?.method === "POST") {
         status = "exited";
-        return { ok: true, action: "stop", service: "demo-api" };
+        return { ok: true, action: "down", service: "demo-api" };
       }
       throw new Error(`unexpected ${url}`);
     });
@@ -218,7 +218,7 @@ describe("github + service + exports cache consumers", () => {
         1,
       );
 
-      await svc.postServiceAction("demo-api", "stop");
+      await svc.postServiceAction("demo-api", "down");
       const after = await svc.fetchService("demo-api");
       assert.equal(after.container.status, "exited");
       assert.equal(

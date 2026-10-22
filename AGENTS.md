@@ -153,7 +153,7 @@ Product templates sync from `src/raft/core/platform/share/` into the data home o
 | Docker / nginx adapters, share templates | `src/raft/core/platform/` |
 | Doctor, status, logs, update | `src/raft/core/observe/` |
 | **Shared mutative capabilities** (CLI + serve) | Business rules in `core/`; serve/CLI only invoke. New capabilities: put the service under the matching core area below, keep FastAPI/Fire as adapters. |
-| Per-service up/down/redeploy/purge | `observe/ops/actions/` (`ServiceActions`); CLI `raft up|down [NAME]` + serve actions (API ids may stay start/stop); default `up NAME` brings up `dependsOn` (wake order), `--no-deps` skips; `redeploy gate` = edge recreate |
+| Per-service up/down/redeploy/purge | `observe/ops/actions/` (`ServiceActions`); CLI `raft up|down [NAME]` + serve actions (`/up` `/down` `/redeploy`; deprecated `/start` `/stop` aliases); default `up NAME` brings up `dependsOn` (wake order), `--no-deps` skips; `redeploy gate` = edge container force-recreate |
 | Ordered firewall (CRUD / recommendations / from-inspection) | `lifecycle/firewall/` + nginx compile in `lifecycle/render/firewall/`; serve adapter `services/serve/firewall/`; CLI `services/cli/commands/firewall.py` (`raft firewall …`); SPA `src/spa/src/firewall/` |
 | Full operator settings (`settings.yaml`) | `core/config/settings/operator_service.py` (`OperatorSettingsService`); serve adapter `services/serve/settings/`; SPA `src/spa/src/settings/`; [`docs/serve-settings.md`](docs/serve-settings.md) |
 | Check for updates (Settings) | `observe/ops/update/` (`UpdateCheck`, `SelfUpdate`); serve `services/serve/update/`; SPA `src/spa/src/settings/sections/UpdatesSection.tsx` |

@@ -1,4 +1,4 @@
-"""Start transitive ``spec.dependsOn`` before an operator App start (wake order)."""
+"""Bring up transitive ``spec.dependsOn`` before an operator App up (wake order)."""
 
 from typing import Dict, Optional, Tuple
 
@@ -11,23 +11,23 @@ from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.core.platform.adapters.docker import DockerStack
 from raft.core.platform.adapters.nginx import NginxUpstreams
 
-__all__ = ["StartDepends"]
+__all__ = ["UpDepends"]
 
 
-class StartDepends:
-    """Resolve and start the wake ``dependsOn`` chain for operator start."""
+class UpDepends:
+    """Resolve and bring up the wake ``dependsOn`` chain for operator up."""
 
     def __init__(self, stack: Stack, docker: DockerStack) -> None:
         self.stack = stack
         self.docker = docker
 
     def wake_chain(self, name: str) -> Tuple[str, ...]:
-        """Deps-first start order including ``name`` (same as scale wake)."""
+        """Deps-first up order including ``name`` (same as scale wake)."""
         try:
             return AppDependsGraph(self.depends_edges()).wake_chain(name)
         except DependsOnError as exc:
             raise OperatorError(
-                f"cannot start {name!r}: dependsOn graph error: {exc}",
+                f"cannot bring up {name!r}: dependsOn graph error: {exc}",
                 has_fix=False,
             ) from exc
 
@@ -37,12 +37,12 @@ class StartDepends:
             edges[app.name] = self._edges_for(app.name)
         return edges
 
-    def start_dep(self, name: str) -> str:
-        """Start one dependency Compose service; return its compose id."""
+    def up_dep(self, name: str) -> str:
+        """Bring up one dependency Compose service; return its compose id."""
         compose_id = self._compose_id(name)
         if compose_id is None:
             raise OperatorError(
-                f"cannot start dependency {name!r}: not in applied apps",
+                f"cannot bring up dependency {name!r}: not in applied apps",
                 has_fix=False,
             )
         self.docker.start_service(compose_id)
@@ -50,7 +50,7 @@ class StartDepends:
         return compose_id
 
     def restore_upstreams(self, names: Tuple[str, ...]) -> None:
-        """Point HTTP upstreams at Compose hostnames after starting a chain."""
+        """Point HTTP upstreams at Compose hostnames after bringing up a chain."""
         nginx = NginxUpstreams(self.stack, self.docker)
         by_name = {app.name: app for app in self.stack.apps}
         for name in names:

@@ -37,7 +37,7 @@ export type ServiceDetailPayload = {
   presentation: StatusRow;
 };
 
-export type ServiceAction = "start" | "stop" | "redeploy";
+export type ServiceAction = "up" | "down" | "redeploy";
 
 export type ServiceActionResult = {
   ok: boolean;

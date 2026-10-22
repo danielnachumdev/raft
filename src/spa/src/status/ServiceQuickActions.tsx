@@ -30,23 +30,23 @@ export function ServiceQuickActions(props: Props) {
         <IconLogs />
       </Link>
       <QuickActionButton
-        action="start"
+        action="up"
         label={`Up ${props.name}`}
-        title={avail.start.enabled ? "Up" : avail.start.hint}
+        title={avail.up.enabled ? "Up" : avail.up.hint}
         busy={busy}
-        disabled={locked || !avail.start.enabled}
-        onClick={() => void run("start")}
+        disabled={locked || !avail.up.enabled}
+        onClick={() => void run("up")}
       >
         <IconPlay />
       </QuickActionButton>
       <QuickActionButton
-        action="stop"
+        action="down"
         label={`Down ${props.name}`}
-        title={avail.stop.enabled ? "Down" : avail.stop.hint}
+        title={avail.down.enabled ? "Down" : avail.down.hint}
         busy={busy}
-        disabled={locked || !avail.stop.enabled}
+        disabled={locked || !avail.down.enabled}
         danger
-        onClick={() => void run("stop")}
+        onClick={() => void run("down")}
       >
         <IconStop />
       </QuickActionButton>

@@ -13,10 +13,10 @@ export type EventKindGroup = { label: string; kinds: string[] };
 /** Known ``host/events/ops.jsonl`` kinds, grouped for the filter picker. */
 export const EVENT_KIND_GROUPS: EventKindGroup[] = [
   { label: "Deploy", kinds: ["deploy.apply", "deploy.redeploy"] },
-  { label: "Services", kinds: ["service.start", "service.stop"] },
+  { label: "Services", kinds: ["service.up", "service.down"] },
   { label: "Scaling", kinds: ["scale.wake", "scale.idle_stop"] },
   { label: "Alerts", kinds: ["alert.fired", "alert.resolved"] },
-  { label: "Edge", kinds: ["firewall.apply", "gate.reload", "gate.recreate"] },
+  { label: "Edge", kinds: ["firewall.apply", "gate.reload", "gate.redeploy"] },
   {
     label: "Stack",
     kinds: ["stack.up", "stack.down", "stack.purge", "raft.update"],
@@ -28,11 +28,14 @@ const TONES: Record<string, EventTone> = {
   "alert.resolved": "ok",
   "deploy.apply": "ok",
   "deploy.redeploy": "ok",
-  "service.start": "ok",
+  "service.up": "ok",
+  "service.start": "ok", // legacy
   "stack.up": "ok",
-  "service.stop": "warn",
+  "service.down": "warn",
+  "service.stop": "warn", // legacy
   "stack.down": "warn",
-  "gate.recreate": "warn",
+  "gate.redeploy": "warn",
+  "gate.recreate": "warn", // legacy
   "scale.wake": "idle",
   "scale.idle_stop": "idle",
 };

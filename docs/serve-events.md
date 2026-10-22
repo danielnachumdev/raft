@@ -53,8 +53,8 @@ use `demo-api`, `demo-api-cpu-high`, `ops-webhook`, `192.0.2.0/24`.
 |------|------------------|
 | `deploy.apply` / `deploy.redeploy` | Apply / redeploy cutover (`GraphEventStore.record_deployment`) |
 | `scale.wake` / `scale.idle_stop` | Controller scaler (GraphEvent dual-write) |
-| `service.start` / `service.stop` | Serve/CLI start/stop (GraphEvent dual-write) |
-| `stack.up` / `stack.down` / `raft.update` / `gate.recreate` | Stack lifecycle (GraphEvent dual-write) |
+| `service.up` / `service.down` | Serve/CLI up/down (GraphEvent dual-write; dual-read legacy `service.start` / `service.stop`) |
+| `stack.up` / `stack.down` / `raft.update` / `gate.redeploy` | Stack lifecycle (GraphEvent dual-write; dual-read legacy `gate.recreate`) |
 | `stack.purge` | `Purge.execute` finish |
 | `firewall.apply` | `FirewallService.put` |
 | `gate.reload` | Orchestrator render when gate nginx reloads |

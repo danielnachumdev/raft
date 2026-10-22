@@ -21,7 +21,7 @@ class TestCliErrorRewrite(CliTestCase):
         assert exc.value.code == 0
 
     def test_run_maps_runtime_error(self, capsys) -> None:
-        self.orch.start.side_effect = RuntimeError("already running")
+        self.orch.up.side_effect = RuntimeError("already running")
         with pytest.raises(SystemExit) as exc:
             self.run_cli(["up"])
         assert exc.value.code == 1
@@ -31,7 +31,7 @@ class TestCliErrorRewrite(CliTestCase):
 
     def test_run_called_process_error_suggests_doctor(self, capsys) -> None:
         err = subprocess.CalledProcessError(9, ["true"], stderr="boom\n")
-        self.orch.stop.side_effect = err
+        self.orch.down.side_effect = err
         with pytest.raises(SystemExit) as exc:
             self.run_cli(["down"])
         assert exc.value.code == 9
@@ -43,7 +43,7 @@ class TestCliErrorRewrite(CliTestCase):
         err = subprocess.CalledProcessError(
             1, ["docker", "ps"], stderr="Cannot connect to the Docker daemon\n"
         )
-        self.orch.stop.side_effect = err
+        self.orch.down.side_effect = err
         with pytest.raises(SystemExit) as exc:
             self.run_cli(["down"])
         assert exc.value.code == 1
@@ -52,7 +52,7 @@ class TestCliErrorRewrite(CliTestCase):
         err2 = subprocess.CalledProcessError(
             1, ["docker", "run"], stderr="port is already allocated\n"
         )
-        self.orch.stop.side_effect = err2
+        self.orch.down.side_effect = err2
         with pytest.raises(SystemExit) as exc:
             self.run_cli(["down"])
         assert exc.value.code == 1
@@ -66,7 +66,7 @@ class TestCliErrorRewrite(CliTestCase):
 
     def _assert_compose_fail(self, capsys) -> None:
         err = subprocess.CalledProcessError(1, ["docker", "compose", "up"], stderr="explode\n")
-        self.orch.stop.side_effect = err
+        self.orch.down.side_effect = err
         with pytest.raises(SystemExit) as exc:
             self.run_cli(["down"])
         assert exc.value.code == 1
@@ -104,7 +104,7 @@ class TestCliErrorRewrite(CliTestCase):
         pull = subprocess.CalledProcessError(
             1, ["docker", "pull", "ghcr.io/x:y"], stderr="no such host\n"
         )
-        self.orch.stop.side_effect = pull
+        self.orch.down.side_effect = pull
         with pytest.raises(SystemExit) as exc:
             self.run_cli(["down"])
         assert exc.value.code == 1
@@ -112,20 +112,20 @@ class TestCliErrorRewrite(CliTestCase):
         assert "raft sync" in err or "docker login" in err
 
     def test_run_maps_oserror_and_yaml(self, capsys) -> None:
-        self.orch.start.side_effect = OSError("read-only filesystem")
+        self.orch.up.side_effect = OSError("read-only filesystem")
         with pytest.raises(SystemExit) as exc:
             self.run_cli(["up"])
         assert exc.value.code == 1
         err = capsys.readouterr().err
         assert "chown" not in err
 
-        self.orch.start.side_effect = OSError(13, "Permission denied")
+        self.orch.up.side_effect = OSError(13, "Permission denied")
         with pytest.raises(SystemExit):
             self.run_cli(["up"])
         err = capsys.readouterr().err
         assert "chown" in err
 
-        self.orch.start.side_effect = yaml.YAMLError("bad indent")
+        self.orch.up.side_effect = yaml.YAMLError("bad indent")
         with pytest.raises(SystemExit) as exc:
             self.run_cli(["up"])
         assert exc.value.code == 1
@@ -142,7 +142,7 @@ class TestCliErrorRewrite(CliTestCase):
                 "BIO_new_file() failed (SSL: error:80000002:system library::No such file)\n"
             ),
         )
-        self.orch.stop.side_effect = err
+        self.orch.down.side_effect = err
         with patch("raft.services.cli.exit_mapper.load_stack", return_value=stack):
             with pytest.raises(SystemExit) as exc:
                 self.run_cli(["down"])
@@ -158,7 +158,7 @@ class TestCliErrorRewrite(CliTestCase):
             ["docker", "pull", "ghcr.io/example/app:main"],
             stderr="Error response from daemon: unauthorized\nunauthorized\n",
         )
-        self.orch.stop.side_effect = err
+        self.orch.down.side_effect = err
         with pytest.raises(SystemExit) as exc:
             self.run_cli(["down"])
         assert exc.value.code == 1
@@ -169,7 +169,7 @@ class TestCliErrorRewrite(CliTestCase):
         assert "Hint: run `raft doctor`" not in err_out
 
     def test_run_runtime_error_with_fix_skips_doctor_hint(self, capsys) -> None:
-        self.orch.start.side_effect = RuntimeError(
+        self.orch.up.side_effect = RuntimeError(
             "cannot pull img: registry unauthorized.\n\nFix (as the raft user):\n  1. login"
         )
         with pytest.raises(SystemExit) as exc:
@@ -193,7 +193,7 @@ class TestCliErrorRewrite(CliTestCase):
             ["docker", "compose", "exec", "-T", "raft-gate", "nginx", "-t"],
             stderr='cannot load certificate "/etc/nginx/services/web/certs/origin.pem"\n',
         )
-        self.orch.stop.side_effect = err
+        self.orch.down.side_effect = err
         with patch("raft.services.cli.exit_mapper.load_stack", side_effect=RuntimeError("no home")):
             with pytest.raises(SystemExit) as exc:
                 self.run_cli(["down"])
@@ -207,7 +207,7 @@ class TestCliErrorRewrite(CliTestCase):
             ["docker", "compose", "exec", "-T", "raft-gate", "nginx", "-t"],
             stderr='cannot load certificate "/etc/nginx/services/web/certs/origin.pem"\n',
         )
-        self.orch.stop.side_effect = err
+        self.orch.down.side_effect = err
         with patch("raft.services.cli.exit_mapper.load_stack", return_value=self.stack):
             with patch("raft.services.cli.exit_mapper.CertProbe") as probe_cls:
                 probe_cls.return_value.missing_origin.return_value = []
@@ -223,7 +223,7 @@ class TestCliErrorRewrite(CliTestCase):
             self._nginx_cert_argv(),
             stderr="",
         )
-        self.orch.stop.side_effect = err
+        self.orch.down.side_effect = err
         with patch("raft.services.cli.exit_mapper.load_stack", return_value=self.stack):
             with patch("raft.services.cli.exit_mapper.CertProbe") as probe_cls:
                 probe_cls.return_value.missing_origin.return_value = []

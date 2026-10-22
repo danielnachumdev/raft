@@ -1,4 +1,4 @@
-"""Unit coverage for StartDepends helpers."""
+"""Unit coverage for UpDepends helpers."""
 
 from __future__ import annotations
 
@@ -7,27 +7,27 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from raft.core.core.errors.cta import OperatorError
-from raft.core.observe.ops.actions.start_depends import StartDepends
+from raft.core.observe.ops.actions.up_depends import UpDepends
 
 from tests.unit.base import RaftTestCase, AppMakers, AppliedInventory, StackMakers
 
 
-class TestStartDepends(RaftTestCase):
-    def _helper(self, apps=None) -> StartDepends:
+class TestUpDepends(RaftTestCase):
+    def _helper(self, apps=None) -> UpDepends:
         stack = StackMakers.make_stack(
             self.tmp_path, apps or (AppMakers.make_app("demo-api"),)
         )
-        return StartDepends(stack, MagicMock())
+        return UpDepends(stack, MagicMock())
 
-    def test_start_dep_unknown_app(self) -> None:
+    def test_up_dep_unknown_app(self) -> None:
         helper = self._helper()
         with pytest.raises(OperatorError, match="not in applied apps"):
-            helper.start_dep("missing")
+            helper.up_dep("missing")
 
     def test_restore_upstreams_skips_unknown_names(self) -> None:
         helper = self._helper()
         with patch(
-            "raft.core.observe.ops.actions.start_depends.NginxUpstreams"
+            "raft.core.observe.ops.actions.up_depends.NginxUpstreams"
         ) as nginx_cls:
             nginx = MagicMock()
             nginx_cls.return_value = nginx

@@ -127,15 +127,15 @@ class ServePage:
             headers=_SSE_HEADERS,
         )
 
-    def api_service_start(self, name: str, no_deps: bool = False) -> Dict[str, Any]:
-        """Start one service; default starts ``dependsOn`` (wake order)."""
+    def api_service_up(self, name: str, no_deps: bool = False) -> Dict[str, Any]:
+        """Bring one service up; default brings up ``dependsOn`` (wake order)."""
         try:
-            return self._actions.start(name, no_deps=no_deps)
+            return self._actions.up(name, no_deps=no_deps)
         except OperatorError as exc:
             raise self._http_for_operator(exc) from exc
 
-    def api_service_stop(self, name: str) -> Dict[str, Any]:
-        return self._run_action(self._actions.stop, name)
+    def api_service_down(self, name: str) -> Dict[str, Any]:
+        return self._run_action(self._actions.down, name)
 
     def api_service_redeploy(self, name: str) -> JSONResponse:
         """Redeploy one service; dashboard self-Redeploy returns 202 started."""

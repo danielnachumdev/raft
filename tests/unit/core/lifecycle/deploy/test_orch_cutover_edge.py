@@ -30,7 +30,7 @@ class TestOrchCutoverEdgeCoverage(RaftTestCase):
             RunningServices.with_apps("app"),
         ]
         with patch.object(orch, "sync"):
-            orch.start()
+            orch.up()
         orch.http.public_host_ok.assert_not_called()
 
     def test_shift_skips_wait_when_none(self) -> None:

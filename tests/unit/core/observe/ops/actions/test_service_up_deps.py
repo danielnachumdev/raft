@@ -53,11 +53,11 @@ class TestServiceActionsStartDeps(RaftTestCase):
         with self._with_chain_locks() as locks:
             self._enter(locks)
             with patch(
-                "raft.core.observe.ops.actions.start_depends.NginxUpstreams"
+                "raft.core.observe.ops.actions.up_depends.NginxUpstreams"
             ) as nginx_cls:
                 nginx = MagicMock()
                 nginx_cls.return_value = nginx
-                result = actions.start("frontend")
+                result = actions.up("frontend")
         assert docker.start_service.call_args_list == [
             call("demo-api"),
             call("frontend"),
@@ -73,7 +73,7 @@ class TestServiceActionsStartDeps(RaftTestCase):
         actions, docker = self._actions()
         with self._with_app_locks() as locks:
             self._enter(locks)
-            result = actions.start("frontend", no_deps=True)
+            result = actions.up("frontend", no_deps=True)
         docker.start_service.assert_called_once_with("frontend")
         assert result["started_deps"] == []
         assert result["no_deps"] is True
@@ -84,8 +84,8 @@ class TestServiceActionsStartDeps(RaftTestCase):
         actions, docker = self._actions()
         with self._with_chain_locks() as locks:
             self._enter(locks)
-            with patch("raft.core.observe.ops.actions.start_depends.NginxUpstreams"):
-                actions.start("frontend")
+            with patch("raft.core.observe.ops.actions.up_depends.NginxUpstreams"):
+                actions.up("frontend")
         assert not ScalingStore(self.tmp_path).is_scaled_to_zero("demo-api")
         assert docker.start_service.call_args_list[0] == call("demo-api")
 
@@ -99,4 +99,4 @@ class TestServiceActionsStartDeps(RaftTestCase):
         stack = StackMakers.make_stack(self.tmp_path, apps)
         actions = ServiceActions(stack, docker=MagicMock())
         with pytest.raises(OperatorError, match="dependsOn"):
-            actions.start("frontend")
+            actions.up("frontend")

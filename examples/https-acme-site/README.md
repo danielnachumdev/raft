@@ -17,7 +17,7 @@ For Cloudflare Origin PEMs, use [`../https-origin-site/`](../https-origin-site/)
 4. Optional labs: set `acme.directory` to Let's Encrypt **staging**
 5. Apply, then `raft doctor` / `raft doctor https-acme-site`
 
-Renewal is the controller (`acme:<name>` jobs). Gate reloads nginx only — never `raft gate recreate` for cert rotation.
+Renewal is the controller (`acme:<name>` jobs). Gate reloads nginx only — never `raft redeploy gate` for cert rotation.
 
 **Not shipped:** DNS-01 / wildcards. If port 80 cannot be opened, use `tls: origin` behind a proxy or terminate TLS elsewhere.
 

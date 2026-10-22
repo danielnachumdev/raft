@@ -1,4 +1,4 @@
-"""Orchestrator sync/render/start/stop."""
+"""Orchestrator sync/render/up/down."""
 
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
@@ -10,7 +10,7 @@ from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.state.graph_event_kinds import (
     KIND_DEPLOYMENT,
     KIND_DOWN,
-    KIND_GATE_RECREATE,
+    KIND_GATE_REDEPLOY,
     KIND_UP,
 )
 from raft.core.core.models.state.graph_event_store import GraphEventStore
@@ -133,7 +133,7 @@ class TestOrchRenderStart(OrchestratorTestCase):
         ]
         self.stub_http_ready(self.orch.http)
         with patch.object(self.orch, "sync") as sync:
-            self.orch.start()
+            self.orch.up()
         sync.assert_called_once()
         self.orch.docker.start_stack.assert_called_once()
         self.orch.docker.reload_router_nginx.assert_called_once()
@@ -150,22 +150,22 @@ class TestOrchRenderStart(OrchestratorTestCase):
                 RuntimeError,
                 match="missing running services: \\['raft-gate', 'raft-controller'\\]",
             ):
-                self.orch.start()
+                self.orch.up()
         self.orch.docker.start_stack.assert_called_once()
 
-    def test_recreate_gate_happy(self) -> None:
+    def test_redeploy_gate_happy(self) -> None:
         self.set_edge_only()
         self.stub_http_ready(self.orch.http)
         with patch.object(self.orch, "render"):
-            self.orch.recreate_gate()
-        self.orch.docker.recreate_gate.assert_called_once()
+            self.orch.redeploy_gate()
+        self.orch.docker.redeploy_gate.assert_called_once()
         events = GraphEventStore(self.tmp_path).events_in_window(from_ts=_EPOCH)
-        assert [e.kind for e in events] == [KIND_GATE_RECREATE]
+        assert [e.kind for e in events] == [KIND_GATE_REDEPLOY]
 
     def test_stop_already_stopped(self) -> None:
         self.orch.docker.running_services.side_effect = [[], []]
         self.orch.docker.network_holders.return_value = []
-        self.orch.stop()
+        self.orch.down()
         self.orch.docker.remove_container.assert_called()
         self.orch.docker.stop_stack.assert_called_once()
 
@@ -176,9 +176,9 @@ class TestOrchRenderStart(OrchestratorTestCase):
         orch.docker = DockerStack(orch.stack, shell)
         shell.compose.return_value = ShellMocks.completed("")
         shell.docker.return_value = ShellMocks.completed("", returncode=1)
-        orch.stop()
+        orch.down()
         text = capsys.readouterr().out + capsys.readouterr().err
-        assert "stack already stopped" in text
+        assert "stack already down" in text
         assert "not running" not in text
 
     def test_stop_running(self) -> None:
@@ -187,7 +187,7 @@ class TestOrchRenderStart(OrchestratorTestCase):
             [],
         ]
         self.orch.docker.network_holders.return_value = []
-        self.orch.stop()
+        self.orch.down()
         self.orch.docker.stop_stack.assert_called_once()
         events = GraphEventStore(self.tmp_path).events_in_window(from_ts=_EPOCH)
         assert [e.kind for e in events] == [KIND_DOWN]
@@ -199,7 +199,7 @@ class TestOrchRenderStart(OrchestratorTestCase):
         ]
         self.orch.docker.network_holders.return_value = ["raft-raft-gate-1"]
         with pytest.raises(OperatorError, match="did not fully stop"):
-            self.orch.stop()
+            self.orch.down()
 
     def test_stop_warns_when_network_still_held(self, capsys) -> None:
         self.orch.docker.running_services.side_effect = [
@@ -207,7 +207,7 @@ class TestOrchRenderStart(OrchestratorTestCase):
             [],
         ]
         self.orch.docker.network_holders.return_value = ["sneaky"]
-        self.orch.stop()
+        self.orch.down()
         captured = capsys.readouterr()
         text = captured.out + captured.err
         assert "network still has containers" in text

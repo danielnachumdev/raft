@@ -14,7 +14,7 @@ describe("eventTone", () => {
   it("maps known kinds and defaults to neutral", () => {
     assert.equal(eventTone("alert.fired"), "bad");
     assert.equal(eventTone("alert.resolved"), "ok");
-    assert.equal(eventTone("service.stop"), "warn");
+    assert.equal(eventTone("service.down"), "warn");
     assert.equal(eventTone("scale.wake"), "idle");
     assert.equal(eventTone("firewall.apply"), "neutral");
   });

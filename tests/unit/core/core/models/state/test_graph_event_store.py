@@ -10,10 +10,10 @@ from raft.core.core.models.state.graph_event import GraphEvent
 from raft.core.core.models.state.graph_event_kinds import (
     KIND_DEPLOYMENT,
     KIND_DOWN,
-    KIND_GATE_RECREATE,
+    KIND_GATE_REDEPLOY,
     KIND_SCALING,
-    KIND_START,
-    KIND_STOP,
+    KIND_SERVICE_UP,
+    KIND_SERVICE_DOWN,
     KIND_UP,
     KIND_UPDATE,
     SCALING_ACTION_IDLE_STOP,
@@ -145,17 +145,17 @@ class TestGraphEventStore(RaftTestCase):
         kept = store.events_in_window(from_ts=when - timedelta(hours=1), to_ts=when)
         assert [e.id for e in kept] == ["keep"]
 
-    def test_record_stop(self) -> None:
+    def test_record_service_down(self) -> None:
         home = self.tmp_path / "raft"
         store = GraphEventStore(home)
         when = datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)
-        stop = store.record_stop(service="demo-web", app="web", ts=when)
-        edge = store.record_stop(service="raft-gate", ts=when)
-        assert stop.kind == KIND_STOP
-        assert stop.label == "Stop web"
+        stop = store.record_service_down(service="demo-web", app="web", ts=when)
+        edge = store.record_service_down(service="raft-gate", ts=when)
+        assert stop.kind == KIND_SERVICE_DOWN
+        assert stop.label == "Down web"
         assert stop.metadata["app"] == "web"
         assert edge.metadata == {}
-        assert edge.label == "Stop raft-gate"
+        assert edge.label == "Down raft-gate"
 
     def test_record_scaling_idle_and_wake(self) -> None:
         home = self.tmp_path / "raft"
@@ -186,21 +186,21 @@ class TestGraphEventStore(RaftTestCase):
         )
         assert other.label == "Scale x"
 
-    def test_record_start_and_stack_lifecycle(self) -> None:
+    def test_record_service_up_and_stack_lifecycle(self) -> None:
         home = self.tmp_path / "raft"
         store = GraphEventStore(home)
         when = datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)
-        start = store.record_start(service="demo-web", app="web", ts=when)
+        start = store.record_service_up(service="demo-web", app="web", ts=when)
         up = store.record_stack_up(ts=when)
         down = store.record_stack_down(ts=when)
         update = store.record_update(ts=when)
-        gate = store.record_gate_recreate(ts=when)
-        assert start.kind == KIND_START
-        assert start.label == "Start web"
+        gate = store.record_gate_redeploy(ts=when)
+        assert start.kind == KIND_SERVICE_UP
+        assert start.label == "Up web"
         assert up.kind == KIND_UP and up.service is None
         assert down.kind == KIND_DOWN
         assert update.kind == KIND_UPDATE
-        assert gate.kind == KIND_GATE_RECREATE
+        assert gate.kind == KIND_GATE_REDEPLOY
         assert gate.service == "raft-gate"
 
     def test_raft_level_events_pass_service_filter(self) -> None:
@@ -208,13 +208,13 @@ class TestGraphEventStore(RaftTestCase):
         store = GraphEventStore(home)
         when = datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)
         store.record_stack_down(ts=when)
-        store.record_stop(service="raft-gate", ts=when)
+        store.record_service_down(service="raft-gate", ts=when)
         store.record_deployment(
             service="other", app="other", ref="x", ts=when
         )
         got = store.events_in_window(from_ts=when, services=["demo-web"])
         kinds = [e.kind for e in got]
-        assert kinds == [KIND_DOWN, KIND_STOP]
+        assert kinds == [KIND_DOWN, KIND_SERVICE_DOWN]
 
     def test_raft_level_kind_passes_even_with_app_service(self) -> None:
         home = self.tmp_path / "raft"

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from raft.core.core.models.state.graph_event_kinds import (
     KIND_DOWN,
     KIND_SCALING,
-    KIND_STOP,
+    KIND_SERVICE_DOWN,
     SCALING_ACTION_IDLE_STOP,
 )
 from raft.core.core.models.state.graph_event_store import GraphEventStore
@@ -40,7 +40,7 @@ class TestMetricsReadEvents(RaftTestCase):
     def test_history_includes_stop_and_scaling_events(self) -> None:
         home, now = self._seed_samples()
         store = GraphEventStore(home)
-        store.record_stop(
+        store.record_service_down(
             service="web", app="web", ts=now - timedelta(minutes=4)
         )
         store.record_scaling(
@@ -53,13 +53,13 @@ class TestMetricsReadEvents(RaftTestCase):
             window_seconds=3600, services=["web"], now=now
         )
         kinds = [e["kind"] for e in payload["events"]]
-        assert kinds == [KIND_STOP, KIND_SCALING]
+        assert kinds == [KIND_SERVICE_DOWN, KIND_SCALING]
 
     def test_history_includes_raft_level_when_service_filtered(self) -> None:
         home, now = self._seed_samples()
         store = GraphEventStore(home)
         store.record_stack_down(ts=now - timedelta(minutes=3))
-        store.record_stop(
+        store.record_service_down(
             service="raft-gate", ts=now - timedelta(minutes=2)
         )
         store.record_deployment(
@@ -72,7 +72,7 @@ class TestMetricsReadEvents(RaftTestCase):
             window_seconds=3600, services=["web"], now=now
         )
         kinds = [e["kind"] for e in payload["events"]]
-        assert kinds == [KIND_DOWN, KIND_STOP]
+        assert kinds == [KIND_DOWN, KIND_SERVICE_DOWN]
 
     def test_history_empty_events_when_no_store(self) -> None:
         home = self.tmp_path / "raft"

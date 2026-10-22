@@ -19,7 +19,7 @@ class TestOrchUpScale(OrchestratorTestCase, ControllerTestCase):
         AppliedInventory.write_applied_app(self.tmp_path, "app", extra=self.scaling_extra())
         orch = self._orch_cold_edge()
         with patch.object(orch, "sync"):
-            orch.start()
+            orch.up()
         # local/git deferred → build only (compose pull would be a no-op)
         orch.docker.pull_services.assert_called_once_with(())
         orch.docker.build_services.assert_called_once_with(("app",))
@@ -36,7 +36,7 @@ class TestOrchUpScale(OrchestratorTestCase, ControllerTestCase):
         AppliedInventory.write_applied_app(self.tmp_path, "app", extra=self.scaling_extra())
         orch = self._orch_cold_edge(with_dashboard=True)
         with patch.object(orch, "sync"):
-            orch.start()
+            orch.up()
         orch.docker.start_stack.assert_called_once_with(
             ("raft-gate", "raft-dashboard", "raft-router", "raft-controller")
         )
@@ -54,7 +54,7 @@ class TestOrchUpScale(OrchestratorTestCase, ControllerTestCase):
         )
         orch = self._orch_cold_edge()
         with patch.object(orch, "sync"):
-            orch.start()
+            orch.up()
         orch.docker.pull_services.assert_called_once_with(("app",))
         orch.docker.build_services.assert_called_once_with(())
         assert ScalingStore(self.tmp_path).is_scaled_to_zero("app")
@@ -75,7 +75,7 @@ class TestOrchUpScale(OrchestratorTestCase, ControllerTestCase):
         orch.nginx.point_absent.side_effect = on_park
         orch.docker.start_stack.side_effect = on_start
         with patch.object(orch, "sync"):
-            orch.start()
+            orch.up()
         assert order.index("park:app") < order.index("start")
         orch.nginx.point_absent.assert_called_once_with(
             orch.stack.app("app"), reload=False
@@ -89,7 +89,7 @@ class TestOrchUpScale(OrchestratorTestCase, ControllerTestCase):
         ]
         self.stub_http_ready(orch.http)
         with patch.object(orch, "sync"):
-            orch.start()
+            orch.up()
         orch.docker.pull_services.assert_not_called()
         orch.docker.start_stack.assert_called_once_with()
 
@@ -97,7 +97,7 @@ class TestOrchUpScale(OrchestratorTestCase, ControllerTestCase):
         self._seed_scaling_with_api()
         orch = self._orch_cold_edge()
         with patch.object(orch, "sync"):
-            orch.start()
+            orch.up()
         orch.docker.pull_services.assert_called_once_with(())
         assert set(orch.docker.build_services.call_args.args[0]) == {"api", "app"}
         started = orch.docker.start_stack.call_args.args[0]
@@ -114,7 +114,7 @@ class TestOrchUpScale(OrchestratorTestCase, ControllerTestCase):
         ]
         with patch.object(orch, "sync"):
             with patch.object(orch, "_wait_app_ready") as wait:
-                orch.start()
+                orch.up()
         self._assert_sidecar_started_app_deferred(orch, wait)
 
     def _assert_sidecar_started_app_deferred(self, orch: Orchestrator, wait) -> None:

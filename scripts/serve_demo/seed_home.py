@@ -162,8 +162,8 @@ events = [
     (40, "scale.wake", "demo-docs", "demo-docs woke on request", {}),
     (26, "alert.fired", "shop-demo-api", "demo-api 5xx error rate firing (7.4%)", {"severity": "error"}),
     (18, "alert.resolved", "shop-demo-api", "demo-api 5xx error rate resolved", {}),
-    (12, "service.stop", "demo-worker", "Stopped demo-worker", {}),
-    (11, "service.start", "demo-worker", "Started demo-worker", {}),
+    (12, "service.down", "demo-worker", "Brought down demo-worker", {}),
+    (11, "service.up", "demo-worker", "Brought up demo-worker", {}),
     (3, "stack.purge", None, "Purged unused images (1.2 GB reclaimed)", {}),
 ]
 ops = []
