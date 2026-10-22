@@ -26,7 +26,7 @@ export type ServiceActionRunner = {
   cancelConfirm: () => void;
 };
 
-/** Shared start/stop/redeploy: custom confirm modal + POST + toast feedback. */
+/** Shared up/down/redeploy: custom confirm modal + POST + toast feedback. */
 export function useServiceActionRunner(
   service: string,
   onDone: () => void,
@@ -133,10 +133,10 @@ function confirmRequestFor(
   if (action === "stop") {
     return {
       action,
-      title: `Stop ${service}?`,
+      title: `Down ${service}?`,
       message:
-        "Traffic to this service will fail until it is started again.",
-      confirmLabel: "Stop",
+        "Traffic to this service will fail until it is brought up again.",
+      confirmLabel: "Down",
       danger: true,
     };
   }
@@ -156,11 +156,26 @@ function redeployMessage(service: string): string {
       "briefly, then reconnects when ready."
     );
   }
-  return "This re-renders and updates the service (brief disruption).";
+  if (isGateService(service)) {
+    return (
+      "Recreates the public edge container to pick up published ports " +
+      "(brief edge downtime — typically 1–2s). Not a substitute for " +
+      "sync or render alone."
+    );
+  }
+  return (
+    "Re-renders and updates the service (brief disruption). " +
+    "Not a substitute for sync or render alone."
+  );
+}
+
+function isGateService(service: string): boolean {
+  const key = service.trim().toLowerCase();
+  return key === "gate" || key === "raft-gate";
 }
 
 function labelFor(action: ServiceAction): string {
-  if (action === "start") return "Start";
-  if (action === "stop") return "Stop";
+  if (action === "start") return "Up";
+  if (action === "stop") return "Down";
   return "Redeploy";
 }

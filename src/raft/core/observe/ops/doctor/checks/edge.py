@@ -72,7 +72,7 @@ class EdgeChecks:
                 label,
                 "warn",
                 f"gate running but nothing accepting on 127.0.0.1:{port}",
-                fix="raft gate recreate   # pick up edge: ports",
+                fix="raft redeploy gate   # pick up edge: ports",
             )
         return CheckResult(INFRA, label, "ok", f"nothing accepting on 127.0.0.1:{port}")
 
@@ -110,11 +110,11 @@ class EdgeChecks:
                     "ports",
                     "warn",
                     "could not inspect gate published ports",
-                    fix="raft gate recreate",
+                    fix="raft redeploy gate",
                 )
             ]
         if declared == actual:
             return [CheckResult(gate, "ports", "ok", ", ".join(str(p) for p in actual))]
         detail = f"declared {declared} but gate publishes {actual}"
-        fix = "raft gate recreate   # Docker binds ports at create time"
+        fix = "raft redeploy gate   # Docker binds ports at create time"
         return [CheckResult(gate, "ports", "fail", detail, fix=fix)]

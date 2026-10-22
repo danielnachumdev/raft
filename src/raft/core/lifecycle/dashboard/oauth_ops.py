@@ -51,7 +51,7 @@ class DashboardOAuthOps:
                 "Fill OAUTH2_PROXY_CLIENT_ID/SECRET in the env file, "
                 "add identities to the allowlist, set "
                 "dashboard.auth.mode: oauth and enabled: true in Settings, "
-                "then raft render + raft start dashboard"
+                "then raft render + raft up dashboard"
             ),
         }
 

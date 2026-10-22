@@ -10,8 +10,8 @@ class SettingsSideEffects:
 
     GATE_RECREATE = (
         "Published edge ports (http / https / streams) changed. "
-        "Run `raft gate recreate` so the gate container publishes the new "
-        "listeners (reload alone is not enough)."
+        "Run `raft redeploy gate` so the gate container publishes the new "
+        "listeners (reload alone is not enough; brief edge downtime)."
     )
     GITHUB_ENV = (
         "GitHub OAuth env vars (RAFT_GITHUB_*) override settings.yaml when set."
@@ -22,13 +22,13 @@ class SettingsSideEffects:
     )
     DASHBOARD_ENABLE = (
         "dashboard.enabled is now true. Run `raft render`, then "
-        "`raft start dashboard` (or `raft redeploy dashboard`) to bring up "
+        "`raft up dashboard` (or `raft redeploy dashboard`) to bring up "
         "raft-dashboard. Saving settings alone does not start the container."
     )
     DASHBOARD_DISABLE = (
         "dashboard.enabled is now false. Run `raft render` so Compose omits "
-        "raft-dashboard; stop a leftover container with `raft stop dashboard` "
-        "if needed."
+        "raft-dashboard; bring a leftover container down with "
+        "`raft down dashboard` if needed."
     )
 
     def for_replace(

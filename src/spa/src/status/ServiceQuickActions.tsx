@@ -12,7 +12,7 @@ type Props = {
   onDone: () => void;
 };
 
-/** Icon quick actions for a status-table row (logs + start/stop/redeploy). */
+/** Icon quick actions for a status-table row (logs + up/down/redeploy). */
 export function ServiceQuickActions(props: Props) {
   const runner = useServiceActionRunner(props.service, props.onDone);
   const { busy, locked, run } = runner;
@@ -31,8 +31,8 @@ export function ServiceQuickActions(props: Props) {
       </Link>
       <QuickActionButton
         action="start"
-        label={`Start ${props.name}`}
-        title={avail.start.enabled ? "Start" : avail.start.hint}
+        label={`Up ${props.name}`}
+        title={avail.start.enabled ? "Up" : avail.start.hint}
         busy={busy}
         disabled={locked || !avail.start.enabled}
         onClick={() => void run("start")}
@@ -41,8 +41,8 @@ export function ServiceQuickActions(props: Props) {
       </QuickActionButton>
       <QuickActionButton
         action="stop"
-        label={`Stop ${props.name}`}
-        title={avail.stop.enabled ? "Stop" : avail.stop.hint}
+        label={`Down ${props.name}`}
+        title={avail.stop.enabled ? "Down" : avail.stop.hint}
         busy={busy}
         disabled={locked || !avail.stop.enabled}
         danger
@@ -53,12 +53,12 @@ export function ServiceQuickActions(props: Props) {
       <QuickActionButton
         action="redeploy"
         label={`Redeploy ${props.name}`}
-        title="Redeploy"
+        title={avail.redeploy.hint}
         busy={busy}
-        disabled={locked}
+        disabled={locked || !avail.redeploy.enabled}
         onClick={() => void run("redeploy")}
       >
-        <IconRestart />
+        <IconRedeploy />
       </QuickActionButton>
       <ServiceActionConfirm runner={runner} />
     </div>
@@ -140,7 +140,8 @@ function IconStop() {
   );
 }
 
-function IconRestart() {
+/** Layers + down arrow — generation refresh, not power restart. */
+function IconRedeploy() {
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
       <path
@@ -149,7 +150,7 @@ function IconRestart() {
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-        d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"
+        d="M12 2 2 7l10 5 10-5-10-5zM2 12l10 5 10-5M2 17l10 5 10-5"
       />
     </svg>
   );

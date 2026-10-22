@@ -38,10 +38,10 @@ class TestCommandErrors:
         assert DockerMessages.looks_like_port_in_use(port)
         CtaAsserts.cta(
             DockerMessages.port_in_use_message(detail="addr in use"),
-            contains=("gate recreate", "raft doctor"),
+            contains=("redeploy gate", "raft doctor"),
             tag="docker",
         )
-        CtaAsserts.cta(DockerMessages.port_in_use_message(detail=""), contains=("gate recreate",))
+        CtaAsserts.cta(DockerMessages.port_in_use_message(detail=""), contains=("redeploy gate",))
 
     def test_compose_messages_and_raise(self) -> None:
         self._test_compose_messages_and_raise_p1()
@@ -68,7 +68,7 @@ class TestCommandErrors:
                 ),
                 action="up",
             )
-        CtaAsserts.operator(caught.value, contains=("gate recreate",))
+        CtaAsserts.operator(caught.value, contains=("redeploy gate",))
         with pytest.raises(OperatorError) as caught:
             CheckedCommands.raise_for_compose_failure(RuntimeError("mystery"), action="up", hint="x")
         CtaAsserts.operator(caught.value, contains=("raft doctor", "hint: x"))
@@ -86,7 +86,7 @@ class TestCommandErrors:
         )
         with pytest.raises(OperatorError) as caught:
             CheckedCommands.run_compose(shell, ("up", "-d"), action="up")
-        CtaAsserts.operator(caught.value, contains=("gate recreate",))
+        CtaAsserts.operator(caught.value, contains=("redeploy gate",))
 
     def _assert_compose_stream_paths(self, shell) -> None:
         shell.compose.reset_mock()

@@ -57,7 +57,7 @@ class AcmeCertHealth:
                 "edge.http is null (ACME HTTP-01 needs published :80)",
                 fix=(
                     "set edge.http: 80 in ~/.raft/host/settings.yaml, then "
-                    "`raft gate recreate`"
+                    "`raft redeploy gate`"
                 ),
             )
         if not (acme.email or "").strip():

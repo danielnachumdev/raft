@@ -69,7 +69,7 @@ spec:
 2. Keep `edge.http` (default 80) and `edge.https` (default 443) published — HTTP-01 is answered by the **gate**, not the App (works while scale-to-zero).
 3. Set `acme.email` in `~/.raft/host/settings.yaml` (see [`examples/settings.yaml`](../examples/settings.yaml)). Production directory is the default; use the Let's Encrypt **staging** URL for labs.
 4. `raft apply …` (deploy on). Issuance is best-effort after the gate is up — apply does **not** fail if ACME is slow/down; check `raft doctor` / `raft doctor <name>`.
-5. Renewal is the always-on controller (`acme:<name>` jobs). Gate reloads nginx only — never `raft gate recreate` for cert rotation.
+5. Renewal is the always-on controller (`acme:<name>` jobs). Gate reloads nginx only — never `raft redeploy gate` for cert rotation.
 
 **Not shipped:** DNS-01 / wildcards. If port 80 cannot be opened to the public internet, use `tls: origin` behind a proxy, or terminate TLS elsewhere — do not expect raft to issue via DNS-01 in v1.
 
@@ -176,6 +176,6 @@ spec:
 | Location | Relative to app root; no absolute paths or `..` |
 | Auto-refresh | Include a meta-refresh (or equivalent); raft does not inject it |
 | Timeout page | Always product-default (diagnostic SSI id) — not overridable |
-| Delivery | `raft render` copies into `generated/nginx/gate-http/holding/<name>.html` for the gate Host (reload path; no `gate recreate`) |
+| Delivery | `raft render` copies into `generated/nginx/gate-http/holding/<name>.html` for the gate Host (reload path; no `redeploy gate`) |
 
 Depth: [`AGENTS.md`](../AGENTS.md) (`spec.scaling` + custom holding page).

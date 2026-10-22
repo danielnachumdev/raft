@@ -76,7 +76,7 @@ When a release ships deprecation cleanup (see issue #312), operators should:
 3. **Upgrade** (`raft update` / install from latest Release wheel). Replace automation using **`RAFT_BRANCH`** with **`RAFT_REF`** / `--ref`.
 4. Re-save **Settings** once (drops any leftover `acl:` key from `host/settings.yaml`). Confirm GitHub assist uses OAuth accounts only (`host/serve/github-accounts.json`; old `github-session.json` is no longer migrated — re-login if needed).
 5. Trends: only `raft-serve-trends-dashboards` is read; clear stale `raft-serve-trends-views` localStorage if desired.
-6. Run **`raft doctor`** / **`raft status`**; prefer gate **reload** unless published edge ports changed (`raft gate recreate`).
+6. Run **`raft doctor`** / **`raft status`**; prefer gate **reload** unless published edge ports changed (`raft redeploy gate`).
 
 ## Merge enforcement
 

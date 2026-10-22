@@ -70,7 +70,7 @@ Appearance, Updates, and Storage are UI-only (not `settings.yaml` sections).
 | Appearance | Dashboard light/dark theme | Browser `localStorage` only; applies immediately (not in `settings.yaml`) |
 | Updates (UI) | Check / apply raft package updates | Reinstalls CLI via `install.sh`; stack may need render/redeploy |
 | `logging` | Host CLI file log | Applies on next CLI process |
-| `edge` | Gate published http / https / streams | **Ports change → `raft gate recreate`** |
+| `edge` | Gate published http / https / streams | **Ports change → `raft redeploy gate`** |
 | `healing` | Controller self-heal | Next heal job tick |
 | `metrics` | Resource + HTTP sampling | Next metrics job tick |
 | `serviceLogs` | Retained Compose stdout | Next shipper tick |
@@ -136,7 +136,7 @@ Response shape (GET/PUT JSON and YAML):
     {
       "code": "edge.ports",
       "severity": "warn",
-      "message": "Published edge ports … Run `raft gate recreate` …"
+      "message": "Published edge ports … Run `raft redeploy gate` …"
     }
   ],
   "yaml": "…"

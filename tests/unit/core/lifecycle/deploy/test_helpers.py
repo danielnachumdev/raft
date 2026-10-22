@@ -79,9 +79,10 @@ class TestOrchestratorPolicy(DomainTestCase):
     def _policy_setup(self, _applied_stack) -> None:
         self.orch = self.orchestrator(mock_deps=False)
 
-    def test_redeploy_refuses_gate(self) -> None:
-        with pytest.raises(OperatorError, match="gate recreate"):
+    def test_redeploy_gate_recreates(self) -> None:
+        with patch.object(self.orch, "recreate_gate") as recreate:
             self.orch.redeploy("gate")
+        recreate.assert_called_once()
 
     def test_recreate_gate_requires_running(self) -> None:
         with patch.object(self.orch.docker, "running_services", return_value=["router"]):

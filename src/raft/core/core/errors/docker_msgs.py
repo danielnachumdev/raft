@@ -58,7 +58,7 @@ class DockerMessages:
             "a published port is already in use on this VPS.",
             (
                 "stop the other process, or change edge ports in ~/.raft/host/settings.yaml",
-                "raft gate recreate   # after edge port changes",
+                "raft redeploy gate   # after edge port changes",
                 "raft doctor",
             ),
             detail=detail,
@@ -128,7 +128,7 @@ class DockerMessages:
     @staticmethod
     def nginx_reload_failed_message(role: str, detail: str = "") -> str:
         if role == "gate":
-            fix = "Fix: raft gate recreate"
+            fix = "Fix: raft redeploy gate"
         else:
             fix = "Fix: docker compose -f ~/.raft/compose.yaml restart router"
         body = f"{role} nginx config was valid but reload failed.\n"

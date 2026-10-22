@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from raft.core.core.errors.cta import OperatorError
 from raft.services.cli import RaftCLI
 
 from tests.unit.services.cli.base import CliTestCase
@@ -35,14 +34,13 @@ class TestCliRedeploy(CliTestCase):
             assert RaftCLI()._invoke_fire(["redeploy", "dashboard"]) == 0
         actions.redeploy.assert_called_once_with("dashboard")
 
-    def test_redeploy_gate_refused(self) -> None:
-        actions = MagicMock()
-        actions.redeploy.side_effect = OperatorError(
-            "refusing to redeploy `gate`", has_fix=False
-        )
-        with self.patched_deps(ServiceActions=actions):
-            with pytest.raises(RuntimeError, match="gate"):
-                RaftCLI()._invoke_fire(["redeploy", "gate"])
+    def test_redeploy_gate_dispatch(self) -> None:
+        actions = self._actions_ok("raft-gate")
+        with patch("raft.core.core.ui.OperatorSay.say"), self.patched_deps(
+            ServiceActions=actions
+        ):
+            assert RaftCLI()._invoke_fire(["redeploy", "gate"]) == 0
+        actions.redeploy.assert_called_once_with("gate")
 
     def test_redeploy_requires_app(self) -> None:
         with self.patched_deps():

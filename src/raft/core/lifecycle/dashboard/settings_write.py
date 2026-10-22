@@ -153,7 +153,7 @@ class DashboardSettingsWriter:
                 "dashboard public password auth requires a password.\n"
                 "Fix: set dashboard.auth.passwordHash in Settings "
                 "(plaintext is hashed on save), set enabled: true, "
-                "then raft render + raft start dashboard",
+                "then raft render + raft up dashboard",
                 has_fix=False,
             )
         if cfg.auth.mode == "oauth":
