@@ -4,7 +4,7 @@ Contributor bootstrap for raft tooling and agent capabilities.
 
 | Script | Purpose |
 |--------|---------|
-| [setup.sh](setup.sh) | Full setup: runs prerequisites, then `capa install` from `capabilities.yaml` |
+| [setup.sh](setup.sh) | Full setup: prerequisites, ensure `local/` (+ git init/`main` if needed), then `capa install` from `capabilities.yaml` |
 | [prerequisites.sh](prerequisites.sh) | Install/verify `gh`, `uv`, Node/npm, `agent-browser`, `capa`; verify `docker` |
 
 ```bash

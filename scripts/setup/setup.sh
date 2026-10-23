@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-# Contributor setup for raft: prerequisites, then capa install from capabilities.yaml.
+# Contributor setup for raft: prerequisites, local/ workspace, then capa install.
 #
 # Usage (from repo root):
 #   ./scripts/setup/setup.sh
 #
 # Run steps independently:
 #   ./scripts/setup/prerequisites.sh   # gh, uv, Node, agent-browser, capa; verify docker
+#
+# Also ensures REPO/local/ exists and, on first run, initializes a git repo there
+# with default branch main (skips init if local/.git already present).
 #
 # Optional env:
 #   NODE_VERSION, NO_COLOR, CAPA_INSTALL_ARGS (extra flags for capa install, e.g. -e)
@@ -119,9 +122,35 @@ install_capa_capabilities() {
   die "capa install failed."
 }
 
+# Ensure REPO/local/ exists. If it is not already its own git repo (local/.git),
+# initialize one and set the default branch to main. Nested under the raft
+# checkout, so do not use rev-parse alone — that would see the parent repo.
+ensure_local_workspace() {
+  local local_dir="${REPO_ROOT}/local"
+  step "Ensuring local/ workspace"
+  mkdir -p "${local_dir}"
+  if [[ -e "${local_dir}/.git" ]]; then
+    ok "local/"
+    return 0
+  fi
+  if ! command -v git >/dev/null 2>&1; then
+    die "git not on PATH; required to initialize ${local_dir}"
+  fi
+  (
+    cd "${local_dir}"
+    git init
+    # Portable (pre–Git 2.28): avoid `git init -b`; set HEAD without needing commits.
+    git symbolic-ref HEAD refs/heads/main
+  ) || die "git init failed in ${local_dir}"
+  ok "local/ (git init, branch main)"
+}
+
 main() {
   step "Checking prerequisites"
   "${SETUP_DIR}/prerequisites.sh"
+  echo
+
+  ensure_local_workspace
   echo
 
   install_capa_capabilities
