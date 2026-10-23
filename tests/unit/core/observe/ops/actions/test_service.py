@@ -145,10 +145,12 @@ class TestServiceActions(RaftTestCase):
         assert result["action"] == "redeploy"
         assert result["service"] == "raft-gate"
 
-    def test_redeploy_controller_refused(self) -> None:
-        actions, _docker, _orch = self._actions()
-        with pytest.raises(OperatorError, match="controller"):
-            actions.redeploy("controller")
+    def test_redeploy_controller(self) -> None:
+        actions, _docker, orch = self._actions()
+        result = actions.redeploy("controller")
+        orch.redeploy_controller.assert_called_once()
+        assert result["action"] == "redeploy"
+        assert result["service"] == "raft-controller"
 
     def test_redeploy_dashboard_when_enabled(self) -> None:
         self._write_dashboard_enabled(True)

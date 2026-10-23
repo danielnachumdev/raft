@@ -236,3 +236,22 @@ class TestOrchRedeploy(OrchestratorTestCase):
             side_effect=RuntimeError("acme boom"),
         ):
             self.orch._ensure_acme_best_effort(["app"])
+
+    def test_redeploy_controller_rebuilds_under_stack_lock(self) -> None:
+        orch = self.orch
+        mod = "raft.core.lifecycle.deploy.orchestrator.controller_redeploy"
+        with patch(f"{mod}.StackLock"):
+            with patch(f"{mod}.StackRenderer") as renderer:
+                renderer.return_value.render = MagicMock()
+                with patch(f"{mod}.GraphEventStore") as store_cls:
+                    with patch(f"{mod}.OperatorSay.say") as say:
+                        orch.redeploy_controller()
+        orch.docker.rebuild_service.assert_called_once_with("raft-controller")
+        store_cls.return_value.record_deployment.assert_called_once_with(
+            service="raft-controller",
+            app="controller",
+            ref="-",
+            label="Redeploy controller",
+            action="redeploy",
+        )
+        say.assert_called_once_with("controller redeployed", style="ok")

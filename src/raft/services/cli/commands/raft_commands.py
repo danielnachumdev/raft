@@ -237,7 +237,7 @@ class RaftCLICommands:
         ref: Optional[str] = None,
         force_sync: bool = False,
     ) -> None:
-        """Redeploy one running app, router, gate, or enabled always-on dashboard."""
+        """Redeploy one running app, router, gate, controller, or dashboard."""
         name = (app or "").strip()
         if not name:
             raise DomainErrors.redeploy_requires_app()

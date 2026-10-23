@@ -118,7 +118,7 @@ raft serve --stop
 | `raft serve` | Localhost ops dashboard (default `:8787`) |
 | `raft logs [name…]` | Container stdout/stderr (`-f` to follow) |
 | `raft up` / `raft down` | Whole stack; with `NAME` = per-service power (down stops, does not remove) |
-| `raft redeploy <name>` | Refresh a running app, router, dashboard, or **gate** (edge ports; brief downtime) |
+| `raft redeploy <name>` | Refresh a running app, router, dashboard, controller, or **gate** (edge ports; brief downtime) |
 | `raft sync` / `raft render` | Pipeline only (sources / Compose+nginx); not substitutes for redeploy |
 | `raft firewall …` | Ordered gate rules (`host/firewall/rules.yaml`); Save/CLI → reload, never recreate |
 | `raft alerts …` | Alert rules (`host/alerts/rules.yaml`) → notification channels |
