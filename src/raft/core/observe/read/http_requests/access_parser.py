@@ -1,4 +1,4 @@
-"""Parse gate ``raft_http`` access-log lines (legacy + enriched)."""
+"""Parse gate ``raft_http`` access-log lines (enriched format only)."""
 
 import re
 from dataclasses import dataclass
@@ -7,7 +7,6 @@ from typing import Match, Optional, Tuple
 _ENRICHED = re.compile(
     r"^(\S+)\s+(\d+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+\"(.*)\"\s*$"
 )
-_LEGACY = re.compile(r"^(\S+)\s+(\d+)\s+(\S+)\s*$")
 
 DEFAULT_PATH_MAX = 256
 DEFAULT_UA_MAX = 160
@@ -25,7 +24,7 @@ class HttpAccessRecord:
     path: Optional[str] = None
     client_ip: Optional[str] = None
     user_agent: Optional[str] = None
-    enriched: bool = False
+    enriched: bool = True
 
     @property
     def duration_ms(self) -> float:
@@ -61,15 +60,12 @@ class HttpAccessLineParser:
         text = raw.strip()
         if not text:
             return None
-        enriched = _ENRICHED.match(text)
-        if enriched:
-            return self._from_enriched(enriched)
-        legacy = _LEGACY.match(text)
-        if legacy:
-            return self._from_legacy(legacy)
-        return None
+        match = _ENRICHED.match(text)
+        if match is None:
+            return None
+        return self._from_match(match)
 
-    def _from_enriched(self, match: Match) -> Optional[HttpAccessRecord]:
+    def _from_match(self, match: Match) -> Optional[HttpAccessRecord]:
         duration_s, status = self._duration_status(match.group(1), match.group(2))
         if duration_s is None or status is None:
             return None
@@ -85,17 +81,7 @@ class HttpAccessLineParser:
             path=self._clip(match.group(6), self._path_max),
             client_ip=match.group(7),
             user_agent=self._clip(match.group(8), self._ua_max),
-            enriched=True,
         )
-
-    def _from_legacy(self, match: Match) -> Optional[HttpAccessRecord]:
-        duration_s, status = self._duration_status(match.group(1), match.group(2))
-        if duration_s is None or status is None:
-            return None
-        host = match.group(3).lower()
-        if not host or host == "-":
-            return None
-        return HttpAccessRecord(duration_s=duration_s, status=status, host=host)
 
     @staticmethod
     def _duration_status(
