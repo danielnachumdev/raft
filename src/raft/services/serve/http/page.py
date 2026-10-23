@@ -13,6 +13,7 @@ from raft.core.observe.ops.actions import ServiceActions
 from raft.core.observe.ops.logs import DEFAULT_LOG_TAIL, Logs
 from raft.core.observe.ops.status import Status
 from raft.core.observe.read import (
+    AppDefinitionRead,
     HttpMetricsRead,
     HttpRequestsRead,
     MetricsRead,
@@ -28,6 +29,7 @@ from .paths import ServePaths
 # GET /api/metrics/http — HTTP edge request series from http.jsonl.
 # GET /api/service/{name} — one Compose service from the status snapshot.
 # GET /api/service/{name}/http-requests — recent per-request HTTP rows (Host apps).
+# GET /api/service/{name}/definition — applied App manifest YAML (services/*/app.yaml).
 # GET /api/service/{name}/logs — container stdout/stderr tail (Logs.snapshot).
 # GET /api/service/{name}/logs/follow — SSE follow (Logs.follow; CLI ``-f``).
 # POST /api/service/{name}/up|down|redeploy — mutative lifecycle actions.
@@ -58,6 +60,7 @@ class ServePage:
         self._metrics = MetricsRead(stack.root)
         self._http_metrics = HttpMetricsRead(stack.root)
         self._http_requests = HttpRequestsRead(stack)
+        self._definition = AppDefinitionRead(stack)
         self._actions = actions or ServiceActions(stack)
         self._logs = logs or Logs(stack)
 
@@ -89,6 +92,7 @@ class ServePage:
         self._actions.bind_stack(stack)
         self._logs.bind_stack(stack)
         self._http_requests.bind_stack(stack)
+        self._definition.bind_stack(stack)
 
     def api_service_http_requests(
         self, name: str, limit: int = _HTTP_REQ_DEFAULT
@@ -99,6 +103,15 @@ class ServePage:
         payload = self._http_requests.for_service(
             name, limit=self._clamp_http_limit(limit)
         )
+        if payload.get("unknown"):
+            raise HTTPException(status_code=404, detail=f"service '{name}' not found")
+        return payload
+
+    def api_service_definition(self, name: str) -> Dict[str, Any]:
+        """Durable applied App manifest YAML for diagnostics."""
+        self._read.collect(refresh_apps=True)
+        self._adopt_stack(self._read.stack)
+        payload = self._definition.for_service(name)
         if payload.get("unknown"):
             raise HTTPException(status_code=404, detail=f"service '{name}' not found")
         return payload

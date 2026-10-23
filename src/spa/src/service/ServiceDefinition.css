@@ -1,0 +1,55 @@
+.service-definition-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.service-definition-head h2 {
+  margin: 0;
+}
+
+.service-definition-path {
+  font-size: 0.85rem;
+}
+
+.service-definition-yaml {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  overflow: auto;
+  max-height: min(36rem, 70vh);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2, var(--bg));
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  white-space: pre;
+  color: var(--fg);
+}
+
+.service-definition-yaml .yh-comment {
+  color: var(--yh-comment);
+}
+
+.service-definition-yaml .yh-key {
+  color: var(--yh-key);
+}
+
+.service-definition-yaml .yh-punct {
+  color: var(--yh-punct);
+}
+
+.service-definition-yaml .yh-string {
+  color: var(--yh-string);
+}
+
+.service-definition-yaml .yh-number {
+  color: var(--yh-number);
+}
+
+.service-definition-yaml .yh-bool,
+.service-definition-yaml .yh-null {
+  color: var(--yh-bool);
+}

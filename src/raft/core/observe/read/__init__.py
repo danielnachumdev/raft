@@ -50,10 +50,16 @@ rows for Host-routed Apps (``expose: http`` + ``publicHost``) via
 ``HttpRequestsRead`` (tail of ``host/metrics/gate-http/access.log``). Trends
 HTTP stays aggregate-only.
 
+Serve ``GET /api/service/{name}/definition`` returns the durable applied
+App manifest YAML from ``services/<name>/app.yaml`` via ``AppDefinitionRead``
+(raw on-disk text for diagnostics). Edge/control-plane Compose ids are
+ineligible; unknown names 404 at the serve adapter.
+
 Doctor JSON is deferred for a full dashboard health view; see
 ``DoctorRead.intended_payload_shape`` and ``DoctorRead.from_results``.
 """
 
+from .definition import AppDefinitionRead
 from .depends import ServeDependsMap
 from .doctor import DoctorRead
 from .external_urls import ExternalUrlBuilder
@@ -64,6 +70,7 @@ from .snapshot_view import ServeSnapshotView
 from .status import StatusRead
 
 __all__ = [
+    "AppDefinitionRead",
     "DoctorRead",
     "ExternalUrlBuilder",
     "HttpMetricsRead",
