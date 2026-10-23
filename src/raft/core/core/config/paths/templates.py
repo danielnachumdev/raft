@@ -36,14 +36,6 @@ class ProductTemplateSync:
         self._sync_python_build(home, package_root, CONTROLLER_BUILD_DIR)
         self._sync_python_build(home, package_root, DASHBOARD_BUILD_DIR)
 
-    def _sync_controller_package(self, home: Path, package_root: Path) -> None:
-        """Backward-compatible name used by unit tests."""
-        self._sync_python_build(home, package_root, CONTROLLER_BUILD_DIR)
-
-    def _sync_controller_pyproject(self, home: Path, package_root: Path) -> None:
-        """Backward-compatible name used by unit tests."""
-        self._sync_build_pyproject(home, package_root, CONTROLLER_BUILD_DIR)
-
     def _sync_python_build(
         self, home: Path, package_root: Path, build_dir: str
     ) -> None:
