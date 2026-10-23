@@ -41,6 +41,7 @@ class PrereqSmoke:
         if compose.returncode != 0:
             raise RuntimeError(
                 "docker compose plugin missing or broken inside raft-controller.\n"
-                "Fix: rebuild raft-controller image (`raft down && raft up`)"
+                "Fix: rebuild raft-controller image "
+                "(`raft redeploy controller`)"
             )
         logger.info("docker compose reachable")

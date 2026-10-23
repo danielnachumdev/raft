@@ -22,6 +22,7 @@ from raft.core.lifecycle.render.stack_renderer import StackRenderer
 from raft.core.lifecycle.sync import SourceSync
 from raft.core.platform.locking import StackLock
 from ..wait import WaitUntil
+from .controller_redeploy import ControllerRedeploy
 from .deploy import OrchestratorDeploy
 from .ready import AppReadyWait
 
@@ -250,6 +251,10 @@ class Orchestrator(OrchestratorDeploy):
         """Rebuild ``raft-dashboard`` so the host install stamp is in the image."""
         with StackLock(self.stack.root):
             self._rebuild_dashboard_locked()
+
+    def redeploy_controller(self) -> None:
+        """Rebuild ``raft-controller`` so the host install stamp is in the image."""
+        ControllerRedeploy(self.stack, self.docker).run()
 
     def _rebuild_dashboard_locked(self) -> None:
         from raft.core.lifecycle.acme.ensure import AcmeEnsure

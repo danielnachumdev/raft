@@ -83,12 +83,12 @@ class TestServeAppActions(RaftTestCase):
         stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))
         actions = MagicMock()
         actions.redeploy.side_effect = OperatorError(
-            "refusing to redeploy `controller`", has_fix=False
+            "cannot redeploy demo-api", has_fix=False
         )
         client = serve_fx.client_with_actions(stack, actions)
-        response = client.post("/api/service/raft-controller/redeploy")
+        response = client.post("/api/service/site/redeploy")
         assert response.status_code == 400
-        assert "controller" in response.json()["detail"]
+        assert "demo-api" in response.json()["detail"]
 
     def test_api_service_down_operator_error_is_400(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))

@@ -67,6 +67,7 @@ class TestSelfUpdate(DomainTestCase):
         next_body = " ".join(c.args[0] for c in say.call_args_list if c.args)
         assert "raft render" in next_body and "raft doctor" in next_body
         assert "raft redeploy dashboard" in next_body
+        assert "raft redeploy controller" in next_body
         events = GraphEventStore(self.stack.root).events_in_window(from_ts=_EPOCH)
         assert [e.kind for e in events] == [KIND_UPDATE]
 

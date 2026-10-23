@@ -70,7 +70,8 @@ class DomainErrors:
             f"     # restarted containers — run raft down again, then:\n"
             f"     docker compose -f ~/.raft/compose.yaml ps   # expect empty / Exited\n"
             f"     raft up\n"
-            f"     # targeted update instead of full rebuild: raft redeploy <app|router>",
+            f"     # targeted update instead of full rebuild: "
+            f"raft redeploy <app|router|dashboard|controller>",
             has_fix=False,
         )
 
@@ -93,7 +94,7 @@ class DomainErrors:
     def redeploy_requires_app() -> OperatorError:
         return OperatorError(
             "redeploy requires APP.\n"
-            "Fix: raft redeploy <app>|router|dashboard"
+            "Fix: raft redeploy <app>|router|dashboard|controller"
         )
 
     @staticmethod

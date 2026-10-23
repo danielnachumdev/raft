@@ -34,6 +34,14 @@ class TestCliRedeploy(CliTestCase):
             assert RaftCLI()._invoke_fire(["redeploy", "dashboard"]) == 0
         actions.redeploy.assert_called_once_with("dashboard")
 
+    def test_redeploy_controller_dispatch(self) -> None:
+        actions = self._actions_ok("raft-controller")
+        with patch("raft.core.core.ui.OperatorSay.say"), self.patched_deps(
+            ServiceActions=actions
+        ):
+            assert RaftCLI()._invoke_fire(["redeploy", "controller"]) == 0
+        actions.redeploy.assert_called_once_with("controller")
+
     def test_redeploy_dashboard_oneshot_skips_say(self) -> None:
         actions = MagicMock()
         actions.redeploy.return_value = {
