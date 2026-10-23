@@ -53,3 +53,7 @@ export {
   type HttpRequestRow,
   type HttpRequestsPayload,
 } from "./httpRequests.ts";
+export {
+  fetchServiceDefinition,
+  type ServiceDefinitionPayload,
+} from "./definition.ts";
