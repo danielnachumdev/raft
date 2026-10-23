@@ -9,6 +9,7 @@ from raft.core.core.config import (
     find_package_root,
     sync_product_templates,
 )
+from raft.core.core.config.paths.constants import CONTROLLER_BUILD_DIR
 from raft.core.core.config.paths.templates import ProductTemplateSync
 
 from tests.unit.base import RaftTestCase
@@ -20,7 +21,9 @@ class TestProductTemplateSync(RaftTestCase):
         ensure_raft_home(home)
         marker = home / "controller" / "raft" / "stale-marker"
         marker.write_text("old\n", encoding="utf-8")
-        ProductTemplateSync()._sync_controller_package(home, find_package_root())
+        ProductTemplateSync()._sync_python_build(
+            home, find_package_root(), CONTROLLER_BUILD_DIR
+        )
         assert not marker.is_file()
         assert (home / "controller" / "raft" / "__init__.py").is_file()
 
@@ -85,7 +88,7 @@ class TestProductTemplateSync(RaftTestCase):
         assert "raft-controller-deps" in text
         assert "fire" in text and "PyYAML" in text
 
-    def test_sync_controller_pyproject_keeps_existing_when_no_source(
+    def test_sync_build_pyproject_keeps_existing_when_no_source(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         home = self.tmp_path / "home"
@@ -97,10 +100,12 @@ class TestProductTemplateSync(RaftTestCase):
         monkeypatch.setattr(
             syncer._deps, "write_from_installed", self._raise_no_dist
         )
-        syncer._sync_controller_pyproject(home, self.tmp_path / "share")
+        syncer._sync_build_pyproject(
+            home, self.tmp_path / "share", CONTROLLER_BUILD_DIR
+        )
         assert dest.read_text(encoding="utf-8") == 'name = "kept"\n'
 
-    def test_sync_controller_pyproject_raises_when_nothing_to_keep(
+    def test_sync_build_pyproject_raises_when_nothing_to_keep(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         home = self.tmp_path / "home"
@@ -110,7 +115,9 @@ class TestProductTemplateSync(RaftTestCase):
             syncer._deps, "write_from_installed", self._raise_no_dist
         )
         with pytest.raises(FileNotFoundError, match="no dist"):
-            syncer._sync_controller_pyproject(home, self.tmp_path / "share")
+            syncer._sync_build_pyproject(
+                home, self.tmp_path / "share", CONTROLLER_BUILD_DIR
+            )
 
     @staticmethod
     def _raise_no_dist(_dest: Path) -> None:
