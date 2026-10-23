@@ -19,24 +19,29 @@ from tests.unit.base import AppSpecExtras, AppliedInventory, RaftTestCase
 class TestHttpRequestsRead(RaftTestCase):
     def test_eligible_filters_hosts_newest_first(self) -> None:
         stack = self._stack_with_demo()
-        self._write_log(
-            stack.root,
+        self._write_log(stack.root, self._mixed_host_access_log())
+        payload = HttpRequestsRead(stack).for_service("demo-api", limit=10)
+        assert payload["eligible"] is True
+        assert len(payload["requests"]) == 3
+        assert payload["requests"][0]["path"] == "/d"
+        assert payload["requests"][0]["enriched"] is True
+        assert payload["requests"][1]["path"] == "/c"
+        assert payload["requests"][2]["path"] == "/a"
+
+    @staticmethod
+    def _mixed_host_access_log() -> str:
+        return (
             "\n".join(
                 [
                     '0.01 200 demo-api.test 2026-10-13T01:00:00+00:00 GET /a 192.0.2.10 "A"',
                     '0.02 200 other.test 2026-10-13T01:00:01+00:00 GET /b 192.0.2.11 "B"',
                     '0.03 200 demo-api.test 2026-10-13T01:00:02+00:00 GET /c 192.0.2.12 "C"',
-                    "0.04 200 demo-api.test",
+                    '0.04 200 demo-api.test 2026-10-13T01:00:03+00:00 GET /d 192.0.2.13 "D"',
+                    "0.05 200 demo-api.test",  # pre-enrichment shape; skipped
                 ]
             )
-            + "\n",
+            + "\n"
         )
-        payload = HttpRequestsRead(stack).for_service("demo-api", limit=10)
-        assert payload["eligible"] is True
-        assert len(payload["requests"]) == 3
-        assert payload["requests"][0]["enriched"] is False
-        assert payload["requests"][1]["path"] == "/c"
-        assert payload["requests"][2]["path"] == "/a"
 
     def test_worker_ineligible(self) -> None:
         stack = self._worker_stack()

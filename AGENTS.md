@@ -176,6 +176,7 @@ Upstream files: `generated/nginx/upstreams/<app>-<port>.conf` mounted into the r
 - **Release tags + wheels are the operator SoT** (`vX.Y.Z` GitHub Releases via PR labels `bumpMajor` / `bumpMinor` / `bumpPatch` / `noBump`). Publish bakes SPA and attaches a version-aligned `.whl`. Do not commit hashed `share/serve/spa/` assets.
 - **`package-data`** must track `core/platform/share/…` (see `pyproject.toml`). Meta test fails if globs match nothing; Release/`scripts/release/build_release_wheel.sh` asserts the wheel contains SPA assets.
 - **`raft update`** curls `install.sh` and prefers the **latest Release wheel** (same as bare `install.sh`; git@tag fallback). Use `raft update --ref <tag\|branch\|sha>` (or `RAFT_REF`) to pin. Broken wheel/package-data on a released tag bricks installs of that tag; recovery: `curl …/install.sh | bash -s -- --ref main` then fix forward.
+- **Breaking cleanup (#312):** operator upgrade steps (backup → Firewall Save → update → doctor; `RAFT_REF` not `RAFT_BRANCH`; access-log rotate) live in [`README.md`](README.md) **Upgrade notes**. Do not resurrect a `docs/` tree for release checklists.
 - Fresh-install e2e: `tests/e2e/fresh_install/` — bake SPA then `RAFT_E2E_REF=workspace` (CI and local packaging check).
 - README demo video: GitHub only plays `<video>` when `src` is a **user-attachments** URL; keep `assets/raft-demo.mp4` as clone fallback. Do not call it “promo” in user-facing copy.
 
