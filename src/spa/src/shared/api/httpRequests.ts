@@ -12,7 +12,6 @@ export type HttpRequestRow = {
   client_ip: string | null;
   host: string;
   user_agent: string | null;
-  enriched: boolean;
 };
 
 export type HttpRequestsPayload = {

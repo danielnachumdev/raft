@@ -1,10 +1,10 @@
-"""Parse gate ``raft_http`` access-log lines (enriched format only)."""
+"""Parse gate ``raft_http`` access-log lines."""
 
 import re
 from dataclasses import dataclass
 from typing import Match, Optional, Tuple
 
-_ENRICHED = re.compile(
+_LINE = re.compile(
     r"^(\S+)\s+(\d+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+\"(.*)\"\s*$"
 )
 
@@ -24,7 +24,6 @@ class HttpAccessRecord:
     path: Optional[str] = None
     client_ip: Optional[str] = None
     user_agent: Optional[str] = None
-    enriched: bool = True
 
     @property
     def duration_ms(self) -> float:
@@ -40,7 +39,6 @@ class HttpAccessRecord:
             "client_ip": self.client_ip,
             "host": self.host,
             "user_agent": self.user_agent,
-            "enriched": self.enriched,
         }
 
 
@@ -60,7 +58,7 @@ class HttpAccessLineParser:
         text = raw.strip()
         if not text:
             return None
-        match = _ENRICHED.match(text)
+        match = _LINE.match(text)
         if match is None:
             return None
         return self._from_match(match)
