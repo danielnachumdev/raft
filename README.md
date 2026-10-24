@@ -136,13 +136,13 @@ raft serve --stop
 
 ## Upgrade notes (breaking removals)
 
-When upgrading across the #312 cleanup (flat ACL / install aliases / enriched access logs):
+When upgrading across the #312 cleanup (flat ACL / install aliases / access-log parse):
 
 1. **Backup** `~/.raft/` (especially `host/settings.yaml`, `host/firewall/`, `services/`, and leftover `state/acl/` if present).
 2. **Before upgrade** (recommended): open serve **Firewall** and **Save** once so durable `host/firewall/rules.yaml` exists. Flat ACL migrate-on-load is gone — leftover `acl.gate` / `state/acl/` is ignored.
 3. **Upgrade** (`raft update` / install from the latest Release wheel). Replace automation that used **`RAFT_BRANCH`** with **`RAFT_REF`** / `--ref`.
 4. Re-save **Settings** once (drops any leftover `acl:` key). GitHub assist uses OAuth accounts only (`host/serve/github-accounts.json`; old `github-session.json` is not migrated — re-login if needed).
-5. **Access logs:** gate HTTP inspection reads the enriched `raft_http` format only. Rotate or wipe old gate access-log files under `~/.raft/` if pre-enrichment lines remain (they are skipped, not dual-parsed).
+5. **Access logs:** gate HTTP inspection parses the current `raft_http` line shape. Rotate or wipe old gate access-log files under `~/.raft/` if short non-matching lines remain (they are skipped).
 6. Trends: only `raft-serve-trends-dashboards` is read; clear stale `raft-serve-trends-views` localStorage if desired.
 7. Run **`raft doctor`** / **`raft status`**; prefer gate **reload** unless published edge ports changed (`raft redeploy gate`).
 

@@ -24,7 +24,6 @@ class TestHttpRequestsRead(RaftTestCase):
         assert payload["eligible"] is True
         assert len(payload["requests"]) == 3
         assert payload["requests"][0]["path"] == "/d"
-        assert payload["requests"][0]["enriched"] is True
         assert payload["requests"][1]["path"] == "/c"
         assert payload["requests"][2]["path"] == "/a"
 
@@ -37,7 +36,7 @@ class TestHttpRequestsRead(RaftTestCase):
                     '0.02 200 other.test 2026-10-13T01:00:01+00:00 GET /b 192.0.2.11 "B"',
                     '0.03 200 demo-api.test 2026-10-13T01:00:02+00:00 GET /c 192.0.2.12 "C"',
                     '0.04 200 demo-api.test 2026-10-13T01:00:03+00:00 GET /d 192.0.2.13 "D"',
-                    "0.05 200 demo-api.test",  # pre-enrichment shape; skipped
+                    "0.05 200 demo-api.test",  # short non-matching line; skipped
                 ]
             )
             + "\n"

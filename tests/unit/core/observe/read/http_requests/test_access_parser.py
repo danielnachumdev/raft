@@ -4,14 +4,13 @@ from raft.core.observe.read.http_requests import HttpAccessLineParser
 
 
 class TestHttpAccessLineParser:
-    def test_enriched_line(self) -> None:
+    def test_parses_line(self) -> None:
         line = (
             '0.012 200 demo-api.test 2026-10-13T01:00:00+00:00 GET /health '
             '192.0.2.10 "DemoAgent/1.0"'
         )
         row = HttpAccessLineParser().parse(line)
         assert row is not None
-        assert row.enriched is True
         assert row.host == "demo-api.test"
         assert row.method == "GET"
         assert row.path == "/health"
@@ -19,8 +18,7 @@ class TestHttpAccessLineParser:
         assert row.duration_ms == 12.0
         assert row.to_api_row()["user_agent"] == "DemoAgent/1.0"
 
-    def test_rejects_pre_enrichment_shape(self) -> None:
-        """Short pre-enrichment lines are not readable; rotate old access logs."""
+    def test_rejects_short_line(self) -> None:
         assert HttpAccessLineParser().parse("0.01 404 demo-api.test") is None
 
     def test_rejects_junk_and_blank(self) -> None:
@@ -39,7 +37,7 @@ class TestHttpAccessLineParser:
         )
         assert parser.parse(bad) is None
 
-    def test_rejects_enriched_dash_host(self) -> None:
+    def test_rejects_dash_host(self) -> None:
         line = (
             '0.01 200 - 2026-10-13T01:00:00+00:00 GET /x 192.0.2.10 "UA"'
         )
