@@ -1,14 +1,14 @@
 # Alert rules sample → host/alerts/rules.yaml
 # Apply: raft alerts apply --file examples/alerts/rules.yaml
-# (or Settings → Alerts → Import). Configure notification channels first
-# (Settings → Notifications / raft notifications …).
+# (or Alerts → Import / Alerts → Syntax for YAML+JSON). See README.md.
+# Channels are optional — rules evaluate with channelIds: [].
 #
 # Primer:
 #   signal   — catalog source (metrics.http, metrics.resources,
 #              control.container_status, …)
 #   for      — condition must stay true this long before the rule fires
 #   cooldown — silence before re-notifying the same instance
-#   channelIds — deliver to these channel ids; omit / [] = every enabled channel
+#   channelIds — omit / [] = every enabled channel when any exist
 #
 # Controller evaluates under host/alerts/ (rules + runtime). If status shows
 # stale: raft doctor, then raft up (controller needs the host/alerts mount).

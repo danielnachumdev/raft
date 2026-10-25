@@ -114,6 +114,17 @@
   font-size: 0.82rem;
 }
 
+.alert-form .linkish {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent, var(--link, #2563eb));
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .alert-condition-json[aria-invalid="true"] {
   border-color: var(--danger);
 }
