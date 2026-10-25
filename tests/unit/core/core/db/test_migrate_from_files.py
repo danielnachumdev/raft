@@ -15,7 +15,7 @@ from raft.core.core.db.models import (
 )
 from raft.core.core.db.session import DbSessionFactory
 from raft.core.core.models.firewall import FirewallDocument
-from raft.core.core.models.state.firewall_dismissals import FirewallDismissalStore
+from raft.core.core.models.state.recommendation_dismissals import FirewallDismissalStore
 from raft.core.core.models.state.firewall_store import FirewallStore
 from tests.unit.base import RaftTestCase
 from tests.unit.core.lifecycle.firewall.helpers import rule_dict
