@@ -39,3 +39,22 @@ class LockPaths:
     def app(self, name: str) -> Path:
         safe = name.replace("/", "_").replace("\\", "_")
         return self.directory() / f"app-{safe}.lock"
+
+    def fifo(self, kind: str) -> Path:
+        return self.directory() / f"fifo-{self._safe(kind)}"
+
+    def fifo_seq(self, kind: str) -> Path:
+        return self.fifo(kind) / "seq.lock"
+
+    def fifo_next(self, kind: str) -> Path:
+        return self.fifo(kind) / "next"
+
+    def fifo_ticket(self, kind: str, ticket: int) -> Path:
+        return self.fifo(kind) / f"ticket-{ticket:020d}"
+
+    def host_job_flight(self, kind: str) -> Path:
+        return self.directory() / f"host-job-{self._safe(kind)}.flight.json"
+
+    @staticmethod
+    def _safe(kind: str) -> str:
+        return kind.replace("/", "_").replace("\\", "_")

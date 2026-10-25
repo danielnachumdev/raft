@@ -10,11 +10,18 @@ Locks live under ``~/.raft/host/locks/`` (``RAFT_DATA_HOME``):
 * ``acl.lock`` — serve API rewrites of ordered firewall before render/reload
 * ``alerts.lock`` — CLI/serve writes to ``host/alerts/rules.yaml``
 * ``dashboard.lock`` — writers of ``host/settings.yaml`` ``dashboard:``
+* ``fifo-<kind>/`` — ticket FCFS exclusive (``FifoLock``); used for ``update`` and
+  short host-job flight claim sections (not plain flock grant order)
+* ``host-job-<kind>.flight.json`` — in-flight detached oneshot id for coalesce
 
 Wait (with timeout) so a later-started deploy still runs after an earlier one
 and becomes the final live state. Contended waiters log ``waiting for … lock``
 once, then ``acquired … lock`` when held. Override budget via
 ``RAFT_LOCK_TIMEOUT_SECONDS``.
+
+Host oneshot flights: claim under a short ``FifoLock``, release before the child
+takes ``stack.lock`` (never hold a host-job FIFO across a rebuild). Detached
+dashboard self-redeploy coalesces to one in-flight job_id.
 """
 
 from .acl_lock import AclLock
@@ -24,6 +31,8 @@ from .app_deploy_lock import AppDeployLock
 from .apps_and_stack_locks import AppsAndStackLocks
 from .dashboard_lock import DashboardLock
 from .exclusive import ExclusiveLock
+from .fifo_lock import FifoLock
+from .host_job_kinds import HostJobKinds
 from .paths import LockPaths
 from .settings_lock import SettingsLock
 from .stack_lock import StackLock
@@ -43,6 +52,8 @@ __all__ = [
     "DashboardLock",
     "ENV_LOCK_TIMEOUT",
     "ExclusiveLock",
+    "FifoLock",
+    "HostJobKinds",
     "LockPaths",
     "LockTimeout",
     "SettingsLock",

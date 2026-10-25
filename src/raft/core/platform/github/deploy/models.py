@@ -60,3 +60,25 @@ class DeployJobStore:
     def get(self, job_id: str) -> Optional[DeployJob]:
         with self._lock:
             return self._jobs.get(job_id)
+
+    def claim_or_create(self, full_name: str, ref: str) -> tuple[DeployJob, bool]:
+        """Return ``(job, coalesced)``; at most one pending/running per full_name."""
+        name = full_name.strip()
+        with self._lock:
+            existing = self._active_unlocked(name)
+            if existing is not None:
+                return existing, True
+            job = DeployJob(id=secrets.token_hex(8), full_name=name, ref=ref)
+            self._jobs[job.id] = job
+            return job, False
+
+    def active_for(self, full_name: str) -> Optional[DeployJob]:
+        """Return an in-flight job for ``full_name`` (pending/running), if any."""
+        with self._lock:
+            return self._active_unlocked(full_name.strip())
+
+    def _active_unlocked(self, full_name: str) -> Optional[DeployJob]:
+        for job in self._jobs.values():
+            if job.full_name == full_name and job.status in ("pending", "running"):
+                return job
+        return None

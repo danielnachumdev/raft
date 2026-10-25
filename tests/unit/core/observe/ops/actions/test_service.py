@@ -167,10 +167,10 @@ class TestServiceActions(RaftTestCase):
     def test_redeploy_dashboard_oneshot_when_in_dashboard(self) -> None:
         self._write_dashboard_enabled(True)
         actions, _docker, orch = self._actions()
-        result, gate, oneshot = self._redeploy_dashboard_oneshot(actions)
+        result, gate, flight = self._redeploy_dashboard_oneshot(actions)
         orch.redeploy_dashboard.assert_not_called()
         gate.ensure.assert_called_once()
-        oneshot.start.assert_called_once_with(
+        flight.start.assert_called_once_with(
             ["raft", "redeploy", "dashboard"],
             with_docker=True,
         )
@@ -180,6 +180,7 @@ class TestServiceActions(RaftTestCase):
             "service": "raft-dashboard",
             "started": True,
             "job_id": "job-abc",
+            "coalesced": False,
         }
 
     def _redeploy_dashboard_oneshot(self, actions: ServiceActions):
@@ -189,12 +190,13 @@ class TestServiceActions(RaftTestCase):
             gate = gate_cls.return_value
             gate.in_dashboard.return_value = True
             with patch(
-                "raft.core.observe.ops.actions.service.HostOneshot"
-            ) as oneshot_cls:
-                oneshot = oneshot_cls.return_value
-                oneshot.start.return_value = "job-abc"
+                "raft.core.observe.ops.actions.service.HostOneshotFlight"
+            ) as flight_cls:
+                flight = flight_cls.return_value
+                started = MagicMock(job_id="job-abc", coalesced=False)
+                flight.start.return_value = started
                 with patch("raft.core.observe.ops.actions.service.Shell"):
-                    return actions.redeploy("dashboard"), gate, oneshot
+                    return actions.redeploy("dashboard"), gate, flight
 
     def test_redeploy_dashboard_refused_when_disabled(self) -> None:
         self._write_dashboard_enabled(False)

@@ -12,7 +12,12 @@ from raft.core.lifecycle.deploy.orchestrator import Orchestrator
 from raft.core.observe.ops.actions.up_depends import UpDepends
 from raft.core.observe.ops.logs.targets import LogsTargets
 from raft.core.observe.ops.purge import Purge
-from raft.core.platform.adapters.docker import DockerStack, HostOneshot, HostOneshotGate
+from raft.core.platform.adapters.docker import (
+    DockerStack,
+    HostOneshotFlight,
+    HostOneshotGate,
+    HostOneshotStart,
+)
 from raft.core.platform.adapters.shell import Shell
 from raft.core.platform.locking import AppAndStackLocks, AppsAndStackLocks, StackLock
 
@@ -124,21 +129,35 @@ class ServiceActions:
     ) -> Dict[str, Any]:
         """Detach host ``raft redeploy dashboard`` so this process can die."""
         gate.ensure()
-        job_id = HostOneshot(Shell(self.stack.root)).start(
-            ["raft", "redeploy", "dashboard"],
-            with_docker=True,
+        started = self._dashboard_redeploy_flight().start(
+            ["raft", "redeploy", "dashboard"], with_docker=True
         )
         logger.info(
-            "dashboard self-redeploy oneshot started id=%s service=%s",
-            job_id,
+            "dashboard self-redeploy oneshot id=%s coalesced=%s service=%s",
+            started.job_id,
+            started.coalesced,
             compose_id,
         )
+        return self._oneshot_redeploy_payload(compose_id, started)
+
+    def _dashboard_redeploy_flight(self) -> HostOneshotFlight:
+        return HostOneshotFlight(
+            self.stack.root,
+            HostOneshotFlight.KIND_DASHBOARD_REDEPLOY,
+            shell=Shell(self.stack.root),
+        )
+
+    @staticmethod
+    def _oneshot_redeploy_payload(
+        compose_id: str, started: HostOneshotStart
+    ) -> Dict[str, Any]:
         return {
             "ok": True,
             "action": "redeploy",
             "service": compose_id,
             "started": True,
-            "job_id": job_id,
+            "job_id": started.job_id,
+            "coalesced": started.coalesced,
         }
 
     def _up_with_deps(

@@ -47,7 +47,17 @@ class GithubDeployRunner:
         self._notifier = notifier if notifier is not None else Notifier(stack.root)
 
     def start(self, account: GithubAccount, repo: GithubRepo, ref: str) -> DeployJob:
-        job = self._store.create(repo.full_name, ref or repo.default_branch)
+        # Coalesce: one in-flight deploy per full_name (serve is single-process).
+        job, coalesced = self._store.claim_or_create(
+            repo.full_name, ref or repo.default_branch
+        )
+        if coalesced:
+            logger.info(
+                "github deploy coalesce full_name=%s job_id=%s",
+                repo.full_name,
+                job.id,
+            )
+            return job
         thread = threading.Thread(
             target=self._run,
             args=(job.id, account, repo),
