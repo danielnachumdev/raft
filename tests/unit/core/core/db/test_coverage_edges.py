@@ -59,6 +59,18 @@ class TestCoverageEdges(RaftTestCase):
         with DbSessionFactory(home).begin() as session:
             importer.import_into(session)
 
+    def test_apps_skips_non_directory_registry_entries(
+        self, isolated_raft_data_home: Path
+    ) -> None:
+        home = isolated_raft_data_home
+        registry = home / "services"
+        registry.mkdir(parents=True, exist_ok=True)
+        (registry / "not-an-app.txt").write_text("skip me\n", encoding="utf-8")
+        self.write_applied_app(home, "demo-api", public_host="demo-api.test")
+        SchemaUpgrade(home).upgrade_head()
+        with DbSessionFactory(home).begin() as session:
+            assert AppsFileImporter(home).import_into(session) == 1
+
     def test_settings_yaml_error(self, isolated_raft_data_home: Path) -> None:
         path = isolated_raft_data_home / "host" / "settings.yaml"
         path.parent.mkdir(parents=True, exist_ok=True)
