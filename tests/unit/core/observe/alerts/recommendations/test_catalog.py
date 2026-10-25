@@ -35,12 +35,15 @@ class TestAlertRecommendationCatalog(RaftTestCase):
         assert cond["params"]["op"] == "gt"
         assert cond["params"]["value"] == 90
 
-    def test_covers_by_id_and_leaf(self) -> None:
-        oom = next(
+    def _oom(self) -> dict:
+        return next(
             i
             for i in AlertRecommendationCatalog.candidates()
             if i["id"] == "any-service-oom"
         )
+
+    def test_covers_by_id_and_leaf(self) -> None:
+        oom = self._oom()
         assert AlertRecommendationCatalog.covers([{"id": "any-service-oom"}], oom)
         assert AlertRecommendationCatalog.covers(
             [{"id": "other", "condition": oom["rule"]["condition"]}], oom
@@ -49,15 +52,17 @@ class TestAlertRecommendationCatalog(RaftTestCase):
             [{"id": "other", "condition": {"signal": "metrics.http"}}], oom
         )
         assert not AlertRecommendationCatalog.covers([{"id": "x"}], oom)
-        assert not AlertRecommendationCatalog.covers(["not-a-mapping"], oom)
+
+    def test_covers_rejects_non_mapping_and_leaf_mismatch(self) -> None:
+        oom = self._oom()
         cond = dict(oom["rule"]["condition"])
-        wrong_kind = {**cond, "kind": "threshold"}
+        assert not AlertRecommendationCatalog.covers(["not-a-mapping"], oom)
         assert not AlertRecommendationCatalog.covers(
-            [{"id": "other", "condition": wrong_kind}], oom
+            [{"id": "other", "condition": {**cond, "kind": "threshold"}}], oom
         )
-        wrong_select = {**cond, "select": {"target": "demo-api"}}
         assert not AlertRecommendationCatalog.covers(
-            [{"id": "other", "condition": wrong_select}], oom
+            [{"id": "other", "condition": {**cond, "select": {"target": "demo-api"}}}],
+            oom,
         )
 
     def test_params_cover_superset_values(self) -> None:

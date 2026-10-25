@@ -20,10 +20,6 @@ class TestAlertsCliOutput(RaftTestCase):
         out = AlertsCliOutput()
         with patch("raft.services.cli.commands.alerts_output.OperatorSay.say") as say:
             out.list_table([])
-            out.recommendations_table([])
-            out.recommendations_table(
-                [{"id": "any-service-oom", "kind": "setup", "title": "OOM"}]
-            )
             out.say_yaml({"a": 1})
             out.say_json({"a": 1})
             out.print_validation(
@@ -37,6 +33,14 @@ class TestAlertsCliOutput(RaftTestCase):
             )
             out.print_deliveries([item])
             assert say.called
-            said = " ".join(str(c.args[0]) for c in say.call_args_list)
-            assert "No open alert recommendations." in said
-            assert "any-service-oom" in said
+
+    def test_recommendations_table_empty_and_rows(self) -> None:
+        out = AlertsCliOutput()
+        with patch("raft.services.cli.commands.alerts_output.OperatorSay.say") as say:
+            out.recommendations_table([])
+            out.recommendations_table(
+                [{"id": "any-service-oom", "kind": "setup", "title": "OOM"}]
+            )
+        said = " ".join(str(c.args[0]) for c in say.call_args_list)
+        assert "No open alert recommendations." in said
+        assert "any-service-oom" in said
