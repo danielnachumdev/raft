@@ -6,7 +6,8 @@ import {
 } from "../shared/api/index.ts";
 import { peekStatus, refreshStatus } from "../shared/dashboardCache";
 import { LiveIndicator } from "../chrome/LiveIndicator";
-import { EmptyState, ErrorState, LoadingState } from "../chrome/StateViews";
+import { showSkeleton, StackStatusSkeleton } from "../chrome/skeleton";
+import { EmptyState, ErrorState } from "../chrome/StateViews";
 import { TrendsDashboard } from "../trends/dashboard/ui/TrendsDashboard";
 import { DashboardSection } from "./DashboardSection";
 import { PageHeader } from "./PageHeader";
@@ -114,8 +115,8 @@ export function Dashboard() {
         }
       />
 
-      {busy && data === null ? (
-        <LoadingState label="Loading status…" id="status-loading" />
+      {showSkeleton(busy, data !== null) ? (
+        <StackStatusSkeleton label="Loading status…" id="status-loading" />
       ) : null}
 
       {error ? (

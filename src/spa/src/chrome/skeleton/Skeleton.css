@@ -1,0 +1,184 @@
+/* Skeleton loading: prefer over spinners when layout shape is known.
+   Quiet refresh keeps last UI — only cold load mounts these builders. */
+
+.skeleton-root {
+  margin: 0 0 1rem;
+}
+
+.skeleton-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skeleton-bone {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--muted-bg) 0%,
+    var(--line) 45%,
+    var(--muted-bg) 90%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.35s ease-in-out infinite;
+}
+
+.skeleton-bone--sm {
+  height: 0.65rem;
+}
+
+.skeleton-bone--md {
+  height: 0.85rem;
+}
+
+.skeleton-bone--lg {
+  height: 1.35rem;
+}
+
+.skeleton-bone--block {
+  height: 100%;
+  min-height: 4rem;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-bone {
+    animation: none;
+    background: var(--muted-bg);
+  }
+}
+
+/* --- Stat tiles --- */
+
+.skeleton-stat-tiles .stat-tile-value .skeleton-bone {
+  width: 3.2rem;
+  margin-top: 0.2rem;
+}
+
+.skeleton-stat-tiles .stat-tile-hint .skeleton-bone {
+  width: 55%;
+  margin-top: 0.25rem;
+}
+
+.skeleton-stat-tiles .stat-tile-label .skeleton-bone {
+  width: 4.5rem;
+}
+
+/* --- Status table --- */
+
+.skeleton-status-table {
+  width: 100%;
+  min-width: 42rem;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.skeleton-status-table th,
+.skeleton-status-table td {
+  text-align: left;
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.skeleton-status-table th {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.skeleton-status-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.skeleton-status-table .skeleton-bone {
+  max-width: 100%;
+}
+
+/* --- Item list (alerts / settings rows) --- */
+
+.skeleton-item-list .item-row {
+  cursor: default;
+  pointer-events: none;
+}
+
+.skeleton-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.skeleton-item-title {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.skeleton-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.skeleton-item-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.skeleton-item-actions .skeleton-bone {
+  width: 3.25rem;
+  height: 1.65rem;
+  border-radius: var(--radius-control);
+}
+
+/* --- Chart frame --- */
+
+.skeleton-chart-frame {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.75rem 0.85rem 0.9rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+}
+
+.skeleton-chart-frame-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.skeleton-chart-frame-plot {
+  flex: 1;
+  min-height: 8rem;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.skeleton-chart-frame-plot .skeleton-bone {
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+}

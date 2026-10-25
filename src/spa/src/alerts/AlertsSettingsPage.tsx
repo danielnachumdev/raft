@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { Link } from "react-router-dom";
 import { ConfirmPopup } from "../chrome/ConfirmPopup";
 import { LiveIndicator } from "../chrome/LiveIndicator";
-import { ErrorState, LoadingState } from "../chrome/StateViews";
+import { AlertsListSkeleton, showSkeleton } from "../chrome/skeleton";
+import { ErrorState } from "../chrome/StateViews";
 import { toast } from "../chrome/toast";
 import { fetchNotificationChannels } from "../notifications/notificationsApi";
 import type { NotificationChannel } from "../notifications/notificationsApi";
@@ -42,6 +43,7 @@ export function AlertsSettingsPage() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [status, setStatus] = useState<AlertStatusPayload | null>(null);
   const [busy, setBusy] = useState(true);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [live, setLive] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -52,10 +54,12 @@ export function AlertsSettingsPage() {
   const [deleting, setDeleting] = useState<AlertRule | null>(null);
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  const actions = useAlertRuleActions(load);
+  const actions = useAlertRuleActions(() => load({ quiet: true }));
 
-  async function load() {
+  async function load(opts?: { quiet?: boolean }) {
+    const quiet = opts?.quiet === true && loaded;
     setError(null);
+    if (!quiet) setBusy(true);
     try {
       await catalogProxy.refresh();
       const [r, c, ch, s, recs] = await Promise.all([
@@ -72,6 +76,7 @@ export function AlertsSettingsPage() {
       setStatus(s);
       setRecommendations(recs);
       setNow(Date.now());
+      setLoaded(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load alerts");
     } finally {
@@ -150,15 +155,19 @@ export function AlertsSettingsPage() {
         }
       />
 
-      {busy ? (
-        <LoadingState label="Loading alerts…" />
+      {showSkeleton(busy, loaded) ? (
+        <AlertsListSkeleton label="Loading alerts…" id="alerts-loading" />
       ) : null}
       {error ? (
-        <ErrorState message={error} id="alerts-error" onRetry={() => void load()} />
+        <ErrorState
+          message={error}
+          id="alerts-error"
+          onRetry={() => void load({ quiet: loaded })}
+        />
       ) : null}
       <AlertCallouts status={status} hasChannels={enabledChannels.length > 0} />
 
-      {!busy ? (
+      {loaded ? (
         <>
           <AlertRecommendations
             items={recommendations}
@@ -167,7 +176,7 @@ export function AlertsSettingsPage() {
               const result = await applyAlertRecommendation(item.id);
               toast.good(`Created ${result.rule.id} (channels optional)`);
               setRecommendations(result.recommendations);
-              await load();
+              await load({ quiet: true });
             }}
             onDismiss={async (id) => {
               setRecommendations(await dismissAlertRecommendation(id));
@@ -258,7 +267,7 @@ export function AlertsSettingsPage() {
       else await replaceAlertRule(rule.id, rule);
       toast.good(form.mode === "create" ? `Created ${rule.id}` : `Saved ${rule.id}`);
       setForm(null);
-      await load();
+      await load({ quiet: true });
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -280,7 +289,7 @@ export function AlertsSettingsPage() {
     try {
       await applyImport(pendingImport.doc, prune);
       setPendingImport(null);
-      await load();
+      await load({ quiet: true });
     } catch (err) {
       toast.bad(err instanceof Error ? err.message : "Import failed");
     }
