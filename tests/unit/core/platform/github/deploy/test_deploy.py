@@ -42,6 +42,26 @@ class TestDeployNextSteps(RaftTestCase):
         assert bare[0]["title"] == "Verify the site"
 
 
+class TestDeployJobStore(RaftTestCase):
+    def test_claim_skips_finished_same_name(self) -> None:
+        store = DeployJobStore()
+        done = store.create("demo/api", "main")
+        done.status = "succeeded"
+        assert store.active_for("demo/api") is None
+        job, coalesced = store.claim_or_create("demo/api", "main")
+        assert coalesced is False
+        assert job.id != done.id
+        assert job.status == "pending"
+
+    def test_claim_ignores_other_full_names(self) -> None:
+        store = DeployJobStore()
+        other = store.create("demo/other", "main")
+        job, coalesced = store.claim_or_create("demo/api", "main")
+        assert coalesced is False
+        assert job.id != other.id
+        assert store.active_for("demo/api") is job
+
+
 class TestGithubDeployRunner(RaftTestCase):
     def _wait(self, job: DeployJob) -> None:
         for _ in range(80):

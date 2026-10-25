@@ -2,9 +2,9 @@
 
 from pathlib import Path
 
-from raft.core.core.config.paths.constants import LOCKS_DIR
-
-LOCKS_REL = LOCKS_DIR
+# Leaf constant — do not import via ``raft.core.core.config`` (loads settings →
+# ``SettingsLock`` and cycles when locking is still initializing).
+LOCKS_REL = Path("host") / "locks"
 STACK_LOCK_NAME = "stack.lock"
 SETTINGS_LOCK_NAME = "settings.lock"
 ACL_LOCK_NAME = "acl.lock"
