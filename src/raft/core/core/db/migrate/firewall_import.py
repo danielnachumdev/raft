@@ -6,7 +6,7 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from raft.core.core.db.models.firewall import FirewallDismissedRow, FirewallRuleRow
-from raft.core.core.models.state.firewall_dismissals import FirewallDismissalStore
+from raft.core.core.models.state.recommendation_dismissals import FirewallDismissalStore
 from raft.core.core.models.state.firewall_store import FirewallStore
 
 
