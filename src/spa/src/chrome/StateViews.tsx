@@ -1,6 +1,11 @@
 import type { ReactNode } from "react";
 
-/** Panel-sized spinner while a page or section loads. */
+/**
+ * Panel-sized spinner while a page or section loads.
+ * Prefer skeleton builders (`chrome/skeleton`) when the layout shape is known
+ * (status table, section panel, stat tiles, chart frame). Use this spinner only
+ * when there is no skeleton for the surface (unknown layout, one-shot actions).
+ */
 export function LoadingState(props: { label: string; id?: string }) {
   return (
     <div className="loading" role="status" aria-busy="true" id={props.id}>
