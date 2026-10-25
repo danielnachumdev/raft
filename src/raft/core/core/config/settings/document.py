@@ -79,6 +79,7 @@ class SettingsDocument:
             "flushSeconds": cfg.flush_seconds,
             "retentionMaxAgeDays": cfg.retention_max_age_days,
             "retentionMaxBytes": cfg.retention_max_bytes,
+            "pressureThreshold": cfg.pressure_threshold,
         }
 
     def _service_logs(self, cfg: ServiceLogsConfig) -> dict[str, Any]:
@@ -89,6 +90,11 @@ class SettingsDocument:
             "retentionMaxAgeDays": cfg.retention_max_age_days,
             "retentionMaxBytes": cfg.retention_max_bytes,
             "includeEdge": cfg.include_edge,
+            "maxFetchBytes": cfg.max_fetch_bytes,
+            "maxFetchLines": cfg.max_fetch_lines,
+            "maxServicesPerTick": cfg.max_services_per_tick,
+            "fetchTimeoutSeconds": cfg.fetch_timeout_seconds,
+            "pressureThreshold": cfg.pressure_threshold,
         }
 
     def _acme(self, cfg: AcmeConfig) -> dict[str, Any]:

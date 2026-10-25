@@ -10,6 +10,12 @@ from raft.core.core.errors.resource_msgs import ResourceMessages
 
 from raft.core.core.models.stack import Stack
 from ..shell import Shell
+from .bounded_logs import (
+    DEFAULT_LOG_FETCH_BOOTSTRAP_TAIL,
+    DEFAULT_LOG_FETCH_MAX_BYTES,
+    DEFAULT_LOG_FETCH_TIMEOUT_SECONDS,
+    BoundedDockerLogs,
+)
 from .compose_log_follow import ComposeLogFollow
 
 if TYPE_CHECKING:
@@ -67,16 +73,23 @@ class ComposeDiagnostics:
         )
         return (result.stderr or result.stdout or "").strip()
 
-    def container_logs_since(self, name: str, *, since: str = "") -> str:
-        """Timestamped container logs, optionally since a Docker log cursor."""
-        if not name:
-            return ""
-        args: list[str] = ["logs", "--timestamps"]
-        if since.strip():
-            args.extend(["--since", since.strip()])
-        args.append(name)
-        result = self.sh.docker(*args, capture=True, check=False)
-        return (result.stderr or result.stdout or "").strip()
+    def container_logs_since(
+        self,
+        name: str,
+        *,
+        since: str = "",
+        timeout: float = DEFAULT_LOG_FETCH_TIMEOUT_SECONDS,
+        max_bytes: int = DEFAULT_LOG_FETCH_MAX_BYTES,
+        bootstrap_tail: int = DEFAULT_LOG_FETCH_BOOTSTRAP_TAIL,
+    ) -> str:
+        """Timestamped container logs since cursor, with time/byte bounds."""
+        return BoundedDockerLogs(self.sh).fetch(
+            name,
+            since=since,
+            timeout=timeout,
+            max_bytes=max_bytes,
+            bootstrap_tail=bootstrap_tail,
+        )
 
     def service_health_summary(self, service: str) -> str:
         """Short status/health (+ last healthcheck output when present)."""

@@ -25,6 +25,16 @@ class SettingsScalars:
             )
         return value
 
+    def unit_float(self, raw: dict, key: str, default: float, section: str) -> float:
+        """Parse a ratio in ``(0, 1]`` (e.g. cgroup pressure threshold)."""
+        value = self.pos_float(raw, key, default, section)
+        if value > 1.0:
+            raise OperatorError(
+                f"settings.yaml {section}.{key} must be <= 1, got {value}.\n"
+                f"Fix: set {section}.{key} to a ratio between 0 and 1 in ~/.raft/host/settings.yaml"
+            )
+        return value
+
     def pos_int(self, raw: dict, key: str, default: int, section: str) -> int:
         if key not in raw or raw[key] is None:
             return default

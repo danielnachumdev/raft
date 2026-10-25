@@ -135,4 +135,12 @@ class ServiceLogsHooks:
             max_bytes=cfg.retention_max_bytes,
             compose_to_app=ServiceLogsStore.compose_map_from_apps(apps),
         )
-        return ServiceLogsCapture(store, DockerContainerLogSource(docker))
+        return ServiceLogsCapture(
+            store,
+            DockerContainerLogSource(
+                docker,
+                timeout=cfg.fetch_timeout_seconds,
+                max_bytes=cfg.max_fetch_bytes,
+                bootstrap_tail=cfg.max_fetch_lines,
+            ),
+        )
