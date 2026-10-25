@@ -71,6 +71,8 @@ export type StatusPayload = {
   registry_issues?: RegistryIssue[];
   /** Running raft install; omit only on stale cached payloads. */
   version?: RaftVersion;
+  /** Controller ``resources.jsonl`` sample ts used for CPU/mem overlay (serve). */
+  resources_as_of?: string | null;
 };
 
 /** Dashboard status poll while the tab is visible (tight bound for out-of-band apply). */

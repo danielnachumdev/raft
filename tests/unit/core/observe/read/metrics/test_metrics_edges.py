@@ -49,6 +49,17 @@ class TestMetricsEdges(RaftTestCase):
         )
         assert len(got) == 1
 
+    def test_latest_sample_returns_newest_row(self) -> None:
+        path = self.tmp_path / METRICS_DIR / METRICS_FILENAME
+        path.parent.mkdir(parents=True, exist_ok=True)
+        older = {"ts": "2026-10-02T11:00:00+00:00", "n": 1}
+        newer = {"ts": "2026-10-02T12:00:00+00:00", "n": 2}
+        path.write_text(
+            json.dumps(older) + "\n" + json.dumps(newer) + "\n", encoding="utf-8"
+        )
+        assert MetricsJsonlReader(path).latest_sample() == newer
+        assert MetricsJsonlReader(self.tmp_path / "missing.jsonl").latest_sample() is None
+
     def test_series_skips_malformed_rows(self) -> None:
         builder = MetricsSeriesBuilder()
         samples: list[Dict[str, Any]] = [

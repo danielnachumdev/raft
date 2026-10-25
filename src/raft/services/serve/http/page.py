@@ -21,6 +21,7 @@ from raft.core.observe.read import (
 )
 from raft.core.observe.read.http_requests import DEFAULT_LIMIT as _HTTP_REQ_DEFAULT
 from raft.core.observe.read.http_requests import MAX_LIMIT as _HTTP_REQ_MAX
+from raft.core.observe.read.status_payload_cache import StatusPayloadCache
 from .log_stream import LogSseStream
 from .paths import ServePaths
 
@@ -57,6 +58,7 @@ class ServePage:
     ) -> None:
         self.stack = stack
         self._read = StatusRead(stack, status=status)
+        self._status_cache = StatusPayloadCache()
         self._metrics = MetricsRead(stack.root)
         self._http_metrics = HttpMetricsRead(stack.root)
         self._http_requests = HttpRequestsRead(stack)
@@ -71,8 +73,19 @@ class ServePage:
         return FileResponse(ServePaths.spa_index(), media_type="text/html")
 
     def api_status(self) -> Dict[str, Any]:
-        """Expensive snapshot for the SPA (and future consumers)."""
-        payload = self._read.api_payload(refresh_apps=True)
+        """Stack status for the SPA: lite live runtime + controller resource overlay.
+
+        Skips ``docker stats`` on the hot path; CPU/mem come from controller
+        ``resources.jsonl``. Short TTL + single-flight coalesce overlapping polls.
+        """
+        return self._status_cache.get_or_load(self._load_status_payload)
+
+    def _load_status_payload(self) -> Dict[str, Any]:
+        payload = self._read.api_payload(
+            refresh_apps=True,
+            include_stats=False,
+            overlay_resources=True,
+        )
         self._adopt_stack(self._read.stack)
         return payload
 

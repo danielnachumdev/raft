@@ -72,7 +72,7 @@ Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**). Nesting in-process re-
 7. **ACME failures do not fail deploy:** best-effort HTTP-01; errors under `host/acme/` / `services/<name>/acme/`.
 8. **Healing ≠ scaling:** `healing:` in settings; `spec.scaling` is per-App. Healer skips intentional `scaledToZero`.
 9. **Serve binds localhost only** (`127.0.0.1`). Not an edge listener. Mutative serve actions use the same flock rules as CLI; gate redeploy matches CLI (edge-downtime warning).
-10. **SPA poll:** status ~2s while tab visible; `/api/status` reloads registry every call (`refresh_apps=True`).
+10. **SPA poll:** status ~2s while tab visible; `/api/status` reloads registry on collect (`refresh_apps=True`), skips live `docker stats` (CPU/mem from controller `resources.jsonl`), and coalesces overlapping polls with a short TTL cache. Trends on the home page mounts after first status paint.
 11. **No PII / no live inventory in fixtures, screenshots, or PR bodies** — use `demo-api`, `192.0.2.0/24`, etc.
 12. **UI PRs need screenshots** (agent-browser + `gh pr edit --attach`) — unit tests alone are not Proof for visible SPA changes.
 13. **Desired apps are not in git** — only examples under `examples/`.

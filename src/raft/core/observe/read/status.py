@@ -1,6 +1,6 @@
 """Canonical status snapshot for CLI JSON and serve/FE consumers."""
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from raft.core.core.config.settings import SettingsLoader
 from raft.core.core.config.settings.types import EdgeConfig
@@ -11,6 +11,7 @@ from raft.core.observe.ops.version import InstalledVersion
 from .depends import ServeDependsMap
 from .external_urls import ExternalUrlBuilder
 from .snapshot_view import ServeSnapshotView
+from .status_resources_overlay import StatusResourcesOverlay
 
 
 class StatusRead:
@@ -31,8 +32,12 @@ class StatusRead:
     def status(self) -> Status:
         return self._status
 
-    def collect(self, *, refresh_apps: bool = False) -> StatusSnapshot:
-        snap = self._status.collect(refresh_apps=refresh_apps)
+    def collect(
+        self, *, refresh_apps: bool = False, include_stats: bool = True
+    ) -> StatusSnapshot:
+        snap = self._status.collect(
+            refresh_apps=refresh_apps, include_stats=include_stats
+        )
         if refresh_apps:
             self._sync_stack_from_status()
         return snap
@@ -41,9 +46,26 @@ class StatusRead:
         """Machine contract — identical to ``raft status --json`` body."""
         return self.collect(refresh_apps=refresh_apps).to_dict()
 
-    def api_payload(self, *, refresh_apps: bool = False) -> Dict[str, Any]:
-        """Serve/FE payload: canonical snapshot + table presentation rows."""
-        return self.payload_from_snapshot(self.collect(refresh_apps=refresh_apps))
+    def api_payload(
+        self,
+        *,
+        refresh_apps: bool = False,
+        include_stats: bool = True,
+        overlay_resources: bool = False,
+    ) -> Dict[str, Any]:
+        """Serve/FE payload: canonical snapshot + table presentation rows.
+
+        Serve uses ``include_stats=False`` + ``overlay_resources=True`` so the
+        hot path skips ``docker stats`` and fills CPU/mem from controller JSONL.
+        """
+        snap = self.collect(refresh_apps=refresh_apps, include_stats=include_stats)
+        resources_as_of = None
+        if overlay_resources:
+            snap, resources_as_of = self._overlay_resources(snap)
+        body = self.payload_from_snapshot(snap)
+        if overlay_resources:
+            body["resources_as_of"] = resources_as_of
+        return body
 
     def payload_from_snapshot(self, snapshot: StatusSnapshot) -> Dict[str, Any]:
         view = self._view(snapshot).to_payload()
@@ -53,6 +75,12 @@ class StatusRead:
         body["registry_issues"] = [issue.to_dict() for issue in self.stack.registry_issues]
         body["version"] = self._version_payload()
         return body
+
+    def _overlay_resources(
+        self, snapshot: StatusSnapshot
+    ) -> Tuple[StatusSnapshot, Optional[str]]:
+        overlay = StatusResourcesOverlay(self.stack.root)
+        return overlay.apply(snapshot), overlay.resources_as_of
 
     @staticmethod
     def _version_payload() -> Dict[str, str]:
