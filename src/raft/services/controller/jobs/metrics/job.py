@@ -22,7 +22,6 @@ class MetricsJob(ControllerJob):
             flush_seconds=config.flush_seconds,
             retention_max_age_days=config.retention_max_age_days,
             retention_max_bytes=config.retention_max_bytes,
-            pressure_threshold=config.pressure_threshold,
         )
         self._http = HttpMetricsRecorder(
             home,

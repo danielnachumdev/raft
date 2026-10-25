@@ -107,14 +107,10 @@ class TestMetricsRecorder(ControllerTestCase):
             containers=(),
         )
         stack = MagicMock(name="loaded_stack")
-        memory = MagicMock()
-        memory.elevated.return_value = False
         with patch("raft.services.controller.jobs.metrics.metrics.Stack.load_apps", return_value=stack) as load:
             with patch("raft.services.controller.jobs.metrics.metrics.Status") as status_cls:
                 status_cls.return_value.collect.return_value = snap
-                rec = MetricsRecorder(
-                    home, batch_size=1, clock=lambda: 0.0, memory=memory
-                )
+                rec = MetricsRecorder(home, batch_size=1, clock=lambda: 0.0)
                 rec.tick()
         load.assert_called_once_with(home)
         status_cls.assert_called_once_with(stack)
@@ -122,49 +118,16 @@ class TestMetricsRecorder(ControllerTestCase):
         row = json.loads(rec.path.read_text(encoding="utf-8").strip())
         assert "host" in row and "containers" in row and "ts" in row
 
-    def test_pressure_uses_host_only_sample(self, tmp_path: Path) -> None:
-        home = self.raft_home(tmp_path)
-        memory = MagicMock()
-        memory.elevated.return_value = True
-        host = MagicMock()
-        with patch("raft.services.controller.jobs.metrics.metrics.Status") as status_cls:
-            status_cls._host_status.return_value.to_dict.return_value = {
-                "hostname": "demo-host",
-                "cpus": 2,
-            }
-            with patch(
-                "raft.services.controller.jobs.metrics.metrics.Stack.load_apps"
-            ) as load:
-                rec = MetricsRecorder(
-                    home,
-                    batch_size=10,
-                    clock=lambda: 0.0,
-                    memory=memory,
-                    host=host,
-                )
-                rec.tick()
-        load.assert_not_called()
-        status_cls.assert_not_called()
-        status_cls._host_status.assert_called_once_with(host)
-        row = json.loads(rec.path.read_text(encoding="utf-8").strip())
-        assert row["degraded"] == "memory_pressure"
-        assert row["containers"] == []
-        assert row["host"]["hostname"] == "demo-host"
-
     def test_collect_status_skips_ensure_raft_home(self, tmp_path: Path) -> None:
         home = self.raft_home(tmp_path)
         snap = StatusSnapshot(
             host=status_fx.empty_host_status(),
             containers=(),
         )
-        memory = MagicMock()
-        memory.elevated.return_value = False
         with patch("raft.services.controller.jobs.metrics.metrics.Status") as status_cls:
             status_cls.return_value.collect.return_value = snap
             with patch("raft.core.core.models.stack.RaftHomeBootstrap") as ensure:
-                MetricsRecorder(
-                    home, batch_size=1, clock=lambda: 0.0, memory=memory
-                ).tick()
+                MetricsRecorder(home, batch_size=1, clock=lambda: 0.0).tick()
         ensure.assert_not_called()
         status_cls.return_value.collect.assert_called_once_with()
 

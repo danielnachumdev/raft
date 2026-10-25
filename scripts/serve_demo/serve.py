@@ -26,7 +26,7 @@ from raft.core.observe.ops.status.models import (
 FAKE = {
     "raft-gate": ("running", 1.2, 18, 32),
     "raft-router": ("running", 0.6, 9, 32),
-    "raft-controller": ("running", 2.4, 54, 128),
+    "raft-controller": ("running", 2.4, 54, 192),
     "demo-api": ("running", 27.5, 210, 512),
     "demo-web": ("running", 9.1, 140, 512),
     "demo-db": ("unhealthy", 5.3, 300, 1024),
