@@ -53,6 +53,7 @@ Overlapping apply/redeploy/render tears tmp names, upstreams, and `generated/`. 
 | `dashboard.lock` | Dashboard settings helpers writing `host/settings.yaml` `dashboard:` | Dashboard settings writers do not tear each other |
 | `fifo-<kind>/` (ticket FCFS) | `FifoLock` — `update` (`SelfUpdate`); short claim for host-job flights | True arrival-order grant (not plain flock); mint tickets under `seq.lock` |
 | `host-job-<kind>.flight.json` | `HostOneshotFlight` (dashboard self-redeploy oneshot) | Coalesce concurrent detached starts to one in-flight `job_id` |
+| `inbox.lock` | serve writes to `host/inbox/` read-state | Operator inbox read/unread writers do not tear each other |
 
 Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**). Nesting in-process re-enters. `doctor` / `status` do not take these locks.
 
@@ -101,6 +102,7 @@ Align with the README table; detail for agents:
 | Inspection → add firewall rule | **Shipped** | [#198](https://github.com/danielnachumdev/raft/issues/198); row actions → `#211` model; prepend + reload |
 | GitHub add-service assist | **Shipped (v1)** | Serve + `raft github …` via `GithubAssistService`; known gap [#200](https://github.com/danielnachumdev/raft/issues/200) |
 | Notifications channels | **Shipped** | Strategy catalog + channel CRUD + test-send (serve + `raft notifications …`). |
+| Operator inbox (bell / in-app notices) | **Shipped** | Derived feed from recommendation sources; read-state under `host/inbox/`; SPA `/inbox` + topbar bell with unread badge (`+99` cap). Distinct from outbound notification channels. |
 | Healing | **Shipped** | Settings `healing:`; separate from scaling |
 | Secrets baseline (`~/.raft/services/<app>/secrets/env`) | **Shipped** | External materialization epic [#143](https://github.com/danielnachumdev/raft/issues/143) / [#176](https://github.com/danielnachumdev/raft/issues/176) |
 | Past logs when container off | **Shipped** | Retained under `services/<name>/logs/` (edge: `host/logs/services/`); shipper + drain-before-rm. |
@@ -141,6 +143,7 @@ Layout (#313): `host/` (control-plane) + `services/<SERVICE>/` (App-owned) + `ge
 | `host/events/ops.jsonl` | Operator system event timeline (#267) |
 | `host/alerts/rules.yaml`, `host/alerts/runtime.json` | Alert rules (desired) + evaluation runtime |
 | `host/alerts/dismissed-recommendations.json` | Dismissed default alert-setup suggestions |
+| `host/inbox/read-state.json` | Operator inbox read markers (bell / Inbox UI; not outbound channels) |
 | `host/secrets/dashboard/` | Dashboard OAuth material |
 | `host/logs/` | Host raft log + retained edge service stdout |
 | `services/<name>/secrets/`, `certs/`, `checkout/`, `deploy/`, `scaling/`, `logs/`, `acme/` | Per-App durable artifacts |
@@ -166,6 +169,7 @@ Product templates sync from `src/raft/core/platform/share/` into the data home o
 | Full operator settings (`settings.yaml`) | `core/config/settings/operator_service.py` (`OperatorSettingsService`); serve adapter `services/serve/settings/`; SPA `src/spa/src/settings/`. |
 | Check for updates (Settings) | `observe/ops/update/` (`UpdateCheck`, `SelfUpdate`); serve `services/serve/update/`; SPA `src/spa/src/settings/sections/UpdatesSection.tsx` |
 | Notification channel CRUD / test-send | `observe/notify/settings_write.py` + `tester.py`; serve adapter `services/serve/notifications/`; CLI `services/cli/commands/notifications.py` (`raft notifications …`); SPA `src/spa/src/notifications/` |
+| Operator inbox (bell / in-app notices) | `observe/inbox/` (`OperatorInboxService` + sources); serve `services/serve/inbox/`; SPA `src/spa/src/inbox/` — distinct from outbound notification channels |
 | GitHub OAuth / deploy assist | `platform/github/` (`GithubAssistService`); serve `services/serve/github/`; CLI `services/cli/commands/github.py` (`raft github …`) |
 | Dashboard UI | `src/spa/` only (Release bakes; local `npm run build` for editable/`raft serve`) |
 | Reusable dashboard kit (Trends / embeds) | `src/spa/src/dashboard-kit/`; Trends overview consumer in `trends/dashboard/ui/TrendsDashboard.tsx`. |

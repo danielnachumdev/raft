@@ -17,6 +17,7 @@ class TestHostAndServicePaths(RaftTestCase):
         assert hp.locks() == home / "host" / "locks"
         assert hp.firewall() == home / "host" / "firewall"
         assert hp.alerts() == home / "host" / "alerts"
+        assert hp.inbox() == home / "host" / "inbox"
         assert hp.events() == home / "host" / "events"
         assert hp.metrics() == home / "host" / "metrics"
         assert hp.acme() == home / "host" / "acme"

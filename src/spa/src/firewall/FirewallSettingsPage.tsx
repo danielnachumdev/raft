@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 import { ErrorState, LoadingState } from "../chrome/StateViews";
+import { useHashScroll } from "../chrome/useHashScroll";
 import { PageHeader } from "../shell/PageHeader";
 import { FirewallPanel } from "./FirewallPanel";
 import {
@@ -17,6 +19,7 @@ import {
 
 /** Settings page: ordered edge firewall only. */
 export function FirewallSettingsPage() {
+  const { hash } = useLocation();
   const [document, setDocument] = useState<FirewallDocument>({
     version: 1,
     rules: [],
@@ -27,6 +30,7 @@ export function FirewallSettingsPage() {
   >([]);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  useHashScroll(hash, !busy && error === null);
 
   const load = useCallback(async () => {
     setBusy(true);
