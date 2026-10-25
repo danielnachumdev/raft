@@ -1,36 +1,41 @@
 """Serve API for alert recommendations."""
 
 from pathlib import Path
+from unittest.mock import patch
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.stack import Stack
+from raft.core.observe.alerts.service.rules_service import RuleConflict
 from raft.services.serve.alerts import ServeAlertsApi
 from tests.unit.base import RaftTestCase
 
 
 class TestServeAlertRecommendationsApi(RaftTestCase):
-    def _client(self) -> TestClient:
+    def _client(self):
         home = Path(self.tmp_path)
         (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
         (home / "host" / "settings.yaml").write_text(
             "notifications:\n  enabled: true\n  channels: []\n",
             encoding="utf-8",
         )
+        api = ServeAlertsApi(Stack(root=home, apps=()))
         app = FastAPI()
-        ServeAlertsApi(Stack(root=home, apps=())).register(app)
-        return TestClient(app)
+        api.register(app)
+        return TestClient(app), api
 
     def test_list_includes_oom(self) -> None:
-        listed = self._client().get("/api/alerts/recommendations").json()
+        client, _api = self._client()
+        listed = client.get("/api/alerts/recommendations").json()
         oom = next(
             i for i in listed["recommendations"] if i["id"] == "any-service-oom"
         )
         assert oom["rule"]["channelIds"] == []
 
     def test_apply_creates_rule_without_channels(self) -> None:
-        client = self._client()
+        client, _api = self._client()
         applied = client.post(
             "/api/alerts/recommendations/any-service-oom/apply"
         ).json()
@@ -41,7 +46,8 @@ class TestServeAlertRecommendationsApi(RaftTestCase):
         }
 
     def test_dismiss(self) -> None:
-        dismissed = self._client().post(
+        client, _api = self._client()
+        dismissed = client.post(
             "/api/alerts/recommendations/any-service-high-memory/dismiss"
         ).json()
         assert "any-service-high-memory" not in {
@@ -49,7 +55,31 @@ class TestServeAlertRecommendationsApi(RaftTestCase):
         }
 
     def test_apply_unknown(self) -> None:
-        assert (
-            self._client().post("/api/alerts/recommendations/nope/apply").status_code
-            == 404
-        )
+        client, _api = self._client()
+        assert client.post("/api/alerts/recommendations/nope/apply").status_code == 404
+
+    def test_apply_conflict(self) -> None:
+        client, api = self._client()
+        with patch.object(
+            api._recommendations, "apply", side_effect=RuleConflict("dup")
+        ):
+            assert (
+                client.post(
+                    "/api/alerts/recommendations/any-service-oom/apply"
+                ).status_code
+                == 409
+            )
+
+    def test_apply_operator_error(self) -> None:
+        client, api = self._client()
+        with patch.object(
+            api._recommendations,
+            "apply",
+            side_effect=OperatorError("bad\nFix: check rule"),
+        ):
+            assert (
+                client.post(
+                    "/api/alerts/recommendations/any-service-oom/apply"
+                ).status_code
+                == 400
+            )
