@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Sequence
 
 from raft.core.core.config.settings.types import ServiceLogsConfig
 from raft.core.core.models.stack import Stack
@@ -11,12 +11,13 @@ from raft.core.observe.ops.logs.docker_source import DockerContainerLogSource
 from raft.core.observe.ops.logs.keys import ServiceLogsKeys
 from raft.core.observe.ops.logs.store import ServiceLogsStore
 from raft.core.platform.adapters.docker.stack import DockerStack
+from raft.core.platform.adapters.host.cgroup_memory import CgroupMemory
 
 logger = logging.getLogger(__name__)
 
 
 class ServiceLogsShipper:
-    """One controller tick: ship new Docker logs for every known service."""
+    """One controller tick: ship a bounded slice of Docker logs (round-robin)."""
 
     def __init__(
         self,
@@ -25,18 +26,27 @@ class ServiceLogsShipper:
         docker: DockerStack,
         *,
         stack_loader=None,
+        memory: Optional[CgroupMemory] = None,
     ) -> None:
         self.home = home
         self._config = config
         self._docker = docker
         self._stack_loader = stack_loader or (lambda: Stack.load_apps(home))
+        self._memory = memory or CgroupMemory()
+        self._rr_index = 0
         self._store = ServiceLogsStore(
             home,
             max_age_days=config.retention_max_age_days,
             max_bytes=config.retention_max_bytes,
         )
         self._capture = ServiceLogsCapture(
-            self._store, DockerContainerLogSource(docker)
+            self._store,
+            DockerContainerLogSource(
+                docker,
+                timeout=config.fetch_timeout_seconds,
+                max_bytes=config.max_fetch_bytes,
+                bootstrap_tail=config.max_fetch_lines,
+            ),
         )
 
     def tick(self) -> None:
@@ -45,11 +55,26 @@ class ServiceLogsShipper:
         stack = self._stack_loader()
         self._docker.stack = stack
         self._store.bind_apps(stack.apps)
-        keys = ServiceLogsKeys(stack)
-        for compose_id in keys.known_compose_ids(
+        keys = ServiceLogsKeys(stack).known_compose_ids(
             include_edge=self._config.include_edge
-        ):
+        )
+        for compose_id in self._slice(keys):
             self._ship_one(compose_id)
+
+    def _slice(self, keys: Sequence[str]) -> list[str]:
+        if not keys:
+            return []
+        budget = self._services_budget(len(keys))
+        start = self._rr_index % len(keys)
+        chosen = [keys[(start + i) % len(keys)] for i in range(budget)]
+        self._rr_index = (start + budget) % len(keys)
+        return chosen
+
+    def _services_budget(self, available: int) -> int:
+        configured = max(1, self._config.max_services_per_tick)
+        if self._memory.elevated(threshold=self._config.pressure_threshold):
+            return min(1, available, configured)
+        return min(configured, available)
 
     def _ship_one(self, compose_id: str) -> None:
         cid = self._docker.try_service_container_id(compose_id)

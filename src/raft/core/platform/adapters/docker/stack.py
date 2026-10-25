@@ -9,6 +9,11 @@ from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.app import App
 from raft.core.core.models.stack import Stack
 from ..shell import Shell
+from .bounded_logs import (
+    DEFAULT_LOG_FETCH_BOOTSTRAP_TAIL,
+    DEFAULT_LOG_FETCH_MAX_BYTES,
+    DEFAULT_LOG_FETCH_TIMEOUT_SECONDS,
+)
 from .compose_diagnostics import DIAG_LOG_TAIL, DIAG_MAX_LINES, ComposeDiagnostics
 from .compose_lifecycle import DockerComposeLifecycle
 from .compose_status import ComposeStatusTable
@@ -188,9 +193,31 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
         ServiceLogsHooks.before_container_remove(self.stack, name, self)
         self.sh.docker("rm", "-f", name, check=False, capture=True)
 
-    def container_logs_since(self, name: str, *, since: str = "") -> str:
-        """Timestamped ``docker logs`` for shipper / final drain."""
-        return self._diagnostics.container_logs_since(name, since=since)
+    def container_logs_since(
+        self,
+        name: str,
+        *,
+        since: str = "",
+        timeout: Optional[float] = None,
+        max_bytes: Optional[int] = None,
+        bootstrap_tail: Optional[int] = None,
+    ) -> str:
+        """Timestamped ``docker logs`` for shipper / final drain (bounded)."""
+        return self._diagnostics.container_logs_since(
+            name,
+            since=since,
+            timeout=(
+                DEFAULT_LOG_FETCH_TIMEOUT_SECONDS if timeout is None else timeout
+            ),
+            max_bytes=(
+                DEFAULT_LOG_FETCH_MAX_BYTES if max_bytes is None else max_bytes
+            ),
+            bootstrap_tail=(
+                DEFAULT_LOG_FETCH_BOOTSTRAP_TAIL
+                if bootstrap_tail is None
+                else bootstrap_tail
+            ),
+        )
 
     def run_tmp(
         self,

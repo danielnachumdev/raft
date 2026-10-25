@@ -9,6 +9,7 @@ from ..types import (
     DEFAULT_METRICS_BATCH_SIZE,
     DEFAULT_METRICS_FLUSH_SECONDS,
     DEFAULT_METRICS_INTERVAL_SECONDS,
+    DEFAULT_METRICS_PRESSURE_THRESHOLD,
     DEFAULT_METRICS_RETENTION_MAX_AGE_DAYS,
     DEFAULT_METRICS_RETENTION_MAX_BYTES,
     DEFAULT_METRICS_TIMEOUT_SECONDS,
@@ -33,6 +34,12 @@ class MetricsSettingsParser(SettingsSectionParser[MetricsConfig]):
         return MetricsConfig(
             **self._timing_fields(raw),
             **self._retention_fields(raw),
+            pressure_threshold=self._scalars.unit_float(
+                raw,
+                "pressureThreshold",
+                DEFAULT_METRICS_PRESSURE_THRESHOLD,
+                "metrics",
+            ),
         )
 
     def _timing_fields(self, raw: dict) -> dict:

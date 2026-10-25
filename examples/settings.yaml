@@ -68,13 +68,14 @@ logging:
 # ---------------------------------------------------------------------------
 # metrics:
 #   intervalSeconds: 60           # resource + HTTP metrics job (shared)
-#   timeoutSeconds: 30            # soft timeout: forget stuck metrics worker
-#                                 # so sampling resumes (Engine probes also
-#                                 # use a 25s subprocess timeout)
-#   batchSize: 10                 # buffer before append
+#   timeoutSeconds: 30            # soft timeout warn; Engine probes also
+#                                 # use a 25s subprocess timeout
+#   batchSize: 1                  # flush each sample (keeps controller RSS low)
 #   flushSeconds: 60              # time-based flush even if batch not full
 #   retentionMaxAgeDays: 30       # delete sealed archives older than this
 #   retentionMaxBytes: 104857600  # 100 MiB; max size of each active segment
+#   pressureThreshold: 0.75       # host-only sample when controller cgroup
+#                                 # usage exceeds this ratio (skips docker stats)
 
 # ---------------------------------------------------------------------------
 # serviceLogs — retained Compose stdout/stderr under host/logs/services/.
@@ -91,6 +92,11 @@ logging:
 #   retentionMaxAgeDays: 14       # delete sealed archives older than this
 #   retentionMaxBytes: 52428800   # 50 MiB; max size of each active segment
 #   includeEdge: true             # also retain gate / router / controller
+#   maxFetchBytes: 524288         # hard cap per docker logs stream (512 KiB)
+#   maxFetchLines: 2000           # --tail when cursor is empty (first ship)
+#   maxServicesPerTick: 4         # round-robin slice; 1 under memory pressure
+#   fetchTimeoutSeconds: 15       # kill hung docker logs before soft-timeout
+#   pressureThreshold: 0.75       # ship 1 service/tick when cgroup is hot
 
 # ---------------------------------------------------------------------------
 # edge — public listeners published by the gate container.

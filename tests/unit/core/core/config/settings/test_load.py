@@ -47,9 +47,12 @@ HEALING_ERROR_CASES = [
     ("metrics:\n  flushSeconds: -1\n", "flushSeconds"),
     ("metrics:\n  retentionMaxAgeDays: 0\n", "retentionMaxAgeDays"),
     ("metrics:\n  retentionMaxBytes: abc\n", "retentionMaxBytes"),
+    ("metrics:\n  pressureThreshold: 1.5\n", "pressureThreshold"),
     ("serviceLogs: []\n", "serviceLogs must be a mapping"),
     ("serviceLogs:\n  intervalSeconds: 0\n", "intervalSeconds"),
     ("serviceLogs:\n  retentionMaxAgeDays: 0\n", "retentionMaxAgeDays"),
+    ("serviceLogs:\n  pressureThreshold: 2\n", "pressureThreshold"),
+    ("serviceLogs:\n  maxServicesPerTick: 0\n", "maxServicesPerTick"),
     ("logging:\n  retentionMaxAgeDays: 0\n", "retentionMaxAgeDays"),
     ("logging:\n  retentionMaxBytes: abc\n", "retentionMaxBytes"),
     ("acme: []\n", "acme must be a mapping"),
@@ -82,10 +85,11 @@ class TestConfig(RaftTestCase):
         assert cfg.healing.timeout_seconds == 120.0
         assert cfg.metrics.interval_seconds == 60.0
         assert cfg.metrics.timeout_seconds == 30.0
-        assert cfg.metrics.batch_size == 10
+        assert cfg.metrics.batch_size == 1
         assert cfg.metrics.flush_seconds == 60.0
         assert cfg.metrics.retention_max_age_days == 30
         assert cfg.metrics.retention_max_bytes == 100 * 1024 * 1024
+        assert cfg.metrics.pressure_threshold == 0.75
 
     def _assert_service_logs_defaults(self, cfg) -> None:
         assert cfg.service_logs.enabled is True
@@ -93,6 +97,11 @@ class TestConfig(RaftTestCase):
         assert cfg.service_logs.retention_max_age_days == 14
         assert cfg.service_logs.retention_max_bytes == 50 * 1024 * 1024
         assert cfg.service_logs.include_edge is True
+        assert cfg.service_logs.max_fetch_bytes == 512 * 1024
+        assert cfg.service_logs.max_fetch_lines == 2000
+        assert cfg.service_logs.max_services_per_tick == 4
+        assert cfg.service_logs.fetch_timeout_seconds == 15.0
+        assert cfg.service_logs.pressure_threshold == 0.75
 
     def _assert_acme_defaults(self, cfg) -> None:
         assert cfg.acme.email is None

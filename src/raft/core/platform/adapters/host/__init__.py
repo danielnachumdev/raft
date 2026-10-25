@@ -1,11 +1,13 @@
 """Host-machine facts: gateway, resource probes, docker stats parsers."""
 
+from .cgroup_memory import CgroupMemory
 from .docker_stats import DockerStatsText
 from .gateway import HostGateway
 from .models import HostDisk, HostMemory, HostResources
 from .probe import HostProbe
 
 __all__ = [
+    "CgroupMemory",
     "DockerStatsText",
     "HostDisk",
     "HostGateway",

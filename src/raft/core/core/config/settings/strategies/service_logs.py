@@ -6,7 +6,12 @@ from raft.core.core.errors.cta import OperatorError
 from ..scalars import SettingsScalars
 from ..section import SettingsSectionParser
 from ..types import (
+    DEFAULT_SERVICE_LOGS_FETCH_TIMEOUT_SECONDS,
     DEFAULT_SERVICE_LOGS_INTERVAL_SECONDS,
+    DEFAULT_SERVICE_LOGS_MAX_FETCH_BYTES,
+    DEFAULT_SERVICE_LOGS_MAX_FETCH_LINES,
+    DEFAULT_SERVICE_LOGS_MAX_SERVICES_PER_TICK,
+    DEFAULT_SERVICE_LOGS_PRESSURE_THRESHOLD,
     DEFAULT_SERVICE_LOGS_RETENTION_MAX_AGE_DAYS,
     DEFAULT_SERVICE_LOGS_RETENTION_MAX_BYTES,
     DEFAULT_SERVICE_LOGS_TIMEOUT_SECONDS,
@@ -33,6 +38,7 @@ class ServiceLogsSettingsParser(SettingsSectionParser[ServiceLogsConfig]):
             include_edge=bool(raw.get("includeEdge", True)),
             **self._timing_fields(raw),
             **self._retention_fields(raw),
+            **self._budget_fields(raw),
         )
 
     def _timing_fields(self, raw: dict) -> dict:
@@ -50,6 +56,12 @@ class ServiceLogsSettingsParser(SettingsSectionParser[ServiceLogsConfig]):
                 DEFAULT_SERVICE_LOGS_TIMEOUT_SECONDS,
                 "serviceLogs",
             ),
+            "fetch_timeout_seconds": s.pos_float(
+                raw,
+                "fetchTimeoutSeconds",
+                DEFAULT_SERVICE_LOGS_FETCH_TIMEOUT_SECONDS,
+                "serviceLogs",
+            ),
         }
 
     def _retention_fields(self, raw: dict) -> dict:
@@ -65,6 +77,35 @@ class ServiceLogsSettingsParser(SettingsSectionParser[ServiceLogsConfig]):
                 raw,
                 "retentionMaxBytes",
                 DEFAULT_SERVICE_LOGS_RETENTION_MAX_BYTES,
+                "serviceLogs",
+            ),
+        }
+
+    def _budget_fields(self, raw: dict) -> dict:
+        s = self._scalars
+        return {
+            "max_fetch_bytes": s.pos_int(
+                raw,
+                "maxFetchBytes",
+                DEFAULT_SERVICE_LOGS_MAX_FETCH_BYTES,
+                "serviceLogs",
+            ),
+            "max_fetch_lines": s.pos_int(
+                raw,
+                "maxFetchLines",
+                DEFAULT_SERVICE_LOGS_MAX_FETCH_LINES,
+                "serviceLogs",
+            ),
+            "max_services_per_tick": s.pos_int(
+                raw,
+                "maxServicesPerTick",
+                DEFAULT_SERVICE_LOGS_MAX_SERVICES_PER_TICK,
+                "serviceLogs",
+            ),
+            "pressure_threshold": s.unit_float(
+                raw,
+                "pressureThreshold",
+                DEFAULT_SERVICE_LOGS_PRESSURE_THRESHOLD,
                 "serviceLogs",
             ),
         }
