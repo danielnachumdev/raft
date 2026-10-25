@@ -32,39 +32,33 @@ class TestDockerComposeLogs(DockerTestCase):
         assert "CLIENT_ID" in self.docker.container_logs("raft-app_tmp")
         assert self.docker.container_logs("") == ""
 
+    def _logs_stdout(self, lines: list[str]):
+        box = {"lines": list(lines)}
+
+        class _Out:
+            def readline(self) -> str:
+                return box["lines"].pop(0) if box["lines"] else ""
+
+        return _Out()
+
     def test_container_logs_since(self) -> None:
-        def _stdout(lines: list[str]):
-            box = {"lines": list(lines)}
-
-            class _Out:
-                def readline(self) -> str:
-                    if not box["lines"]:
-                        return ""
-                    return box["lines"].pop(0)
-
-            return _Out()
-
         proc = MagicMock()
-        proc.stdout = _stdout(["2026-10-14T12:00:00Z line\n"])
+        proc.stdout = self._logs_stdout(["2026-10-14T12:00:00Z line\n"])
         proc.poll.return_value = 0
-        proc.args = ["docker", "logs", "--timestamps", "cid"]
         self.shell.popen.return_value = proc
         text = self.docker.container_logs_since("cid", since="2026-10-14T11:00:00Z")
         assert "line" in text
         args = self.shell.popen.call_args.args[0]
-        assert args[:4] == ["docker", "logs", "--timestamps", "--since"]
-        assert args[4:] == ["2026-10-14T11:00:00Z", "cid"]
+        assert args[3:6] == ["--since", "2026-10-14T11:00:00Z", "cid"]
         assert self.docker.container_logs_since("") == ""
-        self.shell.popen.reset_mock()
-        proc2 = MagicMock()
-        proc2.stdout = _stdout(["2026-10-14T12:00:00Z line\n"])
-        proc2.poll.return_value = 0
-        proc2.args = ["docker", "logs"]
-        self.shell.popen.return_value = proc2
-        text2 = self.docker.container_logs_since("cid")
-        assert "line" in text2
-        boot = self.shell.popen.call_args.args[0]
-        assert "--tail" in boot
+
+    def test_container_logs_since_bootstrap_tail(self) -> None:
+        proc = MagicMock()
+        proc.stdout = self._logs_stdout(["2026-10-14T12:00:00Z line\n"])
+        proc.poll.return_value = 0
+        self.shell.popen.return_value = proc
+        assert "line" in self.docker.container_logs_since("cid")
+        assert "--tail" in self.shell.popen.call_args.args[0]
 
     def test_follow_compose_logs_streams(self) -> None:
         proc = MagicMock()
