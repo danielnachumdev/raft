@@ -14,6 +14,7 @@ import { AlertImportModal } from "./AlertImportModal";
 import { AlertRecommendations } from "./AlertRecommendations";
 import { AlertRuleFormModal, type AlertFormMode } from "./AlertRuleFormModal";
 import { AlertRuleList } from "./AlertRuleList";
+import { AlertSyntaxGuide } from "./AlertSyntaxGuide";
 import {
   applyAlertRecommendation,
   catalogProxy,
@@ -47,6 +48,7 @@ export function AlertsSettingsPage() {
   const [form, setForm] = useState<{ mode: AlertFormMode; rule: AlertRule } | null>(null);
   const [formBusy, setFormBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [syntaxOpen, setSyntaxOpen] = useState(false);
   const [deleting, setDeleting] = useState<AlertRule | null>(null);
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -104,7 +106,7 @@ export function AlertsSettingsPage() {
     <div className="alerts-page" id="alerts-page">
       <PageHeader
         title="Alerts"
-        subtitle="Rules that watch metrics and control-plane signals. Notification channels are optional — rules evaluate without them; empty channel list = every enabled channel when any exist. For = sustain before fire; Cool-down = silence before re-notify. Controller evaluates host/alerts/ — stale means check raft doctor / raft up."
+        subtitle="Rules that watch metrics and control-plane signals. Notification channels are optional — rules evaluate without them; empty channel list = every enabled channel when any exist. For = sustain before fire; Cool-down = silence before re-notify. Controller evaluates host/alerts/ — stale means check raft doctor / raft up. Use Syntax for YAML/JSON examples."
         meta={
           <>
             <span className={status?.enabled === false ? "chip chip-warn" : "chip"}>
@@ -120,6 +122,14 @@ export function AlertsSettingsPage() {
         }
         actions={
           <>
+            <button
+              type="button"
+              className="btn"
+              id="alerts-syntax"
+              onClick={() => setSyntaxOpen(true)}
+            >
+              Syntax
+            </button>
             <button type="button" className="btn" id="alerts-import" onClick={() => fileInput.current?.click()}>
               Import
             </button>
@@ -202,8 +212,14 @@ export function AlertsSettingsPage() {
           error={formError}
           onClose={() => setForm(null)}
           onSubmit={saveRule}
+          onOpenSyntax={() => setSyntaxOpen(true)}
         />
       ) : null}
+      <AlertSyntaxGuide
+        open={syntaxOpen}
+        rules={rules}
+        onClose={() => setSyntaxOpen(false)}
+      />
       <ConfirmPopup
         open={deleting !== null}
         title="Delete alert rule?"

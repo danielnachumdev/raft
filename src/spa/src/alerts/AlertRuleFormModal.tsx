@@ -14,6 +14,8 @@ type Props = {
   error: string | null;
   onClose: () => void;
   onSubmit: (rule: AlertRule) => void | Promise<void>;
+  /** Open the shared YAML/JSON syntax guide (page-owned modal). */
+  onOpenSyntax?: () => void;
 };
 
 /** Add / edit alert rule dialog (typed basics + advanced condition JSON). Mount per open. */
@@ -147,8 +149,22 @@ export function AlertRuleFormModal(props: Props) {
             onChange={(e) => setConditionText(e.target.value)}
           />
           <span className={conditionError ? "form-error" : "form-hint"}>
-            {conditionError ??
-              "Signal, select, kind, and params. Nested all/any groups are supported."}
+            {conditionError ?? (
+              <>
+                Signal, select, kind, and params. Nested all/any groups are supported.{" "}
+                {props.onOpenSyntax ? (
+                  <button
+                    type="button"
+                    className="linkish"
+                    id="alert-condition-syntax"
+                    disabled={props.busy}
+                    onClick={props.onOpenSyntax}
+                  >
+                    View YAML/JSON syntax
+                  </button>
+                ) : null}
+              </>
+            )}
           </span>
         </label>
         {shownError ? (
