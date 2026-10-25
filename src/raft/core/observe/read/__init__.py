@@ -27,6 +27,12 @@ strings, Compose ``service`` id for deep links, ``external_urls`` from
 (``package`` + human ``line`` from ``InstalledVersion``) for SPA chrome.
 Prefer ``containers`` for new FE work (#35/#9).
 
+Serve status is a **lite** live collect (``docker ps`` + ``inspect``, no
+``docker stats``) with CPU/mem/IO overlaid from the newest controller
+``host/metrics/resources.jsonl`` sample (``resources_as_of``). Overlapping
+polls share a short TTL + single-flight cache so frequent SPA refresh stays
+cheap. CLI ``raft status`` still collects live stats.
+
 Serve ``GET /api/service/{name}`` returns ``host`` + one ``container`` object
 plus a ``presentation`` row (including ``external_urls``) for that Compose
 service id (404 if unknown).
@@ -68,6 +74,8 @@ from .metrics import HttpMetricsRead, MetricsRead
 from .serve_row import ServeRow
 from .snapshot_view import ServeSnapshotView
 from .status import StatusRead
+from .status_payload_cache import StatusPayloadCache
+from .status_resources_overlay import StatusResourcesOverlay
 
 __all__ = [
     "AppDefinitionRead",
@@ -79,5 +87,7 @@ __all__ = [
     "ServeDependsMap",
     "ServeRow",
     "ServeSnapshotView",
+    "StatusPayloadCache",
     "StatusRead",
+    "StatusResourcesOverlay",
 ]

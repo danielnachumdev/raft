@@ -29,8 +29,17 @@ class ContainerRuntimeGateway:
         self._sh = sh
         self._project = project
 
-    def collect(self, services: Sequence[str]) -> Dict[str, ContainerRuntimeRow]:
-        """One-shot facts for ``services`` that currently have a container."""
+    def collect(
+        self,
+        services: Sequence[str],
+        *,
+        include_stats: bool = True,
+    ) -> Dict[str, ContainerRuntimeRow]:
+        """One-shot facts for ``services`` that currently have a container.
+
+        ``include_stats=False`` skips ``docker stats`` (serve hot path overlays
+        CPU/mem from controller ``resources.jsonl`` instead).
+        """
         if not services:
             return {}
         id_by_service = self._running_ids()
@@ -39,7 +48,7 @@ class ContainerRuntimeGateway:
             return {}
         ids = list(dict.fromkeys(wanted.values()))
         runtime_by_id = self._inspect_many(ids)
-        stats_by_id = self._stats_many(ids)
+        stats_by_id = self._stats_many(ids) if include_stats else {}
         return self._rows_for(wanted, runtime_by_id, stats_by_id)
 
     def _running_ids(self) -> Dict[str, str]:

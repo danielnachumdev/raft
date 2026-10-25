@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 from raft.core.core.models.app import EDGE_GROUP
@@ -67,6 +68,45 @@ class TestStatusRead(RaftTestCase):
             "line": "raft 0.11.0",
             "label": "0.11.0",
         }
+
+    def test_api_payload_overlay_resources_sets_resources_as_of(self) -> None:
+        ts = self._write_fresh_gate_sample()
+        status = MagicMock()
+        status.collect.return_value = self._lite_gate_snap()
+        payload = StatusRead(
+            StackMakers.make_stack(self.tmp_path), status=status
+        ).api_payload(include_stats=False, overlay_resources=True)
+        status.collect.assert_called_once_with(
+            refresh_apps=False, include_stats=False
+        )
+        assert payload["resources_as_of"] == ts
+        assert payload["containers"][0]["cpu_percent"] == 3.5
+
+    def _write_fresh_gate_sample(self) -> str:
+        ts = datetime.now(timezone.utc).isoformat()
+        path = self.tmp_path / "host" / "metrics" / "resources.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            '{"ts":"%s","containers":[{"service":"raft-gate","cpu_percent":3.5,'
+            '"memory":{"used_percent":10}}]}\n' % ts,
+            encoding="utf-8",
+        )
+        return ts
+
+    @staticmethod
+    def _lite_gate_snap() -> StatusSnapshot:
+        return StatusSnapshot(
+            host=status_fx.empty_host_status(),
+            containers=(
+                status_fx.container(
+                    "raft-gate",
+                    role="gate",
+                    group=EDGE_GROUP,
+                    cpu=None,
+                    mem_pct=None,
+                ),
+            ),
+        )
 
     @contextmanager
     def _patch_installed_version(self, semver: str):

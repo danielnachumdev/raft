@@ -37,6 +37,12 @@ class MetricsJsonlReader:
                 return ts
         return None
 
+    def latest_sample(self) -> Optional[Dict[str, Any]]:
+        """Newest parseable sample, or ``None`` if the store is empty."""
+        for sample in self._iter_parsed_newest_first():
+            return sample
+        return None
+
     def iter_newest_first(
         self,
         *,

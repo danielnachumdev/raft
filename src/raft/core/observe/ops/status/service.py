@@ -51,11 +51,20 @@ class Status:
         self._host = HostGateway(disk_path=self.stack.root)
         self._containers = ContainerRuntimeGateway(self.sh)
 
-    def collect(self, *, refresh_apps: bool = False) -> StatusSnapshot:
+    def collect(
+        self, *, refresh_apps: bool = False, include_stats: bool = True
+    ) -> StatusSnapshot:
+        """Live host + container snapshot.
+
+        ``include_stats=False`` skips Engine ``docker stats`` so serve can paint
+        actionable up/down rows quickly and overlay CPU/mem from controller JSONL.
+        """
         if refresh_apps:
             self._reload_stack()
         targets = self._targets()
-        runtime = self._containers.collect([t[0] for t in targets])
+        runtime = self._containers.collect(
+            [t[0] for t in targets], include_stats=include_stats
+        )
         containers = tuple(
             self._one_container(service, role, app_name, group, allocated, runtime)
             for service, role, app_name, group, allocated in targets

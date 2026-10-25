@@ -8,8 +8,8 @@ import { peekStatus, refreshStatus } from "../shared/dashboardCache";
 import { LiveIndicator } from "../chrome/LiveIndicator";
 import { showSkeleton, StackStatusSkeleton } from "../chrome/skeleton";
 import { EmptyState, ErrorState } from "../chrome/StateViews";
-import { TrendsDashboard } from "../trends/dashboard/ui/TrendsDashboard";
 import { DashboardSection } from "./DashboardSection";
+import { DeferredTrends } from "./DeferredTrends";
 import { PageHeader } from "./PageHeader";
 import { RegistryIssues } from "./RegistryIssues";
 import { StatusSummary } from "./StatusSummary";
@@ -151,7 +151,7 @@ export function Dashboard() {
         </>
       ) : null}
 
-      <TrendsDashboard />
+      <DeferredTrends hasStatusData={data !== null} />
     </>
   );
 }

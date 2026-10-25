@@ -171,3 +171,28 @@ class TestContainerRuntimeGateway(DockerTestCase):
     def test_collect_no_services_short_circuits(self) -> None:
         assert self._gateway().collect([]) == {}
         self.shell.docker.assert_not_called()
+
+    def test_collect_include_stats_false_skips_docker_stats(self) -> None:
+        self.shell.docker.side_effect = self._ps_inspect_only()
+        rows = self._gateway().collect(["raft-gate"], include_stats=False)
+        assert rows["raft-gate"].status == "running"
+        assert rows["raft-gate"].stats is None
+        assert self.shell.docker.call_count == 2
+        assert self.shell.docker.call_args_list[0].args[0] == "ps"
+        assert self.shell.docker.call_args_list[1].args[0] == "inspect"
+
+    def _ps_inspect_only(self):
+        payload = [
+            self._inspect_dict("gatecidFULL", status="running", health=None, mem=32)
+        ]
+
+        def docker(*args, **kwargs):
+            if args[:1] == ("ps",):
+                return self.ok("gatecid\traft-gate\n")
+            if args[:1] == ("inspect",):
+                return self.ok(json.dumps(payload))
+            if args[:1] == ("stats",):
+                raise AssertionError("docker stats must not run when include_stats=False")
+            return self.ok()
+
+        return docker

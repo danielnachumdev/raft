@@ -27,6 +27,14 @@ class TestStatusCollect(StatusTestCase):
         self._assert_running_gate_router(snap)
         self._assert_stopped_controller_app(snap)
 
+    def test_collect_include_stats_false_skips_stats_kwarg(self) -> None:
+        status = self._idle_status(AppMakers.make_app("app"))
+        gateway = status_fx.mock_containers_idle(status)
+        with self.patch_host():
+            status.collect(include_stats=False)
+        gateway.collect.assert_called_once()
+        assert gateway.collect.call_args.kwargs.get("include_stats") is False
+
     def _assert_running_gate_router(self, snap) -> None:
         assert snap.host.cpus == 4
         assert snap.host.memory_total_bytes == 8 * 1024**3

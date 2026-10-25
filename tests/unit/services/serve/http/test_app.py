@@ -29,9 +29,12 @@ class TestServeAppFactory(RaftTestCase):
         )
         response = client.get("/api/status")
         assert response.status_code == 200
-        status.collect.assert_called_once_with(refresh_apps=True)
+        status.collect.assert_called_once_with(
+            refresh_apps=True, include_stats=False
+        )
         data = response.json()
         assert "host" in data and "containers" in data
+        assert "resources_as_of" in data
         names = [r["name"] for r in data["control_plane"]]
         assert names == ["gate", "router", "controller"]
         assert data["control_plane"][0]["service"] == "raft-gate"
@@ -65,7 +68,9 @@ class TestServeAppFactory(RaftTestCase):
         )
         response = client.get("/api/service/raft-gate")
         assert response.status_code == 200
-        status.collect.assert_called_once_with(refresh_apps=True)
+        status.collect.assert_called_once_with(
+            refresh_apps=True, include_stats=True
+        )
         data = response.json()
         assert data["container"]["service"] == "raft-gate"
         assert data["presentation"]["name"] == "gate"
