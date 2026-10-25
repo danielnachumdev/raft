@@ -44,7 +44,7 @@ class TestStatusCollect(StatusTestCase):
         assert controller.service == "raft-controller"
         assert controller.role == "controller" and controller.group == "raft"
         assert controller.status == "not running"
-        assert controller.allocated.memory_limit == "128M"
+        assert controller.allocated.memory_limit == "192M"
         assert app.service == "app" and app.status == "not running"
         assert app.app == "app" and app.group is None
         assert app.cpu_percent is None

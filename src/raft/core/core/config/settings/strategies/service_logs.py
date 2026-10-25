@@ -11,7 +11,6 @@ from ..types import (
     DEFAULT_SERVICE_LOGS_MAX_FETCH_BYTES,
     DEFAULT_SERVICE_LOGS_MAX_FETCH_LINES,
     DEFAULT_SERVICE_LOGS_MAX_SERVICES_PER_TICK,
-    DEFAULT_SERVICE_LOGS_PRESSURE_THRESHOLD,
     DEFAULT_SERVICE_LOGS_RETENTION_MAX_AGE_DAYS,
     DEFAULT_SERVICE_LOGS_RETENTION_MAX_BYTES,
     DEFAULT_SERVICE_LOGS_TIMEOUT_SECONDS,
@@ -100,12 +99,6 @@ class ServiceLogsSettingsParser(SettingsSectionParser[ServiceLogsConfig]):
                 raw,
                 "maxServicesPerTick",
                 DEFAULT_SERVICE_LOGS_MAX_SERVICES_PER_TICK,
-                "serviceLogs",
-            ),
-            "pressure_threshold": s.unit_float(
-                raw,
-                "pressureThreshold",
-                DEFAULT_SERVICE_LOGS_PRESSURE_THRESHOLD,
                 "serviceLogs",
             ),
         }

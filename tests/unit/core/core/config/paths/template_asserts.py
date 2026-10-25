@@ -52,7 +52,7 @@ class TemplateAsserts:
         assert "./generated/nginx/upstreams:/raft/generated/nginx/upstreams" in compose
         assert "RAFT_HOST_UID" in compose and "working_dir: /raft" in compose
         assert "RAFT_DOCKER_GID" in compose and "group_add:" in compose
-        assert "memory: 128M" in compose
+        assert "memory: 192M" in compose
 
     def assert_compose_acme_mounts(self, compose: str) -> None:
         assert "./host/acme/http-01:/etc/nginx/acme-www:ro" in compose

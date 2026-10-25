@@ -8,7 +8,7 @@ from ..shell import Shell
 
 logger = logging.getLogger(__name__)
 
-# Defaults keep a 128Mi controller cgroup from buffering multi-day log dumps.
+# Defaults keep the controller cgroup from buffering multi-day log dumps.
 DEFAULT_LOG_FETCH_TIMEOUT_SECONDS = 15.0
 DEFAULT_LOG_FETCH_MAX_BYTES = 512 * 1024
 DEFAULT_LOG_FETCH_BOOTSTRAP_TAIL = 2000

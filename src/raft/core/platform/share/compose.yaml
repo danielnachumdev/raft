@@ -11,12 +11,13 @@ x-resources-edge: &resources-edge
         memory: 16M
 
 # Controller runs Python + docker CLI against the socket; needs more RAM than nginx.
+# 192M gives headroom above log/metrics fetch bounds (still small on a 2Gi host).
 x-resources-controller: &resources-controller
   deploy:
     resources:
       limits:
         cpus: "0.25"
-        memory: 128M
+        memory: 192M
       reservations:
         cpus: "0.05"
         memory: 32M

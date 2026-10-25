@@ -14,13 +14,11 @@ from raft.core.core.config.paths.metrics_paths import (
 from raft.core.core.config.settings.types import (
     DEFAULT_METRICS_BATCH_SIZE,
     DEFAULT_METRICS_FLUSH_SECONDS,
-    DEFAULT_METRICS_PRESSURE_THRESHOLD,
     DEFAULT_METRICS_RETENTION_MAX_AGE_DAYS,
     DEFAULT_METRICS_RETENTION_MAX_BYTES,
 )
 from raft.core.core.models.stack import Stack
 from raft.core.observe.ops.status import Status
-from raft.core.platform.adapters.host import CgroupMemory, HostGateway
 
 from .rotation import MetricsRotation
 
@@ -33,9 +31,8 @@ ClockFn = Callable[[], float]
 class MetricsRecorder:
     """Sample via ``Status.collect`` (same gatherer as CLI/serve); batch JSONL.
 
-    Under cgroup memory pressure, records a host-only sample (no ``docker
-    stats``) and flushes immediately so the controller does not hold full
-    Status snapshots while near its memcg limit.
+    Default ``batch_size=1`` flushes each sample so the controller does not
+    hold multiple full Status snapshots in RSS (no change to sample contents).
     """
 
     def __init__(
@@ -46,21 +43,15 @@ class MetricsRecorder:
         flush_seconds: float = DEFAULT_METRICS_FLUSH_SECONDS,
         retention_max_age_days: int = DEFAULT_METRICS_RETENTION_MAX_AGE_DAYS,
         retention_max_bytes: int = DEFAULT_METRICS_RETENTION_MAX_BYTES,
-        pressure_threshold: float = DEFAULT_METRICS_PRESSURE_THRESHOLD,
         collect_fn: Optional[CollectFn] = None,
         clock: ClockFn = time.monotonic,
         rotation: Optional[MetricsRotation] = None,
-        memory: Optional[CgroupMemory] = None,
-        host: Optional[HostGateway] = None,
     ) -> None:
         self.home = home
         self.batch_size = batch_size
         self.flush_seconds = flush_seconds
-        self._pressure_threshold = pressure_threshold
         self._collect_fn = collect_fn
         self._clock = clock
-        self._memory = memory or CgroupMemory()
-        self._host = host or HostGateway(disk_path=home)
         self._buffer: List[Dict[str, Any]] = []
         self._last_flush_at = clock()
         self._rotation = rotation or MetricsRotation(
@@ -73,9 +64,8 @@ class MetricsRecorder:
         return self.home / METRICS_DIR / METRICS_FILENAME
 
     def tick(self) -> None:
-        pressure = self._memory.elevated(threshold=self._pressure_threshold)
-        self._buffer.append(self._sample(pressure=pressure))
-        if pressure or self._should_flush():
+        self._buffer.append(self._sample())
+        if self._should_flush():
             self.flush()
 
     def flush(self) -> None:
@@ -92,27 +82,13 @@ class MetricsRecorder:
             return True
         return (self._clock() - self._last_flush_at) >= self.flush_seconds
 
-    def _sample(self, *, pressure: bool) -> Dict[str, Any]:
-        if self._collect_fn is not None:
-            payload = self._collect_fn()
-        elif pressure:
-            payload = self._host_only_sample()
-        else:
-            payload = self._collect_status()
+    def _sample(self) -> Dict[str, Any]:
+        payload = self._collect_fn() if self._collect_fn else self._collect_status()
         return self._with_timestamp(payload)
 
     def _collect_status(self) -> Dict[str, Any]:
         # Stack.load_apps skips ensure_raft_home: data home is mounted :ro.
         return Status(Stack.load_apps(self.home)).collect().to_dict()
-
-    def _host_only_sample(self) -> Dict[str, Any]:
-        """Lean sample when near the controller memcg limit (no Engine stats)."""
-        logger.info("metrics host-only sample (memory pressure)")
-        return {
-            "host": Status._host_status(self._host).to_dict(),
-            "containers": [],
-            "degraded": "memory_pressure",
-        }
 
     @staticmethod
     def _with_timestamp(payload: Dict[str, Any]) -> Dict[str, Any]:

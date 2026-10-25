@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Sequence
 
 from raft.core.core.config.settings.types import ServiceLogsConfig
 from raft.core.core.models.stack import Stack
@@ -11,7 +11,6 @@ from raft.core.observe.ops.logs.docker_source import DockerContainerLogSource
 from raft.core.observe.ops.logs.keys import ServiceLogsKeys
 from raft.core.observe.ops.logs.store import ServiceLogsStore
 from raft.core.platform.adapters.docker.stack import DockerStack
-from raft.core.platform.adapters.host.cgroup_memory import CgroupMemory
 
 logger = logging.getLogger(__name__)
 
@@ -26,13 +25,11 @@ class ServiceLogsShipper:
         docker: DockerStack,
         *,
         stack_loader=None,
-        memory: Optional[CgroupMemory] = None,
     ) -> None:
         self.home = home
         self._config = config
         self._docker = docker
         self._stack_loader = stack_loader or (lambda: Stack.load_apps(home))
-        self._memory = memory or CgroupMemory()
         self._rr_index = 0
         self._store = ServiceLogsStore(
             home,
@@ -64,17 +61,11 @@ class ServiceLogsShipper:
     def _slice(self, keys: Sequence[str]) -> list[str]:
         if not keys:
             return []
-        budget = self._services_budget(len(keys))
+        budget = min(max(1, self._config.max_services_per_tick), len(keys))
         start = self._rr_index % len(keys)
         chosen = [keys[(start + i) % len(keys)] for i in range(budget)]
         self._rr_index = (start + budget) % len(keys)
         return chosen
-
-    def _services_budget(self, available: int) -> int:
-        configured = max(1, self._config.max_services_per_tick)
-        if self._memory.elevated(threshold=self._config.pressure_threshold):
-            return min(1, available, configured)
-        return min(configured, available)
 
     def _ship_one(self, compose_id: str) -> None:
         cid = self._docker.try_service_container_id(compose_id)
