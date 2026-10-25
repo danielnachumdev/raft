@@ -68,3 +68,9 @@ class TestAlertsInboxSource(RaftTestCase):
         assert sources[0].source_id == "firewall-recommendation"
         assert sources[1] is alerts
         assert sources[2] is extra
+
+    def test_registry_skips_alerts_when_unavailable(self) -> None:
+        with patch.object(AlertsInboxSource, "try_create", return_value=None):
+            sources = InboxSourceRegistry.default(self.tmp_path)
+        assert len(sources) == 1
+        assert sources[0].source_id == "firewall-recommendation"
