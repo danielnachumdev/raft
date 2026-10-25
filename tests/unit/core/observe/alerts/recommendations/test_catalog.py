@@ -49,6 +49,16 @@ class TestAlertRecommendationCatalog(RaftTestCase):
             [{"id": "other", "condition": {"signal": "metrics.http"}}], oom
         )
         assert not AlertRecommendationCatalog.covers([{"id": "x"}], oom)
+        assert not AlertRecommendationCatalog.covers(["not-a-mapping"], oom)
+        cond = dict(oom["rule"]["condition"])
+        wrong_kind = {**cond, "kind": "threshold"}
+        assert not AlertRecommendationCatalog.covers(
+            [{"id": "other", "condition": wrong_kind}], oom
+        )
+        wrong_select = {**cond, "select": {"target": "demo-api"}}
+        assert not AlertRecommendationCatalog.covers(
+            [{"id": "other", "condition": wrong_select}], oom
+        )
 
     def test_params_cover_superset_values(self) -> None:
         want = {"match": "in", "values": ["crash-looping"]}

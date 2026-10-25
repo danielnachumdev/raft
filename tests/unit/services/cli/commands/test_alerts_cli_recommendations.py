@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.stack import Stack
+from raft.core.observe.alerts.service.rules_service import RuleConflict
 from raft.services.cli.commands.alerts import AlertsCLI
 from tests.unit.base import RaftTestCase
 
@@ -36,3 +37,14 @@ class TestAlertsCliRecommendations(RaftTestCase):
             raise AssertionError("expected OperatorError")
         except OperatorError as exc:
             assert "unknown alert recommendation" in str(exc)
+
+    def test_apply_conflict(self) -> None:
+        cli = self._cli()
+        with patch.object(
+            cli._recommendations, "apply", side_effect=RuleConflict("dup")
+        ):
+            try:
+                cli.apply_recommendation("any-service-oom")
+                raise AssertionError("expected OperatorError")
+            except OperatorError as exc:
+                assert "dup" in str(exc)
