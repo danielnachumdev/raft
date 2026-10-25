@@ -19,7 +19,7 @@ export function AlertCallouts(props: { status: AlertStatusPayload | null; hasCha
       ) : null}
       {!props.hasChannels ? (
         <div className="callout callout-warn" id="alerts-no-channels">
-          Alerts will evaluate but nothing will be delivered. Add a channel in{" "}
+          Rules still evaluate without channels; delivery starts once you add one in{" "}
           <Link to="/settings/notifications">Notifications</Link>.
         </div>
       ) : null}
@@ -30,8 +30,9 @@ export function AlertCallouts(props: { status: AlertStatusPayload | null; hasCha
 export function RulesEmpty() {
   return (
     <EmptyState id="alerts-empty" title="No alert rules yet.">
-      Use <em>Add rule</em>, import an exported file, or run <code>raft alerts apply --file rules.yaml</code> on the
-      host.
+      Apply a recommendation above, use <em>Add rule</em>, import an export, or run{" "}
+      <code>raft alerts apply --file rules.yaml</code> on the host. Channels are not required to create a
+      rule.
     </EmptyState>
   );
 }

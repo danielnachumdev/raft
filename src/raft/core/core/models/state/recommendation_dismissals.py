@@ -1,21 +1,22 @@
-"""Persist dismissed firewall recommendation ids under host/firewall/."""
+"""Persist dismissed recommendation ids under a host state directory."""
 
 import json
 import os
 import tempfile
 import threading
 from pathlib import Path
-from typing import Any
+from typing import Any, Union
 
-FIREWALL_STATE_DIR = Path("host") / "firewall"
 DISMISSALS_NAME = "dismissed-recommendations.json"
+FIREWALL_STATE_DIR = Path("host") / "firewall"
+ALERTS_STATE_DIR = Path("host") / "alerts"
 
 
-class FirewallDismissalStore:
+class RecommendationDismissalStore:
     """JSON set of recommendation ids the operator dismissed."""
 
-    def __init__(self, home: Path) -> None:
-        self.root = home / FIREWALL_STATE_DIR
+    def __init__(self, home: Path, state_dir: Union[Path, str]) -> None:
+        self.root = home / Path(state_dir)
         self.path = self.root / DISMISSALS_NAME
         self._lock = threading.Lock()
 
@@ -62,3 +63,17 @@ class FirewallDismissalStore:
             return json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             return {}
+
+
+class FirewallDismissalStore(RecommendationDismissalStore):
+    """Dismissals under ``host/firewall/dismissed-recommendations.json``."""
+
+    def __init__(self, home: Path) -> None:
+        super().__init__(home, FIREWALL_STATE_DIR)
+
+
+class AlertDismissalStore(RecommendationDismissalStore):
+    """Dismissals under ``host/alerts/dismissed-recommendations.json``."""
+
+    def __init__(self, home: Path) -> None:
+        super().__init__(home, ALERTS_STATE_DIR)

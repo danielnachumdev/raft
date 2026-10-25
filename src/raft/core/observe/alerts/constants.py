@@ -9,6 +9,7 @@ KIND_ALERT_TEST = "alert.test"
 ALERTS_STATE_DIR = Path("host") / "alerts"
 RULES_NAME = "rules.yaml"
 RUNTIME_NAME = "runtime.json"
+DISMISSALS_NAME = "dismissed-recommendations.json"
 
 MAX_RULES = 200
 MAX_LEAVES = 8

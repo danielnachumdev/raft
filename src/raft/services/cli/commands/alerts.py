@@ -7,9 +7,15 @@ import yaml
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.stack import Stack
-from raft.core.observe.alerts import AlertEngine, AlertRulesService, AlertStatusView
+from raft.core.observe.alerts import (
+    AlertEngine,
+    AlertRecommendations,
+    AlertRulesService,
+    AlertStatusView,
+)
 from raft.core.observe.alerts.catalogs import AlertCatalogs
 from raft.core.observe.alerts.model.document import AlertRulesDocument
+from raft.core.observe.alerts.service.rules_service import RuleConflict
 from raft.core.observe.alerts.service.tester import AlertTester
 from raft.core.observe.notify.delivery_status import DeliveryStatus
 
@@ -21,7 +27,8 @@ class AlertsCLI:
 
     Primer: each rule has a catalog ``signal`` (e.g. metrics.http),
     ``for`` (sustain before fire), ``cooldown`` (silence before re-notify),
-    and ``channelIds`` (omit / empty = every enabled notification channel).
+    and ``channelIds`` (omit / empty = every enabled channel when any exist;
+    channels are optional — rules evaluate without them).
     The controller evaluates rules under ``host/alerts/``; if status is
     stale, run ``raft doctor`` then ``raft up`` (controller needs the mount).
     """
@@ -31,6 +38,9 @@ class AlertsCLI:
         self._out = AlertsCliOutput()
         self._service = AlertRulesService(stack.root)
         self._engine = AlertEngine(stack.root)
+        self._recommendations = AlertRecommendations(
+            stack.root, rules=self._service
+        )
 
     def list(self, json: bool = False) -> None:
         """List alert rules with runtime state."""
@@ -118,6 +128,38 @@ class AlertsCLI:
     def disable(self, rule_id: str) -> None:
         """Disable a rule."""
         self._set_enabled(rule_id, False)
+
+    def recommendations(self, json: bool = False) -> None:
+        """List open default alert-setup recommendations."""
+        payload = self._recommendations.list_public()
+        if json:
+            self._out.say_json(payload)
+            return
+        self._out.recommendations_table(list(payload.get("recommendations") or []))
+
+    def dismiss(self, recommendation_id: str) -> None:
+        """Dismiss a recommendation id (e.g. ``any-service-oom``)."""
+        payload = self._recommendations.dismiss(recommendation_id)
+        self._out.say(f"Dismissed {recommendation_id}.")
+        remaining = payload.get("recommendations") or []
+        self._out.say(f"{len(remaining)} recommendation(s) still open.")
+
+    def apply_recommendation(self, recommendation_id: str) -> None:
+        """Create the suggested rule (no notification channel required)."""
+        try:
+            result = self._recommendations.apply(recommendation_id)
+        except KeyError as exc:
+            raise OperatorError(
+                f"unknown alert recommendation {recommendation_id!r}.\n"
+                f"Fix: raft alerts recommendations"
+            ) from exc
+        except RuleConflict as exc:
+            raise OperatorError(str(exc)) from exc
+        rule = result.get("rule") or {}
+        self._out.say(
+            f"Created alert rule {rule.get('id')} "
+            f"(channelIds={rule.get('channelIds') or []})."
+        )
 
     def apply(self, file: str, prune: bool = False) -> None:
         """Upsert rules from a YAML file."""

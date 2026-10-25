@@ -108,6 +108,7 @@ Align with the README table; detail for agents:
 | Per-service Trends (default graphs) | **Shipped** | Service inspection uses the same multi-graph UX, pinned to that service; browser-local `raft-serve-service-trends`; `src/spa/src/trends/service/` (kit migration follow-on for [#249](https://github.com/danielnachumdev/raft/issues/249)) |
 | Reusable dashboard kit (Trends shell / embed) | **Shipped (v1)** | [#249](https://github.com/danielnachumdev/raft/issues/249); `src/spa/src/dashboard-kit/`; timeseries panels + embed contract; browser-local persistence. |
 | Alert rules engine (metrics/control-plane → notifications) | **Shipped** | [#236](https://github.com/danielnachumdev/raft/issues/236); dual-plane CLI+serve lock [#264](https://github.com/danielnachumdev/raft/issues/264); `AlertRulesService` / engine under `observe/alerts/` |
+| Alert setup recommendations (OOM / not-running / high memory) | **Shipped** | Shared SPA `recommendations/` kit (firewall + alerts callbacks); catalog in `observe/alerts/recommendations/`; dismissals `host/alerts/dismissed-recommendations.json`; channels optional on apply |
 | Operator system event timeline | **Shipped** | [#267](https://github.com/danielnachumdev/raft/issues/267); `host/events/ops.jsonl` dual-write with GraphEvents; `raft events` + serve `/events`. |
 | Firewall-derived alert signals (`edge.denies`) | **Planned** | Observe gate outcomes only; no middle hop (#207) |
 | Always-on Compose dashboard service | **Shipped** | [#36](https://github.com/danielnachumdev/raft/issues/36); `dashboard:` settings-only + `raft-dashboard` Compose; lifecycle via Up/Down/Redeploy ([#340](https://github.com/danielnachumdev/raft/issues/340)); optional `publicHost` + TLS + auth (`none`/`password`/`oauth`/`external`); OAuth via in-container oauth2-proxy + allowlist. |
@@ -139,6 +140,7 @@ Layout (#313): `host/` (control-plane) + `services/<SERVICE>/` (App-owned) + `ge
 | `host/events/graph.jsonl` | Trends GraphEvents (chart markers) |
 | `host/events/ops.jsonl` | Operator system event timeline (#267) |
 | `host/alerts/rules.yaml`, `host/alerts/runtime.json` | Alert rules (desired) + evaluation runtime |
+| `host/alerts/dismissed-recommendations.json` | Dismissed default alert-setup suggestions |
 | `host/secrets/dashboard/` | Dashboard OAuth material |
 | `host/logs/` | Host raft log + retained edge service stdout |
 | `services/<name>/secrets/`, `certs/`, `checkout/`, `deploy/`, `scaling/`, `logs/`, `acme/` | Per-App durable artifacts |
@@ -168,6 +170,7 @@ Product templates sync from `src/raft/core/platform/share/` into the data home o
 | Dashboard UI | `src/spa/` only (Release bakes; local `npm run build` for editable/`raft serve`) |
 | Reusable dashboard kit (Trends / embeds) | `src/spa/src/dashboard-kit/`; Trends overview consumer in `trends/dashboard/ui/TrendsDashboard.tsx`. |
 | Alert rules | `core/observe/alerts/` + `services/serve/alerts/` + `services/controller/jobs/alerts/` + SPA `src/spa/src/alerts/` |
+| Setup recommendations (shared UI kit) | SPA `src/spa/src/recommendations/`; firewall + alerts plug in via callbacks; dismiss stores under `host/<area>/dismissed-recommendations.json` |
 | Ops event timeline | `core/models/state/ops_event*` + `observe/ops/events/`; dual-write from `GraphEventStore`; serve `services/serve/events/`; CLI `services/cli/commands/events.py` (`raft events`); SPA `src/spa/src/events/` |
 | Always-on dashboard | `lifecycle/dashboard/` + `share/dashboard/`; settings `dashboard:` (Settings UI); lifecycle Up/Down/Redeploy via `ServiceActions`; serve auth `services/serve/auth/`. |
 | Notification strategies | `observe/notify/strategies/` + `catalogs.py`; SPA `src/spa/src/notifications/` |

@@ -6,7 +6,12 @@ from fastapi import Body, HTTPException
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.stack import Stack
-from raft.core.observe.alerts import AlertEngine, AlertRulesService, AlertStatusView
+from raft.core.observe.alerts import (
+    AlertEngine,
+    AlertRecommendations,
+    AlertRulesService,
+    AlertStatusView,
+)
 from raft.core.observe.alerts.catalog import AlertCatalog
 from raft.core.observe.alerts.catalogs import AlertCatalogs
 from raft.core.observe.alerts.service.rules_service import RuleConflict
@@ -28,6 +33,9 @@ class ServeAlertsApi:
         self._regs = registries or AlertCatalogs.default()
         self._service = service or AlertRulesService(stack.root, registries=self._regs)
         self._engine = AlertEngine(stack.root, registries=self._regs)
+        self._recommendations = AlertRecommendations(
+            stack.root, rules=self._service, registries=self._regs
+        )
 
     def register(self, app) -> None:
         app.get("/api/alerts/rules")(self.api_list)
@@ -43,6 +51,13 @@ class ServeAlertsApi:
         app.get("/api/alerts/catalog")(self.api_catalog)
         app.get("/api/alerts/export")(self.api_export)
         app.post("/api/alerts/import")(self.api_import)
+        app.get("/api/alerts/recommendations")(self.api_recommendations)
+        app.post("/api/alerts/recommendations/{recommendation_id}/dismiss")(
+            self.api_dismiss_recommendation
+        )
+        app.post("/api/alerts/recommendations/{recommendation_id}/apply")(
+            self.api_apply_recommendation
+        )
 
     def api_list(self) -> Dict[str, Any]:
         return self._service.document().to_public()
@@ -154,6 +169,28 @@ class ServeAlertsApi:
                 body.get("document") or {}, prune=bool(body.get("prune"))
             )
             return summary.to_public()
+        except OperatorError as exc:
+            raise self._bad(exc) from exc
+
+    def api_recommendations(self) -> Dict[str, Any]:
+        return self._recommendations.list_public()
+
+    def api_dismiss_recommendation(self, recommendation_id: str) -> Dict[str, Any]:
+        return self._recommendations.dismiss(recommendation_id)
+
+    def api_apply_recommendation(self, recommendation_id: str) -> Dict[str, Any]:
+        try:
+            return self._recommendations.apply(recommendation_id)
+        except KeyError as exc:
+            raise HTTPException(
+                status_code=404,
+                detail=(
+                    f"alert recommendation '{recommendation_id}' not found. "
+                    f"Fix: GET /api/alerts/recommendations"
+                ),
+            ) from exc
+        except RuleConflict as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
         except OperatorError as exc:
             raise self._bad(exc) from exc
 
