@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 import time
 from unittest.mock import patch
 
@@ -77,6 +78,42 @@ class TestGithubDeployRunner(RaftTestCase):
         assert (
             self.tmp_path / "services" / "http-only-site" / "checkout" / ".raft" / "app.yaml"
         ).is_file()
+
+    def test_start_coalesces_inflight_same_full_name(self) -> None:
+        store = DeployJobStore()
+        provider = self._provider()
+        runner = GithubDeployRunner(
+            StackMakers.make_stack(self.tmp_path), provider, store
+        )
+        repo = provider.list_repos("t")[0]
+        first = self._start_blocked_deploy(runner, repo)
+        second = runner.start(github_fx.sample_account(), repo, "main")
+        assert first.id == second.id
+        assert store.active_for(repo.full_name) is first
+        self._release_blocked_deploy()
+        self._wait(first)
+        assert first.status == "succeeded"
+
+    def _start_blocked_deploy(self, runner, repo) -> DeployJob:
+        self._deploy_started = threading.Event()
+        self._deploy_release = threading.Event()
+
+        def _block_execute(job, account, repo_arg) -> None:
+            del job, account, repo_arg
+            self._deploy_started.set()
+            self._deploy_release.wait(timeout=5)
+
+        self._deploy_patch = patch.object(
+            runner, "_execute", side_effect=_block_execute
+        )
+        self._deploy_patch.start()
+        first = runner.start(github_fx.sample_account(), repo, "main")
+        assert self._deploy_started.wait(timeout=2)
+        return first
+
+    def _release_blocked_deploy(self) -> None:
+        self._deploy_release.set()
+        self._deploy_patch.stop()
 
     def test_missing_manifest_fails(self) -> None:
         runner = GithubDeployRunner(

@@ -10,6 +10,7 @@ from raft.core.core.models.stack import Stack
 from raft.core.core.models.state.graph_event_store import GraphEventStore
 from raft.core.core.ui.progress import TerminalProgress
 from raft.core.observe.ops.version import InstalledVersion
+from raft.core.platform.locking import FifoLock, HostJobKinds
 from .announce import UpdateAnnounce
 from .host_apply import HostApplyGate
 from .host_docker import HostDockerUpdate
@@ -87,6 +88,14 @@ class SelfUpdate:
             return self._run_body(url, ref, announce)
 
     def _run_body(
+        self, url: str, ref: Optional[str], announce: bool
+    ) -> UpdateOutcome:
+        # FCFS exclusive: concurrent Settings/CLI updates wait in ticket order.
+        # Do not nest inside stack.lock (installer / post-steps may need it).
+        with FifoLock(self.stack.root, HostJobKinds.UPDATE):
+            return self._run_body_locked(url, ref, announce)
+
+    def _run_body_locked(
         self, url: str, ref: Optional[str], announce: bool
     ) -> UpdateOutcome:
         self._set_label("checking install")

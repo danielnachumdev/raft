@@ -51,8 +51,12 @@ Overlapping apply/redeploy/render tears tmp names, upstreams, and `generated/`. 
 | `alerts.lock` | CLI/serve writes to `host/alerts/rules.yaml` | Alert rules document writers do not tear each other |
 | `settings.lock` | full settings document, notification channels, github OAuth settings writers | No torn `host/settings.yaml` |
 | `dashboard.lock` | Dashboard settings helpers writing `host/settings.yaml` `dashboard:` | Dashboard settings writers do not tear each other |
+| `fifo-<kind>/` (ticket FCFS) | `FifoLock` — `update` (`SelfUpdate`); short claim for host-job flights | True arrival-order grant (not plain flock); mint tickets under `seq.lock` |
+| `host-job-<kind>.flight.json` | `HostOneshotFlight` (dashboard self-redeploy oneshot) | Coalesce concurrent detached starts to one in-flight `job_id` |
 
 Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**). Nesting in-process re-enters. `doctor` / `status` do not take these locks.
+
+**Host oneshot / self-redeploy deadlock rule:** claim flight under a short `FifoLock`, record/`docker run -d`, **release before** the child takes `stack.lock`. Never hold `fifo-host-job-*` across a rebuild. Concurrent in-dashboard Redeploy returns the same `job_id` (`coalesced`) while the oneshot container is alive — SPA busy-state is UX only. GitHub assist deploys coalesce per `full_name` in-process (one pending/running job).
 
 ---
 

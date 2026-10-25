@@ -4,6 +4,7 @@ from .compose_service_row import ComposeServiceRow
 from .compose_status import ComposeStatusTable
 from .crash_loop import CrashLoopDetector
 from .host_oneshot import HostOneshot
+from .host_oneshot_flight import HostOneshotFlight, HostOneshotStart
 from .host_oneshot_gate import HostOneshotGate
 from .host_oneshot_image import DEFAULT_HOST_ONESHOT_IMAGE
 from .prune import DockerPrune
@@ -23,5 +24,7 @@ __all__ = [
     "DockerPruneReclaim",
     "DockerStack",
     "HostOneshot",
+    "HostOneshotFlight",
     "HostOneshotGate",
+    "HostOneshotStart",
 ]
