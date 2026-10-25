@@ -10,6 +10,7 @@ SETTINGS_LOCK_NAME = "settings.lock"
 ACL_LOCK_NAME = "acl.lock"
 ALERTS_LOCK_NAME = "alerts.lock"
 DASHBOARD_LOCK_NAME = "dashboard.lock"
+INBOX_LOCK_NAME = "inbox.lock"
 
 
 class LockPaths:
@@ -35,6 +36,9 @@ class LockPaths:
 
     def dashboard(self) -> Path:
         return self.directory() / DASHBOARD_LOCK_NAME
+
+    def inbox(self) -> Path:
+        return self.directory() / INBOX_LOCK_NAME
 
     def app(self, name: str) -> Path:
         safe = name.replace("/", "_").replace("\\", "_")

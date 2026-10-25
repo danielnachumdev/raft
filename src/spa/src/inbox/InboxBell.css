@@ -1,0 +1,19 @@
+.inbox-bell {
+  position: relative;
+}
+
+.inbox-bell-badge {
+  position: absolute;
+  top: 0.1rem;
+  right: 0.05rem;
+  min-width: 1.1rem;
+  padding: 0.05rem 0.28rem;
+  border-radius: 0.55rem;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  pointer-events: none;
+}

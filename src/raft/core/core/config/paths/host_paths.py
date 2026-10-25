@@ -10,6 +10,7 @@ from .constants import (
     HOST_EDGE_SERVICE_LOGS_DIR,
     HOST_EVENTS_DIR,
     HOST_FIREWALL_DIR,
+    HOST_INBOX_DIR,
     HOST_LOGS_DIR,
     HOST_METRICS_DIR,
     HOST_SECRETS_DIR,
@@ -40,6 +41,9 @@ class HostPaths:
 
     def alerts(self) -> Path:
         return self._home / HOST_ALERTS_DIR
+
+    def inbox(self) -> Path:
+        return self._home / HOST_INBOX_DIR
 
     def events(self) -> Path:
         return self._home / HOST_EVENTS_DIR

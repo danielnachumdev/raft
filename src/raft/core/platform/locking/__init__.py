@@ -13,6 +13,7 @@ Locks live under ``~/.raft/host/locks/`` (``RAFT_DATA_HOME``):
 * ``fifo-<kind>/`` — ticket FCFS exclusive (``FifoLock``); used for ``update`` and
   short host-job flight claim sections (not plain flock grant order)
 * ``host-job-<kind>.flight.json`` — in-flight detached oneshot id for coalesce
+* ``inbox.lock`` — serve/CLI writes to ``host/inbox/`` read-state
 
 Wait (with timeout) so a later-started deploy still runs after an earlier one
 and becomes the final live state. Contended waiters log ``waiting for … lock``
@@ -33,6 +34,7 @@ from .dashboard_lock import DashboardLock
 from .exclusive import ExclusiveLock
 from .fifo_lock import FifoLock
 from .host_job_kinds import HostJobKinds
+from .inbox_lock import InboxLock
 from .paths import LockPaths
 from .settings_lock import SettingsLock
 from .stack_lock import StackLock
@@ -54,6 +56,7 @@ __all__ = [
     "ExclusiveLock",
     "FifoLock",
     "HostJobKinds",
+    "InboxLock",
     "LockPaths",
     "LockTimeout",
     "SettingsLock",

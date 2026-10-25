@@ -1,4 +1,5 @@
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { InboxBell } from "../inbox/InboxBell";
 import { versionChromeText } from "../shared/api/status";
 import { LogoutButton } from "./LogoutButton";
 import { MobileNav } from "./MobileNav";
@@ -82,6 +83,7 @@ function TopbarTools(props: { pathname: string }) {
           v{versionChromeText(version)}
         </span>
       ) : null}
+      <InboxBell />
       <NavLink
         to={SETTINGS_NAV.to}
         id={SETTINGS_NAV.id}
