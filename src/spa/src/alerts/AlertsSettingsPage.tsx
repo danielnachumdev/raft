@@ -11,15 +11,20 @@ import { bindStatusPolling } from "../shell/statusPolling";
 import { AlertCallouts, RulesEmpty } from "./AlertCallouts";
 import { AlertFiringPanel } from "./AlertFiringPanel";
 import { AlertImportModal } from "./AlertImportModal";
+import { AlertRecommendations } from "./AlertRecommendations";
 import { AlertRuleFormModal, type AlertFormMode } from "./AlertRuleFormModal";
 import { AlertRuleList } from "./AlertRuleList";
 import {
+  applyAlertRecommendation,
   catalogProxy,
   createAlertRule,
+  dismissAlertRecommendation,
   fetchAlertCatalog,
+  fetchAlertRecommendations,
   fetchAlertRules,
   fetchAlertStatus,
   replaceAlertRule,
+  type AlertRecommendation,
   type AlertStatusPayload,
 } from "./alertsApi";
 import { emptyRuleDraft, type AlertCatalogPayload, type AlertRule } from "./alertsHelpers";
@@ -30,6 +35,7 @@ type PendingImport = { fileName: string; doc: { version: number; rules: AlertRul
 
 export function AlertsSettingsPage() {
   const [rules, setRules] = useState<AlertRule[]>([]);
+  const [recommendations, setRecommendations] = useState<AlertRecommendation[]>([]);
   const [catalog, setCatalog] = useState<AlertCatalogPayload | null>(null);
   const [channels, setChannels] = useState<NotificationChannel[]>([]);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -50,17 +56,19 @@ export function AlertsSettingsPage() {
     setError(null);
     try {
       await catalogProxy.refresh();
-      const [r, c, ch, s] = await Promise.all([
+      const [r, c, ch, s, recs] = await Promise.all([
         fetchAlertRules(),
         fetchAlertCatalog(),
         fetchNotificationChannels(),
         fetchAlertStatus(),
+        fetchAlertRecommendations(),
       ]);
       setRules(r.rules);
       setCatalog(c);
       setChannels(ch.channels);
       setNotificationsEnabled(ch.enabled);
       setStatus(s);
+      setRecommendations(recs);
       setNow(Date.now());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load alerts");
@@ -96,7 +104,7 @@ export function AlertsSettingsPage() {
     <div className="alerts-page" id="alerts-page">
       <PageHeader
         title="Alerts"
-        subtitle="Rules that watch metrics and control-plane signals and send through your notification channels. For = sustain before fire; Cool-down = silence before re-notify; empty channel list = every enabled channel. Controller evaluates host/alerts/ — stale means check raft doctor / raft up."
+        subtitle="Rules that watch metrics and control-plane signals. Notification channels are optional — rules evaluate without them; empty channel list = every enabled channel when any exist. For = sustain before fire; Cool-down = silence before re-notify. Controller evaluates host/alerts/ — stale means check raft doctor / raft up."
         meta={
           <>
             <span className={status?.enabled === false ? "chip chip-warn" : "chip"}>
@@ -142,6 +150,19 @@ export function AlertsSettingsPage() {
 
       {!busy ? (
         <>
+          <AlertRecommendations
+            items={recommendations}
+            busy={formBusy || actions.busyId !== null}
+            onApply={async (item) => {
+              const result = await applyAlertRecommendation(item.id);
+              toast.good(`Created ${result.rule.id} (channels optional)`);
+              setRecommendations(result.recommendations);
+              await load();
+            }}
+            onDismiss={async (id) => {
+              setRecommendations(await dismissAlertRecommendation(id));
+            }}
+          />
           <AlertFiringPanel status={status} interval={interval} now={now} />
           <section className="panel" id="alerts-rules">
             <div className="panel-head">

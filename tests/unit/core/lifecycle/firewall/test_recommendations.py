@@ -3,7 +3,9 @@
 from unittest.mock import MagicMock, patch
 
 from raft.core.core.errors.cta import OperatorError
-from raft.core.core.models.state.firewall_dismissals import FirewallDismissalStore
+from raft.core.core.models.state.recommendation_dismissals import (
+    FirewallDismissalStore,
+)
 from raft.core.core.models.state.firewall_store import FirewallStore
 from raft.core.core.models.stack import load_stack
 from raft.core.lifecycle.firewall.eligibility import FirewallEligibility

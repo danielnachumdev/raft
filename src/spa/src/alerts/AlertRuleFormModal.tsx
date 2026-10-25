@@ -210,7 +210,10 @@ function ChannelPicker(props: {
     <fieldset className="alert-channels" id="alert-channels">
       <legend>Deliver to</legend>
       {props.channels.length === 0 ? (
-        <p className="form-hint">No channels configured yet.</p>
+        <p className="form-hint">
+          No channels yet — you can still save this rule. Delivery starts after you add a channel under
+          Notifications.
+        </p>
       ) : (
         props.channels.map((c) => (
           <label key={c.id} className="check">
@@ -225,7 +228,9 @@ function ChannelPicker(props: {
           </label>
         ))
       )}
-      <p className="form-hint">Leave all unchecked to deliver to every enabled channel.</p>
+      <p className="form-hint">
+        Optional. Leave all unchecked to deliver to every enabled channel when any exist.
+      </p>
     </fieldset>
   );
 }

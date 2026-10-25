@@ -47,7 +47,7 @@ You keep services in their own repos. On the VPS you `apply` a manifest. raft sy
 | GitHub-assisted add service | ✅ |
 | Operator notifications | ✅ |
 | Ordered edge firewall (rich rules, import/export) | ✅ |
-| Alert rules (metrics/control-plane → notifications) | ✅ |
+| Alert rules (metrics/control-plane → notifications) + default setup recommendations | ✅ |
 | Operator system event timeline (CLI + serve) | ✅ |
 | Always-on dashboard Compose service (`raft-dashboard`) | ✅ |
 | Firewall-derived alert signals | 📋 |

@@ -184,3 +184,54 @@ export async function importAlertRules(
     }),
   );
 }
+
+export type AlertRecommendation = {
+  id: string;
+  kind: string;
+  title: string;
+  summary: string;
+  rule: AlertRule;
+};
+
+const recommendationsProxy = new CachedResourceProxy<AlertRecommendation[]>(
+  appResourceCache,
+  resourceId("alerts", "recommendations"),
+  {
+    read: async () => {
+      const body = await jsonRequest<{ recommendations: AlertRecommendation[] }>(
+        "/api/alerts/recommendations",
+      );
+      return body.recommendations;
+    },
+  },
+);
+
+export async function fetchAlertRecommendations(): Promise<AlertRecommendation[]> {
+  return recommendationsProxy.read();
+}
+
+export async function dismissAlertRecommendation(
+  id: string,
+): Promise<AlertRecommendation[]> {
+  return recommendationsProxy.write(async () => {
+    const body = await jsonRequest<{ recommendations: AlertRecommendation[] }>(
+      `/api/alerts/recommendations/${encodeURIComponent(id)}/dismiss`,
+      { method: "POST" },
+    );
+    return body.recommendations;
+  });
+}
+
+export async function applyAlertRecommendation(
+  id: string,
+): Promise<{ rule: AlertRule; recommendations: AlertRecommendation[] }> {
+  const body = await jsonRequest<{
+    rule: AlertRule;
+    recommendations: AlertRecommendation[];
+  }>(`/api/alerts/recommendations/${encodeURIComponent(id)}/apply`, {
+    method: "POST",
+  });
+  recommendationsProxy.invalidate();
+  rulesProxy.invalidate();
+  return body;
+}

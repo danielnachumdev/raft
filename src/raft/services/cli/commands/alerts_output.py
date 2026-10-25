@@ -66,3 +66,13 @@ class AlertsCliOutput:
             OperatorSay.say(
                 f"{item.channel_id}  {item.type_id}  {status}  {err}".rstrip()
             )
+
+    def recommendations_table(self, items: List[Dict[str, Any]]) -> None:
+        if not items:
+            OperatorSay.say("No open alert recommendations.")
+            return
+        OperatorSay.say("ID  KIND  TITLE")
+        for item in items:
+            OperatorSay.say(
+                f"{item.get('id')}  {item.get('kind')}  {item.get('title')}"
+            )

@@ -11,7 +11,9 @@ from raft.core.core.models.firewall import (
     FirewallDocument,
     FirewallRule,
 )
-from raft.core.core.models.state.firewall_dismissals import FirewallDismissalStore
+from raft.core.core.models.state.recommendation_dismissals import (
+    FirewallDismissalStore,
+)
 from raft.core.lifecycle.render.firewall import FirewallEffective
 
 
