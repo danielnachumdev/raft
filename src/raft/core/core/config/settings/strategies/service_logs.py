@@ -17,6 +17,8 @@ from ..types import (
     ServiceLogsConfig,
 )
 
+_SECTION = "serviceLogs"
+
 
 class ServiceLogsSettingsParser(SettingsSectionParser[ServiceLogsConfig]):
     """Validate and build :class:`ServiceLogsConfig`."""
@@ -41,64 +43,58 @@ class ServiceLogsSettingsParser(SettingsSectionParser[ServiceLogsConfig]):
         )
 
     def _timing_fields(self, raw: dict) -> dict:
-        s = self._scalars
-        return {
-            "interval_seconds": s.pos_float(
-                raw,
-                "intervalSeconds",
-                DEFAULT_SERVICE_LOGS_INTERVAL_SECONDS,
-                "serviceLogs",
+        return self._floats(
+            raw,
+            (
+                ("interval_seconds", "intervalSeconds", DEFAULT_SERVICE_LOGS_INTERVAL_SECONDS),
+                ("timeout_seconds", "timeoutSeconds", DEFAULT_SERVICE_LOGS_TIMEOUT_SECONDS),
+                (
+                    "fetch_timeout_seconds",
+                    "fetchTimeoutSeconds",
+                    DEFAULT_SERVICE_LOGS_FETCH_TIMEOUT_SECONDS,
+                ),
             ),
-            "timeout_seconds": s.pos_float(
-                raw,
-                "timeoutSeconds",
-                DEFAULT_SERVICE_LOGS_TIMEOUT_SECONDS,
-                "serviceLogs",
-            ),
-            "fetch_timeout_seconds": s.pos_float(
-                raw,
-                "fetchTimeoutSeconds",
-                DEFAULT_SERVICE_LOGS_FETCH_TIMEOUT_SECONDS,
-                "serviceLogs",
-            ),
-        }
+        )
 
     def _retention_fields(self, raw: dict) -> dict:
-        s = self._scalars
-        return {
-            "retention_max_age_days": s.pos_int(
-                raw,
-                "retentionMaxAgeDays",
-                DEFAULT_SERVICE_LOGS_RETENTION_MAX_AGE_DAYS,
-                "serviceLogs",
+        return self._ints(
+            raw,
+            (
+                (
+                    "retention_max_age_days",
+                    "retentionMaxAgeDays",
+                    DEFAULT_SERVICE_LOGS_RETENTION_MAX_AGE_DAYS,
+                ),
+                (
+                    "retention_max_bytes",
+                    "retentionMaxBytes",
+                    DEFAULT_SERVICE_LOGS_RETENTION_MAX_BYTES,
+                ),
             ),
-            "retention_max_bytes": s.pos_int(
-                raw,
-                "retentionMaxBytes",
-                DEFAULT_SERVICE_LOGS_RETENTION_MAX_BYTES,
-                "serviceLogs",
-            ),
-        }
+        )
 
     def _budget_fields(self, raw: dict) -> dict:
-        s = self._scalars
+        return self._ints(
+            raw,
+            (
+                ("max_fetch_bytes", "maxFetchBytes", DEFAULT_SERVICE_LOGS_MAX_FETCH_BYTES),
+                ("max_fetch_lines", "maxFetchLines", DEFAULT_SERVICE_LOGS_MAX_FETCH_LINES),
+                (
+                    "max_services_per_tick",
+                    "maxServicesPerTick",
+                    DEFAULT_SERVICE_LOGS_MAX_SERVICES_PER_TICK,
+                ),
+            ),
+        )
+
+    def _floats(self, raw: dict, specs: tuple) -> dict:
         return {
-            "max_fetch_bytes": s.pos_int(
-                raw,
-                "maxFetchBytes",
-                DEFAULT_SERVICE_LOGS_MAX_FETCH_BYTES,
-                "serviceLogs",
-            ),
-            "max_fetch_lines": s.pos_int(
-                raw,
-                "maxFetchLines",
-                DEFAULT_SERVICE_LOGS_MAX_FETCH_LINES,
-                "serviceLogs",
-            ),
-            "max_services_per_tick": s.pos_int(
-                raw,
-                "maxServicesPerTick",
-                DEFAULT_SERVICE_LOGS_MAX_SERVICES_PER_TICK,
-                "serviceLogs",
-            ),
+            dest: self._scalars.pos_float(raw, key, default, _SECTION)
+            for dest, key, default in specs
+        }
+
+    def _ints(self, raw: dict, specs: tuple) -> dict:
+        return {
+            dest: self._scalars.pos_int(raw, key, default, _SECTION)
+            for dest, key, default in specs
         }

@@ -3,6 +3,7 @@
 import logging
 import subprocess
 import time
+from typing import Optional
 
 from ..shell import Shell
 
@@ -55,28 +56,33 @@ class BoundedDockerLogs:
     def _stream(self, args: list[str], *, timeout: float, max_bytes: int) -> str:
         proc = self._sh.popen(args)
         limit = max(0.1, timeout)
-        deadline = time.monotonic() + limit
         chunks: list[str] = []
-        total = 0
-        truncated = False
         try:
             total, truncated = self._read_until(
                 proc,
                 chunks,
                 max_bytes=max_bytes,
-                deadline=deadline,
+                deadline=time.monotonic() + limit,
                 timeout=limit,
             )
         finally:
             self._stop(proc)
+        return self._finish(chunks, truncated=truncated, total=total, max_bytes=max_bytes, args=args)
+
+    def _finish(
+        self,
+        chunks: list[str],
+        *,
+        truncated: bool,
+        total: int,
+        max_bytes: int,
+        args: list[str],
+    ) -> str:
         text = "".join(chunks)
         if truncated:
             text = self._trim_incomplete_line(text)
             logger.debug(
-                "docker logs truncated bytes=%s max=%s cmd=%s",
-                total,
-                max_bytes,
-                args,
+                "docker logs truncated bytes=%s max=%s cmd=%s", total, max_bytes, args
             )
         return text.strip()
 
@@ -94,23 +100,45 @@ class BoundedDockerLogs:
         if stdout is None:
             return 0, False
         while total < max_bytes:
-            if time.monotonic() >= deadline:
-                logger.error(
-                    "command timed out after %ss cmd=%s", timeout, proc.args
-                )
+            line = self._readline(proc, stdout, deadline=deadline, timeout=timeout)
+            if line is None:
                 break
-            line = stdout.readline()
-            if line == "" and proc.poll() is not None:
-                break
-            if line == "":
-                time.sleep(0.01)
-                continue
-            encoded = line.encode("utf-8", errors="replace")
-            if total + len(encoded) > max_bytes:
+            added = self._append_line(chunks, line, total=total, max_bytes=max_bytes)
+            if added is None:
                 return total, True
-            chunks.append(line)
-            total += len(encoded)
+            total += added
         return total, False
+
+    def _readline(
+        self,
+        proc: subprocess.Popen,
+        stdout,
+        *,
+        deadline: float,
+        timeout: float,
+    ) -> Optional[str]:
+        if time.monotonic() >= deadline:
+            logger.error("command timed out after %ss cmd=%s", timeout, proc.args)
+            return None
+        line = stdout.readline()
+        if line == "" and proc.poll() is not None:
+            return None
+        if line == "":
+            time.sleep(0.01)
+            return ""
+        return line
+
+    @staticmethod
+    def _append_line(
+        chunks: list[str], line: str, *, total: int, max_bytes: int
+    ) -> Optional[int]:
+        if line == "":
+            return 0
+        size = len(line.encode("utf-8", errors="replace"))
+        if total + size > max_bytes:
+            return None
+        chunks.append(line)
+        return size
 
     @staticmethod
     def _trim_incomplete_line(text: str) -> str:

@@ -102,38 +102,29 @@ class TestServiceLogsShipper(ControllerTestCase):
         ).tick()
         assert docker.try_service_container_id.call_count >= 1
 
-    def test_round_robin_respects_max_services_per_tick(self, tmp_path: Path) -> None:
-        home = self.raft_home(tmp_path)
-        apps = (
-            AppMakers.make_app("demo-a"),
-            AppMakers.make_app("demo-b"),
-            AppMakers.make_app("demo-c"),
-        )
+    def _shipper_for_apps(self, home: Path, *names: str, per_tick: int = 2):
+        apps = tuple(AppMakers.make_app(n) for n in names)
         stack = StackMakers.make_stack(home, apps)
         docker = MagicMock()
         docker.try_service_container_id.side_effect = lambda sid: f"cid-{sid}"
         docker.container_logs_since.return_value = ""
         shipper = ServiceLogsShipper(
             home,
-            ServiceLogsConfig(
-                include_edge=False, max_services_per_tick=2
-            ),
+            ServiceLogsConfig(include_edge=False, max_services_per_tick=per_tick),
             docker,
             stack_loader=lambda: stack,
         )
+        return shipper, docker
+
+    def test_round_robin_respects_max_services_per_tick(self, tmp_path: Path) -> None:
+        home = self.raft_home(tmp_path)
+        shipper, docker = self._shipper_for_apps(home, "demo-a", "demo-b", "demo-c")
         shipper.tick()
-        first = {
-            c.args[0]
-            for c in docker.try_service_container_id.call_args_list
-        }
-        assert len(first) == 2
+        first = {c.args[0] for c in docker.try_service_container_id.call_args_list}
         docker.try_service_container_id.reset_mock()
         shipper.tick()
-        second = {
-            c.args[0]
-            for c in docker.try_service_container_id.call_args_list
-        }
-        assert len(second) == 2
+        second = {c.args[0] for c in docker.try_service_container_id.call_args_list}
+        assert len(first) == 2 and len(second) == 2
         assert first | second == {"demo-a", "demo-b", "demo-c"}
 
     def test_ship_oserror_is_logged(self, tmp_path: Path) -> None:
