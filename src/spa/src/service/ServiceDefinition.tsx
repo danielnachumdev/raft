@@ -3,8 +3,9 @@ import {
   fetchServiceDefinition,
   type ServiceDefinitionPayload,
 } from "../shared/api";
+import { SkeletonBone, showSkeleton } from "../chrome/skeleton";
 import { YamlHighlighter } from "../settings/YamlHighlighter";
-import { ErrorState, LoadingState } from "../chrome/StateViews";
+import { ErrorState } from "../chrome/StateViews";
 import "./ServiceDefinition.css";
 
 const highlighter = new YamlHighlighter();
@@ -44,8 +45,15 @@ export function ServiceDefinition(props: { service: string }) {
           <code className="muted service-definition-path">{data.path}</code>
         ) : null}
       </div>
-      {busy && data === null && !error ? (
-        <LoadingState label="Loading definition…" />
+      {showSkeleton(busy, data !== null) && !error ? (
+        <div
+          className="skeleton-block-panel"
+          role="status"
+          aria-busy="true"
+          aria-label="Loading definition…"
+        >
+          <SkeletonBone size="block" height="8rem" />
+        </div>
       ) : null}
       {error ? <ErrorState message={error} onRetry={() => void load()} /> : null}
       {data?.eligible && data.yaml !== null ? (

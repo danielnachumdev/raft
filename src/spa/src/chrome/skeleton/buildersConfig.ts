@@ -29,11 +29,21 @@ export type StatusTableSkeletonPlan = {
 
 export function statusTableSkeletonPlan(opts?: {
   rows?: number;
+  columns?: readonly string[];
+  boneWidths?: readonly number[];
 }): StatusTableSkeletonPlan {
+  const columns = opts?.columns
+    ? [...opts.columns]
+    : [...STATUS_TABLE_SKELETON_COLUMNS];
+  const boneWidths = opts?.boneWidths
+    ? [...opts.boneWidths]
+    : opts?.columns
+      ? columns.map((_, i) => 48 + (i % 4) * 8)
+      : [...STATUS_TABLE_BONE_WIDTHS];
   return {
-    columns: [...STATUS_TABLE_SKELETON_COLUMNS],
+    columns,
     rows: opts?.rows ?? DEFAULT_STATUS_TABLE_ROWS,
-    boneWidths: [...STATUS_TABLE_BONE_WIDTHS],
+    boneWidths,
   };
 }
 
@@ -60,6 +70,45 @@ export function chartFrameSkeletonPlan(opts?: {
 }): ChartFrameSkeletonPlan {
   return { height: opts?.height ?? DEFAULT_CHART_FRAME_HEIGHT };
 }
+
+export type ChartPlotSkeletonPlan = { height: string };
+
+/** Plot-only bone for graph cards that already render a real header. */
+export function chartPlotSkeletonPlan(opts?: {
+  height?: string;
+}): ChartPlotSkeletonPlan {
+  return { height: opts?.height ?? DEFAULT_CHART_FRAME_HEIGHT };
+}
+
+/** Firewall ordered-rules table headers (grip/actions omitted). */
+export const FIREWALL_TABLE_SKELETON_COLUMNS = [
+  "#",
+  "CIDR",
+  "Port",
+  "Protocol",
+  "Service",
+  "Action",
+  "Id",
+] as const;
+
+export const FIREWALL_TABLE_BONE_WIDTHS = [28, 64, 40, 48, 56, 44, 52] as const;
+
+/** HTTP request inspection table headers. */
+export const HTTP_REQUESTS_TABLE_SKELETON_COLUMNS = [
+  "Time",
+  "Method",
+  "Path",
+  "Status",
+  "Latency",
+  "Client",
+  "Host",
+  "User-Agent",
+  "Firewall",
+] as const;
+
+export const HTTP_REQUESTS_TABLE_BONE_WIDTHS = [
+  44, 36, 72, 40, 40, 52, 56, 64, 48,
+] as const;
 
 export type StackStatusSkeletonPlan = {
   tiles: StatTilesSkeletonPlan;

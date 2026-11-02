@@ -51,7 +51,8 @@ def _container(svc, role, app, group, allocated):
     )
 
 
-def collect(self, *, refresh_apps=False):
+def collect(self, *, refresh_apps=False, include_stats=True):
+    del include_stats  # demo never talks to Engine stats
     if refresh_apps:
         self._reload_stack()
     containers = tuple(_container(*t) for t in self._targets())

@@ -1,6 +1,7 @@
 import { useLocation } from "react-router-dom";
 import { SaveBar } from "../chrome/SaveBar";
-import { ErrorState, LoadingState } from "../chrome/StateViews";
+import { SettingsFormSkeleton, showSkeleton } from "../chrome/skeleton";
+import { ErrorState } from "../chrome/StateViews";
 import { useHashScroll } from "../chrome/useHashScroll";
 import { useUnsavedGuard } from "../chrome/useUnsavedGuard";
 import { PageHeader } from "../shell/PageHeader";
@@ -69,7 +70,9 @@ export function SettingsPage() {
         }
       />
 
-      {busy ? <LoadingState label="Loading settings…" /> : null}
+      {showSkeleton(busy, draft !== null) ? (
+        <SettingsFormSkeleton label="Loading settings…" id="settings-loading" />
+      ) : null}
 
       {editor.error ? (
         <ErrorState
@@ -79,7 +82,7 @@ export function SettingsPage() {
         />
       ) : null}
 
-      {!busy && draft ? (
+      {draft ? (
         <div className={mode === "form" ? "with-aside settings-layout" : "settings-layout"}>
           {mode === "form" ? <SettingsSectionNav enabled={editor.enabled} /> : null}
           <div className="settings-main">
