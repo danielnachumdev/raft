@@ -20,7 +20,7 @@ export function ServiceLogsSection(props: {
       enabled={props.enabled}
       source={props.meta?.source}
       onEnabledChange={props.onEnabledChange}
-      hint="Retained Compose stdout under host/logs/services/ (0600). May contain secrets."
+      hint="Keeps recent service stdout for when containers are off. May contain secrets."
     >
       <div className="settings-checks">
         <label className="check">

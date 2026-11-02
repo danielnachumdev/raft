@@ -27,8 +27,8 @@ export function SettingsPage() {
         title="Settings"
         subtitle={
           <>
-            Operator <code>settings.yaml</code> for this host — edit section by
-            section, or switch to YAML for the whole document.
+            Operator settings for this host — edit section by section, or switch
+            to YAML for the whole document.
           </>
         }
         meta={
@@ -49,7 +49,7 @@ export function SettingsPage() {
               type="button"
               className="btn"
               id="settings-reload"
-              title="Discard local edits and reload settings.yaml"
+              title="Discard local edits and reload settings"
               disabled={busy || saving}
               onClick={() => void editor.load()}
             >
@@ -107,7 +107,7 @@ export function SettingsPage() {
             <SaveBar
               open={editor.dirty}
               id="settings-save-bar"
-              message="Unsaved changes to settings.yaml"
+              message="Unsaved changes to settings"
               saveLabel="Save"
               saving={saving}
               onSave={() => void editor.save()}

@@ -79,7 +79,7 @@ function PortOrNullField(props: {
           onChange={(e) => props.onChange(Number(e.target.value))}
         />
       </div>
-      <span className="form-hint">Uncheck to omit the listener (YAML null)</span>
+      <span className="form-hint">Uncheck to omit the listener</span>
     </div>
   );
 }

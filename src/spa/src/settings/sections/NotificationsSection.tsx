@@ -26,8 +26,8 @@ export function NotificationsSection(props: {
       }
     >
       <p className="muted" id="settings-notifications-count">
-        {v.channels.length} channel{v.channels.length === 1 ? "" : "s"} in
-        settings.yaml (secrets stay redacted here).
+        {v.channels.length} channel{v.channels.length === 1 ? "" : "s"}{" "}
+        configured (secrets stay redacted here).
       </p>
     </SectionCard>
   );

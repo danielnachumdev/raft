@@ -21,7 +21,7 @@ export function GithubSection(props: {
       enabled={props.enabled}
       source={props.meta?.source}
       onEnabledChange={props.onEnabledChange}
-      hint="OAuth for Add service. RAFT_GITHUB_* env vars override this file when set."
+      hint="OAuth for Add service. Matching GitHub env vars override these fields when set."
     >
       <div className="form-grid">
         <TextField

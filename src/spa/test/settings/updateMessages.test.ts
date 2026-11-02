@@ -52,6 +52,6 @@ describe("updateFailureMessage", () => {
     const msg = updateFailureMessage("Failed to fetch");
     assert.match(msg, /lost the connection/i);
     assert.match(msg, /raft update/);
-    assert.match(msg, /raft\.log/);
+    assert.match(msg, /raft host log/);
   });
 });

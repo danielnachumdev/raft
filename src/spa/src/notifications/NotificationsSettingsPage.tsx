@@ -69,7 +69,7 @@ export function NotificationsSettingsPage() {
             <Link
               className={globalEnabled ? "chip chip-ok" : "chip chip-warn"}
               id="notifications-global"
-              title="Global switch in settings.yaml"
+              title="Global switch in host settings"
               to="/settings#settings-notifications"
             >
               Global notifications {globalEnabled ? "on" : "off"}
@@ -159,7 +159,7 @@ export function NotificationsSettingsPage() {
         title="Delete channel"
         message={
           pendingDelete
-            ? `Delete notification channel “${pendingDelete.id}”? This writes settings.yaml.`
+            ? `Delete notification channel “${pendingDelete.id}”? This updates host settings.`
             : ""
         }
         confirmLabel="Delete"

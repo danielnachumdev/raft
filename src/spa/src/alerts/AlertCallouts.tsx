@@ -8,8 +8,8 @@ export function AlertCallouts(props: { status: AlertStatusPayload | null; hasCha
     <>
       {props.status?.stale ? (
         <div className="callout callout-warn" id="alerts-stale">
-          The controller has not evaluated alerts recently. Run <code>raft doctor</code>, then{" "}
-          <code>raft up</code> if the controller is missing its <code>host/alerts</code> mount.
+          Alerts have not been evaluated recently. Run <code>raft doctor</code>, then{" "}
+          <code>raft up</code> if the stack is not running.
         </div>
       ) : null}
       {props.status?.documentError ? (

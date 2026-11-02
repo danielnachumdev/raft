@@ -216,7 +216,7 @@ export function FirewallRuleFormModal(props: Props) {
           >
             <option value="permit">permit (allow)</option>
             <option value="deny">deny (HTTP 403)</option>
-            <option value="drop">drop (nginx 444)</option>
+            <option value="drop">drop (close connection)</option>
           </select>
         </label>
       </form>

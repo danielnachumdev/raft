@@ -60,7 +60,7 @@ export function FirewallSettingsPage() {
   const header = (actions?: ReactNode) => (
     <PageHeader
       title="Firewall"
-      subtitle="Ordered edge rules on the gate (first match wins). Saving compiles them and reloads gate nginx — the gate is never recreated. ACME HTTP-01 sits outside these locations; still avoid a broad port-80 deny/drop on service any if you use Let's Encrypt."
+      subtitle="Ordered edge rules (first match wins). Saving applies them without recreating the gate. ACME HTTP-01 sits outside these rules; still avoid a broad port-80 deny/drop on service any if you use Let's Encrypt."
       actions={actions}
     />
   );

@@ -17,7 +17,7 @@ export function FirewallImportModal(props: {
       await props.onImport(JSON.parse(text) as unknown);
       props.onClose();
       setText("");
-      toast.good("Firewall imported (gate nginx reload)");
+      toast.good("Firewall imported");
     } catch (err) {
       toast.bad(err instanceof Error ? err.message : "Import failed");
     } finally {

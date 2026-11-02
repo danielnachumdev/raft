@@ -33,25 +33,16 @@ export function TrendsBody(props: {
     );
   }
   if (seriesWithData(props.series, props.metrics).length === 0) {
-    const hasHttp = props.metrics.some((m) => m.plane === "http");
-    const hasRes = props.metrics.some((m) => m.plane === "resources");
-    const files = [
-      hasRes ? "host/metrics/resources.jsonl" : null,
-      hasHttp ? "host/metrics/http.jsonl" : null,
-    ].filter(Boolean);
     return (
-      <p className="muted">
-        No metrics samples yet. The controller writes{" "}
-        <code>{files.join(" / ")}</code> on its metrics interval.
-      </p>
+      <p className="muted">No data for the selected time period.</p>
     );
   }
   if (props.visible.length === 0) {
     return (
       <p className="muted">
         {props.groupMode
-          ? "No samples for the selected groups in this range."
-          : "No samples for the selected services in this range."}
+          ? "No data for the selected groups in this range."
+          : "No data for the selected services in this range."}
       </p>
     );
   }

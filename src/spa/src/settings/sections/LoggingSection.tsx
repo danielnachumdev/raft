@@ -26,7 +26,7 @@ export function LoggingSection(props: {
           label="Directory"
           value={v.dir}
           onChange={(dir) => set({ dir })}
-          hint="Relative paths are under RAFT_DATA_HOME"
+          hint="Relative paths are under the raft data home"
         />
         <TextField
           id="logging-file"

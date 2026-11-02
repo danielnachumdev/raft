@@ -17,7 +17,7 @@ export function MetricsSection(props: {
       kind={props.meta?.kind ?? "always"}
       enabled
       source={props.meta?.source}
-      hint="Controller sampling for resources.jsonl and http.jsonl under host/metrics/."
+      hint="How often raft samples CPU, memory, and HTTP traffic for Trends."
     >
       <div className="form-grid">
         <NumberField

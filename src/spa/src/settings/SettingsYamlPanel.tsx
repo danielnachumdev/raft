@@ -15,9 +15,9 @@ export function SettingsYamlPanel(props: {
   return (
     <div className="settings-yaml" id="settings-yaml">
       <p className="muted settings-yaml-hint">
-        Edit the full <code>settings.yaml</code> document. Save validates with
-        the same parsers as the form. Secrets show as <code>***</code>; leave
-        the mask to keep the stored value.
+        Edit the full settings document as YAML. Save validates with the same
+        parsers as the form. Secrets show as <code>***</code>; leave the mask
+        to keep the stored value.
       </p>
       <label className="field" htmlFor="settings-yaml-editor">
         YAML
