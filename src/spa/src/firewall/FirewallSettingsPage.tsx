@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
-import { ErrorState, LoadingState } from "../chrome/StateViews";
+import {
+  FIREWALL_TABLE_BONE_WIDTHS,
+  FIREWALL_TABLE_SKELETON_COLUMNS,
+  SectionPanelSkeleton,
+  showSkeleton,
+  SkeletonRoot,
+  StatusTableSkeleton,
+} from "../chrome/skeleton";
+import { ErrorState } from "../chrome/StateViews";
 import { useHashScroll } from "../chrome/useHashScroll";
 import { PageHeader } from "../shell/PageHeader";
 import { FirewallPanel } from "./FirewallPanel";
@@ -29,8 +37,9 @@ export function FirewallSettingsPage() {
     FirewallRecommendation[]
   >([]);
   const [busy, setBusy] = useState(true);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  useHashScroll(hash, !busy && error === null);
+  useHashScroll(hash, loaded && error === null);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -44,6 +53,7 @@ export function FirewallSettingsPage() {
       setDocument(fw);
       setServices(svc);
       setRecommendations(recs);
+      setLoaded(true);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load firewall",
@@ -65,18 +75,32 @@ export function FirewallSettingsPage() {
     />
   );
 
-  if (busy || error) {
+  if (showSkeleton(busy, loaded)) {
     return (
       <>
         {header()}
-        {busy ? <LoadingState label="Loading firewall…" /> : null}
-        {error ? (
-          <ErrorState
-            message={error}
-            id="firewall-page-error"
-            onRetry={() => void load()}
-          />
-        ) : null}
+        <SkeletonRoot label="Loading firewall…" id="firewall-loading">
+          <SectionPanelSkeleton titleWidth="3.5rem" id="firewall-rules-skeleton">
+            <StatusTableSkeleton
+              rows={5}
+              columns={FIREWALL_TABLE_SKELETON_COLUMNS}
+              boneWidths={FIREWALL_TABLE_BONE_WIDTHS}
+            />
+          </SectionPanelSkeleton>
+        </SkeletonRoot>
+      </>
+    );
+  }
+
+  if (error && !loaded) {
+    return (
+      <>
+        {header()}
+        <ErrorState
+          message={error}
+          id="firewall-page-error"
+          onRetry={() => void load()}
+        />
       </>
     );
   }

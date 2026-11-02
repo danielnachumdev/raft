@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ConfirmPopup } from "../chrome/ConfirmPopup";
-import { ErrorState, LoadingState } from "../chrome/StateViews";
+import { ItemPanelSkeleton, showSkeleton } from "../chrome/skeleton";
+import { ErrorState } from "../chrome/StateViews";
 import { PageHeader } from "../shell/PageHeader";
 import { toast } from "../chrome/toast";
 import { ChannelFormModal, type ChannelFormSubmit } from "./ChannelFormModal";
@@ -25,6 +26,7 @@ export function NotificationsSettingsPage() {
   const [channels, setChannels] = useState<NotificationChannel[]>([]);
   const [globalEnabled, setGlobalEnabled] = useState(true);
   const [busy, setBusy] = useState(true);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -35,9 +37,10 @@ export function NotificationsSettingsPage() {
     null,
   );
 
-  const load = useCallback(async () => {
-    setBusy(true);
+  async function load(opts?: { quiet?: boolean }) {
+    const quiet = opts?.quiet === true && loaded;
     setError(null);
+    if (!quiet) setBusy(true);
     try {
       const [strat, list] = await Promise.all([
         fetchNotificationStrategies(),
@@ -46,16 +49,17 @@ export function NotificationsSettingsPage() {
       setStrategies(strat.strategies);
       setChannels(list.channels);
       setGlobalEnabled(list.enabled);
+      setLoaded(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load notifications");
     } finally {
       setBusy(false);
     }
-  }, []);
+  }
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, []);
 
   const catalogEmpty = isEmptyStrategyCatalog(strategies);
 
@@ -94,19 +98,24 @@ export function NotificationsSettingsPage() {
         }
       />
 
-      {busy ? (
-        <LoadingState label="Loading notifications…" />
+      {showSkeleton(busy, loaded) ? (
+        <ItemPanelSkeleton
+          label="Loading notifications…"
+          id="notifications-loading"
+          titleWidth="4.5rem"
+          panelId="notifications-channels-skeleton"
+        />
       ) : null}
 
       {error ? (
         <ErrorState
           message={error}
           id="notifications-error"
-          onRetry={() => void load()}
+          onRetry={() => void load({ quiet: loaded })}
         />
       ) : null}
 
-      {!busy && !error ? (
+      {loaded && !error ? (
         <>
           {catalogEmpty ? (
             <section
@@ -197,7 +206,7 @@ export function NotificationsSettingsPage() {
         toast.good(`Channel ${values.id} updated`);
       }
       setFormOpen(false);
-      await load();
+      await load({ quiet: true });
     } catch (err) {
       toast.bad(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -214,7 +223,7 @@ export function NotificationsSettingsPage() {
       toast.good(
         `Channel ${channel.id} ${channel.enabled ? "disabled" : "enabled"}`,
       );
-      await load();
+      await load({ quiet: true });
     } catch (err) {
       toast.bad(err instanceof Error ? err.message : "Update failed");
     } finally {
@@ -230,7 +239,7 @@ export function NotificationsSettingsPage() {
       await deleteNotificationChannel(id);
       toast.good(`Channel ${id} deleted`);
       setPendingDelete(null);
-      await load();
+      await load({ quiet: true });
     } catch (err) {
       toast.bad(err instanceof Error ? err.message : "Delete failed");
       throw err;

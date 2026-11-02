@@ -10,10 +10,15 @@
 export {
   alertsListSkeletonPlan,
   chartFrameSkeletonPlan,
+  chartPlotSkeletonPlan,
   DEFAULT_CHART_FRAME_HEIGHT,
   DEFAULT_ITEM_LIST_ROWS,
   DEFAULT_STAT_TILE_COUNT,
   DEFAULT_STATUS_TABLE_ROWS,
+  FIREWALL_TABLE_BONE_WIDTHS,
+  FIREWALL_TABLE_SKELETON_COLUMNS,
+  HTTP_REQUESTS_TABLE_BONE_WIDTHS,
+  HTTP_REQUESTS_TABLE_SKELETON_COLUMNS,
   itemListSkeletonPlan,
   stackStatusSkeletonPlan,
   STATUS_TABLE_BONE_WIDTHS,
@@ -22,14 +27,20 @@ export {
   statTilesSkeletonPlan,
 } from "./buildersConfig";
 export {
-  AlertsListSkeleton,
   ChartFrameSkeleton,
+  ChartPlotSkeleton,
   ItemListSkeleton,
   SectionPanelSkeleton,
-  StackStatusSkeleton,
   StatTilesSkeleton,
   StatusTableSkeleton,
 } from "./SkeletonBuilders";
+export {
+  AlertsListSkeleton,
+  ItemPanelSkeleton,
+  ServicePageSkeleton,
+  SettingsFormSkeleton,
+  StackStatusSkeleton,
+} from "./SkeletonPremades";
 export { SkeletonBone, SkeletonRoot } from "./Skeleton";
 export {
   showSkeleton,

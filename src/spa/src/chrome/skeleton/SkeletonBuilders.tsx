@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
 import {
-  alertsListSkeletonPlan,
   chartFrameSkeletonPlan,
+  chartPlotSkeletonPlan,
   itemListSkeletonPlan,
-  stackStatusSkeletonPlan,
   statusTableSkeletonPlan,
   statTilesSkeletonPlan,
 } from "./buildersConfig";
@@ -40,9 +39,17 @@ export function StatTilesSkeleton(props?: {
   );
 }
 
-/** Stack status table shape with real column headers + shimmer rows. */
-export function StatusTableSkeleton(props?: { rows?: number }) {
-  const plan = statusTableSkeletonPlan({ rows: props?.rows });
+/** Table shape with real column headers + shimmer rows. */
+export function StatusTableSkeleton(props?: {
+  rows?: number;
+  columns?: readonly string[];
+  boneWidths?: readonly number[];
+}) {
+  const plan = statusTableSkeletonPlan({
+    rows: props?.rows,
+    columns: props?.columns,
+    boneWidths: props?.boneWidths,
+  });
   return (
     <div className="status-table-wrap">
       <table className="skeleton-status-table">
@@ -90,7 +97,7 @@ export function SectionPanelSkeleton(props: {
   );
 }
 
-/** Trends / embed chart frame placeholder. */
+/** Trends / embed chart frame placeholder (head + plot). */
 export function ChartFrameSkeleton(props?: {
   height?: string;
   label?: string;
@@ -106,6 +113,29 @@ export function ChartFrameSkeleton(props?: {
       <div className="skeleton-chart-frame-plot" style={{ minHeight: height }}>
         <SkeletonBone size="block" />
       </div>
+    </div>
+  );
+  if (!props?.label) return body;
+  return (
+    <SkeletonRoot label={props.label} id={props.id}>
+      {body}
+    </SkeletonRoot>
+  );
+}
+
+/**
+ * Plot-area shimmer for TrendsGraph / ChartLoadingOverlay cold load when the
+ * card header is already real (config title), not a full frame.
+ */
+export function ChartPlotSkeleton(props?: {
+  height?: string;
+  label?: string;
+  id?: string;
+}) {
+  const { height } = chartPlotSkeletonPlan({ height: props?.height });
+  const body = (
+    <div className="skeleton-chart-plot" style={{ minHeight: height }}>
+      <SkeletonBone size="block" />
     </div>
   );
   if (!props?.label) return body;
@@ -142,61 +172,5 @@ export function ItemListSkeleton(props?: { rows?: number }) {
         </li>
       ))}
     </ul>
-  );
-}
-
-/**
- * Premade Stack status cold-load layout: health tiles + Apps / Control plane
- * table panels. Prefer this over hand-assembled bones on the home path.
- */
-export function StackStatusSkeleton(props?: {
-  label?: string;
-  id?: string;
-  tiles?: number;
-  appsRows?: number;
-  controlPlaneRows?: number;
-}) {
-  const plan = stackStatusSkeletonPlan({
-    tiles: props?.tiles,
-    appsRows: props?.appsRows,
-    controlPlaneRows: props?.controlPlaneRows,
-  });
-  return (
-    <SkeletonRoot
-      label={props?.label ?? "Loading status…"}
-      id={props?.id ?? "status-loading"}
-      className="skeleton-stack-status"
-    >
-      <StatTilesSkeleton count={plan.tiles.count} id="status-summary-skeleton" />
-      <SectionPanelSkeleton titleWidth="3.5rem" id="status-apps-skeleton">
-        <StatusTableSkeleton rows={plan.appsRows} />
-      </SectionPanelSkeleton>
-      <SectionPanelSkeleton
-        titleWidth="7.5rem"
-        id="status-control-plane-skeleton"
-      >
-        <StatusTableSkeleton rows={plan.controlPlaneRows} />
-      </SectionPanelSkeleton>
-    </SkeletonRoot>
-  );
-}
-
-/** Premade Alerts rules list cold-load panel. */
-export function AlertsListSkeleton(props?: {
-  label?: string;
-  id?: string;
-  rows?: number;
-}) {
-  const plan = alertsListSkeletonPlan({ rows: props?.rows });
-  return (
-    <SkeletonRoot
-      label={props?.label ?? "Loading alerts…"}
-      id={props?.id ?? "alerts-loading"}
-      className="skeleton-alerts-list"
-    >
-      <SectionPanelSkeleton titleWidth="3.25rem" id="alerts-rules-skeleton">
-        <ItemListSkeleton rows={plan.rows} />
-      </SectionPanelSkeleton>
-    </SkeletonRoot>
   );
 }

@@ -11,7 +11,8 @@ import {
   refreshStatus,
 } from "../shared/dashboardCache";
 import { ExternalUrlLinks } from "../shared/ExternalUrlLinks";
-import { ErrorState, LoadingState } from "../chrome/StateViews";
+import { ServicePageSkeleton, showSkeleton } from "../chrome/skeleton";
+import { ErrorState } from "../chrome/StateViews";
 import { useHashScroll } from "../chrome/useHashScroll";
 import { PageHeader } from "../shell/PageHeader";
 import { StatusBadge } from "../status/StatusBadge";
@@ -88,8 +89,8 @@ export function ServicePage() {
         }
       />
 
-      {busy && data === null && !error ? (
-        <LoadingState label="Loading service…" />
+      {showSkeleton(busy, data !== null) && !error ? (
+        <ServicePageSkeleton label="Loading service…" id="service-loading" />
       ) : null}
 
       {error ? (

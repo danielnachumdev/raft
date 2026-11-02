@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { EmptyState, ErrorState, LoadingState } from "../chrome/StateViews";
+import { ItemListSkeleton, showSkeleton } from "../chrome/skeleton";
+import { EmptyState, ErrorState } from "../chrome/StateViews";
 import { LiveIndicator } from "../chrome/LiveIndicator";
 import type { StatusPayload } from "../shared/api/index.ts";
 import { peekStatus, refreshStatus } from "../shared/dashboardCache";
@@ -92,8 +93,8 @@ export function EventsPage() {
         {error ? (
           <ErrorState message={error} id="events-error" onRetry={() => void load()} />
         ) : null}
-        {busy && !payload ? (
-          <LoadingState label="Loading events…" />
+        {showSkeleton(busy, payload !== null) ? (
+          <ItemListSkeleton rows={6} />
         ) : null}
         {payload && events.length === 0 ? <EventsEmpty filtered={query.kind !== "" || query.service !== ""} /> : null}
         {events.length > 0 ? (

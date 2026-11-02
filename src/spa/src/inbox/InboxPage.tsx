@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { EmptyState, ErrorState, LoadingState } from "../chrome/StateViews";
+import { ItemPanelSkeleton, showSkeleton } from "../chrome/skeleton";
+import { EmptyState, ErrorState } from "../chrome/StateViews";
 import { toast } from "../chrome/toast";
 import { PageHeader } from "../shell/PageHeader";
 import {
@@ -72,7 +73,14 @@ export function InboxPage() {
           </div>
         }
       />
-      {busy && !payload ? <LoadingState label="Loading inbox…" /> : null}
+      {showSkeleton(busy, payload !== null) ? (
+        <ItemPanelSkeleton
+          label="Loading inbox…"
+          id="inbox-loading"
+          titleWidth="3rem"
+          panelId="inbox-panel-skeleton"
+        />
+      ) : null}
       {error && !payload ? (
         <ErrorState
           message={error}

@@ -1,8 +1,12 @@
 import type { ReactNode } from "react";
+import { ChartPlotSkeleton } from "../../chrome/skeleton";
 import { chartLoadState } from "./chartLoadState";
 import "./ChartLoadingOverlay.css";
 
-/** Centered spinner for cold load, or dimming overlay while refreshing. */
+/**
+ * Cold load: plot skeleton (card header stays real). Refresh: keep chart +
+ * dimming spinner overlay.
+ */
 export function ChartLoadingOverlay(props: {
   busy: boolean;
   hasData: boolean;
@@ -12,16 +16,7 @@ export function ChartLoadingOverlay(props: {
   const mode = chartLoadState(props.busy, props.hasData);
   const label = props.label ?? (mode === "refresh" ? "Updating chart" : "Loading chart");
   if (mode === "cold") {
-    return (
-      <div
-        className="chart-loading is-cold"
-        role="status"
-        aria-busy="true"
-        aria-label={label}
-      >
-        <span className="spinner" aria-hidden="true" />
-      </div>
-    );
+    return <ChartPlotSkeleton label={label} />;
   }
   return (
     <div className="chart-loading-host">

@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  HTTP_REQUESTS_TABLE_BONE_WIDTHS,
+  HTTP_REQUESTS_TABLE_SKELETON_COLUMNS,
+  showSkeleton,
+  StatusTableSkeleton,
+} from "../../chrome/skeleton";
+import {
   DEFAULT_HTTP_REQUESTS_LIMIT,
   HTTP_REQUESTS_POLL_MS,
   fetchServiceHttpRequests,
@@ -98,8 +104,12 @@ export function ServiceHttpRequests(props: {
           {error}
         </p>
       ) : null}
-      {busy && !data ? (
-        <p className="http-requests-empty">Loading requests…</p>
+      {showSkeleton(busy, data !== null) ? (
+        <StatusTableSkeleton
+          rows={4}
+          columns={HTTP_REQUESTS_TABLE_SKELETON_COLUMNS}
+          boneWidths={HTTP_REQUESTS_TABLE_BONE_WIDTHS}
+        />
       ) : null}
       {data && data.eligible ? (
         <HttpRequestsTable
