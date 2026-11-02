@@ -60,7 +60,7 @@ export function FirewallPanel(props: Props) {
     try {
       await props.onSave({ version: props.document.version || 1, rules });
       setSaved(rules);
-      toast.good("Firewall applied (gate nginx reload)");
+      toast.good("Firewall applied");
     } catch (err) {
       toast.bad(err instanceof Error ? err.message : "Failed to save firewall");
     } finally {
@@ -155,8 +155,8 @@ export function FirewallPanel(props: Props) {
         </div>
         <p className="panel-lede">
           First match wins, top to bottom. Drag the grip or use the arrows to
-          reorder. Actions: permit allow; deny returns 403; drop closes with
-          444.
+          reorder. Actions: permit allow; deny returns 403; drop closes the
+          connection.
         </p>
         {rules.length === 0 ? (
           <EmptyState

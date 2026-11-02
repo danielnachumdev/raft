@@ -43,17 +43,13 @@ function RuntimeChartContent(props: {
 }) {
   if (!props.series || props.series.points.length === 0) {
     return (
-      <p className="muted">
-        No metrics samples yet for this service. The controller writes{" "}
-        <code>host/metrics/resources.jsonl</code> on its metrics interval.
-      </p>
+      <p className="muted">No data for the selected time period.</p>
     );
   }
   if (props.rows.every((r) => r.value === null)) {
     return (
       <p className="muted">
-        No samples for {props.metric.label} in this window (older JSONL may
-        omit newer Runtime fields).
+        No data for {props.metric.label} in this window.
       </p>
     );
   }

@@ -29,15 +29,11 @@ export function DashboardSection(props: {
       onEnabledChange={props.onEnabledChange}
       hint={
         <>
-          Always-on <code>raft-dashboard</code> Compose membership. After
-          enabling (or changing auth / TLS / publicHost), save then{" "}
-          <code>raft render</code> and Start / Redeploy — settings save alone
-          does not start the container. OAuth:{" "}
-          <code>host/secrets/dashboard/oauth.env</code> needs{" "}
-          <code>OAUTH2_PROXY_CLIENT_ID</code>,{" "}
-          <code>OAUTH2_PROXY_CLIENT_SECRET</code>,{" "}
-          <code>OAUTH2_PROXY_COOKIE_SECRET</code>,{" "}
-          <code>OAUTH2_PROXY_REDIRECT_URL</code> plus an allowlist file.
+          Always-on dashboard service. After enabling (or changing auth / TLS /
+          public host), save then Start / Redeploy — settings save alone does
+          not start the container. For OAuth, place client id, secret, cookie
+          secret, redirect URL, and an allowlist in the dashboard secrets on
+          this host.
         </>
       }
     >
@@ -71,8 +67,8 @@ export function DashboardSection(props: {
             <option value="acme">acme (Let&apos;s Encrypt)</option>
           </select>
           <span className="form-hint">
-            origin PEMs:{" "}
-            <code>~/.raft/services/raft-dashboard/certs/origin.{"{pem,key}"}</code>
+            origin: place <code>origin.pem</code> and <code>origin.key</code>{" "}
+            in the dashboard service certs directory
           </span>
         </label>
         <label className="field" htmlFor="dashboard-auth-mode">
@@ -151,7 +147,7 @@ export function DashboardSection(props: {
                 "host/secrets/dashboard/oauth-allowlist.txt",
             })
           }
-          hint="One identity per line under the data home (mode 0600)"
+          hint="One identity per line (mode 0600)"
         />
       </div>
     </SectionCard>

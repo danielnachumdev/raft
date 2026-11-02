@@ -52,9 +52,9 @@ export function OauthSetupPanel(props: {
       <h2>Set up GitHub OAuth</h2>
       <p className="muted">
         Create a GitHub OAuth App for this localhost serve bind, then paste the
-        Client ID and Client Secret below. Values are written to{" "}
-        <code>{hints.settings_path}</code> and reloaded here — no CLI-only dance.
-        Login later requests scopes <code>{hints.scopes}</code>.
+        Client ID and Client Secret below. Values are saved into host settings and
+        reloaded here — no CLI-only dance. Login later requests scopes{" "}
+        <code>{hints.scopes}</code>.
       </p>
       <ol className="oauth-setup-steps">
         <li>

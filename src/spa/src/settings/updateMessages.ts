@@ -31,7 +31,7 @@ export function updateFailureMessage(detail: string): string {
     return (
       "Update failed: the browser lost the connection before install finished " +
       "(often a proxy timeout). Retry Settings → Update, or run `raft update` " +
-      "on the host and check host/logs/raft.log."
+      "on the host and check the raft host log."
     );
   }
   return `Update failed: ${trimmed || "unknown error"}`;

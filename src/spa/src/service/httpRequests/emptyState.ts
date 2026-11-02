@@ -15,7 +15,7 @@ export function httpRequestsEmptyLabel(opts: {
   idleContainer: boolean;
 }): string {
   if (opts.scaledToZero || opts.idleContainer) {
-    return "No retained HTTP requests for this service in the gate access log.";
+    return "No retained HTTP requests for this service.";
   }
   return "No recent HTTP requests for this service.";
 }
@@ -32,8 +32,7 @@ export function httpRequestsIdleHint(opts: {
   }
   if (opts.idleContainer) {
     return (
-      "App is not running — showing recent edge rows if any remain in the " +
-      "access log."
+      "App is not running — showing recent edge requests if any remain."
     );
   }
   return null;

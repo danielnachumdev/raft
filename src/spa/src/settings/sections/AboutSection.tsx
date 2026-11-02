@@ -26,7 +26,7 @@ export function AboutSection() {
     <SectionCard
       id="settings-about"
       title="About"
-      hint="Installed raft version and this machine's identity. Read-only — not part of settings.yaml."
+      hint="Installed raft version and this machine's identity. Read-only — not part of host settings."
     >
       <dl className="settings-about-facts" id="settings-about-facts">
         {aboutFactRows(payload?.host, payload?.version).map((row) => (

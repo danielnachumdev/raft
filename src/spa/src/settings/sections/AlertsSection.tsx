@@ -23,9 +23,8 @@ export function AlertsSection(props: {
       onEnabledChange={props.onEnabledChange}
       hint={
         <>
-          Controller evaluation cadence. Rules live under{" "}
-          <Link to="/settings/alerts">Settings → Alerts</Link> (
-          <code>host/alerts/rules.yaml</code>).
+          How often raft evaluates alert rules. Manage rules under{" "}
+          <Link to="/settings/alerts">Settings → Alerts</Link>.
         </>
       }
     >

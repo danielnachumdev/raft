@@ -20,7 +20,7 @@ export function HealingSection(props: {
       enabled={props.enabled}
       source={props.meta?.source}
       onEnabledChange={props.onEnabledChange}
-      hint="Controller self-heal for Apps (never the gate). Separate from per-app scale-to-zero."
+      hint="Automatically restart unhealthy Apps (not the gate). Separate from per-app scale-to-zero."
     >
       <div className="form-grid">
         <NumberField

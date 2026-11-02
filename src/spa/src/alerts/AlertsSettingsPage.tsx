@@ -111,11 +111,11 @@ export function AlertsSettingsPage() {
     <div className="alerts-page" id="alerts-page">
       <PageHeader
         title="Alerts"
-        subtitle="Rules that watch metrics and control-plane signals. Notification channels are optional — rules evaluate without them; empty channel list = every enabled channel when any exist. For = sustain before fire; Cool-down = silence before re-notify. Controller evaluates host/alerts/ — stale means check raft doctor / raft up. Use Syntax for YAML/JSON examples."
+        subtitle="Rules that watch metrics and control-plane signals. Notification channels are optional — rules evaluate without them; empty channel list = every enabled channel when any exist. For = sustain before fire; Cool-down = silence before re-notify. If evaluation looks stale, check raft doctor / raft up. Use Syntax for YAML/JSON examples."
         meta={
           <>
             <span className={status?.enabled === false ? "chip chip-warn" : "chip"}>
-              {status?.enabled === false ? "Alerts disabled in settings.yaml" : `Evaluating every ${interval}s`}
+              {status?.enabled === false ? "Alerts disabled in settings" : `Evaluating every ${interval}s`}
             </span>
             {!notificationsEnabled ? (
               <Link className="chip chip-warn" to="/settings/notifications">

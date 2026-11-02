@@ -64,8 +64,8 @@ export function AlertSyntaxGuide(props: Props) {
     >
       <div className="alert-syntax" id="alert-syntax-guide">
         <p className="alert-syntax-lead">
-          Rules live in <code>host/alerts/rules.yaml</code> (Import/Export use the same
-          document). Channels are optional — a rule evaluates without them.
+          Import and Export use the same rules document shown here. Channels are
+          optional — a rule evaluates without them.
         </p>
         <dl className="alert-syntax-primer">
           {ALERT_SYNTAX_PRIMER.map((row) => (

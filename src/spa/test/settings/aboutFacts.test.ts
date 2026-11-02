@@ -62,7 +62,7 @@ describe("Settings → About wiring", () => {
     assert.match(layout, /id: "settings-about"/);
     assert.match(page, /AboutSection/);
     assert.match(section, /id="settings-about"/);
-    assert.match(section, /not part of settings\.yaml/);
+    assert.match(section, /not part of host settings/);
     assert.match(section, /aboutFactRows/);
   });
 });

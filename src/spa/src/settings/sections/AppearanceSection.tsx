@@ -7,7 +7,7 @@ export function AppearanceSection() {
     <SectionCard
       id="settings-appearance"
       title="Appearance"
-      hint="Dashboard theme for this browser only. Applies immediately — not stored in settings.yaml."
+      hint="Dashboard theme for this browser only. Applies immediately — not part of host settings."
     >
       <div className="form-grid">
         <div className="field">

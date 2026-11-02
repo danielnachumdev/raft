@@ -85,7 +85,7 @@ export function InspectionFirewallActions(props: Props) {
       setFormOpen(false);
       setDraft(null);
       toast.good(
-        "Firewall rule applied at top of table (gate nginx reload)",
+        "Firewall rule applied at top of table",
       );
     } catch (err) {
       toast.bad(err instanceof Error ? err.message : "Failed to apply rule");
@@ -99,7 +99,7 @@ export function InspectionFirewallActions(props: Props) {
       await removeInspectionFirewallRule({ clientIp: props.clientIp });
       setRemoveOpen(false);
       setMatchCount(0);
-      toast.good("Matching firewall rule removed (gate nginx reload)");
+      toast.good("Matching firewall rule removed");
     } catch (err) {
       toast.bad(err instanceof Error ? err.message : "Failed to remove rule");
     }
@@ -140,7 +140,7 @@ export function InspectionFirewallActions(props: Props) {
       <ConfirmPopup
         open={removeOpen}
         title="Remove firewall rule"
-        message={`Remove ${matchCount} ordered firewall rule(s) for ${props.clientIp} (host /32 or /128) and reload gate nginx?`}
+        message={`Remove ${matchCount} ordered firewall rule(s) for ${props.clientIp} (host /32 or /128)?`}
         confirmLabel="Remove"
         danger
         onConfirm={() => onRemove()}
