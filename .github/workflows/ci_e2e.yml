@@ -1,4 +1,4 @@
-# E2E Compose tests (Py 3.9). Pulls private GHCR seed pins via ci_seed_docker_images.sh.
+# E2E Compose tests (Py 3.11). Pulls private GHCR seed pins via ci_seed_docker_images.sh.
 
 name: CI e2e
 
@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   e2e:
-    name: E2E (Py 3.9)
+    name: E2E (Py 3.11)
     runs-on: ubuntu-latest
     timeout-minutes: 45
     # Fork PRs: optional approval env (same rule as pre-split ci.yml).
@@ -31,7 +31,7 @@ jobs:
           npm run build
       - uses: astral-sh/setup-uv@v10.0.0
         with:
-          python-version: "3.9"
+          python-version: "3.11"
       - name: Install package + test deps
         run: uv sync --extra dev
       - name: Log in to GHCR (CI seed pins)

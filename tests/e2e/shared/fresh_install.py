@@ -12,8 +12,8 @@ from typing import List, Optional
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DOCKERFILE = REPO_ROOT / "tests" / "e2e" / "fresh_install" / "Dockerfile"
 DEFAULT_REF = "workspace"
-# E2E CI job is Py 3.9 only; run the image build once there.
-_CI_ONCE_PY = (3, 9)
+# E2E CI job is Py 3.11 only; run the image build once there.
+_CI_ONCE_PY = (3, 11)
 
 
 class FreshInstallRef:
