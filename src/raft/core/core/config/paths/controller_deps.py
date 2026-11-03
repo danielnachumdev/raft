@@ -58,7 +58,7 @@ class ControllerDepsPyproject:
             "[project]",
             'name = "raft-controller-deps"',
             'version = "0"',
-            'requires-python = ">=3.9"',
+            'requires-python = ">=3.11"',
             "dependencies = [",
         ]
         for dep in deps:

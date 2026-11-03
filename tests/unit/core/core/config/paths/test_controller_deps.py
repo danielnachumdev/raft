@@ -30,7 +30,7 @@ class TestControllerDepsPyproject(RaftTestCase):
             lambda _name: [
                 "fire>=0.7.1",
                 'pytest>=7.0; extra == "dev"',
-                'PyYAML>=6.0; python_version >= "3.9"',
+                'PyYAML>=6.0; python_version >= "3.11"',
             ],
         )
         ControllerDepsPyproject().write_from_installed(dest)

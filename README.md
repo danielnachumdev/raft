@@ -60,7 +60,7 @@ You keep services in their own repos. On the VPS you `apply` a manifest. raft sy
 
 ## Try it
 
-Needs **Python 3.9+**, Docker, and Compose.
+Needs **Python 3.11+**, Docker, and Compose.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/danielnachumdev/raft/main/install.sh | bash
@@ -155,7 +155,7 @@ uv run pytest
 uv run raft -- --help
 ```
 
-CI runs the suite across Python 3.9–3.13. Dashboard source is in **`src/spa/`** (Release CD bakes into `share/serve/spa/` inside the wheel; hashed assets are not committed).
+CI runs the suite across Python 3.11–3.13. Dashboard source is in **`src/spa/`** (Release CD bakes into `share/serve/spa/` inside the wheel; hashed assets are not committed).
 
 Changing the product? **[AGENTS.md](AGENTS.md)** is the implementation guide (architecture invariants, packaging pitfalls, planned vs shipped detail). Operator manifest samples: [`examples/`](examples/).
 
