@@ -4,7 +4,7 @@ from pathlib import Path
 
 from raft.core.core.config.settings.dashboard_config import DashboardConfig
 
-from .oauth_paths import OAUTH_PROXY_PORT
+from .oauth_paths import DASHBOARD_AUTH_PROXY_PORT
 from .proxy_nginx import DashboardProxyNginx
 
 IMAGE_UNAUTHORIZED = Path("/opt/dashboard/unauthorized.html")
@@ -60,7 +60,7 @@ class DashboardOAuthNginx:
         return (
             "        location = /_raft_dashboard_auth {\n"
             "            internal;\n"
-            f"            proxy_pass http://127.0.0.1:{OAUTH_PROXY_PORT}"
+            f"            proxy_pass http://127.0.0.1:{DASHBOARD_AUTH_PROXY_PORT}"
             "/oauth2/auth;\n"
             "            proxy_pass_request_body off;\n"
             '            proxy_set_header Content-Length "";\n'
@@ -75,7 +75,7 @@ class DashboardOAuthNginx:
     def _oauth_locations() -> str:
         return (
             "        location /oauth2/ {\n"
-            f"            proxy_pass http://127.0.0.1:{OAUTH_PROXY_PORT};\n"
+            f"            proxy_pass http://127.0.0.1:{DASHBOARD_AUTH_PROXY_PORT};\n"
             "            proxy_set_header Host $host;\n"
             "            proxy_set_header X-Real-IP $remote_addr;\n"
             "            proxy_set_header X-Forwarded-For "

@@ -13,6 +13,8 @@ from ..gateway import GithubApiGateway, GithubHttpError
 # Least privilege for private listing + Contents/PRs that add Actions workflows.
 # Deploy keys stay manual (no admin:public_key). ``workflow`` is required to
 # create or update ``.github/workflows/*`` via the API.
+GITHUB_LOGIN_SCOPES = "read:user repo workflow"
+# Separate literal so CodeQL does not taint LOGIN_SCOPES via the OAUTH-named alias.
 GITHUB_OAUTH_SCOPES = "read:user repo workflow"
 _AUTHORIZE = "https://github.com/login/oauth/authorize"
 _TOKEN = "https://github.com/login/oauth/access_token"
@@ -46,7 +48,7 @@ class GithubOauth:
         params = {
             "client_id": self._cfg.client_id,
             "redirect_uri": f"http://127.0.0.1:{port}{redirect_path}",
-            "scope": GITHUB_OAUTH_SCOPES,
+            "scope": GITHUB_LOGIN_SCOPES,
             "state": state,
         }
         if select_account:

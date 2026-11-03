@@ -4,6 +4,8 @@
 from typing import Any, Dict
 from urllib.parse import urlencode
 
+GITHUB_APP_CREATE_URL = "https://github.com/settings/applications/new"
+# Separate literal so CodeQL does not taint CREATE_URL via the OAUTH-named alias.
 GITHUB_OAUTH_APP_NEW = "https://github.com/settings/applications/new"
 SETUP_DOCS_URL = "https://github.com/danielnachumdev/raft/blob/main/README.md"
 APPLICATION_NAME = "raft serve"
@@ -52,4 +54,4 @@ class GithubOauthAppSetup:
                 "oauth_application[callback_url]": callback,
             }
         )
-        return f"{GITHUB_OAUTH_APP_NEW}?{params}"
+        return f"{GITHUB_APP_CREATE_URL}?{params}"

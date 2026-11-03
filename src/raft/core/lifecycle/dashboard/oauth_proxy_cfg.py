@@ -5,7 +5,7 @@ from typing import Optional
 from raft.core.core.config.settings.dashboard_config import DashboardConfig
 from raft.core.core.errors.cta import OperatorError
 
-from .oauth_paths import OAUTH_PROXY_PORT
+from .oauth_paths import DASHBOARD_AUTH_PROXY_PORT
 
 
 class DashboardOAuthProxyCfg:
@@ -31,7 +31,7 @@ class DashboardOAuthProxyCfg:
     @staticmethod
     def _common(allow: str, provider_lines: list[str]) -> list[str]:
         return [
-            f'http_address = "127.0.0.1:{OAUTH_PROXY_PORT}"',
+            f'http_address = "127.0.0.1:{DASHBOARD_AUTH_PROXY_PORT}"',
             "reverse_proxy = true",
             *provider_lines,
             f'authenticated_emails_file = "{allow}"',

@@ -140,7 +140,12 @@ class TestDoctorReport(DoctorTestCase):
     def _assert_auth_fix_urls(self) -> None:
         gh = AppChecks.auth_deploy_key_fix("svc", "git@github.com:acme/site.git")
         assert "github.com/acme/site/settings/keys/new" in gh
-        assert "gitlab.com" in AppChecks.auth_deploy_key_fix("svc", "git@gitlab.com:acme/site.git")
+        assert (
+            AppChecks.auth_deploy_key_fix("svc", "git@gitlab.com:acme/site.git")
+            == "run `raft auth show svc` and paste Title + Key as a "
+            "read-only deploy key for acme/site on gitlab.com, "
+            "then `raft auth test svc`"
+        )
         assert AppChecks.auth_deploy_key_fix("svc", "not-a-url")
 
     def test_report_blank_lines_between_ok_and_issues(self, capsys) -> None:

@@ -101,7 +101,7 @@ class TestConfig(RaftTestCase):
 
     def _assert_acme_defaults(self, cfg) -> None:
         assert cfg.acme.email is None
-        assert cfg.acme.directory.startswith("https://acme-v02.api.letsencrypt.org")
+        assert cfg.acme.directory == "https://acme-v02.api.letsencrypt.org/directory"
         assert cfg.acme.renew_days_before_expiry == 30
         assert cfg.acme.challenge == "http-01"
 

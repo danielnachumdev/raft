@@ -50,9 +50,21 @@ class DashboardOAuthEnv:
             f"OAUTH2_PROXY_REDIRECT_URL={redirect}",
             "",
         ]
-        path.write_text("\n".join(lines), encoding="utf-8")
-        os.chmod(path, 0o600)
+        self._write_secret_file(path, "\n".join(lines))
         return path
+
+    @staticmethod
+    def _write_secret_file(path: Path, body: str) -> None:
+        """Atomic replace with mode 0600 (oauth2-proxy requires a cleartext env file)."""
+        tmp = path.with_name(f".{path.name}.tmp")
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        try:
+            os.write(fd, body.encode("utf-8"))
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+        os.replace(tmp, path)
+        os.chmod(path, 0o600)
 
     def secrets_present(self) -> bool:
         values = self.load()

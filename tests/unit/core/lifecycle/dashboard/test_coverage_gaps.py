@@ -135,4 +135,4 @@ class TestDashboardCoverageGaps(RaftTestCase):
         writer.enable(
             public_host="ops.example.com", tls="acme", auth_mode="password"
         )
-        assert "ops.example.com" in (writer.status_public()["publicUrl"] or "")
+        assert writer.status_public()["publicUrl"] == "https://ops.example.com/"

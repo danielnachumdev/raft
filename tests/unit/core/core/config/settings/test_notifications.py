@@ -23,7 +23,7 @@ class TestNotificationsSettingsParser(RaftTestCase):
         assert cfg.enabled is True
         assert [c.id for c in cfg.channels] == ["ops-primary", "oncall-email"]
         assert cfg.channels[1].enabled is False
-        assert cfg.channels[0].settings["url"].startswith("https://hooks.example")
+        assert cfg.channels[0].settings["url"] == "https://hooks.example.invalid/raft"
 
     @staticmethod
     def _sample_raw() -> dict:

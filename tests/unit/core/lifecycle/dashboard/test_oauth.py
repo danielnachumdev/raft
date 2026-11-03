@@ -42,7 +42,7 @@ class TestDashboardOAuth(RaftTestCase):
             self._oauth_cfg(provider="oidc", issuer="https://login.example.com/")
         )
         assert 'provider = "oidc"' in oidc
-        assert "login.example.com" in oidc
+        assert 'oidc_issuer_url = "https://login.example.com/"' in oidc
 
     def test_proxy_cfg_rejects_bad_provider_and_oidc_issuer(self) -> None:
         with pytest.raises(OperatorError, match="unsupported"):
