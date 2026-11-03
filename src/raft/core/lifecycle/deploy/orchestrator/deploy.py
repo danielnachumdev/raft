@@ -121,18 +121,29 @@ class OrchestratorDeploy:
         done: str = "deployed",
     ) -> None:
         """Gate/router already up; sync, start this Compose service, reload router, wait ready."""
-        self._clear_scaled_before_start(app)
+        # Hold scaledToZero through sync/render so upstreams stay parked. Clearing
+        # first made render write Compose DNS and router nginx -t fail before start
+        # (nachum-mealie CD host-not-found). Also covers a prior failed wake that
+        # left awake + steady DNS with no container.
+        self._hold_scaled_for_sync(app)
         logger.info("edge up; starting new app service %s", app.compose_id)
         self.sync([app.name], ref_override=ref_override, force=force_sync)
-        # Sync may write the steady Compose hostname before the container exists
-        # (idle scale-to-zero / first start). Park so router nginx -t cannot fail
-        # with "host not found in upstream", then restore after the service is up.
+        self._clear_scaled_before_start(app)
         self.nginx.point_absent(app, reload=False)
         self._start_compose_generation(app, ref_override=ref_override)
         self.nginx.point_steady(app, reload=False)
         self.docker.nginx_test_and_reload()
         self._wait_app_ready(app)
         self.finish_app_deploy(app, done=done)
+
+    def _hold_scaled_for_sync(self, app) -> None:
+        """Park upstreams and keep scaledToZero so sync/render cannot nginx -t steady DNS."""
+        store = ScalingStore(self.stack.root)
+        self.nginx.point_absent(app, reload=False)
+        if store.is_scaled_to_zero(app.name):
+            return
+        store.mark_scaled_to_zero(app.name)
+        logger.info("holding scaledToZero for %s through sync/render", app.name)
 
     def _start_compose_generation(self, app, *, ref_override: Optional[str]) -> None:
         """Pull+recreate docker-source pins; rebuild git/local checkouts."""
@@ -157,7 +168,7 @@ class OrchestratorDeploy:
         return app.ref
 
     def _clear_scaled_before_start(self, app) -> None:
-        """Drop idle markers so render parks steady upstreams and readiness waits run."""
+        """Mark awake after sync so readiness waits and compose start are not skipped."""
         store = ScalingStore(self.stack.root)
         if not store.is_scaled_to_zero(app.name):
             return
