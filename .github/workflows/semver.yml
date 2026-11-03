@@ -15,6 +15,6 @@ permissions:
 jobs:
   semver:
     name: Semver
-    uses: danielnachumdev/actions/.github/workflows/semver-ci.yml@v1
+    uses: danielnachumdev/actions/.github/workflows/semver-ci.yml@latest
     with:
       standards-ref: v1
