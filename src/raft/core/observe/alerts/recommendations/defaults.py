@@ -9,7 +9,8 @@ _OOM: Dict[str, Any] = {
     "kind": "state",
     "title": "Alert when any service is OOM-killed / crash-looping",
     "summary": (
-        "Watch control.container_status for every App (target *). "
+        "Watch control.container_status for every service (target *) — "
+        "Apps plus gate/router/controller/dashboard. "
         f"Match state in [{STATUS_CRASH_LOOPING}] — covers OOMKilled "
         "and restart churn via CrashLoopDetector."
     ),
@@ -17,7 +18,8 @@ _OOM: Dict[str, Any] = {
     "name": "Any service OOM / crash-loop",
     "severity": "critical",
     "description": (
-        "Fires when any App container is crash-looping. "
+        "Fires when any service container is crash-looping "
+        "(Apps and control plane). "
         "Raft maps Docker OOMKilled into that status."
     ),
     "for": "0s",
@@ -32,7 +34,8 @@ _NOT_RUNNING: Dict[str, Any] = {
     "kind": "state",
     "title": "Alert when any service is not running",
     "summary": (
-        "Watch control.container_status for every App (target *). "
+        "Watch control.container_status for every service (target *) — "
+        "Apps plus gate/router/controller/dashboard. "
         f"Match state in [{STATUS_NOT_RUNNING}, exited, dead] for 2m. "
         "Scaled-to-zero Apps are skipped by the signal source."
     ),
@@ -40,8 +43,8 @@ _NOT_RUNNING: Dict[str, Any] = {
     "name": "Any service not running",
     "severity": "error",
     "description": (
-        "Fires when any App container is not running "
-        "(excludes intentional scale-to-zero)."
+        "Fires when any service container is not running "
+        "(Apps and control plane; excludes intentional scale-to-zero)."
     ),
     "for": "2m",
     "signal": "control.container_status",
@@ -58,13 +61,17 @@ _HIGH_MEMORY: Dict[str, Any] = {
     "kind": "threshold",
     "title": "Alert when any service uses high memory",
     "summary": (
-        "Watch metrics.resources memory_used_percent for every App "
-        "(target *). Threshold avg over 5m > 90%."
+        "Watch metrics.resources memory_used_percent for every service "
+        "(target *) — Apps plus gate/router/controller/dashboard. "
+        "Threshold avg over 5m > 90%."
     ),
     "rule_id": "any-service-high-memory",
     "name": "Any service high memory",
     "severity": "warning",
-    "description": "Fires when any App averages above 90% memory for 5m.",
+    "description": (
+        "Fires when any service (Apps or control plane) averages "
+        "above 90% memory for 5m."
+    ),
     "for": "0s",
     "signal": "metrics.resources",
     "select": {"target": "*", "metric": "memory_used_percent"},

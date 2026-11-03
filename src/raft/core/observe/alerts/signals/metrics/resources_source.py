@@ -21,6 +21,11 @@ from .samples import MetricsSampleCache
 class ResourcesMetricSource(SignalSource):
     """Resource utilization from resources.jsonl."""
 
+    # Wildcard ``*`` expands to container series (Apps + edge), never host.
+    _WILDCARD_ROLES = frozenset(
+        {"app", "gate", "router", "controller", "dashboard"}
+    )
+
     def __init__(self) -> None:
         self._cache = MetricsSampleCache()
         self._builder = MetricsSeriesBuilder()
@@ -86,7 +91,7 @@ class ResourcesMetricSource(SignalSource):
             return [
                 self._one(sid, series, metric, wildcard=True)
                 for sid, series in built.items()
-                if series.get("role") == "app"
+                if series.get("role") in self._WILDCARD_ROLES
             ]
         series = built.get(target)
         if series is None:

@@ -11,11 +11,17 @@ class SignalContext:
     """Per-tick read memo + facts shared by all sources in one evaluation."""
 
     def __init__(
-        self, home: Path, now: datetime, *, app_names: Sequence[str]
+        self,
+        home: Path,
+        now: datetime,
+        *,
+        app_names: Sequence[str],
+        control_plane_names: Sequence[str] = (),
     ) -> None:
         self._home = home
         self._now = now
         self._app_names = tuple(app_names)
+        self._control_plane_names = tuple(control_plane_names)
         self._memo: Dict[str, object] = {}
 
     @property
@@ -29,6 +35,11 @@ class SignalContext:
     @property
     def app_names(self) -> tuple:
         return self._app_names
+
+    @property
+    def control_plane_names(self) -> tuple:
+        """Compose ids for gate / router / controller / dashboard."""
+        return self._control_plane_names
 
     def memo(self, key: str, load: Callable[[], T]) -> T:
         if key not in self._memo:

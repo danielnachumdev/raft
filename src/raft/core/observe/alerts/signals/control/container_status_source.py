@@ -51,13 +51,22 @@ class ContainerStatusSource(SignalSource):
         target = str(select.get("target"))
         scaling = ScalingStore(ctx.home)
         if target == "*":
-            names = [
-                n for n in ctx.app_names if not scaling.is_scaled_to_zero(n)
+            return [
+                self._series(name, samples, wildcard=True)
+                for name in self._wildcard_names(ctx, scaling)
             ]
-            return [self._series(name, samples, wildcard=True) for name in names]
         if scaling.is_scaled_to_zero(target):
             return []
         return [self._series(target, samples, wildcard=False)]
+
+    @staticmethod
+    def _wildcard_names(ctx: SignalContext, scaling: ScalingStore) -> List[str]:
+        """Control plane first, then Apps that are not intentionally scaled to zero."""
+        names = list(ctx.control_plane_names)
+        names.extend(
+            n for n in ctx.app_names if not scaling.is_scaled_to_zero(n)
+        )
+        return names
 
     def describe(self, select: Mapping[str, Any]) -> str:
         return f"{select.get('target')} status"
