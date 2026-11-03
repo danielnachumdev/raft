@@ -1,0 +1,33 @@
+version: 2
+updates:
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "noBump"
+    groups:
+      uv-production:
+        dependency-type: "production"
+      uv-development:
+        dependency-type: "development"
+
+  - package-ecosystem: "npm"
+    directory: "/src/spa"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "noBump"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "noBump"
