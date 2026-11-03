@@ -1,4 +1,5 @@
 # Meta / package-data guards (codebase-as-artifact).
+# Delegates checkout / uv / pytest to danielnachumdev/actions python lane.
 
 name: CI meta
 
@@ -11,14 +12,9 @@ permissions:
 jobs:
   meta:
     name: Meta
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
-        with:
-          python-version: "3.13"
-      - name: Install package + test deps
-        run: uv sync --extra dev
-      - name: Meta tests (codebase-as-artifact)
-        run: uv run pytest tests/meta --no-cov -n0
+    uses: danielnachumdev/actions/.github/workflows/python.yml@latest
+    with:
+      python-versions: '["3.13"]'
+      sync-args: --extra dev
+      pytest-command: pytest tests/meta --no-cov -n0
+      timeout-minutes: 15
