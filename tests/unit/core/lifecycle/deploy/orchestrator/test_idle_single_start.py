@@ -76,6 +76,20 @@ class TestIdleSingleStart(OrchestratorTestCase):
         self.orch.nginx.point_absent.assert_called()
         self.orch.nginx.point_steady.assert_called()
 
+    def test_wanted_image_tag_from_ref_state(self) -> None:
+        self._seed_docker_scaling_app()
+        app = self.orch.stack.app("app")
+        path = self.orch.stack.ref_state_file(app)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("digest\n# requested: pin-tag\n", encoding="utf-8")
+        assert self.orch._wanted_image_tag(app, ref_override=None) == "pin-tag"
+        path.write_text("digest\n# requested:   \n", encoding="utf-8")
+        assert self.orch._wanted_image_tag(app, ref_override=None) == app.ref
+        path.write_text("digest\n", encoding="utf-8")
+        assert self.orch._wanted_image_tag(app, ref_override=None) == app.ref
+        path.unlink()
+        assert self.orch._wanted_image_tag(app, ref_override=None) == app.ref
+
     def test_min_up_seconds_defaults_on_spec_error(self) -> None:
         from raft.core.core.models.stack import Stack
 
