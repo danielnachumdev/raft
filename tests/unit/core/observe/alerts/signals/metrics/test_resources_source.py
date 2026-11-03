@@ -3,6 +3,7 @@
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, List
 
 from raft.core.core.config.paths.metrics_paths import MetricsPaths
 from raft.core.observe.alerts.signals.context import SignalContext
@@ -27,25 +28,31 @@ _CONTAINER = {
 }
 
 
-def _sample() -> dict:
+def _host() -> dict:
     return {
-        "ts": NOW.isoformat(),
-        "host": {
-            "cpus": 2,
-            "loadavg": [1.0, 1.0, 1.0],
-            "memory": {"used_percent": 40, "used_bytes": 100},
-        },
-        "containers": [_CONTAINER],
+        "cpus": 2,
+        "loadavg": [1.0, 1.0, 1.0],
+        "memory": {"used_percent": 40, "used_bytes": 100},
     }
+
+
+def _write_sample(home: Path, containers: List[dict]) -> SignalContext:
+    path = MetricsPaths(home).resources()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    sample = {"ts": NOW.isoformat(), "host": _host(), "containers": containers}
+    path.write_text(json.dumps(sample) + "\n", encoding="utf-8")
+    return SignalContext(home, NOW, app_names=["demo-api"])
+
+
+def _cpu_star(ctx: SignalContext) -> List[Any]:
+    return ResourcesMetricSource().query(
+        {"target": "*", "metric": "cpu_percent"}, window_seconds=300, ctx=ctx
+    )
 
 
 class TestResourcesMetricSource(RaftTestCase):
     def _ctx(self) -> SignalContext:
-        home = Path(self.tmp_path)
-        path = MetricsPaths(home).resources()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(_sample()) + "\n", encoding="utf-8")
-        return SignalContext(home, NOW, app_names=["demo-api"])
+        return _write_sample(Path(self.tmp_path), [_CONTAINER])
 
     def test_cpu(self) -> None:
         source = ResourcesMetricSource()
@@ -56,36 +63,11 @@ class TestResourcesMetricSource(RaftTestCase):
             ctx=ctx,
         )
         assert series[0].points[0].value == 90.0
-        star = source.query(
-            {"target": "*", "metric": "cpu_percent"}, window_seconds=300, ctx=ctx
-        )
-        assert any(s.subject == "demo-api" for s in star)
+        assert any(s.subject == "demo-api" for s in _cpu_star(ctx))
 
     def test_wildcard_includes_control_plane_role(self) -> None:
-        home = Path(self.tmp_path)
-        path = MetricsPaths(home).resources()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        router = {
-            **_CONTAINER,
-            "service": "raft-router",
-            "role": "router",
-            "cpu_percent": 12.0,
-        }
-        sample = {
-            "ts": NOW.isoformat(),
-            "host": {
-                "cpus": 2,
-                "loadavg": [1.0, 1.0, 1.0],
-                "memory": {"used_percent": 40, "used_bytes": 100},
-            },
-            "containers": [_CONTAINER, router],
-        }
-        path.write_text(json.dumps(sample) + "\n", encoding="utf-8")
-        ctx = SignalContext(home, NOW, app_names=["demo-api"])
-        star = ResourcesMetricSource().query(
-            {"target": "*", "metric": "cpu_percent"}, window_seconds=300, ctx=ctx
-        )
-        subjects = {s.subject for s in star}
-        assert "demo-api" in subjects
-        assert "raft-router" in subjects
+        router = {**_CONTAINER, "service": "raft-router", "role": "router"}
+        ctx = _write_sample(Path(self.tmp_path), [_CONTAINER, router])
+        subjects = {s.subject for s in _cpu_star(ctx)}
+        assert "demo-api" in subjects and "raft-router" in subjects
         assert "host" not in subjects
