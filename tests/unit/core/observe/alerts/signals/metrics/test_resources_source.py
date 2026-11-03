@@ -60,3 +60,32 @@ class TestResourcesMetricSource(RaftTestCase):
             {"target": "*", "metric": "cpu_percent"}, window_seconds=300, ctx=ctx
         )
         assert any(s.subject == "demo-api" for s in star)
+
+    def test_wildcard_includes_control_plane_role(self) -> None:
+        home = Path(self.tmp_path)
+        path = MetricsPaths(home).resources()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        router = {
+            **_CONTAINER,
+            "service": "raft-router",
+            "role": "router",
+            "cpu_percent": 12.0,
+        }
+        sample = {
+            "ts": NOW.isoformat(),
+            "host": {
+                "cpus": 2,
+                "loadavg": [1.0, 1.0, 1.0],
+                "memory": {"used_percent": 40, "used_bytes": 100},
+            },
+            "containers": [_CONTAINER, router],
+        }
+        path.write_text(json.dumps(sample) + "\n", encoding="utf-8")
+        ctx = SignalContext(home, NOW, app_names=["demo-api"])
+        star = ResourcesMetricSource().query(
+            {"target": "*", "metric": "cpu_percent"}, window_seconds=300, ctx=ctx
+        )
+        subjects = {s.subject for s in star}
+        assert "demo-api" in subjects
+        assert "raft-router" in subjects
+        assert "host" not in subjects

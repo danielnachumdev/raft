@@ -158,7 +158,11 @@ class ServeAlertsApi:
 
     def api_catalog(self) -> Dict[str, Any]:
         apps = [a.name for a in self.stack.apps]
-        return AlertCatalog.build(self._regs, apps)
+        return AlertCatalog.build(
+            self._regs,
+            apps,
+            control_plane_names=list(self.stack.control_plane_services),
+        )
 
     def api_export(self) -> Dict[str, Any]:
         return self._service.export_document()

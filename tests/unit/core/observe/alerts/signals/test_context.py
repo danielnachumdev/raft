@@ -6,5 +6,11 @@ from tests.unit.base import RaftTestCase
 
 class TestSignalContext(RaftTestCase):
     def test_apps_copy(self) -> None:
-        ctx = SignalContext(Path("/tmp"), datetime(2026,1,1,tzinfo=timezone.utc), app_names=["demo-api"])
+        ctx = SignalContext(
+            Path("/tmp"),
+            datetime(2026, 1, 1, tzinfo=timezone.utc),
+            app_names=["demo-api"],
+            control_plane_names=["raft-router"],
+        )
         assert ctx.app_names == ("demo-api",)
+        assert ctx.control_plane_names == ("raft-router",)

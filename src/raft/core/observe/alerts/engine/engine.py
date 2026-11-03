@@ -39,6 +39,7 @@ class AlertEngine:
         runtime_store: Optional[AlertRuntimeStore] = None,
         dispatch: Optional[AlertDispatch] = None,
         app_names: Optional[Callable[[], Sequence[str]]] = None,
+        control_plane_names: Optional[Callable[[], Sequence[str]]] = None,
     ) -> None:
         self._home = home
         self._regs = registries or AlertCatalogs.default()
@@ -46,6 +47,9 @@ class AlertEngine:
         self._runtime = runtime_store or AlertRuntimeStore(home)
         self._dispatch = dispatch or AlertDispatch(Notifier(home))
         self._app_names = app_names or (lambda: self._load_apps())
+        self._control_plane_names = control_plane_names or (
+            lambda: self._load_control_plane()
+        )
         self._evaluator = AlertRuleEvaluator(self._regs)
         self._machine = AlertStateMachine()
         self._events = AlertEventFactory()
@@ -71,7 +75,7 @@ class AlertEngine:
     ) -> DryRunReport:
         now = now or datetime.now(timezone.utc)
         runtime = self._runtime.load()
-        ctx = SignalContext(self._home, now, app_names=self._app_names())
+        ctx = self._context(now)
         error, outcomes = self._evaluator.evaluate(rule, ctx)
         subjects = [
             self._dry_run_subject(rule, outcome, runtime, now) for outcome in outcomes
@@ -92,8 +96,16 @@ class AlertEngine:
             "leaves": [lv.to_public() for lv in outcome.leaves],
         }
 
+    def _context(self, now: datetime) -> SignalContext:
+        return SignalContext(
+            self._home,
+            now,
+            app_names=self._app_names(),
+            control_plane_names=self._control_plane_names(),
+        )
+
     def _run(self, rules, runtime: AlertRuntime, *, now, started) -> EvaluationReport:
-        ctx = SignalContext(self._home, now, app_names=self._app_names())
+        ctx = self._context(now)
         report = EvaluationReport(started, now, rules_total=len(rules))
         enabled = [r for r in rules if r.enabled]
         report.rules_skipped_disabled = len(rules) - len(enabled)
@@ -201,5 +213,11 @@ class AlertEngine:
     def _load_apps(self) -> Sequence[str]:
         try:
             return [a.name for a in Stack.load_apps(self._home).apps]
+        except Exception:  # noqa: BLE001
+            return []
+
+    def _load_control_plane(self) -> Sequence[str]:
+        try:
+            return list(Stack.load_apps(self._home).control_plane_services)
         except Exception:  # noqa: BLE001
             return []
