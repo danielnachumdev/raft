@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 # Usage: scripts/release/build_release_wheel.sh <vX.Y.Z> [out-dir]
+#
+# Raft-specific Release bake: SPA → version-aligned wheel with asset asserts.
+# Thin CD passes this as semver-cd `build-command` (default actions wheel script
+# has no SPA bake). Also usable locally.
 set -euo pipefail
 
 TAG="${1:?usage: build_release_wheel.sh <vX.Y.Z> [out-dir]}"

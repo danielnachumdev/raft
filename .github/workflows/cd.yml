@@ -1,257 +1,58 @@
 name: CD
 
-# Top-level CD invoker. Semver / GitHub Release publish runs only after CI
-# succeeds for a push to main (workflow_run gate — cannot race ahead of tests).
-# PR-time job: Release label check (ruleset context "Release label").
-#
-# Labels (exactly one required on every PR into main):
-#   bumpMajor | bumpMinor | bumpPatch | noBump
-# On bump publish: bake SPA → version-aligned wheel → attach .whl.
-# noBump → semver succeeds without creating a Release.
+# Thin orchestrator. Semver at CD = bump → SPA bake + wheel → GitHub Release
+# (or skip on noBump). Raft-specific bake stays in scripts/release/build_release_wheel.sh
+# (actions' default wheel script has no SPA step). Prefer requiring "Semver / Semver".
+# Pin:
+#   uses: danielnachumdev/actions/.github/workflows/semver-cd.yml@v1
 
 on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
-  pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    # Defense in depth with the job if: (push + main). Limits which CI
+    # completions even enqueue this privileged orchestrator.
     branches: [main]
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Print bump result without creating a Release"
+        description: "Resolve bump only; do not create a Release"
         type: boolean
         default: true
-      latest_tag:
-        description: "Override latest tag (empty = query GitHub Releases)"
+      sha:
+        description: "Commit SHA (empty = current GITHUB_SHA)"
         type: string
         default: ""
-      labels:
-        description: "Comma-separated labels for dry-run (e.g. bumpPatch)"
-        type: string
-        default: "bumpPatch"
 
 permissions:
   contents: write
   pull-requests: read
   actions: read
+  # Required by semver-cd (PyPI job declares OIDC even when skipped).
+  id-token: write
 
 concurrency:
-  # PR number (label check) or tested SHA (semver) — never cancel bake/publish.
-  group: cd-${{ github.event.pull_request.number || github.event.workflow_run.head_sha || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: cd-${{ github.event.workflow_run.head_sha || github.run_id }}
+  cancel-in-progress: false
 
 jobs:
-  check-label:
-    name: Release label
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v7
-      - name: Require exactly one bump / noBump label
-        env:
-          LABELS_JSON: ${{ toJson(github.event.pull_request.labels) }}
-        run: |
-          set -euo pipefail
-          python3 scripts/release/release_semver.py --latest-tag v0.0.0 --labels-json "${LABELS_JSON}"
-
   semver:
-    name: semver
+    name: Semver
     if: >
       (github.event_name == 'workflow_run' &&
        github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.event == 'push' &&
        github.event.workflow_run.head_branch == 'main') ||
       github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    # SPA bake + wheel — hard cap so a hung npm/uv step cannot bill unbounded.
-    timeout-minutes: 30
-    steps:
-      - name: Resolve commit SHA
-        id: ref
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
-        run: |
-          set -euo pipefail
-          if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
-            echo "sha=${RUN_SHA}" >> "$GITHUB_OUTPUT"
-          else
-            echo "sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ steps.ref.outputs.sha }}
-          fetch-depth: 0
-          fetch-tags: true
-
-      - name: Skip if commit already released
-        id: already
-        if: github.event_name == 'workflow_run'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SHA: ${{ steps.ref.outputs.sha }}
-        run: |
-          set -euo pipefail
-          # Re-running CI on an already-tagged commit must not double-bump.
-          tags="$(git tag --points-at "${SHA}" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true)"
-          if [[ -n "${tags}" ]]; then
-            echo "Commit ${SHA} already tagged: ${tags}"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Resolve labels + latest Release tag
-        id: bump
-        if: steps.already.outputs.skip != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          EVENT_NAME: ${{ github.event_name }}
-          DISPATCH_LABELS: ${{ github.event.inputs.labels }}
-          DISPATCH_LATEST: ${{ github.event.inputs.latest_tag }}
-          SHA: ${{ steps.ref.outputs.sha }}
-          REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
-            IFS=',' read -r -a raw <<< "${DISPATCH_LABELS}"
-            labels_json="$(printf '%s\n' "${raw[@]}" | python3 -c 'import json,sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')"
-            latest="${DISPATCH_LATEST}"
-            pr_number=""
-            pr_title=""
-          else
-            # Labels lived on the merged PR; look them up from the tested SHA.
-            pr_json="$(gh api "repos/${REPO}/commits/${SHA}/pulls" \
-              -H "Accept: application/vnd.github.v3+json")"
-            labels_json="$(echo "${pr_json}" | python3 -c '
-          import json, sys
-          prs = json.load(sys.stdin)
-          if not prs:
-              raise SystemExit("no pull request associated with commit; cannot resolve bump labels")
-          # Prefer a PR merged into main when several are linked.
-          chosen = None
-          for pr in prs:
-              base = (pr.get("base") or {}).get("ref") or ""
-              if base == "main" and pr.get("merged_at"):
-                  chosen = pr
-                  break
-          if chosen is None:
-              chosen = prs[0]
-          print(json.dumps(chosen.get("labels") or []))
-          ')"
-            pr_number="$(echo "${pr_json}" | python3 -c '
-          import json, sys
-          prs = json.load(sys.stdin)
-          chosen = None
-          for pr in prs:
-              base = (pr.get("base") or {}).get("ref") or ""
-              if base == "main" and pr.get("merged_at"):
-                  chosen = pr
-                  break
-          if chosen is None:
-              chosen = prs[0]
-          print(chosen.get("number") or "")
-          ')"
-            pr_title="$(echo "${pr_json}" | python3 -c '
-          import json, sys
-          prs = json.load(sys.stdin)
-          chosen = None
-          for pr in prs:
-              base = (pr.get("base") or {}).get("ref") or ""
-              if base == "main" and pr.get("merged_at"):
-                  chosen = pr
-                  break
-          if chosen is None:
-              chosen = prs[0]
-          print(chosen.get("title") or "")
-          ')"
-            latest=""
-          fi
-          if [[ -z "${latest}" ]]; then
-            latest="$(gh release view --json tagName -q .tagName 2>/dev/null || true)"
-          fi
-          echo "latest_tag=${latest:-<none>}"
-          out="$(python3 scripts/release/release_semver.py --latest-tag "${latest}" --labels-json "${labels_json}")"
-          echo "${out}"
-          skip="$(echo "${out}" | sed -n 's/^skip=//p')"
-          tag="$(echo "${out}" | sed -n 's/^tag=//p')"
-          action="$(echo "${out}" | sed -n 's/^action=//p')"
-          version="$(echo "${out}" | sed -n 's/^version=//p')"
-          echo "skip=${skip}" >> "$GITHUB_OUTPUT"
-          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
-          echo "action=${action}" >> "$GITHUB_OUTPUT"
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
-          echo "latest=${latest}" >> "$GITHUB_OUTPUT"
-          echo "pr_number=${pr_number}" >> "$GITHUB_OUTPUT"
-          echo "pr_title=${pr_title}" >> "$GITHUB_OUTPUT"
-
-      - name: Skip (noBump or already released)
-        if: steps.already.outputs.skip == 'true' || steps.bump.outputs.skip == 'true'
-        run: |
-          if [[ "${{ steps.already.outputs.skip }}" == "true" ]]; then
-            echo "Commit already has a release tag — not creating another."
-          else
-            echo "noBump: not creating a GitHub Release."
-          fi
-
-      - uses: actions/setup-node@v4
-        if: steps.already.outputs.skip != 'true' && steps.bump.outputs.skip != 'true' && github.event.inputs.dry_run != 'true'
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: src/spa/package-lock.json
-
-      - uses: astral-sh/setup-uv@v10.0.0
-        if: steps.already.outputs.skip != 'true' && steps.bump.outputs.skip != 'true' && github.event.inputs.dry_run != 'true'
-        with:
-          python-version: "3.12"
-
-      - name: Bake SPA and build wheel
-        if: steps.already.outputs.skip != 'true' && steps.bump.outputs.skip != 'true' && github.event.inputs.dry_run != 'true'
-        id: wheel
-        env:
-          TAG: ${{ steps.bump.outputs.tag }}
-        run: |
-          set -euo pipefail
-          out="$(bash scripts/release/build_release_wheel.sh "${TAG}" dist)"
-          echo "${out}"
-          wheel="$(echo "${out}" | sed -n 's/^wheel=//p' | tail -1)"
-          [[ -n "${wheel}" && -f "${wheel}" ]]
-          echo "path=${wheel}" >> "$GITHUB_OUTPUT"
-
-      - name: Create GitHub Release
-        if: steps.already.outputs.skip != 'true' && steps.bump.outputs.skip != 'true' && github.event.inputs.dry_run != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.bump.outputs.tag }}
-          ACTION: ${{ steps.bump.outputs.action }}
-          WHEEL: ${{ steps.wheel.outputs.path }}
-          PR_NUMBER: ${{ steps.bump.outputs.pr_number }}
-          PR_TITLE: ${{ steps.bump.outputs.pr_title }}
-          SHA: ${{ steps.ref.outputs.sha }}
-        run: |
-          set -euo pipefail
-          gh release create "${TAG}" \
-            --title "${TAG}" \
-            --target "${SHA}" \
-            --generate-notes \
-            "${WHEEL}"
-          if [[ -n "${PR_NUMBER}" && "${PR_NUMBER}" != "null" ]]; then
-            echo "Published ${TAG} (${ACTION}) from #${PR_NUMBER}: ${PR_TITLE}"
-          else
-            echo "Published ${TAG} (${ACTION})"
-          fi
-          echo "Attached $(basename "${WHEEL}")"
-
-      - name: Dry-run summary
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          set -euo pipefail
-          echo "dry_run=${{ github.event.inputs.dry_run }}"
-          echo "action=${{ steps.bump.outputs.action }}"
-          echo "skip=${{ steps.bump.outputs.skip }}"
-          echo "latest=${{ steps.bump.outputs.latest }}"
-          echo "next_tag=${{ steps.bump.outputs.tag }}"
+    uses: danielnachumdev/actions/.github/workflows/semver-cd.yml@v1
+    with:
+      standards-ref: v1
+      dry-run: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true' }}
+      sha: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || (github.event.inputs.sha != '' && github.event.inputs.sha || github.sha) }}
+      python-version: "3.12"
+      # semver-cd runs build-command under bash -lc (login shell can drop setup-uv
+      # PATH). TAG is set in the job env before this command runs.
+      build-command: export PATH="${HOME}/.local/bin:${PATH}"; bash scripts/release/build_release_wheel.sh "${TAG}" dist
+    # User-owned repo: map by name (secrets: inherit is org/enterprise only).
+    secrets:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
