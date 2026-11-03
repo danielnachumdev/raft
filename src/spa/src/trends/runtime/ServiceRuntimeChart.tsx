@@ -66,7 +66,7 @@ export function ServiceRuntimeChart(props: {
               const row = payload?.[0]?.payload as ChartRow | undefined;
               return row?.t ? formatTooltipTime(row.t) : "";
             }}
-            formatter={(value: number | string) => [
+            formatter={(value) => [
               formatMetricValue(Number(value), props.metric.typeId),
               props.metric.label,
             ]}

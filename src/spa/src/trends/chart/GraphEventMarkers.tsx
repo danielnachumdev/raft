@@ -81,7 +81,7 @@ function hitMarker(shared: MarkerShared): ReactElement {
       strokeWidth={width}
       strokeOpacity={0.001}
       ifOverflow="extendDomain"
-      isFront
+      zIndex={500}
       onMouseEnter={shared.onEnter}
     />
   );
@@ -98,7 +98,7 @@ function visibleMarker(event: GraphEvent, shared: MarkerShared): ReactElement {
       strokeWidth={shared.highlight.eventStrokeWidth(shared.kind)}
       strokeOpacity={shared.opacity}
       ifOverflow="extendDomain"
-      isFront
+      zIndex={500}
       onMouseEnter={shared.onEnter}
       label={{
         value: eventMarkerLabel(event),

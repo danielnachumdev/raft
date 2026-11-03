@@ -129,12 +129,12 @@ export function TrendsChart(props: {
               const row = payload?.[0]?.payload as ChartRow | undefined;
               return row?.t ? formatTooltipTime(row.t) : "";
             }}
-            formatter={(value: number | string, name: string) => [
+            formatter={(value, name) => [
               formatMetricValue(
                 Number(value),
-                (types[name] ?? leftType) as MetricTypeId,
+                (types[String(name)] ?? leftType) as MetricTypeId,
               ),
-              labels[name] ?? name,
+              labels[String(name)] ?? String(name ?? ""),
             ]}
             itemSorter={tooltipItemSortKey}
           />
