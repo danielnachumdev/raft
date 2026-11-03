@@ -61,6 +61,12 @@ class TestIdleSingleStart(OrchestratorTestCase):
         assert seen.get("scaled") is True
         assert not ScalingStore(self.tmp_path).is_scaled_to_zero("app")
 
+    def test_clear_scaled_before_start_noop_when_awake(self) -> None:
+        app = self.orch.stack.app("app")
+        assert not ScalingStore(self.tmp_path).is_scaled_to_zero("app")
+        self.orch._clear_scaled_before_start(app)
+        assert not ScalingStore(self.tmp_path).is_scaled_to_zero("app")
+
     def test_redeploy_skips_tmp_when_not_running(self) -> None:
         self.set_edge_only()
         self.stub_http_ready(self.orch.http)
