@@ -19,6 +19,7 @@ class TestInPlaceDeployment(RaftTestCase):
     def test_deploy_when_up_rebuilds_local(self, tmp_path: Path) -> None:
         ctx = self._ctx(tmp_path, source="local")
         InPlaceDeployment().deploy_when_up(ctx)
+        ctx.support.nginx.point_absent.assert_called_once_with(ctx.app, reload=True)
         ctx.support.docker.stop_service.assert_called_once_with("demo-api")
         ctx.support.docker.rebuild_service.assert_called_once_with("demo-api")
         ctx.support.docker.recreate_pulled_service.assert_not_called()
@@ -30,6 +31,7 @@ class TestInPlaceDeployment(RaftTestCase):
         ref_state.write_text("# requested: v2\n", encoding="utf-8")
         ctx.support.stack.ref_state_file.return_value = ref_state
         InPlaceDeployment().deploy_when_up(ctx)
+        ctx.support.nginx.point_absent.assert_called_once_with(ctx.app, reload=True)
         ctx.support.docker.recreate_pulled_service.assert_called_once()
         pull_ref = ctx.support.docker.recreate_pulled_service.call_args.kwargs["pull_ref"]
         assert pull_ref.endswith(":v2") or "v2" in pull_ref

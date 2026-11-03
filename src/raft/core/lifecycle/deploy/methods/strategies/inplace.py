@@ -41,6 +41,8 @@ class InPlaceDeployment(DeploymentMethod):
 
     def _stop_old(self, ctx: DeploymentContext) -> None:
         logger.info("stop %s before in-place rebuild", ctx.app.compose_id)
+        # Park before stop so a router reload cannot resolve a missing Compose DNS name.
+        ctx.support.nginx.point_absent(ctx.app, reload=True)
         ctx.support.docker.stop_service(ctx.app.compose_id)
 
     def _start_new(self, ctx: DeploymentContext) -> None:
