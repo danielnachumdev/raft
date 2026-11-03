@@ -1,8 +1,8 @@
 name: CD
 
 # Thin orchestrator. Semver at CD = bump → SPA bake + wheel → GitHub Release
-# (or skip on noBump). Raft-specific bake stays in scripts/release/build_release_wheel.sh.
-# Prefer requiring "Semver / Semver" (semver.yml) for the PR label gate.
+# (or skip on noBump). Raft-specific bake stays in scripts/release/build_release_wheel.sh
+# (actions' default wheel script has no SPA step). Prefer requiring "Semver / Semver".
 # Pin:
 #   uses: danielnachumdev/actions/.github/workflows/semver-cd.yml@v1
 
@@ -50,8 +50,9 @@ jobs:
       dry-run: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true' }}
       sha: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || (github.event.inputs.sha != '' && github.event.inputs.sha || github.sha) }}
       python-version: "3.12"
-      # TAG is provided in the job env by semver-cd before build-command runs.
-      build-command: bash scripts/release/build_release_wheel.sh "${TAG}" dist
+      # semver-cd runs build-command under bash -lc (login shell can drop setup-uv
+      # PATH). TAG is set in the job env before this command runs.
+      build-command: export PATH="${HOME}/.local/bin:${PATH}"; bash scripts/release/build_release_wheel.sh "${TAG}" dist
     # User-owned repo: map by name (secrets: inherit is org/enterprise only).
     secrets:
       PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
