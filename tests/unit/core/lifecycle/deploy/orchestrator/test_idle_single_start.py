@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -80,6 +81,22 @@ class TestIdleSingleStart(OrchestratorTestCase):
 
         app = self.orch.stack.app("app")
         with patch.object(Stack, "spec_for", side_effect=OperatorError("boom")):
+            assert self.orch._min_up_seconds(app) == 60.0
+
+    def test_min_up_seconds_reads_scaling_spec(self) -> None:
+        self._seed_scaling_app()
+        app = self.orch.stack.app("app")
+        assert self.orch._min_up_seconds(app) == float(
+            self.orch.stack.spec_for(app).scaling.min_up_seconds
+        )
+
+    def test_min_up_seconds_defaults_when_scaling_absent(self) -> None:
+        from raft.core.core.models.stack import Stack
+
+        app = self.orch.stack.app("app")
+        with patch.object(
+            Stack, "spec_for", return_value=SimpleNamespace(scaling=None)
+        ):
             assert self.orch._min_up_seconds(app) == 60.0
 
     def test_redeploy_requires_gate_when_idle(self) -> None:

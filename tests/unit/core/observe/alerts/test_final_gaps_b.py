@@ -70,3 +70,11 @@ class TestFinalGapsB(RaftTestCase):
             side_effect=RuntimeError("x"),
         ):
             assert engine._load_apps() == []
+
+    def test_load_control_plane_error(self) -> None:
+        engine = AlertEngine(Path(self.tmp_path))
+        with patch(
+            "raft.core.observe.alerts.engine.engine.Stack.load_apps",
+            side_effect=RuntimeError("x"),
+        ):
+            assert engine._load_control_plane() == []
