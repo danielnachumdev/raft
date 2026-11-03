@@ -7,7 +7,7 @@ Small helpers that are **not** part of the `raft` CLI.
 | Path | Purpose |
 |------|---------|
 | [setup/](setup/AGENTS.md) | Contributor setup — prerequisites + capa install |
-| [release/](release/AGENTS.md) | CD semver + Release wheel bake (`release_semver.py`, `build_release_wheel.sh`) |
+| [release/](release/AGENTS.md) | Release SPA bake + wheel (`build_release_wheel.sh`; semver lives in actions) |
 | [hosts/](hosts/AGENTS.md) | Temporary local hosts mappings for `publicHost` browser checks |
 | [serve_demo/](serve_demo/AGENTS.md) | PII-safe demo data home + Docker-free `raft serve` for SPA screenshots |
 

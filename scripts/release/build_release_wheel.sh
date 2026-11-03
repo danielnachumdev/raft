@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 # Usage: scripts/release/build_release_wheel.sh <vX.Y.Z> [out-dir]
+#
+# Called from thin CD (danielnachumdev/actions semver-cd build-command) and locally.
+# Shared semver-cd runs build-command under `bash -lc`, which can wipe setup-uv's
+# PATH — restore uv before building.
 set -euo pipefail
 
 TAG="${1:?usage: build_release_wheel.sh <vX.Y.Z> [out-dir]}"
@@ -9,6 +13,22 @@ VERSION="${TAG#v}"
 
 if [[ ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   echo "build_release_wheel.sh: expected tag vX.Y.Z, got ${TAG}" >&2
+  exit 1
+fi
+
+if ! command -v uv >/dev/null 2>&1; then
+  export PATH="${HOME}/.local/bin:${PATH}"
+fi
+if ! command -v uv >/dev/null 2>&1; then
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  export PATH="${HOME}/.local/bin:${PATH}"
+fi
+if ! command -v uv >/dev/null 2>&1; then
+  echo "build_release_wheel.sh: uv is required" >&2
+  exit 1
+fi
+if ! command -v npm >/dev/null 2>&1; then
+  echo "build_release_wheel.sh: npm is required (Node.js)" >&2
   exit 1
 fi
 
