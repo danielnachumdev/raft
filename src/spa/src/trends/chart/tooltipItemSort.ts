@@ -1,6 +1,6 @@
 /** Payload fields Recharts passes to Tooltip ``itemSorter`` (lodash sortBy). */
 export type TooltipSortItem = {
-  value?: number | string | Array<number | string>;
+  value?: number | string | ReadonlyArray<number | string>;
   name?: number | string;
 };
 
