@@ -83,10 +83,10 @@ jobs:
       packages: read
     uses: ./.github/workflows/ci_e2e.yml
 
-  # Opt-in Dependabot auto-merge (enables GitHub auto-merge for dependabot[bot] PRs).
-  # Also requires repo "Allow auto-merge" (Settings → General).
+  # Opt-in: merge Dependabot PRs only after the aggregate CI job has passed.
   dependabot-auto-merge:
     name: Dependabot auto-merge
+    needs: [ci]
     if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
     permissions:
       contents: write
