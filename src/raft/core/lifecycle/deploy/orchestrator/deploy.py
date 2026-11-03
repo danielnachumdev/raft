@@ -124,10 +124,37 @@ class OrchestratorDeploy:
         self._clear_scaled_before_start(app)
         logger.info("edge up; starting new app service %s", app.compose_id)
         self.sync([app.name], ref_override=ref_override, force=force_sync)
-        self.docker.rebuild_service(app.compose_id)
+        # Sync may write the steady Compose hostname before the container exists
+        # (idle scale-to-zero / first start). Park so router nginx -t cannot fail
+        # with "host not found in upstream", then restore after the service is up.
+        self.nginx.point_absent(app, reload=False)
+        self._start_compose_generation(app, ref_override=ref_override)
+        self.nginx.point_steady(app, reload=False)
         self.docker.nginx_test_and_reload()
         self._wait_app_ready(app)
         self.finish_app_deploy(app, done=done)
+
+    def _start_compose_generation(self, app, *, ref_override: Optional[str]) -> None:
+        """Pull+recreate docker-source pins; rebuild git/local checkouts."""
+        if app.source == "docker":
+            pull_ref = app.image_ref(self._wanted_image_tag(app, ref_override=ref_override))
+            self.docker.recreate_pulled_service(app, pull_ref=pull_ref)
+            return
+        self.docker.rebuild_service(app.compose_id)
+
+    def _wanted_image_tag(self, app, *, ref_override: Optional[str]) -> str:
+        if ref_override:
+            return ref_override
+        state = self.stack.ref_state_file(app)
+        try:
+            lines = state.read_text(encoding="utf-8").splitlines()
+        except FileNotFoundError:
+            return app.ref
+        for line in lines:
+            if line.startswith("# requested:"):
+                parsed = line.split(":", 1)[1].strip()
+                return parsed or app.ref
+        return app.ref
 
     def _clear_scaled_before_start(self, app) -> None:
         """Drop idle markers so render parks steady upstreams and readiness waits run."""

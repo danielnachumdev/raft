@@ -25,6 +25,12 @@ class TestIdleSingleStart(OrchestratorTestCase):
         redeploy.assert_not_called()
         sync.assert_called_once_with(["app"], ref_override="v2", force=True)
         self.orch.docker.rebuild_service.assert_called_once_with("app")
+        self.orch.nginx.point_absent.assert_called_once_with(
+            self.orch.stack.app("app"), reload=False
+        )
+        self.orch.nginx.point_steady.assert_called_once_with(
+            self.orch.stack.app("app"), reload=False
+        )
         assert not ScalingStore(self.tmp_path).is_scaled_to_zero("app")
 
     def test_redeploy_skips_tmp_when_not_running(self) -> None:
@@ -36,6 +42,8 @@ class TestIdleSingleStart(OrchestratorTestCase):
         Session.assert_not_called()
         sync.assert_called_once_with(["app"], ref_override="sha", force=True)
         self.orch.docker.rebuild_service.assert_called_once_with("app")
+        self.orch.nginx.point_absent.assert_called()
+        self.orch.nginx.point_steady.assert_called()
 
     def test_redeploy_skips_tmp_when_scaled_to_zero(self) -> None:
         self._seed_scaling_app()
@@ -47,8 +55,32 @@ class TestIdleSingleStart(OrchestratorTestCase):
                 self.orch.redeploy_app("app")
         Session.assert_not_called()
         self.orch.docker.rebuild_service.assert_called_once_with("app")
+        self.orch.nginx.point_absent.assert_called()
+        self.orch.nginx.point_steady.assert_called()
         state = ScalingStore(self.tmp_path).load("app")
         assert not state.scaled_to_zero and state.min_up_until is not None
+
+    def test_idle_docker_source_pulls_instead_of_rebuild(self) -> None:
+        AppliedInventory.write_applied_app(
+            self.tmp_path,
+            "app",
+            public_host="app.test",
+            source="docker",
+            image="ghcr.io/example/app",
+            extra=ControllerTestCase.scaling_extra(),
+        )
+        self.orch = self.orchestrator()
+        self.set_edge_only()
+        ScalingStore(self.tmp_path).mark_scaled_to_zero("app")
+        self.stub_http_ready(self.orch.http)
+        with patch.object(self.orch, "sync"):
+            self.orch.ensure_app_deployed("app", ref_override="abc123", force_sync=True)
+        self.orch.docker.rebuild_service.assert_not_called()
+        self.orch.docker.recreate_pulled_service.assert_called_once()
+        pull_ref = self.orch.docker.recreate_pulled_service.call_args.kwargs["pull_ref"]
+        assert "abc123" in pull_ref
+        self.orch.nginx.point_absent.assert_called()
+        self.orch.nginx.point_steady.assert_called()
 
     def test_min_up_seconds_defaults_on_spec_error(self) -> None:
         from raft.core.core.models.stack import Stack
