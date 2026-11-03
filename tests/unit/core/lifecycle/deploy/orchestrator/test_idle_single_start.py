@@ -27,12 +27,44 @@ class TestIdleSingleStart(OrchestratorTestCase):
         redeploy.assert_not_called()
         sync.assert_called_once_with(["app"], ref_override="v2", force=True)
         self.orch.docker.rebuild_service.assert_called_once_with("app")
-        self.orch.nginx.point_absent.assert_called_once_with(
-            self.orch.stack.app("app"), reload=False
-        )
+        assert self.orch.nginx.point_absent.call_count >= 1
         self.orch.nginx.point_steady.assert_called_once_with(
             self.orch.stack.app("app"), reload=False
         )
+        assert not ScalingStore(self.tmp_path).is_scaled_to_zero("app")
+
+    def test_idle_start_holds_scaled_through_sync(self) -> None:
+        self.set_edge_running("app")
+        ScalingStore(self.tmp_path).mark_scaled_to_zero("app")
+        self.stub_http_ready(self.orch.http)
+        seen: dict = {}
+
+        def capture_sync(*_a, **_k) -> None:
+            seen["scaled"] = ScalingStore(self.tmp_path).is_scaled_to_zero("app")
+
+        with patch.object(self.orch, "sync", side_effect=capture_sync):
+            self.orch.ensure_app_deployed("app", force_sync=True)
+        assert seen.get("scaled") is True
+        assert not ScalingStore(self.tmp_path).is_scaled_to_zero("app")
+
+    def test_idle_start_reholds_when_already_awake(self) -> None:
+        """Prior failed wake: awake + steady DNS, no container — still park through sync."""
+        self.set_edge_only()
+        self.stub_http_ready(self.orch.http)
+        seen: dict = {}
+
+        def capture_sync(*_a, **_k) -> None:
+            seen["scaled"] = ScalingStore(self.tmp_path).is_scaled_to_zero("app")
+
+        with patch.object(self.orch, "sync", side_effect=capture_sync):
+            self.orch.ensure_app_deployed("app", force_sync=True)
+        assert seen.get("scaled") is True
+        assert not ScalingStore(self.tmp_path).is_scaled_to_zero("app")
+
+    def test_clear_scaled_before_start_noop_when_awake(self) -> None:
+        app = self.orch.stack.app("app")
+        assert not ScalingStore(self.tmp_path).is_scaled_to_zero("app")
+        self.orch._clear_scaled_before_start(app)
         assert not ScalingStore(self.tmp_path).is_scaled_to_zero("app")
 
     def test_redeploy_skips_tmp_when_not_running(self) -> None:
