@@ -7,7 +7,7 @@ on:
   workflow_call:
     outputs:
       python:
-        description: Run Meta, Unit+Integration, and E2E
+        description: Run Meta, Unit, Integration, and E2E
         value: ${{ jobs.changes.outputs.python }}
       spa:
         description: Run SPA

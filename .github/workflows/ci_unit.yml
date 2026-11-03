@@ -1,4 +1,5 @@
-# Unit + integration matrix. Bakes SPA into share before pytest.
+# Unit matrix (local: must bake SPA into share before pytest) + integration via
+# actions python.yml + pytest-command (no SPA bake required).
 # Caller selects Python versions (full matrix on PR vs bookends on main).
 
 name: CI unit
@@ -15,8 +16,8 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: Unit+Integration (Py ${{ matrix.python-version }})
+  unit:
+    name: Unit (Py ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -42,5 +43,12 @@ jobs:
         run: uv sync --extra dev
       - name: Unit tests (100% coverage)
         run: uv run pytest tests/unit -q
-      - name: Integration tests
-        run: uv run pytest tests/integration -q --no-cov
+
+  integration:
+    name: Integration
+    uses: danielnachumdev/actions/.github/workflows/python.yml@latest
+    with:
+      python-versions: ${{ inputs.python-versions }}
+      sync-args: --extra dev
+      pytest-command: pytest tests/integration -q --no-cov
+      timeout-minutes: 30
