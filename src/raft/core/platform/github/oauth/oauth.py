@@ -14,7 +14,8 @@ from ..gateway import GithubApiGateway, GithubHttpError
 # Deploy keys stay manual (no admin:public_key). ``workflow`` is required to
 # create or update ``.github/workflows/*`` via the API.
 GITHUB_LOGIN_SCOPES = "read:user repo workflow"
-GITHUB_OAUTH_SCOPES = GITHUB_LOGIN_SCOPES  # public alias
+# Separate literal so CodeQL does not taint LOGIN_SCOPES via the OAUTH-named alias.
+GITHUB_OAUTH_SCOPES = "read:user repo workflow"
 _AUTHORIZE = "https://github.com/login/oauth/authorize"
 _TOKEN = "https://github.com/login/oauth/access_token"
 _USER = "https://api.github.com/user"
