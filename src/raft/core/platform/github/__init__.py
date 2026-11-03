@@ -19,7 +19,7 @@ from .deploy import (
     GithubDeployRunner,
 )
 from .gateway import GithubApiGateway, GithubHttpError, GithubHttpResponse
-from .oauth import GITHUB_OAUTH_SCOPES, GithubOauth, GithubSettingsWriter
+from .oauth import GITHUB_LOGIN_SCOPES, GITHUB_OAUTH_SCOPES, GithubOauth, GithubSettingsWriter
 from .providers import (
     GithubProvider,
     GithubRepo,
@@ -32,6 +32,7 @@ __all__ = [
     "DeployJob",
     "DeployJobStore",
     "DeployStep",
+    "GITHUB_LOGIN_SCOPES",
     "GITHUB_OAUTH_SCOPES",
     "GithubAccount",
     "GithubAccountStore",

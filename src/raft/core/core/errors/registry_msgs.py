@@ -31,9 +31,9 @@ class RegistryMessages:
             return True
         return False
 
-    @staticmethod
-    def is_ghcr_image(image: str) -> bool:
-        return image.strip().lower().startswith("ghcr.io/")
+    @classmethod
+    def is_ghcr_image(cls, image: str) -> bool:
+        return cls.registry_host(image) == "ghcr.io"
 
     @staticmethod
     def registry_host(image: str) -> str:

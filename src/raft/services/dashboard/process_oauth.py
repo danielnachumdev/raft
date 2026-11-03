@@ -9,7 +9,7 @@ from typing import Optional
 
 from raft.core.core.config.settings.dashboard_config import DashboardConfig
 from raft.core.core.errors.cta import OperatorError
-from raft.core.lifecycle.dashboard.oauth_paths import OAUTH_PROXY_PORT
+from raft.core.lifecycle.dashboard.oauth_paths import DASHBOARD_AUTH_PROXY_PORT
 from raft.core.lifecycle.dashboard.oauth_proxy_cfg import DashboardOAuthProxyCfg
 
 _CFG = Path("/tmp/raft-dashboard-oauth2-proxy.cfg")
@@ -69,14 +69,14 @@ class DashboardOAuthProxyProcess:
         while time.monotonic() < deadline:
             with socket.socket() as sock:
                 sock.settimeout(0.2)
-                if sock.connect_ex(("127.0.0.1", OAUTH_PROXY_PORT)) == 0:
+                if sock.connect_ex(("127.0.0.1", DASHBOARD_AUTH_PROXY_PORT)) == 0:
                     DashboardOAuthProxyProcess._log(
-                        f"oauth2-proxy ready on :{OAUTH_PROXY_PORT}"
+                        f"oauth2-proxy ready on :{DASHBOARD_AUTH_PROXY_PORT}"
                     )
                     return
             time.sleep(0.1)
         raise RuntimeError(
-            f"oauth2-proxy did not listen on {OAUTH_PROXY_PORT}"
+            f"oauth2-proxy did not listen on {DASHBOARD_AUTH_PROXY_PORT}"
         )
 
     @staticmethod

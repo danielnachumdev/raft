@@ -4,7 +4,8 @@
 from typing import Any, Dict
 from urllib.parse import urlencode
 
-GITHUB_OAUTH_APP_NEW = "https://github.com/settings/applications/new"
+GITHUB_APP_CREATE_URL = "https://github.com/settings/applications/new"
+GITHUB_OAUTH_APP_NEW = GITHUB_APP_CREATE_URL  # public alias
 SETUP_DOCS_URL = "https://github.com/danielnachumdev/raft/blob/main/README.md"
 APPLICATION_NAME = "raft serve"
 DESCRIPTION = (
@@ -52,4 +53,4 @@ class GithubOauthAppSetup:
                 "oauth_application[callback_url]": callback,
             }
         )
-        return f"{GITHUB_OAUTH_APP_NEW}?{params}"
+        return f"{GITHUB_APP_CREATE_URL}?{params}"

@@ -104,7 +104,7 @@ class TestGitAuthManager(DomainTestCase):
         out = capsys.readouterr().out
         assert "ssh-ed25519 AAAA" in out
         assert "AAAA setup" not in out
-        assert "gitlab.com" in out
+        assert "Open:   gitlab.com → org/svc → Deploy keys → Add" in out
 
     def test_pubkey_for_paste_strips_comment(self) -> None:
         assert (

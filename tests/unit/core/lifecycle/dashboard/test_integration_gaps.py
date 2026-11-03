@@ -112,7 +112,7 @@ class TestDashboardIntegrationGaps(RaftTestCase):
             public_url="https://ops.example.com/",
         ).render()
         assert "Always-on dashboard" in text
-        assert "ops.example.com" in text
+        assert "Public URL: https://ops.example.com/" in text
         local_only = ServeInstructions(
             8787, always_on_url="http://127.0.0.1:8787/"
         ).render()

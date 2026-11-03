@@ -8,7 +8,7 @@ from raft.core.core.models.stack import Stack
 
 from .accounts import GithubAccountStore, GithubActiveResolver
 from .deploy import DeployJobStore, GithubDeployRunner
-from .oauth import GITHUB_OAUTH_SCOPES, GithubOauth, GithubSettingsWriter
+from .oauth import GITHUB_LOGIN_SCOPES, GithubOauth, GithubSettingsWriter
 from .providers import GithubProvider, GithubRepo, RealGithubProvider
 
 
@@ -38,7 +38,7 @@ class GithubAssistService:
     def session(self, *, port: Optional[int] = None) -> Dict[str, Any]:
         bind = self._port if port is None else port
         base = self._settings.public_status(port=bind)
-        base["scopes"] = GITHUB_OAUTH_SCOPES
+        base["scopes"] = GITHUB_LOGIN_SCOPES
         base["hint"] = self._login_hint()
         base.update(self._accounts.public_snapshot())
         return base
@@ -46,7 +46,7 @@ class GithubAssistService:
     def config(self, *, port: Optional[int] = None) -> Dict[str, Any]:
         bind = self._port if port is None else port
         out = self._settings.public_status(port=bind)
-        out["scopes"] = GITHUB_OAUTH_SCOPES
+        out["scopes"] = GITHUB_LOGIN_SCOPES
         return out
 
     def save_config(
@@ -156,7 +156,7 @@ class GithubAssistService:
         return (
             "Temporary GitHub login lists repos you own or belong to, then raft "
             "drives apply. Serve remains localhost/tunnel admin. "
-            f"OAuth scopes: {GITHUB_OAUTH_SCOPES}."
+            f"OAuth scopes: {GITHUB_LOGIN_SCOPES}."
         )
 
     @staticmethod

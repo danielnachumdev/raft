@@ -64,9 +64,9 @@ class TestDashboardOAuthProxyProcess(RaftTestCase):
             sock.listen(1)
             port = sock.getsockname()[1]
             with patch(
-                "raft.services.dashboard.process_oauth.OAUTH_PROXY_PORT", port
+                "raft.services.dashboard.process_oauth.DASHBOARD_AUTH_PROXY_PORT", port
             ):
                 DashboardOAuthProxyProcess._wait_ping(timeout=1.0)
-        with patch("raft.services.dashboard.process_oauth.OAUTH_PROXY_PORT", 1):
+        with patch("raft.services.dashboard.process_oauth.DASHBOARD_AUTH_PROXY_PORT", 1):
             with pytest.raises(RuntimeError, match="did not listen"):
                 DashboardOAuthProxyProcess._wait_ping(timeout=0.05)
