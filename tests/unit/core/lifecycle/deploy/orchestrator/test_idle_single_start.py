@@ -62,16 +62,7 @@ class TestIdleSingleStart(OrchestratorTestCase):
         assert not state.scaled_to_zero and state.min_up_until is not None
 
     def test_idle_docker_source_pulls_instead_of_rebuild(self) -> None:
-        AppliedInventory.write_applied_app(
-            self.tmp_path,
-            "app",
-            public_host="app.test",
-            source="docker",
-            image="ghcr.io/example/app",
-            extra=ControllerTestCase.scaling_extra(),
-        )
-        self.stack = load_stack(self.tmp_path)
-        self.orch = self.orchestrator()
+        self._seed_docker_scaling_app()
         self.set_edge_only()
         ScalingStore(self.tmp_path).mark_scaled_to_zero("app")
         self.stub_http_ready(self.orch.http)
@@ -103,4 +94,16 @@ class TestIdleSingleStart(OrchestratorTestCase):
             public_host="app.test",
             extra=ControllerTestCase.scaling_extra(),
         )
+        self.orch = self.orchestrator()
+
+    def _seed_docker_scaling_app(self) -> None:
+        AppliedInventory.write_applied_app(
+            self.tmp_path,
+            "app",
+            public_host="app.test",
+            source="docker",
+            image="ghcr.io/example/app",
+            extra=ControllerTestCase.scaling_extra(),
+        )
+        self.stack = load_stack(self.tmp_path)
         self.orch = self.orchestrator()
