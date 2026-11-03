@@ -8,6 +8,7 @@ import pytest
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.state.scaling_store import ScalingStore
+from raft.core.core.models.stack import load_stack
 from tests.unit.services.controller.base import ControllerTestCase
 
 from tests.unit.base import AppliedInventory
@@ -69,6 +70,7 @@ class TestIdleSingleStart(OrchestratorTestCase):
             image="ghcr.io/example/app",
             extra=ControllerTestCase.scaling_extra(),
         )
+        self.stack = load_stack(self.tmp_path)
         self.orch = self.orchestrator()
         self.set_edge_only()
         ScalingStore(self.tmp_path).mark_scaled_to_zero("app")
