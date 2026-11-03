@@ -1,0 +1,20 @@
+name: Semver
+
+# Thin semver label gate for repos with custom CI orchestrators.
+# Prefer requiring check "Semver / Semver" alongside the custom CI aggregate.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  semver:
+    name: Semver
+    uses: danielnachumdev/actions/.github/workflows/semver-ci.yml@v1
+    with:
+      standards-ref: v1
