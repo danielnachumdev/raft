@@ -29,6 +29,27 @@ skills:
     def:
       repo: infragate/capa@capabilities-manager
       description: Guide for managing capabilities with capa CLI
+  - id: async
+    type: github
+    def:
+      repo: danielnachumdev/skills@async
+      description: >-
+        Offload the current task to a background Task subagent so the main
+        chat stays free
+  - id: writing-python
+    type: github
+    def:
+      repo: danielnachumdev/skills@writing-python
+      description: >-
+        Conventions for writing and refactoring Python: SRP classes/files,
+        strategy and gateway/service layout, clean import DAGs
+  - id: triage-board
+    type: github
+    def:
+      repo: danielnachumdev/skills@triage-board
+      description: >-
+        Batch many user decisions through a local web UI instead of chat
+        tables (accept / decline / defer)
 
 servers: []
 

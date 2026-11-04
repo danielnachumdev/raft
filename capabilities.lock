@@ -1,15 +1,39 @@
 version: 1
-generator: capa@2.3.0
-generatedAt: '2026-10-22T21:31:41.585Z'
+generator: capa@2.4.0
+generatedAt: '2026-11-04T12:44:46.889Z'
 skills:
+  - id: async
+    source: github
+    repo: danielnachumdev/skills
+    skillName: async
+    requestedVersion: null
+    requestedRef: null
+    resolvedRef: ee0acc2cb887d7647f2fddb8d66b07715d37278c
+    resolvedVersion: null
   - id: capabilities-manager
     source: github
     repo: infragate/capa
     skillName: capabilities-manager
     requestedVersion: null
     requestedRef: null
-    resolvedRef: 2d9105e3970befb756bd82e2cc16b3c1599330b2
-    resolvedVersion: v2.3.0
+    resolvedRef: d7af1197d4214599b8143794212b6094c9096d99
+    resolvedVersion: v2.4.0
+  - id: triage-board
+    source: github
+    repo: danielnachumdev/skills
+    skillName: triage-board
+    requestedVersion: null
+    requestedRef: null
+    resolvedRef: ee0acc2cb887d7647f2fddb8d66b07715d37278c
+    resolvedVersion: null
+  - id: writing-python
+    source: github
+    repo: danielnachumdev/skills
+    skillName: writing-python
+    requestedVersion: null
+    requestedRef: null
+    resolvedRef: ee0acc2cb887d7647f2fddb8d66b07715d37278c
+    resolvedVersion: null
 plugins:
   - id: office-kit
     source: github
