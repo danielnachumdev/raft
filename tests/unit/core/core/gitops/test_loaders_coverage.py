@@ -21,7 +21,7 @@ from tests.unit.base import RaftTestCase
 
 
 class TestGitopsLoadersCoverage(RaftTestCase):
-    def test_settings_firewall_alerts_load_and_clear(self) -> None:
+    def _write_host_yamls(self) -> Path:
         home = Path(self.tmp_path)
         host = home / "host"
         host.mkdir(parents=True, exist_ok=True)
@@ -38,12 +38,19 @@ class TestGitopsLoadersCoverage(RaftTestCase):
         (host / "rbac.yaml").write_text(
             "version: 1\nroles: [admin]\nbindings: []\n", encoding="utf-8"
         )
+        return home
+
+    def test_settings_and_firewall_load(self) -> None:
+        home = self._write_host_yamls()
         settings = SettingsGitops(home)
         assert settings.load().edge.http == 80
         settings.clear_cache()
         fw = FirewallGitops(home)
         assert fw.load().version == 1
         fw.clear_cache()
+
+    def test_alerts_notifications_rbac_load(self) -> None:
+        home = self._write_host_yamls()
         alerts = AlertsGitops(home)
         assert alerts.load().version == 1
         alerts.clear_cache()
@@ -65,7 +72,7 @@ class TestGitopsLoadersCoverage(RaftTestCase):
         )
         assert doc.disable_tips is True
 
-    def test_rbac_error_paths(self) -> None:
+    def test_rbac_null_and_type_errors(self) -> None:
         path = "host/rbac.yaml"
         assert RbacDocument.from_mapping(None, path=path).roles == ()
         with pytest.raises(OperatorError, match="must be a mapping"):
@@ -74,6 +81,9 @@ class TestGitopsLoadersCoverage(RaftTestCase):
             RbacDocument.from_mapping({"version": "x"}, path=path)
         with pytest.raises(OperatorError, match="unsupported version"):
             RbacDocument.from_mapping({"version": 2}, path=path)
+
+    def test_rbac_roles_bindings_errors(self) -> None:
+        path = "host/rbac.yaml"
         with pytest.raises(OperatorError, match="list of role"):
             RbacDocument.from_mapping({"roles": "admin"}, path=path)
         with pytest.raises(OperatorError, match="non-empty"):
@@ -82,6 +92,9 @@ class TestGitopsLoadersCoverage(RaftTestCase):
             RbacDocument.from_mapping({"bindings": {}}, path=path)
         with pytest.raises(OperatorError, match="must be a mapping"):
             RbacDocument.from_mapping({"bindings": ["x"]}, path=path)
+
+    def test_rbac_binding_subject_and_export(self) -> None:
+        path = "host/rbac.yaml"
         with pytest.raises(OperatorError, match="requires subject"):
             RbacDocument.from_mapping(
                 {"bindings": [{"subject": "", "role": "admin"}]}, path=path
