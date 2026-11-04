@@ -12,6 +12,7 @@ import { SettingsFormView } from "./SettingsFormView";
 import { SettingsNotes } from "./SettingsNotes";
 import { SettingsSectionNav } from "./SettingsSectionNav";
 import { SettingsYamlPanel } from "./SettingsYamlPanel";
+import { TemporaryOverrideBanner } from "./TemporaryOverrideBanner";
 import { useSettingsEditor, type EditorMode } from "./useSettingsEditor";
 import "./SettingsPage.css";
 
@@ -29,7 +30,8 @@ export function SettingsPage() {
         subtitle={
           <>
             Operator settings for this host — edit section by section, or switch
-            to YAML for the whole document.
+            to YAML for the whole document. Saves are temporary host overrides
+            until the next GitOps sync.
           </>
         }
         meta={
@@ -86,6 +88,7 @@ export function SettingsPage() {
         <div className={mode === "form" ? "with-aside settings-layout" : "settings-layout"}>
           {mode === "form" ? <SettingsSectionNav enabled={editor.enabled} /> : null}
           <div className="settings-main">
+            <TemporaryOverrideBanner />
             <SettingsNotes notes={editor.notes} />
             {mode === "form" ? (
               <>
@@ -110,7 +113,7 @@ export function SettingsPage() {
             <SaveBar
               open={editor.dirty}
               id="settings-save-bar"
-              message="Unsaved changes to settings"
+              message="Unsaved temporary override — next GitOps sync will replace it"
               saveLabel="Save"
               saving={saving}
               onSave={() => void editor.save()}
