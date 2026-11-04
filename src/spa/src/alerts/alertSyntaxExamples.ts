@@ -7,14 +7,14 @@ export const ALERT_EXAMPLES_GITHUB_URL =
   "https://github.com/danielnachumdev/raft/tree/main/examples/alerts";
 
 export const ALERT_RULES_EXAMPLE_GITHUB_URL =
-  "https://github.com/danielnachumdev/raft/blob/main/examples/alerts/rules.yaml";
+  "https://github.com/danielnachumdev/raft/blob/main/examples/alerts/alerts.yaml";
 
 export type AlertRulesDocument = {
   version: number;
   rules: AlertRule[];
 };
 
-/** Same shape as ``examples/alerts/rules.yaml`` (keep in sync). */
+/** Same shape as ``examples/alerts/alerts.yaml`` (keep in sync). */
 export const ALERT_SYNTAX_EXAMPLE: AlertRulesDocument = {
   version: 1,
   rules: [

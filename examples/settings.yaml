@@ -234,7 +234,7 @@ edge:
 # Lifecycle: raft up|down|redeploy dashboard (after enabled: true + render)
 
 # ---------------------------------------------------------------------------
-# Edge firewall is ordered rules under host/firewall/rules.yaml (raft serve
+# Edge firewall is ordered rules under host/firewall.yaml (raft serve
 # Settings → Firewall). Not configured here.
 # ---------------------------------------------------------------------------
 

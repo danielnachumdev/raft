@@ -16,8 +16,8 @@ These folders are **operator-facing samples**, not the minimal trees under `test
 | [`host-published-ports/`](host-published-ports/) | HTTP + `expose: host` ports (gate not involved for those) |
 | [`grouped-volume-app/`](grouped-volume-app/) | `spec.group` + `volumes` + `envFile` + `expose: none` |
 | [`worker-app/`](worker-app/) | Worker App (`ports: []`, `readiness: none`, `tls: off`) |
-| [`firewall/rules.yaml`](firewall/rules.yaml) | Ordered edge firewall sample → `raft firewall replace --file …` |
-| [`alerts/rules.yaml`](alerts/rules.yaml) | Alert rules sample → `raft alerts apply --file …` (needs notification channels) |
+| [`firewall/firewall.yaml`](firewall/firewall.yaml) | Ordered edge firewall sample → `raft firewall replace --file …` |
+| [`alerts/alerts.yaml`](alerts/alerts.yaml) | Alert rules sample → `raft alerts apply --file …` (needs notification channels) |
 
 Manifest preprocess (`${VAR}`, `${{ if }}`, `--env` vs durable `spec.envFile`) and name↔source identity live in [`http-only-site/.raft/app.yaml`](http-only-site/.raft/app.yaml) header comments. Secrets modes: [`grouped-volume-app/`](grouped-volume-app/). Healing and per-app scale-to-zero are independent opt-ins — off until you enable `healing:` in settings or add `spec.scaling` on an HTTP + `publicHost` App.
 

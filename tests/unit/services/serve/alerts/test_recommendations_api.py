@@ -45,14 +45,22 @@ class TestServeAlertRecommendationsApi(RaftTestCase):
             i["id"] for i in applied["recommendations"]
         }
 
-    def test_dismiss(self) -> None:
+    def test_dismiss_noop(self) -> None:
         client, _api = self._client()
-        dismissed = client.post(
-            "/api/alerts/recommendations/any-service-high-memory/dismiss"
-        ).json()
-        assert "any-service-high-memory" not in {
-            i["id"] for i in dismissed["recommendations"]
+        before = {
+            i["id"]
+            for i in client.get("/api/alerts/recommendations").json()[
+                "recommendations"
+            ]
         }
+        after = {
+            i["id"]
+            for i in client.post(
+                "/api/alerts/recommendations/any-service-high-memory/dismiss"
+            ).json()["recommendations"]
+        }
+        assert after == before
+        assert "any-service-high-memory" in after
 
     def test_apply_unknown(self) -> None:
         client, _api = self._client()

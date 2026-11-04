@@ -1,5 +1,5 @@
-# Ordered edge firewall sample → host/firewall/rules.yaml
-# Apply: raft firewall replace --file examples/firewall/rules.yaml
+# Ordered edge firewall sample → host/firewall.yaml
+# Apply: raft firewall replace --file examples/firewall/firewall.yaml
 # (or Settings → Firewall → Import / paste). Save/CLI → gate nginx reload;
 # never recreate the gate for rule-only edits.
 #

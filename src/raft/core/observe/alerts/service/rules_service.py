@@ -38,7 +38,7 @@ class RuleConflict(OperatorError):
 
 
 class AlertRulesService:
-    """Only writer of rules.yaml; holds alerts.lock on mutative ops."""
+    """Only writer of ``host/alerts.yaml``; holds alerts.lock on mutative ops."""
 
     def __init__(
         self, home: Path, *, registries: Optional[AlertRegistries] = None
@@ -82,7 +82,7 @@ class AlertRulesService:
                     f"alert rule id {rule.id!r} already exists.\n"
                     f"Fix: choose a new id or PUT /api/alerts/rules/{rule.id}"
                 )
-            new_doc = AlertRulesDocument(doc.version, doc.rules + (rule,))
+            new_doc = self._with_rules(doc, doc.rules + (rule,))
             self._store.save(new_doc)
             return rule
 
@@ -101,7 +101,7 @@ class AlertRulesService:
             rule = self._parser.parse(body, path="rule")
             self._require_channels(rule)
             rules = tuple(rule if r.id == rule_id else r for r in doc.rules)
-            self._store.save(AlertRulesDocument(doc.version, rules))
+            self._store.save(self._with_rules(doc, rules))
             return rule
 
     def set_enabled(self, rule_id: str, enabled: bool) -> AlertRule:
@@ -112,7 +112,7 @@ class AlertRulesService:
                 raise KeyError(rule_id)
             updated = replace(current, enabled=enabled)
             rules = tuple(updated if r.id == rule_id else r for r in doc.rules)
-            self._store.save(AlertRulesDocument(doc.version, rules))
+            self._store.save(self._with_rules(doc, rules))
             return updated
 
     def delete(self, rule_id: str) -> None:
@@ -121,7 +121,7 @@ class AlertRulesService:
             if doc.get(rule_id) is None:
                 raise KeyError(rule_id)
             rules = tuple(r for r in doc.rules if r.id != rule_id)
-            self._store.save(AlertRulesDocument(doc.version, rules))
+            self._store.save(self._with_rules(doc, rules))
 
     def apply_document(self, raw: Any, *, prune: bool) -> ApplySummary:
         with AlertsLock(self._home):
@@ -129,8 +129,18 @@ class AlertRulesService:
             for rule in incoming.rules:
                 self._require_channels(rule)
             summary, merged = self._merge(incoming, prune=prune)
-            self._store.save(AlertRulesDocument(incoming.version, tuple(merged)))
+            self._store.save(self._with_rules(incoming, tuple(merged)))
             return summary
+
+    @staticmethod
+    def _with_rules(
+        doc: AlertRulesDocument, rules: Tuple[AlertRule, ...]
+    ) -> AlertRulesDocument:
+        return AlertRulesDocument(
+            version=doc.version,
+            rules=rules,
+            disable_tips=doc.disable_tips,
+        )
 
     def _merge(
         self, incoming: AlertRulesDocument, *, prune: bool

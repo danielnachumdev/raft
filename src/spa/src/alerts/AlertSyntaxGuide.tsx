@@ -116,10 +116,10 @@ export function AlertSyntaxGuide(props: Props) {
         <p className="form-hint">
           Checked-in sample:{" "}
           <a href={ALERT_RULES_EXAMPLE_GITHUB_URL} target="_blank" rel="noreferrer">
-            examples/alerts/rules.yaml
+            examples/alerts/alerts.yaml
           </a>
           . Apply with Import or{" "}
-          <code>raft alerts apply --file examples/alerts/rules.yaml</code>.
+          <code>raft alerts apply --file examples/alerts/alerts.yaml</code>.
         </p>
       </div>
     </Modal>

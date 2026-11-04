@@ -1,5 +1,5 @@
-# Alert rules sample → host/alerts/rules.yaml
-# Apply: raft alerts apply --file examples/alerts/rules.yaml
+# Alert rules sample → host/alerts.yaml
+# Apply: raft alerts apply --file examples/alerts/alerts.yaml
 # (or Alerts → Import / Alerts → Syntax for YAML+JSON). See README.md.
 # Channels are optional — rules evaluate with channelIds: [].
 #

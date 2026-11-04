@@ -23,10 +23,10 @@ class TestStatusViewComplete(RaftTestCase):
 
     def test_document_error_and_suppressed(self) -> None:
         home = self._home()
-        (home / "host" / "alerts" / "rules.yaml").write_text("version: 2\n", encoding="utf-8")
+        (home / "host" / "alerts.yaml").write_text("version: 2\n", encoding="utf-8")
         view = AlertStatusView(home).build()
         assert view["documentError"]
-        (home / "host" / "alerts" / "rules.yaml").unlink()
+        (home / "host" / "alerts.yaml").unlink()
         AlertRulesService(home).create(RULE)
         rt = AlertRuntimeStore(home).load()
         now = datetime(2026, 1, 1, tzinfo=timezone.utc)

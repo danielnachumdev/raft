@@ -120,7 +120,9 @@ class TestDoctorAlerts(DoctorTestCase):
         )
 
     def _write_rules(self) -> None:
-        self._write_text("rules.yaml", _RULE)
+        path = self.tmp_path / "host" / "alerts.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(_RULE, encoding="utf-8")
 
     def _write_runtime(self, *, finished_at: datetime) -> None:
         payload = {
@@ -128,11 +130,15 @@ class TestDoctorAlerts(DoctorTestCase):
             "lastEvaluation": {"finishedAt": finished_at.isoformat()},
             "instances": {},
         }
-        self._write_text("runtime.json", json.dumps(payload))
-
-    def _write_text(self, name: str, body: str) -> Path:
         alerts = self.tmp_path / "host" / "alerts"
         alerts.mkdir(parents=True, exist_ok=True)
-        path = alerts / name
+        (alerts / "runtime.json").write_text(json.dumps(payload), encoding="utf-8")
+
+    def _write_text(self, name: str, body: str) -> Path:
+        if name == "rules.yaml":
+            path = self.tmp_path / "host" / "alerts.yaml"
+        else:
+            path = self.tmp_path / "host" / "alerts" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(body, encoding="utf-8")
         return path

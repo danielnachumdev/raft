@@ -120,8 +120,8 @@ raft serve --stop
 | `raft up` / `raft down` | Whole stack; with `NAME` = per-service power (down stops, does not remove) |
 | `raft redeploy <name>` | Refresh a running app, router, dashboard, controller, or **gate** (edge ports; brief downtime) |
 | `raft sync` / `raft render` | Pipeline only (sources / Compose+nginx); not substitutes for redeploy |
-| `raft firewall …` | Ordered gate rules (`host/firewall/rules.yaml`); Save/CLI → reload, never recreate |
-| `raft alerts …` | Alert rules (`host/alerts/rules.yaml`) → notification channels |
+| `raft firewall …` | Ordered gate rules (`host/firewall.yaml`); Save/CLI → reload, never recreate |
+| `raft alerts …` | Alert rules (`host/alerts.yaml`) → notification channels |
 | `raft notifications …` | Notification channel CRUD + test-send |
 
 ### Lifecycle glossary
@@ -139,7 +139,7 @@ raft serve --stop
 When upgrading across the #312 cleanup (flat ACL / install aliases / access-log parse):
 
 1. **Backup** `~/.raft/` (especially `host/settings.yaml`, `host/firewall/`, `services/`, and leftover `state/acl/` if present).
-2. **Before upgrade** (recommended): open serve **Firewall** and **Save** once so durable `host/firewall/rules.yaml` exists. Flat ACL migrate-on-load is gone — leftover `acl.gate` / `state/acl/` is ignored.
+2. **Before upgrade** (recommended): open serve **Firewall** and **Save** once so durable `host/firewall.yaml` exists. Flat ACL migrate-on-load is gone — leftover `acl.gate` / `state/acl/` is ignored.
 3. **Upgrade** (`raft update` / install from the latest Release wheel). Replace automation that used **`RAFT_BRANCH`** with **`RAFT_REF`** / `--ref`.
 4. Re-save **Settings** once (drops any leftover `acl:` key). GitHub assist uses OAuth accounts only (`host/serve/github-accounts.json`; old `github-session.json` is not migrated — re-login if needed).
 5. **Access logs:** gate HTTP inspection parses the current `raft_http` line shape. Rotate or wipe old gate access-log files under `~/.raft/` if short non-matching lines remain (they are skipped).

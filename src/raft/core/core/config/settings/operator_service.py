@@ -134,3 +134,4 @@ class OperatorSettingsService:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._path.write_text(self._yaml_dump.dump(data), encoding="utf-8")
         os.chmod(self._path, 0o600)
+        self._loader.clear_cache()

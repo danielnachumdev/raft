@@ -48,7 +48,7 @@ Overlapping apply/redeploy/render tears tmp names, upstreams, and `generated/`. 
 | `app-<name>.lock` | apply, redeploy / `ensure_app_deployed`, delete app | One mutative pipeline per app; later waiter wins after wait |
 | `stack.lock` | render, sync, cutover, compose up/recreate, redeploy gate, up/down, purge | No torn `generated/` / mid-cutover upstream reset |
 | `acl.lock` | serve firewall writes (before render/reload) | Firewall persist does not race another firewall writer |
-| `alerts.lock` | CLI/serve writes to `host/alerts/rules.yaml` | Alert rules document writers do not tear each other |
+| `alerts.lock` | CLI/serve writes to `host/alerts.yaml` | Alert rules document writers do not tear each other |
 | `settings.lock` | full settings document, notification channels, github OAuth settings writers | No torn `host/settings.yaml` |
 | `dashboard.lock` | Dashboard settings helpers writing `host/settings.yaml` `dashboard:` | Dashboard settings writers do not tear each other |
 | `fifo-<kind>/` (ticket FCFS) | `FifoLock` — `update` (`SelfUpdate`); short claim for host-job flights | True arrival-order grant (not plain flock); mint tickets under `seq.lock` |
@@ -110,7 +110,8 @@ Align with the README table; detail for agents:
 | Per-service Trends (default graphs) | **Shipped** | Service inspection uses the same multi-graph UX, pinned to that service; browser-local `raft-serve-service-trends`; `src/spa/src/trends/service/` (kit migration follow-on for [#249](https://github.com/danielnachumdev/raft/issues/249)) |
 | Reusable dashboard kit (Trends shell / embed) | **Shipped (v1)** | [#249](https://github.com/danielnachumdev/raft/issues/249); `src/spa/src/dashboard-kit/`; timeseries panels + embed contract; browser-local persistence. |
 | Alert rules engine (metrics/control-plane → notifications) | **Shipped** | [#236](https://github.com/danielnachumdev/raft/issues/236); dual-plane CLI+serve lock [#264](https://github.com/danielnachumdev/raft/issues/264); `AlertRulesService` / engine under `observe/alerts/` |
-| Alert setup recommendations (OOM / not-running / high memory) | **Shipped** | Shared SPA `recommendations/` kit (firewall + alerts callbacks); catalog in `observe/alerts/recommendations/`; dismissals `host/alerts/dismissed-recommendations.json`; channels optional on apply |
+| Alert setup recommendations (OOM / not-running / high memory) | **Shipped** | Shared SPA `recommendations/` kit; catalog in `observe/alerts/recommendations/`; gated by GitOps `disable_tips`; channels optional on apply |
+| GitOps-first host config (#310) | **In progress** | Flat YAML SoT + RO UI/CLI + `@lru_cache` loaders (#317); #318–#321; not DB-as-SoT |
 | Operator system event timeline | **Shipped** | [#267](https://github.com/danielnachumdev/raft/issues/267); `host/events/ops.jsonl` dual-write with GraphEvents; `raft events` + serve `/events`. |
 | Firewall-derived alert signals (`edge.denies`) | **Planned** | Observe gate outcomes only; no middle hop (#207) |
 | Always-on Compose dashboard service | **Shipped** | [#36](https://github.com/danielnachumdev/raft/issues/36); `dashboard:` settings-only + `raft-dashboard` Compose; lifecycle via Up/Down/Redeploy ([#340](https://github.com/danielnachumdev/raft/issues/340)); optional `publicHost` + TLS + auth (`none`/`password`/`oauth`/`external`); OAuth via in-container oauth2-proxy + allowlist. |
@@ -129,20 +130,23 @@ Align with the README table; detail for agents:
 
 Layout (#313): `host/` (control-plane) + `services/<SERVICE>/` (App-owned) + `generated/` + root `compose.yaml`.
 
+**GitOps-first host config (#310):** durable operator config SoT is flat YAML in the operator GitOps repo (reconciled onto the host): `host/settings.yaml`, `host/firewall.yaml`, `host/alerts.yaml`, `host/notifications.yaml`, `host/rbac.yaml`. UI + config CLI are becoming **read-only** for those docs (edits via Git/PR). Reads use in-process `@lru_cache` (invalidate via process restart after reconcile). Apps stay `raft apply`. Tips use per-doc `disable_tips` (default `false`).
+
 | Path | Role |
 |------|------|
-| `raft.sqlite` | SQLite durable-state foundation (#317); Alembic schema; `raft db migrate` imports settings/apps/firewall (files remain live SoT until cutover #320) |
-| `host/settings.yaml` | logging, edge, healing, metrics, serviceLogs, acme, github, notifications, dashboard, alerts cadence |
-| `services/<name>/app.yaml` | Applied App registry |
+| `raft.sqlite` | Engine leftover (#324) — **not** config SoT or GitOps cache; do not expand DB-as-SoT |
+| `host/settings.yaml` | GitOps settings (`RaftConfig`: logging, edge, healing, metrics, serviceLogs, acme, github, dashboard, alerts cadence) |
+| `host/firewall.yaml` | Ordered firewall document (#211) |
+| `host/alerts.yaml` | Alert rules document |
+| `host/notifications.yaml` | Notification destinations |
+| `host/rbac.yaml` | RBAC roles/bindings (#307) |
+| `services/<name>/app.yaml` | Applied App registry (`raft apply`) |
 | `generated/` | Compose + nginx (+ `gate-http/firewall/` includes) — **do not hand-edit as source of truth** |
 | `host/locks/` | flock files |
-| `host/firewall/rules.yaml` | Ordered firewall document (#211); always drives render |
-| `host/firewall/dismissed-recommendations.json` | Dismissed baseline firewall suggestions |
-| `host/metrics/`, `host/acme/`, `host/serve/`, `host/events/` | Shared control-plane state |
+| `host/alerts/runtime.json` | Alert evaluation runtime (controller; not GitOps SoT) |
+| `host/metrics/`, `host/acme/`, `host/serve/`, `host/events/` | Shared control-plane state (not GitOps config SoT) |
 | `host/events/graph.jsonl` | Trends GraphEvents (chart markers) |
 | `host/events/ops.jsonl` | Operator system event timeline (#267) |
-| `host/alerts/rules.yaml`, `host/alerts/runtime.json` | Alert rules (desired) + evaluation runtime |
-| `host/alerts/dismissed-recommendations.json` | Dismissed default alert-setup suggestions |
 | `host/inbox/read-state.json` | Operator inbox read markers (bell / Inbox UI; not outbound channels) |
 | `host/secrets/dashboard/` | Dashboard OAuth material |
 | `host/logs/` | Host raft log + retained edge service stdout |
@@ -165,6 +169,7 @@ Product templates sync from `src/raft/core/platform/share/` into the data home o
 | Doctor, status, logs, update | `src/raft/core/observe/` |
 | **Shared mutative capabilities** (CLI + serve) | Business rules in `core/`; serve/CLI only invoke. New capabilities: put the service under the matching core area below, keep FastAPI/Fire as adapters. |
 | Per-service up/down/redeploy/purge | `observe/ops/actions/` (`ServiceActions`); CLI `raft up|down [NAME]` + serve actions (`/up` `/down` `/redeploy`; deprecated `/start` `/stop` aliases); default `up NAME` brings up `dependsOn` (wake order), `--no-deps` skips; `redeploy gate` = edge container force-recreate; `redeploy controller` / `dashboard` = stamp rebuild ([#341](https://github.com/danielnachumdev/raft/issues/341) / [#340](https://github.com/danielnachumdev/raft/issues/340)); Restart stays `--no-build` |
+| GitOps config loaders / `@lru_cache` (#317) | `core/core/gitops/` — flat host YAML reads for settings/firewall/alerts/notifications/rbac |
 | Ordered firewall (CRUD / recommendations / from-inspection) | `lifecycle/firewall/` + nginx compile in `lifecycle/render/firewall/`; serve adapter `services/serve/firewall/`; CLI `services/cli/commands/firewall.py` (`raft firewall …`); SPA `src/spa/src/firewall/` |
 | Full operator settings (`settings.yaml`) | `core/config/settings/operator_service.py` (`OperatorSettingsService`); serve adapter `services/serve/settings/`; SPA `src/spa/src/settings/`. |
 | Check for updates (Settings) | `observe/ops/update/` (`UpdateCheck`, `SelfUpdate`); serve `services/serve/update/`; SPA `src/spa/src/settings/sections/UpdatesSection.tsx` |
@@ -174,7 +179,7 @@ Product templates sync from `src/raft/core/platform/share/` into the data home o
 | Dashboard UI | `src/spa/` only (Release bakes; local `npm run build` for editable/`raft serve`) |
 | Reusable dashboard kit (Trends / embeds) | `src/spa/src/dashboard-kit/`; Trends overview consumer in `trends/dashboard/ui/TrendsDashboard.tsx`. |
 | Alert rules | `core/observe/alerts/` + `services/serve/alerts/` + `services/controller/jobs/alerts/` + SPA `src/spa/src/alerts/` |
-| Setup recommendations (shared UI kit) | SPA `src/spa/src/recommendations/`; firewall + alerts plug in via callbacks; dismiss stores under `host/<area>/dismissed-recommendations.json` |
+| Setup recommendations (shared UI kit) | SPA `src/spa/src/recommendations/`; firewall + alerts plug in via callbacks; tips gated by `disable_tips` on the GitOps doc |
 | Ops event timeline | `core/models/state/ops_event*` + `observe/ops/events/`; dual-write from `GraphEventStore`; serve `services/serve/events/`; CLI `services/cli/commands/events.py` (`raft events`); SPA `src/spa/src/events/` |
 | Always-on dashboard | `lifecycle/dashboard/` + `share/dashboard/`; settings `dashboard:` (Settings UI); lifecycle Up/Down/Redeploy via `ServiceActions`; serve auth `services/serve/auth/`. |
 | Notification strategies | `observe/notify/strategies/` + `catalogs.py`; SPA `src/spa/src/notifications/` |

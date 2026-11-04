@@ -45,8 +45,9 @@ class TestServeInboxApi(RaftTestCase):
         item_id = listed["items"][0]["id"]
         all_read = client.post("/api/inbox/mark-all-read").json()
         assert all_read["unreadCount"] == 0
+        # Tip dismiss is gated by GitOps disableTips (no per-tip hide).
         dismissed = client.post(f"/api/inbox/items/{item_id}/dismiss").json()
-        assert item_id not in {item["id"] for item in dismissed["items"]}
+        assert item_id in {item["id"] for item in dismissed["items"]}
 
     def _assert_read_cycle(self, client: TestClient, listed: dict) -> None:
         summary = client.get("/api/inbox/summary").json()

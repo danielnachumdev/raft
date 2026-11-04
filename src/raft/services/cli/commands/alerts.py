@@ -23,7 +23,7 @@ from .alerts_output import AlertsCliOutput
 
 
 class AlertsCLI:
-    """Manage alert rules under ``host/alerts/rules.yaml``.
+    """Manage alert rules under ``host/alerts.yaml``.
 
     Primer: each rule has a catalog ``signal`` (e.g. metrics.http),
     ``for`` (sustain before fire), ``cooldown`` (silence before re-notify),

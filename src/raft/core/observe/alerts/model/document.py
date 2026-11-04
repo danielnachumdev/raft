@@ -15,10 +15,11 @@ from .rule_parser import AlertRuleParser
 class AlertRulesDocument:
     version: int
     rules: Tuple[AlertRule, ...]
+    disable_tips: bool = False
 
     @classmethod
     def empty(cls) -> "AlertRulesDocument":
-        return cls(version=DOCUMENT_VERSION, rules=())
+        return cls(version=DOCUMENT_VERSION, rules=(), disable_tips=False)
 
     @classmethod
     def from_mapping(
@@ -26,13 +27,24 @@ class AlertRulesDocument:
         raw: Any,
         *,
         registries: AlertRegistries,
-        path: str = "host/alerts/rules.yaml",
+        path: str = "host/alerts.yaml",
     ) -> "AlertRulesDocument":
         if raw is None:
             return cls.empty()
         rules_raw = cls._validate_header(raw, path)
         rules = cls._parse_rules(rules_raw, registries, path)
-        return cls(version=DOCUMENT_VERSION, rules=tuple(rules))
+        tips = cls._parse_disable_tips(raw)
+        return cls(
+            version=DOCUMENT_VERSION, rules=tuple(rules), disable_tips=tips
+        )
+
+    @staticmethod
+    def _parse_disable_tips(raw: Mapping[str, Any]) -> bool:
+        if "disableTips" in raw:
+            return bool(raw.get("disableTips"))
+        if "disable_tips" in raw:
+            return bool(raw.get("disable_tips"))
+        return False
 
     @classmethod
     def _validate_header(cls, raw: Any, path: str) -> list:
@@ -73,6 +85,7 @@ class AlertRulesDocument:
     def to_export(self) -> Dict[str, Any]:
         return {
             "version": self.version,
+            "disableTips": self.disable_tips,
             "rules": [r.to_export() for r in self.rules],
         }
 
