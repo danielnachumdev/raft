@@ -11,31 +11,23 @@ from raft.core.core.models.firewall import (
     FirewallDocument,
     FirewallRule,
 )
-from raft.core.core.models.state.recommendation_dismissals import (
-    FirewallDismissalStore,
-)
 from raft.core.lifecycle.render.firewall import FirewallEffective
 
 
 class FirewallRecommendations:
-    """Per-port permit + default-deny suggestions with dismiss persistence."""
+    """Per-port permit + default-deny suggestions; gated by ``disable_tips``."""
 
     def __init__(self, root: Path) -> None:
         self._root = root
-        self._dismissals = FirewallDismissalStore(root)
 
     def list_public(self) -> Dict[str, Any]:
         document = FirewallEffective(self._root).document
-        dismissed = self._dismissals.list_ids()
-        items = [
-            item
-            for item in self._candidates(document)
-            if item["id"] not in dismissed
-        ]
-        return {"recommendations": items}
+        if document.disable_tips:
+            return {"recommendations": []}
+        return {"recommendations": self._candidates(document)}
 
     def dismiss(self, recommendation_id: str) -> Dict[str, Any]:
-        self._dismissals.dismiss(recommendation_id)
+        del recommendation_id
         return self.list_public()
 
     def _candidates(self, document: FirewallDocument) -> List[Dict[str, Any]]:

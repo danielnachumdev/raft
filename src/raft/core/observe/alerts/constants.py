@@ -2,14 +2,15 @@
 
 from pathlib import Path
 
+from raft.core.core.config.paths.constants import ALERTS_FILENAME, HOST_ALERTS_DIR
+
 KIND_ALERT_FIRING = "alert.firing"
 KIND_ALERT_RESOLVED = "alert.resolved"
 KIND_ALERT_TEST = "alert.test"
 
-ALERTS_STATE_DIR = Path("host") / "alerts"
-RULES_NAME = "rules.yaml"
+ALERTS_STATE_DIR = HOST_ALERTS_DIR
+RULES_REL = Path("host") / ALERTS_FILENAME
 RUNTIME_NAME = "runtime.json"
-DISMISSALS_NAME = "dismissed-recommendations.json"
 
 MAX_RULES = 200
 MAX_LEAVES = 8

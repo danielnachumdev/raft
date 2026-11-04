@@ -11,11 +11,8 @@ import yaml
 
 from raft.core.core.config.settings import SettingsLoader
 from raft.core.core.config.settings.alerts_config import AlertsConfig
-from raft.core.observe.alerts.constants import (
-    ALERTS_STATE_DIR,
-    RULES_NAME,
-    RUNTIME_NAME,
-)
+from raft.core.core.config.paths.host_paths import HostPaths
+from raft.core.observe.alerts.constants import RUNTIME_NAME
 
 from ..context import DoctorContext
 from ..models import INFRA, CheckResult
@@ -34,12 +31,13 @@ class AlertsChecks:
         return [result] if result is not None else []
 
     def _check(self, home: Path, alerts: AlertsConfig) -> Optional[CheckResult]:
-        count, err = self._rules_info(home / ALERTS_STATE_DIR / RULES_NAME)
+        paths = HostPaths(home)
+        count, err = self._rules_info(paths.alerts())
         if err:
             return self._document_error(err)
         if count == 0:
             return None
-        last = self._last_evaluation(home / ALERTS_STATE_DIR / RUNTIME_NAME)
+        last = self._last_evaluation(paths.alerts_runtime_dir() / RUNTIME_NAME)
         if self._is_stale(last, alerts.interval_seconds):
             return self._stale()
         return CheckResult(
@@ -98,7 +96,7 @@ class AlertsChecks:
             "alerts",
             "warn",
             f"alert rules document error: {detail}",
-            fix="fix host/alerts/rules.yaml (raft alerts validate)",
+            fix="fix host/alerts.yaml (raft alerts validate)",
         )
 
     @staticmethod

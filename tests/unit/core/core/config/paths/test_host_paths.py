@@ -12,11 +12,20 @@ class TestHostAndServicePaths(RaftTestCase):
     def test_host_paths_resolve_under_host(self) -> None:
         home = Path(self.tmp_path)
         hp = HostPaths(home)
+        self._assert_gitops_docs(hp, home)
+        self._assert_runtime_dirs(hp, home)
+
+    def _assert_gitops_docs(self, hp: HostPaths, home: Path) -> None:
         assert hp.root() == home / "host"
         assert hp.settings() == home / "host" / "settings.yaml"
+        assert hp.firewall() == home / "host" / "firewall.yaml"
+        assert hp.alerts() == home / "host" / "alerts.yaml"
+        assert hp.notifications() == home / "host" / "notifications.yaml"
+        assert hp.rbac() == home / "host" / "rbac.yaml"
+
+    def _assert_runtime_dirs(self, hp: HostPaths, home: Path) -> None:
         assert hp.locks() == home / "host" / "locks"
-        assert hp.firewall() == home / "host" / "firewall"
-        assert hp.alerts() == home / "host" / "alerts"
+        assert hp.alerts_runtime_dir() == home / "host" / "alerts"
         assert hp.inbox() == home / "host" / "inbox"
         assert hp.events() == home / "host" / "events"
         assert hp.metrics() == home / "host" / "metrics"

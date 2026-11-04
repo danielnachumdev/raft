@@ -1,11 +1,11 @@
 # Alert rules examples
 
-Sample document for `~/.raft/host/alerts/rules.yaml`.
+Sample document for `~/.raft/host/alerts.yaml`.
 
 ## Apply
 
 - **UI:** Settings → Alerts → **Import** (JSON export), or copy fields from **Syntax** (YAML/JSON).
-- **CLI:** `raft alerts apply --file examples/alerts/rules.yaml`
+- **CLI:** `raft alerts apply --file examples/alerts/alerts.yaml`
 
 Notification **channels are optional**. Rules evaluate without them; delivery starts once channels exist (empty `channelIds` = every enabled channel).
 
@@ -20,6 +20,6 @@ Notification **channels are optional**. Rules evaluate without them; delivery st
 | `cooldown` | Silence before re-notifying the same instance |
 | `channelIds` | Optional delivery list |
 
-See [`rules.yaml`](./rules.yaml) for a full demo document (`demo-api` only — no live inventory).
+See [`alerts.yaml`](./rules.yaml) for a full demo document (`demo-api` only — no live inventory).
 
 In the ops UI, open **Alerts → Syntax** to view the same shape as YAML or JSON and switch to **Your rules**.

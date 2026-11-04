@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-from raft.core.core.models.state.recommendation_dismissals import AlertDismissalStore
 from raft.core.observe.alerts.recommendations import AlertRecommendations
 from raft.core.observe.alerts.service import AlertRulesService
 from tests.unit.base import RaftTestCase
@@ -33,15 +32,13 @@ class TestAlertRecommendations(RaftTestCase):
             i["id"] for i in result["recommendations"]
         }
 
-    def test_dismiss(self) -> None:
+    def test_disable_tips(self) -> None:
         home = self._prep()
-        AlertRecommendations(home).dismiss("any-service-high-memory")
-        left = {
-            i["id"]
-            for i in AlertRecommendations(home).list_public()["recommendations"]
-        }
-        assert "any-service-high-memory" not in left
-        assert AlertDismissalStore(home).list_ids() == {"any-service-high-memory"}
+        path = home / "host" / "alerts.yaml"
+        path.write_text(
+            "version: 1\ndisableTips: true\nrules: []\n", encoding="utf-8"
+        )
+        assert AlertRecommendations(home).list_public()["recommendations"] == []
 
     def test_apply_unknown(self) -> None:
         try:

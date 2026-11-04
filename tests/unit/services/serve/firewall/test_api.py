@@ -80,7 +80,8 @@ class TestServeFirewallApi(RaftTestCase):
         ids = {item["id"] for item in recs}
         assert "permit-port-80" in ids
         assert "default-deny" in ids
-        dismissed = client.post(
+        # dismiss is a no-op; tips are gated by disableTips on the GitOps doc
+        after = client.post(
             "/api/firewall/recommendations/permit-port-80/dismiss"
         ).json()["recommendations"]
-        assert all(item["id"] != "permit-port-80" for item in dismissed)
+        assert {item["id"] for item in after} == ids

@@ -3,9 +3,8 @@
 from pathlib import Path
 from typing import Any, Optional
 
-import yaml
-
 from raft.core.core.errors.cta import OperatorError
+from raft.core.core.gitops.cached_load import CachedYamlLoad
 from ..paths.home import RaftHome
 from .strategies import (
     AcmeSettingsParser,
@@ -36,12 +35,20 @@ class SettingsLoader:
         self._notifications = NotificationsSettingsParser()
         self._alerts = AlertsSettingsParser()
         self._dashboard = DashboardSettingsParser()
+        self._yaml = CachedYamlLoad()
 
     def load(self, data_home: Path, *, path: Optional[Path] = None) -> RaftConfig:
         config_path = path or RaftHome().settings_path(data_home)
-        if not config_path.exists():
-            return self.from_raw(None)
-        return self.from_raw(self._read_mapping(config_path))
+        if config_path.exists() and not config_path.is_file():
+            raise OperatorError(
+                f"settings path is not a file: {config_path}\n"
+                f"Fix: remove the directory or point at ~/.raft/host/settings.yaml"
+            )
+        raw = self._yaml.mapping(config_path, label="host/settings.yaml")
+        return self.from_raw(raw)
+
+    def clear_cache(self) -> None:
+        self._yaml.clear()
 
     def from_raw(self, data: Optional[dict[str, Any]]) -> RaftConfig:
         """Parse an in-memory settings mapping (same rules as the file)."""
@@ -70,42 +77,6 @@ class SettingsLoader:
             alerts=self._alerts.parse(None),
             dashboard=self._dashboard.parse(None),
         )
-
-    def _read_mapping(self, config_path: Path) -> dict[str, Any]:
-        if not config_path.is_file():
-            raise OperatorError(
-                f"settings path is not a file: {config_path}\n"
-                f"Fix: remove the directory or point at ~/.raft/host/settings.yaml"
-            )
-        raw_text = self._read_text(config_path)
-        data = self._parse_yaml(config_path, raw_text)
-        if not isinstance(data, dict):
-            raise OperatorError(
-                f"settings.yaml must be a YAML mapping (key/value document), "
-                f"got {type(data).__name__}.\n"
-                f"Fix: rewrite ~/.raft/host/settings.yaml as `{{logging: ..., edge: ...}}`"
-            )
-        return data
-
-    @staticmethod
-    def _read_text(config_path: Path) -> str:
-        try:
-            return config_path.read_text(encoding="utf-8")
-        except OSError as exc:
-            raise OperatorError(
-                f"cannot read settings.yaml: {config_path}\n"
-                f"Fix: ensure the file is readable — chmod u+r {config_path}"
-            ) from exc
-
-    @staticmethod
-    def _parse_yaml(config_path: Path, raw_text: str) -> Any:
-        try:
-            return yaml.safe_load(raw_text) or {}
-        except yaml.YAMLError as exc:
-            raise OperatorError(
-                f"invalid YAML in {config_path}: {exc}\n"
-                f"Fix: repair ~/.raft/host/settings.yaml (logging/edge mapping)"
-            ) from exc
 
 
 def load_config(data_home: Path, *, path: Optional[Path] = None) -> RaftConfig:

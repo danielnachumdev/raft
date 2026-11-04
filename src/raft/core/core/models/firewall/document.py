@@ -16,6 +16,7 @@ class FirewallDocument:
     rules: tuple[FirewallRule, ...] = ()
     version: int = FIREWALL_DOCUMENT_VERSION
     source: str = "firewall"
+    disable_tips: bool = False
 
     def is_active(self) -> bool:
         return bool(self.rules)
@@ -24,6 +25,7 @@ class FirewallDocument:
         return {
             "version": self.version,
             "source": self.source,
+            "disableTips": self.disable_tips,
             "rules": [rule.to_public() for rule in self.rules],
         }
 
@@ -31,11 +33,14 @@ class FirewallDocument:
         """Lossless export body (no runtime ``source`` hint)."""
         return {
             "version": self.version,
+            "disableTips": self.disable_tips,
             "rules": [rule.to_public() for rule in self.rules],
         }
 
     @classmethod
-    def from_mapping(cls, raw: Any, *, path: str, source: str = "firewall") -> "FirewallDocument":
+    def from_mapping(
+        cls, raw: Any, *, path: str, source: str = "firewall"
+    ) -> "FirewallDocument":
         if raw is None:
             return cls(source=source)
         if not isinstance(raw, Mapping):
@@ -46,7 +51,18 @@ class FirewallDocument:
             )
         version = cls._parse_version(raw.get("version"), path=f"{path}.version")
         rules = cls._parse_rules(raw.get("rules"), path=f"{path}.rules")
-        return cls(rules=rules, version=version, source=source)
+        tips = cls._parse_disable_tips(raw, path=path)
+        return cls(
+            rules=rules, version=version, source=source, disable_tips=tips
+        )
+
+    @staticmethod
+    def _parse_disable_tips(raw: Mapping[str, Any], *, path: str) -> bool:
+        if "disableTips" in raw:
+            return bool(raw.get("disableTips"))
+        if "disable_tips" in raw:
+            return bool(raw.get("disable_tips"))
+        return False
 
     @staticmethod
     def _parse_version(raw: Any, *, path: str) -> int:

@@ -18,17 +18,19 @@ class TestFirewallRecommendations(RaftTestCase):
     def _prep(self, edge: str = "edge: {http: 80, https: 443}\n") -> None:
         (self.tmp_path / "host" / "settings.yaml").write_text(edge, encoding="utf-8")
 
-    def test_baseline_and_dismiss(self) -> None:
+    def test_baseline_and_disable_tips(self) -> None:
         self._prep()
         recs = FirewallRecommendations(self.tmp_path)
         items = recs.list_public()["recommendations"]
         ids = {item["id"] for item in items}
         assert ids == {"permit-port-80", "permit-port-443", "default-deny"}
         assert items[-1]["append"] is True
-        recs.dismiss("permit-port-80")
-        left = {item["id"] for item in recs.list_public()["recommendations"]}
-        assert "permit-port-80" not in left
-        assert FirewallDismissalStore(self.tmp_path).list_ids() == {"permit-port-80"}
+        FirewallStore(self.tmp_path).save(
+            document(disable_tips=True)
+        )
+        assert FirewallRecommendations(self.tmp_path).list_public()[
+            "recommendations"
+        ] == []
 
     def test_hides_when_rules_cover_baseline(self) -> None:
         self._prep("edge: {http: 80, https: null}\n")

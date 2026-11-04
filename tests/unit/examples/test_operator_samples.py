@@ -16,7 +16,7 @@ EXAMPLES = ROOT / "examples"
 
 class TestOperatorSamples(RaftTestCase):
     def test_firewall_rules_sample(self) -> None:
-        path = EXAMPLES / "firewall" / "rules.yaml"
+        path = EXAMPLES / "firewall" / "firewall.yaml"
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
         doc = FirewallDocument.from_mapping(raw, path=str(path))
         assert doc.version == 1
@@ -24,7 +24,7 @@ class TestOperatorSamples(RaftTestCase):
         assert all(r.cidr.startswith(("192.0.2.", "0.0.0.0")) for r in doc.rules)
 
     def test_alerts_rules_sample_shape(self) -> None:
-        path = EXAMPLES / "alerts" / "rules.yaml"
+        path = EXAMPLES / "alerts" / "alerts.yaml"
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
         assert raw["version"] == 1
         ids = {r["id"] for r in raw["rules"]}
@@ -37,7 +37,7 @@ class TestOperatorSamples(RaftTestCase):
         from raft.core.observe.alerts.catalogs import AlertCatalogs
         from raft.core.observe.alerts.model.document import AlertRulesDocument
 
-        path = EXAMPLES / "alerts" / "rules.yaml"
+        path = EXAMPLES / "alerts" / "alerts.yaml"
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
         doc = AlertRulesDocument.from_mapping(
             raw, registries=AlertCatalogs.default(), path=str(path)

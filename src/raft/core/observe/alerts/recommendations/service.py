@@ -1,9 +1,8 @@
-"""Alert setup recommendations: catalog + dismiss + apply."""
+"""Alert setup recommendations: catalog + apply; gated by ``disable_tips``."""
 
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from raft.core.core.models.state.recommendation_dismissals import AlertDismissalStore
 from raft.core.observe.alerts.registries import AlertRegistries
 from raft.core.observe.alerts.service.rules_service import AlertRulesService
 
@@ -11,7 +10,7 @@ from .catalog import AlertRecommendationCatalog
 
 
 class AlertRecommendations:
-    """Default alert-setup suggestions with dismiss persistence."""
+    """Default alert-setup suggestions; gated by document ``disable_tips``."""
 
     def __init__(
         self,
@@ -21,22 +20,22 @@ class AlertRecommendations:
         registries: Optional[AlertRegistries] = None,
     ) -> None:
         self._home = home
-        self._dismissals = AlertDismissalStore(home)
         self._rules = rules or AlertRulesService(home, registries=registries)
 
     def list_public(self) -> Dict[str, Any]:
-        dismissed = self._dismissals.list_ids()
-        existing = [r.to_export() for r in self._rules.document().rules]
+        document = self._rules.document()
+        if document.disable_tips:
+            return {"recommendations": []}
+        existing = [r.to_export() for r in document.rules]
         items = [
             item
             for item in AlertRecommendationCatalog.candidates()
-            if item["id"] not in dismissed
-            and not AlertRecommendationCatalog.covers(existing, item)
+            if not AlertRecommendationCatalog.covers(existing, item)
         ]
         return {"recommendations": items}
 
     def dismiss(self, recommendation_id: str) -> Dict[str, Any]:
-        self._dismissals.dismiss(recommendation_id)
+        del recommendation_id
         return self.list_public()
 
     def apply(self, recommendation_id: str) -> Dict[str, Any]:

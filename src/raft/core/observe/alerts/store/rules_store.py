@@ -1,14 +1,15 @@
-"""Durable alert rules.yaml store."""
+"""Durable ``host/alerts.yaml`` store."""
 
 from pathlib import Path
 from typing import Any, Optional
 
 import yaml
 
+from raft.core.core.config.paths.host_paths import HostPaths
 from raft.core.core.errors.cta import OperatorError
+from raft.core.core.gitops.cached_load import CachedYamlLoad
 
 from ..catalogs import AlertCatalogs
-from ..constants import ALERTS_STATE_DIR, RULES_NAME
 from ..model.document import AlertRulesDocument
 from ..registries import AlertRegistries
 from .atomic import AtomicText
@@ -21,31 +22,33 @@ class AlertRulesStore:
         self, home: Path, *, registries: Optional[AlertRegistries] = None
     ) -> None:
         self.home = home
-        self.path = home / ALERTS_STATE_DIR / RULES_NAME
+        self.path = HostPaths(home).alerts()
         self._registries = registries or AlertCatalogs.default()
+        self._yaml = CachedYamlLoad()
 
     def exists(self) -> bool:
         return self.path.is_file()
 
     def load(self) -> AlertRulesDocument:
-        if not self.path.is_file():
+        raw = self._yaml.mapping(self.path, label="host/alerts.yaml")
+        if raw is None:
             return AlertRulesDocument.empty()
-        raw = self.load_raw()
         return AlertRulesDocument.from_mapping(
-            raw, registries=self._registries, path="host/alerts/rules.yaml"
+            raw, registries=self._registries, path="host/alerts.yaml"
         )
 
     def load_raw(self) -> Any:
-        try:
-            return yaml.safe_load(self.path.read_text(encoding="utf-8")) or {}
-        except (OSError, UnicodeError, yaml.YAMLError) as exc:
+        raw = self._yaml.mapping(self.path, label="host/alerts.yaml")
+        if raw is None:
             raise OperatorError(
-                f"cannot read host/alerts/rules.yaml: {exc}.\n"
-                f"Fix: repair the rules document or delete it"
-            ) from exc
+                "host/alerts.yaml is missing.\n"
+                "Fix: create the alert rules document under ~/.raft/host/alerts.yaml"
+            )
+        return raw
 
     def save(self, document: AlertRulesDocument) -> None:
         text = yaml.safe_dump(
             document.to_export(), sort_keys=False, default_flow_style=False
         )
         AtomicText.write(self.path, text, mode=0o600)
+        self._yaml.clear()

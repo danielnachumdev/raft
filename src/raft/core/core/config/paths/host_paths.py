@@ -3,19 +3,22 @@
 from pathlib import Path
 
 from .constants import (
+    ALERTS_REL,
+    FIREWALL_REL,
     GATE_NGINX_FINGERPRINT,
     HOST_ACME_DIR,
     HOST_ALERTS_DIR,
     HOST_DIR,
     HOST_EDGE_SERVICE_LOGS_DIR,
     HOST_EVENTS_DIR,
-    HOST_FIREWALL_DIR,
     HOST_INBOX_DIR,
     HOST_LOGS_DIR,
     HOST_METRICS_DIR,
     HOST_SECRETS_DIR,
     HOST_SERVE_DIR,
     LOCKS_DIR,
+    NOTIFICATIONS_REL,
+    RBAC_REL,
     ROUTER_NGINX_FINGERPRINT,
     SETTINGS_REL,
 )
@@ -33,14 +36,23 @@ class HostPaths:
     def settings(self) -> Path:
         return self._home / SETTINGS_REL
 
-    def locks(self) -> Path:
-        return self._home / LOCKS_DIR
-
     def firewall(self) -> Path:
-        return self._home / HOST_FIREWALL_DIR
+        return self._home / FIREWALL_REL
 
     def alerts(self) -> Path:
+        return self._home / ALERTS_REL
+
+    def alerts_runtime_dir(self) -> Path:
         return self._home / HOST_ALERTS_DIR
+
+    def notifications(self) -> Path:
+        return self._home / NOTIFICATIONS_REL
+
+    def rbac(self) -> Path:
+        return self._home / RBAC_REL
+
+    def locks(self) -> Path:
+        return self._home / LOCKS_DIR
 
     def inbox(self) -> Path:
         return self._home / HOST_INBOX_DIR

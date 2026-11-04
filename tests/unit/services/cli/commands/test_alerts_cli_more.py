@@ -63,7 +63,7 @@ class TestAlertsCliMore(RaftTestCase):
             Tester.return_value.send.return_value = [fail]
             with pytest.raises(SystemExit):
                 cli.test("demo-api-5xx-rate")
-        (Path(self.tmp_path) / "host" / "alerts" / "rules.yaml").unlink()
+        (Path(self.tmp_path) / "host" / "alerts.yaml").unlink()
         assert cli._load_raw(None) == {"version": 1, "rules": []}
         with pytest.raises(OperatorError):
             cli._read_file(str(Path(self.tmp_path) / "missing.yaml"))

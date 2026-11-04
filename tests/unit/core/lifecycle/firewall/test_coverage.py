@@ -37,14 +37,14 @@ class TestFirewallCoverage(RaftTestCase):
         assert not CompiledFragment(access=(), drop_cidrs=(), scope="x").is_active()
 
     def test_store_corrupt_yaml(self) -> None:
-        path = self.tmp_path / "host" / "firewall" / "rules.yaml"
+        path = self.tmp_path / "host" / "firewall.yaml"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(":\n  - bad", encoding="utf-8")
         try:
             FirewallStore(self.tmp_path).load()
             raise AssertionError("expected OperatorError")
         except OperatorError as exc:
-            assert "cannot read" in str(exc)
+            assert "invalid YAML" in str(exc) or "cannot read" in str(exc)
 
     def test_rule_validation_edges(self) -> None:
         any_rule = FirewallRule.from_mapping(rule_dict(port="any"), path="r")

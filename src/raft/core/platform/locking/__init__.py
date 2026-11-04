@@ -8,7 +8,7 @@ Locks live under ``~/.raft/host/locks/`` (``RAFT_DATA_HOME``):
 * ``settings.lock`` — any rewrite of ``host/settings.yaml`` (full document, notifications,
   github OAuth)
 * ``acl.lock`` — serve API rewrites of ordered firewall before render/reload
-* ``alerts.lock`` — CLI/serve writes to ``host/alerts/rules.yaml``
+* ``alerts.lock`` — CLI/serve writes to ``host/alerts.yaml``
 * ``dashboard.lock`` — writers of ``host/settings.yaml`` ``dashboard:``
 * ``fifo-<kind>/`` — ticket FCFS exclusive (``FifoLock``); used for ``update`` and
   short host-job flight claim sections (not plain flock grant order)

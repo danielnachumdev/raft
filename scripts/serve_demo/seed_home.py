@@ -109,7 +109,7 @@ acl:
 )
 
 write(
-    "host/firewall/rules.yaml",
+    "host/firewall.yaml",
     """version: 1
 rules:
   - {id: r1, cidr: 192.0.2.0/24, port: any, protocol: tcp, service: any, action: permit}
@@ -120,7 +120,7 @@ rules:
 )
 
 write(
-    "host/alerts/rules.yaml",
+    "host/alerts.yaml",
     """version: 1
 rules:
   - id: demo-api-5xx-rate

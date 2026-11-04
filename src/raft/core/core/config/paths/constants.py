@@ -4,6 +4,10 @@ from pathlib import Path
 
 DATA_HOME_ENV = "RAFT_DATA_HOME"
 SETTINGS_FILENAME = "settings.yaml"
+FIREWALL_FILENAME = "firewall.yaml"
+ALERTS_FILENAME = "alerts.yaml"
+NOTIFICATIONS_FILENAME = "notifications.yaml"
+RBAC_FILENAME = "rbac.yaml"
 DB_FILENAME = "raft.sqlite"
 GENERATED_DIRNAME = "generated"
 HOST_DIRNAME = "host"
@@ -19,17 +23,20 @@ APP_MANIFEST_FILENAME = "app.yaml"
 SCALING_STATE_FILENAME = "state.json"
 ACME_STATE_FILENAME = "state.json"
 
-# Legacy export aliases (checkout path segment used to be top-level ``apps/``).
+# Export alias used by checkout path helpers.
 APPS_DIRNAME = CHECKOUT_DIRNAME
 
 HOST_DIR = Path(HOST_DIRNAME)
 SERVICES_DIR = Path(SERVICES_DIRNAME)
 SETTINGS_REL = HOST_DIR / SETTINGS_FILENAME
+FIREWALL_REL = HOST_DIR / FIREWALL_FILENAME
+ALERTS_REL = HOST_DIR / ALERTS_FILENAME
+NOTIFICATIONS_REL = HOST_DIR / NOTIFICATIONS_FILENAME
+RBAC_REL = HOST_DIR / RBAC_FILENAME
 LOCKS_DIR = HOST_DIR / "locks"
 STATE_DIR = SERVICES_DIR  # applied Apps live under services/<name>/app.yaml
 HOST_LOGS_DIR = HOST_DIR / LOGS_DIRNAME
 HOST_SECRETS_DIR = HOST_DIR / SECRETS_DIRNAME
-HOST_FIREWALL_DIR = HOST_DIR / "firewall"
 HOST_ALERTS_DIR = HOST_DIR / "alerts"
 HOST_INBOX_DIR = HOST_DIR / "inbox"
 HOST_EVENTS_DIR = HOST_DIR / "events"
@@ -44,7 +51,6 @@ DATA_DIR_RELS = (
     GENERATED_DIRNAME,
     HOST_DIRNAME,
     str(LOCKS_DIR),
-    str(HOST_FIREWALL_DIR),
     str(HOST_ALERTS_DIR),
     str(HOST_INBOX_DIR),
     str(HOST_EVENTS_DIR),

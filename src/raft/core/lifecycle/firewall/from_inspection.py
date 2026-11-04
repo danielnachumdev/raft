@@ -117,6 +117,7 @@ class InspectionFirewall:
             rules=(rule, *others),
             version=document.version or FIREWALL_DOCUMENT_VERSION,
             source="firewall",
+            disable_tips=document.disable_tips,
         )
 
     @staticmethod
@@ -140,6 +141,7 @@ class InspectionFirewall:
             rules=tuple(kept),
             version=document.version or FIREWALL_DOCUMENT_VERSION,
             source="firewall",
+            disable_tips=document.disable_tips,
         )
 
     def _resolve_service(self, service: str) -> str:
