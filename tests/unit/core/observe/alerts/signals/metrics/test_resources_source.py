@@ -1,4 +1,4 @@
-"""ResourcesMetricSource with fixture JSONL."""
+"""ResourcesMetricSource story: target * includes control-plane roles (#398)."""
 
 import json
 from datetime import datetime, timezone
@@ -50,13 +50,17 @@ def _cpu_star(ctx: SignalContext) -> List[Any]:
     )
 
 
-class TestResourcesMetricSource(RaftTestCase):
-    def _ctx(self) -> SignalContext:
-        return _write_sample(Path(self.tmp_path), [_CONTAINER])
+class TestResourcesWildcardStory(RaftTestCase):
+    """Operator thresholds CPU on *; router role must not be dropped from *.
 
-    def test_cpu(self) -> None:
+    Scenario:
+      1) Named demo-api series returns the sample CPU point.
+      2) * includes both demo-api and raft-router; host is excluded.
+    """
+
+    def test_named_target_returns_cpu_point(self) -> None:
         source = ResourcesMetricSource()
-        ctx = self._ctx()
+        ctx = _write_sample(Path(self.tmp_path), [_CONTAINER])
         series = source.query(
             {"target": "demo-api", "metric": "cpu_percent"},
             window_seconds=300,
@@ -65,7 +69,7 @@ class TestResourcesMetricSource(RaftTestCase):
         assert series[0].points[0].value == 90.0
         assert any(s.subject == "demo-api" for s in _cpu_star(ctx))
 
-    def test_wildcard_includes_control_plane_role(self) -> None:
+    def test_star_includes_control_plane_role(self) -> None:
         router = {**_CONTAINER, "service": "raft-router", "role": "router"}
         ctx = _write_sample(Path(self.tmp_path), [_CONTAINER, router])
         subjects = {s.subject for s in _cpu_star(ctx)}
