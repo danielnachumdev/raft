@@ -8,11 +8,12 @@ from typing import Optional
 import yaml
 
 from raft.core.platform.adapters.docker import DockerStack
+from raft.core.platform.adapters.nginx import NginxUpstreams
 from raft.core.platform.adapters.shell import Shell
 from raft.services.controller.jobs.scale import Scaler
 from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.services.controller.wake_http import WakeHttpServer
-from raft.core.core.models.stack import load_stack
+from raft.core.core.models.stack import Stack, load_stack
 from raft.core.lifecycle.render import StackRenderer
 from tests.e2e.shared.compose import new_project_name
 from tests.e2e.shared.runtime import ServiceRuntimeWait
@@ -67,11 +68,16 @@ class ScaleE2EStack:
         cls._rewrite_wake_port(home, wake_port)
         # load_stack re-copies product compose; install edge compose after.
         cls._install_edge_compose(home, project)
+        # Park before up so router nginx -t survives Compose DNS races
+        # (dependsOn delays app registration; raw compose up has no order).
+        # Use Stack.load_apps — load_stack would wipe the e2e compose again.
+        cls.park_http_upstreams(model, docker)
         docker.sh.compose("up", "-d", "--pull", "missing", check=True, capture=True)
         gate_port = cls._wait_gate_port(docker, timeout=60.0)
         stack = cls(home, project, docker, scaler, wake_port, gate_port)
         stack._wake = wake
         stack.wait_app_running()
+        stack.restore_http_upstreams()
         stack.wait_live()
         return stack
 
@@ -94,6 +100,21 @@ class ScaleE2EStack:
 
     def wait_app_running(self, *, timeout: float = 45.0) -> None:
         ServiceRuntimeWait(self.docker, APP).until_running(timeout=timeout)
+
+    def restore_http_upstreams(self) -> None:
+        """Point upstreams at Compose DNS and reload router after apps exist."""
+        stack = Stack.load_apps(self.home)
+        nginx = NginxUpstreams(stack, self.docker)
+        for app in stack.apps:
+            nginx.point_steady(app, reload=False)
+        self.docker.reload_router_nginx()
+
+    @staticmethod
+    def park_http_upstreams(stack: Stack, docker: DockerStack) -> None:
+        """Loopback HTTP upstreams so router can start before app DNS exists."""
+        nginx = NginxUpstreams(stack, docker)
+        for app in stack.apps:
+            nginx.point_absent(app, reload=False)
 
     def wait_live(self, *, timeout: float = 45.0) -> None:
         Wait.until(

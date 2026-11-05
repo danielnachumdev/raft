@@ -53,6 +53,9 @@ class ScaleDependsWakeStack:
         wake_port = int(wake._httpd.server_address[1])
         ScaleE2EStack._rewrite_wake_port(home, wake_port)
         ScaleE2EStack._install_edge_compose(home, project)
+        # dependsOn delays frontend DNS; park so router nginx does not emerg-exit.
+        # Stack.load_apps only — load_stack would wipe the e2e edge compose.
+        ScaleE2EStack.park_http_upstreams(model, docker)
         docker.sh.compose("up", "-d", "--pull", "missing", check=True, capture=True)
         gate_port = ScaleE2EStack._wait_gate_port(docker, timeout=60.0)
         inner = ScaleE2EStack(home, project, docker, scaler, wake_port, gate_port)
@@ -71,6 +74,7 @@ class ScaleDependsWakeStack:
     def given_frontend_and_backend_are_running(self) -> None:
         ServiceRuntimeWait(self.docker, BACKEND_COMPOSE).until_running()
         ServiceRuntimeWait(self.docker, FRONTEND_COMPOSE).until_running()
+        self._inner.restore_http_upstreams()
         Wait.until(
             self._site_is_live,
             timeout=45.0,
