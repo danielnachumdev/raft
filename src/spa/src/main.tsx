@@ -1,9 +1,9 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import { applyTheme, resolveTheme } from "./chrome/theme";
-import { RbacProvider } from "./rbac";
-import { App } from "./shell/App";
+import { applyTheme, resolveTheme } from "./shared/chrome/theme";
+import { RbacProvider } from "./features/rbac";
+import { App } from "./app/App";
 import "./styles.css";
 
 applyTheme(resolveTheme());

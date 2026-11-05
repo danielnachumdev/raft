@@ -48,7 +48,7 @@ describe("firewall + notifications cache consumers", () => {
     });
 
     try {
-      const fw = await import("../../../src/firewall/firewallApi.ts");
+      const fw = await import("../../../src/features/firewall/firewallApi.ts");
       const first = await fw.fetchFirewall();
       const second = await fw.fetchFirewall();
       assert.deepEqual(first, second);
@@ -102,7 +102,7 @@ describe("firewall + notifications cache consumers", () => {
     });
 
     try {
-      const api = await import("../../../src/notifications/notificationsApi.ts");
+      const api = await import("../../../src/features/notifications/notificationsApi.ts");
       await api.fetchNotificationChannels();
       await api.fetchNotificationChannels();
       assert.equal(
@@ -153,7 +153,7 @@ describe("github + service + exports cache consumers", () => {
     });
 
     try {
-      const gh = await import("../../../src/deploy/github/client.ts");
+      const gh = await import("../../../src/features/deploy/github/client.ts");
       await gh.fetchGithubSession();
       await gh.fetchGithubSession();
       await gh.fetchGithubConfig();
@@ -243,7 +243,7 @@ describe("github + service + exports cache consumers", () => {
     });
 
     try {
-      const catalog = await import("../../../src/export/catalog.ts");
+      const catalog = await import("../../../src/shared/export/catalog.ts");
       const first = await catalog.loadExportCatalog();
       const second = await catalog.loadExportCatalog();
       assert.deepEqual(first, second);

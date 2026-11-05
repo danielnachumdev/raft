@@ -106,9 +106,9 @@ Align with the README table; detail for agents:
 | Healing | **Shipped** | Settings `healing:`; separate from scaling |
 | Secrets baseline (`~/.raft/services/<app>/secrets/env`) | **Shipped** | External materialization epic [#143](https://github.com/danielnachumdev/raft/issues/143) / [#176](https://github.com/danielnachumdev/raft/issues/176) |
 | Past logs when container off | **Shipped** | Retained under `services/<name>/logs/` (edge: `host/logs/services/`); shipper + drain-before-rm. |
-| Trends dashboards (multi-graph) | **Shipped** | [#238](https://github.com/danielnachumdev/raft/issues/238) supersedes #202 named views (migrate removed). Shared range + one fetch per plane fanned out to `TrendsGraph`s; browser-local (`raft-serve-trends-dashboards`); overview embeds the dashboard kit; `src/spa/src/trends/dashboard/`. |
-| Per-service Trends (default graphs) | **Shipped** | Service inspection uses the same multi-graph UX, pinned to that service; browser-local `raft-serve-service-trends`; `src/spa/src/trends/service/` (kit migration follow-on for [#249](https://github.com/danielnachumdev/raft/issues/249)) |
-| Reusable dashboard kit (Trends shell / embed) | **Shipped (v1)** | [#249](https://github.com/danielnachumdev/raft/issues/249); `src/spa/src/dashboard-kit/`; timeseries panels + embed contract; browser-local persistence. |
+| Trends dashboards (multi-graph) | **Shipped** | [#238](https://github.com/danielnachumdev/raft/issues/238) supersedes #202 named views (migrate removed). Shared range + one fetch per plane fanned out to `TrendsGraph`s; browser-local (`raft-serve-trends-dashboards`); overview embeds the dashboard kit; `src/spa/src/features/trends/dashboard/`. |
+| Per-service Trends (default graphs) | **Shipped** | Service inspection uses the same multi-graph UX, pinned to that service; browser-local `raft-serve-service-trends`; `src/spa/src/features/trends/service/` (kit migration follow-on for [#249](https://github.com/danielnachumdev/raft/issues/249)) |
+| Reusable dashboard kit (Trends shell / embed) | **Shipped (v1)** | [#249](https://github.com/danielnachumdev/raft/issues/249); `src/spa/src/shared/dashboard-kit/`; timeseries panels + embed contract; browser-local persistence. |
 | Alert rules engine (metrics/control-plane → notifications) | **Shipped** | [#236](https://github.com/danielnachumdev/raft/issues/236); dual-plane CLI+serve lock [#264](https://github.com/danielnachumdev/raft/issues/264); `AlertRulesService` / engine under `observe/alerts/` |
 | Alert setup recommendations (OOM / not-running / high memory) | **Shipped** | Shared SPA `recommendations/` kit; catalog in `observe/alerts/recommendations/`; gated by GitOps `disable_tips`; channels optional on apply |
 | GitOps-first host config (#310) | **Shipped** | Flat YAML SoT + temp UI/CLI overrides (Sync wipe) + `@lru_cache` loaders + doctor validity; epic closed; RBAC on [#307](https://github.com/danielnachumdev/raft/issues/307) |
@@ -171,19 +171,19 @@ Product templates sync from `src/raft/core/platform/share/` into the data home o
 | **Shared mutative capabilities** (CLI + serve) | Business rules in `core/`; serve/CLI only invoke. New capabilities: put the service under the matching core area below, keep FastAPI/Fire as adapters. |
 | Per-service up/down/redeploy/purge | `observe/ops/actions/` (`ServiceActions`); CLI `raft up|down [NAME]` + serve actions (`/up` `/down` `/redeploy`; deprecated `/start` `/stop` aliases); default `up NAME` brings up `dependsOn` (wake order), `--no-deps` skips; `redeploy gate` = edge container force-recreate; `redeploy controller` / `dashboard` = stamp rebuild ([#341](https://github.com/danielnachumdev/raft/issues/341) / [#340](https://github.com/danielnachumdev/raft/issues/340)); Restart stays `--no-build` |
 | GitOps config loaders / `@lru_cache` (#317) | `core/core/gitops/` — flat host YAML reads for settings/firewall/alerts/notifications/rbac |
-| Ordered firewall (CRUD / recommendations / from-inspection) | `lifecycle/firewall/` + nginx compile in `lifecycle/render/firewall/`; serve adapter `services/serve/firewall/`; CLI `services/cli/commands/firewall.py` (`raft firewall …`); SPA `src/spa/src/firewall/` |
-| Full operator settings (`settings.yaml`) | `core/config/settings/operator_service.py` (`OperatorSettingsService`); serve adapter `services/serve/settings/`; SPA `src/spa/src/settings/`. |
-| Check for updates (Settings) | `observe/ops/update/` (`UpdateCheck`, `SelfUpdate`); serve `services/serve/update/`; SPA `src/spa/src/settings/sections/UpdatesSection.tsx` |
-| Notification channel CRUD / test-send | `observe/notify/settings_write.py` + `tester.py`; serve adapter `services/serve/notifications/`; CLI `services/cli/commands/notifications.py` (`raft notifications …`); SPA `src/spa/src/notifications/` |
-| Operator inbox (bell / in-app notices) | `observe/inbox/` (`OperatorInboxService` + sources); serve `services/serve/inbox/`; SPA `src/spa/src/inbox/` — distinct from outbound notification channels |
+| Ordered firewall (CRUD / recommendations / from-inspection) | `lifecycle/firewall/` + nginx compile in `lifecycle/render/firewall/`; serve adapter `services/serve/firewall/`; CLI `services/cli/commands/firewall.py` (`raft firewall …`); SPA `src/spa/src/features/firewall/` |
+| Full operator settings (`settings.yaml`) | `core/config/settings/operator_service.py` (`OperatorSettingsService`); serve adapter `services/serve/settings/`; SPA `src/spa/src/features/settings/`. |
+| Check for updates (Settings) | `observe/ops/update/` (`UpdateCheck`, `SelfUpdate`); serve `services/serve/update/`; SPA `src/spa/src/features/settings/sections/UpdatesSection.tsx` |
+| Notification channel CRUD / test-send | `observe/notify/settings_write.py` + `tester.py`; serve adapter `services/serve/notifications/`; CLI `services/cli/commands/notifications.py` (`raft notifications …`); SPA `src/spa/src/features/notifications/` |
+| Operator inbox (bell / in-app notices) | `observe/inbox/` (`OperatorInboxService` + sources); serve `services/serve/inbox/`; SPA `src/spa/src/features/inbox/` — distinct from outbound notification channels |
 | GitHub OAuth / deploy assist | `platform/github/` (`GithubAssistService`); serve `services/serve/github/`; CLI `services/cli/commands/github.py` (`raft github …`) |
 | Dashboard UI | `src/spa/` only (Release bakes; local `npm run build` for editable/`raft serve`) |
-| Reusable dashboard kit (Trends / embeds) | `src/spa/src/dashboard-kit/`; Trends overview consumer in `trends/dashboard/ui/TrendsDashboard.tsx`. |
-| Alert rules | `core/observe/alerts/` + `services/serve/alerts/` + `services/controller/jobs/alerts/` + SPA `src/spa/src/alerts/` |
-| Setup recommendations (shared UI kit) | SPA `src/spa/src/recommendations/`; firewall + alerts plug in via callbacks; tips gated by `disable_tips` on the GitOps doc |
-| Ops event timeline | `core/models/state/ops_event*` + `observe/ops/events/`; dual-write from `GraphEventStore`; serve `services/serve/events/`; CLI `services/cli/commands/events.py` (`raft events`); SPA `src/spa/src/events/` |
+| Reusable dashboard kit (Trends / embeds) | `src/spa/src/shared/dashboard-kit/`; Trends overview consumer in `features/trends/dashboard/ui/TrendsDashboard.tsx`. |
+| Alert rules | `core/observe/alerts/` + `services/serve/alerts/` + `services/controller/jobs/alerts/` + SPA `src/spa/src/features/alerts/` |
+| Setup recommendations (shared UI kit) | SPA `src/spa/src/shared/recommendations/`; firewall + alerts plug in via callbacks; tips gated by `disable_tips` on the GitOps doc |
+| Ops event timeline | `core/models/state/ops_event*` + `observe/ops/events/`; dual-write from `GraphEventStore`; serve `services/serve/events/`; CLI `services/cli/commands/events.py` (`raft events`); SPA `src/spa/src/features/events/` |
 | Always-on dashboard | `lifecycle/dashboard/` + `share/dashboard/`; settings `dashboard:` (Settings UI); lifecycle Up/Down/Redeploy via `ServiceActions`; serve auth `services/serve/auth/`. |
-| Notification strategies | `observe/notify/strategies/` + `catalogs.py`; SPA `src/spa/src/notifications/` |
+| Notification strategies | `observe/notify/strategies/` + `catalogs.py`; SPA `src/spa/src/features/notifications/` |
 
 Upstream files: `generated/nginx/upstreams/<app>-<port>.conf` mounted into the router.
 
