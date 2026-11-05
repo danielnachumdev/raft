@@ -17,6 +17,7 @@ import {
   type SettingsSection,
 } from "./settingsApi";
 import { settingsDirty } from "./settingsLayout";
+import { temporaryOverrideSavedMessage } from "./temporaryOverrideMessages";
 
 export type EditorMode = "form" | "yaml";
 
@@ -119,9 +120,9 @@ export function useSettingsEditor() {
       if (!payload) return;
       applyPayload(payload);
       if (mode === "yaml") setYamlBaseline(payload.yaml ?? yamlText);
+      toast.warning(temporaryOverrideSavedMessage());
       const warn = payload.notes.find((n) => n.severity === "warn");
       if (warn) toast.warning(warn.message);
-      else toast.good("Settings saved");
     } catch (err) {
       fail(err, "Failed to save settings");
     } finally {
