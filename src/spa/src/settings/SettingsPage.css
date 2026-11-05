@@ -10,22 +10,6 @@
   min-width: 0;
 }
 
-.settings-temp-override {
-  margin: 0 0 var(--space-4);
-}
-
-.settings-temp-override p {
-  margin: 0;
-  font-size: var(--text-md);
-  line-height: 1.45;
-  max-width: 52rem;
-}
-
-.settings-temp-override-guidance {
-  margin-top: 0.45rem !important;
-  color: var(--muted);
-}
-
 .settings-notes {
   list-style: none;
   margin: 0 0 var(--space-4);

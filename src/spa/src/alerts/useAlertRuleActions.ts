@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "../chrome/toast";
+import { temporaryOverrideSavedMessage } from "../gitops";
 import {
   deleteAlertRule,
   dryRunAlertRule,
@@ -32,13 +33,13 @@ export function useAlertRuleActions(reload: () => Promise<void>) {
     toggle: (rule: AlertRule) =>
       guarded(rule, "Toggle failed", async () => {
         await setAlertRuleEnabled(rule.id, !rule.enabled);
-        toast.good(`${rule.enabled ? "Disabled" : "Enabled"} ${rule.id}`);
+        toast.warning(temporaryOverrideSavedMessage("alerts.yaml"));
         await reload();
       }),
     remove: (rule: AlertRule) =>
       guarded(rule, "Delete failed", async () => {
         await deleteAlertRule(rule.id);
-        toast.good(`Deleted ${rule.id}`);
+        toast.warning(temporaryOverrideSavedMessage("alerts.yaml"));
         await reload();
       }),
     dryRun: (rule: AlertRule) =>
@@ -89,5 +90,5 @@ export async function readImportFile(file: File): Promise<ImportDoc> {
 
 export async function applyImport(doc: ImportDoc, prune: boolean): Promise<void> {
   await importAlertRules(doc, prune);
-  toast.good(`Imported ${doc.rules.length} rule${doc.rules.length === 1 ? "" : "s"}`);
+  toast.warning(temporaryOverrideSavedMessage("alerts.yaml"));
 }

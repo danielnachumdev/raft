@@ -4,6 +4,12 @@ import { SaveBar } from "../chrome/SaveBar";
 import { EmptyState } from "../chrome/StateViews";
 import { toast } from "../chrome/toast";
 import { useUnsavedGuard } from "../chrome/useUnsavedGuard";
+import {
+  DisableTipsCopyHint,
+  TemporaryOverrideBanner,
+  temporaryOverrideSavedMessage,
+  unsavedTemporaryOverrideMessage,
+} from "../gitops";
 import type {
   FirewallDocument,
   FirewallRecommendation,
@@ -60,7 +66,7 @@ export function FirewallPanel(props: Props) {
     try {
       await props.onSave({ version: props.document.version || 1, rules });
       setSaved(rules);
-      toast.good("Firewall applied");
+      toast.warning(temporaryOverrideSavedMessage("firewall.yaml"));
     } catch (err) {
       toast.bad(err instanceof Error ? err.message : "Failed to save firewall");
     } finally {
@@ -139,6 +145,9 @@ export function FirewallPanel(props: Props) {
     <>
       {props.header(actions)}
 
+      <TemporaryOverrideBanner doc="firewall.yaml" id="firewall-temp-override" />
+      <DisableTipsCopyHint doc="firewall.yaml" id="firewall-disable-tips" />
+
       <FirewallRecommendations
         items={props.recommendations}
         busy={locked}
@@ -189,7 +198,7 @@ export function FirewallPanel(props: Props) {
       <SaveBar
         open={dirty}
         id="firewall-dirty"
-        message="Unsaved firewall changes — not live until you Save & apply."
+        message={unsavedTemporaryOverrideMessage()}
         saveLabel="Save & apply"
         saving={saving}
         disabled={props.busy}

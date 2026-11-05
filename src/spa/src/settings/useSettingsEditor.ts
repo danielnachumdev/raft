@@ -17,7 +17,7 @@ import {
   type SettingsSection,
 } from "./settingsApi";
 import { settingsDirty } from "./settingsLayout";
-import { temporaryOverrideSavedMessage } from "./temporaryOverrideMessages";
+import { temporaryOverrideSavedMessage } from "../gitops";
 
 export type EditorMode = "form" | "yaml";
 
@@ -120,7 +120,7 @@ export function useSettingsEditor() {
       if (!payload) return;
       applyPayload(payload);
       if (mode === "yaml") setYamlBaseline(payload.yaml ?? yamlText);
-      toast.warning(temporaryOverrideSavedMessage());
+      toast.warning(temporaryOverrideSavedMessage("settings.yaml"));
       const warn = payload.notes.find((n) => n.severity === "warn");
       if (warn) toast.warning(warn.message);
     } catch (err) {
