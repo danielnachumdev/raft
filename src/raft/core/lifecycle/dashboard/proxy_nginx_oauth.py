@@ -5,13 +5,16 @@ from pathlib import Path
 from raft.core.core.config.settings.dashboard_config import DashboardConfig
 
 from .oauth_paths import DASHBOARD_AUTH_PROXY_PORT
-from .proxy_nginx import DashboardProxyNginx
+from .proxy_nginx_parts import DashboardNginxParts
 
 IMAGE_UNAUTHORIZED = Path("/opt/dashboard/unauthorized.html")
 
 
 class DashboardOAuthNginx:
     """auth_request → oauth2-proxy; SPA only after allowlist success."""
+
+    def __init__(self) -> None:
+        self._parts = DashboardNginxParts()
 
     def server(
         self,
@@ -22,16 +25,15 @@ class DashboardOAuthNginx:
         unauthorized: Path = IMAGE_UNAUTHORIZED,
     ) -> str:
         auth = self._auth_directives(cfg.auth.identity_header)
-        proxy = DashboardProxyNginx()
         inner = (
             f"{self._auth_subrequest()}"
             f"{self._oauth_locations()}"
             f"{self._unauthorized_page(unauthorized)}"
-            f"{proxy.location_update(app_port, auth=auth)}"
-            f"{proxy._location_slash(app_port, auth=auth)}"
+            f"{self._parts.location_update(app_port, auth=auth)}"
+            f"{self._parts.location_slash(app_port, auth=auth)}"
             f"{self._named_locations()}"
         )
-        return DashboardProxyNginx._server(listen, inner)
+        return self._parts.server(listen, inner)
 
     @staticmethod
     def _auth_directives(header: str) -> str:

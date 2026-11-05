@@ -72,6 +72,16 @@ class TestDashboardOAuth(RaftTestCase):
         with pytest.raises(OperatorError, match="OAUTH2_PROXY_CLIENT_ID"):
             DashboardOAuthOps(home).require_ready(self._oauth_cfg())
 
+    def test_ops_status_public_loads_cfg(self) -> None:
+        home = Path(self.tmp_path)
+        (home / "host" / "settings.yaml").write_text(
+            "dashboard:\n  auth:\n    mode: oauth\n",
+            encoding="utf-8",
+        )
+        snap = DashboardOAuthOps(home).status_public()
+        assert snap["provider"] == "google"
+        assert snap["secretsReady"] is False
+
     @staticmethod
     def _oauth_cfg(
         *, provider: str = "google", issuer: Optional[str] = None

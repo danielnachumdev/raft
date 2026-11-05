@@ -4,7 +4,8 @@ from pathlib import Path
 
 from raft.core.core.config.settings.dashboard_config import DashboardConfig
 
-from .update_proxy_timeout import UPDATE_PROXY_TIMEOUT
+from .proxy_nginx_oauth import DashboardOAuthNginx
+from .proxy_nginx_parts import DashboardNginxParts
 
 # Baked into the dashboard image; share path used when generating outside Docker.
 IMAGE_LOGIN_HTML = Path("/opt/dashboard/login.html")
@@ -13,6 +14,9 @@ DEFAULT_APP_PORT = 18787
 
 class DashboardProxyNginx:
     """Render a full nginx.conf that only proxies to the app when authorized."""
+
+    def __init__(self) -> None:
+        self._parts = DashboardNginxParts()
 
     def render(
         self,
@@ -42,8 +46,6 @@ class DashboardProxyNginx:
         if mode == "external":
             return self._external(cfg, listen=listen, app_port=app_port)
         if mode == "oauth":
-            from .proxy_nginx_oauth import DashboardOAuthNginx
-
             return DashboardOAuthNginx().server(cfg, listen=listen, app_port=app_port)
         return self._open(listen=listen, app_port=app_port)
 
@@ -75,7 +77,7 @@ class DashboardProxyNginx:
             f"{self.location_update(app_port, auth='')}"
             f"{self._location_slash(app_port, auth='')}"
         )
-        return self._server(listen, inner)
+        return self._parts.server(listen, inner)
 
     def _password(self, *, listen: int, app_port: int, login: Path) -> str:
         auth = self._password_auth()
@@ -91,7 +93,7 @@ class DashboardProxyNginx:
             "            return 302 /login;\n"
             "        }\n"
         )
-        return self._server(listen, inner)
+        return self._parts.server(listen, inner)
 
     def _external(self, cfg: DashboardConfig, *, listen: int, app_port: int) -> str:
         auth = self._external_auth(cfg)
@@ -104,38 +106,14 @@ class DashboardProxyNginx:
             f"            return 302 {cfg.auth.sign_in_url};\n"
             "        }\n"
         )
-        return self._server(listen, inner)
-
-    @staticmethod
-    def _server(listen: int, inner: str) -> str:
-        # Relative Location so TLS-terminating edges (gate/CF) keep https/host.
-        return (
-            "    server {\n"
-            f"        listen {listen};\n"
-            "        server_name _;\n"
-            "        server_tokens off;\n"
-            "        absolute_redirect off;\n"
-            "        port_in_redirect off;\n"
-            f"{inner}"
-            "    }\n"
-        )
+        return self._parts.server(listen, inner)
 
     def _location_slash(self, app_port: int, *, auth: str) -> str:
-        return (
-            "        location / {\n"
-            f"{auth}"
-            f"{self._proxy_pass(app_port)}"
-            "        }\n"
-        )
+        return self._parts.location_slash(app_port, auth=auth)
 
     def location_update(self, app_port: int, *, auth: str) -> str:
         """Longer timeouts for Settings → Update (Docker one-shot + install.sh)."""
-        return (
-            "        location = /api/update {\n"
-            f"{auth}"
-            f"{self._proxy_pass(app_port, read_timeout=UPDATE_PROXY_TIMEOUT)}"
-            "        }\n"
-        )
+        return self._parts.location_update(app_port, auth=auth)
 
     @staticmethod
     def _password_auth() -> str:
@@ -192,21 +170,6 @@ class DashboardProxyNginx:
     def _public_api(self, app_port: int, path: str) -> str:
         return (
             f"        location = {path} {{\n"
-            f"{self._proxy_pass(app_port)}"
+            f"{self._parts.proxy_pass(app_port)}"
             "        }\n"
-        )
-
-    @staticmethod
-    def _proxy_pass(app_port: int, *, read_timeout: str = "60s") -> str:
-        return (
-            f"            proxy_pass http://127.0.0.1:{app_port};\n"
-            "            proxy_http_version 1.1;\n"
-            "            proxy_set_header Host $host;\n"
-            "            proxy_set_header X-Real-IP $remote_addr;\n"
-            "            proxy_set_header X-Forwarded-For "
-            "$proxy_add_x_forwarded_for;\n"
-            "            proxy_set_header X-Forwarded-Proto $raft_fwd_proto;\n"
-            "            proxy_set_header Cookie $http_cookie;\n"
-            f"            proxy_read_timeout {read_timeout};\n"
-            f"            proxy_send_timeout {read_timeout};\n"
         )
