@@ -11,8 +11,13 @@ class TestAlertRecommendations(RaftTestCase):
     def _prep(self) -> Path:
         home = Path(self.tmp_path)
         (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
+        (home / "host").mkdir(parents=True, exist_ok=True)
         (home / "host" / "settings.yaml").write_text(
-            "notifications:\n  enabled: true\n  channels: []\n",
+            "alerts:\n  enabled: true\n",
+            encoding="utf-8",
+        )
+        (home / "host" / "notifications.yaml").write_text(
+            "enabled: true\nchannels: []\n",
             encoding="utf-8",
         )
         return home

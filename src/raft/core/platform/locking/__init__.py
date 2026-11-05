@@ -5,8 +5,8 @@ Locks live under ``~/.raft/host/locks/`` (``RAFT_DATA_HOME``):
 * ``app-<name>.lock`` — one mutative deploy/apply for that app at a time
 * ``stack.lock`` — render, nginx reload, cutover, compose up/recreate, gate,
   ``raft purge`` (Docker image/build-cache prune)
-* ``settings.lock`` — any rewrite of ``host/settings.yaml`` (full document, notifications,
-  github OAuth)
+* ``settings.lock`` — rewrites of ``host/settings.yaml`` and ``host/notifications.yaml``
+  (full settings document, notification destinations, github OAuth)
 * ``acl.lock`` — serve API rewrites of ordered firewall before render/reload
 * ``alerts.lock`` — CLI/serve writes to ``host/alerts.yaml``
 * ``dashboard.lock`` — writers of ``host/settings.yaml`` ``dashboard:``

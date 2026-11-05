@@ -10,9 +10,10 @@ class TestRulesServiceEdges(RaftTestCase):
     def _svc(self):
         home = Path(self.tmp_path)
         (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
-        (home / "host" / "settings.yaml").write_text(
-            "notifications:\n  enabled: false\n  channels:\n"
-            "    - id: ops\n      type: webhook\n      settings: {url: https://192.0.2.1/x}\n",
+        (home / "host" / "notifications.yaml").write_text(
+            "enabled: false\nchannels:\n"
+            "  - id: ops\n    type: webhook\n"
+            "    settings: {url: https://192.0.2.1/x}\n",
             encoding="utf-8",
         )
         return AlertRulesService(home)

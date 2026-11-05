@@ -21,7 +21,7 @@ class NotificationsDocument:
 
     @classmethod
     def from_mapping(cls, raw: Any, *, path: str) -> "NotificationsDocument":
-        del path  # parser messages still say settings.yaml; OK for v1 stub
+        del path
         return cls(config=NotificationsSettingsParser().parse(raw))
 
     def to_export(self) -> dict[str, Any]:

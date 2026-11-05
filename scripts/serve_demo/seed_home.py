@@ -79,32 +79,32 @@ acme:
   challenge: http-01
 github:
   sessionTtlSeconds: 3600
-notifications:
-  enabled: true
-  channels:
-    - id: ops-primary
-      enabled: true
-      type: whatsapp
-      settings:
-        apiUrl: https://api.green-api.example
-        idInstance: "1101000001"
-        apiTokenInstance: "replace-me"
-        chatId: 15555550100@c.us
-    - id: ops-backup
-      enabled: false
-      type: whatsapp
-      settings:
-        apiUrl: https://api.green-api.example
-        idInstance: "1101000002"
-        apiTokenInstance: "replace-me"
-        chatId: 15555550101@c.us
 alerts:
   enabled: true
   intervalSeconds: 60
-acl:
-  gate:
-    mode: "off"
-    entries: []
+""",
+)
+
+write(
+    "host/notifications.yaml",
+    """enabled: true
+channels:
+  - id: ops-primary
+    enabled: true
+    type: whatsapp
+    settings:
+      apiUrl: https://api.green-api.example
+      idInstance: "1101000001"
+      apiTokenInstance: "replace-me"
+      chatId: 15555550100@c.us
+  - id: ops-backup
+    enabled: false
+    type: whatsapp
+    settings:
+      apiUrl: https://api.green-api.example
+      idInstance: "1101000002"
+      apiTokenInstance: "replace-me"
+      chatId: 15555550101@c.us
 """,
 )
 

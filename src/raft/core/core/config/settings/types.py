@@ -149,7 +149,7 @@ class GithubServeConfig:
 
 @dataclass(frozen=True)
 class NotificationChannelConfig:
-    """One durable notification channel in ``settings.yaml`` ``notifications:``."""
+    """One durable notification channel in ``host/notifications.yaml``."""
 
     id: str
     type: str

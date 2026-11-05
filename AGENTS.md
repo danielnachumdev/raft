@@ -49,7 +49,7 @@ Overlapping apply/redeploy/render tears tmp names, upstreams, and `generated/`. 
 | `stack.lock` | render, sync, cutover, compose up/recreate, redeploy gate, up/down, purge | No torn `generated/` / mid-cutover upstream reset |
 | `acl.lock` | serve firewall writes (before render/reload) | Firewall persist does not race another firewall writer |
 | `alerts.lock` | CLI/serve writes to `host/alerts.yaml` | Alert rules document writers do not tear each other |
-| `settings.lock` | full settings document, notification channels, github OAuth settings writers | No torn `host/settings.yaml` |
+| `settings.lock` | full settings document, `host/notifications.yaml`, github OAuth settings writers | No torn settings/notifications YAML |
 | `dashboard.lock` | Dashboard settings helpers writing `host/settings.yaml` `dashboard:` | Dashboard settings writers do not tear each other |
 | `fifo-<kind>/` (ticket FCFS) | `FifoLock` — `update` (`SelfUpdate`); short claim for host-job flights | True arrival-order grant (not plain flock); mint tickets under `seq.lock` |
 | `host-job-<kind>.flight.json` | `HostOneshotFlight` (dashboard self-redeploy oneshot) | Coalesce concurrent detached starts to one in-flight `job_id` |

@@ -202,7 +202,7 @@ class TestServeNotificationsApi(RaftTestCase):
         assert response.status_code == 400
         assert "settings must be" in response.json()["detail"]
 
-    def test_persists_to_settings_yaml(self) -> None:
+    def test_persists_to_notifications_yaml(self) -> None:
         client = self._client()
         client.post(
             "/api/notifications/channels",
@@ -212,8 +212,10 @@ class TestServeNotificationsApi(RaftTestCase):
                 "settings": {"token": "disk-secret"},
             },
         )
-        raw = yaml.safe_load((self.tmp_path / "host" / "settings.yaml").read_text())
-        assert raw["notifications"]["channels"][0]["settings"]["token"] == "disk-secret"
+        raw = yaml.safe_load(
+            (self.tmp_path / "host" / "notifications.yaml").read_text()
+        )
+        assert raw["channels"][0]["settings"]["token"] == "disk-secret"
         listed = client.get("/api/notifications/channels").json()["channels"][0]
         assert listed["settings"]["token"] == "***"
         assert "disk-secret" not in str(listed)

@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 from typing import List, Optional, Sequence
 
-from raft.core.core.config.settings import SettingsLoader
+from raft.core.core.gitops.notifications_gitops import NotificationsGitops
 
 from .catalogs import NotificationCatalogs
 from .channel import ChannelDescriptor
@@ -60,7 +60,7 @@ class Notifier:
         channel_ids: Optional[Sequence[str]] = None,
     ) -> List[ChannelDelivery]:
         """Like notify, but returns per-channel results and may raise."""
-        config = SettingsLoader().load(self._home).notifications
+        config = NotificationsGitops(self._home).load().config
         if not config.enabled:
             return []
         channels = self._deliverable(

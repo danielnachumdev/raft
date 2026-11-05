@@ -17,7 +17,7 @@ from .notifications_output import NotificationsCliOutput
 
 
 class NotificationsCLI:
-    """Manage ``notifications:`` channels in ``~/.raft/host/settings.yaml``.
+    """Manage channels in ``~/.raft/host/notifications.yaml``.
 
     Same redaction and ``settings.lock`` as Settings → Notifications.
     Test-send uses the shared ``NotificationsTester`` (serve API too).
@@ -102,7 +102,7 @@ class NotificationsCLI:
         GitopsCliWarn.after_write(GitopsDocKind.NOTIFICATIONS)
 
     def delete(self, channel_id: str) -> None:
-        """Delete a channel from ``settings.yaml``."""
+        """Delete a channel from ``host/notifications.yaml``."""
         try:
             self._writer.delete(channel_id)
         except KeyError as exc:

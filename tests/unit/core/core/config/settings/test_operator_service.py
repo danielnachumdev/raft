@@ -33,6 +33,7 @@ class TestOperatorSettingsService(RaftTestCase):
             (self.tmp_path / "host" / "settings.yaml").read_text(encoding="utf-8")
         )
         assert disk["github"]["clientSecret"] == "super-secret"
+        assert "notifications" not in disk
 
     def test_replace_preserves_masked_secret(self) -> None:
         svc = OperatorSettingsService(self.tmp_path)
@@ -73,9 +74,22 @@ class TestOperatorSettingsService(RaftTestCase):
             "https://hooks.example.invalid/raft-v2"
         )
         svc.replace({"document": again})
+        self._assert_notification_secret_kept()
+
+    def _assert_notification_secret_kept(self) -> None:
         ch = SettingsLoader().load(self.tmp_path).notifications.channels[0]
         assert ch.settings["token"] == "live-token"
         assert "raft-v2" in ch.settings["url"]
+        notify = yaml.safe_load(
+            (self.tmp_path / "host" / "notifications.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        assert notify["channels"][0]["settings"]["token"] == "live-token"
+        settings = yaml.safe_load(
+            (self.tmp_path / "host" / "settings.yaml").read_text(encoding="utf-8")
+        )
+        assert "notifications" not in settings
 
     @staticmethod
     def _with_github_secret(doc: dict, secret: str) -> dict:

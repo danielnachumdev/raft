@@ -9,9 +9,11 @@ from tests.unit.core.observe.alerts.sample_rule import RULE
 class TestRulesValidateWarn(RaftTestCase):
     def test_channel_warning_on_document(self) -> None:
         home = Path(self.tmp_path)
-        (home / "host" / "settings.yaml").write_text(
-            "notifications:\n  enabled: false\n  channels:\n"
-            "    - id: ops\n      type: webhook\n      settings: {url: https://192.0.2.1/x}\n",
+        (home / "host").mkdir(parents=True, exist_ok=True)
+        (home / "host" / "notifications.yaml").write_text(
+            "enabled: false\nchannels:\n"
+            "  - id: ops\n    type: webhook\n"
+            "    settings: {url: https://192.0.2.1/x}\n",
             encoding="utf-8",
         )
         svc = AlertRulesService(home)

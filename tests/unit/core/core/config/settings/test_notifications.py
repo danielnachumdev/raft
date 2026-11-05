@@ -1,4 +1,4 @@
-"""Parse ``notifications:`` from settings.yaml."""
+"""Parse ``host/notifications.yaml`` channel documents."""
 
 from __future__ import annotations
 
@@ -50,15 +50,16 @@ class TestNotificationsSettingsParser(RaftTestCase):
         )
         assert cfg.channels[0].type == "future-backend"
 
-    def test_load_config_reads_file(self) -> None:
-        path = Path(self.tmp_path) / "host" / "settings.yaml"
-        path.write_text(
-            "notifications:\n"
-            "  channels:\n"
-            "    - id: ops-primary\n"
-            "      type: webhook\n"
-            "      settings:\n"
-            "        url: https://hooks.example.invalid/raft\n",
+    def test_load_config_reads_flat_notifications_file(self) -> None:
+        host = Path(self.tmp_path) / "host"
+        host.mkdir(parents=True, exist_ok=True)
+        (host / "settings.yaml").write_text("edge: {http: 80}\n", encoding="utf-8")
+        (host / "notifications.yaml").write_text(
+            "channels:\n"
+            "  - id: ops-primary\n"
+            "    type: webhook\n"
+            "    settings:\n"
+            "      url: https://hooks.example.invalid/raft\n",
             encoding="utf-8",
         )
         loaded = load_config(self.tmp_path)
@@ -66,6 +67,17 @@ class TestNotificationsSettingsParser(RaftTestCase):
 
     def test_missing_settings_file_defaults(self) -> None:
         assert load_config(self.tmp_path).notifications.channels == ()
+
+    def test_invalid_notifications_yaml_soft_fails_on_settings_load(self) -> None:
+        host = Path(self.tmp_path) / "host"
+        host.mkdir(parents=True, exist_ok=True)
+        (host / "settings.yaml").write_text("edge: {http: 80}\n", encoding="utf-8")
+        (host / "notifications.yaml").write_text(
+            "channels: not-a-list\n", encoding="utf-8"
+        )
+        loaded = load_config(self.tmp_path)
+        assert loaded.edge.http == 80
+        assert loaded.notifications.channels == ()
 
     @pytest.mark.parametrize(
         "raw,needle",
