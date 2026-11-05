@@ -13,7 +13,7 @@ class TestSchemaUpgrade(RaftTestCase):
     def test_upgrade_head_sets_revision(self, isolated_raft_data_home: Path) -> None:
         path = SchemaUpgrade(isolated_raft_data_home).upgrade_head()
         assert path.is_file()
-        assert SchemaUpgrade(isolated_raft_data_home).current_revision() == "20261020_0001"
+        assert SchemaUpgrade(isolated_raft_data_home).current_revision() == "20261105_0002"
 
     def test_downgrade_and_reupgrade(self, isolated_raft_data_home: Path) -> None:
         schema = SchemaUpgradeCls(isolated_raft_data_home)
@@ -22,11 +22,11 @@ class TestSchemaUpgrade(RaftTestCase):
         command.downgrade(cfg, "base")
         assert schema.current_revision() is None
         schema.upgrade_head()
-        assert schema.current_revision() == "20261020_0001"
+        assert schema.current_revision() == "20261105_0002"
 
     def test_service_upgrade_and_status(self, isolated_raft_data_home: Path) -> None:
         service = DurableDbService(isolated_raft_data_home)
         assert service.home == isolated_raft_data_home
         service.upgrade_schema()
-        assert service.schema_revision() == "20261020_0001"
+        assert service.schema_revision() == "20261105_0002"
         assert service.db_path().name == "raft.sqlite"

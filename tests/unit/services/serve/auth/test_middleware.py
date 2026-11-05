@@ -7,21 +7,19 @@ from raft.core.core.config.settings.dashboard_config import (
     DashboardAuthConfig,
     DashboardConfig,
 )
-from raft.core.lifecycle.dashboard.password import DashboardPassword
+from raft.core.core.db.dashboard_sessions import DashboardSessionStore
 from raft.services.serve.auth.middleware import DashboardAuthMiddleware
-from raft.services.serve.auth.password_session import PasswordSessionAuth
 from tests.unit.base import RaftTestCase
 
 
 class TestDashboardAuthMiddleware(RaftTestCase):
     def test_password_mode_401(self) -> None:
-        hashed = DashboardPassword().hash("correct-horse")
-        sessions = PasswordSessionAuth.from_hashes(self.tmp_path, password_hash=hashed)
-        cfg = DashboardConfig(
-            auth=DashboardAuthConfig(mode="password", password_hash=hashed)
-        )
+        store = DashboardSessionStore(self.tmp_path)
+        cfg = DashboardConfig(auth=DashboardAuthConfig(mode="password"))
         app = FastAPI()
-        app.add_middleware(DashboardAuthMiddleware, config=cfg, sessions=sessions)
+        app.add_middleware(
+            DashboardAuthMiddleware, config=cfg, home=self.tmp_path, store=store
+        )
 
         @app.get("/api/status")
         def status():
@@ -38,13 +36,12 @@ class TestDashboardAuthMiddleware(RaftTestCase):
         assert client.get("/api/status").status_code == 401
 
     def _password_client_with_shell(self) -> TestClient:
-        hashed = DashboardPassword().hash("correct-horse")
-        sessions = PasswordSessionAuth.from_hashes(self.tmp_path, password_hash=hashed)
-        cfg = DashboardConfig(
-            auth=DashboardAuthConfig(mode="password", password_hash=hashed)
-        )
+        store = DashboardSessionStore(self.tmp_path)
+        cfg = DashboardConfig(auth=DashboardAuthConfig(mode="password"))
         app = FastAPI()
-        app.add_middleware(DashboardAuthMiddleware, config=cfg, sessions=sessions)
+        app.add_middleware(
+            DashboardAuthMiddleware, config=cfg, home=self.tmp_path, store=store
+        )
 
         @app.get("/")
         def index():
@@ -72,9 +69,13 @@ class TestDashboardAuthMiddleware(RaftTestCase):
         )
 
     def _assert_identity_mode(self, auth: DashboardAuthConfig) -> None:
+        store = DashboardSessionStore(self.tmp_path)
         app = FastAPI()
         app.add_middleware(
-            DashboardAuthMiddleware, config=DashboardConfig(auth=auth)
+            DashboardAuthMiddleware,
+            config=DashboardConfig(auth=auth),
+            home=self.tmp_path,
+            store=store,
         )
 
         @app.get("/api/status")
@@ -83,5 +84,6 @@ class TestDashboardAuthMiddleware(RaftTestCase):
 
         client = TestClient(app)
         assert client.get("/api/status").status_code == 401
-        ok = client.get("/api/status", headers={"X-Raft-Identity": "ops"})
+        ok = client.get("/api/status", headers={"X-Raft-Identity": "ops@example.com"})
         assert ok.status_code == 200
+        assert client.cookies.get("raft_dash_session")

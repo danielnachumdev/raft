@@ -43,6 +43,9 @@ class TestRbacEnforcerStory(RaftTestCase):
         assert not enforcer.check("other@example.com", "firewall:write").allowed
         with pytest.raises(PermissionError, match="RBAC denied"):
             enforcer.require("other@example.com", "firewall:write")
+        assert enforcer.admitted("ops@example.com")
+        assert not enforcer.admitted("other@example.com")
+        assert enforcer.document() is not None
 
     def test_permissions_empty_without_binding_or_store(self) -> None:
         home = Path(self.tmp_path)

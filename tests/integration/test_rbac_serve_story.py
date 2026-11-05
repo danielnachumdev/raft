@@ -46,7 +46,9 @@ class TestRbacServeGateStory:
         assert body["document"]["bindings"][0]["subject"] == "ops@example.com"
         assert "temporary_override" in body["gitops"]
         assert "host/rbac.yaml" in body["gitops"]["temporary_override"]
-        assert client.get("/api/firewall", headers=_STRANGER).status_code == 403
+        # Fresh client: session cookie from ops must not leak to stranger checks.
+        stranger = self._client(isolated_raft_env)
+        assert stranger.get("/api/firewall", headers=_STRANGER).status_code == 403
         assert client.get("/api/firewall", headers=_IDENTITY).status_code == 200
 
     def _client(self, home: Path) -> TestClient:
