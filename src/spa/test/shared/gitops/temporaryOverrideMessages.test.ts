@@ -81,6 +81,21 @@ describe("temporary-override wiring", () => {
     assert.match(notifications, /notifications\.yaml/);
   });
 
+  it("rbac keeps the page-level banner and override save copy", () => {
+    const page = readFileSync(
+      join(root, "src/features/rbac/RbacSettingsPage.tsx"),
+      "utf8",
+    );
+    const editor = readFileSync(
+      join(root, "src/features/rbac/useRbacEditor.ts"),
+      "utf8",
+    );
+    assert.match(page, /TemporaryOverrideBanner/);
+    assert.match(page, /doc="rbac\.yaml"/);
+    assert.match(page, /unsavedTemporaryOverrideMessage/);
+    assert.match(editor, /temporaryOverrideSavedMessage\("rbac\.yaml"\)/);
+  });
+
   it("inspection firewall apply/remove warn temporary override", () => {
     const src = readFileSync(
       join(root, "src/features/service/httpRequests/InspectionFirewallActions.tsx"),
