@@ -62,7 +62,14 @@ export function App() {
               </RequirePermission>
             }
           />
-          <Route path="/settings/rbac" element={<RbacSettingsPage />} />
+          <Route
+            path="/settings/rbac"
+            element={
+              <RequirePermission permission="rbac:read">
+                <RbacSettingsPage />
+              </RequirePermission>
+            }
+          />
           <Route path="/service/:service" element={<ServicePage />} />
           <Route path="/forbidden" element={<ForbiddenPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

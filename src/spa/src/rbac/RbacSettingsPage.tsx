@@ -1,19 +1,17 @@
 import { useEffect, useState } from "react";
-import { TemporaryOverrideBanner } from "../gitops/TemporaryOverrideBanner";
-import { temporaryOverrideSavedMessage } from "../gitops/temporaryOverrideMessages";
-import { toast } from "../chrome/toast/api";
+import { ErrorState, LoadingState } from "../chrome/StateViews";
+import { toast } from "../chrome/toast";
+import {
+  TemporaryOverrideBanner,
+  temporaryOverrideSavedMessage,
+} from "../gitops";
+import { PageHeader } from "../shell/PageHeader";
 import { RequirePermission } from "./RequirePermission";
 import { getRbac, putRbac, type RbacDocument } from "./rbacApi";
+import "./RbacSettingsPage.css";
 
+/** Temporary-override editor for ``host/rbac.yaml`` roles and bindings. */
 export function RbacSettingsPage() {
-  return (
-    <RequirePermission permission="rbac:read">
-      <RbacEditor />
-    </RequirePermission>
-  );
-}
-
-function RbacEditor() {
   const [doc, setDoc] = useState<RbacDocument | null>(null);
   const [yaml, setYaml] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -44,36 +42,53 @@ function RbacEditor() {
     }
   }
 
-  if (!doc && !error) return <p className="muted">Loading RBAC…</p>;
+  const loading = !doc && !error;
 
   return (
-    <div className="page-block">
-      <h1>RBAC</h1>
-      <TemporaryOverrideBanner doc="rbac.yaml" />
-      <p className="muted">
-        Roles use resource:read / resource:write (+ *:read / *:write). Missing
-        host/rbac.yaml bootstraps full admin. Edit durable copy in Git.
-      </p>
-      {error ? <p className="error">{error}</p> : null}
-      <textarea
-        className="code-block"
-        rows={24}
-        value={yaml}
-        onChange={(e) => setYaml(e.target.value)}
-        spellCheck={false}
+    <div className="rbac-page">
+      <PageHeader
+        title="RBAC"
+        subtitle="Roles use resource:read / resource:write (+ *:read / *:write). Missing host/rbac.yaml bootstraps full admin. Edit durable copy in Git."
+        actions={
+          loading ? undefined : (
+            <RequirePermission permission="rbac:write" fallback={null}>
+              <button
+                type="button"
+                className={busy ? "btn btn-primary is-loading" : "btn btn-primary"}
+                id="rbac-save"
+                disabled={busy}
+                aria-busy={busy}
+                onClick={() => void save()}
+              >
+                Save temporary override
+              </button>
+            </RequirePermission>
+          )
+        }
       />
-      <RequirePermission permission="rbac:write" fallback={null}>
-        <p>
-          <button
-            type="button"
-            className="btn"
-            disabled={busy}
-            onClick={() => void save()}
-          >
-            Save temporary override
-          </button>
-        </p>
-      </RequirePermission>
+
+      {loading ? <LoadingState label="Loading RBAC…" id="rbac-loading" /> : null}
+
+      {error ? <ErrorState message={error} id="rbac-error" /> : null}
+
+      {loading ? null : (
+        <>
+          <TemporaryOverrideBanner doc="rbac.yaml" id="rbac-temp-override" />
+          <section className="panel" id="rbac-document">
+            <label className="field rbac-field" htmlFor="rbac-editor">
+              JSON
+              <textarea
+                id="rbac-editor"
+                className="rbac-editor"
+                rows={24}
+                value={yaml}
+                onChange={(e) => setYaml(e.target.value)}
+                spellCheck={false}
+              />
+            </label>
+          </section>
+        </>
+      )}
     </div>
   );
 }
