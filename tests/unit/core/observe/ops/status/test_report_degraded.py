@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from io import StringIO
 from unittest.mock import MagicMock
 
@@ -30,6 +31,11 @@ class TestStatusReportDegraded(RaftTestCase):
         assert "Name: degraded-host" in text
         assert "load: -" in text and " / -" in text
         assert "1.0KiB / 2.0KiB" in text
+
+    def test_report_host_fqdn(self) -> None:
+        host = replace(status_fx.empty_host_status(), fqdn="demo-host.example.com")
+        text = self._render(status_fx.snapshot(host=host))
+        assert "FQDN: demo-host.example.com" in text
 
     def _degraded_snapshot(self, host):
         return status_fx.snapshot(
