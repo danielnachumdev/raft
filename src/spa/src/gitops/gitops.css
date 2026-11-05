@@ -1,36 +1,26 @@
-.gitops-temp-override {
-  margin: 0 0 var(--space-4);
-}
-
-.gitops-temp-override p {
+.gitops-temp-override p,
+.gitops-disable-tips p {
   margin: 0;
   font-size: var(--text-md);
   line-height: 1.45;
   max-width: 52rem;
 }
 
+.gitops-temp-override p + p {
+  margin-top: var(--space-2);
+}
+
 .gitops-temp-override-guidance {
-  margin-top: 0.45rem !important;
   color: var(--muted);
 }
 
-.gitops-disable-tips {
-  margin: 0 0 var(--space-4);
-}
-
-.gitops-disable-tips p {
-  margin: 0 0 var(--space-2);
-  font-size: var(--text-md);
-  line-height: 1.45;
-  max-width: 52rem;
-}
-
 .gitops-disable-tips-snippet {
-  margin: 0 0 var(--space-2);
+  margin: var(--space-2) 0;
   padding: var(--space-2) var(--space-3);
   overflow-x: auto;
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  background: var(--surface-2, var(--panel));
-  border-radius: var(--radius-sm, 4px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--muted-bg);
 }
