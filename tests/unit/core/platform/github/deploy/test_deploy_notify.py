@@ -27,14 +27,18 @@ class TestDeployNotify(RaftTestCase):
         )
         repo = provider.list_repos("t")[0]
         job = runner.start(github_fx.sample_account(), repo, "main")
-        self._wait(job)
+        self._wait(job, notifier)
         event = notifier.notify.call_args[0][0]
         assert event.kind == KIND_SERVE_DEPLOY_FAILED
         assert event.context["full_name"] == "demo/no-manifest"
 
     @staticmethod
-    def _wait(job) -> None:
+    def _wait(job, notifier: MagicMock) -> None:
+        # status flips to failed before notify(); wait for both.
         for _ in range(100):
-            if job.status in {"succeeded", "failed"}:
+            if job.status in {"succeeded", "failed"} and notifier.notify.called:
                 return
             time.sleep(0.05)
+        raise AssertionError(
+            f"timed out: status={job.status!r} notify={notifier.notify.called}"
+        )
