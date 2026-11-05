@@ -34,7 +34,7 @@ class TestServeRbacApi(RaftTestCase):
 
     def test_put_operator_error(self) -> None:
         writer = MagicMock()
-        writer.put.side_effect = OperatorError("bad rbac.\nFix: retry", has_fix=False)
+        writer.replace.side_effect = OperatorError("bad rbac.\nFix: retry", has_fix=False)
         client = self._client(writer=writer)
         resp = client.put("/api/rbac", json={"version": 1})
         assert resp.status_code == 400

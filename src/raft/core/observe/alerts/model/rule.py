@@ -6,6 +6,7 @@ from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 from raft.core.observe.notify.severity import NotificationSeverity
 
 from .condition import ConditionNode
+from .duration import AlertDuration
 
 
 @dataclass(frozen=True)
@@ -26,8 +27,6 @@ class AlertRule:
     condition: ConditionNode
 
     def to_export(self) -> Dict[str, Any]:
-        from .duration import AlertDuration
-
         return {
             "id": self.id,
             "name": self.name,

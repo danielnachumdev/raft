@@ -2,14 +2,12 @@
 
 from pathlib import Path
 
-from raft.core.core.gitops import (
-    FirewallGitops,
-    NotificationsDocument,
-    NotificationsGitops,
-    RbacDocument,
-    RbacGitops,
-)
+from raft.core.core.gitops.firewall_gitops import FirewallGitops
+from raft.core.core.gitops.notifications_document import NotificationsDocument
+from raft.core.core.gitops.notifications_gitops import NotificationsGitops
+from raft.core.core.gitops.rbac_gitops import RbacGitops
 from raft.core.core.gitops.alerts_gitops import AlertsGitops
+from raft.core.core.rbac.document import RbacDocument
 from raft.core.core.models.firewall import FirewallDocument
 from raft.core.observe.alerts.catalogs import AlertCatalogs
 from raft.core.observe.alerts.model.document import AlertRulesDocument
@@ -71,4 +69,6 @@ class TestGitopsDocuments(RaftTestCase):
         assert FirewallGitops(home).load().rules == ()
         assert AlertsGitops(home).load().rules == ()
         assert NotificationsGitops(home).load().config.channels == ()
-        assert RbacGitops(home).load().roles == ()
+        rbac = RbacGitops(home)
+        assert rbac.load().roles == ()
+        assert rbac.path() == home / "host" / "rbac.yaml"

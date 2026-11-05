@@ -17,6 +17,7 @@ from raft.core.platform.locking import DashboardLock
 
 from .oauth_allowlist import DashboardOAuthAllowlist
 from .oauth_env import DashboardOAuthEnv
+from .oauth_ready import DashboardOAuthReady
 from .settings_write import DashboardSettingsWriter
 
 
@@ -27,6 +28,7 @@ class DashboardOAuthOps:
         self._home = data_home
         self._env = DashboardOAuthEnv(data_home)
         self._allow = DashboardOAuthAllowlist(data_home)
+        self._ready = DashboardOAuthReady(data_home)
         self._writer = DashboardSettingsWriter(data_home)
 
     def init(
@@ -70,34 +72,14 @@ class DashboardOAuthOps:
 
     def status_public(self, cfg: Optional[DashboardConfig] = None) -> Dict[str, Any]:
         cfg = cfg or self._writer.load()
-        rel = cfg.auth.oauth.allowlist_file
-        return {
-            "provider": cfg.auth.oauth.provider,
-            "issuerUrl": cfg.auth.oauth.issuer_url,
-            "redirectPath": cfg.auth.oauth.redirect_path,
-            "hasEnvFile": self._env.path().is_file(),
-            "hasAllowlist": bool(self._allow.read(rel)),
-            "secretsReady": self.secrets_ready(cfg),
-        }
+        return self._ready.status_public(cfg)
 
     def secrets_ready(self, cfg: Optional[DashboardConfig] = None) -> bool:
         cfg = cfg or self._writer.load()
-        return self._env.secrets_present() and self._allow.exists(
-            cfg.auth.oauth.allowlist_file
-        )
+        return self._ready.secrets_ready(cfg)
 
     def require_ready(self, cfg: DashboardConfig) -> None:
-        if self.secrets_ready(cfg):
-            return
-        raise OperatorError(
-            "dashboard oauth requires host/secrets/dashboard/oauth.env and allowlist.\n"
-            "Fix: write oauth.env with OAUTH2_PROXY_CLIENT_ID, "
-            "OAUTH2_PROXY_CLIENT_SECRET, OAUTH2_PROXY_COOKIE_SECRET, "
-            "OAUTH2_PROXY_REDIRECT_URL; add identities to the allowlist "
-            "file; set auth.mode: oauth in Settings; then raft render "
-            "and redeploy dashboard",
-            has_fix=False,
-        )
+        self._ready.require_ready(cfg)
 
     def _with_oauth(
         self,

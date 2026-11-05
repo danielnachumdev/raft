@@ -14,12 +14,11 @@ from raft.core.observe.alerts import (
     AlertRulesService,
     AlertStatusView,
 )
-from raft.core.observe.alerts.catalogs import AlertCatalogs
-from raft.core.observe.alerts.model.document import AlertRulesDocument
-from raft.core.observe.alerts.service.rules_service import RuleConflict
+from raft.core.observe.alerts.service import RuleConflict
 from raft.core.observe.alerts.service.tester import AlertTester
 from raft.core.observe.notify.delivery_status import DeliveryStatus
 
+from .alerts_io import AlertsCliIo
 from .alerts_output import AlertsCliOutput
 from .gitops_warn import GitopsCliWarn
 
@@ -39,6 +38,7 @@ class AlertsCLI:
         self._stack = stack
         self._out = AlertsCliOutput()
         self._service = AlertRulesService(stack.root)
+        self._io = AlertsCliIo(stack, service=self._service)
         self._engine = AlertEngine(stack.root)
         self._recommendations = AlertRecommendations(
             stack.root, rules=self._service
@@ -85,7 +85,7 @@ class AlertsCLI:
 
     def validate(self, file: Optional[str] = None) -> None:
         """Validate rules.yaml or an external file."""
-        raw = self._load_raw(file)
+        raw = self._io.load_raw(file)
         report = self._service.validate_document(raw)
         public = report.to_public()
         rules = raw.get("rules") if isinstance(raw, dict) else []
@@ -102,7 +102,7 @@ class AlertsCLI:
         json: bool = False,
     ) -> None:
         """Evaluate now without writing runtime or notifying."""
-        rules = self._dry_run_rules(rule_id=rule_id, file=file, rule=rule)
+        rules = self._io.dry_run_rules(rule_id=rule_id, file=file, rule=rule)
         reports = [self._engine.dry_run(r).to_public() for r in rules]
         if json:
             self._out.say_json(reports if len(reports) > 1 else reports[0])
@@ -167,7 +167,7 @@ class AlertsCLI:
 
     def apply(self, file: str, prune: bool = False) -> None:
         """Upsert rules from a YAML file."""
-        raw = self._read_file(file)
+        raw = self._io.read_file(file)
         summary = self._service.apply_document(raw, prune=prune)
         self._out.say_json(summary.to_public())
         GitopsCliWarn.after_write(GitopsDocKind.ALERTS)
@@ -223,55 +223,6 @@ class AlertsCLI:
         verb = "Enabled" if enabled else "Disabled"
         self._out.say(f"{verb} {rule_id}.")
         GitopsCliWarn.after_write(GitopsDocKind.ALERTS)
-
-    def _dry_run_rules(self, *, rule_id, file, rule):
-        if file:
-            return self._dry_run_from_file(file, rule)
-        return self._dry_run_by_id(rule_id)
-
-    def _dry_run_from_file(self, file: str, rule: Optional[str]):
-        raw = self._read_file(file)
-        doc = AlertRulesDocument.from_mapping(
-            raw, registries=AlertCatalogs.default()
-        )
-        if not rule:
-            return list(doc.rules)
-        found = doc.get(rule)
-        if found is None:
-            raise OperatorError(
-                f"rule {rule!r} not in file.\nFix: check the file ids"
-            )
-        return [found]
-
-    def _dry_run_by_id(self, rule_id: Optional[str]):
-        if not rule_id:
-            raise OperatorError(
-                "rule id or --file is required.\nFix: raft alerts dry-run <id>"
-            )
-        try:
-            return [self._service.get(rule_id)]
-        except KeyError as exc:
-            raise OperatorError(
-                f"unknown alert rule {rule_id!r}.\nFix: raft alerts list"
-            ) from exc
-
-    def _load_raw(self, file: Optional[str]) -> Any:
-        if file:
-            return self._read_file(file)
-        path = self._stack.root / "host" / "alerts.yaml"
-        if not path.is_file():
-            return {"version": 1, "rules": []}
-        return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-
-    @staticmethod
-    def _read_file(file: str) -> Any:
-        path = Path(file)
-        try:
-            return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-        except (OSError, yaml.YAMLError) as exc:
-            raise OperatorError(
-                f"cannot read {file}: {exc}.\nFix: provide a valid YAML file"
-            ) from exc
 
     @staticmethod
     def _summarize(condition: Any) -> str:

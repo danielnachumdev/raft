@@ -13,6 +13,8 @@ from raft.core.core.config.settings.strategies.dashboard import DashboardSetting
 from raft.core.core.config.settings.types import EdgeConfig
 from raft.core.core.errors.cta import OperatorError
 from raft.core.lifecycle.dashboard.edge_render import DashboardEdgeRender
+from raft.core.core.config.paths import RaftHome
+from raft.core.lifecycle.dashboard.settings_serde import DashboardSettingsSerde
 from raft.core.lifecycle.dashboard.settings_write import DashboardSettingsWriter
 from raft.core.lifecycle.deploy.orchestrator import Orchestrator
 from tests.unit.base import RaftTestCase, StackMakers
@@ -97,24 +99,26 @@ class TestDashboardCoverageGaps(RaftTestCase):
     def test_writer_missing_settings_file(self) -> None:
         home = Path(self.tmp_path) / "empty-home"
         home.mkdir()
-        assert DashboardSettingsWriter(home)._load_root() == {}
+        path = RaftHome().settings_path(home)
+        assert DashboardSettingsSerde(path).load_root() == {}
 
     def test_writer_invalid_yaml(self) -> None:
         home = Path(self.tmp_path)
         path = home / "host" / "settings.yaml"
         path.write_text(":\n  - !!", encoding="utf-8")
         with pytest.raises(OperatorError, match="cannot update"):
-            DashboardSettingsWriter(home)._load_root()
+            DashboardSettingsSerde(path).load_root()
 
     def test_writer_non_mapping_yaml(self) -> None:
         home = Path(self.tmp_path)
-        (home / "host" / "settings.yaml").write_text("- list\n", encoding="utf-8")
+        path = home / "host" / "settings.yaml"
+        path.write_text("- list\n", encoding="utf-8")
         with pytest.raises(OperatorError, match="YAML mapping"):
-            DashboardSettingsWriter(home)._load_root()
+            DashboardSettingsSerde(path).load_root()
 
     def test_auth_raw_empty_identity(self) -> None:
         auth = DashboardAuthConfig(mode="none", identity_header="")
-        raw = DashboardSettingsWriter._auth_raw(auth)
+        raw = DashboardSettingsSerde.auth_raw(auth)
         assert "identityHeader" not in raw
 
     def test_auth_raw_external_urls(self) -> None:
@@ -123,7 +127,7 @@ class TestDashboardCoverageGaps(RaftTestCase):
             verify_url="http://auth.demo.example/verify",
             sign_in_url="https://auth.demo.example/sign-in",
         )
-        raw = DashboardSettingsWriter._auth_raw(auth)
+        raw = DashboardSettingsSerde.auth_raw(auth)
         assert raw["verifyUrl"] == "http://auth.demo.example/verify"
         assert raw["signInUrl"] == "https://auth.demo.example/sign-in"
 

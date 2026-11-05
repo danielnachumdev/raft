@@ -14,7 +14,7 @@ from raft.core.observe.alerts import (
 )
 from raft.core.observe.alerts.catalog import AlertCatalog
 from raft.core.observe.alerts.catalogs import AlertCatalogs
-from raft.core.observe.alerts.service.rules_service import RuleConflict
+from raft.core.observe.alerts.service import RuleConflict
 from raft.core.observe.alerts.service.tester import AlertTester
 from raft.core.observe.notify.delivery_status import DeliveryStatus
 

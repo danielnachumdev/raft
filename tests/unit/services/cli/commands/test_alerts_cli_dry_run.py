@@ -26,5 +26,5 @@ class TestAlertsCliDryRun(RaftTestCase):
         path = Path(self.tmp_path) / "rules.yaml"
         path.write_text(yaml.safe_dump({"version": 1, "rules": [RULE]}), encoding="utf-8")
         with pytest.raises(OperatorError):
-            cli._dry_run_rules(rule_id=None, file=str(path), rule="missing")
-        assert len(cli._dry_run_rules(rule_id=None, file=str(path), rule=None)) == 1
+            cli._io.dry_run_rules(rule_id=None, file=str(path), rule="missing")
+        assert len(cli._io.dry_run_rules(rule_id=None, file=str(path), rule=None)) == 1

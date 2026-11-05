@@ -1,6 +1,8 @@
 """Shared alert rules service for CLI and serve."""
 
-from .rules_service import AlertRulesService, ApplySummary, RuleConflict
+from .apply_summary import ApplySummary
+from .rule_conflict import RuleConflict
+from .rules_service import AlertRulesService
 from .status_view import AlertStatusView
 from .tester import AlertTester
 

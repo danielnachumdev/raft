@@ -4,7 +4,8 @@ from .dispatch import AlertDispatch
 from .engine import AlertEngine
 from .event_factory import AlertEventFactory
 from .report import DryRunReport, EvaluationReport
-from .state_machine import AlertStateMachine, Transition
+from .state_machine import AlertStateMachine
+from .transition import Transition
 
 __all__ = [
     "AlertDispatch",

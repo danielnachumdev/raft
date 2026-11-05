@@ -4,6 +4,7 @@ from typing import Optional
 
 from fastapi import FastAPI
 
+from raft.core.core.config.settings import SettingsLoader
 from raft.core.core.config.settings.dashboard_config import DashboardConfig
 from raft.core.core.models.stack import Stack
 
@@ -56,8 +57,6 @@ class ServeAuthWire:
     def _resolve_config(self) -> DashboardConfig:
         if self._cfg is not None:
             return self._cfg
-        from raft.core.core.config.settings import SettingsLoader
-
         return SettingsLoader().load(self._stack.root).dashboard
 
     def _wire_password(self, app: FastAPI, cfg: DashboardConfig) -> bool:

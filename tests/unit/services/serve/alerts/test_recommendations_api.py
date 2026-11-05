@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.stack import Stack
-from raft.core.observe.alerts.service.rules_service import RuleConflict
+from raft.core.observe.alerts.service import RuleConflict
 from raft.services.serve.alerts import ServeAlertsApi
 from tests.unit.base import RaftTestCase
 

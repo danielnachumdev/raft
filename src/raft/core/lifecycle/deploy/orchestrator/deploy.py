@@ -7,13 +7,13 @@ from raft.core.core.errors.cta import OperatorError
 from raft.core.core.errors.domain import DomainErrors
 from raft.core.core.models.deployment_spec import DEFAULT_DEPLOYMENT_METHOD
 from raft.core.core.models.state.graph_event_store import GraphEventStore
-from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.core.core.ui import OperatorSay
 from raft.core.observe.ops.certs import CertProbe
 from raft.core.platform.locking import AppAndStackLocks
 from ..dual_run import DualRunCutover
 from ..methods.catalogs import DeploymentMethodCatalogs
 from ..methods.method import DeploymentContext, DeploymentMethod
+from .scaled_sync_hold import ScaledSyncHold
 from .stack_up import ColdStackUp
 
 logger = logging.getLogger(__name__)
@@ -125,25 +125,17 @@ class OrchestratorDeploy:
         # first made render write Compose DNS and router nginx -t fail before start
         # (nachum-mealie CD host-not-found). Also covers a prior failed wake that
         # left awake + steady DNS with no container.
-        self._hold_scaled_for_sync(app)
+        hold = ScaledSyncHold(self)
+        hold.hold_for_sync(app)
         logger.info("edge up; starting new app service %s", app.compose_id)
         self.sync([app.name], ref_override=ref_override, force=force_sync)
-        self._clear_scaled_before_start(app)
+        hold.clear_before_start(app)
         self.nginx.point_absent(app, reload=False)
         self._start_compose_generation(app, ref_override=ref_override)
         self.nginx.point_steady(app, reload=False)
         self.docker.nginx_test_and_reload()
         self._wait_app_ready(app)
         self.finish_app_deploy(app, done=done)
-
-    def _hold_scaled_for_sync(self, app) -> None:
-        """Park upstreams and keep scaledToZero so sync/render cannot nginx -t steady DNS."""
-        store = ScalingStore(self.stack.root)
-        self.nginx.point_absent(app, reload=False)
-        if store.is_scaled_to_zero(app.name):
-            return
-        store.mark_scaled_to_zero(app.name)
-        logger.info("holding scaledToZero for %s through sync/render", app.name)
 
     def _start_compose_generation(self, app, *, ref_override: Optional[str]) -> None:
         """Pull+recreate docker-source pins; rebuild git/local checkouts."""
@@ -166,23 +158,6 @@ class OrchestratorDeploy:
                 parsed = line.split(":", 1)[1].strip()
                 return parsed or app.ref
         return app.ref
-
-    def _clear_scaled_before_start(self, app) -> None:
-        """Mark awake after sync so readiness waits and compose start are not skipped."""
-        store = ScalingStore(self.stack.root)
-        if not store.is_scaled_to_zero(app.name):
-            return
-        store.mark_awake(app.name, min_up_seconds=self._min_up_seconds(app))
-        logger.info("cleared scaledToZero for %s before single-generation start", app.name)
-
-    def _min_up_seconds(self, app) -> float:
-        try:
-            scaling = self.stack.spec_for(app).scaling
-        except OperatorError:
-            return 60.0
-        if scaling is None:
-            return 60.0
-        return float(scaling.min_up_seconds)
 
     def _start_stack_for_app(
         self,

@@ -1,8 +1,8 @@
 """Shared CRUD service for alert rules (CLI + serve)."""
 
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+from typing import Any, List, Mapping, Optional, Tuple
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.gitops.notifications_gitops import NotificationsGitops
@@ -15,26 +15,8 @@ from ..model.rule import AlertRule
 from ..model.rule_parser import AlertRuleParser
 from ..registries import AlertRegistries
 from ..store.rules_store import AlertRulesStore
-
-
-@dataclass
-class ApplySummary:
-    created: List[str]
-    updated: List[str]
-    unchanged: List[str]
-    deleted: List[str]
-
-    def to_public(self) -> Dict[str, Any]:
-        return {
-            "created": list(self.created),
-            "updated": list(self.updated),
-            "unchanged": list(self.unchanged),
-            "deleted": list(self.deleted),
-        }
-
-
-class RuleConflict(OperatorError):
-    """Raised when creating a rule whose id already exists."""
+from .apply_summary import ApplySummary
+from .rule_conflict import RuleConflict
 
 
 class AlertRulesService:
@@ -181,7 +163,7 @@ class AlertRulesService:
                 merged.append(rule)
         return deleted
 
-    def export_document(self) -> Dict[str, Any]:
+    def export_document(self) -> dict[str, Any]:
         return self._store.load().to_export()
 
     def _require_channels(self, rule: AlertRule) -> None:
