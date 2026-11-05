@@ -13,6 +13,7 @@ import {
   FirewallRuleFormModal,
   type FirewallRuleFormSubmit,
 } from "../../firewall/FirewallRuleFormModal";
+import { temporaryOverrideSavedMessage } from "../../gitops";
 
 type Props = {
   clientIp: string;
@@ -84,9 +85,7 @@ export function InspectionFirewallActions(props: Props) {
       await applyInspectionFirewallRule(body);
       setFormOpen(false);
       setDraft(null);
-      toast.good(
-        "Firewall rule applied at top of table",
-      );
+      toast.warning(temporaryOverrideSavedMessage("firewall.yaml"));
     } catch (err) {
       toast.bad(err instanceof Error ? err.message : "Failed to apply rule");
     } finally {
@@ -99,7 +98,7 @@ export function InspectionFirewallActions(props: Props) {
       await removeInspectionFirewallRule({ clientIp: props.clientIp });
       setRemoveOpen(false);
       setMatchCount(0);
-      toast.good("Matching firewall rule removed");
+      toast.warning(temporaryOverrideSavedMessage("firewall.yaml"));
     } catch (err) {
       toast.bad(err instanceof Error ? err.message : "Failed to remove rule");
     }
