@@ -111,7 +111,7 @@ Align with the README table; detail for agents:
 | Reusable dashboard kit (Trends shell / embed) | **Shipped (v1)** | [#249](https://github.com/danielnachumdev/raft/issues/249); `src/spa/src/dashboard-kit/`; timeseries panels + embed contract; browser-local persistence. |
 | Alert rules engine (metrics/control-plane → notifications) | **Shipped** | [#236](https://github.com/danielnachumdev/raft/issues/236); dual-plane CLI+serve lock [#264](https://github.com/danielnachumdev/raft/issues/264); `AlertRulesService` / engine under `observe/alerts/` |
 | Alert setup recommendations (OOM / not-running / high memory) | **Shipped** | Shared SPA `recommendations/` kit; catalog in `observe/alerts/recommendations/`; gated by GitOps `disable_tips`; channels optional on apply |
-| GitOps-first host config (#310) | **In progress** | Flat YAML SoT + RO UI/CLI + `@lru_cache` loaders (#317); #318–#321; not DB-as-SoT |
+| GitOps-first host config (#310) | **In progress** | Flat YAML SoT + temp UI/CLI overrides (Sync wipe) + `@lru_cache` loaders (#317); #318–#321; not DB-as-SoT / not full RO |
 | Operator system event timeline | **Shipped** | [#267](https://github.com/danielnachumdev/raft/issues/267); `host/events/ops.jsonl` dual-write with GraphEvents; `raft events` + serve `/events`. |
 | Firewall-derived alert signals (`edge.denies`) | **Planned** | Observe gate outcomes only; no middle hop (#207) |
 | Always-on Compose dashboard service | **Shipped** | [#36](https://github.com/danielnachumdev/raft/issues/36); `dashboard:` settings-only + `raft-dashboard` Compose; lifecycle via Up/Down/Redeploy ([#340](https://github.com/danielnachumdev/raft/issues/340)); optional `publicHost` + TLS + auth (`none`/`password`/`oauth`/`external`); OAuth via in-container oauth2-proxy + allowlist. |
@@ -130,7 +130,7 @@ Align with the README table; detail for agents:
 
 Layout (#313): `host/` (control-plane) + `services/<SERVICE>/` (App-owned) + `generated/` + root `compose.yaml`.
 
-**GitOps-first host config (#310):** durable operator config SoT is flat YAML in the operator GitOps repo (reconciled onto the host): `host/settings.yaml`, `host/firewall.yaml`, `host/alerts.yaml`, `host/notifications.yaml`, `host/rbac.yaml`. UI + config CLI are becoming **read-only** for those docs (edits via Git/PR). Reads use in-process `@lru_cache` (invalidate via process restart after reconcile). Apps stay `raft apply`. Tips use per-doc `disable_tips` (default `false`).
+**GitOps-first host config (#310):** durable operator config SoT is flat YAML in the operator GitOps repo (reconciled onto the host): `host/settings.yaml`, `host/firewall.yaml`, `host/alerts.yaml`, `host/notifications.yaml`, `host/rbac.yaml`. Serve UI + config CLI may **Save/write live host copies as temporary overrides** (next Sync overwrites); durable edits go through Git/PR. Settings hatch shipped (`v0.18.0` / #403); extend to other GitOps surfaces (#319). Reads use in-process `@lru_cache` (invalidate via process restart after reconcile). Apps stay `raft apply`. Tips use per-doc `disable_tips` (default `false`). Full read-only UI/CLI is **not** the locked model.
 
 | Path | Role |
 |------|------|
