@@ -1,4 +1,4 @@
-"""ContainerStatusSource query paths."""
+"""ContainerStatusSource story: target * includes apps + control plane (#398)."""
 
 import json
 from datetime import datetime, timezone
@@ -40,8 +40,15 @@ def _star(ctx: SignalContext) -> List[Any]:
     )
 
 
-class TestContainerStatusSource(RaftTestCase):
-    def test_wildcard_and_scaled_zero(self) -> None:
+class TestContainerStatusWildcardStory(RaftTestCase):
+    """Operator alerts on target *; scaled apps skip; control plane is included.
+
+    Scenario:
+      1) * sees demo-api running; scaledToZero demo-web returns no series.
+      2) * also includes raft-router / raft-gate from control_plane_names.
+    """
+
+    def test_star_sees_app_and_skips_scaled_to_zero(self) -> None:
         home = Path(self.tmp_path)
         _write_resources(home, [{"service": "demo-api", "status": "running"}])
         ctx = _ctx(home, apps=["demo-api", "demo-web"])
@@ -54,7 +61,7 @@ class TestContainerStatusSource(RaftTestCase):
             == []
         )
 
-    def test_wildcard_includes_control_plane(self) -> None:
+    def test_star_includes_control_plane_subjects(self) -> None:
         home = Path(self.tmp_path)
         _write_resources(
             home,

@@ -1,10 +1,18 @@
-"""Permission catalog matching (#307)."""
+"""Permission catalog story: exact codes and *:read/*:write wildcards (#307)."""
 
 from raft.core.core.rbac import PermissionCodes, WILDCARD_READ, WILDCARD_WRITE
 from tests.unit.base import RaftTestCase
 
 
-class TestPermissionCodes(RaftTestCase):
+class TestPermissionCodesStory(RaftTestCase):
+    """Operator grants wildcards or exact codes; matcher decides allow.
+
+    Scenario:
+      1) Catalog lists wildcards plus concrete resources (firewall/rbac).
+      2) *:read matches reads only; *:write matches writes; exact is exact.
+      3) allows() ORs grants; is_valid rejects malformed codes.
+    """
+
     def test_catalog_includes_wildcards_and_resources(self) -> None:
         catalog = PermissionCodes.catalog()
         assert WILDCARD_READ in catalog

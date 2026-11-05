@@ -1,4 +1,4 @@
-"""Idle / not-running deploys skip ``*_tmp`` dual-run cutover."""
+"""Idle deploy story: hold scaledToZero through sync, then single-start (#400)."""
 
 from __future__ import annotations
 
@@ -17,7 +17,15 @@ from tests.unit.base import AppliedInventory
 from tests.unit.core.lifecycle.deploy.orchestrator.base import OrchestratorTestCase
 
 
-class TestIdleSingleStart(OrchestratorTestCase):
+class TestIdleSingleStartStory(OrchestratorTestCase):
+    """Operator redeploys a parked app; sync must not nginx -t steady DNS early.
+
+    Scenario:
+      1) scaledToZero app: ensure skips cutover, parks through sync, then clears.
+      2) Awake-but-down remnant still re-holds scaled through sync.
+      3) Redeploy idle/scaled skips *_tmp; docker source pulls instead of rebuild.
+    """
+
     def test_ensure_skips_cutover_when_scaled_idle(self) -> None:
         self.set_edge_running("app")
         ScalingStore(self.tmp_path).mark_scaled_to_zero("app")
@@ -38,13 +46,7 @@ class TestIdleSingleStart(OrchestratorTestCase):
         self.set_edge_running("app")
         ScalingStore(self.tmp_path).mark_scaled_to_zero("app")
         self.stub_http_ready(self.orch.http)
-        seen: dict = {}
-
-        def capture_sync(*_a, **_k) -> None:
-            seen["scaled"] = ScalingStore(self.tmp_path).is_scaled_to_zero("app")
-
-        with patch.object(self.orch, "sync", side_effect=capture_sync):
-            self.orch.ensure_app_deployed("app", force_sync=True)
+        seen = self._capture_scaled_during_sync()
         assert seen.get("scaled") is True
         assert not ScalingStore(self.tmp_path).is_scaled_to_zero("app")
 
@@ -52,13 +54,7 @@ class TestIdleSingleStart(OrchestratorTestCase):
         """Prior failed wake: awake + steady DNS, no container — still park through sync."""
         self.set_edge_only()
         self.stub_http_ready(self.orch.http)
-        seen: dict = {}
-
-        def capture_sync(*_a, **_k) -> None:
-            seen["scaled"] = ScalingStore(self.tmp_path).is_scaled_to_zero("app")
-
-        with patch.object(self.orch, "sync", side_effect=capture_sync):
-            self.orch.ensure_app_deployed("app", force_sync=True)
+        seen = self._capture_scaled_during_sync()
         assert seen.get("scaled") is True
         assert not ScalingStore(self.tmp_path).is_scaled_to_zero("app")
 
@@ -157,6 +153,16 @@ class TestIdleSingleStart(OrchestratorTestCase):
         self.set_running()
         with pytest.raises(RuntimeError, match="is not running"):
             self.orch.redeploy_app("app")
+
+    def _capture_scaled_during_sync(self) -> dict:
+        seen: dict = {}
+
+        def capture_sync(*_a, **_k) -> None:
+            seen["scaled"] = ScalingStore(self.tmp_path).is_scaled_to_zero("app")
+
+        with patch.object(self.orch, "sync", side_effect=capture_sync):
+            self.orch.ensure_app_deployed("app", force_sync=True)
+        return seen
 
     def _seed_scaling_app(self) -> None:
         AppliedInventory.write_applied_app(
