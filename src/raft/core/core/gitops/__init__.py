@@ -8,6 +8,7 @@ from .notifications_gitops import NotificationsGitops
 from .path_resolve import GitopsPathResolve
 from .rbac_document import RbacBinding, RbacDocument
 from .rbac_gitops import RbacGitops
+from .temporary_override import TemporaryOverrideWarn
 
 __all__ = [
     "CachedYamlLoad",
@@ -19,4 +20,5 @@ __all__ = [
     "RbacBinding",
     "RbacDocument",
     "RbacGitops",
+    "TemporaryOverrideWarn",
 ]

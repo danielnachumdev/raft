@@ -5,7 +5,10 @@ from typing import Any, Dict, List, Optional
 import json
 import yaml
 
+from raft.core.core.gitops import GitopsDocKind
 from raft.core.core.ui import OperatorSay
+
+from .gitops_warn import GitopsCliWarn
 
 
 class FirewallCliOutput:
@@ -67,3 +70,4 @@ class FirewallCliOutput:
         n = len(result.get("rules") or [])
         msg = note or f"Applied firewall document ({n} rules); gate nginx reloaded if running."
         OperatorSay.say(msg)
+        GitopsCliWarn.after_write(GitopsDocKind.FIREWALL)

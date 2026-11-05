@@ -1,3 +1,4 @@
+import { temporaryTipsDismissMessage } from "../gitops";
 import { RecommendationList } from "../recommendations";
 import type { AlertRecommendation } from "./alertsApi";
 import { summarizeCondition } from "./alertsHelpers";
@@ -18,6 +19,7 @@ export function AlertRecommendations(props: Props) {
       sectionId="alert-recommendations"
       applyIdPrefix="alert-rec-apply"
       dismissIdPrefix="alert-rec-dismiss"
+      dismissWarnMessage={temporaryTipsDismissMessage("alerts.yaml")}
       lede="Suggested rules for common failure modes. Apply creates the rule immediately — notification channels are optional and can be added later."
       onApply={props.onApply}
       onDismiss={props.onDismiss}

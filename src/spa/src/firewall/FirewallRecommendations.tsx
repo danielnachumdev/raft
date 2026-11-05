@@ -1,3 +1,4 @@
+import { temporaryTipsDismissMessage } from "../gitops";
 import { RecommendationList } from "../recommendations";
 import type { FirewallRecommendation, FirewallRule } from "./firewallApi";
 import { formatFirewallPort } from "./firewallApi";
@@ -18,6 +19,7 @@ export function FirewallRecommendations(props: Props) {
       sectionId="firewall-recommendations"
       applyIdPrefix="firewall-rec-apply"
       dismissIdPrefix="firewall-rec-dismiss"
+      dismissWarnMessage={temporaryTipsDismissMessage("firewall.yaml")}
       lede="Fast baseline for new stacks. Apply inserts into the table (Save still required). Dismiss hides until the baseline changes."
       onApply={props.onApply}
       onDismiss={props.onDismiss}

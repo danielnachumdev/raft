@@ -2,6 +2,8 @@
 
 from typing import Any, List, Optional
 
+from raft.core.core.gitops import GitopsDocKind, TemporaryOverrideWarn
+
 from .types import EdgeConfig, RaftConfig
 
 
@@ -42,6 +44,13 @@ class SettingsSideEffects:
             notes.append(dash)
         notes.append(
             self._note("controller", self.CONTROLLER_PICKUP, severity="info")
+        )
+        notes.append(
+            self._note(
+                "gitops.temporary_override",
+                TemporaryOverrideWarn.write_message(GitopsDocKind.SETTINGS),
+                severity="info",
+            )
         )
         return notes
 
