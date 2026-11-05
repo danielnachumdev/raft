@@ -84,6 +84,14 @@ export function isNavActive(pathname: string, item: NavItem): boolean {
   return (item.alsoActive ?? []).some((prefix) => path.startsWith(prefix));
 }
 
+/** Items without a ``permission`` are always shown. */
+export function navAllowed(
+  item: NavItem,
+  can: (permission: string) => boolean,
+): boolean {
+  return !item.permission || can(item.permission);
+}
+
 /** Group consecutive items for the mobile menu headings. */
 export function groupNav(items: NavItem[]): { group: NavGroup; items: NavItem[] }[] {
   const out: { group: NavGroup; items: NavItem[] }[] = [];

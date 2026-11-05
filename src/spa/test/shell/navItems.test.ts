@@ -4,6 +4,7 @@ import {
   ADD_SERVICE_NAV,
   groupNav,
   isNavActive,
+  navAllowed,
   SETTINGS_NAV,
   TOPBAR_NAV,
 } from "../../src/shell/navItems.ts";
@@ -36,6 +37,15 @@ describe("isNavActive", () => {
     assert.equal(isNavActive("/events", item("nav-status")), false);
     assert.equal(isNavActive("/deploy", ADD_SERVICE_NAV), true);
     assert.equal(isNavActive("/add-service", ADD_SERVICE_NAV), true);
+  });
+});
+
+describe("navAllowed", () => {
+  it("shows ungated items and checks the permission otherwise", () => {
+    const deny = () => false;
+    assert.equal(navAllowed(item("nav-status"), deny), true);
+    assert.equal(navAllowed(item("nav-rbac"), deny), false);
+    assert.equal(navAllowed(SETTINGS_NAV, (p) => p === "settings:read"), true);
   });
 });
 
