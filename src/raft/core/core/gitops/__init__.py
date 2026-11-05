@@ -1,4 +1,4 @@
-"""GitOps host-config schemas, path resolve, and cached loaders (#317)."""
+"""GitOps host-config schemas, flat path resolve, and cached loaders (#317/#402)."""
 
 from .cached_load import CachedYamlLoad
 from .doc_kind import GitopsDocKind
