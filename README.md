@@ -127,7 +127,7 @@ raft serve --stop
 
 ### GitOps host config (durable SoT)
 
-On hosts that reconcile from an ops repo (for example **vpsctl** Sync host config), durable operator config is **flat YAML in Git**, copied onto `~/.raft/host/`:
+On hosts that reconcile from an ops repo (Sync host config), durable operator config is **flat YAML in Git**, copied onto `~/.raft/host/`:
 
 | File | Role |
 |------|------|
