@@ -28,6 +28,7 @@ import {
 } from "./github/index.ts";
 import "./DeployPage.css";
 import "./AddServicePage.css";
+import { userFacingError } from "../shared/userFacingError.ts";
 
 const POLL_MS = 1000;
 
@@ -100,7 +101,7 @@ export function DeployPage() {
         if (!cancelled) setAllRepos(list);
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to list repos");
+          setError(userFacingError(err, "Failed to list repos"));
         }
       }
     })();
@@ -117,7 +118,7 @@ export function DeployPage() {
       void fetchDeployJob(job.id)
         .then(setJob)
         .catch((err) =>
-          setError(err instanceof Error ? err.message : "Deploy poll failed"),
+          setError(userFacingError(err, "Deploy poll failed")),
         );
     }, POLL_MS);
     return () => window.clearInterval(id);
@@ -136,7 +137,7 @@ export function DeployPage() {
     try {
       setJob(await startGithubDeploy(selected.full_name, ref));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Deploy failed to start");
+      setError(userFacingError(err, "Deploy failed to start"));
     } finally {
       setBusy(false);
     }
@@ -152,7 +153,7 @@ export function DeployPage() {
       }
       clearRepoSelection();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Delete failed");
+      setError(userFacingError(err, "Delete failed"));
     } finally {
       setBusy(false);
     }
@@ -168,7 +169,7 @@ export function DeployPage() {
       setSession(await selectGithubAccount(accountId));
     } catch (err) {
       setViewAsId("");
-      setError(err instanceof Error ? err.message : "Select account failed");
+      setError(userFacingError(err, "Select account failed"));
     } finally {
       setBusy(false);
     }

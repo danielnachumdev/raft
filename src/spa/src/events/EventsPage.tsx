@@ -11,6 +11,7 @@ import { EventsFilters } from "./EventsFilters";
 import { DEFAULT_EVENTS_QUERY, type EventsQuery } from "./eventsView";
 import { EventsTimeline } from "./EventsTimeline";
 import "./EventsPage.css";
+import { userFacingError } from "../shared/userFacingError.ts";
 
 const EVENTS_POLL_MS = 15_000;
 
@@ -39,7 +40,7 @@ export function EventsPage() {
       setError(null);
     } catch (err) {
       if (!opts?.quiet) setPayload(null);
-      setError(err instanceof Error ? err.message : "Failed to load events");
+      setError(userFacingError(err, "Failed to load events"));
     } finally {
       setNow(Date.now());
       setBusy(false);

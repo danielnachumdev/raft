@@ -8,6 +8,7 @@ import {
 } from "../shared/api";
 import { LogViewer } from "./LogViewer";
 import "./ServiceLogs.css";
+import { userFacingError } from "../shared/userFacingError.ts";
 
 const TAIL_CHOICES = [50, 100, 200, 500] as const;
 
@@ -155,7 +156,7 @@ function useSnapshot(
       .catch((err) => {
         if (!cancelled) {
           setText("");
-          setError(err instanceof Error ? err.message : "Failed to load logs.");
+          setError(userFacingError(err, "Failed to load logs."));
         }
       })
       .finally(() => {
@@ -220,6 +221,6 @@ async function runFollow(
     }
   } catch (err) {
     if (signal.aborted) return;
-    hooks.onError(err instanceof Error ? err.message : "Failed to follow logs.");
+    hooks.onError(userFacingError(err, "Failed to follow logs."));
   }
 }

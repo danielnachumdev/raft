@@ -10,7 +10,7 @@ import { RequirePermission } from "./RequirePermission";
 import { getRbac, putRbac, type RbacDocument } from "./rbacApi";
 import "./RbacSettingsPage.css";
 
-/** Temporary-override editor for ``host/rbac.yaml`` roles and bindings. */
+/** Roles and bindings editor. */
 export function RbacSettingsPage() {
   const [doc, setDoc] = useState<RbacDocument | null>(null);
   const [yaml, setYaml] = useState("");
@@ -23,7 +23,7 @@ export function RbacSettingsPage() {
         setDoc(d);
         setYaml(JSON.stringify(d, null, 2));
       })
-      .catch((err) => setError(String(err)));
+      .catch(() => setError("Failed to load access settings."));
   }, []);
 
   async function save() {
@@ -35,8 +35,8 @@ export function RbacSettingsPage() {
       setDoc(result.document);
       setYaml(JSON.stringify(result.document, null, 2));
       toast.warning(temporaryOverrideSavedMessage("rbac.yaml"));
-    } catch (err) {
-      setError(String(err));
+    } catch {
+      setError("Failed to save access settings.");
     } finally {
       setBusy(false);
     }
@@ -48,7 +48,7 @@ export function RbacSettingsPage() {
     <div className="rbac-page">
       <PageHeader
         title="RBAC"
-        subtitle="Roles use resource:read / resource:write (+ *:read / *:write). Missing host/rbac.yaml bootstraps full admin. Edit durable copy in Git."
+        subtitle="Who can use this dashboard and what they can do."
         actions={
           loading ? undefined : (
             <RequirePermission permission="rbac:write" fallback={null}>
@@ -60,14 +60,14 @@ export function RbacSettingsPage() {
                 aria-busy={busy}
                 onClick={() => void save()}
               >
-                Save temporary override
+                Save
               </button>
             </RequirePermission>
           )
         }
       />
 
-      {loading ? <LoadingState label="Loading RBAC…" id="rbac-loading" /> : null}
+      {loading ? <LoadingState label="Loading…" id="rbac-loading" /> : null}
 
       {error ? <ErrorState message={error} id="rbac-error" /> : null}
 

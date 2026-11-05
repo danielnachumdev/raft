@@ -1,26 +1,6 @@
-.gitops-temp-override p,
-.gitops-disable-tips p {
+.gitops-temp-override p {
   margin: 0;
   font-size: var(--text-md);
   line-height: 1.45;
   max-width: 52rem;
-}
-
-.gitops-temp-override p + p {
-  margin-top: var(--space-2);
-}
-
-.gitops-temp-override-guidance {
-  color: var(--muted);
-}
-
-.gitops-disable-tips-snippet {
-  margin: var(--space-2) 0;
-  padding: var(--space-2) var(--space-3);
-  overflow-x: auto;
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--muted-bg);
 }

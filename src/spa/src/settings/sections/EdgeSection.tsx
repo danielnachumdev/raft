@@ -19,12 +19,7 @@ export function EdgeSection(props: {
       kind={props.meta?.kind ?? "always"}
       enabled
       source={props.meta?.source}
-      hint={
-        <>
-          Public listeners published by the gate. Changing http / https / streams
-          requires <code>raft redeploy gate</code> (not reload).
-        </>
-      }
+      hint="Public listeners. Changing ports may briefly interrupt edge traffic."
     >
       <div className="form-grid">
         <PortOrNullField

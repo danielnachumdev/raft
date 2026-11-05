@@ -12,6 +12,7 @@ import {
 import { CopyableValue } from "./OauthSetupCopy";
 import { resolveOauthSetupHints } from "./oauthSetupHints";
 import "./OauthSetupPanel.css";
+import { userFacingError } from "../../shared/userFacingError.ts";
 
 /** Instructions + paste-in controls when GitHub OAuth is missing. */
 export function OauthSetupPanel(props: {
@@ -47,7 +48,7 @@ export function OauthSetupPanel(props: {
       toast.warning(temporaryOverrideSavedMessage("settings.yaml"));
       onSaved();
     } catch (err) {
-      onError(err instanceof Error ? err.message : "Failed to save OAuth settings");
+      onError(userFacingError(err, "Failed to save OAuth settings"));
     } finally {
       onBusy(false);
     }
@@ -61,10 +62,9 @@ export function OauthSetupPanel(props: {
         id="github-oauth-temp-override"
       />
       <p className="muted">
-        Create a GitHub OAuth App for this localhost serve bind, then paste the
-        Client ID and Client Secret below. Values write host/settings.yaml as a
-        temporary host override (next GitOps sync replaces them). Login later
-        requests scopes <code>{hints.scopes}</code>.
+        Create a GitHub OAuth App for this dashboard, then paste the Client ID
+        and Client Secret below. Login later requests scopes{" "}
+        <code>{hints.scopes}</code>.
       </p>
       <ol className="oauth-setup-steps">
         <li>
@@ -102,8 +102,8 @@ export function OauthSetupPanel(props: {
         />
         <li>
           Leave <strong>Enable Device Flow</strong>{" "}
-          <em>{hints.enable_device_flow ? "on" : "off (unset)"}</em> — raft uses
-          the browser redirect flow, not device codes.
+          <em>{hints.enable_device_flow ? "on" : "off (unset)"}</em> — use the
+          browser redirect flow, not device codes.
         </li>
         <li>
           Leave{" "}
@@ -112,9 +112,7 @@ export function OauthSetupPanel(props: {
             {hints.expire_user_access_tokens ? "on" : "off (unset)"}
           </em>{" "}
           (GitHub may label this{" "}
-          <strong>Expire user authorization tokens</strong>). Raft stores a
-          short-lived serve session and does not refresh expiring GitHub tokens
-          yet.
+          <strong>Expire user authorization tokens</strong>).
         </li>
         <li>
           Click <strong>Register application</strong>, then paste Client ID and

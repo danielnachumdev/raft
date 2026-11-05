@@ -64,7 +64,8 @@ export function useSettingsEditor() {
       applyPayload(await fetchSettings());
       setMode("form");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load settings");
+      if (err instanceof Error) console.error(err);
+      setError("Failed to load settings");
     } finally {
       setBusy(false);
     }
@@ -75,9 +76,9 @@ export function useSettingsEditor() {
   }, [load]);
 
   const fail = (err: unknown, fallback: string) => {
-    const message = err instanceof Error ? err.message : fallback;
-    setError(message);
-    toast.bad(message);
+    if (err instanceof Error) console.error(err);
+    setError(fallback);
+    toast.bad(fallback);
   };
 
   const switchMode = async (next: EditorMode) => {

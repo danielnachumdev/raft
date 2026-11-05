@@ -13,6 +13,7 @@ import {
 import type { NotificationStrategyInfo } from "./notificationsApi";
 import { ChannelSettingsFields } from "./ChannelSettingsFields";
 import "./ChannelFormModal.css";
+import { userFacingError } from "../shared/userFacingError.ts";
 
 export type ChannelFormMode = "create" | "edit";
 
@@ -212,7 +213,7 @@ export function ChannelFormModal(props: Props) {
         ? settingsFromFieldState(fields, fieldValues)
         : parseSettingsJson(settingsText);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Invalid settings");
+      setFormError(userFacingError(err, "Invalid settings"));
       return;
     }
     const trimmedId = id.trim();

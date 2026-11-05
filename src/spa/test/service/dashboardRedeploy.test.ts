@@ -96,9 +96,9 @@ describe("dashboardRedeploy", () => {
     assert.ok(probes >= 1);
   });
 
-  it("timeout message mentions CLI and Events", () => {
+  it("timeout message points at Events without CLI how-to", () => {
     const msg = dashboardRedeployTimeoutMessage();
     assert.match(msg, /Events/);
-    assert.match(msg, /raft redeploy dashboard/);
+    assert.doesNotMatch(msg, /raft /);
   });
 });

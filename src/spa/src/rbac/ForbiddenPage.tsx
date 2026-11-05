@@ -5,8 +5,8 @@ export function ForbiddenPage() {
   return (
     <div className="forbidden-page" id="forbidden-page">
       <PageHeader
-        title="403 — Forbidden"
-        subtitle="You are signed in but do not have permission for this page. Ask an admin to bind your subject in host/rbac.yaml (GitOps), then Sync."
+        title="Access denied"
+        subtitle="You don't have permission to view this page."
         actions={
           <Link className="btn" to="/">
             Back to status

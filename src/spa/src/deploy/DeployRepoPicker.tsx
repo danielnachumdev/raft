@@ -104,9 +104,7 @@ export function DeployRepoPicker(props: {
               id="deploy-ref"
             />
           </label>
-          <p className="muted">
-            Manifest path: <code>.raft/app.yaml</code> only (v1).
-          </p>
+          <p className="muted">Uses the standard service manifest.</p>
           <button
             type="button"
             className="btn btn-primary deploy-cta"

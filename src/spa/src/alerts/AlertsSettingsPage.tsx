@@ -6,7 +6,6 @@ import { AlertsListSkeleton, showSkeleton } from "../chrome/skeleton";
 import { ErrorState } from "../chrome/StateViews";
 import { toast } from "../chrome/toast";
 import {
-  DisableTipsCopyHint,
   TemporaryOverrideBanner,
   temporaryOverrideSavedMessage,
 } from "../gitops";
@@ -37,6 +36,7 @@ import {
 import { emptyRuleDraft, type AlertCatalogPayload, type AlertRule } from "./alertsHelpers";
 import { applyImport, downloadAlertRules, readImportFile, useAlertRuleActions } from "./useAlertRuleActions";
 import "./AlertsSettingsPage.css";
+import { userFacingError } from "../shared/userFacingError.ts";
 
 type PendingImport = { fileName: string; doc: { version: number; rules: AlertRule[] } };
 
@@ -83,7 +83,7 @@ export function AlertsSettingsPage() {
       setNow(Date.now());
       setLoaded(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load alerts");
+      setError(userFacingError(err, "Failed to load alerts"));
     } finally {
       setBusy(false);
     }
@@ -116,7 +116,7 @@ export function AlertsSettingsPage() {
     <div className="alerts-page" id="alerts-page">
       <PageHeader
         title="Alerts"
-        subtitle="Rules that watch metrics and control-plane signals. Saves are temporary host overrides until the next GitOps sync. Notification channels are optional — rules evaluate without them; empty channel list = every enabled channel when any exist. For = sustain before fire; Cool-down = silence before re-notify. If evaluation looks stale, check raft doctor / raft up. Use Syntax for YAML/JSON examples."
+        subtitle="Rules that watch this host and send notifications."
         meta={
           <>
             <span className={status?.enabled === false ? "chip chip-warn" : "chip"}>
@@ -175,7 +175,6 @@ export function AlertsSettingsPage() {
       {loaded ? (
         <>
           <TemporaryOverrideBanner doc="alerts.yaml" id="alerts-temp-override" />
-          <DisableTipsCopyHint doc="alerts.yaml" id="alerts-disable-tips" />
           <AlertRecommendations
             items={recommendations}
             busy={formBusy || actions.busyId !== null}
@@ -276,7 +275,7 @@ export function AlertsSettingsPage() {
       setForm(null);
       await load({ quiet: true });
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Save failed");
+      setFormError(userFacingError(err, "Save failed"));
     } finally {
       setFormBusy(false);
     }
@@ -288,7 +287,7 @@ export function AlertsSettingsPage() {
     if (!file) return;
     readImportFile(file)
       .then((doc) => setPendingImport({ fileName: file.name, doc }))
-      .catch((err: unknown) => toast.bad(err instanceof Error ? err.message : "Import failed"));
+      .catch((err: unknown) => toast.bad(userFacingError(err, "Import failed")));
   }
 
   async function runImport(prune: boolean) {
@@ -298,7 +297,7 @@ export function AlertsSettingsPage() {
       setPendingImport(null);
       await load({ quiet: true });
     } catch (err) {
-      toast.bad(err instanceof Error ? err.message : "Import failed");
+      toast.bad(userFacingError(err, "Import failed"));
     }
   }
 }

@@ -61,8 +61,8 @@ export function PurgeButton() {
       const result = await postPurge();
       toast.good(purgeSuccessMessage(result.reclaimed_human));
     } catch (err) {
-      const detail = err instanceof Error ? err.message : "Purge failed.";
-      toast.bad(purgeFailureMessage(detail));
+      if (err instanceof Error) console.error(err);
+      toast.bad(purgeFailureMessage());
     } finally {
       setBusy(false);
     }

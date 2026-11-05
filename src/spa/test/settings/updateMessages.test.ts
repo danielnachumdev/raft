@@ -7,12 +7,12 @@ import {
 } from "../../src/settings/updateMessages.ts";
 
 describe("updateConfirmMessage", () => {
-  it("names the version transition and raft update path", () => {
+  it("names the version transition without CLI paths", () => {
     const msg = updateConfirmMessage("0.10.0", "0.11.0");
     assert.match(msg, /0\.10\.0/);
     assert.match(msg, /0\.11\.0/);
-    assert.match(msg, /raft update/);
-    assert.match(msg, /GitHub Release/);
+    assert.doesNotMatch(msg, /raft update/);
+    assert.doesNotMatch(msg, /install\.sh/);
   });
 });
 
@@ -24,7 +24,7 @@ describe("updateSuccessMessage", () => {
         beforeLine: "raft 0.11.0",
         afterLine: "raft 0.11.0",
       }),
-      "raft is already up to date (raft 0.11.0).",
+      "Already up to date (raft 0.11.0).",
     );
   });
 
@@ -41,17 +41,17 @@ describe("updateSuccessMessage", () => {
 });
 
 describe("updateFailureMessage", () => {
-  it("prefixes operator-safe failure detail", () => {
+  it("returns a generic failure without backend detail", () => {
     assert.equal(
       updateFailureMessage("outbound HTTPS blocked"),
-      "Update failed: outbound HTTPS blocked",
+      "Update failed. Try again later.",
     );
   });
 
-  it("explains browser disconnect / proxy timeout", () => {
+  it("does not surface proxy or CLI how-to", () => {
     const msg = updateFailureMessage("Failed to fetch");
-    assert.match(msg, /lost the connection/i);
-    assert.match(msg, /raft update/);
-    assert.match(msg, /raft host log/);
+    assert.match(msg, /Update failed/i);
+    assert.doesNotMatch(msg, /raft update/);
+    assert.doesNotMatch(msg, /host log/);
   });
 });

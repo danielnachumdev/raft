@@ -11,6 +11,7 @@ import {
 import { ErrorState } from "../chrome/StateViews";
 import { useHashScroll } from "../chrome/useHashScroll";
 import { PageHeader } from "../shell/PageHeader";
+import { userFacingError } from "../shared/userFacingError.ts";
 import { FirewallPanel } from "./FirewallPanel";
 import {
   dismissFirewallRecommendation,
@@ -56,7 +57,7 @@ export function FirewallSettingsPage() {
       setLoaded(true);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to load firewall",
+        userFacingError(err, "Failed to load firewall"),
       );
     } finally {
       setBusy(false);
@@ -70,7 +71,7 @@ export function FirewallSettingsPage() {
   const header = (actions?: ReactNode) => (
     <PageHeader
       title="Firewall"
-      subtitle="Ordered edge rules (first match wins). Saving applies them without recreating the gate — as a temporary host override until the next GitOps sync. ACME HTTP-01 sits outside these rules; still avoid a broad port-80 deny/drop on service any if you use Let's Encrypt."
+      subtitle="Ordered edge rules. First match wins."
       actions={actions}
     />
   );

@@ -5,18 +5,17 @@ import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
 import {
   TEMPORARY_OVERRIDE_TITLE,
-  disableTipsYamlSnippet,
-  temporaryOverrideGuidance,
   temporaryOverrideLead,
   temporaryOverrideSavedMessage,
+  temporaryTipsDismissMessage,
   unsavedTemporaryOverrideMessage,
 } from "../../src/gitops/temporaryOverrideMessages.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
 describe("temporaryOverrideMessages", () => {
-  it("names a temporary host override wiped by the next GitOps sync", () => {
-    assert.equal(TEMPORARY_OVERRIDE_TITLE, "Temporary host override");
+  it("keeps temporary-change copy free of paths and sync how-to", () => {
+    assert.equal(TEMPORARY_OVERRIDE_TITLE, "Temporary changes");
     for (const doc of [
       "settings.yaml",
       "firewall.yaml",
@@ -25,38 +24,28 @@ describe("temporaryOverrideMessages", () => {
       "rbac.yaml",
     ] as const) {
       const lead = temporaryOverrideLead(doc);
-      assert.match(lead, /temporary|live testing/i);
-      assert.match(lead, new RegExp(`host/${doc.replace(".", "\\.")}`));
-      assert.match(lead, /GitOps/);
-      assert.match(lead, /wipe|replace/i);
-      const guidance = temporaryOverrideGuidance(doc);
-      assert.match(guidance, /GitOps repo/i);
-      assert.match(guidance, /rbac\.write|RBAC/i);
-      assert.match(guidance, /click-ops/i);
+      assert.match(lead, /this host only/i);
+      assert.doesNotMatch(lead, /host\//);
+      assert.doesNotMatch(lead, /GitOps/);
+      assert.doesNotMatch(lead, /\.yaml/);
       const saved = temporaryOverrideSavedMessage(doc);
-      assert.match(saved, /Temporary host override saved/i);
-      assert.match(saved, /GitOps sync/);
-      assert.match(saved, new RegExp(`host/${doc.replace(".", "\\.")}`));
+      assert.match(saved, /Saved/i);
+      assert.doesNotMatch(saved, /host\//);
+      assert.doesNotMatch(saved, /GitOps/);
     }
-    assert.match(unsavedTemporaryOverrideMessage(), /Unsaved temporary override/);
+    assert.equal(unsavedTemporaryOverrideMessage(), "Unsaved changes");
   });
 
-  it("exposes a disable_tips YAML snippet for durable tip dismissal", () => {
-    assert.equal(disableTipsYamlSnippet(), "disable_tips: true\n");
-  });
-
-  it("warns that tip dismiss is temporary", async () => {
-    const { temporaryTipsDismissMessage } = await import(
-      "../../src/gitops/temporaryOverrideMessages.ts"
-    );
+  it("tip dismiss is a short status with no config keys", () => {
     const msg = temporaryTipsDismissMessage("firewall.yaml");
-    assert.match(msg, /temporary/i);
-    assert.match(msg, /disable_tips: true/);
-    assert.match(msg, /host\/firewall\.yaml/);
+    assert.match(msg, /Tip dismissed/i);
+    assert.doesNotMatch(msg, /disable_tips/);
+    assert.doesNotMatch(msg, /host\//);
+    assert.doesNotMatch(msg, /GitOps/);
   });
 });
 
-describe("GitOps temporary-override wiring", () => {
+describe("temporary-override wiring", () => {
   it("settings keep the page-level banner and override save copy", () => {
     const page = readFileSync(join(root, "src/settings/SettingsPage.tsx"), "utf8");
     const editor = readFileSync(
@@ -65,7 +54,6 @@ describe("GitOps temporary-override wiring", () => {
     );
     assert.match(page, /TemporaryOverrideBanner/);
     assert.match(page, /doc="settings\.yaml"/);
-    assert.match(page, /temporary host overrides/i);
     assert.match(page, /unsavedTemporaryOverrideMessage/);
     assert.match(editor, /temporaryOverrideSavedMessage\("settings\.yaml"\)/);
   });
@@ -84,10 +72,10 @@ describe("GitOps temporary-override wiring", () => {
       "utf8",
     );
     assert.match(firewall, /TemporaryOverrideBanner/);
-    assert.match(firewall, /DisableTipsCopyHint/);
+    assert.doesNotMatch(firewall, /DisableTipsCopyHint/);
     assert.match(firewall, /firewall\.yaml/);
     assert.match(alerts, /TemporaryOverrideBanner/);
-    assert.match(alerts, /DisableTipsCopyHint/);
+    assert.doesNotMatch(alerts, /DisableTipsCopyHint/);
     assert.match(alerts, /alerts\.yaml/);
     assert.match(notifications, /TemporaryOverrideBanner/);
     assert.match(notifications, /notifications\.yaml/);

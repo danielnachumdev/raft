@@ -39,10 +39,10 @@ describe("purgeSuccessMessage", () => {
 });
 
 describe("purgeFailureMessage", () => {
-  it("prefixes operator-safe failure detail", () => {
+  it("returns a generic failure without backend detail", () => {
     assert.equal(
       purgeFailureMessage("docker daemon unreachable"),
-      "Purge failed: docker daemon unreachable",
+      "Purge failed. Try again later.",
     );
   });
 });

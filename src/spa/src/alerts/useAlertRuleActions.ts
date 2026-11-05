@@ -10,6 +10,7 @@ import {
   testAlertRule,
 } from "./alertsApi";
 import type { AlertRule } from "./alertsHelpers";
+import { userFacingError } from "../shared/userFacingError.ts";
 
 type ImportDoc = { version: number; rules: AlertRule[] };
 
@@ -22,7 +23,7 @@ export function useAlertRuleActions(reload: () => Promise<void>) {
     try {
       await run();
     } catch (err) {
-      toast.bad(err instanceof Error ? err.message : fallback);
+      toast.bad(userFacingError(err, fallback));
     } finally {
       setBusyId(null);
     }
@@ -46,13 +47,15 @@ export function useAlertRuleActions(reload: () => Promise<void>) {
       guarded(rule, "Dry run failed", async () => {
         const report = await dryRunAlertRule({ ruleId: rule.id });
         const matched = report.subjects.filter((s) => s.matched).length;
-        toast.regular(`Dry run ${rule.id}: ${matched}/${report.subjects.length} subjects matched`);
+        toast.regular(
+          `Dry run ${rule.id}: ${matched}/${report.subjects.length} matched`,
+        );
       }),
     sendTest: (rule: AlertRule) =>
       guarded(rule, "Test failed", async () => {
         const result = await testAlertRule(rule.id);
-        if (result.ok) toast.good(result.message);
-        else toast.bad(result.message);
+        if (result.ok) toast.good("Test notification sent.");
+        else toast.bad("Test notification failed.");
       }),
   };
 }
@@ -69,7 +72,7 @@ export async function downloadAlertRules(): Promise<void> {
     URL.revokeObjectURL(url);
     toast.good("Alert rules exported");
   } catch (err) {
-    toast.bad(err instanceof Error ? err.message : "Export failed");
+    toast.bad(userFacingError(err, "Export failed"));
   }
 }
 

@@ -30,20 +30,7 @@ export function SettingsPage() {
     <div className="settings-page">
       <PageHeader
         title="Settings"
-        subtitle={
-          <>
-            Operator settings for this host — edit section by section, or switch
-            to YAML for the whole document. Saves are temporary host overrides
-            until the next GitOps sync.
-          </>
-        }
-        meta={
-          editor.path ? (
-            <code className="settings-path" title={editor.path}>
-              {editor.path}
-            </code>
-          ) : undefined
-        }
+        subtitle="Operator settings for this host — edit section by section, or switch to YAML for the whole document."
         actions={
           <>
             <ModeSwitch

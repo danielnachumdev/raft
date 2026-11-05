@@ -14,6 +14,7 @@ import {
   type FirewallRuleFormSubmit,
 } from "../../firewall/FirewallRuleFormModal";
 import { temporaryOverrideSavedMessage } from "../../gitops";
+import { userFacingError } from "../../shared/userFacingError.ts";
 
 type Props = {
   clientIp: string;
@@ -58,7 +59,7 @@ export function InspectionFirewallActions(props: Props) {
       setDraft(existing ?? payload.rule);
       setFormOpen(true);
     } catch (err) {
-      toast.bad(err instanceof Error ? err.message : "Failed to draft rule");
+      toast.bad(userFacingError(err, "Failed to draft rule"));
     }
   }
 
@@ -75,7 +76,7 @@ export function InspectionFirewallActions(props: Props) {
       setMatchCount(payload.matches.length);
       setRemoveOpen(true);
     } catch (err) {
-      toast.bad(err instanceof Error ? err.message : "Failed to look up rules");
+      toast.bad(userFacingError(err, "Failed to look up rules"));
     }
   }
 
@@ -87,7 +88,7 @@ export function InspectionFirewallActions(props: Props) {
       setDraft(null);
       toast.warning(temporaryOverrideSavedMessage("firewall.yaml"));
     } catch (err) {
-      toast.bad(err instanceof Error ? err.message : "Failed to apply rule");
+      toast.bad(userFacingError(err, "Failed to apply rule"));
     } finally {
       setFormBusy(false);
     }
@@ -100,7 +101,7 @@ export function InspectionFirewallActions(props: Props) {
       setMatchCount(0);
       toast.warning(temporaryOverrideSavedMessage("firewall.yaml"));
     } catch (err) {
-      toast.bad(err instanceof Error ? err.message : "Failed to remove rule");
+      toast.bad(userFacingError(err, "Failed to remove rule"));
     }
   }
 

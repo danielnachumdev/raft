@@ -8,13 +8,12 @@ export function AlertCallouts(props: { status: AlertStatusPayload | null; hasCha
     <>
       {props.status?.stale ? (
         <div className="callout callout-warn" id="alerts-stale">
-          Alerts have not been evaluated recently. Run <code>raft doctor</code>, then{" "}
-          <code>raft up</code> if the stack is not running.
+          Alerts have not been evaluated recently.
         </div>
       ) : null}
       {props.status?.documentError ? (
         <div className="callout callout-bad" id="alerts-document-error">
-          {props.status.documentError}
+          Alert configuration could not be loaded.
         </div>
       ) : null}
       {!props.hasChannels ? (
@@ -30,9 +29,7 @@ export function AlertCallouts(props: { status: AlertStatusPayload | null; hasCha
 export function RulesEmpty() {
   return (
     <EmptyState id="alerts-empty" title="No alert rules yet.">
-      Apply a recommendation above, use <em>Add rule</em>, import an export, or run{" "}
-      <code>raft alerts apply --file rules.yaml</code> on the host. Channels are not required to create a
-      rule.
+      Apply a recommendation above, or use <em>Add rule</em>.
     </EmptyState>
   );
 }
