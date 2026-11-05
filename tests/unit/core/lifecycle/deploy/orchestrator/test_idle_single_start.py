@@ -10,6 +10,7 @@ import pytest
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.core.core.models.stack import load_stack
+from raft.core.lifecycle.deploy.orchestrator.scaled_sync_hold import ScaledSyncHold
 from tests.unit.services.controller.base import ControllerTestCase
 
 from tests.unit.base import AppliedInventory
@@ -64,7 +65,7 @@ class TestIdleSingleStart(OrchestratorTestCase):
     def test_clear_scaled_before_start_noop_when_awake(self) -> None:
         app = self.orch.stack.app("app")
         assert not ScalingStore(self.tmp_path).is_scaled_to_zero("app")
-        self.orch._clear_scaled_before_start(app)
+        ScaledSyncHold(self.orch).clear_before_start(app)
         assert not ScalingStore(self.tmp_path).is_scaled_to_zero("app")
 
     def test_redeploy_skips_tmp_when_not_running(self) -> None:
@@ -131,13 +132,14 @@ class TestIdleSingleStart(OrchestratorTestCase):
         from raft.core.core.models.stack import Stack
 
         app = self.orch.stack.app("app")
+        hold = ScaledSyncHold(self.orch)
         with patch.object(Stack, "spec_for", side_effect=OperatorError("boom")):
-            assert self.orch._min_up_seconds(app) == 60.0
+            assert hold._min_up_seconds(app) == 60.0
 
     def test_min_up_seconds_reads_scaling_spec(self) -> None:
         self._seed_scaling_app()
         app = self.orch.stack.app("app")
-        assert self.orch._min_up_seconds(app) == float(
+        assert ScaledSyncHold(self.orch)._min_up_seconds(app) == float(
             self.orch.stack.spec_for(app).scaling.min_up_seconds
         )
 
@@ -145,10 +147,11 @@ class TestIdleSingleStart(OrchestratorTestCase):
         from raft.core.core.models.stack import Stack
 
         app = self.orch.stack.app("app")
+        hold = ScaledSyncHold(self.orch)
         with patch.object(
             Stack, "spec_for", return_value=SimpleNamespace(scaling=None)
         ):
-            assert self.orch._min_up_seconds(app) == 60.0
+            assert hold._min_up_seconds(app) == 60.0
 
     def test_redeploy_requires_gate_when_idle(self) -> None:
         self.set_running()
