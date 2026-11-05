@@ -111,7 +111,7 @@ Align with the README table; detail for agents:
 | Reusable dashboard kit (Trends shell / embed) | **Shipped (v1)** | [#249](https://github.com/danielnachumdev/raft/issues/249); `src/spa/src/dashboard-kit/`; timeseries panels + embed contract; browser-local persistence. |
 | Alert rules engine (metrics/control-plane → notifications) | **Shipped** | [#236](https://github.com/danielnachumdev/raft/issues/236); dual-plane CLI+serve lock [#264](https://github.com/danielnachumdev/raft/issues/264); `AlertRulesService` / engine under `observe/alerts/` |
 | Alert setup recommendations (OOM / not-running / high memory) | **Shipped** | Shared SPA `recommendations/` kit; catalog in `observe/alerts/recommendations/`; gated by GitOps `disable_tips`; channels optional on apply |
-| GitOps-first host config (#310) | **In progress** | Flat YAML SoT + temp UI/CLI overrides (Sync wipe) + `@lru_cache` loaders (#317); #318–#321; not DB-as-SoT / not full RO |
+| GitOps-first host config (#310) | **Shipped** | Flat YAML SoT + temp UI/CLI overrides (Sync wipe) + `@lru_cache` loaders + doctor validity (#317/#319/#320/#321); backup (#318) deferred; RBAC (#307) separate; not DB-as-SoT / not full RO |
 | Operator system event timeline | **Shipped** | [#267](https://github.com/danielnachumdev/raft/issues/267); `host/events/ops.jsonl` dual-write with GraphEvents; `raft events` + serve `/events`. |
 | Firewall-derived alert signals (`edge.denies`) | **Planned** | Observe gate outcomes only; no middle hop (#207) |
 | Always-on Compose dashboard service | **Shipped** | [#36](https://github.com/danielnachumdev/raft/issues/36); `dashboard:` settings-only + `raft-dashboard` Compose; lifecycle via Up/Down/Redeploy ([#340](https://github.com/danielnachumdev/raft/issues/340)); optional `publicHost` + TLS + auth (`none`/`password`/`oauth`/`external`); OAuth via in-container oauth2-proxy + allowlist. |
@@ -130,7 +130,7 @@ Align with the README table; detail for agents:
 
 Layout (#313): `host/` (control-plane) + `services/<SERVICE>/` (App-owned) + `generated/` + root `compose.yaml`.
 
-**GitOps-first host config (#310):** durable operator config SoT is flat YAML in the operator GitOps repo (reconciled onto the host): `host/settings.yaml`, `host/firewall.yaml`, `host/alerts.yaml`, `host/notifications.yaml`, `host/rbac.yaml`. Serve UI + config CLI may **Save/write live host copies as temporary overrides** (next Sync overwrites); durable edits go through Git/PR. Settings hatch shipped (`v0.18.0` / #403); extend to other GitOps surfaces (#319). Reads use in-process `@lru_cache` (invalidate via process restart after reconcile). Apps stay `raft apply`. Tips use per-doc `disable_tips` (default `false`). Full read-only UI/CLI is **not** the locked model.
+**GitOps-first host config (#310):** durable operator config SoT is flat YAML in the operator GitOps repo (reconciled onto the host): `host/settings.yaml`, `host/firewall.yaml`, `host/alerts.yaml`, `host/notifications.yaml`, `host/rbac.yaml`. Serve UI + config CLI may **Save/write live host copies as temporary overrides** (next Sync overwrites); durable edits go through Git/PR. Operator notes: [`README.md`](README.md) **GitOps host config** + **Upgrade notes**. Reads use in-process `@lru_cache` (invalidate via process restart after reconcile). Apps stay `raft apply`. Tips use per-doc `disable_tips` on firewall/alerts (default `false`). `raft doctor` validates flat GitOps docs only. Full read-only UI/CLI is **not** the locked model.
 
 | Path | Role |
 |------|------|
@@ -193,7 +193,7 @@ Upstream files: `generated/nginx/upstreams/<app>-<port>.conf` mounted into the r
 - **Release tags + wheels are the operator SoT** (`vX.Y.Z` GitHub Releases via PR labels `bumpMajor` / `bumpMinor` / `bumpPatch` / `noBump`). Publish bakes SPA and attaches a version-aligned `.whl`. Do not commit hashed `share/serve/spa/` assets.
 - **`package-data`** must track `core/platform/share/…` (see `pyproject.toml`). Meta test fails if globs match nothing; Release/`scripts/release/build_release_wheel.sh` asserts the wheel contains SPA assets.
 - **`raft update`** curls `install.sh` and prefers the **latest Release wheel** (same as bare `install.sh`; git@tag fallback). Use `raft update --ref <tag\|branch\|sha>` (or `RAFT_REF`) to pin. Broken wheel/package-data on a released tag bricks installs of that tag; recovery: `curl …/install.sh | bash -s -- --ref main` then fix forward.
-- **Breaking cleanup (#312):** operator upgrade steps (backup → Firewall Save → update → doctor; `RAFT_REF` not `RAFT_BRANCH`; access-log rotate) live in [`README.md`](README.md) **Upgrade notes**. Do not resurrect a `docs/` tree for release checklists.
+- **Upgrade notes:** GitOps-first workflow + #312 cleanup live in [`README.md`](README.md) **Upgrade notes** (and **GitOps host config**). Do not resurrect a `docs/` tree for release checklists.
 - Fresh-install e2e: `tests/e2e/fresh_install/` — bake SPA then `RAFT_E2E_REF=workspace` (CI and local packaging check).
 - README demo video: GitHub only plays `<video>` when `src` is a **user-attachments** URL; keep `assets/raft-demo.mp4` as clone fallback. Do not call it “promo” in user-facing copy.
 

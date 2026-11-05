@@ -48,6 +48,7 @@ You keep services in their own repos. On the VPS you `apply` a manifest. raft sy
 | Operator notifications | ✅ |
 | Ordered edge firewall (rich rules, import/export) | ✅ |
 | Alert rules (metrics/control-plane → notifications) + default setup recommendations | ✅ |
+| GitOps-first host config (flat YAML + temporary serve/CLI overrides) | ✅ |
 | Operator system event timeline (CLI + serve) | ✅ |
 | Always-on dashboard Compose service (`raft-dashboard`) | ✅ |
 | Firewall-derived alert signals | 📋 |
@@ -122,7 +123,25 @@ raft serve --stop
 | `raft sync` / `raft render` | Pipeline only (sources / Compose+nginx); not substitutes for redeploy |
 | `raft firewall …` | Ordered gate rules (`host/firewall.yaml`); Save/CLI → reload, never recreate |
 | `raft alerts …` | Alert rules (`host/alerts.yaml`) → notification channels |
-| `raft notifications …` | Notification channel CRUD + test-send |
+| `raft notifications …` | Notification destinations (`host/notifications.yaml`) CRUD + test-send |
+
+### GitOps host config (durable SoT)
+
+On hosts that reconcile from an ops repo (Sync host config), durable operator config is **flat YAML in Git**, copied onto `~/.raft/host/`:
+
+| File | Role |
+|------|------|
+| `settings.yaml` | Host settings (`RaftConfig`) |
+| `firewall.yaml` | Ordered edge firewall |
+| `alerts.yaml` | Alert rules (+ optional `disable_tips: true`) |
+| `notifications.yaml` | Notification destinations |
+| `rbac.yaml` | RBAC roles/bindings (when enabled) |
+
+**Durable edit path:** change the file in the ops repo → PR → Sync on the host → `raft render` / nginx reload (or process restart so `@lru_cache` drops) → verify with `raft doctor` / serve UI / CLI show.
+
+**Temporary host override:** serve Save and config CLI mutators (`raft firewall|alerts|notifications …`, Settings Save, GitHub OAuth save) **may write** the live host file for live testing. The next Sync **overwrites** that file from Git — click-ops is not durable SoT. UI banners and CLI warnings say so. Runtime ops (`up` / `down` / `redeploy` / logs) stay mutative and are not GitOps docs.
+
+**Apps** stay `raft apply` (CI or local). Secrets/PEMs/checkouts/metrics JSONL/`generated/` stay host-local (not the GitOps config SoT). Tips dismissal is temporary unless you set `disable_tips: true` on the firewall/alerts doc in Git.
 
 ### Lifecycle glossary
 
@@ -134,12 +153,26 @@ raft serve --stop
 | **render** | Regenerate Compose/nginx under `~/.raft/`. May reload nginx; does not replace redeploy. |
 | **reload** | Automatic side effect of render / firewall Save — not a separate operator verb. |
 
-## Upgrade notes (breaking removals)
+## Upgrade notes
+
+### GitOps-first host config (#310)
+
+If this host Syncs config from an ops repo:
+
+1. Keep durable edits in Git (`settings.yaml`, `firewall.yaml`, `alerts.yaml`, `notifications.yaml`, …) — not only on the live VPS.
+2. After Sync: `raft render` (and restart serve/controller if cached reads look stale), then `raft doctor`.
+3. Treat serve/CLI Save as a **temporary host override** until the same change is in Git; the next Sync replaces the host file.
+4. Move notification channels into `host/notifications.yaml` (no longer nested under `settings.yaml`).
+5. Prefer `disable_tips: true` on firewall/alerts docs in Git over relying on tip dismiss alone.
+
+SQLite (`raft.sqlite`) and full read-only UI/CLI are **not** the config SoT model.
+
+### Breaking removals (#312)
 
 When upgrading across the #312 cleanup (flat ACL / install aliases / access-log parse):
 
-1. **Backup** `~/.raft/` (especially `host/settings.yaml`, `host/firewall/`, `services/`, and leftover `state/acl/` if present).
-2. **Before upgrade** (recommended): open serve **Firewall** and **Save** once so durable `host/firewall.yaml` exists. Flat ACL migrate-on-load is gone — leftover `acl.gate` / `state/acl/` is ignored.
+1. **Backup** `~/.raft/` (especially `host/settings.yaml`, `host/firewall.yaml`, `host/alerts.yaml`, `host/notifications.yaml`, `services/`).
+2. **Before upgrade** (recommended): open serve **Firewall** and **Save** once so `host/firewall.yaml` exists. Flat ACL migrate-on-load is gone — leftover `acl.gate` / `state/acl/` is ignored.
 3. **Upgrade** (`raft update` / install from the latest Release wheel). Replace automation that used **`RAFT_BRANCH`** with **`RAFT_REF`** / `--ref`.
 4. Re-save **Settings** once (drops any leftover `acl:` key). GitHub assist uses OAuth accounts only (`host/serve/github-accounts.json`; old `github-session.json` is not migrated — re-login if needed).
 5. **Access logs:** gate HTTP inspection parses the current `raft_http` line shape. Rotate or wipe old gate access-log files under `~/.raft/` if short non-matching lines remain (they are skipped).
