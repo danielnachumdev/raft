@@ -1,7 +1,9 @@
 """Host RBAC: permission catalog, document schema, and enforcer (#307)."""
 
-from .document import RbacBinding, RbacDocument, RbacRole
-from .enforcer import RbacDecision, RbacEnforcer
+from .binding import RbacBinding
+from .decision import RbacDecision
+from .document import RbacDocument
+from .enforcer import RbacEnforcer
 from .http_gate import RbacHttpGate
 from .identity import (
     NONE_BOOTSTRAP_SUBJECT,
@@ -15,6 +17,7 @@ from .permissions import (
     PermissionCodes,
     RBAC_RESOURCES,
 )
+from .role import RbacRole
 from .subject import RbacSubject
 
 __all__ = [

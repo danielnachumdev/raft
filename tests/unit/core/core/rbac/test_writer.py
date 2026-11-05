@@ -7,11 +7,11 @@ from tests.unit.base import RaftTestCase
 
 
 class TestRbacDocumentWriter(RaftTestCase):
-    def test_put_and_get(self) -> None:
+    def test_replace_and_export(self) -> None:
         home = Path(self.tmp_path)
         writer = RbacDocumentWriter(home)
-        assert writer.get()["roles"] == []
-        out = writer.put(
+        assert writer.export_document()["roles"] == []
+        out = writer.replace(
             {
                 "version": 1,
                 "roles": [
@@ -22,4 +22,4 @@ class TestRbacDocumentWriter(RaftTestCase):
         )
         assert out["document"]["bindings"][0]["subject"] == "ops@example.com"
         assert "temporary_override" in out["gitops"]
-        assert writer.get()["roles"][0]["id"] == "admin"
+        assert writer.export_document()["roles"][0]["id"] == "admin"

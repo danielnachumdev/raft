@@ -2,7 +2,8 @@
 
 from pathlib import Path
 
-from raft.core.core.gitops import GitopsDocKind, GitopsPathResolve
+from raft.core.core.gitops import GitopsDocKind
+from raft.core.core.gitops.path_resolve import GitopsPathResolve
 from tests.unit.base import RaftTestCase
 
 

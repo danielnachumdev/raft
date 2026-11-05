@@ -28,11 +28,11 @@ class ServeRbacApi:
         app.get("/api/rbac/catalog")(self.api_catalog)
 
     def api_get(self) -> Dict[str, Any]:
-        return self._writer.get()
+        return self._writer.export_document()
 
     def api_put(self, body: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
         try:
-            return self._writer.put(body)
+            return self._writer.replace(body)
         except OperatorError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

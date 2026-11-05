@@ -4,26 +4,12 @@ from dataclasses import dataclass
 from typing import Any, Mapping, Tuple
 
 from raft.core.core.errors.cta import OperatorError
+from raft.core.core.rbac.binding import RbacBinding
 from raft.core.core.rbac.permissions import PermissionCodes
+from raft.core.core.rbac.role import RbacRole
 from raft.core.core.rbac.subject import RbacSubject
 
 RBAC_DOCUMENT_VERSION = 1
-
-
-@dataclass(frozen=True)
-class RbacRole:
-    """Named role with a permission grant list."""
-
-    id: str
-    permissions: Tuple[str, ...]
-
-
-@dataclass(frozen=True)
-class RbacBinding:
-    """One subject → role binding."""
-
-    subject: str
-    role: str
 
 
 @dataclass(frozen=True)

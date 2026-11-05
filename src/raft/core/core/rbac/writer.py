@@ -17,13 +17,13 @@ class RbacDocumentWriter:
         self._home = data_home
         self._store = RbacStore(data_home)
 
-    def get(self) -> Dict[str, Any]:
+    def export_document(self) -> Dict[str, Any]:
         doc = self._store.load()
         if doc is None:
             return RbacDocument.empty().to_export()
         return doc.to_export()
 
-    def put(self, body: Mapping[str, Any]) -> Dict[str, Any]:
+    def replace(self, body: Mapping[str, Any]) -> Dict[str, Any]:
         with SettingsLock(self._home):
             document = RbacDocument.from_mapping(body, path="host/rbac.yaml")
             self._store.save(document)

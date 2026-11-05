@@ -6,15 +6,13 @@ import pytest
 import yaml
 
 from raft.core.core.errors.cta import OperatorError
-from raft.core.core.gitops import (
-    FirewallGitops,
-    GitopsPathResolve,
-    NotificationsGitops,
-    RbacDocument,
-    RbacGitops,
-)
 from raft.core.core.gitops.alerts_gitops import AlertsGitops
+from raft.core.core.gitops.firewall_gitops import FirewallGitops
+from raft.core.core.gitops.notifications_gitops import NotificationsGitops
+from raft.core.core.gitops.path_resolve import GitopsPathResolve
+from raft.core.core.gitops.rbac_gitops import RbacGitops
 from raft.core.core.gitops.settings_gitops import SettingsGitops
+from raft.core.core.rbac.document import RbacDocument
 from raft.core.core.models.firewall import FirewallDocument
 from raft.core.observe.alerts.store.rules_store import AlertRulesStore
 from tests.unit.base import RaftTestCase
