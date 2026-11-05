@@ -8,7 +8,6 @@ from typing import Optional
 from raft.core.platform.adapters.docker import DockerStack
 from raft.core.platform.adapters.shell import Shell
 from raft.services.controller.jobs.scale import Scaler
-from raft.services.controller.wake_http import WakeHttpServer
 from raft.core.core.models.scaling_spec import ScalingSpec
 from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.core.core.models.stack import load_stack
@@ -48,16 +47,9 @@ class ScaleDependsWakeStack:
         model = load_stack(home)
         docker = DockerStack(model, Shell(home))
         scaler = Scaler(home, docker)
-        wake = WakeHttpServer.bind(scaler, host="0.0.0.0", port=0)
-        assert wake._httpd is not None
-        wake_port = int(wake._httpd.server_address[1])
+        wake, wake_port = ScaleE2EStack._bind_wake(scaler)
         ScaleE2EStack._rewrite_wake_port(home, wake_port)
-        ScaleE2EStack._install_edge_compose(home, project)
-        # dependsOn delays frontend DNS; park so router nginx does not emerg-exit.
-        # Stack.load_apps only — load_stack would wipe the e2e edge compose.
-        ScaleE2EStack.park_http_upstreams(model, docker)
-        docker.sh.compose("up", "-d", "--pull", "missing", check=True, capture=True)
-        gate_port = ScaleE2EStack._wait_gate_port(docker, timeout=60.0)
+        gate_port = ScaleE2EStack._up_parked_edge(home, project, model, docker)
         inner = ScaleE2EStack(home, project, docker, scaler, wake_port, gate_port)
         inner._wake = wake
         return inner

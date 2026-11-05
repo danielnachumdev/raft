@@ -62,18 +62,9 @@ class ScaleE2EStack:
         model = load_stack(home)
         docker = DockerStack(model, Shell(home))
         scaler = Scaler(home, docker)
-        wake = WakeHttpServer.bind(scaler, host="0.0.0.0", port=0)
-        assert wake._httpd is not None
-        wake_port = int(wake._httpd.server_address[1])
+        wake, wake_port = cls._bind_wake(scaler)
         cls._rewrite_wake_port(home, wake_port)
-        # load_stack re-copies product compose; install edge compose after.
-        cls._install_edge_compose(home, project)
-        # Park before up so router nginx -t survives Compose DNS races
-        # (dependsOn delays app registration; raw compose up has no order).
-        # Use Stack.load_apps — load_stack would wipe the e2e compose again.
-        cls.park_http_upstreams(model, docker)
-        docker.sh.compose("up", "-d", "--pull", "missing", check=True, capture=True)
-        gate_port = cls._wait_gate_port(docker, timeout=60.0)
+        gate_port = cls._up_parked_edge(home, project, model, docker)
         stack = cls(home, project, docker, scaler, wake_port, gate_port)
         stack._wake = wake
         stack.wait_app_running()
@@ -86,6 +77,23 @@ class ScaleE2EStack:
         RaftHomeFixtures.apply_and_render(home, RaftHomeFixtures.fixture_app_yamls("http_only"))
         cls._inject_scaling(home)
         StackRenderer(load_stack(home)).render()
+
+    @staticmethod
+    def _bind_wake(scaler: Scaler) -> tuple[WakeHttpServer, int]:
+        wake = WakeHttpServer.bind(scaler, host="0.0.0.0", port=0)
+        assert wake._httpd is not None
+        return wake, int(wake._httpd.server_address[1])
+
+    @classmethod
+    def _up_parked_edge(
+        cls, home: Path, project: str, model: Stack, docker: DockerStack
+    ) -> int:
+        # load_stack re-copies product compose; install edge compose after.
+        # Park before up so router survives Compose DNS races (dependsOn).
+        cls._install_edge_compose(home, project)
+        cls.park_http_upstreams(model, docker)
+        docker.sh.compose("up", "-d", "--pull", "missing", check=True, capture=True)
+        return cls._wait_gate_port(docker, timeout=60.0)
 
     def close(self) -> None:
         if self._wake is not None:
