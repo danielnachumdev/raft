@@ -6,7 +6,7 @@ Source for the `raft serve` UI (React + Vite + TypeScript).
 
 **Status freshness:** the dashboard polls `GET /api/status` every `STATUS_POLL_MS` (**2s**) while the tab is visible. The API re-reads applied Apps from `services/` on each request, so CLI/CI apply/update/delete (including no-port workers) appears within about one poll interval without restarting `raft serve` or hard-refreshing the browser.
 
-Source layout under `src/`: `main.tsx` + `styles.css`, which only imports the global design system from `styles/` (`tokens`, `base`, `buttons`, `forms`, `surfaces`); each UI component imports a co-located `ComponentName.css` for layout only. Use the shared primitives instead of restyling controls per feature: buttons `.btn` (+ `.btn-primary`, `.btn-danger`, `.btn-ghost`, `.btn-sm`), fields `.field` (stacked) / `.field-caps` (toolbar caps label) / `.check` (inline checkbox), surfaces `.panel`, `.toolbar`, `.callout-*`, `.chip-*`, `.empty-state`. Native inputs/selects/checkboxes are themed by zero-specificity defaults in `styles/forms.css`. Dialogs use `chrome/Modal` / `ConfirmPopup` (never `window.confirm`). Feature folders: `shell/` (`AppShell` top bar + `PageHeader` used by every route), `shared/api/` (eager package surface), `chrome/` (toast, modal, stat tiles), `status/` (+ `model/`), `service/`, `logs/` (+ `model/`), `export/`, `deploy/` (`github/`, `oauth/`, `model/`), `notifications/`, and `trends/` with `panel/`, `chart/`, `runtime/`, `range/`, and `strategies/` (metric type + resource/HTTP catalogs next to root registries). SPA unit tests under `test/` mirror those folders; shared arrange helpers live in `test/fixtures.ts`.
+Source layout under `src/`: `main.tsx` + `styles.css`, which only imports the global design system from `styles/` (`tokens`, `base`, `buttons`, `forms`, `surfaces`); each UI component imports a co-located `ComponentName.css` for layout only. Use the shared primitives instead of restyling controls per feature: buttons `.btn` (+ `.btn-primary`, `.btn-danger`, `.btn-ghost`, `.btn-sm`), fields `.field` (stacked) / `.field-caps` (toolbar caps label) / `.check` (inline checkbox), surfaces `.panel`, `.toolbar`, `.callout-*`, `.chip-*`, `.empty-state`. Native inputs/selects/checkboxes are themed by zero-specificity defaults in `styles/forms.css`. Dialogs use `shared/chrome/Modal` / `ConfirmPopup` (never `window.confirm`). Top-level groups: `app/` (routing shell — `AppShell`, `PageHeader`), `shared/` (`api/`, `cache/`, `chrome/`, `dashboard-kit/`, `export/`, `gitops/`, `recommendations/`), `features/` (route domains: `status/`, `service/`, `logs/`, `deploy/`, `notifications/`, `alerts/`, `firewall/`, `rbac/`, `settings/`, `inbox/`, `events/`, `trends/` with `panel/`, `chart/`, `runtime/`, `range/`, `strategies/`), and `styles/`. SPA unit tests under `test/` mirror those folders; shared arrange helpers live in `test/fixtures.ts`.
 
 ### UI patterns
 
@@ -20,12 +20,12 @@ Every route should read the same way. Reach for these before writing page-local 
 | Row actions | `.btn-sm` text buttons in a `.btn-group`, or `.btn-icon` (+ `.is-danger`) with `aria-label` + `title` |
 | Mutually exclusive mode switch | `.segmented` with `role="tablist"` + `aria-selected` |
 | List of named entities with actions | `.item-list` > `.item-row` (`.item-row-main`, `.item-row-title`, `.item-row-meta`, `.item-row-actions`; `.is-disabled`) |
-| Loading / failed load / empty | `chrome/StateViews`: `LoadingState`, `ErrorState` (pass `onRetry`), `EmptyState` (title, guidance, optional CTA) |
-| Unsaved draft (Settings, Firewall) | `chrome/SaveBar` (sticky Discard + Save) + `useUnsavedGuard` |
+| Loading / failed load / empty | `shared/chrome/StateViews`: `LoadingState`, `ErrorState` (pass `onRetry`), `EmptyState` (title, guidance, optional CTA) |
+| Unsaved draft (Settings, Firewall) | `shared/chrome/SaveBar` (sticky Discard + Save) + `useUnsavedGuard` |
 | Long pages | `.side-nav` sidebar inside `.with-aside` (Settings), or `.jump-nav` strip (Service); both use `useScrollSpy` + `jumpToSection` |
 | Modal footer | `.modal-actions`: Cancel first, then `.btn-primary` (or `.btn-danger` for destructive confirms) |
 
-Top-bar IA: primary nav is grouped **Monitor** (Status, Events) and **Configure** (Alerts, Notifications, Firewall, RBAC); entries with a `permission` hide via `navAllowed` when RBAC denies it. The **Add service** CTA and the **Settings** gear sit on the right, and Settings highlights only on `/settings` itself (`shell/navItems.ts`).
+Top-bar IA: primary nav is grouped **Monitor** (Status, Events) and **Configure** (Alerts, Notifications, Firewall, RBAC); entries with a `permission` hide via `navAllowed` when RBAC denies it. The **Add service** CTA and the **Settings** gear sit on the right, and Settings highlights only on `/settings` itself (`app/navItems.ts`).
 
 ## Develop
 

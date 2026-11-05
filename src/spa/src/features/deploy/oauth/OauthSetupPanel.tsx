@@ -1,0 +1,186 @@
+import { useState, type FormEvent } from "react";
+import { toast } from "../../../shared/chrome/toast";
+import {
+  TemporaryOverrideBanner,
+  temporaryOverrideSavedMessage,
+} from "../../../shared/gitops";
+import {
+  saveGithubConfig,
+  type GithubOauthConfig,
+  type GithubSession,
+} from "../github/index.ts";
+import { CopyableValue } from "./OauthSetupCopy";
+import { resolveOauthSetupHints } from "./oauthSetupHints";
+import "./OauthSetupPanel.css";
+import { userFacingError } from "../../../shared/userFacingError.ts";
+
+/** Instructions + paste-in controls when GitHub OAuth is missing. */
+export function OauthSetupPanel(props: {
+  session: GithubSession | null;
+  config: GithubOauthConfig | null;
+  busy: boolean;
+  alreadyConfigured?: boolean;
+  onBusy: (busy: boolean) => void;
+  onSaved: () => void;
+  onContinue?: () => void;
+  onError: (message: string) => void;
+}) {
+  const {
+    session,
+    config,
+    busy,
+    alreadyConfigured = false,
+    onBusy,
+    onSaved,
+    onContinue,
+    onError,
+  } = props;
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
+  const hints = resolveOauthSetupHints(config, session);
+
+  const onSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    onBusy(true);
+    onError("");
+    try {
+      await saveGithubConfig({ clientId, clientSecret });
+      toast.warning(temporaryOverrideSavedMessage("settings.yaml"));
+      onSaved();
+    } catch (err) {
+      onError(userFacingError(err, "Failed to save OAuth settings"));
+    } finally {
+      onBusy(false);
+    }
+  };
+
+  return (
+    <section className="deploy-panel oauth-setup" id="github-oauth-setup">
+      <h2>Set up GitHub OAuth</h2>
+      <TemporaryOverrideBanner
+        doc="settings.yaml"
+        id="github-oauth-temp-override"
+      />
+      <p className="muted">
+        Create a GitHub OAuth App for this dashboard, then paste the Client ID
+        and Client Secret below. Login later requests scopes{" "}
+        <code>{hints.scopes}</code>.
+      </p>
+      <ol className="oauth-setup-steps">
+        <li>
+          Open{" "}
+          <a
+            className="oauth-inline-link"
+            href={hints.oauth_app_url}
+            target="_blank"
+            rel="noreferrer"
+            id="oauth-app-create-link"
+          >
+            Create GitHub OAuth App
+          </a>
+          . Text fields may be prefilled; if empty, use the values below.
+        </li>
+        <FieldStep
+          label="Application name"
+          value={hints.application_name}
+          id="oauth-application-name"
+        />
+        <FieldStep
+          label="Homepage URL"
+          value={hints.homepage_url}
+          id="oauth-homepage-url"
+        />
+        <FieldStep
+          label="Application description"
+          value={hints.description}
+          id="oauth-description"
+        />
+        <FieldStep
+          label="Authorization callback URL"
+          value={hints.callback_url}
+          id="oauth-callback-url"
+        />
+        <li>
+          Leave <strong>Enable Device Flow</strong>{" "}
+          <em>{hints.enable_device_flow ? "on" : "off (unset)"}</em> — use the
+          browser redirect flow, not device codes.
+        </li>
+        <li>
+          Leave{" "}
+          <strong>Expire user access tokens</strong>{" "}
+          <em>
+            {hints.expire_user_access_tokens ? "on" : "off (unset)"}
+          </em>{" "}
+          (GitHub may label this{" "}
+          <strong>Expire user authorization tokens</strong>).
+        </li>
+        <li>
+          Click <strong>Register application</strong>, then paste Client ID and
+          Client Secret below.
+        </li>
+      </ol>
+      {alreadyConfigured ? (
+        <div className="oauth-setup-configured" id="oauth-already-configured">
+          <p className="muted">
+            OAuth App credentials are already configured on this host. Continue
+            to connect or manage GitHub accounts.
+          </p>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={busy}
+            id="oauth-continue-configured"
+            onClick={() => onContinue?.()}
+          >
+            Continue
+          </button>
+        </div>
+      ) : (
+        <form className="oauth-setup-form" onSubmit={(e) => void onSubmit(e)}>
+          <label className="field">
+            Client ID
+            <input
+              id="oauth-client-id"
+              autoComplete="off"
+              value={clientId}
+              disabled={busy}
+              onChange={(e) => setClientId(e.target.value)}
+              placeholder="Iv1.…"
+              required
+            />
+          </label>
+          <label className="field">
+            Client secret
+            <input
+              id="oauth-client-secret"
+              type="password"
+              autoComplete="off"
+              value={clientSecret}
+              disabled={busy}
+              onChange={(e) => setClientSecret(e.target.value)}
+              placeholder="Paste client secret"
+              required
+            />
+          </label>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={busy}
+            id="oauth-save-config"
+          >
+            {busy ? "Saving…" : "Save and continue"}
+          </button>
+        </form>
+      )}
+    </section>
+  );
+}
+
+function FieldStep(props: { label: string; value: string; id: string }) {
+  return (
+    <li>
+      Fill in <strong>{props.label}</strong> ={" "}
+      <CopyableValue value={props.value} id={props.id} />
+    </li>
+  );
+}

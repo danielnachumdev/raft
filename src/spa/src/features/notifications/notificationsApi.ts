@@ -1,0 +1,195 @@
+/** Typed client for serve `/api/notifications/*` (channel CRUD + strategy catalog). */
+
+import {
+  appResourceCache,
+  CachedResourceProxy,
+  resourceId,
+} from "../../shared/cache/index.ts";
+
+export const SECRET_MASK = "***" as const;
+
+/** One settings key declared by a registered strategy for the channel form. */
+export type NotificationStrategyField = {
+  key: string;
+  label: string;
+  kind: "text" | "url" | "secret" | "number" | "checkbox" | string;
+  required: boolean;
+  help?: string;
+  placeholder?: string;
+};
+
+export type NotificationStrategyInfo = {
+  type_id: string;
+  label?: string;
+  fields?: NotificationStrategyField[];
+};
+
+export type NotificationStrategiesPayload = {
+  strategies: NotificationStrategyInfo[];
+};
+
+export type NotificationChannelSettings = Record<string, unknown>;
+
+export type NotificationChannel = {
+  id: string;
+  type: string;
+  enabled: boolean;
+  settings: NotificationChannelSettings;
+};
+
+export type NotificationChannelsPayload = {
+  enabled: boolean;
+  channels: NotificationChannel[];
+};
+
+export type NotificationChannelCreateBody = {
+  id: string;
+  type: string;
+  enabled?: boolean;
+  settings?: NotificationChannelSettings;
+};
+
+export type NotificationChannelUpdateBody = {
+  type?: string;
+  enabled?: boolean;
+  settings?: NotificationChannelSettings;
+  id?: string;
+};
+
+export type NotificationChannelDeleteResult = {
+  ok: true;
+  deleted: string;
+};
+
+/** Send-test is available via POST /api/notifications/channels/{id}/test. */
+export const SEND_TEST_API_AVAILABLE = true;
+
+export type NotificationTestDelivery = {
+  channel_id: string;
+  type_id: string;
+  status: string;
+  error: string;
+};
+
+export type NotificationTestResult = {
+  ok: boolean;
+  deliveries: NotificationTestDelivery[];
+  message: string;
+};
+
+async function readJson(res: Response): Promise<unknown> {
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+function detailOf(body: unknown): string | null {
+  if (!body || typeof body !== "object") return null;
+  const detail = (body as { detail?: unknown }).detail;
+  if (typeof detail === "string" && detail.trim()) return detail.trim();
+  return null;
+}
+
+async function jsonRequest<T>(
+  url: string,
+  init?: RequestInit,
+  label = "request",
+): Promise<T> {
+  const res = await fetch(url, init);
+  const body = await readJson(res);
+  if (!res.ok) {
+    throw new Error(detailOf(body) || `${label} ${res.status}`);
+  }
+  return body as T;
+}
+
+const strategiesProxy = new CachedResourceProxy(
+  appResourceCache,
+  resourceId("notifications", "strategies"),
+  {
+    read: () =>
+      jsonRequest<NotificationStrategiesPayload>(
+        "/api/notifications/strategies",
+        undefined,
+        "strategies",
+      ),
+  },
+);
+
+const channelsProxy = new CachedResourceProxy(
+  appResourceCache,
+  resourceId("notifications", "channels"),
+  {
+    read: () =>
+      jsonRequest<NotificationChannelsPayload>(
+        "/api/notifications/channels",
+        undefined,
+        "channels",
+      ),
+  },
+);
+
+export async function fetchNotificationStrategies(): Promise<NotificationStrategiesPayload> {
+  return strategiesProxy.read();
+}
+
+export async function fetchNotificationChannels(): Promise<NotificationChannelsPayload> {
+  return channelsProxy.read();
+}
+
+export async function createNotificationChannel(
+  body: NotificationChannelCreateBody,
+): Promise<NotificationChannel> {
+  return channelsProxy.mutateAndInvalidate(() =>
+    jsonRequest<NotificationChannel>(
+      "/api/notifications/channels",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+      "create channel",
+    ),
+  );
+}
+
+export async function updateNotificationChannel(
+  id: string,
+  body: NotificationChannelUpdateBody,
+): Promise<NotificationChannel> {
+  return channelsProxy.mutateAndInvalidate(() =>
+    jsonRequest<NotificationChannel>(
+      `/api/notifications/channels/${encodeURIComponent(id)}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+      "update channel",
+    ),
+  );
+}
+
+export async function deleteNotificationChannel(
+  id: string,
+): Promise<NotificationChannelDeleteResult> {
+  return channelsProxy.mutateAndInvalidate(() =>
+    jsonRequest<NotificationChannelDeleteResult>(
+      `/api/notifications/channels/${encodeURIComponent(id)}`,
+      { method: "DELETE" },
+      "delete channel",
+    ),
+  );
+}
+
+export async function sendNotificationTest(
+  id: string,
+): Promise<NotificationTestResult> {
+  return jsonRequest<NotificationTestResult>(
+    `/api/notifications/channels/${encodeURIComponent(id)}/test`,
+    { method: "POST" },
+    "send test",
+  );
+}
