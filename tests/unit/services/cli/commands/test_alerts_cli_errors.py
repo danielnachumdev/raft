@@ -38,11 +38,11 @@ class TestAlertsCliErrors(RaftTestCase):
     def test_dry_run_errors(self) -> None:
         cli = self._cli()
         with pytest.raises(OperatorError):
-            cli._dry_run_rules(rule_id=None, file=None, rule=None)
+            cli._io.dry_run_rules(rule_id=None, file=None, rule=None)
         with pytest.raises(OperatorError):
-            cli._dry_run_rules(rule_id="missing", file=None, rule=None)
+            cli._io.dry_run_rules(rule_id="missing", file=None, rule=None)
 
     def test_read_file_error(self) -> None:
         cli = self._cli()
         with pytest.raises(OperatorError):
-            cli._read_file(str(Path(self.tmp_path) / "nope.yaml"))
+            cli._io.read_file(str(Path(self.tmp_path) / "nope.yaml"))

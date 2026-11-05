@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.stack import Stack
-from raft.core.observe.alerts.service.rules_service import RuleConflict
+from raft.core.observe.alerts.service import RuleConflict
 from raft.services.cli.commands.alerts import AlertsCLI
 from tests.unit.base import RaftTestCase
 

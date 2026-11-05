@@ -1,6 +1,6 @@
 """Pending / firing / cool-down / recovery transitions."""
 
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -8,12 +8,7 @@ from ..model.rule import AlertRule
 from ..store.runtime_state import AlertInstanceState
 from .fingerprint import AlertFingerprint
 from .leaf_result import SubjectOutcome
-
-
-@dataclass(frozen=True)
-class Transition:
-    instance: Optional[AlertInstanceState]
-    notify: Optional[str]  # None | firing | resolved
+from .transition import Transition
 
 
 class AlertStateMachine:

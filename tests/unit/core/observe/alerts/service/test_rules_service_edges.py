@@ -2,7 +2,7 @@
 from pathlib import Path
 import pytest
 from raft.core.core.errors.cta import OperatorError
-from raft.core.observe.alerts.service.rules_service import AlertRulesService, RuleConflict
+from raft.core.observe.alerts.service import AlertRulesService, RuleConflict
 from tests.unit.base import RaftTestCase
 from tests.unit.core.observe.alerts.sample_rule import RULE
 

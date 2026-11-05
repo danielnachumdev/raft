@@ -43,4 +43,4 @@ class TestAlertsCliFinal(RaftTestCase):
             yaml.safe_dump({"version": 1, "rules": [RULE]}), encoding="utf-8"
         )
         with patch("raft.services.cli.commands.alerts_output.OperatorSay.say"):
-            assert len(cli._dry_run_from_file(str(path), "demo-api-5xx-rate")) == 1
+            assert len(cli._io._dry_run_from_file(str(path), "demo-api-5xx-rate")) == 1
