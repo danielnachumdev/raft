@@ -1,7 +1,5 @@
 """Warn when dashboard oauth is enabled but secrets/allowlist are missing."""
 
-from __future__ import annotations
-
 from raft.core.core.config.settings import SettingsLoader
 from raft.core.core.config.settings.dashboard_config import DashboardConfig
 from raft.core.lifecycle.dashboard.oauth_env import REQUIRED_OAUTH_ENV
@@ -28,17 +26,17 @@ class DashboardOauthChecks:
                 INFRA,
                 "dashboard_oauth",
                 "ok",
-                "oauth.env and allowlist present",
+                "oauth.env and derived allowlist present",
             )
         keys = ", ".join(REQUIRED_OAUTH_ENV)
         return CheckResult(
             INFRA,
             "dashboard_oauth",
             "warn",
-            "dashboard oauth secrets or allowlist missing",
+            "dashboard oauth secrets or derived allowlist missing",
             fix=(
-                f"write host/secrets/dashboard/oauth.env ({keys}) and "
-                f"the allowlist file, then raft render && "
+                f"write host/secrets/dashboard/oauth.env ({keys}); "
+                f"bind subjects in host/rbac.yaml; then raft render && "
                 f"raft redeploy dashboard"
             ),
         )

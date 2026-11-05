@@ -8,6 +8,7 @@ from raft.core.core.models.app import App
 from raft.core.core.models.stack import Stack
 from raft.core.core.models.state.graph_event_store import GraphEventStore
 from raft.core.core.models.state.scaling_store import ScalingStore
+from raft.core.lifecycle.dashboard.rbac_allowlist_sync import RbacAllowlistSync
 from raft.core.lifecycle.deploy.orchestrator import Orchestrator
 from raft.core.observe.ops.actions.up_depends import UpDepends
 from raft.core.observe.ops.logs.targets import LogsTargets
@@ -183,6 +184,8 @@ class ServiceActions:
         no_deps: bool,
         started_deps: Tuple[str, ...],
     ) -> Dict[str, Any]:
+        if compose_id == self.stack.dashboard:
+            self._sync_dashboard_allowlist()
         with self._locks(app):
             self._docker_stack().start_service(compose_id)
             if app is not None:
@@ -191,6 +194,9 @@ class ServiceActions:
         return self._ok(
             "up", compose_id, no_deps=no_deps, started_deps=started_deps
         )
+
+    def _sync_dashboard_allowlist(self) -> None:
+        RbacAllowlistSync(self.stack.root).sync()
 
     def _up_dep_names(
         self, deps_helper: UpDepends, dep_names: Tuple[str, ...]

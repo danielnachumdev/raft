@@ -1,5 +1,6 @@
 """Host RBAC: permission catalog, document schema, and enforcer (#307)."""
 
+from .admission import RbacAdmission
 from .binding import RbacBinding
 from .builtin import ADMIN_ROLE_ID, BuiltinAdminRole
 from .decision import RbacDecision
@@ -29,6 +30,7 @@ __all__ = [
     "PASSWORD_BOOTSTRAP_SUBJECT",
     "PermissionCodes",
     "RBAC_RESOURCES",
+    "RbacAdmission",
     "RbacBinding",
     "RbacDecision",
     "RbacDocument",

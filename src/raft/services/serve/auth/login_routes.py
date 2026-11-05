@@ -1,18 +1,31 @@
-"""Password login / logout / auth-status routes for the dashboard."""
+"""Password login / auth-status routes for the dashboard."""
+
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 
 from raft.core.core.config.paths import PackageRootFinder
+from raft.core.core.db.dashboard_sessions import COOKIE_NAME, DashboardSessionStore
+from raft.core.core.rbac import RbacEnforcer
 
+from .cookies import DashboardSessionCookies
 from .password_session import PasswordSessionAuth
 
 
 class DashboardLoginRoutes:
-    """Register ``/login`` + ``/api/dashboard/*`` password endpoints."""
+    """Register ``/login`` + ``/api/dashboard/login|auth`` password endpoints."""
 
-    def __init__(self, sessions: PasswordSessionAuth) -> None:
-        self._sessions = sessions
+    def __init__(
+        self,
+        passwords: PasswordSessionAuth,
+        store: DashboardSessionStore,
+        *,
+        home: Path,
+    ) -> None:
+        self._passwords = passwords
+        self._store = store
+        self._enforcer = RbacEnforcer(home)
 
     def register(self, app: FastAPI) -> None:
         @app.get("/login")
@@ -27,17 +40,14 @@ class DashboardLoginRoutes:
         async def login(request: Request):
             return await self._login(request)
 
-        @app.post("/api/dashboard/logout")
-        def logout() -> JSONResponse:
-            return self._logout_response()
-
     def _auth_status(self, request: Request) -> JSONResponse:
-        cookie = request.cookies.get(self._sessions.cookie_name())
-        ok = self._sessions.session_ok(cookie)
+        cookie = request.cookies.get(COOKIE_NAME)
+        subject = self._store.subject_for(cookie)
+        ok = subject is not None
         body = {
             "authenticated": ok,
             "mode": "password",
-            "username": self._sessions.username(cookie) if ok else None,
+            "username": subject,
         }
         return JSONResponse(body, status_code=200 if ok else 401)
 
@@ -45,50 +55,18 @@ class DashboardLoginRoutes:
         payload = await request.json()
         password = str((payload or {}).get("password") or "")
         username = str((payload or {}).get("username") or "admin")
-        tokens = self._sessions.login(password, username=username)
-        if tokens is None:
+        subject = self._passwords.verify(password, username=username)
+        if subject is None:
             return JSONResponse({"detail": "invalid credentials"}, status_code=401)
-        session, csrf = tokens
-        response = JSONResponse({"ok": True, "username": username.strip().lower()})
-        self._set_cookies(request, response, session, csrf)
+        if not self._enforcer.admitted(subject):
+            return JSONResponse(
+                {"detail": "subject not admitted"},
+                status_code=403,
+            )
+        minted = self._store.create(subject, auth_mode="password")
+        response = JSONResponse({"ok": True, "username": subject})
+        DashboardSessionCookies.attach(request, response, minted)
         return response
-
-    def _logout_response(self) -> JSONResponse:
-        response = JSONResponse({"ok": True})
-        response.delete_cookie(self._sessions.cookie_name())
-        response.delete_cookie(self._sessions.csrf_cookie_name())
-        return response
-
-    def _set_cookies(
-        self, request: Request, response: JSONResponse, session: str, csrf: str
-    ) -> None:
-        secure = self._secure(request)
-        self._cookie(response, self._sessions.cookie_name(), session, True, secure)
-        self._cookie(
-            response, self._sessions.csrf_cookie_name(), csrf, False, secure
-        )
-
-    @staticmethod
-    def _cookie(
-        response: JSONResponse,
-        name: str,
-        value: str,
-        httponly: bool,
-        secure: bool,
-    ) -> None:
-        response.set_cookie(
-            name,
-            value,
-            httponly=httponly,
-            samesite="lax",
-            secure=secure,
-            max_age=12 * 3600,
-        )
-
-    @staticmethod
-    def _secure(request: Request) -> bool:
-        proto = request.headers.get("x-forwarded-proto", request.url.scheme)
-        return proto.lower() == "https"
 
     @staticmethod
     def _login_html() -> FileResponse:
