@@ -25,19 +25,20 @@ class TestGitopsLoadersCoverage(RaftTestCase):
         home = Path(self.tmp_path)
         host = home / "host"
         host.mkdir(parents=True, exist_ok=True)
-        (host / "settings.yaml").write_text("edge: {http: 80}\n", encoding="utf-8")
-        (host / "firewall.yaml").write_text(
-            "version: 1\nrules: []\n", encoding="utf-8"
-        )
-        (host / "alerts.yaml").write_text(
-            "version: 1\nrules: []\n", encoding="utf-8"
-        )
-        (host / "notifications.yaml").write_text(
-            "enabled: true\nchannels: []\n", encoding="utf-8"
-        )
-        (host / "rbac.yaml").write_text(
-            "version: 1\nroles: [admin]\nbindings: []\n", encoding="utf-8"
-        )
+        files = {
+            "settings.yaml": "edge: {http: 80}\n",
+            "firewall.yaml": "version: 1\nrules: []\n",
+            "alerts.yaml": "version: 1\nrules: []\n",
+            "notifications.yaml": "enabled: true\nchannels: []\n",
+            "rbac.yaml": (
+                "version: 1\nroles:\n"
+                "  - id: admin\n"
+                "    permissions: ['*:read', '*:write']\n"
+                "bindings: []\n"
+            ),
+        }
+        for name, text in files.items():
+            (host / name).write_text(text, encoding="utf-8")
         return home
 
     def test_settings_and_firewall_load(self) -> None:
@@ -58,7 +59,7 @@ class TestGitopsLoadersCoverage(RaftTestCase):
         assert note.load().config.enabled is True
         note.clear_cache()
         rbac = RbacGitops(home)
-        assert rbac.load().roles == ("admin",)
+        assert rbac.load().roles[0].id == "admin"
         rbac.clear_cache()
 
     def test_unknown_doc_kind(self) -> None:
@@ -86,12 +87,20 @@ class TestGitopsLoadersCoverage(RaftTestCase):
         path = "host/rbac.yaml"
         with pytest.raises(OperatorError, match="list of role"):
             RbacDocument.from_mapping({"roles": "admin"}, path=path)
-        with pytest.raises(OperatorError, match="non-empty"):
+        with pytest.raises(OperatorError, match="must be a mapping"):
             RbacDocument.from_mapping({"roles": [" "]}, path=path)
         with pytest.raises(OperatorError, match="must be a list"):
             RbacDocument.from_mapping({"bindings": {}}, path=path)
         with pytest.raises(OperatorError, match="must be a mapping"):
             RbacDocument.from_mapping({"bindings": ["x"]}, path=path)
+        with pytest.raises(OperatorError, match="not defined"):
+            RbacDocument.from_mapping(
+                {
+                    "roles": [{"id": "viewer", "permissions": ["firewall:read"]}],
+                    "bindings": [{"subject": "ops@example.com", "role": "admin"}],
+                },
+                path=path,
+            )
 
     def test_rbac_binding_subject_and_export(self) -> None:
         path = "host/rbac.yaml"
@@ -101,6 +110,26 @@ class TestGitopsLoadersCoverage(RaftTestCase):
             )
         empty = RbacDocument.from_mapping({"version": 1}, path=path)
         assert empty.to_export()["roles"] == []
+        assert empty.permissions_for("") == frozenset()
+
+    def test_rbac_role_permission_edges(self) -> None:
+        path = "host/rbac.yaml"
+        with pytest.raises(OperatorError, match="non-empty string"):
+            RbacDocument.from_mapping({"roles": [{"id": "  "}]}, path=path)
+        ok = RbacDocument.from_mapping(
+            {"roles": [{"id": "viewer", "permissions": None}]}, path=path
+        )
+        assert ok.roles[0].permissions == ()
+        with pytest.raises(OperatorError, match="list of permission"):
+            RbacDocument.from_mapping(
+                {"roles": [{"id": "x", "permissions": "firewall:read"}]},
+                path=path,
+            )
+        with pytest.raises(OperatorError, match="invalid permission"):
+            RbacDocument.from_mapping(
+                {"roles": [{"id": "x", "permissions": ["nope"]}]},
+                path=path,
+            )
 
     def test_alert_store_load_raw_missing(self) -> None:
         store = AlertRulesStore(Path(self.tmp_path))

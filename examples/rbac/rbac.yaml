@@ -1,0 +1,32 @@
+# RBAC sample → host/rbac.yaml
+# Durable path: ops repo → Sync. Serve Save is a temporary host override.
+# Missing file = bootstrap full admin. File present = deny unbound subjects.
+#
+# DEMO subjects only (ops@example.com). Replace before a real deploy.
+
+version: 1
+roles:
+  - id: admin
+    permissions:
+      - "*:read"
+      - "*:write"
+  - id: viewer
+    permissions:
+      - alerts:read
+      - events:read
+      - firewall:read
+      - github:read
+      - inbox:read
+      - logs:read
+      - metrics:read
+      - notifications:read
+      - rbac:read
+      - runtime:read
+      - service:read
+      - settings:read
+      - status:read
+      - update:read
+
+bindings:
+  - subject: ops@example.com
+    role: admin

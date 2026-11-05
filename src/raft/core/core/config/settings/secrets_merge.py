@@ -71,18 +71,40 @@ class SettingsSecretsMerge:
     def _dashboard_auth(
         self, incoming: DashboardAuthConfig, prior: DashboardAuthConfig
     ) -> DashboardAuthConfig:
-        password = incoming.password_hash
-        if password == SettingsRedactor._MASK and prior.password_hash:
-            password = prior.password_hash
-        else:
-            password = self._hash_dashboard_password(password)
         return DashboardAuthConfig(
             mode=incoming.mode,
-            password_hash=password,
+            password_hash=self._merge_password_hash(
+                incoming.password_hash, prior.password_hash
+            ),
+            users=self._merge_password_users(incoming.users, prior.users),
             verify_url=incoming.verify_url,
             sign_in_url=incoming.sign_in_url,
             identity_header=incoming.identity_header,
             oauth=incoming.oauth,
+        )
+
+    def _merge_password_hash(
+        self, incoming: Optional[str], prior: Optional[str]
+    ) -> Optional[str]:
+        if incoming == SettingsRedactor._MASK and prior:
+            return prior
+        return self._hash_dashboard_password(incoming)
+
+    def _merge_password_users(self, incoming, prior):
+        from raft.core.core.config.settings.dashboard_config import (
+            DashboardPasswordUser,
+        )
+
+        prior_users = {u.username: u.password_hash for u in prior}
+        return tuple(
+            DashboardPasswordUser(
+                username=user.username,
+                password_hash=self._merge_password_hash(
+                    user.password_hash, prior_users.get(user.username)
+                )
+                or user.password_hash,
+            )
+            for user in incoming
         )
 
     def _hash_dashboard_password(self, value: Optional[str]) -> Optional[str]:
@@ -124,7 +146,22 @@ class SettingsSecretsMerge:
         auth_out = dict(auth)
         if auth_out.get("passwordHash"):
             auth_out["passwordHash"] = SettingsRedactor._MASK
+        auth_out["users"] = self._redact_password_users(auth_out.get("users"))
         out["auth"] = auth_out
+        return out
+
+    def _redact_password_users(self, users: Any) -> Any:
+        if not isinstance(users, list):
+            return users
+        out = []
+        for user in users:
+            if not isinstance(user, dict):
+                out.append(user)
+                continue
+            item = dict(user)
+            if item.get("passwordHash"):
+                item["passwordHash"] = SettingsRedactor._MASK
+            out.append(item)
         return out
 
     def _redact_notifications(self, notifications: Mapping[str, Any]) -> dict[str, Any]:

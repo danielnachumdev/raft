@@ -8,11 +8,12 @@ from typing import Optional
 import yaml
 
 from raft.core.platform.adapters.docker import DockerStack
+from raft.core.platform.adapters.nginx import NginxUpstreams
 from raft.core.platform.adapters.shell import Shell
 from raft.services.controller.jobs.scale import Scaler
 from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.services.controller.wake_http import WakeHttpServer
-from raft.core.core.models.stack import load_stack
+from raft.core.core.models.stack import Stack, load_stack
 from raft.core.lifecycle.render import StackRenderer
 from tests.e2e.shared.compose import new_project_name
 from tests.e2e.shared.runtime import ServiceRuntimeWait
@@ -61,17 +62,13 @@ class ScaleE2EStack:
         model = load_stack(home)
         docker = DockerStack(model, Shell(home))
         scaler = Scaler(home, docker)
-        wake = WakeHttpServer.bind(scaler, host="0.0.0.0", port=0)
-        assert wake._httpd is not None
-        wake_port = int(wake._httpd.server_address[1])
+        wake, wake_port = cls._bind_wake(scaler)
         cls._rewrite_wake_port(home, wake_port)
-        # load_stack re-copies product compose; install edge compose after.
-        cls._install_edge_compose(home, project)
-        docker.sh.compose("up", "-d", "--pull", "missing", check=True, capture=True)
-        gate_port = cls._wait_gate_port(docker, timeout=60.0)
+        gate_port = cls._up_parked_edge(home, project, model, docker)
         stack = cls(home, project, docker, scaler, wake_port, gate_port)
         stack._wake = wake
         stack.wait_app_running()
+        stack.restore_http_upstreams()
         stack.wait_live()
         return stack
 
@@ -80,6 +77,23 @@ class ScaleE2EStack:
         RaftHomeFixtures.apply_and_render(home, RaftHomeFixtures.fixture_app_yamls("http_only"))
         cls._inject_scaling(home)
         StackRenderer(load_stack(home)).render()
+
+    @staticmethod
+    def _bind_wake(scaler: Scaler) -> tuple[WakeHttpServer, int]:
+        wake = WakeHttpServer.bind(scaler, host="0.0.0.0", port=0)
+        assert wake._httpd is not None
+        return wake, int(wake._httpd.server_address[1])
+
+    @classmethod
+    def _up_parked_edge(
+        cls, home: Path, project: str, model: Stack, docker: DockerStack
+    ) -> int:
+        # load_stack re-copies product compose; install edge compose after.
+        # Park before up so router survives Compose DNS races (dependsOn).
+        cls._install_edge_compose(home, project)
+        cls.park_http_upstreams(model, docker)
+        docker.sh.compose("up", "-d", "--pull", "missing", check=True, capture=True)
+        return cls._wait_gate_port(docker, timeout=60.0)
 
     def close(self) -> None:
         if self._wake is not None:
@@ -94,6 +108,21 @@ class ScaleE2EStack:
 
     def wait_app_running(self, *, timeout: float = 45.0) -> None:
         ServiceRuntimeWait(self.docker, APP).until_running(timeout=timeout)
+
+    def restore_http_upstreams(self) -> None:
+        """Point upstreams at Compose DNS and reload router after apps exist."""
+        stack = Stack.load_apps(self.home)
+        nginx = NginxUpstreams(stack, self.docker)
+        for app in stack.apps:
+            nginx.point_steady(app, reload=False)
+        self.docker.reload_router_nginx()
+
+    @staticmethod
+    def park_http_upstreams(stack: Stack, docker: DockerStack) -> None:
+        """Loopback HTTP upstreams so router can start before app DNS exists."""
+        nginx = NginxUpstreams(stack, docker)
+        for app in stack.apps:
+            nginx.point_absent(app, reload=False)
 
     def wait_live(self, *, timeout: float = 45.0) -> None:
         Wait.until(

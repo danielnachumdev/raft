@@ -10,6 +10,7 @@ These folders are **operator-facing samples**, not the minimal trees under `test
 |------|------|
 | [`settings.yaml`](settings.yaml) | Operator settings (`logging`, `edge`, `healing`, `metrics`, `serviceLogs`, `acme`, `github`, `dashboard`, …) → `~/.raft/host/settings.yaml` |
 | [`notifications/notifications.yaml`](notifications/notifications.yaml) | Notification destinations → `~/.raft/host/notifications.yaml` |
+| [`rbac/rbac.yaml`](rbac/rbac.yaml) | Roles/bindings sample → `~/.raft/host/rbac.yaml` (`ops@example.com`) |
 | [`http-only-site/`](http-only-site/) | Single Host-routed HTTP app (`tls: off`); richest field comments + optional `${{ if }}` scaling snippet |
 | [`https-acme-site/`](https-acme-site/) | Direct HTTPS via `tls: acme` (Let's Encrypt on the gate; DNS + ports 80/443 + `acme.email`) |
 | [`https-origin-site/`](https-origin-site/) | HTTPS via `tls: origin` (Cloudflare Origin PEMs on the host) |

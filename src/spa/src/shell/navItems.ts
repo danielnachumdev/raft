@@ -7,6 +7,8 @@ export type NavItem = {
   /** Extra path prefixes that keep this item highlighted. */
   alsoActive?: string[];
   group?: NavGroup;
+  /** RBAC permission required to show this nav entry. */
+  permission?: string;
 };
 
 /** Primary top-bar destinations, in display order (desktop nav + mobile menu). */
@@ -18,19 +20,40 @@ export const TOPBAR_NAV: NavItem[] = [
     alsoActive: ["/service/"],
     group: "monitor",
   },
-  { to: "/events", label: "Events", id: "nav-events", group: "monitor" },
-  { to: "/settings/alerts", label: "Alerts", id: "nav-alerts", group: "configure" },
+  {
+    to: "/events",
+    label: "Events",
+    id: "nav-events",
+    group: "monitor",
+    permission: "events:read",
+  },
+  {
+    to: "/settings/alerts",
+    label: "Alerts",
+    id: "nav-alerts",
+    group: "configure",
+    permission: "alerts:read",
+  },
   {
     to: "/settings/notifications",
     label: "Notifications",
     id: "nav-notifications",
     group: "configure",
+    permission: "notifications:read",
   },
   {
     to: "/settings/edge-access",
     label: "Firewall",
     id: "nav-edge-access",
     group: "configure",
+    permission: "firewall:read",
+  },
+  {
+    to: "/settings/rbac",
+    label: "RBAC",
+    id: "nav-rbac",
+    group: "configure",
+    permission: "rbac:read",
   },
 ];
 
@@ -46,6 +69,7 @@ export const SETTINGS_NAV: NavItem = {
   to: "/settings",
   label: "Settings",
   id: "nav-settings",
+  permission: "settings:read",
 };
 
 export const NAV_GROUP_LABELS: Record<NavGroup, string> = {

@@ -86,6 +86,7 @@ class DashboardSettingsWriter:
         auth = DashboardAuthConfig(
             mode=mode,
             password_hash=self._password.hash(password),
+            users=cfg.auth.users,
             verify_url=cfg.auth.verify_url,
             sign_in_url=cfg.auth.sign_in_url,
             identity_header=cfg.auth.identity_header,

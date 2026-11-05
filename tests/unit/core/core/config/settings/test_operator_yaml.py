@@ -112,6 +112,31 @@ class TestOperatorSettingsYaml(RaftTestCase):
         with pytest.raises(OperatorError, match="8 characters"):
             svc.replace({"document": doc})
 
+    def test_dashboard_users_round_trip(self) -> None:
+        from raft.core.core.config.settings import SettingsDocument
+        from raft.core.core.config.settings.types import RaftConfig
+
+        cfg = RaftConfig(dashboard=self._dashboard_with_user())
+        raw = SettingsDocument().to_raw(cfg)
+        assert raw["dashboard"]["auth"]["users"][0]["username"] == "ops"
+
+    @staticmethod
+    def _dashboard_with_user():
+        from raft.core.core.config.settings.dashboard_config import (
+            DashboardAuthConfig,
+            DashboardConfig,
+            DashboardPasswordUser,
+        )
+
+        return DashboardConfig(
+            auth=DashboardAuthConfig(
+                mode="password",
+                users=(
+                    DashboardPasswordUser(username="ops", password_hash="pbkdf2$demo"),
+                ),
+            )
+        )
+
     def test_dashboard_disable_note(self) -> None:
         svc = OperatorSettingsService(self.tmp_path)
         doc = svc.get_public()["document"]

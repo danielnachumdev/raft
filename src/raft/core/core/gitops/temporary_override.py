@@ -14,8 +14,8 @@ class TemporaryOverrideWarn:
     def write_message(cls, kind: GitopsDocKind) -> str:
         path = cls.host_path(kind)
         return (
-            "Temporary host override — next GitOps sync "
-            f"(vpsctl Sync host config) will replace {path}."
+            "Temporary host override — next GitOps Sync "
+            f"will replace {path}."
         )
 
     @classmethod

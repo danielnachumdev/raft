@@ -46,7 +46,7 @@ describe("groupNav", () => {
       groups.map((g) => [g.group, g.items.map((i) => i.label)]),
       [
         ["monitor", ["Status", "Events"]],
-        ["configure", ["Alerts", "Notifications", "Firewall"]],
+        ["configure", ["Alerts", "Notifications", "Firewall", "RBAC"]],
       ],
     );
   });

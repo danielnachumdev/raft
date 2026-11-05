@@ -16,7 +16,7 @@ from tests.unit.base import RaftTestCase
 class TestDashboardAuthMiddleware(RaftTestCase):
     def test_password_mode_401(self) -> None:
         hashed = DashboardPassword().hash("correct-horse")
-        sessions = PasswordSessionAuth(self.tmp_path, password_hash=hashed)
+        sessions = PasswordSessionAuth.from_hashes(self.tmp_path, password_hash=hashed)
         cfg = DashboardConfig(
             auth=DashboardAuthConfig(mode="password", password_hash=hashed)
         )
@@ -39,7 +39,7 @@ class TestDashboardAuthMiddleware(RaftTestCase):
 
     def _password_client_with_shell(self) -> TestClient:
         hashed = DashboardPassword().hash("correct-horse")
-        sessions = PasswordSessionAuth(self.tmp_path, password_hash=hashed)
+        sessions = PasswordSessionAuth.from_hashes(self.tmp_path, password_hash=hashed)
         cfg = DashboardConfig(
             auth=DashboardAuthConfig(mode="password", password_hash=hashed)
         )

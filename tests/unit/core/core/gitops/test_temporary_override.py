@@ -13,7 +13,7 @@ class TestTemporaryOverrideWarn(RaftTestCase):
         msg = TemporaryOverrideWarn.after_write(GitopsDocKind.ALERTS)
         assert msg.startswith("warning:")
         assert "host/alerts.yaml" in msg
-        assert "Sync host config" in msg
+        assert "GitOps Sync" in msg
         assert "temporary" in msg.lower()
 
     def test_tips_dismiss_warning(self) -> None:

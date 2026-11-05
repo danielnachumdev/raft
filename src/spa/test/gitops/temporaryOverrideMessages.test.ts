@@ -22,6 +22,7 @@ describe("temporaryOverrideMessages", () => {
       "firewall.yaml",
       "alerts.yaml",
       "notifications.yaml",
+      "rbac.yaml",
     ] as const) {
       const lead = temporaryOverrideLead(doc);
       assert.match(lead, /temporary|live testing/i);
@@ -29,8 +30,8 @@ describe("temporaryOverrideMessages", () => {
       assert.match(lead, /GitOps/);
       assert.match(lead, /wipe|replace/i);
       const guidance = temporaryOverrideGuidance(doc);
-      assert.match(guidance, /vpsctl|GitOps repo/i);
-      assert.match(guidance, /RBAC/);
+      assert.match(guidance, /GitOps repo/i);
+      assert.match(guidance, /rbac\.write|RBAC/i);
       assert.match(guidance, /click-ops/i);
       const saved = temporaryOverrideSavedMessage(doc);
       assert.match(saved, /Temporary host override saved/i);

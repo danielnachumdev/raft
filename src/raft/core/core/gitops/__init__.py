@@ -6,7 +6,8 @@ from .firewall_gitops import FirewallGitops
 from .notifications_document import NotificationsDocument
 from .notifications_gitops import NotificationsGitops
 from .path_resolve import GitopsPathResolve
-from .rbac_document import RbacBinding, RbacDocument
+from raft.core.core.rbac.document import RbacBinding, RbacDocument, RbacRole
+
 from .rbac_gitops import RbacGitops
 from .temporary_override import TemporaryOverrideWarn
 
@@ -20,5 +21,7 @@ __all__ = [
     "RbacBinding",
     "RbacDocument",
     "RbacGitops",
+    "RbacRole",
     "TemporaryOverrideWarn",
 ]
+

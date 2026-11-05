@@ -10,6 +10,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { NavLink, useLocation } from "react-router-dom";
+import { useRbac } from "../rbac";
 import { LogoutButton } from "./LogoutButton";
 import {
   ADD_SERVICE_NAV,
@@ -27,6 +28,11 @@ export function MobileNav() {
   const [open, setOpen] = useState(false);
   const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
   const { pathname } = useLocation();
+  const { can } = useRbac();
+  const topNav = TOPBAR_NAV.filter(
+    (item) => !item.permission || can(item.permission),
+  );
+  const showSettings = !SETTINGS_NAV.permission || can(SETTINGS_NAV.permission);
   const menuId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -94,7 +100,7 @@ export function MobileNav() {
                 onKeyDown={trapTab}
               >
                 <nav className="mobile-nav-list" aria-label="Primary">
-                  {groupNav(TOPBAR_NAV).map((section) => (
+                  {groupNav(topNav).map((section) => (
                     <div className="mobile-nav-group" key={section.group}>
                       <p className="mobile-nav-group-label">
                         {NAV_GROUP_LABELS[section.group]}
@@ -115,11 +121,13 @@ export function MobileNav() {
                       pathname={pathname}
                       onClick={close}
                     />
-                    <MobileLink
-                      item={SETTINGS_NAV}
-                      pathname={pathname}
-                      onClick={close}
-                    />
+                    {showSettings ? (
+                      <MobileLink
+                        item={SETTINGS_NAV}
+                        pathname={pathname}
+                        onClick={close}
+                      />
+                    ) : null}
                   </div>
                 </nav>
                 <div className="mobile-nav-footer">

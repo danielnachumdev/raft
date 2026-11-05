@@ -54,13 +54,17 @@ class TestGitopsDocuments(RaftTestCase):
         doc = RbacDocument.from_mapping(
             {
                 "version": 1,
-                "roles": ["admin", "viewer"],
-                "bindings": [{"subject": "ops@example.com", "role": "admin"}],
+                "roles": [
+                    {"id": "admin", "permissions": ["*:read", "*:write"]},
+                    {"id": "viewer", "permissions": ["firewall:read"]},
+                ],
+                "bindings": [{"subject": "Ops@Example.com", "role": "admin"}],
             },
             path="host/rbac.yaml",
         )
-        assert doc.roles == ("admin", "viewer")
+        assert doc.roles[0].id == "admin"
         assert doc.bindings[0].subject == "ops@example.com"
+        assert "*:write" in doc.permissions_for("ops@example.com")
 
     def test_gitops_loaders_empty_missing(self) -> None:
         home = Path(self.tmp_path)

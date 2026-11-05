@@ -1,7 +1,7 @@
 """Always-on ``raft-dashboard`` settings (Compose service + optional public Host)."""
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Tuple
 
 DEFAULT_DASHBOARD_ENABLED = False
 DEFAULT_DASHBOARD_PORT = 8787
@@ -29,15 +29,34 @@ class DashboardOAuthConfig:
 
 
 @dataclass(frozen=True)
+class DashboardPasswordUser:
+    """Local username + password hash for ``auth.mode: password``."""
+
+    username: str
+    password_hash: str
+
+
+@dataclass(frozen=True)
 class DashboardAuthConfig:
     """Auth for the always-on dashboard process / public Host."""
 
     mode: str = DEFAULT_DASHBOARD_AUTH_MODE
-    password_hash: Optional[str] = None
+    password_hash: Optional[str] = None  # legacy → user ``admin``
+    users: Tuple[DashboardPasswordUser, ...] = ()
     verify_url: Optional[str] = None
     sign_in_url: Optional[str] = None
     identity_header: str = DEFAULT_IDENTITY_HEADER
     oauth: DashboardOAuthConfig = field(default_factory=DashboardOAuthConfig)
+
+    def password_users(self) -> dict[str, str]:
+        out = {
+            user.username.strip().lower(): user.password_hash
+            for user in self.users
+            if user.username and user.password_hash
+        }
+        if self.password_hash and "admin" not in out:
+            out["admin"] = self.password_hash
+        return out
 
 
 @dataclass(frozen=True)
@@ -54,7 +73,9 @@ class DashboardConfig:
         return bool(self.public_host and str(self.public_host).strip())
 
     def requires_password_hash(self) -> bool:
-        return self.is_public() and self.auth.mode == "password"
+        if not (self.is_public() and self.auth.mode == "password"):
+            return False
+        return not self.auth.password_users()
 
     def uses_identity_header(self) -> bool:
         return self.auth.mode in {"external", "oauth"}
