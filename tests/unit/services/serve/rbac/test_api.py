@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.stack import load_stack
+from raft.core.core.rbac.builtin import ADMIN_ROLE_ID
 from raft.core.observe.ops.status.models import StatusSnapshot
 from raft.services.serve.http.app import ServeAppFactory
 from raft.services.serve.http.paths import ServePaths
@@ -24,15 +25,16 @@ class TestServeRbacApiStory(RaftTestCase):
     """Operator edits RBAC in serve; Save is a temporary host override.
 
     Scenario:
-      1) Empty document + catalog includes *:read / *:write.
+      1) Empty host still returns builtin admin + catalog wildcards.
       2) PUT persists bindings and returns gitops.temporary_override.
       3) Writer OperatorError maps to HTTP 400.
+      4) YAML encode/decode round-trips the document.
     """
 
     def test_get_put_catalog_and_temporary_override(self) -> None:
         client = self._client()
         empty = client.get("/api/rbac").json()
-        assert empty["roles"] == []
+        assert empty["roles"][0]["id"] == ADMIN_ROLE_ID
         catalog = client.get("/api/rbac/catalog").json()
         assert "*:read" in catalog["permissions"]
         put = client.put("/api/rbac", json=_ADMIN)
@@ -41,6 +43,24 @@ class TestServeRbacApiStory(RaftTestCase):
         assert body["document"]["roles"][0]["id"] == "admin"
         assert "temporary_override" in body["gitops"]
         assert "host/rbac.yaml" in body["gitops"]["temporary_override"]
+
+    def test_yaml_encode_decode(self) -> None:
+        client = self._client()
+        encoded = client.post(
+            "/api/rbac/yaml/encode",
+            json={"document": _ADMIN},
+        )
+        assert encoded.status_code == 200
+        yaml_text = encoded.json()["yaml"]
+        assert "roles:" in yaml_text
+        decoded = client.post(
+            "/api/rbac/yaml/decode",
+            json={"yaml": yaml_text},
+        )
+        assert decoded.status_code == 200
+        assert decoded.json()["document"]["bindings"][0]["subject"] == (
+            "ops@example.com"
+        )
 
     def test_put_operator_error(self) -> None:
         writer = MagicMock()
@@ -51,6 +71,21 @@ class TestServeRbacApiStory(RaftTestCase):
         resp = client.put("/api/rbac", json={"version": 1})
         assert resp.status_code == 400
         assert "bad rbac" in resp.json()["detail"]
+
+    def test_yaml_encode_decode_validation_errors(self) -> None:
+        client = self._client()
+        bad_encode = client.post(
+            "/api/rbac/yaml/encode",
+            json={"document": ["not", "a", "mapping"]},
+        )
+        assert bad_encode.status_code == 400
+        bad_decode = client.post("/api/rbac/yaml/decode", json={"yaml": 12})
+        assert bad_decode.status_code == 400
+        invalid = client.post(
+            "/api/rbac/yaml/decode",
+            json={"yaml": "roles: [\n"},
+        )
+        assert invalid.status_code == 400
 
     def _client(self, writer=None) -> TestClient:
         ServePaths.spa_assets_dir().mkdir(parents=True, exist_ok=True)
