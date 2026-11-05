@@ -19,6 +19,7 @@ from ..dashboard_config import (
     DashboardAuthConfig,
     DashboardConfig,
     DashboardOAuthConfig,
+    DashboardPasswordUser,
 )
 from ..scalars import SettingsScalars
 from ..section import SettingsSectionParser
@@ -73,11 +74,40 @@ class DashboardSettingsParser(SettingsSectionParser[DashboardConfig]):
         return DashboardAuthConfig(
             mode=self._auth_mode(raw.get("mode")),
             password_hash=self._scalars.optional_str(raw.get("passwordHash")),
+            users=self._users(raw.get("users")),
             verify_url=self._scalars.optional_str(raw.get("verifyUrl")),
             sign_in_url=self._scalars.optional_str(raw.get("signInUrl")),
             identity_header=self._identity_header(raw.get("identityHeader")),
             oauth=self._oauth(raw.get("oauth")),
         )
+
+    def _users(self, raw: Any) -> tuple[DashboardPasswordUser, ...]:
+        if raw is None:
+            return ()
+        if not isinstance(raw, list):
+            raise OperatorError(
+                "settings.yaml dashboard.auth.users must be a list.\n"
+                "Fix: set users: [{username: admin, passwordHash: …}]",
+                has_fix=False,
+            )
+        return tuple(self._one_user(item, index) for index, item in enumerate(raw))
+
+    def _one_user(self, raw: Any, index: int) -> DashboardPasswordUser:
+        if not isinstance(raw, dict):
+            raise OperatorError(
+                f"dashboard.auth.users[{index}] must be a mapping.\n"
+                "Fix: use {username: admin, passwordHash: …}",
+                has_fix=False,
+            )
+        username = str(raw.get("username") or "").strip().lower()
+        password_hash = self._scalars.optional_str(raw.get("passwordHash"))
+        if not username or not password_hash:
+            raise OperatorError(
+                f"dashboard.auth.users[{index}] requires username and passwordHash.\n"
+                "Fix: set both fields on each user",
+                has_fix=False,
+            )
+        return DashboardPasswordUser(username=username, password_hash=password_hash)
 
     def _oauth(self, raw: Any) -> DashboardOAuthConfig:
         if raw is None:

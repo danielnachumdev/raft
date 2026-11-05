@@ -34,19 +34,22 @@ class DashboardLoginRoutes:
     def _auth_status(self, request: Request) -> JSONResponse:
         cookie = request.cookies.get(self._sessions.cookie_name())
         ok = self._sessions.session_ok(cookie)
-        return JSONResponse(
-            {"authenticated": ok, "mode": "password"},
-            status_code=200 if ok else 401,
-        )
+        body = {
+            "authenticated": ok,
+            "mode": "password",
+            "username": self._sessions.username(cookie) if ok else None,
+        }
+        return JSONResponse(body, status_code=200 if ok else 401)
 
     async def _login(self, request: Request) -> JSONResponse:
         payload = await request.json()
         password = str((payload or {}).get("password") or "")
-        tokens = self._sessions.login(password)
+        username = str((payload or {}).get("username") or "admin")
+        tokens = self._sessions.login(password, username=username)
         if tokens is None:
-            return JSONResponse({"detail": "invalid password"}, status_code=401)
+            return JSONResponse({"detail": "invalid credentials"}, status_code=401)
         session, csrf = tokens
-        response = JSONResponse({"ok": True})
+        response = JSONResponse({"ok": True, "username": username.strip().lower()})
         self._set_cookies(request, response, session, csrf)
         return response
 

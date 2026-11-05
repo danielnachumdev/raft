@@ -61,7 +61,7 @@ class TestMiddlewareGaps(RaftTestCase):
         key_path = home / "host" / "serve" / "dashboard-session.key"
         key_path.parent.mkdir(parents=True, exist_ok=True)
         key_path.write_bytes(b"01234567890123456789012345678901")
-        sessions = PasswordSessionAuth(home, password_hash=hashed)
+        sessions = PasswordSessionAuth.from_hashes(home, password_hash=hashed)
         secret = key_path.read_bytes()
         self._assert_bad_cookies(sessions, secret)
 
@@ -109,22 +109,43 @@ class TestMiddlewareGaps(RaftTestCase):
         assert body["logout"]["path"].startswith("/oauth2/sign_out")
 
     def test_session_password_and_none_logout_hints(self) -> None:
+        request = self._session_request()
         from raft.services.serve.auth.session_routes import DashboardSessionRoutes
 
         pw = DashboardSessionRoutes(
             DashboardConfig(auth=DashboardAuthConfig(mode="password"))
-        )._payload()
+        )._payload(request)
         assert pw["logout"]["kind"] == "post"
         none = DashboardSessionRoutes(
             DashboardConfig(auth=DashboardAuthConfig(mode="none"))
-        )._payload()
+        )._payload(request)
         assert none["logout"]["kind"] == "none"
         ext = DashboardSessionRoutes(
             DashboardConfig(
                 auth=DashboardAuthConfig(mode="external", sign_in_url=None)
             )
-        )._payload()
+        )._payload(request)
         assert ext["logout"]["path"] == "/"
+
+    @staticmethod
+    def _session_request():
+        from starlette.requests import Request
+
+        return Request(
+            {
+                "type": "http",
+                "asgi": {"version": "3.0"},
+                "http_version": "1.1",
+                "method": "GET",
+                "scheme": "http",
+                "path": "/api/dashboard/session",
+                "raw_path": b"/api/dashboard/session",
+                "query_string": b"",
+                "headers": [],
+                "client": ("127.0.0.1", 123),
+                "server": ("127.0.0.1", 80),
+            }
+        )
 
     def _app_with(self, cfg: DashboardConfig, sessions=None) -> FastAPI:
         app = self._plain_app()

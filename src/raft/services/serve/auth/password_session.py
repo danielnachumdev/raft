@@ -5,7 +5,7 @@ import hmac
 import secrets
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Mapping, Optional, Tuple
 
 from raft.core.lifecycle.dashboard.password import DashboardPassword
 
@@ -17,33 +17,59 @@ _TTL_SECONDS = 12 * 3600
 class PasswordSessionAuth:
     """PBKDF2 verify + HMAC-signed session cookie + CSRF cookie."""
 
-    def __init__(self, data_home: Path, *, password_hash: str) -> None:
-        self._hash = password_hash
+    def __init__(
+        self,
+        data_home: Path,
+        *,
+        users: Mapping[str, str],
+    ) -> None:
+        self._users = {str(k).strip().lower(): v for k, v in users.items() if k}
         self._password = DashboardPassword()
         self._secret = self._load_or_create_secret(data_home)
 
-    def login(self, password: str) -> Optional[tuple[str, str]]:
+    @classmethod
+    def from_hashes(
+        cls,
+        data_home: Path,
+        *,
+        password_hash: Optional[str] = None,
+        users: Optional[Mapping[str, str]] = None,
+    ) -> "PasswordSessionAuth":
+        merged: Dict[str, str] = {}
+        if users:
+            merged.update(users)
+        if password_hash and "admin" not in merged:
+            merged["admin"] = password_hash
+        return cls(data_home, users=merged)
+
+    def login(
+        self, password: str, *, username: Optional[str] = None
+    ) -> Optional[tuple[str, str]]:
         """Return ``(session_cookie, csrf_cookie)`` or None on failure."""
-        if not self._password.verify(password, self._hash):
+        user = (username or "admin").strip().lower()
+        encoded = self._users.get(user)
+        if not encoded or not self._password.verify(password, encoded):
             return None
         csrf = secrets.token_urlsafe(24)
         exp = int(time.time()) + _TTL_SECONDS
-        payload = f"1|{exp}|{csrf}"
+        payload = f"2|{user}|{exp}|{csrf}"
         sig = self._sign(payload)
         return f"{payload}.{sig}", csrf
 
     def session_ok(self, cookie: Optional[str]) -> bool:
+        return self._parse(cookie) is not None
+
+    def username(self, cookie: Optional[str]) -> Optional[str]:
         parsed = self._parse(cookie)
-        return parsed is not None
+        if parsed is None:
+            return None
+        return parsed[0]
 
     def csrf_ok(self, cookie: Optional[str], header: Optional[str]) -> bool:
         parsed = self._parse(cookie)
-        if parsed is None:
+        if parsed is None or not header:
             return False
-        _, _, csrf = parsed
-        if not header:
-            return False
-        return hmac.compare_digest(csrf, header)
+        return hmac.compare_digest(parsed[2], header)
 
     def cookie_name(self) -> str:
         return _COOKIE
@@ -51,22 +77,38 @@ class PasswordSessionAuth:
     def csrf_cookie_name(self) -> str:
         return _CSRF_COOKIE
 
-    def _parse(self, cookie: Optional[str]):
+    def _parse(self, cookie: Optional[str]) -> Optional[Tuple[str, int, str]]:
         if not cookie or "." not in cookie:
             return None
         payload, sig = cookie.rsplit(".", 1)
         if not hmac.compare_digest(self._sign(payload), sig):
             return None
         parts = payload.split("|")
-        if len(parts) != 3 or parts[0] != "1":
+        if parts and parts[0] == "2" and len(parts) == 4:
+            return self._parse_v2(parts)
+        if parts and parts[0] == "1" and len(parts) == 3:
+            return self._parse_v1(parts)
+        return None
+
+    def _parse_v2(self, parts: list[str]) -> Optional[Tuple[str, int, str]]:
+        user = parts[1].strip().lower()
+        try:
+            exp = int(parts[2])
+        except ValueError:
             return None
+        if exp < int(time.time()) or user not in self._users:
+            return None
+        return user, exp, parts[3]
+
+    def _parse_v1(self, parts: list[str]) -> Optional[Tuple[str, int, str]]:
+        """Legacy shared-password sessions → subject ``admin``."""
         try:
             exp = int(parts[1])
         except ValueError:
             return None
-        if exp < int(time.time()):
+        if exp < int(time.time()) or "admin" not in self._users:
             return None
-        return parts[0], exp, parts[2]
+        return "admin", exp, parts[2]
 
     def _sign(self, payload: str) -> str:
         return hmac.new(

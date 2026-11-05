@@ -49,6 +49,7 @@ You keep services in their own repos. On the VPS you `apply` a manifest. raft sy
 | Ordered edge firewall (rich rules, import/export) | ✅ |
 | Alert rules (metrics/control-plane → notifications) + default setup recommendations | ✅ |
 | GitOps-first host config (flat YAML + temporary serve/CLI overrides) | ✅ |
+| RBAC via `rbac.yaml` (oauth/external + password usernames) | ✅ |
 | Operator system event timeline (CLI + serve) | ✅ |
 | Always-on dashboard Compose service (`raft-dashboard`) | ✅ |
 | Firewall-derived alert signals | 📋 |

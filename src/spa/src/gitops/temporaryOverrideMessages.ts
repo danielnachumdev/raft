@@ -4,22 +4,23 @@ export type GitopsHostDoc =
   | "settings.yaml"
   | "firewall.yaml"
   | "alerts.yaml"
-  | "notifications.yaml";
+  | "notifications.yaml"
+  | "rbac.yaml";
 
 export const TEMPORARY_OVERRIDE_TITLE = "Temporary host override";
 
 export function temporaryOverrideLead(doc: GitopsHostDoc): string {
   return (
     `Edits here write host/${doc} on this host for live testing only. ` +
-    `The next GitOps deploy (vpsctl Sync host config / when host/${doc} ` +
-    "is synced from the ops repo) will wipe and replace these changes."
+    `The next GitOps Sync (when host/${doc} is synced from the ops repo) ` +
+    "will wipe and replace these changes."
   );
 }
 
 export function temporaryOverrideGuidance(doc: GitopsHostDoc): string {
   return (
-    `Durable config belongs in the GitOps repo (vpsctl host/${doc}), ` +
-    "not click-ops. Later, only privileged RBAC roles may use this escape hatch."
+    `Durable config belongs in the GitOps repo (host/${doc}), ` +
+    "not click-ops. Saving requires rbac.write when RBAC is enabled."
   );
 }
 

@@ -1,5 +1,6 @@
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { InboxBell } from "../inbox/InboxBell";
+import { useRbac } from "../rbac";
 import { versionChromeText } from "../shared/api/status";
 import { LogoutButton } from "./LogoutButton";
 import { MobileNav } from "./MobileNav";
@@ -8,6 +9,7 @@ import {
   isNavActive,
   SETTINGS_NAV,
   TOPBAR_NAV,
+  type NavItem,
 } from "./navItems";
 import { useRaftVersion } from "./useRaftVersion";
 import "./AppShell.css";
@@ -15,6 +17,8 @@ import "./AppShell.css";
 /** Persistent top bar (brand, primary nav, tools) around every route. */
 export function AppShell() {
   const { pathname } = useLocation();
+  const { can } = useRbac();
+  const nav = TOPBAR_NAV.filter((item) => navAllowed(item, can));
   return (
     <>
       <a className="skip-link" href="#main">
@@ -26,7 +30,7 @@ export function AppShell() {
             raft
           </Link>
           <nav className="topbar-nav" aria-label="Primary">
-            {TOPBAR_NAV.map((item, index) => (
+            {nav.map((item, index) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -35,7 +39,7 @@ export function AppShell() {
                 className={() => {
                   const active = isNavActive(pathname, item);
                   const split =
-                    index > 0 && TOPBAR_NAV[index - 1].group !== item.group;
+                    index > 0 && nav[index - 1].group !== item.group;
                   return [
                     "topbar-link",
                     split ? "topbar-link--group-start" : "",
@@ -59,10 +63,17 @@ export function AppShell() {
   );
 }
 
+function navAllowed(item: NavItem, can: (permission: string) => boolean): boolean {
+  if (!item.permission) return true;
+  return can(item.permission);
+}
+
 /** Add service CTA, version, Settings gear, logout, and the mobile menu. */
 function TopbarTools(props: { pathname: string }) {
   const version = useRaftVersion();
+  const { can } = useRbac();
   const settingsActive = isNavActive(props.pathname, SETTINGS_NAV);
+  const showSettings = navAllowed(SETTINGS_NAV, can);
   return (
     <div className="topbar-tools">
       <NavLink
@@ -84,20 +95,22 @@ function TopbarTools(props: { pathname: string }) {
         </span>
       ) : null}
       <InboxBell />
-      <NavLink
-        to={SETTINGS_NAV.to}
-        id={SETTINGS_NAV.id}
-        end
-        aria-label={SETTINGS_NAV.label}
-        title={SETTINGS_NAV.label}
-        className={() =>
-          settingsActive
-            ? "topbar-link topbar-link--icon is-active"
-            : "topbar-link topbar-link--icon"
-        }
-      >
-        <GearIcon />
-      </NavLink>
+      {showSettings ? (
+        <NavLink
+          to={SETTINGS_NAV.to}
+          id={SETTINGS_NAV.id}
+          end
+          aria-label={SETTINGS_NAV.label}
+          title={SETTINGS_NAV.label}
+          className={() =>
+            settingsActive
+              ? "topbar-link topbar-link--icon is-active"
+              : "topbar-link topbar-link--icon"
+          }
+        >
+          <GearIcon />
+        </NavLink>
+      ) : null}
       <LogoutButton className="topbar-logout-desktop" />
       <MobileNav key={props.pathname} />
     </div>

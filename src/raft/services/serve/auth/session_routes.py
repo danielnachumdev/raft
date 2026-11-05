@@ -1,29 +1,50 @@
-"""Public session metadata for SPA logout affordances."""
+"""Public session metadata for SPA logout + RBAC affordances."""
 
-from typing import Any, Dict
+from pathlib import Path
+from typing import Any, Callable, Dict, Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 
 from raft.core.core.config.settings.dashboard_config import DashboardConfig
 
+from .rbac_deps import ServeRbac
+
 
 class DashboardSessionRoutes:
-    """``GET /api/dashboard/session`` — mode + how to log out."""
+    """``GET /api/dashboard/session`` — mode, logout, RBAC snapshot."""
 
-    def __init__(self, config: DashboardConfig) -> None:
+    def __init__(
+        self,
+        config: DashboardConfig,
+        *,
+        home: Optional[Path] = None,
+        username_from_cookie: Optional[
+            Callable[[Optional[str]], Optional[str]]
+        ] = None,
+    ) -> None:
         self._cfg = config
+        self._rbac = (
+            ServeRbac(
+                home, config, username_from_cookie=username_from_cookie
+            )
+            if home is not None
+            else None
+        )
 
     def register(self, app: FastAPI) -> None:
         @app.get("/api/dashboard/session")
-        def session() -> Dict[str, Any]:
-            return self._payload()
+        def session(request: Request) -> Dict[str, Any]:
+            return self._payload(request)
 
-    def _payload(self) -> Dict[str, Any]:
+    def _payload(self, request: Request) -> Dict[str, Any]:
         mode = self._cfg.auth.mode
-        return {
+        out: Dict[str, Any] = {
             "mode": mode,
             "logout": self._logout(mode),
         }
+        if self._rbac is not None:
+            out["rbac"] = self._rbac.session_fields(request)
+        return out
 
     def _logout(self, mode: str) -> Dict[str, str]:
         if mode == "password":

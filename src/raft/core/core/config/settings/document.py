@@ -143,7 +143,7 @@ class SettingsDocument:
         }
 
     def _dashboard_auth(self, auth: DashboardAuthConfig) -> dict[str, Any]:
-        return {
+        out: dict[str, Any] = {
             "mode": auth.mode,
             "passwordHash": auth.password_hash,
             "verifyUrl": auth.verify_url,
@@ -151,6 +151,12 @@ class SettingsDocument:
             "identityHeader": auth.identity_header,
             "oauth": self._dashboard_oauth(auth.oauth),
         }
+        if auth.users:
+            out["users"] = [
+                {"username": u.username, "passwordHash": u.password_hash}
+                for u in auth.users
+            ]
+        return out
 
     @staticmethod
     def _dashboard_oauth(oauth: DashboardOAuthConfig) -> dict[str, Any]:

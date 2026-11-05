@@ -109,6 +109,7 @@ class DashboardOAuthOps:
         auth = DashboardAuthConfig(
             mode=cfg.auth.mode,
             password_hash=cfg.auth.password_hash,
+            users=cfg.auth.users,
             verify_url=cfg.auth.verify_url,
             sign_in_url=cfg.auth.sign_in_url,
             identity_header=cfg.auth.identity_header,

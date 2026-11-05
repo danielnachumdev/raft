@@ -42,14 +42,38 @@ class TestServeAuthWireAndSession(RaftTestCase):
         from raft.services.serve.auth.password_session import PasswordSessionAuth
 
         hashed = DashboardPassword().hash("correct-horse")
-        sessions = PasswordSessionAuth(self.tmp_path, password_hash=hashed)
+        sessions = PasswordSessionAuth.from_hashes(self.tmp_path, password_hash=hashed)
         assert not sessions.session_ok("bad")
         assert not sessions.session_ok("a.b")
+        assert sessions.username("bad") is None
         assert not sessions.csrf_ok(None, "x")
         tokens = sessions.login("correct-horse")
         assert tokens is not None
+        assert sessions.username(tokens[0]) == "admin"
         assert sessions.csrf_ok(tokens[0], tokens[1])
         assert not sessions.csrf_ok(tokens[0], "wrong")
+        self._assert_bad_v2_and_v1(sessions)
+
+    def _assert_bad_v2_and_v1(self, sessions) -> None:
+        import hashlib
+        import hmac
+        import time
+
+        secret = sessions._secret
+        now = int(time.time()) + 3600
+
+        def sign(payload: str) -> str:
+            return hmac.new(secret, payload.encode(), hashlib.sha256).hexdigest()
+
+        assert not sessions.session_ok(f"2|admin|nope|csrf.{sign('2|admin|nope|csrf')}")
+        assert not sessions.session_ok(
+            f"2|missing|{now}|csrf.{sign(f'2|missing|{now}|csrf')}"
+        )
+        legacy = f"1|{now}|csrf.{sign(f'1|{now}|csrf')}"
+        assert sessions.username(legacy) == "admin"
+        alone = type(sessions)(self.tmp_path, users={"ops": sessions._users["admin"]})
+        alone._secret = secret
+        assert not alone.session_ok(legacy)
 
     def _password_client(self) -> TestClient:
         home = self.tmp_path

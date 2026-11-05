@@ -17,6 +17,7 @@ from ..firewall import ServeFirewallApi
 from ..github import ServeGithubApi
 from ..inbox import ServeInboxApi
 from ..notifications import ServeNotificationsApi
+from ..rbac import ServeRbacApi
 from ..settings import ServeSettingsApi
 from ..update import ServeUpdateApi
 from .downloads import ServeDownloads
@@ -44,6 +45,7 @@ class ServeAppFactory:
         settings: Optional[ServeSettingsApi] = None,
         update: Optional[ServeUpdateApi] = None,
         inbox: Optional[ServeInboxApi] = None,
+        rbac: Optional[ServeRbacApi] = None,
         port: int = _DEFAULT_PORT,
     ) -> None:
         self.stack = stack
@@ -59,6 +61,7 @@ class ServeAppFactory:
         self._settings = settings
         self._update = update
         self._inbox = inbox
+        self._rbac = rbac
         self._port = port
 
     def create(self) -> FastAPI:
@@ -84,25 +87,17 @@ class ServeAppFactory:
         return page, self._api_adapters()
 
     def _api_adapters(self):
-        downloads = self._downloads or ServeDownloads(self.stack, logs=self._logs)
-        github = self._github or ServeGithubApi(self.stack, port=self._port)
-        notifications = self._notifications or ServeNotificationsApi(self.stack)
-        firewall = self._firewall or ServeFirewallApi(self.stack)
-        alerts = self._alerts or ServeAlertsApi(self.stack)
-        events = self._events or ServeEventsApi(self.stack)
-        settings = self._settings or ServeSettingsApi(self.stack)
-        update = self._update or ServeUpdateApi(self.stack)
-        inbox = self._inbox or ServeInboxApi(self.stack)
         return (
-            downloads,
-            github,
-            notifications,
-            firewall,
-            alerts,
-            events,
-            settings,
-            update,
-            inbox,
+            self._downloads or ServeDownloads(self.stack, logs=self._logs),
+            self._github or ServeGithubApi(self.stack, port=self._port),
+            self._notifications or ServeNotificationsApi(self.stack),
+            self._firewall or ServeFirewallApi(self.stack),
+            self._alerts or ServeAlertsApi(self.stack),
+            self._events or ServeEventsApi(self.stack),
+            self._settings or ServeSettingsApi(self.stack),
+            self._update or ServeUpdateApi(self.stack),
+            self._inbox or ServeInboxApi(self.stack),
+            self._rbac or ServeRbacApi(self.stack),
         )
 
     @staticmethod
@@ -118,6 +113,7 @@ class ServeAppFactory:
         settings: ServeSettingsApi,
         update: ServeUpdateApi,
         inbox: ServeInboxApi,
+        rbac: ServeRbacApi,
     ) -> None:
         ServeAppFactory._register_read_api(app, page)
         ServeAppFactory._register_action_api(app, page)
@@ -130,6 +126,7 @@ class ServeAppFactory:
         settings.register(app)
         update.register(app)
         inbox.register(app)
+        rbac.register(app)
 
     @staticmethod
     def _register_read_api(app: FastAPI, page: ServePage) -> None:

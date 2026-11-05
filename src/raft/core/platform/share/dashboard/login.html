@@ -46,23 +46,29 @@
   <main>
     <h1>Sign in</h1>
     <form id="f" method="post" action="/api/dashboard/login">
+      <label for="username">Username</label>
+      <input id="username" name="username" type="text"
+             autocomplete="username" value="admin" required>
       <label for="password">Password</label>
       <input id="password" name="password" type="password"
              autocomplete="current-password" required>
       <button type="submit">Sign in</button>
     </form>
-    <p id="err" hidden>Invalid password</p>
+    <p id="err" hidden>Invalid credentials</p>
   </main>
   <script>
     document.getElementById("f").addEventListener("submit", async (e) => {
       e.preventDefault();
       const err = document.getElementById("err");
       err.hidden = true;
-      const password = new FormData(e.target).get("password");
+      const data = new FormData(e.target);
       const res = await fetch("/api/dashboard/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({
+          username: data.get("username"),
+          password: data.get("password"),
+        }),
       });
       if (!res.ok) {
         err.hidden = false;

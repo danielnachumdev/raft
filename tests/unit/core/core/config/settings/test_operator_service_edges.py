@@ -91,3 +91,25 @@ class TestOperatorSettingsServiceEdges(RaftTestCase):
             {"notifications": {"enabled": True, "channels": {}}}
         )
         assert out["notifications"]["channels"] == {}
+
+    def test_redact_dashboard_password_users(self) -> None:
+        merge = SettingsSecretsMerge()
+        out = merge.redact_document(
+            {
+                "dashboard": {
+                    "auth": {
+                        "passwordHash": "secret",
+                        "users": [
+                            "skip",
+                            {"username": "ops", "passwordHash": "hash"},
+                            {"username": "bare"},
+                        ],
+                    }
+                }
+            }
+        )
+        auth = out["dashboard"]["auth"]
+        assert auth["passwordHash"] == "***"
+        assert auth["users"][0] == "skip"
+        assert auth["users"][1]["passwordHash"] == "***"
+        assert auth["users"][2] == {"username": "bare"}

@@ -7,6 +7,7 @@ import { FirewallSettingsPage } from "../firewall/FirewallSettingsPage";
 import { AlertsSettingsPage } from "../alerts/AlertsSettingsPage";
 import { InboxPage } from "../inbox/InboxPage";
 import { NotificationsSettingsPage } from "../notifications/NotificationsSettingsPage";
+import { ForbiddenPage, RbacSettingsPage, RequirePermission } from "../rbac";
 import { SettingsPage } from "../settings/SettingsPage";
 import { EventsPage } from "../events/EventsPage";
 import { ServicePage } from "../service/ServicePage";
@@ -20,19 +21,50 @@ export function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/add-service" element={<AddServicePage />} />
           <Route path="/deploy" element={<DeployPage />} />
-          <Route path="/events" element={<EventsPage />} />
+          <Route
+            path="/events"
+            element={
+              <RequirePermission permission="events:read">
+                <EventsPage />
+              </RequirePermission>
+            }
+          />
           <Route path="/inbox" element={<InboxPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route
+            path="/settings"
+            element={
+              <RequirePermission permission="settings:read">
+                <SettingsPage />
+              </RequirePermission>
+            }
+          />
           <Route
             path="/settings/notifications"
-            element={<NotificationsSettingsPage />}
+            element={
+              <RequirePermission permission="notifications:read">
+                <NotificationsSettingsPage />
+              </RequirePermission>
+            }
           />
-          <Route path="/settings/alerts" element={<AlertsSettingsPage />} />
+          <Route
+            path="/settings/alerts"
+            element={
+              <RequirePermission permission="alerts:read">
+                <AlertsSettingsPage />
+              </RequirePermission>
+            }
+          />
           <Route
             path="/settings/edge-access"
-            element={<FirewallSettingsPage />}
+            element={
+              <RequirePermission permission="firewall:read">
+                <FirewallSettingsPage />
+              </RequirePermission>
+            }
           />
+          <Route path="/settings/rbac" element={<RbacSettingsPage />} />
           <Route path="/service/:service" element={<ServicePage />} />
+          <Route path="/forbidden" element={<ForbiddenPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
