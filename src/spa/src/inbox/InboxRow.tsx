@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "../chrome/toast";
+import { userFacingError } from "../shared/userFacingError.ts";
 import {
   dismissInboxItem,
   markInboxItemRead,
@@ -25,7 +26,7 @@ export function InboxRow(props: Props) {
       props.onChange(await action());
       toast.good(ok);
     } catch (err) {
-      toast.bad(err instanceof Error ? err.message : "Action failed");
+      toast.bad(userFacingError(err, "Action failed"));
     } finally {
       setPending(false);
     }

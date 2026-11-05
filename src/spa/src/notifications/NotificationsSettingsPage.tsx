@@ -23,6 +23,7 @@ import {
 } from "./notificationsApi";
 import { isEmptyStrategyCatalog } from "./notificationsHelpers";
 import "./NotificationsSettingsPage.css";
+import { userFacingError } from "../shared/userFacingError.ts";
 
 /** Settings page: list / add / edit / enable notification channels. */
 export function NotificationsSettingsPage() {
@@ -55,7 +56,7 @@ export function NotificationsSettingsPage() {
       setGlobalEnabled(list.enabled);
       setLoaded(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load notifications");
+      setError(userFacingError(err, "Failed to load notifications"));
     } finally {
       setBusy(false);
     }
@@ -71,13 +72,13 @@ export function NotificationsSettingsPage() {
     <div className="notifications-page">
       <PageHeader
         title="Notifications"
-        subtitle="Where raft sends alerts for this host. Channel edits are temporary host overrides until the next GitOps sync. Secrets stay redacted."
+        subtitle="Where alerts for this host are sent. Secrets stay redacted."
         meta={
           !busy && !error ? (
             <Link
               className={globalEnabled ? "chip chip-ok" : "chip chip-warn"}
               id="notifications-global"
-              title="Global switch in host settings"
+              title="Global notifications switch in Settings"
               to="/settings#settings-notifications"
             >
               Global notifications {globalEnabled ? "on" : "off"}
@@ -215,7 +216,7 @@ export function NotificationsSettingsPage() {
       setFormOpen(false);
       await load({ quiet: true });
     } catch (err) {
-      toast.bad(err instanceof Error ? err.message : "Save failed");
+      toast.bad(userFacingError(err, "Save failed"));
     } finally {
       setFormBusy(false);
     }
@@ -230,7 +231,7 @@ export function NotificationsSettingsPage() {
       toast.warning(temporaryOverrideSavedMessage("notifications.yaml"));
       await load({ quiet: true });
     } catch (err) {
-      toast.bad(err instanceof Error ? err.message : "Update failed");
+      toast.bad(userFacingError(err, "Update failed"));
     } finally {
       setBusyId(null);
     }
@@ -246,7 +247,7 @@ export function NotificationsSettingsPage() {
       setPendingDelete(null);
       await load({ quiet: true });
     } catch (err) {
-      toast.bad(err instanceof Error ? err.message : "Delete failed");
+      toast.bad(userFacingError(err, "Delete failed"));
       throw err;
     } finally {
       setBusyId(null);
@@ -260,7 +261,7 @@ export function NotificationsSettingsPage() {
       if (result.ok) toast.good(result.message);
       else toast.bad(result.message);
     } catch (err) {
-      toast.bad(err instanceof Error ? err.message : "Test failed");
+      toast.bad(userFacingError(err, "Test failed"));
     } finally {
       setBusyId(null);
     }

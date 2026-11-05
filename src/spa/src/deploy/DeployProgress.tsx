@@ -56,10 +56,7 @@ export function DeployProgress(props: { job: DeployJob }) {
       {job.next_steps.length > 0 ? (
         <div className="next-steps" id="next-steps">
           <h3>Additional steps</h3>
-          <p className="muted">
-            Only what raft cannot do automatically (secrets, host paths, DNS/TLS,
-            CI secrets).
-          </p>
+          <p className="muted">Follow these steps to finish the deploy.</p>
           <ul>
             {job.next_steps.map((step) => (
               <li key={step.title}>

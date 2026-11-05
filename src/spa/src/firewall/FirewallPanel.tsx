@@ -5,7 +5,6 @@ import { EmptyState } from "../chrome/StateViews";
 import { toast } from "../chrome/toast";
 import { useUnsavedGuard } from "../chrome/useUnsavedGuard";
 import {
-  DisableTipsCopyHint,
   TemporaryOverrideBanner,
   temporaryOverrideSavedMessage,
   unsavedTemporaryOverrideMessage,
@@ -25,6 +24,7 @@ import {
 } from "./FirewallRuleFormModal";
 import { FirewallRuleTable } from "./FirewallRuleTable";
 import "./FirewallPanel.css";
+import { userFacingError } from "../shared/userFacingError.ts";
 
 type Props = {
   document: FirewallDocument;
@@ -68,7 +68,7 @@ export function FirewallPanel(props: Props) {
       setSaved(rules);
       toast.warning(temporaryOverrideSavedMessage("firewall.yaml"));
     } catch (err) {
-      toast.bad(err instanceof Error ? err.message : "Failed to save firewall");
+      toast.bad(userFacingError(err, "Failed to save firewall"));
     } finally {
       setSaving(false);
     }
@@ -106,7 +106,7 @@ export function FirewallPanel(props: Props) {
       downloadJson(await props.onExport(), "raft-firewall.json");
       toast.good("Firewall exported");
     } catch (err) {
-      toast.bad(err instanceof Error ? err.message : "Export failed");
+      toast.bad(userFacingError(err, "Export failed"));
     }
   }
 
@@ -146,7 +146,6 @@ export function FirewallPanel(props: Props) {
       {props.header(actions)}
 
       <TemporaryOverrideBanner doc="firewall.yaml" id="firewall-temp-override" />
-      <DisableTipsCopyHint doc="firewall.yaml" id="firewall-disable-tips" />
 
       <FirewallRecommendations
         items={props.recommendations}
@@ -164,8 +163,7 @@ export function FirewallPanel(props: Props) {
         </div>
         <p className="panel-lede">
           First match wins, top to bottom. Drag the grip or use the arrows to
-          reorder. Actions: permit allow; deny returns 403; drop closes the
-          connection.
+          reorder.
         </p>
         {rules.length === 0 ? (
           <EmptyState

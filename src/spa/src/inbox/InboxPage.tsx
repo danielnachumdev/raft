@@ -12,6 +12,7 @@ import {
 } from "./inboxApi";
 import { InboxRow } from "./InboxRow";
 import "./InboxPage.css";
+import { userFacingError } from "../shared/userFacingError.ts";
 
 /** Manage in-app operator notices (recommendations); not outbound channels. */
 export function InboxPage() {
@@ -26,7 +27,7 @@ export function InboxPage() {
       setError(null);
     } catch (err) {
       if (!opts?.quiet) setPayload(null);
-      setError(err instanceof Error ? err.message : "Failed to load inbox");
+      setError(userFacingError(err, "Failed to load inbox"));
     } finally {
       setBusy(false);
     }
@@ -41,7 +42,7 @@ export function InboxPage() {
       setPayload(await markAllInboxRead());
       toast.good("Marked all as read");
     } catch (err) {
-      toast.bad(err instanceof Error ? err.message : "Mark all read failed");
+      toast.bad(userFacingError(err, "Mark all read failed"));
     }
   }
 

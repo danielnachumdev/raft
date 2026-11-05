@@ -12,10 +12,8 @@ export function StorageSection() {
       <div className="settings-storage-block">
         <h3 className="settings-storage-title">Purge unused images</h3>
         <p className="muted settings-storage-copy">
-          Removes Docker images not used by any container and unused build
-          cache. Images still attached to running or stopped containers are
-          kept. App volumes and secrets are not touched. Same as{" "}
-          <code>raft purge</code>.
+          Removes unused images and build cache. Images still attached to
+          containers are kept. App volumes and secrets are not touched.
         </p>
         <PurgeButton />
       </div>

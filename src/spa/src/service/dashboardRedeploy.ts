@@ -51,8 +51,7 @@ export async function waitForDashboardReconnect(opts: {
 
 export function dashboardRedeployTimeoutMessage(): string {
   return (
-    "Dashboard redeploy is taking longer than expected. " +
-    "Check Events, or on the host run `raft doctor` / `raft redeploy dashboard`."
+    "Dashboard redeploy is taking longer than expected. Check Events."
   );
 }
 

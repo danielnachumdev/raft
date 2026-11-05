@@ -214,9 +214,9 @@ export function FirewallRuleFormModal(props: Props) {
             disabled={props.busy}
             onChange={(e) => setAction(e.target.value as FirewallAction)}
           >
-            <option value="permit">permit (allow)</option>
-            <option value="deny">deny (HTTP 403)</option>
-            <option value="drop">drop (close connection)</option>
+            <option value="permit">permit</option>
+            <option value="deny">deny</option>
+            <option value="drop">drop</option>
           </select>
         </label>
       </form>

@@ -48,7 +48,7 @@ export function Dashboard() {
       if (quiet) setError(null);
     } catch {
       if (!quiet || dataRef.current === null) {
-        setError("Failed to load status. Refresh or check raft serve.");
+        setError("Failed to load status. Refresh and try again.");
       }
     } finally {
       inFlightRef.current = false;
@@ -167,8 +167,7 @@ function AppsEmpty() {
         </Link>
       }
     >
-      Deploy one from GitHub here, or from a service repo run{" "}
-      <code>raft apply --file .raft/app.yaml</code>.
+      Deploy one from GitHub, or ask an admin to add a service.
     </EmptyState>
   );
 }

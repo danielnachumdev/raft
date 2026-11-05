@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Modal } from "../chrome/Modal";
 import { toast } from "../chrome/toast";
 import { temporaryOverrideSavedMessage } from "../gitops";
+import { userFacingError } from "../shared/userFacingError.ts";
 
 /** Paste an exported firewall JSON document; Import replaces + applies. */
 export function FirewallImportModal(props: {
@@ -20,7 +21,7 @@ export function FirewallImportModal(props: {
       setText("");
       toast.warning(temporaryOverrideSavedMessage("firewall.yaml"));
     } catch (err) {
-      toast.bad(err instanceof Error ? err.message : "Import failed");
+      toast.bad(userFacingError(err, "Import failed"));
     } finally {
       setBusy(false);
     }

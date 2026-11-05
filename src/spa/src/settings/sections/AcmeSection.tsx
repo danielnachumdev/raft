@@ -21,7 +21,7 @@ export function AcmeSection(props: {
       enabled={props.enabled}
       source={props.meta?.source}
       onEnabledChange={props.onEnabledChange}
-      hint="Let's Encrypt HTTP-01 for tls: acme apps. Email required when enabled (e.g. ops@example.com)."
+      hint="Automatic certificates when enabled. Email required (e.g. ops@example.com)."
     >
       <div className="form-grid">
         <TextField

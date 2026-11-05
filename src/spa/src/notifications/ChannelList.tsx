@@ -22,7 +22,7 @@ export function ChannelList(props: Props) {
   if (props.channels.length === 0) {
     return (
       <EmptyState id="channels-empty" title="No notification channels configured.">
-        Use <em>Add channel</em> so raft alerts for this host reach you.
+        Use <em>Add channel</em> so alerts for this host reach you.
       </EmptyState>
     );
   }

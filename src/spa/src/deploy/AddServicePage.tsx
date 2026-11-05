@@ -10,7 +10,7 @@ export function AddServicePage() {
       <PageHeader
         crumbs={[{ label: "Status", to: "/" }]}
         title="Add a service"
-        subtitle="Pick where the service comes from. raft deploys it and keeps it running."
+        subtitle="Pick where the service comes from."
       />
 
       <section className="panel" id="add-service-options">
@@ -32,13 +32,6 @@ export function AddServicePage() {
             </Link>
           </li>
         </ul>
-        <p className="muted add-service-cli">
-          Prefer the CLI or CI? From a service repo run{" "}
-          <code>raft apply --file .raft/app.yaml --ref "$SHA"</code>.
-          Durable secrets: materialize the service secrets env file (mode{" "}
-          <code>0600</code>) and point <code>spec.envFile</code> at it — never
-          bake secrets into the manifest or <code>--env</code>.
-        </p>
       </section>
     </div>
   );

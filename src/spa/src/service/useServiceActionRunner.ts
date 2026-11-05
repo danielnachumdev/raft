@@ -43,9 +43,8 @@ export function useServiceActionRunner(
     try {
       await runAction(service, action, onDone);
     } catch (err) {
-      const detail =
-        err instanceof Error ? err.message : `${labelFor(action)} failed.`;
-      toast.bad(`${labelFor(action)} failed: ${detail}`);
+      if (err instanceof Error) console.error(err);
+      toast.bad(`${labelFor(action)} failed.`);
     } finally {
       setBusy(null);
     }

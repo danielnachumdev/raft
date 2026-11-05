@@ -11,6 +11,6 @@ export function purgeSuccessMessage(human: string): string {
   return `Purge finished — reclaimed ${human}.`;
 }
 
-export function purgeFailureMessage(detail: string): string {
-  return `Purge failed: ${detail}`;
+export function purgeFailureMessage(_detail?: string): string {
+  return "Purge failed. Try again later.";
 }

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { toast } from "../chrome/toast";
 import type { RecommendationItem } from "./types";
+import { userFacingError } from "../shared/userFacingError.ts";
 
 export type RecommendationListProps<T extends RecommendationItem> = {
   items: T[];
@@ -12,7 +13,7 @@ export type RecommendationListProps<T extends RecommendationItem> = {
   dismissLabel?: string;
   applyIdPrefix?: string;
   dismissIdPrefix?: string;
-  /** When set, dismiss success uses a warning toast (GitOps tip-dismiss copy). */
+  /** When set, dismiss success uses a warning toast with this message. */
   dismissWarnMessage?: string;
   onApply: (item: T) => void | Promise<void>;
   onDismiss: (id: string) => Promise<void>;
@@ -38,7 +39,7 @@ export function RecommendationList<T extends RecommendationItem>(
         toast.good("Recommendation dismissed");
       }
     } catch (err) {
-      toast.bad(err instanceof Error ? err.message : "Dismiss failed");
+      toast.bad(userFacingError(err, "Dismiss failed"));
     }
   }
 
@@ -46,7 +47,7 @@ export function RecommendationList<T extends RecommendationItem>(
     try {
       await props.onApply(item);
     } catch (err) {
-      toast.bad(err instanceof Error ? err.message : "Apply failed");
+      toast.bad(userFacingError(err, "Apply failed"));
     }
   }
 

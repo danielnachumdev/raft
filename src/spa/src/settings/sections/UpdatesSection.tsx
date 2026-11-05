@@ -14,6 +14,7 @@ import {
   updateSuccessMessage,
 } from "../updateMessages";
 import "./UpdatesSection.css";
+import { userFacingError } from "../../shared/userFacingError.ts";
 
 type Phase =
   | "idle"
@@ -36,7 +37,7 @@ export function UpdatesSection() {
     <SectionCard
       id="settings-updates"
       title="Updates"
-      hint="Same source of truth as raft update / install.sh — latest GitHub Release wheel."
+      hint="Check whether a newer release is available on this host."
     >
       <div className="settings-updates">
         <p className="settings-updates-status" id="settings-updates-status">
@@ -117,7 +118,7 @@ export function UpdatesSection() {
   }
 
   function fail(err: unknown, fallback: string, asUpdate: boolean) {
-    const detail = err instanceof Error ? err.message : fallback;
+    const detail = userFacingError(err, fallback);
     setError(detail);
     setPhase("error");
     toast.bad(asUpdate ? updateFailureMessage(detail) : detail);
@@ -130,10 +131,10 @@ function statusLabel(
   result: UpdateApplyResult | null,
   error: string | null,
 ): string {
-  if (phase === "checking") return "Checking GitHub for the latest Release…";
-  if (phase === "updating") return "Updating raft (install.sh / Release wheel)…";
+  if (phase === "checking") return "Checking for updates…";
+  if (phase === "updating") return "Updating…";
   if (phase === "error" && error) return error;
   if (phase === "success" && result) return updateSuccessMessage(result);
   if (status) return status.message;
-  return "Check whether a newer raft Release is available on this host.";
+  return "Check whether a newer release is available on this host.";
 }

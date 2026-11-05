@@ -2,9 +2,9 @@ import type { GithubOauthConfig, GithubSession } from "../github/index.ts";
 
 const OAUTH_APP_NEW = "https://github.com/settings/applications/new";
 
-export const DEFAULT_APPLICATION_NAME = "raft serve";
+export const DEFAULT_APPLICATION_NAME = "raft dashboard";
 export const DEFAULT_DESCRIPTION =
-  "Localhost raft serve ops UI — temporary GitHub login to pick a repo and deploy.";
+  "Dashboard GitHub login to pick a repo and deploy.";
 
 /** Concrete OAuth App form values shown in the serve setup checklist. */
 export type OauthSetupHints = {

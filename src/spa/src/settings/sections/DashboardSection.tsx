@@ -63,13 +63,9 @@ export function DashboardSection(props: {
             onChange={(e) => set({ tls: e.target.value })}
           >
             <option value="off">off (HTTP only)</option>
-            <option value="origin">origin (PEMs on host)</option>
-            <option value="acme">acme (Let&apos;s Encrypt)</option>
+            <option value="origin">origin</option>
+            <option value="acme">acme</option>
           </select>
-          <span className="form-hint">
-            origin: place <code>origin.pem</code> and <code>origin.key</code>{" "}
-            in the dashboard service certs directory
-          </span>
         </label>
         <label className="field" htmlFor="dashboard-auth-mode">
           Auth mode
@@ -80,7 +76,7 @@ export function DashboardSection(props: {
           >
             <option value="none">none (localhost only)</option>
             <option value="password">password</option>
-            <option value="oauth">oauth (oauth2-proxy)</option>
+            <option value="oauth">oauth</option>
             <option value="external">external (forward auth)</option>
           </select>
         </label>
@@ -147,7 +143,7 @@ export function DashboardSection(props: {
                 "host/secrets/dashboard/oauth-allowlist.txt",
             })
           }
-          hint="One identity per line (mode 0600)"
+          hint="One identity per line"
         />
       </div>
     </SectionCard>

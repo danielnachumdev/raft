@@ -73,7 +73,7 @@ export const ALERT_SYNTAX_PRIMER: { term: string; meaning: string }[] = [
   {
     term: "select",
     meaning:
-      "Which subject to watch — target is a service compose id (App or control plane), or * for every service.",
+      "Which service to watch, or * for every service.",
   },
   {
     term: "kind / params",

@@ -14,6 +14,7 @@ import {
 import { downloadBlob, downloadTextFile } from "./downloadFile.ts";
 import { graphExportBasename } from "./filenames.ts";
 import { encodeMetricsCsv } from "./metricsCsv.ts";
+import { userFacingError } from "../../shared/userFacingError.ts";
 
 /** Series + CSV text for one graph (visible series only). */
 export function graphCsvPayload(
@@ -57,6 +58,6 @@ export async function exportGraphPng(
     downloadBlob(blob, name);
     toast.good(`Exported ${name}`);
   } catch (err) {
-    toast.bad(err instanceof Error ? err.message : "PNG export failed");
+    toast.bad(userFacingError(err, "PNG export failed"));
   }
 }

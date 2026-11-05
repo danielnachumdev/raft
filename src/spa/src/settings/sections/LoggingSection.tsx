@@ -18,7 +18,7 @@ export function LoggingSection(props: {
       kind={props.meta?.kind ?? "always"}
       enabled
       source={props.meta?.source}
-      hint="Host CLI file log under the data home. Terminal output stays plain text."
+      hint="Host file log settings. Terminal output stays plain text."
     >
       <div className="form-grid">
         <TextField
@@ -26,7 +26,6 @@ export function LoggingSection(props: {
           label="Directory"
           value={v.dir}
           onChange={(dir) => set({ dir })}
-          hint="Relative paths are under the raft data home"
         />
         <TextField
           id="logging-file"

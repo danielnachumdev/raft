@@ -2,10 +2,9 @@
 
 export function updateConfirmMessage(from: string, to: string): string {
   return (
-    `Reinstall the host raft CLI from the latest GitHub Release wheel ` +
-    `(same path as \`raft update\` / install.sh). ` +
+    `Install the latest release on this host. ` +
     `Installed ${from} → ${to}. ` +
-    `Afterward, Redeploy the always-on dashboard so its image picks up the new stamp.`
+    `Afterward, Redeploy the always-on dashboard so it picks up the new version.`
   );
 }
 
@@ -17,22 +16,14 @@ export function updateSuccessMessage(result: {
   if (result.alreadyCurrent) {
     const line = result.afterLine || result.beforeLine;
     return line
-      ? `raft is already up to date (${line}).`
-      : "raft is already up to date.";
+      ? `Already up to date (${line}).`
+      : "Already up to date.";
   }
   const before = result.beforeLine || "(unknown)";
   const after = result.afterLine || "(unknown)";
   return `Updated: ${before} → ${after}`;
 }
 
-export function updateFailureMessage(detail: string): string {
-  const trimmed = detail.trim();
-  if (/failed to fetch|networkerror|load failed/i.test(trimmed)) {
-    return (
-      "Update failed: the browser lost the connection before install finished " +
-      "(often a proxy timeout). Retry Settings → Update, or run `raft update` " +
-      "on the host and check the raft host log."
-    );
-  }
-  return `Update failed: ${trimmed || "unknown error"}`;
+export function updateFailureMessage(_detail: string): string {
+  return "Update failed. Try again later.";
 }
