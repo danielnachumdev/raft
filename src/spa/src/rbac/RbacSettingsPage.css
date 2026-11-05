@@ -1,0 +1,12 @@
+.rbac-field {
+  margin: 0;
+}
+
+.rbac-editor {
+  width: 100%;
+  min-height: 24rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  tab-size: 2;
+}

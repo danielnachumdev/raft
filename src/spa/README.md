@@ -25,7 +25,7 @@ Every route should read the same way. Reach for these before writing page-local 
 | Long pages | `.side-nav` sidebar inside `.with-aside` (Settings), or `.jump-nav` strip (Service); both use `useScrollSpy` + `jumpToSection` |
 | Modal footer | `.modal-actions`: Cancel first, then `.btn-primary` (or `.btn-danger` for destructive confirms) |
 
-Top-bar IA: primary nav is grouped **Monitor** (Status, Events) and **Configure** (Alerts, Notifications, Firewall). The **Add service** CTA and the **Settings** gear sit on the right, and Settings highlights only on `/settings` itself (`shell/navItems.ts`).
+Top-bar IA: primary nav is grouped **Monitor** (Status, Events) and **Configure** (Alerts, Notifications, Firewall, RBAC); entries with a `permission` hide via `navAllowed` when RBAC denies it. The **Add service** CTA and the **Settings** gear sit on the right, and Settings highlights only on `/settings` itself (`shell/navItems.ts`).
 
 ## Develop
 

@@ -17,6 +17,7 @@ import {
   groupNav,
   isNavActive,
   NAV_GROUP_LABELS,
+  navAllowed,
   SETTINGS_NAV,
   TOPBAR_NAV,
   type NavItem,
@@ -29,10 +30,8 @@ export function MobileNav() {
   const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
   const { pathname } = useLocation();
   const { can } = useRbac();
-  const topNav = TOPBAR_NAV.filter(
-    (item) => !item.permission || can(item.permission),
-  );
-  const showSettings = !SETTINGS_NAV.permission || can(SETTINGS_NAV.permission);
+  const topNav = TOPBAR_NAV.filter((item) => navAllowed(item, can));
+  const showSettings = navAllowed(SETTINGS_NAV, can);
   const menuId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);

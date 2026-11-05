@@ -7,9 +7,9 @@ import { MobileNav } from "./MobileNav";
 import {
   ADD_SERVICE_NAV,
   isNavActive,
+  navAllowed,
   SETTINGS_NAV,
   TOPBAR_NAV,
-  type NavItem,
 } from "./navItems";
 import { useRaftVersion } from "./useRaftVersion";
 import "./AppShell.css";
@@ -61,11 +61,6 @@ export function AppShell() {
       </main>
     </>
   );
-}
-
-function navAllowed(item: NavItem, can: (permission: string) => boolean): boolean {
-  if (!item.permission) return true;
-  return can(item.permission);
 }
 
 /** Add service CTA, version, Settings gear, logout, and the mobile menu. */

@@ -12,7 +12,7 @@ export const TEMPORARY_OVERRIDE_TITLE = "Temporary host override";
 export function temporaryOverrideLead(doc: GitopsHostDoc): string {
   return (
     `Edits here write host/${doc} on this host for live testing only. ` +
-    `The next GitOps Sync (when host/${doc} is synced from the ops repo) ` +
+    `The next GitOps sync (when host/${doc} is synced from the ops repo) ` +
     "will wipe and replace these changes."
   );
 }

@@ -63,7 +63,7 @@ export function OauthSetupPanel(props: {
       <p className="muted">
         Create a GitHub OAuth App for this localhost serve bind, then paste the
         Client ID and Client Secret below. Values write host/settings.yaml as a
-        temporary host override (next GitOps Sync replaces them). Login later
+        temporary host override (next GitOps sync replaces them). Login later
         requests scopes <code>{hints.scopes}</code>.
       </p>
       <ol className="oauth-setup-steps">
