@@ -43,6 +43,16 @@ describe("temporaryOverrideMessages", () => {
   it("exposes a disable_tips YAML snippet for durable tip dismissal", () => {
     assert.equal(disableTipsYamlSnippet(), "disable_tips: true\n");
   });
+
+  it("warns that tip dismiss is temporary", async () => {
+    const { temporaryTipsDismissMessage } = await import(
+      "../../src/gitops/temporaryOverrideMessages.ts"
+    );
+    const msg = temporaryTipsDismissMessage("firewall.yaml");
+    assert.match(msg, /temporary/i);
+    assert.match(msg, /disable_tips: true/);
+    assert.match(msg, /host\/firewall\.yaml/);
+  });
 });
 
 describe("GitOps temporary-override wiring", () => {

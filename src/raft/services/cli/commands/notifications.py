@@ -3,6 +3,7 @@
 from typing import Optional
 
 from raft.core.core.errors.cta import OperatorError
+from raft.core.core.gitops import GitopsDocKind
 from raft.core.core.models.stack import Stack
 from raft.core.observe.notify.catalogs import NotificationCatalogs
 from raft.core.observe.notify.delivery_status import DeliveryStatus
@@ -10,6 +11,7 @@ from raft.core.observe.notify.registry import NotificationRegistry
 from raft.core.observe.notify.settings_write import NotificationsSettingsWriter
 from raft.core.observe.notify.tester import NotificationsTester
 
+from .gitops_warn import GitopsCliWarn
 from .notifications_io import NotificationsCliIo
 from .notifications_output import NotificationsCliOutput
 
@@ -81,6 +83,7 @@ class NotificationsCLI:
         created = self._writer.create(self._io.read_mapping(path))
         self._out.say(f"Created channel {created['id']} (type={created['type']}).")
         self._out.say_yaml(created)
+        GitopsCliWarn.after_write(GitopsDocKind.NOTIFICATIONS)
 
     def update(self, channel_id: str, file: str) -> None:
         """Update a channel from a YAML/JSON patch file.
@@ -96,6 +99,7 @@ class NotificationsCLI:
             raise self._missing(channel_id) from exc
         self._out.say(f"Updated channel {updated['id']}.")
         self._out.say_yaml(updated)
+        GitopsCliWarn.after_write(GitopsDocKind.NOTIFICATIONS)
 
     def delete(self, channel_id: str) -> None:
         """Delete a channel from ``settings.yaml``."""
@@ -104,6 +108,7 @@ class NotificationsCLI:
         except KeyError as exc:
             raise self._missing(channel_id) from exc
         self._out.say(f"Deleted channel {channel_id}.")
+        GitopsCliWarn.after_write(GitopsDocKind.NOTIFICATIONS)
 
     def enable(self, channel_id: str) -> None:
         """Enable a channel."""
@@ -141,6 +146,7 @@ class NotificationsCLI:
             raise self._missing(channel_id) from exc
         verb = "Enabled" if enabled else "Disabled"
         self._out.say(f"{verb} channel {channel_id}.")
+        GitopsCliWarn.after_write(GitopsDocKind.NOTIFICATIONS)
 
     @staticmethod
     def _missing(channel_id: str) -> OperatorError:

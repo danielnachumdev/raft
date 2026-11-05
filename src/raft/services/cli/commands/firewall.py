@@ -2,12 +2,14 @@
 
 from typing import Any, Mapping, Optional
 
+from raft.core.core.gitops import GitopsDocKind
 from raft.core.core.models.stack import Stack
 from raft.core.lifecycle.firewall import FirewallService
 
 from ..utils.deps import Orchestrator
 from .firewall_io import FirewallCliIo
 from .firewall_output import FirewallCliOutput
+from .gitops_warn import GitopsCliWarn
 
 
 class FirewallCLI:
@@ -98,6 +100,7 @@ class FirewallCLI:
         self._out.say(f"Dismissed {recommendation_id}.")
         remaining = payload.get("recommendations") or []
         self._out.say(f"{len(remaining)} recommendation(s) still open.")
+        GitopsCliWarn.after_tips_dismiss(GitopsDocKind.FIREWALL)
 
     def draft(
         self,

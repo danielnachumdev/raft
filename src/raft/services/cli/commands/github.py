@@ -6,9 +6,12 @@ from typing import Any, Dict, Optional
 import yaml
 
 from raft.core.core.errors.cta import OperatorError
+from raft.core.core.gitops import GitopsDocKind
 from raft.core.core.models.stack import Stack
 from raft.core.core.ui import OperatorSay
 from raft.core.platform.github import GithubAssistService
+
+from .gitops_warn import GitopsCliWarn
 
 
 class GithubCLI:
@@ -45,6 +48,7 @@ class GithubCLI:
             client_id=client_id or None, client_secret=client_secret or None
         )
         OperatorSay.say("Saved GitHub OAuth config.")
+        GitopsCliWarn.after_write(GitopsDocKind.SETTINGS)
         self._emit(out, as_json=True)
 
     def login(self, add: bool = False, port: int = 8787) -> None:

@@ -39,3 +39,13 @@ export function unsavedTemporaryOverrideMessage(): string {
 export function disableTipsYamlSnippet(): string {
   return "disable_tips: true\n";
 }
+
+/** Toast after dismissing a recommendation (host-local, not GitOps SoT). */
+export function temporaryTipsDismissMessage(
+  doc: Extract<GitopsHostDoc, "firewall.yaml" | "alerts.yaml">,
+): string {
+  return (
+    "Tip dismiss is temporary. For a lasting hide, set disable_tips: true " +
+    `on host/${doc} in the GitOps repo, then Sync.`
+  );
+}

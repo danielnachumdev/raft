@@ -6,6 +6,7 @@ from typing import Any, Optional
 import yaml
 
 from raft.core.core.errors.cta import OperatorError
+from raft.core.core.gitops import GitopsDocKind
 from raft.core.core.models.stack import Stack
 from raft.core.observe.alerts import (
     AlertEngine,
@@ -20,6 +21,7 @@ from raft.core.observe.alerts.service.tester import AlertTester
 from raft.core.observe.notify.delivery_status import DeliveryStatus
 
 from .alerts_output import AlertsCliOutput
+from .gitops_warn import GitopsCliWarn
 
 
 class AlertsCLI:
@@ -143,6 +145,7 @@ class AlertsCLI:
         self._out.say(f"Dismissed {recommendation_id}.")
         remaining = payload.get("recommendations") or []
         self._out.say(f"{len(remaining)} recommendation(s) still open.")
+        GitopsCliWarn.after_tips_dismiss(GitopsDocKind.ALERTS)
 
     def apply_recommendation(self, recommendation_id: str) -> None:
         """Create the suggested rule (no notification channel required)."""
@@ -160,12 +163,14 @@ class AlertsCLI:
             f"Created alert rule {rule.get('id')} "
             f"(channelIds={rule.get('channelIds') or []})."
         )
+        GitopsCliWarn.after_write(GitopsDocKind.ALERTS)
 
     def apply(self, file: str, prune: bool = False) -> None:
         """Upsert rules from a YAML file."""
         raw = self._read_file(file)
         summary = self._service.apply_document(raw, prune=prune)
         self._out.say_json(summary.to_public())
+        GitopsCliWarn.after_write(GitopsDocKind.ALERTS)
 
     def delete(self, rule_id: str) -> None:
         """Delete a rule."""
@@ -176,6 +181,7 @@ class AlertsCLI:
                 f"unknown alert rule {rule_id!r}.\nFix: raft alerts list"
             ) from exc
         self._out.say(f"Deleted {rule_id}.")
+        GitopsCliWarn.after_write(GitopsDocKind.ALERTS)
 
     def export(self, file: Optional[str] = None) -> None:
         """Export the rules document."""
@@ -216,6 +222,7 @@ class AlertsCLI:
             ) from exc
         verb = "Enabled" if enabled else "Disabled"
         self._out.say(f"{verb} {rule_id}.")
+        GitopsCliWarn.after_write(GitopsDocKind.ALERTS)
 
     def _dry_run_rules(self, *, rule_id, file, rule):
         if file:

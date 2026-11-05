@@ -12,6 +12,8 @@ export type RecommendationListProps<T extends RecommendationItem> = {
   dismissLabel?: string;
   applyIdPrefix?: string;
   dismissIdPrefix?: string;
+  /** When set, dismiss success uses a warning toast (GitOps tip-dismiss copy). */
+  dismissWarnMessage?: string;
   onApply: (item: T) => void | Promise<void>;
   onDismiss: (id: string) => Promise<void>;
   renderPreview?: (item: T) => ReactNode;
@@ -30,7 +32,11 @@ export function RecommendationList<T extends RecommendationItem>(
   async function dismiss(id: string) {
     try {
       await props.onDismiss(id);
-      toast.good("Recommendation dismissed");
+      if (props.dismissWarnMessage) {
+        toast.warning(props.dismissWarnMessage);
+      } else {
+        toast.good("Recommendation dismissed");
+      }
     } catch (err) {
       toast.bad(err instanceof Error ? err.message : "Dismiss failed");
     }

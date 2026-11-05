@@ -6,6 +6,7 @@ export {
   temporaryOverrideGuidance,
   temporaryOverrideLead,
   temporaryOverrideSavedMessage,
+  temporaryTipsDismissMessage,
   unsavedTemporaryOverrideMessage,
   type GitopsHostDoc,
 } from "./temporaryOverrideMessages";
