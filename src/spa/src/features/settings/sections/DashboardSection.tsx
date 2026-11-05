@@ -32,8 +32,8 @@ export function DashboardSection(props: {
           Always-on dashboard service. After enabling (or changing auth / TLS /
           public host), save then Start / Redeploy — settings save alone does
           not start the container. For OAuth, place client id, secret, cookie
-          secret, redirect URL, and an allowlist in the dashboard secrets on
-          this host.
+          secret, and redirect URL in the dashboard secrets on this host. Who
+          may sign in is managed under Access (RBAC bindings).
         </>
       }
     >
@@ -131,19 +131,6 @@ export function DashboardSection(props: {
           onChange={(issuerUrl) =>
             setOauth({ issuerUrl: issuerUrl.trim() || null })
           }
-        />
-        <TextField
-          id="dashboard-oauth-allowlist"
-          label="OAuth allowlist file"
-          value={v.auth.oauth.allowlistFile ?? ""}
-          onChange={(allowlistFile) =>
-            setOauth({
-              allowlistFile:
-                allowlistFile.trim() ||
-                "host/secrets/dashboard/oauth-allowlist.txt",
-            })
-          }
-          hint="One identity per line"
         />
       </div>
     </SectionCard>

@@ -62,18 +62,22 @@ async function runLogout(hint: LogoutHint): Promise<void> {
     return;
   }
   if (hint.kind === "post") {
+    let next = hint.next || "/login";
     try {
       const res = await fetch(hint.path, {
         method: "POST",
         credentials: "same-origin",
       });
+      const body = (await readJsonBody(res)) as { next?: string; detail?: string };
       if (!res.ok) {
-        const body = await readJsonBody(res);
         throw new Error(detailFromBody(body) || `logout ${res.status}`);
+      }
+      if (typeof body?.next === "string" && body.next) {
+        next = body.next;
       }
     } catch {
       /* still leave the session UI */
     }
-    window.location.assign(hint.next || "/login");
+    window.location.assign(next);
   }
 }
