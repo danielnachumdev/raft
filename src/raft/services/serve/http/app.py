@@ -3,13 +3,14 @@
 
 from typing import Optional
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from raft.core.core.models.stack import Stack
 from raft.core.observe.ops.actions import ServiceActions
 from raft.core.observe.ops.logs import Logs
 from raft.core.observe.ops.status import Status
+from raft.services.serve.auth.require import require_read, require_write
 from ..alerts import ServeAlertsApi
 from ..auth import ServeAuthWire
 from ..events import ServeEventsApi
@@ -66,6 +67,7 @@ class ServeAppFactory:
 
     def create(self) -> FastAPI:
         app = FastAPI(title="raft serve", docs_url=None, redoc_url=None)
+        app.state.raft_home = self.stack.root
         page, apis = self._components()
         self._register_api(app, page, *apis)
         ServeAuthWire(self.stack).apply(app)
@@ -130,27 +132,54 @@ class ServeAppFactory:
 
     @staticmethod
     def _register_read_api(app: FastAPI, page: ServePage) -> None:
-        app.get("/api/status")(page.api_status)
-        app.get("/api/metrics/http")(page.api_metrics_http)
-        app.get("/api/metrics")(page.api_metrics)
-        app.get("/api/service/{name}")(page.api_service)
-        app.get("/api/service/{name}/http-requests")(page.api_service_http_requests)
-        app.get("/api/service/{name}/definition")(page.api_service_definition)
-        app.get("/api/service/{name}/logs/follow")(page.api_service_logs_follow)
-        app.get("/api/service/{name}/logs")(page.api_service_logs)
+        status_r = Depends(require_read("status"))
+        metrics_r = Depends(require_read("metrics"))
+        service_r = Depends(require_read("service"))
+        logs_r = Depends(require_read("logs"))
+        app.get("/api/status", dependencies=[status_r])(page.api_status)
+        app.get("/api/metrics/http", dependencies=[metrics_r])(page.api_metrics_http)
+        app.get("/api/metrics", dependencies=[metrics_r])(page.api_metrics)
+        app.get("/api/service/{name}", dependencies=[service_r])(page.api_service)
+        app.get("/api/service/{name}/http-requests", dependencies=[service_r])(
+            page.api_service_http_requests
+        )
+        app.get("/api/service/{name}/definition", dependencies=[service_r])(
+            page.api_service_definition
+        )
+        app.get("/api/service/{name}/logs/follow", dependencies=[logs_r])(
+            page.api_service_logs_follow
+        )
+        app.get("/api/service/{name}/logs", dependencies=[logs_r])(
+            page.api_service_logs
+        )
 
     @staticmethod
     def _register_action_api(app: FastAPI, page: ServePage) -> None:
-        app.post("/api/service/{name}/up")(page.api_service_up)
-        app.post("/api/service/{name}/down")(page.api_service_down)
-        app.post("/api/service/{name}/redeploy")(page.api_service_redeploy)
-        app.post("/api/purge")(page.api_purge)
+        runtime_w = Depends(require_write("runtime"))
+        app.post("/api/service/{name}/up", dependencies=[runtime_w])(
+            page.api_service_up
+        )
+        app.post("/api/service/{name}/down", dependencies=[runtime_w])(
+            page.api_service_down
+        )
+        app.post("/api/service/{name}/redeploy", dependencies=[runtime_w])(
+            page.api_service_redeploy
+        )
+        app.post("/api/purge", dependencies=[runtime_w])(page.api_purge)
 
     @staticmethod
     def _register_download_api(app: FastAPI, downloads: ServeDownloads) -> None:
-        app.get("/api/exports")(downloads.api_export_catalog)
-        app.get("/api/metrics/download")(downloads.api_metrics_download)
-        app.get("/api/service/{name}/logs/download")(downloads.api_logs_download)
+        metrics_r = Depends(require_read("metrics"))
+        logs_r = Depends(require_read("logs"))
+        app.get("/api/exports", dependencies=[metrics_r])(
+            downloads.api_export_catalog
+        )
+        app.get("/api/metrics/download", dependencies=[metrics_r])(
+            downloads.api_metrics_download
+        )
+        app.get("/api/service/{name}/logs/download", dependencies=[logs_r])(
+            downloads.api_logs_download
+        )
 
     @staticmethod
     def _register_spa(app: FastAPI, page: ServePage) -> None:

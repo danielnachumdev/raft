@@ -3,7 +3,7 @@
 from typing import Any, Dict, Optional
 from urllib.parse import quote
 
-from fastapi import Body, HTTPException, Request
+from fastapi import Body, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
 from raft.core.core.errors.cta import OperatorError
@@ -13,6 +13,7 @@ from raft.core.platform.github import (
     GithubAssistService,
     GithubProvider,
 )
+from raft.services.serve.auth.require import require_read, require_write
 
 
 class ServeGithubApi:
@@ -34,17 +35,25 @@ class ServeGithubApi:
         )
 
     def register(self, app) -> None:
-        app.get("/api/github/session")(self.api_session)
-        app.get("/api/github/config")(self.api_config)
-        app.post("/api/github/config")(self.api_save_config)
-        app.get("/api/github/login")(self.api_login)
-        app.get("/api/github/callback")(self.api_callback)
-        app.post("/api/github/logout")(self.api_logout)
-        app.post("/api/github/accounts/select")(self.api_select_account)
-        app.delete("/api/github/accounts/{account_id}")(self.api_delete_account)
-        app.get("/api/github/repos")(self.api_repos)
-        app.post("/api/github/deploy")(self.api_deploy)
-        app.get("/api/github/deploy/{job_id}")(self.api_deploy_status)
+        app.state.raft_home = self.stack.root
+        r, w = Depends(require_read("github")), Depends(require_write("github"))
+        app.get("/api/github/session", dependencies=[r])(self.api_session)
+        app.get("/api/github/config", dependencies=[r])(self.api_config)
+        app.post("/api/github/config", dependencies=[w])(self.api_save_config)
+        app.get("/api/github/login", dependencies=[r])(self.api_login)
+        app.get("/api/github/callback", dependencies=[r])(self.api_callback)
+        app.post("/api/github/logout", dependencies=[w])(self.api_logout)
+        app.post("/api/github/accounts/select", dependencies=[w])(
+            self.api_select_account
+        )
+        app.delete("/api/github/accounts/{account_id}", dependencies=[w])(
+            self.api_delete_account
+        )
+        app.get("/api/github/repos", dependencies=[r])(self.api_repos)
+        app.post("/api/github/deploy", dependencies=[w])(self.api_deploy)
+        app.get("/api/github/deploy/{job_id}", dependencies=[r])(
+            self.api_deploy_status
+        )
 
     def api_session(self) -> Dict[str, Any]:
         return self._assist.session(port=self._port)

@@ -2,11 +2,12 @@
 
 from typing import Any, Dict, Optional
 
-from fastapi import Body, HTTPException
+from fastapi import Body, Depends, HTTPException
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.stack import Stack
 from raft.core.observe.ops.update import SelfUpdate, UpdateCheck
+from raft.services.serve.auth.require import require_read, require_write
 
 
 class ServeUpdateApi:
@@ -24,8 +25,13 @@ class ServeUpdateApi:
         self._updater = updater or SelfUpdate(stack)
 
     def register(self, app) -> None:
-        app.get("/api/update/status")(self.api_status)
-        app.post("/api/update")(self.api_apply)
+        app.state.raft_home = self.stack.root
+        app.get(
+            "/api/update/status", dependencies=[Depends(require_read("update"))]
+        )(self.api_status)
+        app.post(
+            "/api/update", dependencies=[Depends(require_write("update"))]
+        )(self.api_apply)
 
     def api_status(self) -> Dict[str, Any]:
         try:

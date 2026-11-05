@@ -8,6 +8,7 @@ from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.stack import Stack
 from raft.core.lifecycle.deploy.orchestrator import Orchestrator
 from raft.core.lifecycle.firewall import FirewallService
+from raft.services.serve.auth.route_deps import RouteRbacDeps
 
 
 class ServeFirewallApi:
@@ -26,19 +27,33 @@ class ServeFirewallApi:
         )
 
     def register(self, app) -> None:
-        app.get("/api/firewall")(self.api_get)
-        app.put("/api/firewall")(self.api_put)
-        app.get("/api/firewall/export")(self.api_export)
-        app.post("/api/firewall/import")(self.api_import)
-        app.get("/api/firewall/services")(self.api_services)
-        app.get("/api/firewall/recommendations")(self.api_recommendations)
-        app.post("/api/firewall/recommendations/{recommendation_id}/dismiss")(
-            self.api_dismiss
+        app.state.raft_home = self.stack.root
+        d = RouteRbacDeps("firewall")
+        self._register_reads(app, d)
+        self._register_writes(app, d)
+
+    def _register_reads(self, app, d: RouteRbacDeps) -> None:
+        d.get(app, "/api/firewall", self.api_get)
+        d.get(app, "/api/firewall/export", self.api_export)
+        d.get(app, "/api/firewall/services", self.api_services)
+        d.get(app, "/api/firewall/recommendations", self.api_recommendations)
+        d.get(app, "/api/firewall/from-inspection", self.api_inspection_draft)
+
+    def _register_writes(self, app, d: RouteRbacDeps) -> None:
+        d.mut(app, "put", "/api/firewall", self.api_put)
+        d.mut(app, "post", "/api/firewall/import", self.api_import)
+        d.mut(
+            app,
+            "post",
+            "/api/firewall/recommendations/{recommendation_id}/dismiss",
+            self.api_dismiss,
         )
-        app.get("/api/firewall/from-inspection")(self.api_inspection_draft)
-        app.post("/api/firewall/from-inspection")(self.api_from_inspection)
-        app.post("/api/firewall/from-inspection/remove")(
-            self.api_remove_inspection
+        d.mut(app, "post", "/api/firewall/from-inspection", self.api_from_inspection)
+        d.mut(
+            app,
+            "post",
+            "/api/firewall/from-inspection/remove",
+            self.api_remove_inspection,
         )
 
     def api_get(self) -> Dict[str, Any]:

@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, Optional
 
-from fastapi import Body, HTTPException
+from fastapi import Body, Depends, HTTPException
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.stack import Stack
@@ -10,6 +10,7 @@ from raft.core.observe.notify.catalogs import NotificationCatalogs
 from raft.core.observe.notify.registry import NotificationRegistry
 from raft.core.observe.notify.settings_write import NotificationsSettingsWriter
 from raft.core.observe.notify.tester import NotificationsTester
+from raft.services.serve.auth.require import require_read, require_write
 
 
 class ServeNotificationsApi:
@@ -33,13 +34,26 @@ class ServeNotificationsApi:
         )
 
     def register(self, app) -> None:
-        app.get("/api/notifications/channels")(self.api_list)
-        app.get("/api/notifications/channels/{channel_id}")(self.api_get)
-        app.post("/api/notifications/channels")(self.api_create)
-        app.put("/api/notifications/channels/{channel_id}")(self.api_update)
-        app.delete("/api/notifications/channels/{channel_id}")(self.api_delete)
-        app.post("/api/notifications/channels/{channel_id}/test")(self.api_test)
-        app.get("/api/notifications/strategies")(self.api_strategies)
+        app.state.raft_home = self.stack.root
+        r = Depends(require_read("notifications"))
+        w = Depends(require_write("notifications"))
+        app.get("/api/notifications/channels", dependencies=[r])(self.api_list)
+        app.get("/api/notifications/channels/{channel_id}", dependencies=[r])(
+            self.api_get
+        )
+        app.post("/api/notifications/channels", dependencies=[w])(self.api_create)
+        app.put("/api/notifications/channels/{channel_id}", dependencies=[w])(
+            self.api_update
+        )
+        app.delete("/api/notifications/channels/{channel_id}", dependencies=[w])(
+            self.api_delete
+        )
+        app.post(
+            "/api/notifications/channels/{channel_id}/test", dependencies=[w]
+        )(self.api_test)
+        app.get("/api/notifications/strategies", dependencies=[r])(
+            self.api_strategies
+        )
 
     def api_list(self) -> Dict[str, Any]:
         return self._settings.list_public()
