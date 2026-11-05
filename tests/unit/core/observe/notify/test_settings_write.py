@@ -128,13 +128,20 @@ class TestNotificationsSettingsWriter(RaftTestCase):
             writer.delete("ops")
         assert lock.call_count == 3
 
-    def test_preserves_other_settings_keys(self) -> None:
-        path = self.tmp_path / "host" / "settings.yaml"
-        path.write_text("edge: {http: 80}\n", encoding="utf-8")
+    def test_writes_flat_notifications_yaml(self) -> None:
+        settings = self.tmp_path / "host" / "settings.yaml"
+        settings.parent.mkdir(parents=True, exist_ok=True)
+        settings.write_text("edge: {http: 80}\n", encoding="utf-8")
         NotificationsSettingsWriter(self.tmp_path).create(self._channel("ops"))
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-        assert data["edge"]["http"] == 80
-        assert data["notifications"]["channels"][0]["id"] == "ops"
+        assert "notifications" not in yaml.safe_load(
+            settings.read_text(encoding="utf-8")
+        )
+        data = yaml.safe_load(
+            (self.tmp_path / "host" / "notifications.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        assert data["channels"][0]["id"] == "ops"
 
     def test_reject_id_change(self) -> None:
         writer = NotificationsSettingsWriter(self.tmp_path)
@@ -153,19 +160,3 @@ class TestNotificationsSettingsWriter(RaftTestCase):
             writer.update("ops", "nope")  # type: ignore[arg-type]
         with pytest.raises(OperatorError, match="settings must be"):
             writer.update("ops", {"settings": []})
-
-    def test_load_root_errors(self) -> None:
-        path = self.tmp_path / "host" / "settings.yaml"
-        path.unlink()
-        writer = NotificationsSettingsWriter(self.tmp_path)
-        assert writer._load_root() == {}
-        path.write_text("- not a mapping\n", encoding="utf-8")
-        with pytest.raises(OperatorError, match="YAML mapping"):
-            writer._load_root()
-        path.write_text("edge: {}\n", encoding="utf-8")
-        with patch(
-            "raft.core.observe.notify.settings_write.yaml.safe_load",
-            side_effect=yaml.YAMLError("bad"),
-        ):
-            with pytest.raises(OperatorError, match="cannot update"):
-                writer._load_root()

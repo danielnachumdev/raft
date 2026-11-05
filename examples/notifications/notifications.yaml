@@ -1,0 +1,18 @@
+# Notification destinations sample → host/notifications.yaml
+# Apply via Settings → Notifications, or raft notifications create/update.
+# Framework: observe/notify (webhook, email, whatsapp). Secrets redacted in serve.
+#
+enabled: true
+channels:
+  - id: ops-primary
+    enabled: true
+    type: webhook
+    settings:
+      url: https://hooks.example.invalid/raft
+  - id: oncall-email
+    enabled: false
+    type: email
+    settings:
+      to: ops@example.com
+      from: raft@example.com
+      smtpHost: smtp.example.com

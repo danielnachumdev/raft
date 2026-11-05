@@ -1,4 +1,4 @@
-"""Parse ``notifications:`` from settings.yaml."""
+"""Parse ``host/notifications.yaml`` (and in-memory notifications mappings)."""
 
 from typing import Any, Mapping
 
@@ -15,9 +15,9 @@ class NotificationsSettingsParser(SettingsSectionParser[NotificationsConfig]):
             return NotificationsConfig()
         if not isinstance(raw, dict):
             raise OperatorError(
-                "settings.yaml notifications must be a mapping.\n"
-                "Fix: set notifications: {enabled: true, channels: [...]} "
-                "in ~/.raft/host/settings.yaml",
+                "host/notifications.yaml must be a mapping.\n"
+                "Fix: set {enabled: true, channels: [...]} "
+                "in ~/.raft/host/notifications.yaml",
                 has_fix=False,
             )
         return NotificationsConfig(
@@ -30,9 +30,9 @@ class NotificationsSettingsParser(SettingsSectionParser[NotificationsConfig]):
             return ()
         if not isinstance(raw, list):
             raise OperatorError(
-                "settings.yaml notifications.channels must be a list.\n"
-                "Fix: set notifications.channels: [{id: …, type: …}] "
-                "in ~/.raft/host/settings.yaml",
+                "host/notifications.yaml channels must be a list.\n"
+                "Fix: set channels: [{id: …, type: …}] "
+                "in ~/.raft/host/notifications.yaml",
                 has_fix=False,
             )
         channels = [self._one(item, index) for index, item in enumerate(raw)]
@@ -40,10 +40,10 @@ class NotificationsSettingsParser(SettingsSectionParser[NotificationsConfig]):
         return tuple(channels)
 
     def _one(self, raw: Any, index: int) -> NotificationChannelConfig:
-        path = f"notifications.channels[{index}]"
+        path = f"channels[{index}]"
         if not isinstance(raw, dict):
             raise OperatorError(
-                f"settings.yaml {path} must be a mapping.\n"
+                f"host/notifications.yaml {path} must be a mapping.\n"
                 f"Fix: use {{id: ops-primary, type: webhook, settings: {{…}}}}",
                 has_fix=False,
             )
@@ -59,7 +59,7 @@ class NotificationsSettingsParser(SettingsSectionParser[NotificationsConfig]):
         value = str(raw.get("id") or "").strip()
         if not value:
             raise OperatorError(
-                f"settings.yaml {path}.id is required.\n"
+                f"host/notifications.yaml {path}.id is required.\n"
                 f"Fix: set a unique id (e.g. ops-primary) on each channel",
                 has_fix=False,
             )
@@ -70,7 +70,7 @@ class NotificationsSettingsParser(SettingsSectionParser[NotificationsConfig]):
         value = str(raw.get("type") or "").strip()
         if not value:
             raise OperatorError(
-                f"settings.yaml {path}.type is required.\n"
+                f"host/notifications.yaml {path}.type is required.\n"
                 f"Fix: set type to a strategy id (e.g. webhook) — "
                 f"unknown types are allowed until a strategy is registered",
                 has_fix=False,
@@ -83,7 +83,7 @@ class NotificationsSettingsParser(SettingsSectionParser[NotificationsConfig]):
             return {}
         if not isinstance(raw, dict):
             raise OperatorError(
-                f"settings.yaml {path}.settings must be a mapping.\n"
+                f"host/notifications.yaml {path}.settings must be a mapping.\n"
                 f"Fix: set settings: {{url: https://hooks.example.invalid/…}}",
                 has_fix=False,
             )
@@ -95,9 +95,10 @@ class NotificationsSettingsParser(SettingsSectionParser[NotificationsConfig]):
         for channel in channels:
             if channel.id in seen:
                 raise OperatorError(
-                    f"settings.yaml notifications.channels duplicate id "
+                    f"host/notifications.yaml channels duplicate id "
                     f"{channel.id!r}.\n"
-                    f"Fix: give each channel a unique id in ~/.raft/host/settings.yaml",
+                    f"Fix: give each channel a unique id in "
+                    f"~/.raft/host/notifications.yaml",
                     has_fix=False,
                 )
             seen.add(channel.id)

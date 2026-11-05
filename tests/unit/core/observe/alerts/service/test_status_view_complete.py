@@ -14,9 +14,13 @@ class TestStatusViewComplete(RaftTestCase):
     def _home(self) -> Path:
         home = Path(self.tmp_path)
         (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
+        (home / "host").mkdir(parents=True, exist_ok=True)
         (home / "host" / "settings.yaml").write_text(
-            "alerts:\n  enabled: false\n  intervalSeconds: 60\n"
-            "notifications:\n  enabled: true\n  channels: []\n",
+            "alerts:\n  enabled: false\n  intervalSeconds: 60\n",
+            encoding="utf-8",
+        )
+        (home / "host" / "notifications.yaml").write_text(
+            "enabled: true\nchannels: []\n",
             encoding="utf-8",
         )
         return home

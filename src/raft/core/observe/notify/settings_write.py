@@ -1,5 +1,4 @@
-"""Persist ``notifications:`` channel CRUD into ``~/.raft/host/settings.yaml``."""
-
+"""Persist notification channel CRUD into ``~/.raft/host/notifications.yaml``."""
 
 import os
 from pathlib import Path
@@ -7,19 +6,25 @@ from typing import Any, Dict, List, Mapping, Optional
 
 import yaml
 
-from raft.core.core.config.paths import RaftHome
-from raft.core.core.config.settings import SettingsLoader
-from raft.core.core.config.settings.strategies.notifications import NotificationsSettingsParser
-from raft.core.core.config.settings.types import NotificationChannelConfig, NotificationsConfig
+from raft.core.core.config.paths.host_paths import HostPaths
+from raft.core.core.config.settings.strategies.notifications import (
+    NotificationsSettingsParser,
+)
+from raft.core.core.config.settings.types import (
+    NotificationChannelConfig,
+    NotificationsConfig,
+)
 from raft.core.core.errors.cta import OperatorError
-from raft.core.platform.locking import SettingsLock
+from raft.core.core.gitops.notifications_document import NotificationsDocument
+from raft.core.core.gitops.notifications_gitops import NotificationsGitops
 from raft.core.observe.notify.catalogs import NotificationCatalogs
-from raft.core.observe.notify.settings_redactor import SettingsRedactor
 from raft.core.observe.notify.registry import NotificationRegistry
+from raft.core.observe.notify.settings_redactor import SettingsRedactor
+from raft.core.platform.locking import SettingsLock
 
 
 class NotificationsSettingsWriter:
-    """Merge notification channels into operator settings under flock."""
+    """Merge notification channels into ``host/notifications.yaml`` under flock."""
 
     def __init__(
         self,
@@ -28,10 +33,11 @@ class NotificationsSettingsWriter:
         registry: Optional[NotificationRegistry] = None,
     ) -> None:
         self._home = data_home
-        self._path = RaftHome().settings_path(data_home)
+        self._path = HostPaths(data_home).notifications()
         self._parser = NotificationsSettingsParser()
         self._redactor = SettingsRedactor()
         self._registry = registry or NotificationCatalogs.default()
+        self._gitops = NotificationsGitops(data_home)
 
     def list_public(self) -> Dict[str, Any]:
         cfg = self._load()
@@ -72,8 +78,13 @@ class NotificationsSettingsWriter:
             kept = [ch for ch in cfg.channels if ch.id != channel_id]
             self._persist(self._with_channels(cfg, kept))
 
+    def replace_config(self, cfg: NotificationsConfig) -> None:
+        """Replace the whole destinations document (settings Save path)."""
+        with SettingsLock(self._home):
+            self._persist(cfg)
+
     def _load(self) -> NotificationsConfig:
-        return SettingsLoader().load(self._home).notifications
+        return self._gitops.load().config
 
     def _public(self, channel: NotificationChannelConfig) -> Dict[str, Any]:
         return {
@@ -179,43 +190,9 @@ class NotificationsSettingsWriter:
         return NotificationsConfig(enabled=cfg.enabled, channels=tuple(channels))
 
     def _persist(self, cfg: NotificationsConfig) -> None:
-        data = self._load_root()
-        data["notifications"] = {
-            "enabled": cfg.enabled,
-            "channels": [self._channel_yaml(ch) for ch in cfg.channels],
-        }
-        self._write_root(data)
-
-    @staticmethod
-    def _channel_yaml(channel: NotificationChannelConfig) -> dict[str, Any]:
-        return {
-            "id": channel.id,
-            "type": channel.type,
-            "enabled": channel.enabled,
-            "settings": dict(channel.settings),
-        }
-
-    def _load_root(self) -> Dict[str, Any]:
-        if not self._path.is_file():
-            return {}
-        try:
-            raw = yaml.safe_load(self._path.read_text(encoding="utf-8")) or {}
-        except (OSError, yaml.YAMLError) as exc:
-            raise OperatorError(
-                f"cannot update settings.yaml: {self._path}\n"
-                f"Fix: repair ~/.raft/host/settings.yaml then retry from serve",
-                has_fix=False,
-            ) from exc
-        if not isinstance(raw, dict):
-            raise OperatorError(
-                "settings.yaml must be a YAML mapping.\n"
-                "Fix: repair ~/.raft/host/settings.yaml",
-                has_fix=False,
-            )
-        return raw
-
-    def _write_root(self, data: Mapping[str, Any]) -> None:
+        payload = NotificationsDocument(config=cfg).to_export()
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        text = yaml.safe_dump(dict(data), sort_keys=False)
+        text = yaml.safe_dump(payload, sort_keys=False)
         self._path.write_text(text, encoding="utf-8")
         os.chmod(self._path, 0o600)
+        self._gitops.clear_cache()

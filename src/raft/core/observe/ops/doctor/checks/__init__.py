@@ -15,23 +15,30 @@ from .public_host import PublicHostChecks
 from .runtime import RuntimeChecks
 from .upstreams import UpstreamChecks
 
-# Composition order for Doctor.run — add suites here.
-CHECK_SUITES: tuple[CheckSuite, ...] = (
-    HostChecks(),
-    AppChecks(),
-    EnvFileChecks(),
-    UpstreamChecks(),
-    CertChecks(),
-    RuntimeChecks(),
-    EdgeChecks(),
-    PortSummaryChecks(),
-    PublicHostChecks(),
-    DashboardOauthChecks(),
-    AlertsChecks(),
-)
+# GitopsChecks imports alert loaders; keep it out of this module's eager import
+# graph so ``observe.alerts.catalogs`` can finish initializing.
+
+
+def check_suites() -> tuple[CheckSuite, ...]:
+    from .gitops import GitopsChecks
+
+    return (
+        HostChecks(),
+        GitopsChecks(),
+        AppChecks(),
+        EnvFileChecks(),
+        UpstreamChecks(),
+        CertChecks(),
+        RuntimeChecks(),
+        EdgeChecks(),
+        PortSummaryChecks(),
+        PublicHostChecks(),
+        DashboardOauthChecks(),
+        AlertsChecks(),
+    )
+
 
 __all__ = [
-    "CHECK_SUITES",
     "CheckSuite",
     "AlertsChecks",
     "AppChecks",
@@ -44,4 +51,5 @@ __all__ = [
     "PublicHostChecks",
     "RuntimeChecks",
     "UpstreamChecks",
+    "check_suites",
 ]

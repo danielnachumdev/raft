@@ -4,8 +4,8 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
-from raft.core.core.config.settings import SettingsLoader
 from raft.core.core.errors.cta import OperatorError
+from raft.core.core.gitops.notifications_gitops import NotificationsGitops
 from raft.core.platform.locking.alerts_lock import AlertsLock
 
 from ..catalogs import AlertCatalogs
@@ -187,13 +187,13 @@ class AlertRulesService:
     def _require_channels(self, rule: AlertRule) -> None:
         if not rule.channel_ids:
             return
-        config = SettingsLoader().load(self._home).notifications
+        config = NotificationsGitops(self._home).load().config
         known = {c.id for c in config.channels}
         missing = [i for i in rule.channel_ids if i not in known]
         if missing:
             raise OperatorError(
                 f"unknown channelIds: {', '.join(missing)}.\n"
-                f"Fix: create the channels under notifications: or remove them"
+                f"Fix: create the channels in host/notifications.yaml or remove them"
             )
 
     def _channel_warnings(self, raw: Any, report: ValidationReport) -> None:
@@ -209,7 +209,7 @@ class AlertRulesService:
         ids = raw.get("channelIds") or []
         if not ids:
             return
-        config = SettingsLoader().load(self._home).notifications
+        config = NotificationsGitops(self._home).load().config
         if not config.enabled:
             report.add_warning(
                 f"{path}.channelIds",

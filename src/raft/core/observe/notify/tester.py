@@ -3,8 +3,8 @@
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
-from raft.core.core.config.settings import SettingsLoader
 from raft.core.core.config.settings.types import NotificationChannelConfig
+from raft.core.core.gitops.notifications_gitops import NotificationsGitops
 from raft.core.core.errors.cta import OperatorError
 
 from .catalogs import NotificationCatalogs
@@ -70,7 +70,7 @@ class NotificationsTester:
         }
 
     def _require(self, channel_id: str) -> NotificationChannelConfig:
-        cfg = SettingsLoader().load(self._home).notifications
+        cfg = NotificationsGitops(self._home).load().config
         for channel in cfg.channels:
             if channel.id == channel_id:
                 return channel

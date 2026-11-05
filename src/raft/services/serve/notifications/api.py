@@ -13,7 +13,7 @@ from raft.core.observe.notify.tester import NotificationsTester
 
 
 class ServeNotificationsApi:
-    """Localhost JSON API over durable ``notifications:`` settings."""
+    """Localhost JSON API over ``host/notifications.yaml``."""
 
     def __init__(
         self,

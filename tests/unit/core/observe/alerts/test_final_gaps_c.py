@@ -23,9 +23,13 @@ class TestFinalGapsC(RaftTestCase):
     def _home(self) -> Path:
         home = Path(self.tmp_path)
         (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
+        (home / "host").mkdir(parents=True, exist_ok=True)
         (home / "host" / "settings.yaml").write_text(
-            "alerts: {enabled: true, intervalSeconds: 30}\n"
-            "notifications: {enabled: false, channels: []}\n",
+            "alerts: {enabled: true, intervalSeconds: 30}\n",
+            encoding="utf-8",
+        )
+        (home / "host" / "notifications.yaml").write_text(
+            "enabled: false\nchannels: []\n",
             encoding="utf-8",
         )
         return home

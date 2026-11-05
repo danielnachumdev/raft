@@ -1,10 +1,12 @@
 """Load operator settings — ``~/.raft/host/settings.yaml`` (not service inventory)."""
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Optional
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.gitops.cached_load import CachedYamlLoad
+from raft.core.core.gitops.notifications_gitops import NotificationsGitops
 from ..paths.home import RaftHome
 from .strategies import (
     AcmeSettingsParser,
@@ -18,7 +20,7 @@ from .strategies import (
     NotificationsSettingsParser,
     ServiceLogsSettingsParser,
 )
-from .types import RaftConfig
+from .types import NotificationsConfig, RaftConfig
 
 
 class SettingsLoader:
@@ -45,7 +47,22 @@ class SettingsLoader:
                 f"Fix: remove the directory or point at ~/.raft/host/settings.yaml"
             )
         raw = self._yaml.mapping(config_path, label="host/settings.yaml")
-        return self.from_raw(raw)
+        cfg = self.from_raw(self._without_notifications(raw))
+        return replace(cfg, notifications=self._notifications_config(data_home))
+
+    @staticmethod
+    def _without_notifications(raw: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
+        if raw is None:
+            return None
+        return {key: value for key, value in raw.items() if key != "notifications"}
+
+    def _notifications_config(self, data_home: Path) -> NotificationsConfig:
+        try:
+            return NotificationsGitops(data_home).load().config
+        except OperatorError:
+            # Invalid notifications.yaml is reported by raft doctor GitopsChecks;
+            # settings consumers still get edge/healing/etc.
+            return NotificationsConfig()
 
     def clear_cache(self) -> None:
         self._yaml.clear()

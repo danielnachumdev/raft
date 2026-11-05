@@ -8,6 +8,7 @@ import yaml
 
 from raft.core.core.config.paths import RaftHome
 from raft.core.core.errors.cta import OperatorError
+from raft.core.observe.notify.settings_write import NotificationsSettingsWriter
 from raft.core.platform.locking import SettingsLock
 
 from .document import SettingsDocument
@@ -106,10 +107,14 @@ class OperatorSettingsService:
 
     def _persist(self, cfg: RaftConfig) -> None:
         root = self._load_root()
-        for key, value in self._document.to_raw(cfg).items():
+        raw = self._document.to_raw(cfg)
+        raw.pop("notifications", None)
+        for key, value in raw.items():
             root[key] = value
+        root.pop("notifications", None)
         root.pop("acl", None)  # retired flat ACL; firewall SoT only
         self._write_root(root)
+        NotificationsSettingsWriter(self._home).replace_config(cfg.notifications)
 
     def _load_root(self) -> Dict[str, Any]:
         if not self._path.is_file():

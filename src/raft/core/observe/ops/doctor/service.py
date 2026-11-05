@@ -9,7 +9,7 @@ from raft.core.platform.adapters.shell import Shell
 from raft.core.core.models.stack import Stack
 from raft.core.core.ui.progress import TerminalProgress
 from raft.core.platform.auth import GitAuthManager
-from .checks import CHECK_SUITES
+from .checks import check_suites
 from .checks.base import CheckSuite
 from .context import DoctorContext
 from .models import CheckResult
@@ -25,7 +25,7 @@ class Doctor:
         self.sh = Shell(stack.root)
         self.auth = GitAuthManager(stack)
         self.docker = DockerStack(stack, self.sh)
-        self._suites = CHECK_SUITES
+        self._suites = check_suites()
         self._reporter = GroupReportWriter()
 
     def run(

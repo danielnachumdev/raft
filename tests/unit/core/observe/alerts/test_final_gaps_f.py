@@ -34,8 +34,10 @@ class TestFinalGapsF(RaftTestCase):
     def test_channel_warnings_non_map(self) -> None:
         home = Path(self.tmp_path)
         (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
-        (home / "host" / "settings.yaml").write_text(
-            "notifications: {enabled: false, channels: []}\n", encoding="utf-8"
+        (home / "host").mkdir(parents=True, exist_ok=True)
+        (home / "host" / "settings.yaml").write_text("{}", encoding="utf-8")
+        (home / "host" / "notifications.yaml").write_text(
+            "enabled: false\nchannels: []\n", encoding="utf-8"
         )
         report = ValidationReport()
         AlertRulesService(home)._channel_warnings("bad", report)

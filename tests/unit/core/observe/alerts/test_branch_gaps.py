@@ -19,14 +19,13 @@ from raft.core.observe.alerts.signals.context import SignalContext
 from tests.unit.base import RaftTestCase
 from tests.unit.core.observe.alerts.sample_rule import RULE
 
-_SETTINGS = (
-    "notifications:\n"
-    "  enabled: true\n"
-    "  channels:\n"
-    "    - id: ops\n"
-    "      type: webhook\n"
-    "      settings:\n"
-    "        url: https://hooks.example.invalid/raft\n"
+_NOTIFICATIONS = (
+    "enabled: true\n"
+    "channels:\n"
+    "  - id: ops\n"
+    "    type: webhook\n"
+    "    settings:\n"
+    "      url: https://hooks.example.invalid/raft\n"
 )
 
 
@@ -97,7 +96,10 @@ class TestBranchGaps(RaftTestCase):
         return home
 
     def _write_settings(self, home: Path) -> None:
-        (home / "host" / "settings.yaml").write_text(_SETTINGS, encoding="utf-8")
+        (home / "host").mkdir(parents=True, exist_ok=True)
+        (home / "host" / "notifications.yaml").write_text(
+            _NOTIFICATIONS, encoding="utf-8"
+        )
 
     def _assert_action_filter(self, home: Path, now: datetime) -> None:
         ctx = SignalContext(home, now, app_names=["demo-api"])

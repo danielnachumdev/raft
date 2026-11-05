@@ -54,28 +54,28 @@ class TestNotifier(RaftTestCase):
 
     @staticmethod
     def _write_two_channels(home: Path) -> None:
-        (home / "host" / "settings.yaml").write_text(
-            "notifications:\n  enabled: true\n  channels:\n"
-            "    - id: ops-primary\n      type: webhook\n"
-            "      settings: {url: https://hooks.example.invalid/x}\n"
-            "    - id: ops-secondary\n      type: webhook\n"
-            "      settings: {url: https://hooks.example.invalid/y}\n",
+        (home / "host").mkdir(parents=True, exist_ok=True)
+        (home / "host" / "notifications.yaml").write_text(
+            "enabled: true\nchannels:\n"
+            "  - id: ops-primary\n    type: webhook\n"
+            "    settings: {url: https://hooks.example.invalid/x}\n"
+            "  - id: ops-secondary\n    type: webhook\n"
+            "    settings: {url: https://hooks.example.invalid/y}\n",
             encoding="utf-8",
         )
 
     def _write_channels(
         self, home: Path, *, enabled: bool, type_id: str = "webhook"
     ) -> None:
-        path = home / "host" / "settings.yaml"
+        (home / "host").mkdir(parents=True, exist_ok=True)
         flag = "true" if enabled else "false"
-        path.write_text(
-            "notifications:\n"
-            f"  enabled: {flag}\n"
-            "  channels:\n"
-            "    - id: ops-primary\n"
-            f"      type: {type_id}\n"
-            "      settings:\n"
-            "        url: https://hooks.example.invalid/x\n",
+        (home / "host" / "notifications.yaml").write_text(
+            f"enabled: {flag}\n"
+            "channels:\n"
+            "  - id: ops-primary\n"
+            f"    type: {type_id}\n"
+            "    settings:\n"
+            "      url: https://hooks.example.invalid/x\n",
             encoding="utf-8",
         )
 

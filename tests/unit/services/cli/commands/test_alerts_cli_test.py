@@ -13,7 +13,9 @@ class TestAlertsCliTest(RaftTestCase):
     def test_test_command(self) -> None:
         home = Path(self.tmp_path)
         (home / "host" / "alerts").mkdir(parents=True, exist_ok=True)
-        (home / "host" / "settings.yaml").write_text("notifications:\n  enabled: true\n  channels: []\n", encoding="utf-8")
+        (home / "host").mkdir(parents=True, exist_ok=True)
+        (home / "host" / "settings.yaml").write_text("alerts:\n  enabled: true\n", encoding="utf-8")
+        (home / "host" / "notifications.yaml").write_text("enabled: true\nchannels: []\n", encoding="utf-8")
         cli = AlertsCLI(Stack(root=home, apps=()))
         path = Path(self.tmp_path) / "rules.yaml"
         path.write_text(yaml.safe_dump({"version": 1, "rules": [RULE]}), encoding="utf-8")
