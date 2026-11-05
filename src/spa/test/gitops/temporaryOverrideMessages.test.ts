@@ -91,4 +91,23 @@ describe("GitOps temporary-override wiring", () => {
     assert.match(notifications, /TemporaryOverrideBanner/);
     assert.match(notifications, /notifications\.yaml/);
   });
+
+  it("inspection firewall apply/remove warn temporary override", () => {
+    const src = readFileSync(
+      join(root, "src/service/httpRequests/InspectionFirewallActions.tsx"),
+      "utf8",
+    );
+    assert.match(src, /temporaryOverrideSavedMessage\("firewall\.yaml"\)/);
+    assert.doesNotMatch(src, /toast\.good\(/);
+  });
+
+  it("GitHub OAuth setup warns temporary override on settings.yaml", () => {
+    const src = readFileSync(
+      join(root, "src/deploy/oauth/OauthSetupPanel.tsx"),
+      "utf8",
+    );
+    assert.match(src, /TemporaryOverrideBanner/);
+    assert.match(src, /doc="settings\.yaml"/);
+    assert.match(src, /temporaryOverrideSavedMessage\("settings\.yaml"\)/);
+  });
 });

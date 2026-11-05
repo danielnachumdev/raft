@@ -1,4 +1,9 @@
 import { useState, type FormEvent } from "react";
+import { toast } from "../../chrome/toast";
+import {
+  TemporaryOverrideBanner,
+  temporaryOverrideSavedMessage,
+} from "../../gitops";
 import {
   saveGithubConfig,
   type GithubOauthConfig,
@@ -39,6 +44,7 @@ export function OauthSetupPanel(props: {
     onError("");
     try {
       await saveGithubConfig({ clientId, clientSecret });
+      toast.warning(temporaryOverrideSavedMessage("settings.yaml"));
       onSaved();
     } catch (err) {
       onError(err instanceof Error ? err.message : "Failed to save OAuth settings");
@@ -50,11 +56,15 @@ export function OauthSetupPanel(props: {
   return (
     <section className="deploy-panel oauth-setup" id="github-oauth-setup">
       <h2>Set up GitHub OAuth</h2>
+      <TemporaryOverrideBanner
+        doc="settings.yaml"
+        id="github-oauth-temp-override"
+      />
       <p className="muted">
         Create a GitHub OAuth App for this localhost serve bind, then paste the
-        Client ID and Client Secret below. Values are saved into host settings and
-        reloaded here — no CLI-only dance. Login later requests scopes{" "}
-        <code>{hints.scopes}</code>.
+        Client ID and Client Secret below. Values write host/settings.yaml as a
+        temporary host override (next GitOps Sync replaces them). Login later
+        requests scopes <code>{hints.scopes}</code>.
       </p>
       <ol className="oauth-setup-steps">
         <li>
