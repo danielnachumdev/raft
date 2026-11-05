@@ -12,7 +12,10 @@ import { SettingsFormView } from "./SettingsFormView";
 import { SettingsNotes } from "./SettingsNotes";
 import { SettingsSectionNav } from "./SettingsSectionNav";
 import { SettingsYamlPanel } from "./SettingsYamlPanel";
-import { TemporaryOverrideBanner } from "./TemporaryOverrideBanner";
+import {
+  TemporaryOverrideBanner,
+  unsavedTemporaryOverrideMessage,
+} from "../gitops";
 import { useSettingsEditor, type EditorMode } from "./useSettingsEditor";
 import "./SettingsPage.css";
 
@@ -88,7 +91,7 @@ export function SettingsPage() {
         <div className={mode === "form" ? "with-aside settings-layout" : "settings-layout"}>
           {mode === "form" ? <SettingsSectionNav enabled={editor.enabled} /> : null}
           <div className="settings-main">
-            <TemporaryOverrideBanner />
+            <TemporaryOverrideBanner doc="settings.yaml" id="settings-temp-override" />
             <SettingsNotes notes={editor.notes} />
             {mode === "form" ? (
               <>
@@ -113,7 +116,7 @@ export function SettingsPage() {
             <SaveBar
               open={editor.dirty}
               id="settings-save-bar"
-              message="Unsaved temporary override — next GitOps sync will replace it"
+              message={unsavedTemporaryOverrideMessage()}
               saveLabel="Save"
               saving={saving}
               onSave={() => void editor.save()}

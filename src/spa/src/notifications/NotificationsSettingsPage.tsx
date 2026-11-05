@@ -5,6 +5,10 @@ import { ItemPanelSkeleton, showSkeleton } from "../chrome/skeleton";
 import { ErrorState } from "../chrome/StateViews";
 import { PageHeader } from "../shell/PageHeader";
 import { toast } from "../chrome/toast";
+import {
+  TemporaryOverrideBanner,
+  temporaryOverrideSavedMessage,
+} from "../gitops";
 import { ChannelFormModal, type ChannelFormSubmit } from "./ChannelFormModal";
 import { ChannelList } from "./ChannelList";
 import {
@@ -67,7 +71,7 @@ export function NotificationsSettingsPage() {
     <div className="notifications-page">
       <PageHeader
         title="Notifications"
-        subtitle="Where raft sends alerts for this host. Secrets stay redacted."
+        subtitle="Where raft sends alerts for this host. Channel edits are temporary host overrides until the next GitOps sync. Secrets stay redacted."
         meta={
           !busy && !error ? (
             <Link
@@ -117,6 +121,10 @@ export function NotificationsSettingsPage() {
 
       {loaded && !error ? (
         <>
+          <TemporaryOverrideBanner
+            doc="notifications.yaml"
+            id="notifications-temp-override"
+          />
           {catalogEmpty ? (
             <section
               className="callout callout-warn notifications-empty-catalog"
@@ -196,15 +204,14 @@ export function NotificationsSettingsPage() {
     try {
       if (formMode === "create") {
         await createNotificationChannel(values);
-        toast.good(`Channel ${values.id} created`);
       } else {
         await updateNotificationChannel(values.id, {
           type: values.type,
           enabled: values.enabled,
           settings: values.settings,
         });
-        toast.good(`Channel ${values.id} updated`);
       }
+      toast.warning(temporaryOverrideSavedMessage("notifications.yaml"));
       setFormOpen(false);
       await load({ quiet: true });
     } catch (err) {
@@ -220,9 +227,7 @@ export function NotificationsSettingsPage() {
       await updateNotificationChannel(channel.id, {
         enabled: !channel.enabled,
       });
-      toast.good(
-        `Channel ${channel.id} ${channel.enabled ? "disabled" : "enabled"}`,
-      );
+      toast.warning(temporaryOverrideSavedMessage("notifications.yaml"));
       await load({ quiet: true });
     } catch (err) {
       toast.bad(err instanceof Error ? err.message : "Update failed");
@@ -237,7 +242,7 @@ export function NotificationsSettingsPage() {
     setBusyId(id);
     try {
       await deleteNotificationChannel(id);
-      toast.good(`Channel ${id} deleted`);
+      toast.warning(temporaryOverrideSavedMessage("notifications.yaml"));
       setPendingDelete(null);
       await load({ quiet: true });
     } catch (err) {

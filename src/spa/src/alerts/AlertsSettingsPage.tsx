@@ -5,6 +5,11 @@ import { LiveIndicator } from "../chrome/LiveIndicator";
 import { AlertsListSkeleton, showSkeleton } from "../chrome/skeleton";
 import { ErrorState } from "../chrome/StateViews";
 import { toast } from "../chrome/toast";
+import {
+  DisableTipsCopyHint,
+  TemporaryOverrideBanner,
+  temporaryOverrideSavedMessage,
+} from "../gitops";
 import { fetchNotificationChannels } from "../notifications/notificationsApi";
 import type { NotificationChannel } from "../notifications/notificationsApi";
 import { PageHeader } from "../shell/PageHeader";
@@ -111,7 +116,7 @@ export function AlertsSettingsPage() {
     <div className="alerts-page" id="alerts-page">
       <PageHeader
         title="Alerts"
-        subtitle="Rules that watch metrics and control-plane signals. Notification channels are optional — rules evaluate without them; empty channel list = every enabled channel when any exist. For = sustain before fire; Cool-down = silence before re-notify. If evaluation looks stale, check raft doctor / raft up. Use Syntax for YAML/JSON examples."
+        subtitle="Rules that watch metrics and control-plane signals. Saves are temporary host overrides until the next GitOps sync. Notification channels are optional — rules evaluate without them; empty channel list = every enabled channel when any exist. For = sustain before fire; Cool-down = silence before re-notify. If evaluation looks stale, check raft doctor / raft up. Use Syntax for YAML/JSON examples."
         meta={
           <>
             <span className={status?.enabled === false ? "chip chip-warn" : "chip"}>
@@ -169,12 +174,14 @@ export function AlertsSettingsPage() {
 
       {loaded ? (
         <>
+          <TemporaryOverrideBanner doc="alerts.yaml" id="alerts-temp-override" />
+          <DisableTipsCopyHint doc="alerts.yaml" id="alerts-disable-tips" />
           <AlertRecommendations
             items={recommendations}
             busy={formBusy || actions.busyId !== null}
             onApply={async (item) => {
               const result = await applyAlertRecommendation(item.id);
-              toast.good(`Created ${result.rule.id} (channels optional)`);
+              toast.warning(temporaryOverrideSavedMessage("alerts.yaml"));
               setRecommendations(result.recommendations);
               await load({ quiet: true });
             }}
@@ -265,7 +272,7 @@ export function AlertsSettingsPage() {
     try {
       if (form.mode === "create") await createAlertRule(rule);
       else await replaceAlertRule(rule.id, rule);
-      toast.good(form.mode === "create" ? `Created ${rule.id}` : `Saved ${rule.id}`);
+      toast.warning(temporaryOverrideSavedMessage("alerts.yaml"));
       setForm(null);
       await load({ quiet: true });
     } catch (err) {
