@@ -9,7 +9,15 @@ class TemplateAsserts:
         dockerfile = (home / "controller" / "Dockerfile").read_text(encoding="utf-8")
         assert "uv pip compile pyproject.toml" in dockerfile
         assert "uv pip install --system" in dockerfile
+        self._assert_bytecode_compiled(dockerfile)
+        dash = (home / "dashboard" / "Dockerfile").read_text(encoding="utf-8")
+        self._assert_bytecode_compiled(dash)
         self._assert_controller_pyproject(home)
+
+    @staticmethod
+    def _assert_bytecode_compiled(dockerfile: str) -> None:
+        assert "compileall -q /usr/local/lib/python3.12/site-packages" in dockerfile
+        assert "compileall -q /opt/raft" in dockerfile
 
     def _assert_controller_pyproject(self, home) -> None:
         assert (home / "controller" / "pyproject.toml").is_file()
