@@ -1,19 +1,19 @@
-"""ASGI middleware: enforce RBAC on ``/api/*`` after admission."""
+"""ASGI middleware: coarse authN/admission safety net (authZ via Depends)."""
 
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Optional
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from raft.core.core.config.settings.dashboard_config import DashboardConfig
-from raft.core.core.rbac import RbacEnforcer, RbacIdentity
-from raft.core.core.rbac.http_gate import RbacHttpGate
+from raft.core.core.rbac import RbacEnforcer
+from raft.core.core.rbac.identity import NONE_BOOTSTRAP_SUBJECT
 
 
 class DashboardRbacMiddleware:
-    """Deny API calls when ``rbac.yaml`` is present and subject lacks permission."""
+    """Ensure ``request.state.rbac_subject`` for ``/api/*`` (permission via Depends)."""
 
     def __init__(
         self,
@@ -21,17 +21,11 @@ class DashboardRbacMiddleware:
         *,
         home: Path,
         config: DashboardConfig,
-        username_from_cookie: Optional[
-            Callable[[Optional[str]], Optional[str]]
-        ] = None,
     ) -> None:
         self.app = app
         self._home = home
         self._cfg = config
-        self._gate = RbacHttpGate()
         self._enforcer = RbacEnforcer(home)
-        self._identity = RbacIdentity(config)
-        self._username_from_cookie = username_from_cookie
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -45,24 +39,20 @@ class DashboardRbacMiddleware:
         await self.app(scope, receive, send)
 
     def _check(self, request: Request) -> Optional[ASGIApp]:
-        permission = self._gate.permission(request.method, request.url.path)
-        if permission is None:
+        path = request.url.path
+        if not path.startswith("/api/"):
             return None
-        if not self._enforcer.file_present():
+        if path.startswith("/api/dashboard/"):
             return None
-        username = None
-        if self._username_from_cookie is not None:
-            cookie = request.cookies.get("raft_dash_session")
-            username = self._username_from_cookie(cookie)
-        subject = self._identity.from_headers(
-            request.headers, password_username=username
-        )
-        if not subject and self._cfg.auth.mode in {"oauth", "external"}:
-            return self._json(401, "missing identity for RBAC")
-        decision = self._enforcer.check(subject, permission)
-        if decision.allowed:
-            return None
-        return self._json(403, f"RBAC denied {permission}")
+        subject = getattr(request.state, "rbac_subject", None)
+        if not subject:
+            if self._cfg.auth.mode == "none":
+                request.state.rbac_subject = NONE_BOOTSTRAP_SUBJECT
+                return None
+            return self._json(401, "authentication required")
+        if not self._enforcer.admitted(subject):
+            return self._json(403, "subject not admitted")
+        return None
 
     @staticmethod
     def _json(status: int, detail: str) -> ASGIApp:

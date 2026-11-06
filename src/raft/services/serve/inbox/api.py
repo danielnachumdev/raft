@@ -2,11 +2,12 @@
 
 from typing import Any, Dict, List, Optional
 
-from fastapi import Body, HTTPException
+from fastapi import Body, Depends, HTTPException
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.stack import Stack
 from raft.core.observe.inbox import OperatorInboxService
+from raft.services.serve.auth.require import require_read, require_write
 
 
 class ServeInboxApi:
@@ -22,14 +23,22 @@ class ServeInboxApi:
         self._service = service or OperatorInboxService(stack.root)
 
     def register(self, app) -> None:
-        app.get("/api/inbox")(self.api_list)
-        app.get("/api/inbox/summary")(self.api_summary)
-        app.post("/api/inbox/mark-all-read")(self.api_mark_all_read)
-        app.post("/api/inbox/items/{item_id}/read")(self.api_mark_read)
-        app.post("/api/inbox/items/{item_id}/unread")(self.api_mark_unread)
-        app.post("/api/inbox/items/{item_id}/dismiss")(self.api_dismiss)
-        app.post("/api/inbox/read")(self.api_mark_read_many)
-        app.post("/api/inbox/unread")(self.api_mark_unread_many)
+        app.state.raft_home = self.stack.root
+        r, w = Depends(require_read("inbox")), Depends(require_write("inbox"))
+        app.get("/api/inbox", dependencies=[r])(self.api_list)
+        app.get("/api/inbox/summary", dependencies=[r])(self.api_summary)
+        app.post("/api/inbox/mark-all-read", dependencies=[w])(self.api_mark_all_read)
+        app.post("/api/inbox/items/{item_id}/read", dependencies=[w])(
+            self.api_mark_read
+        )
+        app.post("/api/inbox/items/{item_id}/unread", dependencies=[w])(
+            self.api_mark_unread
+        )
+        app.post("/api/inbox/items/{item_id}/dismiss", dependencies=[w])(
+            self.api_dismiss
+        )
+        app.post("/api/inbox/read", dependencies=[w])(self.api_mark_read_many)
+        app.post("/api/inbox/unread", dependencies=[w])(self.api_mark_unread_many)
 
     def api_list(self) -> Dict[str, Any]:
         return self._service.list_public()

@@ -37,11 +37,12 @@ class DashboardOAuthReady:
         if self.secrets_ready(cfg):
             return
         raise OperatorError(
-            "dashboard oauth requires host/secrets/dashboard/oauth.env and allowlist.\n"
+            "dashboard oauth requires host/secrets/dashboard/oauth.env "
+            "and RBAC bindings (allowlist is derived from rbac.yaml).\n"
             "Fix: write oauth.env with OAUTH2_PROXY_CLIENT_ID, "
             "OAUTH2_PROXY_CLIENT_SECRET, OAUTH2_PROXY_COOKIE_SECRET, "
-            "OAUTH2_PROXY_REDIRECT_URL; add identities to the allowlist "
-            "file; set auth.mode: oauth in Settings; then raft render "
+            "OAUTH2_PROXY_REDIRECT_URL; bind subjects in host/rbac.yaml; "
+            "set auth.mode: oauth in Settings; then raft render "
             "and redeploy dashboard",
             has_fix=False,
         )

@@ -17,6 +17,7 @@ from raft.core.observe.alerts.catalogs import AlertCatalogs
 from raft.core.observe.alerts.service import RuleConflict
 from raft.core.observe.alerts.service.tester import AlertTester
 from raft.core.observe.notify.delivery_status import DeliveryStatus
+from raft.services.serve.auth.route_deps import RouteRbacDeps
 
 
 class ServeAlertsApi:
@@ -38,25 +39,41 @@ class ServeAlertsApi:
         )
 
     def register(self, app) -> None:
-        app.get("/api/alerts/rules")(self.api_list)
-        app.get("/api/alerts/rules/{rule_id}")(self.api_get)
-        app.post("/api/alerts/rules")(self.api_create)
-        app.put("/api/alerts/rules/{rule_id}")(self.api_replace)
-        app.post("/api/alerts/rules/{rule_id}/enabled")(self.api_enabled)
-        app.delete("/api/alerts/rules/{rule_id}")(self.api_delete)
-        app.post("/api/alerts/validate")(self.api_validate)
-        app.post("/api/alerts/dry-run")(self.api_dry_run)
-        app.post("/api/alerts/rules/{rule_id}/test")(self.api_test)
-        app.get("/api/alerts/status")(self.api_status)
-        app.get("/api/alerts/catalog")(self.api_catalog)
-        app.get("/api/alerts/export")(self.api_export)
-        app.post("/api/alerts/import")(self.api_import)
-        app.get("/api/alerts/recommendations")(self.api_recommendations)
-        app.post("/api/alerts/recommendations/{recommendation_id}/dismiss")(
-            self.api_dismiss_recommendation
+        app.state.raft_home = self.stack.root
+        d = RouteRbacDeps("alerts")
+        self._register_reads(app, d)
+        self._register_writes(app, d)
+
+    def _register_reads(self, app, d: RouteRbacDeps) -> None:
+        d.get(app, "/api/alerts/rules", self.api_list)
+        d.get(app, "/api/alerts/rules/{rule_id}", self.api_get)
+        d.get(app, "/api/alerts/status", self.api_status)
+        d.get(app, "/api/alerts/catalog", self.api_catalog)
+        d.get(app, "/api/alerts/export", self.api_export)
+        d.get(app, "/api/alerts/recommendations", self.api_recommendations)
+        app.post(
+            "/api/alerts/dry-run", dependencies=d.read
+        )(self.api_dry_run)
+
+    def _register_writes(self, app, d: RouteRbacDeps) -> None:
+        d.mut(app, "post", "/api/alerts/rules", self.api_create)
+        d.mut(app, "put", "/api/alerts/rules/{rule_id}", self.api_replace)
+        d.mut(app, "post", "/api/alerts/rules/{rule_id}/enabled", self.api_enabled)
+        d.mut(app, "delete", "/api/alerts/rules/{rule_id}", self.api_delete)
+        d.mut(app, "post", "/api/alerts/validate", self.api_validate)
+        d.mut(app, "post", "/api/alerts/rules/{rule_id}/test", self.api_test)
+        d.mut(app, "post", "/api/alerts/import", self.api_import)
+        d.mut(
+            app,
+            "post",
+            "/api/alerts/recommendations/{recommendation_id}/dismiss",
+            self.api_dismiss_recommendation,
         )
-        app.post("/api/alerts/recommendations/{recommendation_id}/apply")(
-            self.api_apply_recommendation
+        d.mut(
+            app,
+            "post",
+            "/api/alerts/recommendations/{recommendation_id}/apply",
+            self.api_apply_recommendation,
         )
 
     def api_list(self) -> Dict[str, Any]:

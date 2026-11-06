@@ -1,12 +1,14 @@
 """ORM tables for durable operator state (SQLite-first)."""
 
 from .apps import AppRow, DeployPinRow
+from .dashboard_session import DashboardSessionRow
 from .firewall import FirewallDismissedRow, FirewallRuleRow
 from .migrate_stamp import MIGRATE_STAMP_ID, MigrateFromFilesStamp
 from .settings import SETTINGS_SINGLETON_ID, SettingsRow
 
 __all__ = [
     "AppRow",
+    "DashboardSessionRow",
     "DeployPinRow",
     "FirewallDismissedRow",
     "FirewallRuleRow",

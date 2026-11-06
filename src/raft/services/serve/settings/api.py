@@ -2,11 +2,12 @@
 
 from typing import Any, Dict, Optional
 
-from fastapi import Body, HTTPException
+from fastapi import Body, Depends, HTTPException
 
 from raft.core.core.config.settings import OperatorSettingsService
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.stack import Stack
+from raft.services.serve.auth.require import require_read, require_write
 
 
 class ServeSettingsApi:
@@ -22,12 +23,14 @@ class ServeSettingsApi:
         self._service = service or OperatorSettingsService(stack.root)
 
     def register(self, app) -> None:
-        app.get("/api/settings")(self.api_get)
-        app.put("/api/settings")(self.api_put)
-        app.get("/api/settings/yaml")(self.api_get_yaml)
-        app.put("/api/settings/yaml")(self.api_put_yaml)
-        app.post("/api/settings/yaml/encode")(self.api_encode_yaml)
-        app.post("/api/settings/yaml/decode")(self.api_decode_yaml)
+        app.state.raft_home = self.stack.root
+        r, w = Depends(require_read("settings")), Depends(require_write("settings"))
+        app.get("/api/settings", dependencies=[r])(self.api_get)
+        app.put("/api/settings", dependencies=[w])(self.api_put)
+        app.get("/api/settings/yaml", dependencies=[r])(self.api_get_yaml)
+        app.put("/api/settings/yaml", dependencies=[w])(self.api_put_yaml)
+        app.post("/api/settings/yaml/encode", dependencies=[r])(self.api_encode_yaml)
+        app.post("/api/settings/yaml/decode", dependencies=[w])(self.api_decode_yaml)
 
     def api_get(self) -> Dict[str, Any]:
         return self._service.get_public()

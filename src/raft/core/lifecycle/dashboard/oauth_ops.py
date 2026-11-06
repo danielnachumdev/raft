@@ -51,7 +51,7 @@ class DashboardOAuthOps:
             "redirectUrl": self._env.redirect_url(next_cfg),
             "hint": (
                 "Fill OAUTH2_PROXY_CLIENT_ID/SECRET in the env file, "
-                "add identities to the allowlist, set "
+                "bind subjects under Access (RBAC), set "
                 "dashboard.auth.mode: oauth and enabled: true in Settings, "
                 "then raft render + raft up dashboard"
             ),

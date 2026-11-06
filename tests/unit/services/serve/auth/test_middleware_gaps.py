@@ -1,9 +1,6 @@
 """Middleware / session edge branches."""
 
 import asyncio
-import hashlib
-import hmac
-import time
 from pathlib import Path
 
 import yaml
@@ -15,9 +12,9 @@ from raft.core.core.config.settings.dashboard_config import (
     DashboardAuthConfig,
     DashboardConfig,
 )
+from raft.core.core.db.dashboard_sessions import DashboardSessionStore
 from raft.core.lifecycle.dashboard.password import DashboardPassword
 from raft.services.serve.auth.middleware import DashboardAuthMiddleware
-from raft.services.serve.auth.password_session import PasswordSessionAuth
 from raft.services.serve.auth.wire import ServeAuthWire
 from tests.unit.base import RaftTestCase, StackMakers
 
@@ -25,11 +22,10 @@ from tests.unit.base import RaftTestCase, StackMakers
 class TestMiddlewareGaps(RaftTestCase):
     def test_assets_require_auth(self) -> None:
         app = self._app_with(
-            DashboardConfig(auth=DashboardAuthConfig(mode="password")),
-            sessions=None,
+            DashboardConfig(auth=DashboardAuthConfig(mode="password"))
         )
         client = TestClient(app, follow_redirects=False)
-        assert client.get("/assets/x.js").status_code == 401
+        assert client.get("/assets/x.js").status_code == 302
         assert client.get("/api/status").status_code == 401
 
     def test_none_and_unknown_mode(self) -> None:
@@ -51,19 +47,11 @@ class TestMiddlewareGaps(RaftTestCase):
         mw = DashboardAuthMiddleware(
             inner,
             config=DashboardConfig(auth=DashboardAuthConfig(mode="password")),
+            home=Path(self.tmp_path),
+            store=DashboardSessionStore(self.tmp_path),
         )
         asyncio.run(mw({"type": "lifespan"}, None, None))  # type: ignore[arg-type]
         assert called["ok"] is True
-
-    def test_session_bad_payload_and_reload_key(self) -> None:
-        home = Path(self.tmp_path)
-        hashed = DashboardPassword().hash("correct-horse")
-        key_path = home / "host" / "serve" / "dashboard-session.key"
-        key_path.parent.mkdir(parents=True, exist_ok=True)
-        key_path.write_bytes(b"01234567890123456789012345678901")
-        sessions = PasswordSessionAuth.from_hashes(home, password_hash=hashed)
-        secret = key_path.read_bytes()
-        self._assert_bad_cookies(sessions, secret)
 
     def test_wire_loads_settings(self) -> None:
         home = Path(self.tmp_path)
@@ -106,51 +94,34 @@ class TestMiddlewareGaps(RaftTestCase):
         ServeAuthWire(StackMakers.make_stack(home), config=cfg).apply(app)
         body = TestClient(app).get("/api/dashboard/session").json()
         assert body["mode"] == "oauth"
-        assert body["logout"]["path"].startswith("/oauth2/sign_out")
+        assert body["logout"]["kind"] == "post"
+        assert body["logout"]["next"].startswith("/oauth2/sign_out")
 
     def test_session_password_and_none_logout_hints(self) -> None:
-        request = self._session_request()
+        assert self._hint("password")["kind"] == "post"
+        assert self._hint("none")["kind"] == "none"
+        ext = self._hint("external")
+        assert ext["path"] == "/api/dashboard/logout"
+        assert ext["next"] == "/"
+
+    def _hint(self, mode: str) -> dict:
+        from raft.core.core.db.dashboard_sessions import DashboardSessionStore
         from raft.services.serve.auth.session_routes import DashboardSessionRoutes
 
-        pw = DashboardSessionRoutes(
-            DashboardConfig(auth=DashboardAuthConfig(mode="password"))
-        )._payload(request)
-        assert pw["logout"]["kind"] == "post"
-        none = DashboardSessionRoutes(
-            DashboardConfig(auth=DashboardAuthConfig(mode="none"))
-        )._payload(request)
-        assert none["logout"]["kind"] == "none"
-        ext = DashboardSessionRoutes(
-            DashboardConfig(
-                auth=DashboardAuthConfig(mode="external", sign_in_url=None)
-            )
-        )._payload(request)
-        assert ext["logout"]["path"] == "/"
+        auth = DashboardAuthConfig(mode=mode, sign_in_url=None)
+        return DashboardSessionRoutes(
+            DashboardConfig(auth=auth),
+            home=Path(self.tmp_path),
+            store=DashboardSessionStore(self.tmp_path),
+        )._logout_hint(mode)
 
-    @staticmethod
-    def _session_request():
-        from starlette.requests import Request
-
-        return Request(
-            {
-                "type": "http",
-                "asgi": {"version": "3.0"},
-                "http_version": "1.1",
-                "method": "GET",
-                "scheme": "http",
-                "path": "/api/dashboard/session",
-                "raw_path": b"/api/dashboard/session",
-                "query_string": b"",
-                "headers": [],
-                "client": ("127.0.0.1", 123),
-                "server": ("127.0.0.1", 80),
-            }
-        )
-
-    def _app_with(self, cfg: DashboardConfig, sessions=None) -> FastAPI:
+    def _app_with(self, cfg: DashboardConfig) -> FastAPI:
         app = self._plain_app()
         app.add_middleware(
-            DashboardAuthMiddleware, config=cfg, sessions=sessions
+            DashboardAuthMiddleware,
+            config=cfg,
+            home=Path(self.tmp_path),
+            store=DashboardSessionStore(self.tmp_path),
         )
         return app
 
@@ -167,15 +138,3 @@ class TestMiddlewareGaps(RaftTestCase):
             return {"ok": True}
 
         return app
-
-    @staticmethod
-    def _assert_bad_cookies(sessions, secret: bytes) -> None:
-        payload = "1|notint|csrf"
-        sig = hmac.new(secret, payload.encode(), hashlib.sha256).hexdigest()
-        assert not sessions.session_ok(f"{payload}.{sig}")
-        payload2 = "2|9999999999|csrf"
-        sig2 = hmac.new(secret, payload2.encode(), hashlib.sha256).hexdigest()
-        assert not sessions.session_ok(f"{payload2}.{sig2}")
-        payload3 = f"1|{int(time.time()) - 10}|csrf"
-        sig3 = hmac.new(secret, payload3.encode(), hashlib.sha256).hexdigest()
-        assert not sessions.session_ok(f"{payload3}.{sig3}")

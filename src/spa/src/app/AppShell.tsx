@@ -66,9 +66,10 @@ export function AppShell() {
 /** Add service CTA, version, Settings gear, logout, and the mobile menu. */
 function TopbarTools(props: { pathname: string }) {
   const version = useRaftVersion();
-  const { can } = useRbac();
+  const { can, rbac } = useRbac();
   const settingsActive = isNavActive(props.pathname, SETTINGS_NAV);
   const showSettings = navAllowed(SETTINGS_NAV, can);
+  const identity = rbac?.identity?.trim() || "";
   return (
     <div className="topbar-tools">
       <NavLink
@@ -87,6 +88,15 @@ function TopbarTools(props: { pathname: string }) {
       {version ? (
         <span className="topbar-version" id="raft-version" title={version.line}>
           v{versionChromeText(version)}
+        </span>
+      ) : null}
+      {identity ? (
+        <span
+          className="topbar-identity"
+          id="dashboard-identity"
+          title={identity}
+        >
+          {identity}
         </span>
       ) : null}
       <InboxBell />

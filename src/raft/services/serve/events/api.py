@@ -2,9 +2,12 @@
 
 from typing import Any, Dict, Optional
 
+from fastapi import Depends
+
 from raft.core.core.models.stack import Stack
 from raft.core.observe.ops.events import OpsEventsService
 from raft.core.observe.ops.events.service import DEFAULT_HOURS, DEFAULT_LIMIT
+from raft.services.serve.auth.require import require_read
 
 
 class ServeEventsApi:
@@ -17,7 +20,10 @@ class ServeEventsApi:
         self._service = service or OpsEventsService(stack.root)
 
     def register(self, app) -> None:
-        app.get("/api/events")(self.api_list)
+        app.state.raft_home = self.stack.root
+        app.get(
+            "/api/events", dependencies=[Depends(require_read("events"))]
+        )(self.api_list)
 
     def api_list(
         self,

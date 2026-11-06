@@ -1,4 +1,4 @@
-"""Serve auth wire, login routes, and password session coverage."""
+"""Serve auth wire, login routes, and SQLite session coverage."""
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -8,6 +8,7 @@ from raft.core.core.config.settings.dashboard_config import (
     DashboardConfig,
 )
 from raft.core.lifecycle.dashboard.password import DashboardPassword
+from raft.services.serve.auth.password_session import PasswordSessionAuth
 from raft.services.serve.auth.wire import ServeAuthWire
 from tests.unit.base import RaftTestCase, StackMakers
 
@@ -28,6 +29,14 @@ class TestServeAuthWireAndSession(RaftTestCase):
         assert ok.status_code == 200
         self._assert_authed_mutative(client)
 
+    def test_password_rejects_unbound_when_rbac_present(self) -> None:
+        client = self._password_client(write_rbac=True)
+        denied = client.post(
+            "/api/dashboard/login", json={"password": "correct-horse"}
+        )
+        assert denied.status_code == 403
+        assert "not admitted" in denied.json()["detail"]
+
     def test_wire_skips_none_and_password_without_hash(self) -> None:
         home = self.tmp_path
         (home / "host" / "settings.yaml").write_text("{}\n", encoding="utf-8")
@@ -38,46 +47,35 @@ class TestServeAuthWireAndSession(RaftTestCase):
             config=DashboardConfig(auth=DashboardAuthConfig(mode="password")),
         ).apply(FastAPI())
 
-    def test_session_corrupt_cookie(self) -> None:
-        from raft.services.serve.auth.password_session import PasswordSessionAuth
-
+    def test_password_verify_only(self) -> None:
         hashed = DashboardPassword().hash("correct-horse")
         sessions = PasswordSessionAuth.from_hashes(self.tmp_path, password_hash=hashed)
-        assert not sessions.session_ok("bad")
-        assert not sessions.session_ok("a.b")
-        assert sessions.username("bad") is None
-        assert not sessions.csrf_ok(None, "x")
-        tokens = sessions.login("correct-horse")
-        assert tokens is not None
-        assert sessions.username(tokens[0]) == "admin"
-        assert sessions.csrf_ok(tokens[0], tokens[1])
-        assert not sessions.csrf_ok(tokens[0], "wrong")
-        self._assert_bad_v2_and_v1(sessions)
+        assert sessions.verify("nope") is None
+        assert sessions.verify("correct-horse") == "admin"
+        assert sessions.verify("correct-horse", username="missing") is None
 
-    def _assert_bad_v2_and_v1(self, sessions) -> None:
-        import hashlib
-        import hmac
-        import time
-
-        secret = sessions._secret
-        now = int(time.time()) + 3600
-
-        def sign(payload: str) -> str:
-            return hmac.new(secret, payload.encode(), hashlib.sha256).hexdigest()
-
-        assert not sessions.session_ok(f"2|admin|nope|csrf.{sign('2|admin|nope|csrf')}")
-        assert not sessions.session_ok(
-            f"2|missing|{now}|csrf.{sign(f'2|missing|{now}|csrf')}"
-        )
-        legacy = f"1|{now}|csrf.{sign(f'1|{now}|csrf')}"
-        assert sessions.username(legacy) == "admin"
-        alone = type(sessions)(self.tmp_path, users={"ops": sessions._users["admin"]})
-        alone._secret = secret
-        assert not alone.session_ok(legacy)
-
-    def _password_client(self) -> TestClient:
+    def _password_client(self, *, write_rbac: bool = False) -> TestClient:
         home = self.tmp_path
+        (home / "host").mkdir(parents=True, exist_ok=True)
         (home / "host" / "settings.yaml").write_text("{}\n", encoding="utf-8")
+        if write_rbac:
+            self._write_admin_rbac(home)
+        return TestClient(self._password_app(home))
+
+    @staticmethod
+    def _write_admin_rbac(home) -> None:
+        (home / "host" / "rbac.yaml").write_text(
+            "version: 1\n"
+            "roles:\n"
+            "  - id: admin\n"
+            "    permissions: ['*:read', '*:write']\n"
+            "bindings:\n"
+            "  - subject: ops@example.com\n"
+            "    role: admin\n",
+            encoding="utf-8",
+        )
+
+    def _password_app(self, home) -> FastAPI:
         hashed = DashboardPassword().hash("correct-horse")
         cfg = DashboardConfig(
             auth=DashboardAuthConfig(mode="password", password_hash=hashed)
@@ -93,7 +91,7 @@ class TestServeAuthWireAndSession(RaftTestCase):
             return {"ok": True}
 
         ServeAuthWire(StackMakers.make_stack(home), config=cfg).apply(app)
-        return TestClient(app)
+        return app
 
     @staticmethod
     def _assert_authed_mutative(client: TestClient) -> None:

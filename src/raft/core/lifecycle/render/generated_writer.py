@@ -10,6 +10,7 @@ from raft.core.core.config.settings.types import EdgeConfig
 from raft.core.core.models.manifest import AppSpec
 from raft.core.core.models.stack import Stack
 from raft.core.lifecycle.dashboard.compose_yaml import DashboardComposeYaml
+from raft.core.lifecycle.dashboard.rbac_allowlist_sync import RbacAllowlistSync
 from .acl.proxy_location import AclProxyLocation
 from .compose_apps import ComposeAppsYaml
 from .edge.fragments import EdgeFragments
@@ -48,8 +49,12 @@ class GeneratedWriter:
 
     def _write_dashboard_compose(self) -> None:
         cfg = SettingsLoader().load(self._stack.root).dashboard
+        self._sync_oauth_allowlist()
         text = DashboardComposeYaml().build(cfg)
         (self._root / "compose.dashboard.yaml").write_text(text, encoding="utf-8")
+
+    def _sync_oauth_allowlist(self) -> None:
+        RbacAllowlistSync(self._stack.root).sync()
 
     def _compose_edge_yaml(self) -> str:
         lines = [

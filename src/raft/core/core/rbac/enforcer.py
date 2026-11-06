@@ -2,7 +2,9 @@
 
 from pathlib import Path
 
+from raft.core.core.rbac.admission import RbacAdmission
 from raft.core.core.rbac.decision import RbacDecision
+from raft.core.core.rbac.document import RbacDocument
 from raft.core.core.rbac.permissions import PermissionCodes
 from raft.core.core.rbac.store import RbacStore
 from raft.core.core.rbac.subject import RbacSubject
@@ -16,6 +18,19 @@ class RbacEnforcer:
 
     def file_present(self) -> bool:
         return self._store.exists()
+
+    def document(self) -> RbacDocument | None:
+        if not self.file_present():
+            return None
+        return self._store.load()
+
+    def admitted(self, subject: str | None) -> bool:
+        if not self.file_present():
+            return True
+        doc = self.document()
+        if doc is None:
+            return True
+        return RbacAdmission.allows(doc, subject)
 
     def permissions_for(self, subject: str | None) -> frozenset[str]:
         if not self.file_present():

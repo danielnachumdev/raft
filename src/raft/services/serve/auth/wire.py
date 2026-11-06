@@ -6,7 +6,9 @@ from fastapi import FastAPI
 
 from raft.core.core.config.settings import SettingsLoader
 from raft.core.core.config.settings.dashboard_config import DashboardConfig
+from raft.core.core.db.dashboard_sessions import DashboardSessionStore
 from raft.core.core.models.stack import Stack
+from raft.core.lifecycle.dashboard.rbac_allowlist_sync import RbacAllowlistSync
 
 from .login_routes import DashboardLoginRoutes
 from .middleware import DashboardAuthMiddleware
@@ -21,37 +23,37 @@ class ServeAuthWire:
     def __init__(self, stack: Stack, config: Optional[DashboardConfig] = None) -> None:
         self._stack = stack
         self._cfg = config
-        self._sessions: Optional[PasswordSessionAuth] = None
+        self._passwords: Optional[PasswordSessionAuth] = None
+        self._store: Optional[DashboardSessionStore] = None
 
     def apply(self, app: FastAPI) -> None:
         cfg = self._resolve_config()
+        home = self._stack.root
+        app.state.raft_home = home
+        self._store = DashboardSessionStore(home)
+        app.state.dashboard_sessions = self._store
+        RbacAllowlistSync(home).sync()
         if cfg.auth.mode == "password":
             self._wire_password(app, cfg)
-        username_fn = self._sessions.username if self._sessions else None
-        self._register_session(app, cfg, username_fn)
-        self._register_middleware(app, cfg, username_fn)
+        DashboardSessionRoutes(cfg, home=home, store=self._store).register(app)
+        self._register_middleware(app, cfg)
 
-    def _register_session(self, app, cfg, username_fn) -> None:
-        DashboardSessionRoutes(
-            cfg,
-            home=self._stack.root,
-            username_from_cookie=username_fn,
-        ).register(app)
-
-    def _register_middleware(self, app, cfg, username_fn) -> None:
-        # Last added = outermost. Auth must run before RBAC.
+    def _register_middleware(self, app: FastAPI, cfg: DashboardConfig) -> None:
+        # Last added = outermost. Auth must run before RBAC safety net.
         app.add_middleware(
             DashboardRbacMiddleware,
             home=self._stack.root,
             config=cfg,
-            username_from_cookie=username_fn,
         )
         if cfg.auth.mode == "none":
             return
-        if cfg.auth.mode == "password" and self._sessions is None:
+        if cfg.auth.mode == "password" and self._passwords is None:
             return
         app.add_middleware(
-            DashboardAuthMiddleware, config=cfg, sessions=self._sessions
+            DashboardAuthMiddleware,
+            config=cfg,
+            home=self._stack.root,
+            store=self._store,
         )
 
     def _resolve_config(self) -> DashboardConfig:
@@ -63,10 +65,13 @@ class ServeAuthWire:
         users = cfg.auth.password_users()
         if not users:
             return False
-        self._sessions = PasswordSessionAuth.from_hashes(
+        assert self._store is not None
+        self._passwords = PasswordSessionAuth.from_hashes(
             self._stack.root,
             password_hash=cfg.auth.password_hash,
             users={u: h for u, h in users.items()},
         )
-        DashboardLoginRoutes(self._sessions).register(app)
+        DashboardLoginRoutes(
+            self._passwords, self._store, home=self._stack.root
+        ).register(app)
         return True
