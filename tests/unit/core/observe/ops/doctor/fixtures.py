@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import io
+import json
 from unittest.mock import MagicMock, patch
 
 from raft.core.platform.adapters.docker.compose_status import ComposeStatusTable
 from raft.core.observe.ops.doctor import INFRA, CheckResult, Doctor
+
+# ``docker ps`` (no ``-a``) lists these states; exited containers stay hidden.
+_PS_VISIBLE = frozenset({"created", "restarting", "running", "removing", "paused"})
 
 
 def coverage_doctor(stack, *, shell=None, docker=None, auth=None) -> Doctor:
@@ -16,6 +20,7 @@ def coverage_doctor(stack, *, shell=None, docker=None, auth=None) -> Doctor:
     doctor.auth = auth if auth is not None else MagicMock()
     doctor.docker = docker if docker is not None else MagicMock()
     _default_runtime(doctor.docker)
+    wire_labeled_docker_ps(doctor.sh, doctor.docker)
     original_run = doctor.run
 
     def run_with_host_ok():
@@ -27,6 +32,82 @@ def coverage_doctor(stack, *, shell=None, docker=None, auth=None) -> Doctor:
 
     doctor.run = run_with_host_ok  # type: ignore[method-assign]
     return doctor
+
+
+def wire_labeled_docker_ps(shell, docker) -> None:
+    """Feed engine ps/inspect from the compose-status double tests already set."""
+    shell.docker.side_effect = _engine_from_compose(docker)
+
+
+def _engine_from_compose(docker):
+    def docker_cmd(*args, **kwargs):
+        del kwargs
+        if args[:1] == ("ps",):
+            return _cmd_ok(_ps_stdout(_status_table(docker)))
+        if args[:1] == ("inspect",):
+            return _cmd_ok(_inspect_stdout(_status_table(docker)))
+        return _cmd_ok("")
+
+    return docker_cmd
+
+
+def _status_table(docker) -> ComposeStatusTable:
+    table = docker.compose_service_status()
+    if isinstance(table, ComposeStatusTable):
+        return table
+    return ComposeStatusTable({})
+
+
+def _cmd_ok(stdout: str) -> MagicMock:
+    result = MagicMock()
+    result.returncode = 0
+    result.stdout = stdout
+    result.stderr = ""
+    return result
+
+
+def _ps_stdout(table: ComposeStatusTable) -> str:
+    lines = [
+        f"{_cid(name)}\t{name}"
+        for name in table.services()
+        if table.runtime(name)[0] in _PS_VISIBLE
+    ]
+    return "".join(f"{line}\n" for line in lines)
+
+
+def _inspect_stdout(table: ComposeStatusTable) -> str:
+    payload = [
+        _inspect_item(name, *table.runtime(name))
+        for name in table.services()
+        if table.runtime(name)[0] in _PS_VISIBLE
+    ]
+    return json.dumps(payload)
+
+
+def _inspect_item(name: str, state: str, health: str) -> dict:
+    return {
+        "Id": _cid(name),
+        "RestartCount": 0,
+        "State": _inspect_state(state, health),
+        "HostConfig": {},
+    }
+
+
+def _inspect_state(state: str, health: str) -> dict:
+    body = {
+        "Status": state,
+        "StartedAt": "2024-01-01T00:00:00Z",
+        "FinishedAt": "",
+        "OOMKilled": False,
+        "ExitCode": 0,
+    }
+    if health and health != "none":
+        body["Health"] = {"Status": health}
+    return body
+
+
+def _cid(name: str) -> str:
+    return f"cid{name}"
 
 
 def _default_runtime(docker) -> None:

@@ -11,6 +11,7 @@ from raft.core.observe.ops.doctor import INFRA, CheckResult
 from raft.core.observe.ops.doctor.checks.public_host import PublicHostChecks
 from raft.core.observe.ops.doctor.checks.runtime import RuntimeChecks
 from raft.core.observe.ops.doctor.context import DoctorContext
+from tests.unit.core.observe.ops.doctor.fixtures import wire_labeled_docker_ps
 from raft.core.observe.ops.doctor.report import GroupReportWriter
 from tests.shared.compose_ids import RunningServices
 
@@ -21,12 +22,14 @@ from tests.unit.core.observe.ops.doctor.base import DoctorTestCase
 class TestDoctorScaledToZero(DoctorTestCase):
     def _ctx(self, docker: MagicMock) -> DoctorContext:
         AppliedInventory.write_applied_app(self.tmp_path, "app")
-        return DoctorContext(
+        ctx = DoctorContext(
             stack=load_stack(self.tmp_path),
             shell=MagicMock(),
             auth=MagicMock(),
             docker=docker,
         )
+        wire_labeled_docker_ps(ctx.shell, docker)
+        return ctx
 
     def test_runtime_excludes_scaled_app_from_missing(self) -> None:
         docker = self.mock_docker(running=RunningServices.edge())
