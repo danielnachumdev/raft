@@ -37,8 +37,9 @@ from .apply_env_cli import CONTROL_PLANE_REDEPLOY, ApplyEnvCli
 
 logger = logging.getLogger(__name__)
 
-# Help text for ``raft --help``. Each value is one LazyImport plus that docstring.
-_GROUPS = {
+# Fire lists these on ``raft --help``. The docstring is what Fire prints; the
+# LazyImport is what runs when a subcommand is used.
+_FIRE_GROUPS = {
     "alerts": (AlertsCLI, "Manage alert rules under ``host/alerts.yaml``."),
     "auth": (AuthCLI, "Manage per-service read-only SSH deploy keys for private git sources."),
     "db": (DbCLI, "Schema upgrade and migrate-from-files for ``raft.sqlite`` (#317)."),
@@ -51,8 +52,14 @@ _GROUPS = {
 }
 
 
-class _LazyGroup:
-    """Fire group stand-in: docstring now, one LazyImport on first attribute use."""
+class FireLazyImportAdapter:
+    """Give Fire a group docstring without importing that group's module yet.
+
+    Fire reads ``__doc__`` when it builds ``raft --help``. Constructing the real
+    group (``AlertsCLI``, …) would import that module. This adapter holds the
+    help text and the :class:`LazyImport`; the first attribute access constructs
+    the real group and forwards to it.
+    """
 
     def __init__(self, factory, stack, doc: str) -> None:
         self._factory = factory
@@ -89,17 +96,17 @@ class RaftCLICommands:
         logger.debug("config loaded; log_file=%s", log_file)
 
     def __getattr__(self, name: str):
-        spec = _GROUPS.get(name)
+        spec = _FIRE_GROUPS.get(name)
         if spec is None:
             raise AttributeError(f"{type(self).__name__!r} object has no attribute {name!r}")
         factory, doc = spec
-        # Fire reads the real ``__call__`` signature once this group is accessed.
+        # Fire parses ``__call__`` flags from the real class, not from an adapter.
         if name == "events":
             return EventsCLI(self._stack)
-        return _LazyGroup(factory, self._stack, doc)
+        return FireLazyImportAdapter(factory, self._stack, doc)
 
     def __dir__(self) -> list[str]:
-        return sorted(set(super().__dir__()) | _GROUPS.keys())
+        return sorted(set(super().__dir__()) | _FIRE_GROUPS.keys())
 
     @property
     def _app_names(self) -> list[str]:
