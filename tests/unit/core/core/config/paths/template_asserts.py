@@ -16,8 +16,8 @@ class TemplateAsserts:
 
     @staticmethod
     def _assert_bytecode_compiled(dockerfile: str) -> None:
-        assert "compileall -q /usr/local/lib/python3.12/site-packages" in dockerfile
-        assert "compileall -q /opt/raft" in dockerfile
+        assert "compileall -q -j 0 /usr/local/lib/python3.12/site-packages" in dockerfile
+        assert "compileall -q -j 0 /opt/raft" in dockerfile
 
     def _assert_controller_pyproject(self, home) -> None:
         assert (home / "controller" / "pyproject.toml").is_file()
