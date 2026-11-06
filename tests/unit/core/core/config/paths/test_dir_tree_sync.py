@@ -35,6 +35,13 @@ class TestDirTreeSync(RaftTestCase):
         assert not (dest / "gone.txt").exists()
         assert not (dest / "old").exists()
 
+    def test_sync_keep_preserves_named_extras(self) -> None:
+        src = self._tree("src", {"keep.txt": "ok"})
+        dest = self._tree("dest", {"keep.txt": "old", "raft/x.txt": "pkg"})
+        DirTreeSync().sync(src, dest, keep={"raft"})
+        assert (dest / "keep.txt").read_text(encoding="utf-8") == "ok"
+        assert (dest / "raft" / "x.txt").read_text(encoding="utf-8") == "pkg"
+
     def test_sync_skips_broken_symlinks(self) -> None:
         src = self.tmp_path / "src"
         dest = self.tmp_path / "dest"
