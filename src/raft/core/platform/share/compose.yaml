@@ -86,6 +86,7 @@ services:
       - ./host/alerts:/raft/host/alerts
       - ./host/acme:/raft/host/acme
       - ./host/logs:/raft/host/logs
+      - ./host/db:/raft/host/db
       - ./services:/raft/services
       - ./generated/nginx/upstreams:/raft/generated/nginx/upstreams
     restart: unless-stopped

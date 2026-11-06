@@ -101,6 +101,7 @@ class DashboardComposeYaml:
             "      - ./host/firewall:/raft/host/firewall",
             "      - ./host/alerts:/raft/host/alerts",
             "      - ./host/serve:/raft/host/serve",
+            "      - ./host/db:/raft/host/db",
             "      - ./host/events:/raft/host/events",
             "      - ./host/metrics:/raft/host/metrics",
             "      - ./host/logs:/raft/host/logs",

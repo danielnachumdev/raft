@@ -13,7 +13,7 @@ from tests.unit.base import RaftTestCase
 class TestDbPathEngine(RaftTestCase):
     def test_path_under_data_home(self, isolated_raft_data_home: Path) -> None:
         path = DbPath(isolated_raft_data_home).resolve()
-        assert path == isolated_raft_data_home / DB_FILENAME
+        assert path == isolated_raft_data_home / "host" / "db" / DB_FILENAME
         assert DbPath(isolated_raft_data_home).url().startswith("sqlite:///")
 
     def test_engine_creates_chmod_600(self, isolated_raft_data_home: Path) -> None:
