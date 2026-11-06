@@ -3,6 +3,8 @@
 import shutil
 from pathlib import Path
 
+from raft.core.observe.ops.version import InstallStamp, InstalledVersion
+
 from .constants import (
     CONTROLLER_BUILD_DIR,
     CONTROLLER_PACKAGE_DIR,
@@ -58,8 +60,6 @@ class ProductTemplateSync:
     @staticmethod
     def _installed_stamp_matches(package_dir: Path) -> bool:
         """True when ``package_dir`` already has the stamp this process would write."""
-        from raft.core.observe.ops.version import InstallStamp, InstalledVersion
-
         existing = InstallStamp().read(package_dir)
         if existing is None:
             return False
@@ -76,8 +76,6 @@ class ProductTemplateSync:
     @staticmethod
     def _stamp_installed_version(package_dir: Path) -> None:
         """Record host ``raft version`` so PYTHONPATH images match the CLI."""
-        from raft.core.observe.ops.version import InstalledVersion
-
         InstalledVersion().write_install_stamp(package_dir)
 
     def _sync_build_pyproject(

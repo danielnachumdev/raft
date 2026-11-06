@@ -1,6 +1,9 @@
 """Product template sync coverage."""
 
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Iterator
+from unittest.mock import patch
 
 import pytest
 
@@ -13,6 +16,18 @@ from raft.core.core.config.paths.constants import CONTROLLER_BUILD_DIR
 from raft.core.core.config.paths.templates import ProductTemplateSync
 
 from tests.unit.base import RaftTestCase
+
+
+@contextmanager
+def _installed_version(package: str, detail: str) -> Iterator[None]:
+    with patch(
+        "raft.core.core.config.paths.templates.InstalledVersion.package_version",
+        return_value=package,
+    ), patch(
+        "raft.core.core.config.paths.templates.InstalledVersion.source_detail",
+        return_value=detail,
+    ):
+        yield
 
 
 class TestProductTemplateSync(RaftTestCase):
@@ -46,30 +61,14 @@ class TestProductTemplateSync(RaftTestCase):
         assert (home / "controller" / "raft" / "__init__.py").is_file()
 
     def test_sync_python_build_recopies_when_stamp_changes(self) -> None:
-        from unittest.mock import patch
-
         home = self.tmp_path / "home"
         ensure_raft_home(home)
         root = find_package_root()
         syncer = ProductTemplateSync()
-        with patch(
-            "raft.core.observe.ops.version.InstalledVersion.package_version",
-            return_value="0.12.7",
-        ), patch(
-            "raft.core.observe.ops.version.InstalledVersion.source_detail",
-            return_value="wheel raft-0.12.7-py3-none-any.whl",
-        ):
-            syncer._sync_python_build(home, root, CONTROLLER_BUILD_DIR)
+        self._sync_with_version(syncer, home, root, "0.12.7")
         marker = home / "controller" / "raft" / "sync-skip-marker"
         marker.write_text("stale\n", encoding="utf-8")
-        with patch(
-            "raft.core.observe.ops.version.InstalledVersion.package_version",
-            return_value="0.12.8",
-        ), patch(
-            "raft.core.observe.ops.version.InstalledVersion.source_detail",
-            return_value="wheel raft-0.12.8-py3-none-any.whl",
-        ):
-            syncer._sync_python_build(home, root, CONTROLLER_BUILD_DIR)
+        self._sync_with_version(syncer, home, root, "0.12.8")
         assert not marker.is_file()
         assert (home / "controller" / "raft" / "__init__.py").is_file()
         text = (home / "controller" / "raft" / "_install_stamp.json").read_text(
@@ -79,17 +78,9 @@ class TestProductTemplateSync(RaftTestCase):
         assert "raft-0.12.8-py3-none-any.whl" in text
 
     def test_sync_stamps_host_version_into_python_builds(self) -> None:
-        from unittest.mock import patch
-
         home = self.tmp_path / "home"
         ensure_raft_home(home)
-        with patch(
-            "raft.core.observe.ops.version.InstalledVersion.package_version",
-            return_value="0.12.7",
-        ), patch(
-            "raft.core.observe.ops.version.InstalledVersion.source_detail",
-            return_value="wheel raft-0.12.7-py3-none-any.whl",
-        ):
+        with _installed_version("0.12.7", "wheel raft-0.12.7-py3-none-any.whl"):
             ProductTemplateSync().sync(home, find_package_root())
         for build in ("controller", "dashboard"):
             stamp = home / build / "raft" / "_install_stamp.json"
@@ -97,6 +88,14 @@ class TestProductTemplateSync(RaftTestCase):
             text = stamp.read_text(encoding="utf-8")
             assert '"package": "0.12.7"' in text
             assert "raft-0.12.7-py3-none-any.whl" in text
+
+    @staticmethod
+    def _sync_with_version(
+        syncer: ProductTemplateSync, home: Path, root: Path, package: str
+    ) -> None:
+        detail = f"wheel raft-{package}-py3-none-any.whl"
+        with _installed_version(package, detail):
+            syncer._sync_python_build(home, root, CONTROLLER_BUILD_DIR)
 
     def test_find_package_root_bundled(self) -> None:
         root = find_package_root()
