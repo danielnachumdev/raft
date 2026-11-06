@@ -3,8 +3,11 @@
 Docker bind-mounts follow the mounted inode. ``rmtree`` + ``copytree`` replaces
 that inode, so a running gate/router keeps serving an empty orphaned directory
 (e.g. missing ``holding.html`` → nginx 404 for scaled-to-zero hosts).
+
+Files already at ``dest`` with identical bytes are left in place.
 """
 
+import filecmp
 import shutil
 from pathlib import Path
 from typing import AbstractSet, Optional
@@ -36,6 +39,8 @@ class DirTreeSync:
             self.sync(src, dest)
             return
         if src.is_file():
+            if dest.is_file() and filecmp.cmp(src, dest, shallow=False):
+                return
             shutil.copy2(src, dest)
 
     @staticmethod

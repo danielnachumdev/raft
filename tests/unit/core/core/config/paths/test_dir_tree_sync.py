@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from raft.core.core.config.paths import (
@@ -15,6 +16,28 @@ from tests.unit.base import RaftTestCase
 
 
 class TestDirTreeSync(RaftTestCase):
+    def test_second_sync_skips_unchanged_file_and_copies_edits(self) -> None:
+        src = self._tree("src", {"a.txt": "same\n"})
+        dest = self.tmp_path / "dest"
+        sync = DirTreeSync()
+        sync.sync(src, dest)
+        target = dest / "a.txt"
+        # copy2 keeps the inode and restamps mtime from the source. A sentinel
+        # mtime survives only when the second sync skips the copy.
+        os.utime(target, ns=(1_000_000_000, 1_000_000_000))
+        identity = self._file_identity(target)
+        mtime_ns = target.stat().st_mtime_ns
+
+        sync.sync(src, dest)
+
+        assert self._file_identity(target) == identity
+        assert target.stat().st_mtime_ns == mtime_ns
+        assert target.read_text(encoding="utf-8") == "same\n"
+
+        (src / "a.txt").write_text("changed\n", encoding="utf-8")
+        sync.sync(src, dest)
+        assert target.read_text(encoding="utf-8") == "changed\n"
+
     def test_sync_preserves_dest_dir_inode(self) -> None:
         src = self._tree("src", {"a.txt": "one", "sub/b.txt": "two"})
         dest = self.tmp_path / "dest"
@@ -62,6 +85,13 @@ class TestDirTreeSync(RaftTestCase):
         assert errors.stat().st_ino == inode
         assert (errors / "holding.html").is_file()
         assert not stale.exists()
+
+    @staticmethod
+    def _file_identity(path: Path) -> int:
+        st = path.stat()
+        if st.st_ino:
+            return st.st_ino
+        return st.st_mtime_ns
 
     def _tree(self, name: str, files: dict) -> Path:
         root = self.tmp_path / name
