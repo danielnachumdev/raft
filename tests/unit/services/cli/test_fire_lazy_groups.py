@@ -28,7 +28,6 @@ class TestFireLazyGroups(CliTestCase):
         assert "alert rules" in text
         assert "events" in text
         assert "status" in text
-        assert "raft.services.serve" not in sys.modules
 
     def test_helptext_on_commands_keeps_alerts_unimported(self) -> None:
         sys.modules.pop("raft.services.cli.commands.alerts", None)

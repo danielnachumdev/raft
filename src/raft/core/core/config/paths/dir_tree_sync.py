@@ -7,17 +7,26 @@ that inode, so a running gate/router keeps serving an empty orphaned directory
 
 import shutil
 from pathlib import Path
+from typing import AbstractSet, Optional
 
 
 class DirTreeSync:
     """Copy ``src`` onto ``dest`` without replacing ``dest`` itself."""
 
-    def sync(self, src: Path, dest: Path) -> None:
+    def sync(
+        self,
+        src: Path,
+        dest: Path,
+        *,
+        keep: Optional[AbstractSet[str]] = None,
+    ) -> None:
         dest.mkdir(parents=True, exist_ok=True)
-        self._sync_contents(src, dest)
+        self._sync_contents(src, dest, keep=keep or frozenset())
 
-    def _sync_contents(self, src: Path, dest: Path) -> None:
-        wanted = {entry.name for entry in src.iterdir()}
+    def _sync_contents(
+        self, src: Path, dest: Path, *, keep: AbstractSet[str]
+    ) -> None:
+        wanted = {entry.name for entry in src.iterdir()} | set(keep)
         for entry in src.iterdir():
             self._sync_entry(entry, dest / entry.name)
         self._remove_extras(dest, wanted)

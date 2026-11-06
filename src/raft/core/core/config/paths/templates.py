@@ -34,7 +34,14 @@ class ProductTemplateSync:
             src = package_root / name
             if not src.is_dir():
                 raise FileNotFoundError(f"missing package template dir: {src}")
-            self._tree.sync(src, home / name)
+            # Build dirs hold a stamped ``raft/`` package copy that is not in the
+            # share templates; keep it so stamp skip can work on the next sync.
+            keep = (
+                frozenset({CONTROLLER_PACKAGE_DIR})
+                if name in (CONTROLLER_BUILD_DIR, DASHBOARD_BUILD_DIR)
+                else None
+            )
+            self._tree.sync(src, home / name, keep=keep)
         self._sync_python_build(home, package_root, CONTROLLER_BUILD_DIR)
         self._sync_python_build(home, package_root, DASHBOARD_BUILD_DIR)
 

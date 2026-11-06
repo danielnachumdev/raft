@@ -60,6 +60,17 @@ class TestProductTemplateSync(RaftTestCase):
         assert marker.read_text(encoding="utf-8") == "keep\n"
         assert (home / "controller" / "raft" / "__init__.py").is_file()
 
+    def test_full_sync_keeps_stamped_package_tree(self) -> None:
+        home = self.tmp_path / "home"
+        ensure_raft_home(home)
+        root = find_package_root()
+        ProductTemplateSync().sync(home, root)
+        marker = home / "controller" / "raft" / "full-sync-marker"
+        marker.write_text("keep\n", encoding="utf-8")
+        ProductTemplateSync().sync(home, root)
+        assert marker.is_file()
+        assert marker.read_text(encoding="utf-8") == "keep\n"
+
     def test_sync_python_build_recopies_when_stamp_changes(self) -> None:
         home = self.tmp_path / "home"
         ensure_raft_home(home)
