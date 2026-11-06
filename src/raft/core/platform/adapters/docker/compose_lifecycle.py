@@ -116,7 +116,7 @@ class DockerComposeLifecycle:
 
     @staticmethod
     def _start_stack_args(services: Optional[Sequence[str]]) -> tuple[str, ...]:
-        args: tuple[str, ...] = ("up", "-d", "--build", "--remove-orphans")
+        args: tuple[str, ...] = ("up", "-d", "--remove-orphans")
         if not services:
             return args
         return args + ("--no-deps", *services)
