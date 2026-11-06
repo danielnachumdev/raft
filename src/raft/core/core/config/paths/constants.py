@@ -43,6 +43,7 @@ HOST_EVENTS_DIR = HOST_DIR / "events"
 HOST_METRICS_DIR = HOST_DIR / "metrics"
 HOST_ACME_DIR = HOST_DIR / ACME_DIRNAME
 HOST_SERVE_DIR = HOST_DIR / "serve"
+HOST_DB_DIR = HOST_DIR / "db"
 HOST_EDGE_SERVICE_LOGS_DIR = HOST_LOGS_DIR / "services"
 GATE_NGINX_FINGERPRINT = HOST_DIR / "gate-nginx.fingerprint"
 ROUTER_NGINX_FINGERPRINT = HOST_DIR / "router-nginx.fingerprint"
@@ -59,6 +60,7 @@ DATA_DIR_RELS = (
     str(HOST_ACME_DIR),
     str(HOST_ACME_DIR / "http-01"),
     str(HOST_SERVE_DIR),
+    str(HOST_DB_DIR),
     str(HOST_SECRETS_DIR / "dashboard"),
     str(HOST_LOGS_DIR),
     str(HOST_EDGE_SERVICE_LOGS_DIR),
