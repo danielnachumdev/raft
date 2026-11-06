@@ -2,16 +2,21 @@
 
 from __future__ import annotations
 
+import json
+from contextlib import redirect_stdout
+from datetime import datetime, timezone
 from io import StringIO
 from unittest.mock import patch
 
 import pytest
 
+from raft.core.core.config.paths.metrics_paths import MetricsPaths
 from raft.core.core.errors.cta import OperatorError
 from raft.core.observe.ops.status import Status
 from raft.core.observe.ops.status.report import StatusReportWriter
+from raft.core.platform.adapters.shell.shell import Shell
 
-from tests.unit.base import AppliedInventory
+from tests.unit.base import AppliedInventory, ShellMocks
 from tests.unit.core.observe.ops.status.base import StatusTestCase
 from . import fixtures as status_fx
 
@@ -74,7 +79,9 @@ class TestStatusReportLive(StatusTestCase):
                 frame_collect = live.call_args.args[0]
                 with patch.object(status, "collect", return_value=snapshot) as collect:
                     frame_collect()
-                collect.assert_called_once_with(refresh_apps=True)
+                collect.assert_called_once_with(
+                    refresh_apps=True, include_stats=True
+                )
 
     def test_collect_refresh_apps_reloads_registry(self) -> None:
         status = self.make_status("app")
@@ -85,6 +92,77 @@ class TestStatusReportLive(StatusTestCase):
         names = [c.service for c in snap.containers]
         assert "app" in names and "newbie" in names
         assert len(status.stack.apps) == 2
+
+    def test_default_report_skips_docker_stats_live_calls_it(self) -> None:
+        status = self.make_status("app")
+        commands: list[str] = []
+        self._write_gate_sample()
+        with patch.object(Shell, "docker", self._recording_docker(commands)):
+            with self.patch_host(), self._demo_host_identity():
+                payload = self._report_json(status)
+        gate = next(row for row in payload["containers"] if row["service"] == "raft-gate")
+        assert gate["cpu_percent"] == 4.25
+        assert "memory" in gate and "host" in payload
+        assert "stats" not in commands
+        commands.clear()
+        with patch.object(Shell, "docker", self._recording_docker(commands)):
+            with self.patch_host(), self._demo_host_identity():
+                with patch.object(StatusReportWriter, "write_live", return_value=0) as live:
+                    assert status.report(live=True) == 0
+                    live.call_args.args[0]()
+        assert "stats" in commands
+
+    def _report_json(self, status: Status) -> dict:
+        buf = StringIO()
+        with redirect_stdout(buf):
+            assert status.report(as_json=True) == 0
+        return json.loads(buf.getvalue())
+
+    def _write_gate_sample(self) -> None:
+        path = MetricsPaths(self.tmp_path).resources()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now(timezone.utc).isoformat()
+        path.write_text(
+            '{"ts":"%s","containers":[{"service":"raft-gate","cpu_percent":4.25,'
+            '"memory":{"used_percent":9.0}}]}\n' % ts,
+            encoding="utf-8",
+        )
+
+    @staticmethod
+    def _recording_docker(commands: list[str]):
+        inspect_payload = json.dumps(
+            [
+                {
+                    "Id": "gatecid",
+                    "State": {"Status": "running", "StartedAt": "2024-01-01T00:00:00Z"},
+                    "HostConfig": {},
+                }
+            ]
+        )
+        stats = (
+            '{"ID":"gatecid","CPUPerc":"1%","MemUsage":"1MiB / 32MiB",'
+            '"MemPerc":"1%","NetIO":"0B / 0B","BlockIO":"0B / 0B","PIDs":"1"}\n'
+        )
+
+        def docker(_shell: Shell, *args: str, **_kwargs: object):
+            commands.append(args[0] if args else "")
+            if args[:1] == ("ps",):
+                return ShellMocks.completed(stdout="gatecid\traft-gate\n")
+            if args[:1] == ("inspect",):
+                return ShellMocks.completed(stdout=inspect_payload)
+            if args[:1] == ("stats",):
+                return ShellMocks.completed(stdout=stats)
+            return ShellMocks.completed()
+
+        return docker
+
+    @staticmethod
+    def _demo_host_identity():
+        return patch.multiple(
+            "raft.core.observe.ops.status.service.HostGateway",
+            hostname=lambda self: "demo-host",
+            fqdn=lambda self: None,
+        )
 
     def test_live_keyboard_interrupt(self) -> None:
         writer = StatusReportWriter()

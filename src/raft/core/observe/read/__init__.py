@@ -31,7 +31,8 @@ Serve status is a **lite** live collect (``docker ps`` + ``inspect``, no
 ``docker stats``) with CPU/mem/IO overlaid from the newest controller
 ``host/metrics/resources.jsonl`` sample (``resources_as_of``). Overlapping
 polls share a short TTL + single-flight cache so frequent SPA refresh stays
-cheap. CLI ``raft status`` still collects live stats.
+cheap. CLI ``raft status`` skips ``docker stats`` and overlays that same
+sample; ``raft status --live`` keeps the live stats snapshot.
 
 Serve ``GET /api/service/{name}`` returns ``host`` + one ``container`` object
 plus a ``presentation`` row (including ``external_urls``) for that Compose
