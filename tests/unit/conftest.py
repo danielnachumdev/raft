@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from raft.core.core.config import RaftConfig
+from raft.services.cli.utils.deps import CLI_IMPORTS
 from tests.shared.env import IsolatedRaftEnv
 
 
@@ -36,16 +37,17 @@ def stub_cli_logging_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
         def load(self, *_a, **_k):
             return RaftConfig()
 
-    monkeypatch.setattr(
-        "raft.services.cli.commands.raft_commands.SettingsLoader",
-        _StubSettingsLoader,
-    )
-
     class _StubHostLogging:
         def configure(self, *_a, **_k):
             return tmp_path / "test-logs" / "raft.log"
 
-    monkeypatch.setattr(
-        "raft.services.cli.commands.raft_commands.HostLogging",
-        _StubHostLogging,
-    )
+    real_call = CLI_IMPORTS.call
+
+    def call(name: str, *args, **kwargs):
+        if name == "SettingsLoader":
+            return _StubSettingsLoader()
+        if name == "HostLogging":
+            return _StubHostLogging()
+        return real_call(name, *args, **kwargs)
+
+    monkeypatch.setattr(CLI_IMPORTS, "call", call)

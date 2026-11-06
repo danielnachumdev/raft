@@ -2,36 +2,16 @@
 
 from __future__ import annotations
 
-from contextlib import ExitStack, contextmanager
+from contextlib import contextmanager
 from typing import Iterator, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from raft.services.cli import RaftCLI
+from raft.services.cli.utils.deps import CLI_IMPORTS
 
 from tests.unit.base import RaftTestCase, AppMakers, AppliedInventory, StackMakers
-
-# Where CLI modules bind names imported from ``raft.services.cli.utils.deps``.
-_DEP_TARGETS = {
-    "load_stack": ("raft.services.cli.commands.raft_commands",),
-    "SettingsLoader": ("raft.services.cli.commands.raft_commands",),
-    "HostLogging": ("raft.services.cli.commands.raft_commands",),
-    "AppApply": ("raft.services.cli.commands.raft_commands",),
-    "Orchestrator": (
-        "raft.services.cli.commands.raft_commands",
-        "raft.services.cli.commands.firewall",
-    ),
-    "Doctor": ("raft.services.cli.commands.raft_commands",),
-    "Status": ("raft.services.cli.commands.raft_commands",),
-    "Serve": ("raft.services.cli.commands.raft_commands",),
-    "Logs": ("raft.services.cli.commands.raft_commands",),
-    "Purge": ("raft.services.cli.commands.raft_commands",),
-    "SelfUpdate": ("raft.services.cli.commands.raft_commands",),
-    "ServiceActions": ("raft.services.cli.commands.raft_commands",),
-    "Uninstall": ("raft.services.cli.commands.raft_commands",),
-    "GitAuthManager": ("raft.services.cli.commands.auth",),
-}
 
 
 class CliTestCase(RaftTestCase):
@@ -63,16 +43,18 @@ class CliTestCase(RaftTestCase):
         **dep_returns: Optional[MagicMock],
     ) -> Iterator[dict]:
         stack = self.stack if stack is None else stack
-        patches: dict = {}
-        with ExitStack() as exited:
-            for target in _DEP_TARGETS["load_stack"]:
-                exited.enter_context(patch(f"{target}.load_stack", return_value=stack))
-            for name, value in dep_returns.items():
-                mocks = [
-                    exited.enter_context(
-                        patch(f"{target}.{name}", return_value=value)
-                    )
-                    for target in _DEP_TARGETS[name]
-                ]
-                patches[name] = mocks[0]
-            yield patches
+        real = CLI_IMPORTS.call
+        factories = {
+            name: MagicMock(return_value=value) for name, value in dep_returns.items()
+        }
+
+        def call(name: str, *args, **kwargs):
+            if name == "load_stack":
+                return stack
+            factory = factories.get(name)
+            if factory is not None:
+                return factory(*args, **kwargs)
+            return real(name, *args, **kwargs)
+
+        with patch.object(CLI_IMPORTS, "call", call):
+            yield factories

@@ -21,10 +21,9 @@ class TestCliBootstrap(CliTestCase):
     def test_doctor_failure_does_not_suggest_doctor(self, capsys) -> None:
         doctor = MagicMock()
         doctor.report.return_value = 1
-        with patch("raft.services.cli.commands.raft_commands.load_stack", return_value=self.stack):
-            with patch("raft.services.cli.commands.raft_commands.Doctor", return_value=doctor):
-                with pytest.raises(SystemExit) as exc:
-                    RaftCLI().run(["doctor"])
+        with self.patched_deps(Doctor=doctor):
+            with pytest.raises(SystemExit) as exc:
+                RaftCLI().run(["doctor"])
         assert exc.value.code == 1
         assert "Hint:" not in capsys.readouterr().err
 

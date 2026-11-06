@@ -4,7 +4,8 @@ from typing import Optional
 
 from raft.core.core.errors.domain import DomainErrors
 from raft.core.core.ui import OperatorSay
-from ..utils.deps import GitAuthManager
+
+from ..utils.deps import CLI_IMPORTS
 
 
 class AuthCLI:
@@ -25,11 +26,11 @@ class AuthCLI:
         (bootstrap before ``raft apply --git``).
         """
         name = self._require_service(service, "setup")
-        GitAuthManager(self._stack).setup(name, force=force, repo=repo)
+        CLI_IMPORTS.call("GitAuthManager", self._stack).setup(name, force=force, repo=repo)
 
     def list(self) -> None:
         """List services with local deploy keys."""
-        auth = GitAuthManager(self._stack)
+        auth = CLI_IMPORTS.call("GitAuthManager", self._stack)
         names = auth.list_services()
         if not names:
             OperatorSay.say("No local raft deploy keys.", style="warn")
@@ -42,17 +43,17 @@ class AuthCLI:
     def show(self, service: Optional[str] = None, repo: Optional[str] = None) -> None:
         """Print Title + Key (and paste URL) for a service deploy key."""
         name = self._require_service(service, "show")
-        GitAuthManager(self._stack).show(name, repo=repo)
+        CLI_IMPORTS.call("GitAuthManager", self._stack).show(name, repo=repo)
 
     def test(self, service: Optional[str] = None, repo: Optional[str] = None) -> None:
         """git ls-remote using the service deploy key."""
         name = self._require_service(service, "test")
-        GitAuthManager(self._stack).test(name, repo=repo)
+        CLI_IMPORTS.call("GitAuthManager", self._stack).test(name, repo=repo)
 
     def remove(self, service: Optional[str] = None, keep_key: bool = False) -> None:
         """Remove local key + SSH config stanza for a service."""
         name = self._require_service(service, "remove")
-        GitAuthManager(self._stack).remove(name, remove_files=not keep_key)
+        CLI_IMPORTS.call("GitAuthManager", self._stack).remove(name, remove_files=not keep_key)
 
     @staticmethod
     def _require_service(service: Optional[str], cmd: str) -> str:
