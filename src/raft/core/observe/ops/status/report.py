@@ -180,7 +180,7 @@ class StatusReportWriter:
         live_footer: bool,
     ) -> None:
         limits = TerminalColor.paint(
-            "  Limits are Compose deploy limits; usage is a live docker stats sample.",
+            self._limits_hint(live_footer=live_footer),
             CYAN,
             stream=stream,
             color=color,
@@ -192,6 +192,17 @@ class StatusReportWriter:
             print(TerminalColor.paint(_CRASH_HINT, CYAN, stream=stream, color=color), file=stream)
         if live_footer:
             print(TerminalColor.paint("  Ctrl+C to exit", DIM, stream=stream, color=color), file=stream)
+
+    @staticmethod
+    def _limits_hint(*, live_footer: bool) -> str:
+        if live_footer:
+            return (
+                "  Limits are Compose deploy limits; usage is a live docker stats sample."
+            )
+        return (
+            "  Limits are Compose deploy limits; "
+            "usage is the latest controller sample when fresh."
+        )
 
     @staticmethod
     def _mem_cell(c: ContainerStatus) -> str:

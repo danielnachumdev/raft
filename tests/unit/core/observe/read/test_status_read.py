@@ -26,11 +26,11 @@ class TestStatusRead(RaftTestCase):
             ),
         )
         status = MagicMock()
-        status.collect.return_value = snap
+        status.sampled_snapshot.return_value = snap
         reader = StatusRead(StackMakers.make_stack(self.tmp_path), status=status)
         assert reader.status is status
         assert reader.snapshot_dict() == snap.to_dict()
-        status.collect.assert_called_once()
+        status.sampled_snapshot.assert_called_once_with(refresh_apps=False)
 
     def test_api_payload_shares_collector_and_adds_rows(self) -> None:
         snap = StatusSnapshot(
@@ -122,7 +122,7 @@ class TestStatusRead(RaftTestCase):
             containers=(),
         )
         status = MagicMock()
-        status.collect.return_value = snap
+        status.sampled_snapshot.return_value = snap
         body = StatusRead(
             StackMakers.make_stack(self.tmp_path), status=status
         ).snapshot_dict()

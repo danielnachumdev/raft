@@ -44,7 +44,7 @@ class StatusRead:
 
     def snapshot_dict(self, *, refresh_apps: bool = False) -> Dict[str, Any]:
         """Machine contract — identical to ``raft status --json`` body."""
-        return self.collect(refresh_apps=refresh_apps).to_dict()
+        return self._status.sampled_snapshot(refresh_apps=refresh_apps).to_dict()
 
     def api_payload(
         self,
