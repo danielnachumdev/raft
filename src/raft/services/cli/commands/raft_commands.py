@@ -9,8 +9,10 @@ from raft.core.core.errors.domain import DomainErrors
 from raft.core.core.ui import OperatorSay
 
 from ..utils.deps import (
+    GROUP_NAMES,
     AppApply,
     Doctor,
+    GetCLI,
     HostLogging,
     Logs,
     Orchestrator,
@@ -21,19 +23,10 @@ from ..utils.deps import (
     SettingsLoader,
     Status,
     Uninstall,
+    lazy_group,
     load_stack,
 )
-from .alerts import AlertsCLI
 from .apply_env_cli import CONTROL_PLANE_REDEPLOY, ApplyEnvCli
-from .auth import AuthCLI
-from .db import DbCLI
-from .events import EventsCLI
-from .firewall import FirewallCLI
-from .get import GetCLI
-from .github import GithubCLI
-from .http_requests import HttpRequestsCLI
-from .metrics import MetricsCLI
-from .notifications import NotificationsCLI
 
 logger = logging.getLogger(__name__)
 
@@ -53,15 +46,14 @@ class RaftCLICommands:
         config = SettingsLoader().load(self._stack.root)
         log_file = HostLogging().configure(self._stack.root, config)
         logger.debug("config loaded; log_file=%s", log_file)
-        self.auth = AuthCLI(self._stack)
-        self.alerts = AlertsCLI(self._stack)
-        self.firewall = FirewallCLI(self._stack)
-        self.notifications = NotificationsCLI(self._stack)
-        self.http_requests = HttpRequestsCLI(self._stack)
-        self.metrics = MetricsCLI(self._stack)
-        self.github = GithubCLI(self._stack)
-        self.events = EventsCLI(self._stack)
-        self.db = DbCLI(self._stack)
+
+    def __getattr__(self, name: str):
+        if name not in GROUP_NAMES:
+            raise AttributeError(f"{type(self).__name__!r} object has no attribute {name!r}")
+        return lazy_group(name, self._stack)
+
+    def __dir__(self) -> list[str]:
+        return sorted(set(super().__dir__()) | set(GROUP_NAMES))
 
     @property
     def _app_names(self) -> list[str]:
@@ -110,9 +102,7 @@ class RaftCLICommands:
             )
             return
         if git:
-            applier.apply_git(
-                git, ref=ref or "main", deploy=deploy, force_sync=force_sync, env=env
-            )
+            applier.apply_git(git, ref=ref or "main", deploy=deploy, force_sync=force_sync, env=env)
             return
         raise DomainErrors.apply_requires_source()
 
@@ -148,8 +138,7 @@ class RaftCLICommands:
         if name is None:
             if no_deps:
                 raise OperatorError(
-                    "`--no-deps` requires a service name.\n"
-                    "Fix: raft up NAME --no-deps",
+                    "`--no-deps` requires a service name.\n" "Fix: raft up NAME --no-deps",
                     has_fix=False,
                 )
             Orchestrator(self._stack).up()
@@ -250,6 +239,4 @@ class RaftCLICommands:
             return
         if name not in self._app_names:
             raise DomainErrors.unknown_app(name, self._known)
-        Orchestrator(self._stack).redeploy_app(
-            name, ref_override=ref, force_sync=force_sync
-        )
+        Orchestrator(self._stack).redeploy_app(name, ref_override=ref, force_sync=force_sync)

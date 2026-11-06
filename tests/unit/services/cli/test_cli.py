@@ -10,10 +10,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import raft.services.cli as cli_pkg
+from raft.core.core.utils import TraceContext
 from raft.services.cli import RaftCLI
 from raft.services.cli.exit_mapper import CliExitMapper
-from raft.core.core.utils import TraceContext
-
 from tests.unit.services.cli.base import CliTestCase
 
 
@@ -74,14 +74,18 @@ class TestCliBootstrap(CliTestCase):
         finally:
             root.handlers.clear()
 
+    def test_package_hides_unknown_export(self) -> None:
+        with pytest.raises(AttributeError):
+            getattr(cli_pkg, "not_a_cli_export")
+
     def test_main_module_entry(self) -> None:
         with patch("raft.services.cli.cli.RaftCLI.run") as run:
             runpy.run_module("raft.services.cli", run_name="__main__")
         run.assert_called_once_with()
 
         main_mod = importlib.import_module("raft.services.cli.__main__")
-        assert main_mod.RaftCLI is RaftCLI
         assert callable(main_mod.main)
+        assert not hasattr(main_mod, "RaftCLI")
 
     def test_run_maps_called_process_error(self) -> None:
         err = subprocess.CalledProcessError(9, ["docker", "compose"], stderr="boom\n")
