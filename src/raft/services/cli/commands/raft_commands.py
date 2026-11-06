@@ -210,7 +210,7 @@ class RaftCLICommands:
             raise SystemExit(code)
 
     def status(self, json: bool = False, live: bool = False) -> None:
-        """Show host and container resource usage (point-in-time snapshot)."""
+        """Show host and container status (controller sample; ``--live`` for docker stats)."""
         Status(self._stack).report(as_json=json, live=live)
 
     def serve(self, port: int = 8787, stop: bool = False) -> None:
