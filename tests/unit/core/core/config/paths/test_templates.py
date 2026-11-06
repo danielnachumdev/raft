@@ -60,6 +60,14 @@ class TestProductTemplateSync(RaftTestCase):
         assert marker.read_text(encoding="utf-8") == "keep\n"
         assert (home / "controller" / "raft" / "__init__.py").is_file()
 
+    def test_installed_stamp_mismatches_when_package_version_blank(self) -> None:
+        home = self.tmp_path / "home"
+        ensure_raft_home(home)
+        package = home / "controller" / "raft"
+        assert (package / "_install_stamp.json").is_file()
+        with _installed_version("   ", ""):
+            assert ProductTemplateSync._installed_stamp_matches(package) is False
+
     def test_full_sync_keeps_stamped_package_tree(self) -> None:
         home = self.tmp_path / "home"
         ensure_raft_home(home)
