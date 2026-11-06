@@ -8,7 +8,23 @@ from raft.core.core.errors.cta import OperatorError
 from raft.core.core.errors.domain import DomainErrors
 from raft.core.core.ui import OperatorSay
 
-from ..utils.deps import CLI_IMPORTS
+from ..utils.deps import (
+    AppApply,
+    Doctor,
+    GetCLI,
+    HostLogging,
+    Logs,
+    Orchestrator,
+    Purge,
+    SelfUpdate,
+    Serve,
+    ServiceActions,
+    SettingsLoader,
+    Status,
+    Uninstall,
+    lazy,
+    load_stack,
+)
 from .apply_env_cli import CONTROL_PLANE_REDEPLOY, ApplyEnvCli
 
 logger = logging.getLogger(__name__)
@@ -25,18 +41,18 @@ class RaftCLICommands:
     """
 
     def __init__(self) -> None:
-        self._stack = CLI_IMPORTS.call("load_stack")
-        config = CLI_IMPORTS.call("SettingsLoader").load(self._stack.root)
-        log_file = CLI_IMPORTS.call("HostLogging").configure(self._stack.root, config)
+        self._stack = load_stack()
+        config = SettingsLoader().load(self._stack.root)
+        log_file = HostLogging().configure(self._stack.root, config)
         logger.debug("config loaded; log_file=%s", log_file)
 
     def __getattr__(self, name: str):
-        if name not in CLI_IMPORTS.command_names():
+        if name not in lazy.command_names():
             raise AttributeError(f"{type(self).__name__!r} object has no attribute {name!r}")
-        return CLI_IMPORTS.command(name, self._stack)
+        return lazy.command(name, self._stack)
 
     def __dir__(self) -> list[str]:
-        return sorted(set(super().__dir__()) | CLI_IMPORTS.command_names())
+        return sorted(set(super().__dir__()) | lazy.command_names())
 
     @property
     def _app_names(self) -> list[str]:
@@ -78,7 +94,7 @@ class RaftCLICommands:
         force_sync: bool,
         env: dict[str, str],
     ) -> None:
-        applier = CLI_IMPORTS.call("AppApply", self._stack)
+        applier = AppApply(self._stack)
         if file is not None:
             applier.apply_file(
                 Path(file), ref_override=ref, deploy=deploy, force_sync=force_sync, env=env
@@ -96,7 +112,7 @@ class RaftCLICommands:
         group: Optional[str] = None,
     ) -> None:
         """Show applied resources (e.g. get apps, get app NAME, get apps --group=demo)."""
-        getter = CLI_IMPORTS.call("GetCLI", self._stack)
+        getter = GetCLI(self._stack)
         if resource == "apps":
             getter.apps(group=group)
             return
@@ -112,7 +128,7 @@ class RaftCLICommands:
         if resource == "app":
             if not name:
                 raise SystemExit("delete app requires a name")
-            CLI_IMPORTS.call("AppApply", self._stack).delete(name)
+            AppApply(self._stack).delete(name)
             return
         raise SystemExit(f"unknown resource {resource!r} (try: app)")
 
@@ -124,17 +140,17 @@ class RaftCLICommands:
                     "`--no-deps` requires a service name.\n" "Fix: raft up NAME --no-deps",
                     has_fix=False,
                 )
-            CLI_IMPORTS.call("Orchestrator", self._stack).up()
+            Orchestrator(self._stack).up()
             return
-        result = CLI_IMPORTS.call("ServiceActions", self._stack).up(name, no_deps=no_deps)
+        result = ServiceActions(self._stack).up(name, no_deps=no_deps)
         self._say_up_result(result)
 
     def down(self, name: Optional[str] = None) -> None:
         """Tear the stack down, or bring one Compose service down when ``NAME`` is given."""
         if name is None:
-            CLI_IMPORTS.call("Orchestrator", self._stack).down()
+            Orchestrator(self._stack).down()
             return
-        result = CLI_IMPORTS.call("ServiceActions", self._stack).down(name)
+        result = ServiceActions(self._stack).down(name)
         OperatorSay.say(f"Brought down {result['service']}.")
 
     def _say_up_result(self, result: Dict[str, Any]) -> None:
@@ -147,21 +163,21 @@ class RaftCLICommands:
 
     def render(self) -> None:
         """Generate Compose/nginx from ~/.raft/services/*/app.yaml."""
-        CLI_IMPORTS.call("Orchestrator", self._stack).render()
+        Orchestrator(self._stack).render()
 
     def doctor(self, name: Optional[str] = None) -> None:
         """Check docker, auth, sync, upstreams, and stack status; print fixes."""
-        code = CLI_IMPORTS.call("Doctor", self._stack).report(app_name=name)
+        code = Doctor(self._stack).report(app_name=name)
         if code:
             raise SystemExit(code)
 
     def status(self, json: bool = False, live: bool = False) -> None:
         """Show host and container resource usage (point-in-time snapshot)."""
-        CLI_IMPORTS.call("Status", self._stack).report(as_json=json, live=live)
+        Status(self._stack).report(as_json=json, live=live)
 
     def serve(self, port: int = 8787, stop: bool = False) -> None:
         """Start a localhost-only SSR UI (``127.0.0.1``; ``--stop`` to terminate)."""
-        serve = CLI_IMPORTS.call("Serve", self._stack)
+        serve = Serve(self._stack)
         if stop:
             serve.stop(port=port)
             return
@@ -174,19 +190,19 @@ class RaftCLICommands:
         follow: bool = False,
     ) -> None:
         """Show container stdout/stderr for apps or edge services."""
-        CLI_IMPORTS.call("Logs", self._stack).show(*services, tail=tail, follow=follow)
+        Logs(self._stack).show(*services, tail=tail, follow=follow)
 
     def purge(self) -> None:
         """Remove unused Docker images plus build cache."""
-        CLI_IMPORTS.call("Purge", self._stack).run()
+        Purge(self._stack).run()
 
     def update(self, ref: Optional[str] = None) -> None:
         """Re-install raft from GitHub (latest Release, or ``--ref``)."""
-        CLI_IMPORTS.call("SelfUpdate", self._stack).run(ref=ref)
+        SelfUpdate(self._stack).run(ref=ref)
 
     def uninstall(self, yes: bool = False, uv: bool = False) -> None:
         """Remove raft from this machine (requires ``--yes``)."""
-        CLI_IMPORTS.call("Uninstall", self._stack).run(yes=yes, uv=uv)
+        Uninstall(self._stack).run(yes=yes, uv=uv)
 
     def sync(
         self,
@@ -203,7 +219,7 @@ class RaftCLICommands:
                     f"unknown service(s): {', '.join(unknown)} (known: {self._known}).\n"
                     f"Fix: raft get apps"
                 )
-        CLI_IMPORTS.call("Orchestrator", self._stack).sync(names, ref_override=ref, force=force)
+        Orchestrator(self._stack).sync(names, ref_override=ref, force=force)
 
     def redeploy(
         self,
@@ -216,10 +232,10 @@ class RaftCLICommands:
         if not name:
             raise DomainErrors.redeploy_requires_app()
         if name in CONTROL_PLANE_REDEPLOY:
-            result = CLI_IMPORTS.call("ServiceActions", self._stack).redeploy(name)
+            result = ServiceActions(self._stack).redeploy(name)
             if not result.get("started"):
                 OperatorSay.say(f"Redeployed {result['service']}.")
             return
         if name not in self._app_names:
             raise DomainErrors.unknown_app(name, self._known)
-        CLI_IMPORTS.call("Orchestrator", self._stack).redeploy_app(name, ref_override=ref, force_sync=force_sync)
+        Orchestrator(self._stack).redeploy_app(name, ref_override=ref, force_sync=force_sync)

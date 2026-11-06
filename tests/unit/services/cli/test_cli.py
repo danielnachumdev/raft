@@ -84,7 +84,7 @@ class TestCliBootstrap(CliTestCase):
 
         main_mod = importlib.import_module("raft.services.cli.__main__")
         assert callable(main_mod.main)
-        assert not hasattr(main_mod, "RaftCLI")
+        assert main_mod.RaftCLI is not RaftCLI
 
     def test_run_maps_called_process_error(self) -> None:
         err = subprocess.CalledProcessError(9, ["docker", "compose"], stderr="boom\n")

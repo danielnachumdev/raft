@@ -56,6 +56,46 @@ def test_command_defers_import_until_attribute_use(monkeypatch) -> None:
     assert seen == ["tests.unit.services.cli.utils.test_lazy_import"]
 
 
+def test_bind_does_not_import_until_called(monkeypatch) -> None:
+    seen: list[str] = []
+    real = importlib.import_module
+
+    def spy(name: str, package=None):
+        seen.append(name)
+        return real(name, package)
+
+    monkeypatch.setattr(importlib, "import_module", spy)
+    manager = LazyImportManager(
+        {"Sample": "tests.unit.services.cli.utils.test_lazy_import:_Sample"}
+    )
+    bound = manager.bind("Sample")
+    assert seen == []
+    assert bound("ok").ping() == "ok"
+    assert seen == ["tests.unit.services.cli.utils.test_lazy_import"]
+
+
+def test_bind_invokes_call_looked_up_at_call_time(monkeypatch) -> None:
+    seen: list[str] = []
+    real = importlib.import_module
+
+    def spy(name: str, package=None):
+        seen.append(name)
+        return real(name, package)
+
+    monkeypatch.setattr(importlib, "import_module", spy)
+    manager = LazyImportManager(
+        {"Sample": "tests.unit.services.cli.utils.test_lazy_import:_Sample"}
+    )
+    bound = manager.bind("Sample")
+
+    def fake_call(name: str, *args, **kwargs):
+        return ("patched", name, args, kwargs)
+
+    monkeypatch.setattr(manager, "call", fake_call)
+    assert bound("ok", flag=True) == ("patched", "Sample", ("ok",), {"flag": True})
+    assert seen == []
+
+
 def test_callable_command_imports_when_built() -> None:
     manager = LazyImportManager(
         {},

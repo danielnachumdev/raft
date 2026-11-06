@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from .lazy_import import LazyImportManager
 
-CLI_IMPORTS = LazyImportManager(
+lazy = LazyImportManager(
     targets={
         "AppApply": "raft.core.lifecycle.apply:AppApply",
         "CliExitMapper": "raft.services.cli.exit_mapper:CliExitMapper",
@@ -65,3 +67,38 @@ CLI_IMPORTS = LazyImportManager(
     },
     callable_commands=frozenset({"events"}),
 )
+
+if TYPE_CHECKING:
+    from raft.core.core.config import SettingsLoader
+    from raft.core.core.models.stack import load_stack
+    from raft.core.core.utils import HostLogging
+    from raft.core.lifecycle.apply import AppApply
+    from raft.core.lifecycle.deploy.orchestrator import Orchestrator
+    from raft.core.observe.ops.actions import ServiceActions
+    from raft.core.observe.ops.doctor import Doctor
+    from raft.core.observe.ops.logs import Logs
+    from raft.core.observe.ops.purge import Purge
+    from raft.core.observe.ops.status import Status
+    from raft.core.observe.ops.uninstall import Uninstall
+    from raft.core.observe.ops.update import SelfUpdate
+    from raft.core.platform.auth import GitAuthManager
+    from raft.services.cli.cli import RaftCLI
+    from raft.services.cli.commands.get import GetCLI
+    from raft.services.serve import Serve
+else:
+    AppApply = lazy.bind("AppApply")
+    Doctor = lazy.bind("Doctor")
+    GetCLI = lazy.bind("GetCLI")
+    GitAuthManager = lazy.bind("GitAuthManager")
+    HostLogging = lazy.bind("HostLogging")
+    Logs = lazy.bind("Logs")
+    Orchestrator = lazy.bind("Orchestrator")
+    Purge = lazy.bind("Purge")
+    RaftCLI = lazy.bind("RaftCLI")
+    SelfUpdate = lazy.bind("SelfUpdate")
+    Serve = lazy.bind("Serve")
+    ServiceActions = lazy.bind("ServiceActions")
+    SettingsLoader = lazy.bind("SettingsLoader")
+    Status = lazy.bind("Status")
+    Uninstall = lazy.bind("Uninstall")
+    load_stack = lazy.bind("load_stack")

@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from raft.services.cli import RaftCLI
-from raft.services.cli.utils.deps import CLI_IMPORTS
+from raft.services.cli.utils.deps import lazy
 
 from tests.unit.base import RaftTestCase, AppMakers, AppliedInventory, StackMakers
 
@@ -43,7 +43,7 @@ class CliTestCase(RaftTestCase):
         **dep_returns: Optional[MagicMock],
     ) -> Iterator[dict]:
         stack = self.stack if stack is None else stack
-        real = CLI_IMPORTS.call
+        real = lazy.call
         factories = {
             name: MagicMock(return_value=value) for name, value in dep_returns.items()
         }
@@ -56,5 +56,5 @@ class CliTestCase(RaftTestCase):
                 return factory(*args, **kwargs)
             return real(name, *args, **kwargs)
 
-        with patch.object(CLI_IMPORTS, "call", call):
+        with patch.object(lazy, "call", call):
             yield factories

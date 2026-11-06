@@ -6,7 +6,7 @@ from raft.core.core.gitops import GitopsDocKind
 from raft.core.core.models.stack import Stack
 from raft.core.lifecycle.firewall import FirewallService
 
-from ..utils.deps import CLI_IMPORTS
+from ..utils.deps import Orchestrator
 from .firewall_io import FirewallCliIo
 from .firewall_output import FirewallCliOutput
 from .gitops_warn import GitopsCliWarn
@@ -36,7 +36,7 @@ class FirewallCLI:
         self._out = FirewallCliOutput()
         self._io = FirewallCliIo()
         self._service = service or FirewallService(
-            stack, orchestrator=orchestrator or CLI_IMPORTS.call("Orchestrator", stack)
+            stack, orchestrator=orchestrator or Orchestrator(stack)
         )
 
     def show(self, json: bool = False) -> None:

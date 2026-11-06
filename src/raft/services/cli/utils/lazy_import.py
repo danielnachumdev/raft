@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import importlib
-from typing import Any, Collection, Mapping, Optional
+from typing import Any, Callable, Collection, Mapping, Optional
 
 
 class LazyImportManager:
     """Resolve ``module:attr`` targets for CLI consumers.
 
-    Consumers call :meth:`get`, :meth:`call`, or :meth:`command`. They do not
-    import the registered modules themselves.
+    Consumers call :meth:`get`, :meth:`call`, :meth:`bind`, or :meth:`command`.
+    They do not import the registered modules themselves. :meth:`bind` returns
+    a callable and does not import; each call looks up :meth:`call` then.
 
     ``targets`` are classes and functions. ``commands`` are Fire groups, keyed
     by the CLI name (``alerts``, not ``AlertsCLI``). A command object keeps the
@@ -48,6 +49,14 @@ class LazyImportManager:
     def call(self, name: str, *args: Any, **kwargs: Any) -> Any:
         """Call the object registered under ``name``."""
         return self.get(name)(*args, **kwargs)
+
+    def bind(self, name: str) -> Callable[..., Any]:
+        """Return a callable that forwards to :meth:`call` without importing."""
+
+        def bound(*args: Any, **kwargs: Any) -> Any:
+            return self.call(name, *args, **kwargs)
+
+        return bound
 
     def command_names(self) -> frozenset[str]:
         """Fire group names that :meth:`command` can build."""

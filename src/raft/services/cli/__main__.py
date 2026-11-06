@@ -3,7 +3,7 @@
 import sys
 
 from raft.core.observe.ops.version import InstalledVersion
-from raft.services.cli.utils.deps import CLI_IMPORTS
+from raft.services.cli.utils.deps import RaftCLI
 from raft.services.cli.utils.version_argv import VersionArgv
 
 
@@ -12,7 +12,7 @@ def main() -> None:
     if VersionArgv.is_request(argv):
         print(InstalledVersion().line(), flush=True)
         return
-    CLI_IMPORTS.call("RaftCLI").run()
+    RaftCLI().run()
 
 
 if __name__ == "__main__":

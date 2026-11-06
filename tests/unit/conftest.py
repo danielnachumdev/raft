@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from raft.core.core.config import RaftConfig
-from raft.services.cli.utils.deps import CLI_IMPORTS
+from raft.services.cli.utils.deps import lazy
 from tests.shared.env import IsolatedRaftEnv
 
 
@@ -41,7 +41,7 @@ def stub_cli_logging_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
         def configure(self, *_a, **_k):
             return tmp_path / "test-logs" / "raft.log"
 
-    real_call = CLI_IMPORTS.call
+    real_call = lazy.call
 
     def call(name: str, *args, **kwargs):
         if name == "SettingsLoader":
@@ -50,4 +50,4 @@ def stub_cli_logging_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
             return _StubHostLogging()
         return real_call(name, *args, **kwargs)
 
-    monkeypatch.setattr(CLI_IMPORTS, "call", call)
+    monkeypatch.setattr(lazy, "call", call)
