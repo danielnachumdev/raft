@@ -80,7 +80,7 @@ Options:
 Env:
   RAFT_REF                 Same as --ref (wins over latest; --ref wins over env)
   RAFT_REPO_URL            Git remote (default: github.com/danielnachumdev/raft.git)
-  RAFT_PREFER_WHEEL=0      Skip Release wheel; always git+@ref
+  RAFT_PREFER_WHEEL=0      Skip Release wheel; always git+@ref (needs Node 22+ to bake SPA)
   RAFT_KEEP_CHECKOUT=1     Clone to RAFT_HOME (default ~/raft) and editable-install
 EOF
 }
@@ -183,6 +183,91 @@ ensure_git() {
   command -v git >/dev/null 2>&1 || die "git is required"
 }
 
+# Node major required for Vite 8 / CI (git-ref and path installs bake the SPA).
+_RAFT_NODE_MIN_MAJOR=22
+_RAFT_NODE_BOOTSTRAP_VER="22.14.0"
+
+_node_major() {
+  local v
+  v="$(node -p "process.versions.node.split('.')[0]" 2>/dev/null || true)"
+  [[ "${v}" =~ ^[0-9]+$ ]] || { printf '0\n'; return 0; }
+  printf '%s\n' "${v}"
+}
+
+ensure_node() {
+  ensure_path_local_bin
+  local major
+  major="$(_node_major)"
+  if [[ "${major}" -ge "${_RAFT_NODE_MIN_MAJOR}" ]] && command -v npm >/dev/null 2>&1; then
+    return 0
+  fi
+  local arch plat url tgz node_root name
+  plat="$(uname -s | tr '[:upper:]' '[:lower:]')"
+  case "$(uname -m)" in
+    x86_64 | amd64) arch="x64" ;;
+    aarch64 | arm64) arch="arm64" ;;
+    *) die "unsupported CPU for Node bootstrap: $(uname -m)" ;;
+  esac
+  [[ "${plat}" == "linux" || "${plat}" == "darwin" ]] \
+    || die "unsupported OS for Node bootstrap: ${plat}"
+  name="node-v${_RAFT_NODE_BOOTSTRAP_VER}-${plat}-${arch}"
+  node_root="${HOME}/.local/${name}"
+  mkdir -p "${HOME}/.local/bin"
+  tgz="$(mktemp "${TMPDIR:-/tmp}/node.XXXXXX.tgz")"
+  url="https://nodejs.org/dist/v${_RAFT_NODE_BOOTSTRAP_VER}/${name}.tar.gz"
+  log "Node ${_RAFT_NODE_MIN_MAJOR}+ not found; installing v${_RAFT_NODE_BOOTSTRAP_VER} → ${node_root}"
+  curl -fsSL "${url}" -o "${tgz}" || die "failed to download Node from ${url}"
+  rm -rf "${node_root}"
+  tar -xzf "${tgz}" -C "${HOME}/.local"
+  rm -f "${tgz}"
+  ln -sfn "${node_root}/bin/node" "${HOME}/.local/bin/node"
+  ln -sfn "${node_root}/bin/npm" "${HOME}/.local/bin/npm"
+  ln -sfn "${node_root}/bin/npx" "${HOME}/.local/bin/npx"
+  ensure_path_local_bin
+  major="$(_node_major)"
+  [[ "${major}" -ge "${_RAFT_NODE_MIN_MAJOR}" ]] && command -v npm >/dev/null 2>&1 \
+    || die "Node bootstrap finished but node/npm ${_RAFT_NODE_MIN_MAJOR}+ is not on PATH"
+}
+
+spa_out_dir() {
+  printf '%s\n' "$1/src/raft/core/platform/share/serve/spa"
+}
+
+spa_already_baked() {
+  local out
+  out="$(spa_out_dir "$1")"
+  [[ -f "${out}/index.html" && -d "${out}/assets" ]] || return 1
+  find "${out}/assets" -type f -print -quit 2>/dev/null | grep -q .
+}
+
+bake_spa() {
+  local root="$1"
+  local spa="${root}/src/spa"
+  local out
+  out="$(spa_out_dir "${root}")"
+  [[ -d "${spa}" ]] || die "SPA source missing at ${spa}"
+  ensure_node
+  log "Baking SPA…"
+  (
+    cd "${spa}"
+    npm ci
+    npm run build
+  ) || die "SPA bake failed (npm ci / npm run build)"
+  [[ -f "${out}/index.html" ]] || die "SPA bake missing ${out}/index.html"
+  [[ -d "${out}/assets" ]] || die "SPA bake missing ${out}/assets/"
+  find "${out}/assets" -type f -print -quit 2>/dev/null | grep -q . \
+    || die "SPA bake left ${out}/assets/ empty"
+}
+
+bake_spa_if_needed() {
+  local root="$1"
+  if spa_already_baked "${root}"; then
+    log "SPA already baked"
+    return 0
+  fi
+  bake_spa "${root}"
+}
+
 local_checkout_dir() {
   local src dir
   src="${BASH_SOURCE[0]:-}"
@@ -191,6 +276,18 @@ local_checkout_dir() {
   [[ -f "${dir}/pyproject.toml" ]] || return 1
   grep -q '^name = "raft"' "${dir}/pyproject.toml" 2>/dev/null || return 1
   printf '%s\n' "${dir}"
+}
+
+# Shallow fetch of RAFT_REF (branch, tag, or SHA) into an empty directory.
+clone_ref_to() {
+  local dest="$1"
+  mkdir -p "${dest}"
+  git -C "${dest}" init -q
+  git -C "${dest}" remote add origin "${RAFT_REPO_URL}"
+  log "Fetching ${RAFT_REPO_URL} (${RAFT_REF}) → ${dest}"
+  git -C "${dest}" fetch --depth 1 origin "${RAFT_REF}" \
+    || die "git fetch failed for ref ${RAFT_REF}"
+  git -C "${dest}" checkout -f FETCH_HEAD
 }
 
 clone_or_update() {
@@ -204,8 +301,7 @@ clone_or_update() {
     if [[ -e "${dest}" ]]; then
       die "${dest} exists but is not a git checkout; set RAFT_HOME or remove it"
     fi
-    log "Cloning ${RAFT_REPO_URL} (${RAFT_REF}) → ${dest}"
-    git clone --depth 1 --branch "${RAFT_REF}" "${RAFT_REPO_URL}" "${dest}"
+    clone_ref_to "${dest}"
   fi
 }
 
@@ -216,6 +312,7 @@ uv_tool_install() {
 install_from_path() {
   local path="$1"
   local editable="${2:-0}"
+  bake_spa_if_needed "${path}"
   if [[ "${editable}" == "1" ]]; then
     RAFT_INSTALL_SOURCE="editable path ${path}"
   else
@@ -240,10 +337,17 @@ install_from_wheel_url() {
 }
 
 install_from_git() {
-  local spec="git+${RAFT_REPO_URL}@${RAFT_REF}"
-  RAFT_INSTALL_SOURCE="git ref ${RAFT_REF} (${spec})"
+  local tmp
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/raft-install.XXXXXX")"
+  # shellcheck disable=SC2064
+  trap "rm -rf \"${tmp}\"" EXIT
+  clone_ref_to "${tmp}"
+  bake_spa "${tmp}"
+  RAFT_INSTALL_SOURCE="git ref ${RAFT_REF} (baked path)"
   log "Installing raft from ${RAFT_INSTALL_SOURCE}…"
-  uv_tool_install "${spec}"
+  uv_tool_install "${tmp}"
+  rm -rf "${tmp}"
+  trap - EXIT
 }
 
 try_install_release_wheel() {
