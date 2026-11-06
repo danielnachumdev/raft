@@ -39,13 +39,16 @@ COPY pyproject.toml ./
 RUN uv pip compile pyproject.toml -o /tmp/requirements.txt \
     && uv pip install --system --no-cache -r /tmp/requirements.txt \
     && rm -f /bin/uv /tmp/requirements.txt pyproject.toml
+# Runtime user cannot write __pycache__ into root-owned site-packages.
+RUN python -m compileall -q /usr/local/lib/python3.12/site-packages
 
 WORKDIR /opt
 COPY raft/ /opt/raft/
 COPY login.html /opt/dashboard/login.html
 COPY unauthorized.html /opt/dashboard/unauthorized.html
 COPY start.sh /start.sh
-RUN chmod +x /start.sh
+RUN chmod +x /start.sh \
+    && python -m compileall -q /opt/raft
 ENV PYTHONPATH=/opt
 
 # Compose sets working_dir=/raft and RAFT_DATA_HOME=/raft.
