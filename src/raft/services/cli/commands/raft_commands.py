@@ -9,10 +9,20 @@ from raft.core.core.errors.domain import DomainErrors
 from raft.core.core.ui import OperatorSay
 
 from ..utils.deps import (
+    AlertsCLI,
     AppApply,
+    AuthCLI,
+    DbCLI,
     Doctor,
+    EventsCLI,
+    FirewallCLI,
+    GetCLI,
+    GithubCLI,
     HostLogging,
+    HttpRequestsCLI,
     Logs,
+    MetricsCLI,
+    NotificationsCLI,
     Orchestrator,
     Purge,
     SelfUpdate,
@@ -23,19 +33,24 @@ from ..utils.deps import (
     Uninstall,
     load_stack,
 )
-from .alerts import AlertsCLI
+from ..utils.lazy_import import FireLazyImportAdapter
 from .apply_env_cli import CONTROL_PLANE_REDEPLOY, ApplyEnvCli
-from .auth import AuthCLI
-from .db import DbCLI
-from .events import EventsCLI
-from .firewall import FirewallCLI
-from .get import GetCLI
-from .github import GithubCLI
-from .http_requests import HttpRequestsCLI
-from .metrics import MetricsCLI
-from .notifications import NotificationsCLI
 
 logger = logging.getLogger(__name__)
+
+# Fire lists these on ``raft --help``. The docstring is what Fire prints; the
+# LazyImport is what runs when a subcommand is used.
+_FIRE_GROUPS = {
+    "alerts": (AlertsCLI, "Manage alert rules under ``host/alerts.yaml``."),
+    "auth": (AuthCLI, "Manage per-service read-only SSH deploy keys for private git sources."),
+    "db": (DbCLI, "Schema upgrade and migrate-from-files for ``raft.sqlite`` (#317)."),
+    "events": (EventsCLI, "List the durable operator system event journal (#267)."),
+    "firewall": (FirewallCLI, "Manage ordered gate firewall rules under ``host/firewall.yaml``."),
+    "github": (GithubCLI, "GitHub OAuth assist / deploy (same ``GithubAssistService`` as serve)."),
+    "http_requests": (HttpRequestsCLI, "List recent gate access.log rows for one Host-routed App."),
+    "metrics": (MetricsCLI, "Historical metrics query and catalog exports (same cores as serve)."),
+    "notifications": (NotificationsCLI, "Manage channels in ``~/.raft/host/notifications.yaml``."),
+}
 
 
 class RaftCLICommands:
@@ -53,15 +68,19 @@ class RaftCLICommands:
         config = SettingsLoader().load(self._stack.root)
         log_file = HostLogging().configure(self._stack.root, config)
         logger.debug("config loaded; log_file=%s", log_file)
-        self.auth = AuthCLI(self._stack)
-        self.alerts = AlertsCLI(self._stack)
-        self.firewall = FirewallCLI(self._stack)
-        self.notifications = NotificationsCLI(self._stack)
-        self.http_requests = HttpRequestsCLI(self._stack)
-        self.metrics = MetricsCLI(self._stack)
-        self.github = GithubCLI(self._stack)
-        self.events = EventsCLI(self._stack)
-        self.db = DbCLI(self._stack)
+
+    def __getattr__(self, name: str):
+        spec = _FIRE_GROUPS.get(name)
+        if spec is None:
+            raise AttributeError(f"{type(self).__name__!r} object has no attribute {name!r}")
+        factory, doc = spec
+        # Fire parses ``__call__`` flags from the real class, not from an adapter.
+        if name == "events":
+            return EventsCLI(self._stack)
+        return FireLazyImportAdapter(factory, self._stack, doc)
+
+    def __dir__(self) -> list[str]:
+        return sorted(set(super().__dir__()) | _FIRE_GROUPS.keys())
 
     @property
     def _app_names(self) -> list[str]:
@@ -110,9 +129,7 @@ class RaftCLICommands:
             )
             return
         if git:
-            applier.apply_git(
-                git, ref=ref or "main", deploy=deploy, force_sync=force_sync, env=env
-            )
+            applier.apply_git(git, ref=ref or "main", deploy=deploy, force_sync=force_sync, env=env)
             return
         raise DomainErrors.apply_requires_source()
 
@@ -148,8 +165,7 @@ class RaftCLICommands:
         if name is None:
             if no_deps:
                 raise OperatorError(
-                    "`--no-deps` requires a service name.\n"
-                    "Fix: raft up NAME --no-deps",
+                    "`--no-deps` requires a service name.\n" "Fix: raft up NAME --no-deps",
                     has_fix=False,
                 )
             Orchestrator(self._stack).up()
@@ -250,6 +266,4 @@ class RaftCLICommands:
             return
         if name not in self._app_names:
             raise DomainErrors.unknown_app(name, self._known)
-        Orchestrator(self._stack).redeploy_app(
-            name, ref_override=ref, force_sync=force_sync
-        )
+        Orchestrator(self._stack).redeploy_app(name, ref_override=ref, force_sync=force_sync)

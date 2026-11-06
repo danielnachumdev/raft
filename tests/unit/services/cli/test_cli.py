@@ -10,10 +10,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import raft.services.cli as cli_pkg
+from raft.core.core.utils import TraceContext
 from raft.services.cli import RaftCLI
 from raft.services.cli.exit_mapper import CliExitMapper
-from raft.core.core.utils import TraceContext
-
 from tests.unit.services.cli.base import CliTestCase
 
 
@@ -21,10 +21,9 @@ class TestCliBootstrap(CliTestCase):
     def test_doctor_failure_does_not_suggest_doctor(self, capsys) -> None:
         doctor = MagicMock()
         doctor.report.return_value = 1
-        with patch("raft.services.cli.commands.raft_commands.load_stack", return_value=self.stack):
-            with patch("raft.services.cli.commands.raft_commands.Doctor", return_value=doctor):
-                with pytest.raises(SystemExit) as exc:
-                    RaftCLI().run(["doctor"])
+        with self.patched_deps(Doctor=doctor):
+            with pytest.raises(SystemExit) as exc:
+                RaftCLI().run(["doctor"])
         assert exc.value.code == 1
         assert "Hint:" not in capsys.readouterr().err
 
@@ -74,14 +73,18 @@ class TestCliBootstrap(CliTestCase):
         finally:
             root.handlers.clear()
 
+    def test_package_hides_unknown_export(self) -> None:
+        with pytest.raises(AttributeError):
+            getattr(cli_pkg, "not_a_cli_export")
+
     def test_main_module_entry(self) -> None:
         with patch("raft.services.cli.cli.RaftCLI.run") as run:
             runpy.run_module("raft.services.cli", run_name="__main__")
         run.assert_called_once_with()
 
         main_mod = importlib.import_module("raft.services.cli.__main__")
-        assert main_mod.RaftCLI is RaftCLI
         assert callable(main_mod.main)
+        assert main_mod.RaftCLI is not RaftCLI
 
     def test_run_maps_called_process_error(self) -> None:
         err = subprocess.CalledProcessError(9, ["docker", "compose"], stderr="boom\n")

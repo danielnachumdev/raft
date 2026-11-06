@@ -1,15 +1,21 @@
 """Fire component: ``raft firewall …`` (ordered edge firewall)."""
 
-from typing import Any, Mapping, Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Mapping, Optional
 
 from raft.core.core.gitops import GitopsDocKind
 from raft.core.core.models.stack import Stack
 from raft.core.lifecycle.firewall import FirewallService
 
-from ..utils.deps import Orchestrator
 from .firewall_io import FirewallCliIo
 from .firewall_output import FirewallCliOutput
 from .gitops_warn import GitopsCliWarn
+
+if TYPE_CHECKING:
+    from raft.core.lifecycle.deploy.orchestrator import Orchestrator
+else:
+    from ..utils.deps import Orchestrator
 
 
 class FirewallCLI:

@@ -43,7 +43,9 @@ class RaftCLI:
         command = LogsArgvNormalizer().normalize(command)
         try:
             with CommandProgress(command):
-                self._fire.run(RaftCLICommands, command=command, name="raft")
+                # Instance (not the class): Fire skips ``__init__`` on ``--help``
+                # for a class, which would hide the FireLazyImportAdapter groups.
+                self._fire.run(RaftCLICommands(), command=command, name="raft")
         finally:
             bridge.reset(token)
         return 0

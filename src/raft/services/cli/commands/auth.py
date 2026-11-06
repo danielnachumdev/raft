@@ -4,6 +4,7 @@ from typing import Optional
 
 from raft.core.core.errors.domain import DomainErrors
 from raft.core.core.ui import OperatorSay
+
 from ..utils.deps import GitAuthManager
 
 

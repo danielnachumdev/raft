@@ -26,8 +26,9 @@ def _recording_fire(order: List[str]):
     def fire(*_args, component=None, **_kwargs):
         order.append("fire")
         # Bound method mock: (self, component, ...); function mock: (component, ...).
+        # RaftCLI passes an already-built root instance so Fire can show groups on --help.
         target = component if component is not None else _args[-1]
-        target()
+        target.doctor()
         return None
 
     return fire
@@ -75,5 +76,5 @@ class TestCommandProgress:
                 from raft.services.cli import RaftCLI
 
                 assert RaftCLI()._invoke_fire(["doctor"]) == 0
-        assert order == ["fire", "cli_init"]
+        assert order == ["cli_init", "fire", "doctor"]
         assert TerminalProgress.active() is None

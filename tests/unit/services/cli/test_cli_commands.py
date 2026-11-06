@@ -7,8 +7,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from raft.services.cli import RaftCLI
-
-from tests.unit.base import AppMakers, AppliedInventory, StackMakers
+from raft.services.cli.commands.raft_commands import RaftCLICommands
+from tests.unit.base import AppliedInventory, AppMakers, StackMakers
 from tests.unit.services.cli.base import CliTestCase
 
 
@@ -61,7 +61,9 @@ class TestCliApplyGetDelete(CliTestCase):
 
     def test_apply_get_delete_dispatch(self, capsys) -> None:
         AppliedInventory.write_demo_inventory(self.tmp_path)
-        stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("app"), AppMakers.make_app("other")))
+        stack = StackMakers.make_stack(
+            self.tmp_path, (AppMakers.make_app("app"), AppMakers.make_app("other"))
+        )
         applier = MagicMock()
         applier.apply_file.return_value = "web"
         applier.apply_git.return_value = "hub"
@@ -256,9 +258,7 @@ class TestCliDispatch(CliTestCase):
             "started_deps": [],
         }
         actions.down.return_value = {"ok": True, "action": "down", "service": "app"}
-        with patch("raft.core.core.ui.OperatorSay.say"), self.patched_deps(
-            ServiceActions=actions
-        ):
+        with patch("raft.core.core.ui.OperatorSay.say"), self.patched_deps(ServiceActions=actions):
             assert RaftCLI()._invoke_fire(["up", "app"]) == 0
             assert RaftCLI()._invoke_fire(["down", "app"]) == 0
         actions.up.assert_called_once_with("app", no_deps=False)
@@ -266,8 +266,17 @@ class TestCliDispatch(CliTestCase):
         self.orch.up.assert_not_called()
         self.orch.down.assert_not_called()
 
-
     def test_render_dispatch(self) -> None:
         assert self.run_main(["render"]) == 0
         self.orch.render.assert_called_once()
 
+    def test_unknown_attribute_is_not_a_group(self) -> None:
+        with self.patched_deps():
+            commands = RaftCLICommands()
+            with pytest.raises(AttributeError):
+                getattr(commands, "not_a_group")
+
+    def test_events_json_dispatches(self, capsys) -> None:
+        with self.patched_deps():
+            assert RaftCLI()._invoke_fire(["events", "--json"]) == 0
+        assert '"events"' in capsys.readouterr().out
