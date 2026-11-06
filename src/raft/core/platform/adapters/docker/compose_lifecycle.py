@@ -1,7 +1,8 @@
 """Compose up / down / pull / build for the raft stack."""
 
 import logging
-from typing import Optional, Sequence
+import threading
+from typing import Callable, Optional, Sequence
 
 from raft.core.core.errors.checked import CheckedCommands
 from raft.core.core.errors.cta import OperatorError
@@ -39,9 +40,7 @@ class DockerComposeLifecycle:
 
     def stop_stack(self) -> None:
         logger.info("compose down --remove-orphans")
-        from raft.core.observe.ops.logs.hooks import ServiceLogsHooks
-
-        ServiceLogsHooks.before_stack_down(self.stack, self)  # type: ignore[arg-type]
+        self._start_background_log_ship()
         CheckedCommands.run_compose(
             self.sh,
             ("down", "--remove-orphans"),
@@ -53,6 +52,28 @@ class DockerComposeLifecycle:
         leftover = ComposeProjectCleanup(self.sh).remove_labeled()
         if leftover:
             logger.info("cleared leftover project containers after down: %s", leftover)
+
+    def _start_background_log_ship(self) -> None:
+        """Drain service logs without delaying ``compose down``.
+
+        The worker is a daemon and is never joined. A ship failure stays in
+        the worker so ``raft down`` still brings the stack down.
+        """
+        from raft.core.observe.ops.logs.hooks import ServiceLogsHooks
+
+        hook = ServiceLogsHooks.before_stack_down
+        threading.Thread(
+            target=self._run_background_log_ship,
+            args=(hook,),
+            name="raft-logs-before-down",
+            daemon=True,
+        ).start()
+
+    def _run_background_log_ship(self, hook: Callable[..., None]) -> None:
+        try:
+            hook(self.stack, self)  # type: ignore[arg-type]
+        except Exception as exc:  # noqa: BLE001 — ship must not fail stack down
+            logger.debug("service-logs ship before down skipped err=%s", exc)
 
     def network_holders(self) -> list:
         """Names still attached to the compose network (ok when stack is down)."""
