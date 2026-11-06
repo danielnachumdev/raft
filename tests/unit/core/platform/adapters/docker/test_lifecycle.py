@@ -1,5 +1,7 @@
 """Lifecycle and recreate coverage."""
 
+import threading
+import time
 from unittest.mock import patch
 
 import pytest
@@ -60,6 +62,73 @@ class TestDockerLifecycle(DockerTestCase):
             if call.args[:3] == ("rm", "-f", "cid1")
         ]
         assert labeled_rms
+
+    def test_stop_stack_does_not_wait_for_log_ship(self) -> None:
+        """Compose down runs while the pre-down ship hook is still blocked."""
+        release = threading.Event()
+        entered = threading.Event()
+        finished = threading.Event()
+
+        def blocked_ship(*_args: object, **_kwargs: object) -> None:
+            entered.set()
+            release.wait(timeout=5)
+            finished.set()
+
+        self.shell.compose.return_value = self.ok()
+        self.shell.docker.return_value = self.ok("")
+        try:
+            with (
+                patch(
+                    "raft.core.observe.ops.logs.hooks.ServiceLogsHooks.before_stack_down",
+                    side_effect=blocked_ship,
+                ),
+                patch(
+                    "raft.core.observe.ops.logs.hooks.ServiceLogsHooks.before_container_remove"
+                ),
+            ):
+                started = time.monotonic()
+                self.docker.stop_stack()
+                elapsed = time.monotonic() - started
+            assert elapsed < 1.0
+            assert entered.wait(timeout=1.0)
+            assert not finished.is_set()
+            self.shell.compose.assert_any_call(
+                "down", "--remove-orphans", capture=False, check=False
+            )
+        finally:
+            release.set()
+        assert finished.wait(timeout=1.0)
+
+    def test_stop_stack_log_ship_failure_does_not_fail_down(self) -> None:
+        self.shell.compose.return_value = self.ok()
+        self.shell.docker.return_value = self.ok("")
+        logged = threading.Event()
+
+        def boom(*_args: object, **_kwargs: object) -> None:
+            raise RuntimeError("ship failed")
+
+        def spy(msg: object, *_args: object, **_kwargs: object) -> None:
+            if "ship before down" in str(msg):
+                logged.set()
+
+        with (
+            patch(
+                "raft.core.observe.ops.logs.hooks.ServiceLogsHooks.before_stack_down",
+                side_effect=boom,
+            ),
+            patch(
+                "raft.core.observe.ops.logs.hooks.ServiceLogsHooks.before_container_remove"
+            ),
+            patch(
+                "raft.core.platform.adapters.docker.compose_lifecycle.logger.debug",
+                side_effect=spy,
+            ),
+        ):
+            self.docker.stop_stack()
+            assert logged.wait(timeout=2)
+        self.shell.compose.assert_any_call(
+            "down", "--remove-orphans", capture=False, check=False
+        )
 
     def test_network_holders_uses_router_network(self) -> None:
         with patch.object(self.docker, "router_network", return_value="raft_default"):
