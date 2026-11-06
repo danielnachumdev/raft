@@ -42,17 +42,36 @@ class ProductTemplateSync:
         raft_src = package_root.parents[2]  # share → platform → core → raft
         if (raft_src / "__init__.py").is_file():
             dest = home / build_dir / CONTROLLER_PACKAGE_DIR
-            if dest.exists():
-                shutil.rmtree(dest)
-            shutil.copytree(
-                raft_src,
-                dest,
-                ignore=shutil.ignore_patterns(
-                    "__pycache__", "*.pyc", "*.pyo", ".pytest_cache"
-                ),
-            )
-            self._stamp_installed_version(dest)
+            if not self._installed_stamp_matches(dest):
+                if dest.exists():
+                    shutil.rmtree(dest)
+                shutil.copytree(
+                    raft_src,
+                    dest,
+                    ignore=shutil.ignore_patterns(
+                        "__pycache__", "*.pyc", "*.pyo", ".pytest_cache"
+                    ),
+                )
+                self._stamp_installed_version(dest)
         self._sync_build_pyproject(home, package_root, build_dir)
+
+    @staticmethod
+    def _installed_stamp_matches(package_dir: Path) -> bool:
+        """True when ``package_dir`` already has the stamp this process would write."""
+        from raft.core.observe.ops.version import InstallStamp, InstalledVersion
+
+        existing = InstallStamp().read(package_dir)
+        if existing is None:
+            return False
+        installed = InstalledVersion()
+        package = installed.package_version().strip()
+        if not package:
+            return False
+        expected = {"package": package}
+        detail = installed.source_detail()
+        if detail and detail.strip():
+            expected["detail"] = detail.strip()
+        return existing == expected
 
     @staticmethod
     def _stamp_installed_version(package_dir: Path) -> None:
