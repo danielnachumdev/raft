@@ -36,6 +36,8 @@ class TestDashboardComposeAndWriter(RaftTestCase):
         assert "RAFT_HOST_DOCKER_PLUGIN_DIR" in text
         assert "RAFT_SERVE_BIND" not in text
         assert "oauth.env" not in text
+        assert 'cpus: "1.0"' in text
+        assert "memory: 256M" in text
 
     def test_compose_oauth_env_file(self) -> None:
         oauth = DashboardComposeYaml().build(

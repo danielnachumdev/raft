@@ -117,7 +117,7 @@ class DashboardComposeYaml:
             "    deploy:",
             "      resources:",
             "        limits:",
-            '          cpus: "0.50"',
+            '          cpus: "1.0"',
             "          memory: 256M",
             "        reservations:",
             '          cpus: "0.05"',
