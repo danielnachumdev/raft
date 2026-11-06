@@ -9,11 +9,20 @@ from raft.core.core.errors.domain import DomainErrors
 from raft.core.core.ui import OperatorSay
 
 from ..utils.deps import (
+    AlertsCLI,
     AppApply,
+    AuthCLI,
+    DbCLI,
     Doctor,
+    EventsCLI,
+    FirewallCLI,
     GetCLI,
+    GithubCLI,
     HostLogging,
+    HttpRequestsCLI,
     Logs,
+    MetricsCLI,
+    NotificationsCLI,
     Orchestrator,
     Purge,
     SelfUpdate,
@@ -22,12 +31,45 @@ from ..utils.deps import (
     SettingsLoader,
     Status,
     Uninstall,
-    lazy,
     load_stack,
 )
 from .apply_env_cli import CONTROL_PLANE_REDEPLOY, ApplyEnvCli
 
 logger = logging.getLogger(__name__)
+
+# Help text for ``raft --help``. Each value is one LazyImport plus that docstring.
+_GROUPS = {
+    "alerts": (AlertsCLI, "Manage alert rules under ``host/alerts.yaml``."),
+    "auth": (AuthCLI, "Manage per-service read-only SSH deploy keys for private git sources."),
+    "db": (DbCLI, "Schema upgrade and migrate-from-files for ``raft.sqlite`` (#317)."),
+    "events": (EventsCLI, "List the durable operator system event journal (#267)."),
+    "firewall": (FirewallCLI, "Manage ordered gate firewall rules under ``host/firewall.yaml``."),
+    "github": (GithubCLI, "GitHub OAuth assist / deploy (same ``GithubAssistService`` as serve)."),
+    "http_requests": (HttpRequestsCLI, "List recent gate access.log rows for one Host-routed App."),
+    "metrics": (MetricsCLI, "Historical metrics query and catalog exports (same cores as serve)."),
+    "notifications": (NotificationsCLI, "Manage channels in ``~/.raft/host/notifications.yaml``."),
+}
+
+
+class _LazyGroup:
+    """Fire group stand-in: docstring now, one LazyImport on first attribute use."""
+
+    def __init__(self, factory, stack, doc: str) -> None:
+        self._factory = factory
+        self._stack = stack
+        self._obj = None
+        self.__doc__ = doc
+
+    def _target(self):
+        if self._obj is None:
+            self._obj = self._factory(self._stack)
+        return self._obj
+
+    def __getattr__(self, name: str):
+        return getattr(self._target(), name)
+
+    def __dir__(self) -> list[str]:
+        return dir(self._target())
 
 
 class RaftCLICommands:
@@ -47,12 +89,17 @@ class RaftCLICommands:
         logger.debug("config loaded; log_file=%s", log_file)
 
     def __getattr__(self, name: str):
-        if name not in lazy.command_names():
+        spec = _GROUPS.get(name)
+        if spec is None:
             raise AttributeError(f"{type(self).__name__!r} object has no attribute {name!r}")
-        return lazy.command(name, self._stack)
+        factory, doc = spec
+        # Fire reads the real ``__call__`` signature once this group is accessed.
+        if name == "events":
+            return EventsCLI(self._stack)
+        return _LazyGroup(factory, self._stack, doc)
 
     def __dir__(self) -> list[str]:
-        return sorted(set(super().__dir__()) | lazy.command_names())
+        return sorted(set(super().__dir__()) | _GROUPS.keys())
 
     @property
     def _app_names(self) -> list[str]:

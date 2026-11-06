@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from typing import Iterator, Optional
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from raft.services.cli import RaftCLI
-from raft.services.cli.utils.deps import lazy
-
-from tests.unit.base import RaftTestCase, AppMakers, AppliedInventory, StackMakers
+from raft.services.cli.utils import deps as cli_deps
+from tests.unit.base import AppliedInventory, AppMakers, RaftTestCase, StackMakers
 
 
 class CliTestCase(RaftTestCase):
@@ -43,18 +42,21 @@ class CliTestCase(RaftTestCase):
         **dep_returns: Optional[MagicMock],
     ) -> Iterator[dict]:
         stack = self.stack if stack is None else stack
-        real = lazy.call
-        factories = {
-            name: MagicMock(return_value=value) for name, value in dep_returns.items()
-        }
-
-        def call(name: str, *args, **kwargs):
-            if name == "load_stack":
-                return stack
-            factory = factories.get(name)
-            if factory is not None:
-                return factory(*args, **kwargs)
-            return real(name, *args, **kwargs)
-
-        with patch.object(lazy, "call", call):
+        factories = {name: MagicMock(return_value=value) for name, value in dep_returns.items()}
+        overrides = dict(factories)
+        overrides["load_stack"] = MagicMock(return_value=stack)
+        saved = []
+        for name, factory in overrides.items():
+            target = getattr(cli_deps, name)
+            had = "_load" in target.__dict__
+            previous = target.__dict__.get("_load")
+            target._load = lambda factory=factory: factory
+            saved.append((target, had, previous))
+        try:
             yield factories
+        finally:
+            for target, had, previous in saved:
+                if had:
+                    target._load = previous
+                else:
+                    del target._load
