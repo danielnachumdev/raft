@@ -33,6 +33,7 @@ from ..utils.deps import (
     Uninstall,
     load_stack,
 )
+from ..utils.lazy_import import FireLazyImportAdapter
 from .apply_env_cli import CONTROL_PLANE_REDEPLOY, ApplyEnvCli
 
 logger = logging.getLogger(__name__)
@@ -50,33 +51,6 @@ _FIRE_GROUPS = {
     "metrics": (MetricsCLI, "Historical metrics query and catalog exports (same cores as serve)."),
     "notifications": (NotificationsCLI, "Manage channels in ``~/.raft/host/notifications.yaml``."),
 }
-
-
-class FireLazyImportAdapter:
-    """Give Fire a group docstring without importing that group's module yet.
-
-    Fire reads ``__doc__`` when it builds ``raft --help``. Constructing the real
-    group (``AlertsCLI``, …) would import that module. This adapter holds the
-    help text and the :class:`LazyImport`; the first attribute access constructs
-    the real group and forwards to it.
-    """
-
-    def __init__(self, factory, stack, doc: str) -> None:
-        self._factory = factory
-        self._stack = stack
-        self._obj = None
-        self.__doc__ = doc
-
-    def _target(self):
-        if self._obj is None:
-            self._obj = self._factory(self._stack)
-        return self._obj
-
-    def __getattr__(self, name: str):
-        return getattr(self._target(), name)
-
-    def __dir__(self) -> list[str]:
-        return dir(self._target())
 
 
 class RaftCLICommands:
