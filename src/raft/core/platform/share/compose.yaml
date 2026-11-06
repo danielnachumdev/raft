@@ -16,7 +16,7 @@ x-resources-controller: &resources-controller
   deploy:
     resources:
       limits:
-        cpus: "1.0"
+        cpus: "0.25"
         memory: 192M
       reservations:
         cpus: "0.05"

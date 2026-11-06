@@ -62,7 +62,7 @@ class TemplateAsserts:
         assert "RAFT_DOCKER_GID" in compose and "group_add:" in compose
         assert "memory: 192M" in compose
         controller = compose.split("x-resources-controller:", 1)[1].split("\ninclude:", 1)[0]
-        assert 'cpus: "1.0"' in controller
+        assert 'cpus: "0.25"' in controller
 
     def assert_compose_acme_mounts(self, compose: str) -> None:
         assert "./host/acme/http-01:/etc/nginx/acme-www:ro" in compose
