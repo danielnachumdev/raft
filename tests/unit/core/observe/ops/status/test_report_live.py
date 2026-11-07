@@ -20,6 +20,20 @@ from tests.unit.base import AppliedInventory, ShellMocks
 from tests.unit.core.observe.ops.status.base import StatusTestCase
 from . import fixtures as status_fx
 
+_GATE_INSPECT = json.dumps(
+    [
+        {
+            "Id": "gatecid",
+            "State": {"Status": "running", "StartedAt": "2024-01-01T00:00:00Z"},
+            "HostConfig": {},
+        }
+    ]
+)
+_GATE_STATS = (
+    '{"ID":"gatecid","CPUPerc":"1%","MemUsage":"1MiB / 32MiB",'
+    '"MemPerc":"1%","NetIO":"0B / 0B","BlockIO":"0B / 0B","PIDs":"1"}\n'
+)
+
 
 class TestStatusReportLive(StatusTestCase):
     def _stopped_snapshot(self):
@@ -130,31 +144,21 @@ class TestStatusReportLive(StatusTestCase):
 
     @staticmethod
     def _recording_docker(commands: list[str]):
-        inspect_payload = json.dumps(
-            [
-                {
-                    "Id": "gatecid",
-                    "State": {"Status": "running", "StartedAt": "2024-01-01T00:00:00Z"},
-                    "HostConfig": {},
-                }
-            ]
-        )
-        stats = (
-            '{"ID":"gatecid","CPUPerc":"1%","MemUsage":"1MiB / 32MiB",'
-            '"MemPerc":"1%","NetIO":"0B / 0B","BlockIO":"0B / 0B","PIDs":"1"}\n'
-        )
-
         def docker(_shell: Shell, *args: str, **_kwargs: object):
             commands.append(args[0] if args else "")
-            if args[:1] == ("ps",):
-                return ShellMocks.completed(stdout="gatecid\traft-gate\n")
-            if args[:1] == ("inspect",):
-                return ShellMocks.completed(stdout=inspect_payload)
-            if args[:1] == ("stats",):
-                return ShellMocks.completed(stdout=stats)
-            return ShellMocks.completed()
+            return TestStatusReportLive._docker_reply(args)
 
         return docker
+
+    @staticmethod
+    def _docker_reply(args: tuple[str, ...]):
+        if args[:1] == ("ps",):
+            return ShellMocks.completed(stdout="gatecid\traft-gate\n")
+        if args[:1] == ("inspect",):
+            return ShellMocks.completed(stdout=_GATE_INSPECT)
+        if args[:1] == ("stats",):
+            return ShellMocks.completed(stdout=_GATE_STATS)
+        return ShellMocks.completed()
 
     @staticmethod
     def _demo_host_identity():
