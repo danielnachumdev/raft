@@ -32,7 +32,17 @@ export function AboutSection() {
         {aboutFactRows(payload?.host, payload?.version).map((row) => (
           <div key={row.label} className="settings-about-row">
             <dt>{row.label}</dt>
-            <dd>{row.mono ? <code>{row.value}</code> : row.value}</dd>
+            <dd>
+              {row.href ? (
+                <a href={row.href} target="_blank" rel="noreferrer">
+                  {row.mono ? <code>{row.value}</code> : row.value}
+                </a>
+              ) : row.mono ? (
+                <code>{row.value}</code>
+              ) : (
+                row.value
+              )}
+            </dd>
           </div>
         ))}
       </dl>

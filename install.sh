@@ -309,6 +309,45 @@ uv_tool_install() {
   uv tool install -q --force "$@"
 }
 
+# Persist git SHA/ref into the installed package (baked path installs lose VCS metadata).
+stamp_git_identity() {
+  local checkout="$1"
+  local sha short detail package py repo
+  [[ -d "${checkout}/.git" ]] || return 0
+  sha="$(git -C "${checkout}" rev-parse HEAD 2>/dev/null || true)"
+  [[ -n "${sha}" ]] || return 0
+  short="${sha:0:7}"
+  if [[ -n "${RAFT_REF}" ]]; then
+    detail="git ${RAFT_REF}@${short}"
+  else
+    detail="git @${short}"
+  fi
+  repo="${RAFT_REPO_URL}"
+  py="$(uv tool dir)/raft/bin/python"
+  [[ -x "${py}" ]] || return 0
+  package="$("${py}" -c 'from importlib.metadata import version; print(version("raft"))' 2>/dev/null || true)"
+  package="${package:-0.1.0}"
+  RAFT_STAMP_PACKAGE="${package}" \
+  RAFT_STAMP_DETAIL="${detail}" \
+  RAFT_STAMP_COMMIT="${sha}" \
+  RAFT_STAMP_REPO="${repo}" \
+    "${py}" - <<'PY' || true
+import os
+from pathlib import Path
+
+import raft
+from raft.core.observe.ops.version import InstallStamp
+
+InstallStamp().write(
+    Path(raft.__file__).resolve().parent,
+    package=os.environ["RAFT_STAMP_PACKAGE"],
+    detail=os.environ.get("RAFT_STAMP_DETAIL") or None,
+    commit=os.environ.get("RAFT_STAMP_COMMIT") or None,
+    repo=os.environ.get("RAFT_STAMP_REPO") or None,
+)
+PY
+}
+
 install_from_path() {
   local path="$1"
   local editable="${2:-0}"
@@ -321,8 +360,10 @@ install_from_path() {
   log "Installing raft from ${RAFT_INSTALL_SOURCE}…"
   if [[ "${editable}" == "1" ]]; then
     uv_tool_install --editable "${path}"
+    # Editable loads from the checkout; runtime resolves git — do not stamp the tree.
   else
     uv_tool_install "${path}"
+    stamp_git_identity "${path}"
   fi
 }
 
@@ -346,6 +387,7 @@ install_from_git() {
   RAFT_INSTALL_SOURCE="git ref ${RAFT_REF} (baked path)"
   log "Installing raft from ${RAFT_INSTALL_SOURCE}…"
   uv_tool_install "${tmp}"
+  stamp_git_identity "${tmp}"
   rm -rf "${tmp}"
   trap - EXIT
 }

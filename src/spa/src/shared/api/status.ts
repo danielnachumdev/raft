@@ -28,6 +28,8 @@ export type RaftVersion = {
   line: string;
   /** Short chrome label: semver for wheels, ``rev@sha`` for git installs. */
   label?: string;
+  /** GitHub commit URL for non-release installs when a SHA is known. */
+  url?: string;
 };
 
 /** Top-bar version text (prefer server ``label``, else packaging semver). */

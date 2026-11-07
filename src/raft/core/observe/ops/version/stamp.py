@@ -3,10 +3,9 @@
 Dashboard/controller images load ``raft`` via ``PYTHONPATH`` without
 dist-info, so ``importlib.metadata`` cannot see the Release wheel version.
 Template sync writes this stamp beside the copied package; the container
-reads it as the operator-facing SoT.
+reads it as the operator-facing SoT. Git-ref installs also stamp after
+``uv tool install`` so baked path installs keep commit identity.
 """
-
-from __future__ import annotations
 
 import json
 from pathlib import Path
@@ -19,10 +18,22 @@ STAMP_FILENAME = "_install_stamp.json"
 class InstallStamp:
     """Read/write ``_install_stamp.json`` next to the ``raft`` package root."""
 
-    def write(self, package_dir: Path, *, package: str, detail: Optional[str]) -> None:
+    def write(
+        self,
+        package_dir: Path,
+        *,
+        package: str,
+        detail: Optional[str],
+        commit: Optional[str] = None,
+        repo: Optional[str] = None,
+    ) -> None:
         payload: Dict[str, str] = {"package": package}
         if detail:
             payload["detail"] = detail
+        if commit and commit.strip():
+            payload["commit"] = commit.strip()
+        if repo and repo.strip():
+            payload["repo"] = repo.strip()
         path = package_dir / STAMP_FILENAME
         path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
 
@@ -49,7 +60,8 @@ class InstallStamp:
         if not isinstance(package, str) or not package.strip():
             return None
         out: Dict[str, str] = {"package": package.strip()}
-        detail = data.get("detail")
-        if isinstance(detail, str) and detail.strip():
-            out["detail"] = detail.strip()
+        for key in ("detail", "commit", "repo"):
+            value = data.get(key)
+            if isinstance(value, str) and value.strip():
+                out[key] = value.strip()
         return out

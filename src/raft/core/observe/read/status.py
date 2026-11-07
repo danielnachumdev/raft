@@ -86,11 +86,15 @@ class StatusRead:
     def _version_payload() -> Dict[str, str]:
         """Installed raft package version for serve chrome (not CLI ``--json``)."""
         installed = InstalledVersion()
-        return {
+        payload = {
             "package": installed.package_version(),
             "line": installed.line(),
             "label": installed.chrome_label(),
         }
+        url = installed.source_url()
+        if url:
+            payload["url"] = url
+        return payload
 
     def service_detail(self, name: str, *, refresh_apps: bool = False) -> Optional[Dict[str, Any]]:
         """One service's container + presentation row, or None if unknown."""

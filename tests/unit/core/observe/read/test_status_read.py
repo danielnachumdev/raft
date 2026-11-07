@@ -113,7 +113,9 @@ class TestStatusRead(RaftTestCase):
         base = "raft.core.observe.read.status.InstalledVersion"
         with patch(f"{base}.package_version", return_value=semver), patch(
             f"{base}.line", return_value=f"raft {semver}"
-        ), patch(f"{base}.chrome_label", return_value=semver):
+        ), patch(f"{base}.chrome_label", return_value=semver), patch(
+            f"{base}.source_url", return_value=None
+        ):
             yield
 
     def test_snapshot_dict_omits_serve_version(self) -> None:

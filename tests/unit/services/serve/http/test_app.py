@@ -1,6 +1,8 @@
 """App factory + status/SPA route smoke tests for ``raft serve``."""
 
+from contextlib import contextmanager
 from datetime import datetime, timezone
+from typing import Iterator
 from unittest.mock import MagicMock, patch
 
 from raft.services.serve.http.app import ServeAppFactory
@@ -45,22 +47,24 @@ class TestServeAppFactory(RaftTestCase):
         client, _ = serve_fx.client_and_status(
             StackMakers.make_stack(self.tmp_path), serve_fx.full_snapshot()
         )
-        with patch(
-            "raft.core.observe.read.status.InstalledVersion.package_version",
-            return_value="0.11.0",
-        ), patch(
-            "raft.core.observe.read.status.InstalledVersion.line",
-            return_value="raft 0.11.0",
-        ), patch(
-            "raft.core.observe.read.status.InstalledVersion.chrome_label",
-            return_value="0.11.0",
-        ):
+        with self._patch_installed_version("0.11.0"):
             data = client.get("/api/status").json()
         assert data["version"] == {
             "package": "0.11.0",
             "line": "raft 0.11.0",
             "label": "0.11.0",
         }
+
+    @staticmethod
+    @contextmanager
+    def _patch_installed_version(semver: str) -> Iterator[None]:
+        base = "raft.core.observe.read.status.InstalledVersion"
+        with patch(f"{base}.package_version", return_value=semver), patch(
+            f"{base}.line", return_value=f"raft {semver}"
+        ), patch(f"{base}.chrome_label", return_value=semver), patch(
+            f"{base}.source_url", return_value=None
+        ):
+            yield
 
     def test_api_service_returns_detail(self) -> None:
         client, status = serve_fx.client_and_status(

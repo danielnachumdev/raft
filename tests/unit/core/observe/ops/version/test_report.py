@@ -1,7 +1,5 @@
 """InstalledVersion formatting for release wheels and git+ installs."""
 
-from __future__ import annotations
-
 import json
 from importlib.metadata import PackageNotFoundError
 from pathlib import Path
@@ -11,18 +9,32 @@ from unittest.mock import MagicMock, patch
 from raft.core.observe.ops.version import InstalledVersion
 
 
+_COMMIT = "398e4eaf8c6295db20f57acafb9e81395b03a87f"
+_URL = f"https://github.com/danielnachumdev/raft/commit/{_COMMIT}"
+
+
 class TestInstalledVersion:
     def test_line_semver_only_when_no_direct_url(self) -> None:
         with patch.object(InstalledVersion, "package_version", return_value="0.11.0"):
             with patch.object(InstalledVersion, "source_detail", return_value=None):
                 assert InstalledVersion().line() == "raft 0.11.0"
 
-    def test_line_includes_source_detail(self) -> None:
+    def test_line_git_prefers_ref_over_packaging_semver(self) -> None:
         with patch.object(InstalledVersion, "package_version", return_value="0.1.0"):
             with patch.object(
                 InstalledVersion, "source_detail", return_value="git main@398e4ea"
             ):
-                assert InstalledVersion().line() == "raft 0.1.0 (git main@398e4ea)"
+                with patch.object(InstalledVersion, "commit_id", return_value=_COMMIT):
+                    with patch.object(InstalledVersion, "repo_url", return_value=None):
+                        assert InstalledVersion().line() == f"raft main@398e4ea ({_URL})"
+
+    def test_line_git_without_commit_omits_url(self) -> None:
+        with patch.object(InstalledVersion, "package_version", return_value="0.1.0"):
+            with patch.object(
+                InstalledVersion, "source_detail", return_value="git main@398e4ea"
+            ):
+                with patch.object(InstalledVersion, "commit_id", return_value=None):
+                    assert InstalledVersion().line() == "raft main@398e4ea"
 
     def test_line_for_dist_info_wheel(self, tmp_path: Path) -> None:
         dist = tmp_path / "raft-0.11.0.dist-info"
@@ -62,9 +74,9 @@ class TestInstalledVersion:
             ),
             encoding="utf-8",
         )
-        assert (
-            InstalledVersion().line_for_dist_info(dist)
-            == "raft 0.1.0 (git feat/foo@def5678)"
+        assert InstalledVersion().line_for_dist_info(dist) == (
+            "raft feat/foo@def5678 "
+            "(https://github.com/danielnachumdev/raft/commit/def5678abcdef)"
         )
 
     def test_line_for_dist_info_none_without_metadata(self, tmp_path: Path) -> None:
@@ -85,7 +97,7 @@ class TestInstalledVersion:
             "url": "https://github.com/danielnachumdev/raft.git",
             "vcs_info": {
                 "vcs": "git",
-                "commit_id": "398e4eaf8c6295db20f57acafb9e81395b03a87f",
+                "commit_id": _COMMIT,
                 "requested_revision": "main",
             },
         }
@@ -106,15 +118,59 @@ class TestInstalledVersion:
             "url": "file:///home/demo/dev/projects/raft",
             "dir_info": {"editable": True},
         }
-        assert self._detail(payload) == "editable /home/demo/dev/projects/raft"
+        with patch(
+            "raft.core.observe.ops.version.report.CheckoutRef.detail",
+            return_value=None,
+        ), patch(
+            "raft.core.observe.ops.version.report.InstallStamp.read",
+            return_value=None,
+        ):
+            assert self._detail(payload) == "editable /home/demo/dev/projects/raft"
+
+    def test_source_detail_prefers_checkout_git_over_path(self) -> None:
+        payload = {
+            "url": "file:///home/demo/dev/projects/raft",
+            "dir_info": {"editable": True},
+        }
+        with patch(
+            "raft.core.observe.ops.version.report.CheckoutRef.detail",
+            return_value="git main@abc1234",
+        ):
+            assert self._detail(payload) == "git main@abc1234"
+
+    def test_source_detail_prefers_stamp_over_stale_path(self) -> None:
+        payload = {
+            "url": "file:///tmp/raft-install.gone",
+            "dir_info": {},
+        }
+        with patch(
+            "raft.core.observe.ops.version.report.CheckoutRef.detail",
+            return_value=None,
+        ), patch(
+            "raft.core.observe.ops.version.report.InstallStamp.read",
+            return_value={
+                "package": "0.1.0",
+                "detail": "git main@398e4ea",
+                "commit": _COMMIT,
+            },
+        ):
+            assert self._detail(payload) == "git main@398e4ea"
 
     def test_source_detail_none_when_missing(self) -> None:
         with patch.object(InstalledVersion, "_direct_url_text", return_value=None):
-            assert InstalledVersion().source_detail() is None
+            with patch(
+                "raft.core.observe.ops.version.report.InstallStamp.read",
+                return_value=None,
+            ):
+                assert InstalledVersion().source_detail() is None
 
     def test_source_detail_none_on_bad_json(self) -> None:
         with patch.object(InstalledVersion, "_direct_url_text", return_value="{nope"):
-            assert InstalledVersion().source_detail() is None
+            with patch(
+                "raft.core.observe.ops.version.report.InstallStamp.read",
+                return_value=None,
+            ):
+                assert InstalledVersion().source_detail() is None
 
     def test_direct_url_text_reads_distribution(self) -> None:
         dist = MagicMock()
@@ -141,7 +197,11 @@ class TestInstalledVersion:
 
     def test_source_detail_none_when_json_not_object(self) -> None:
         with patch.object(InstalledVersion, "_direct_url_text", return_value="[]"):
-            assert InstalledVersion().source_detail() is None
+            with patch(
+                "raft.core.observe.ops.version.report.InstallStamp.read",
+                return_value=None,
+            ):
+                assert InstalledVersion().source_detail() is None
 
     def test_version_from_metadata_none_without_version_field(
         self, tmp_path: Path
@@ -151,9 +211,14 @@ class TestInstalledVersion:
         assert InstalledVersion()._version_from_metadata_file(meta) is None
 
     def test_source_detail_file_url_without_dir_info(self) -> None:
-        assert (
-            self._detail({"url": "file:///opt/raft"}) == "path /opt/raft"
-        )
+        with patch(
+            "raft.core.observe.ops.version.report.CheckoutRef.detail",
+            return_value=None,
+        ), patch(
+            "raft.core.observe.ops.version.report.InstallStamp.read",
+            return_value=None,
+        ):
+            assert self._detail({"url": "file:///opt/raft"}) == "path /opt/raft"
 
     def test_source_detail_plain_url_fallback(self) -> None:
         assert self._detail({"url": "https://example.test/raft"}) == (
@@ -175,6 +240,11 @@ class TestInstalledVersion:
 
     def test_format_git_bare(self) -> None:
         assert InstalledVersion()._format_git({}) == "git"
+
+    def test_source_url_from_commit(self) -> None:
+        with patch.object(InstalledVersion, "commit_id", return_value=_COMMIT):
+            with patch.object(InstalledVersion, "repo_url", return_value=None):
+                assert InstalledVersion().source_url() == _URL
 
     @staticmethod
     def _detail(payload: dict) -> Optional[str]:

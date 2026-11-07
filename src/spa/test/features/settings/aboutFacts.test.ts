@@ -31,6 +31,8 @@ describe("aboutFactRows", () => {
     );
     const byLabel = Object.fromEntries(rows.map((r) => [r.label, r.value]));
     assert.equal(byLabel["raft version"], "raft 0.12.0");
+    const versionRow = rows.find((r) => r.label === "raft version");
+    assert.equal(versionRow?.href, undefined);
     assert.equal(byLabel.Hostname, "demo-host");
     assert.equal(byLabel.FQDN, "demo-host.example.test");
     assert.equal(byLabel.CPUs, "4");
@@ -45,6 +47,23 @@ describe("aboutFactRows", () => {
     assert.ok(!same.some((r) => r.label === "FQDN"));
     const missing = aboutFactRows({ hostname: "demo-host" }, undefined);
     assert.ok(!missing.some((r) => r.label === "FQDN"));
+  });
+
+  it("attaches a GitHub commit href for git-ref installs", () => {
+    const href =
+      "https://github.com/danielnachumdev/raft/commit/398e4eaf8c6295db20f57acafb9e81395b03a87f";
+    const rows = aboutFactRows(
+      { hostname: "demo-host" },
+      {
+        package: "0.1.0",
+        line: `raft main@398e4ea (${href})`,
+        label: "main@398e4ea",
+        url: href,
+      },
+    );
+    const versionRow = rows.find((r) => r.label === "raft version");
+    assert.equal(versionRow?.href, href);
+    assert.match(versionRow?.value ?? "", /main@398e4ea/);
   });
 });
 
