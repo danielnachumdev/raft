@@ -184,7 +184,7 @@ class TestDockerLifecycle(DockerTestCase):
         )
 
     def test_start_stack_skips_build_explicit_rebuild_still_builds(self) -> None:
-        """raft up starts existing images; build_services and redeploy still build."""
+        """Default up skips --build; build=True and redeploy still build."""
         self.shell.compose.return_value = self.ok()
         self.docker.start_stack()
         self.docker.start_stack(("app",))
@@ -192,6 +192,12 @@ class TestDockerLifecycle(DockerTestCase):
         assert start_calls
         for call in start_calls:
             assert "--build" not in call.args
+        self.shell.compose.reset_mock()
+        self.docker.start_stack(build=True)
+        self.docker.start_stack(("app",), build=True)
+        self.docker.start_service("app", build=True)
+        built = [c for c in self.shell.compose.call_args_list if c.args[:1] == ("up",)]
+        assert all("--build" in c.args for c in built)
         self.docker.build_services(("app",))
         self.shell.compose.assert_any_call("build", "app", capture=False, check=False)
         self.docker.rebuild_service("app")

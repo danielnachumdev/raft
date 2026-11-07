@@ -153,10 +153,12 @@ class ServePage:
             headers=_SSE_HEADERS,
         )
 
-    def api_service_up(self, name: str, no_deps: bool = False) -> Dict[str, Any]:
+    def api_service_up(
+        self, name: str, no_deps: bool = False, build: bool = False
+    ) -> Dict[str, Any]:
         """Bring one service up; default brings up ``dependsOn`` (wake order)."""
         try:
-            return self._actions.up(name, no_deps=no_deps)
+            return self._actions.up(name, no_deps=no_deps, build=build)
         except OperatorError as exc:
             raise self._http_for_operator(exc) from exc
 

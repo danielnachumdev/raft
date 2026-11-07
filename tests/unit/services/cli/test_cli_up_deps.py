@@ -25,8 +25,21 @@ class TestCliUpDeps(CliTestCase):
             ServiceActions=actions
         ):
             assert RaftCLI()._invoke_fire(["up", "app", "--no-deps"]) == 0
-        actions.up.assert_called_once_with("app", no_deps=True)
+        actions.up.assert_called_once_with("app", no_deps=True, build=False)
         say.assert_any_call("Skipping dependsOn (--no-deps).")
+
+    def test_up_build_flag(self) -> None:
+        actions = MagicMock()
+        actions.up.return_value = {
+            "ok": True,
+            "action": "up",
+            "service": "app",
+            "no_deps": False,
+            "started_deps": [],
+        }
+        with self.patched_deps(ServiceActions=actions):
+            assert RaftCLI()._invoke_fire(["up", "app", "--build"]) == 0
+        actions.up.assert_called_once_with("app", no_deps=False, build=True)
 
     def test_up_reports_started_deps(self) -> None:
         actions = MagicMock()

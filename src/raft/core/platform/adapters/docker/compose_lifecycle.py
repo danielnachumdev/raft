@@ -24,8 +24,13 @@ class DockerComposeLifecycle:
     stack: Stack
     sh: Shell
 
-    def start_stack(self, services: Optional[Sequence[str]] = None) -> None:
-        args = self._start_stack_args(services)
+    def start_stack(
+        self,
+        services: Optional[Sequence[str]] = None,
+        *,
+        build: bool = False,
+    ) -> None:
+        args = self._start_stack_args(services, build=build)
         logger.info("compose %s", " ".join(args))
         try:
             CheckedCommands.run_compose(
@@ -115,8 +120,13 @@ class DockerComposeLifecycle:
             raise self.enrich_compose_failure(exc, services=services) from exc
 
     @staticmethod
-    def _start_stack_args(services: Optional[Sequence[str]]) -> tuple[str, ...]:
-        args: tuple[str, ...] = ("up", "-d", "--remove-orphans")
+    def _start_stack_args(
+        services: Optional[Sequence[str]], *, build: bool = False
+    ) -> tuple[str, ...]:
+        args: tuple[str, ...] = ("up", "-d")
+        if build:
+            args += ("--build",)
+        args += ("--remove-orphans",)
         if not services:
             return args
         return args + ("--no-deps", *services)

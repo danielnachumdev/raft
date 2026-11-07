@@ -26,18 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 class ServiceActions:
-    """Per-service up / down / redeploy / purge (shared by serve + CLI).
-
-    Up and down use Compose ``up -d --no-deps`` / ``stop`` under the same
-    flock locks as apply/redeploy. Default up also brings up transitive
-    ``spec.dependsOn`` first (wake order); pass ``no_deps=True`` to skip.
-    For apps with ``spec.scaling``, down marks ``scaledToZero`` (healer skips;
-    gate holding page) and up clears it. Redeploy mirrors ``raft redeploy``:
-    apps cutover (must be running), router recreates, dashboard rebuilds when
-    ``dashboard.enabled``, controller rebuilds (install stamp; brief control-
-    loop gap), gate redeploys (brief edge downtime). ``purge`` removes unused
-    Docker images/cache.
-    """
+    """Per-service up / down / redeploy / purge (shared by CLI + serve)."""
 
     def __init__(
         self,
@@ -66,15 +55,21 @@ class ServiceActions:
         """Purge unused Docker images/build cache; same path as ``raft purge``."""
         return self._purge_svc().execute().as_api()
 
-    def up(self, name: str, *, no_deps: bool = False) -> Dict[str, Any]:
+    def up(
+        self, name: str, *, no_deps: bool = False, build: bool = False
+    ) -> Dict[str, Any]:
         compose_id, app = self._resolve(name)
         if app is None or no_deps:
-            return self._up_one(compose_id, app, no_deps=no_deps, started_deps=())
-        deps_helper = UpDepends(self.stack, self._docker_stack())
-        chain = deps_helper.wake_chain(app.name)
+            return self._up_one(
+                compose_id, app, no_deps=no_deps, started_deps=(), build=build
+            )
+        deps = UpDepends(self.stack, self._docker_stack())
+        chain = deps.wake_chain(app.name)
         if len(chain) <= 1:
-            return self._up_one(compose_id, app, no_deps=False, started_deps=())
-        return self._up_with_deps(compose_id, app, deps_helper, chain)
+            return self._up_one(
+                compose_id, app, no_deps=False, started_deps=(), build=build
+            )
+        return self._up_with_deps(compose_id, app, deps, chain, build=build)
 
     def down(self, name: str) -> Dict[str, Any]:
         compose_id, app = self._resolve(name)
@@ -167,10 +162,12 @@ class ServiceActions:
         app: App,
         deps_helper: UpDepends,
         chain: Tuple[str, ...],
+        *,
+        build: bool,
     ) -> Dict[str, Any]:
         with AppsAndStackLocks(self.stack.root, chain):
-            started = self._up_dep_names(deps_helper, chain[:-1])
-            self._docker_stack().start_service(compose_id)
+            started = self._up_dep_names(deps_helper, chain[:-1], build=build)
+            self._docker_stack().start_service(compose_id, build=build)
             self._clear_scaled_to_zero(app)
             deps_helper.restore_upstreams(chain)
             self._record_up_event(compose_id, app)
@@ -183,11 +180,12 @@ class ServiceActions:
         *,
         no_deps: bool,
         started_deps: Tuple[str, ...],
+        build: bool,
     ) -> Dict[str, Any]:
         if compose_id == self.stack.dashboard:
             self._sync_dashboard_allowlist()
         with self._locks(app):
-            self._docker_stack().start_service(compose_id)
+            self._docker_stack().start_service(compose_id, build=build)
             if app is not None:
                 self._clear_scaled_to_zero(app)
             self._record_up_event(compose_id, app)
@@ -199,11 +197,15 @@ class ServiceActions:
         RbacAllowlistSync(self.stack.root).sync()
 
     def _up_dep_names(
-        self, deps_helper: UpDepends, dep_names: Tuple[str, ...]
+        self,
+        deps_helper: UpDepends,
+        dep_names: Tuple[str, ...],
+        *,
+        build: bool,
     ) -> Tuple[str, ...]:
         started: list[str] = []
         for dep_name in dep_names:
-            deps_helper.up_dep(dep_name)
+            deps_helper.up_dep(dep_name, build=build)
             started.append(dep_name)
         return tuple(started)
 

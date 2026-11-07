@@ -59,8 +59,8 @@ class TestServiceActionsStartDeps(RaftTestCase):
                 nginx_cls.return_value = nginx
                 result = actions.up("frontend")
         assert docker.start_service.call_args_list == [
-            call("demo-api"),
-            call("frontend"),
+            call("demo-api", build=False),
+            call("frontend", build=False),
         ]
         assert result["started_deps"] == ["demo-api"]
         assert result["no_deps"] is False
@@ -74,7 +74,7 @@ class TestServiceActionsStartDeps(RaftTestCase):
         with self._with_app_locks() as locks:
             self._enter(locks)
             result = actions.up("frontend", no_deps=True)
-        docker.start_service.assert_called_once_with("frontend")
+        docker.start_service.assert_called_once_with("frontend", build=False)
         assert result["started_deps"] == []
         assert result["no_deps"] is True
 
@@ -87,7 +87,7 @@ class TestServiceActionsStartDeps(RaftTestCase):
             with patch("raft.core.observe.ops.actions.up_depends.NginxUpstreams"):
                 actions.up("frontend")
         assert not ScalingStore(self.tmp_path).is_scaled_to_zero("demo-api")
-        assert docker.start_service.call_args_list[0] == call("demo-api")
+        assert docker.start_service.call_args_list[0] == call("demo-api", build=False)
 
     def test_start_missing_dep_raises(self) -> None:
         AppliedInventory.write_applied_app(

@@ -168,13 +168,17 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
         except OperatorError as exc:
             raise self.enrich_compose_failure(exc, services=(service,)) from exc
 
-    def start_service(self, service: str) -> None:
-        """Start / ensure a service is up without rebuild (Compose ``up -d --no-deps``)."""
-        logger.info("compose up -d --no-deps %s", service)
+    def start_service(self, service: str, *, build: bool = False) -> None:
+        """Start / ensure a service is up (Compose ``up -d --no-deps``).
+
+        Default skips rebuild (``--no-build``). Pass ``build=True`` for ``--build``.
+        """
+        flag = "--build" if build else "--no-build"
+        logger.info("compose up -d --no-deps %s %s", flag, service)
         try:
             CheckedCommands.run_compose(
                 self.sh,
-                ("up", "-d", "--no-deps", "--no-build", service),
+                ("up", "-d", "--no-deps", flag, service),
                 action=f"start service {service}",
                 stream=True,
             )

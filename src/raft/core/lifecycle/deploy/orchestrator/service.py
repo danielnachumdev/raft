@@ -114,7 +114,7 @@ class Orchestrator(OrchestratorDeploy):
         self.docker.reload_router_nginx()
         self._mark_router_nginx_loaded()
 
-    def up(self) -> None:
+    def up(self, *, build: bool = False) -> None:
         with StackLock(self.stack.root):
             running = self.docker.running_services()
             if running:
@@ -122,7 +122,7 @@ class Orchestrator(OrchestratorDeploy):
             logger.info("syncing service sources from inventory")
             self.sync()
             CertProbe(self.stack).require_origin()
-            self._bring_stack_up()
+            self._bring_stack_up(build=build)
             GraphEventStore(self.stack.root).record_stack_up()
             OperatorSay.say("stack is up", style="ok")
             OperatorSay.say("redeploy with: raft redeploy <app>", style="info")
