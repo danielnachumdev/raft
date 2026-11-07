@@ -119,7 +119,7 @@ raft serve --stop
 | `raft status` | CPU/memory snapshot (`--live` to watch) |
 | `raft serve` | Localhost ops dashboard (default `:8787`) |
 | `raft logs [name…]` | Container stdout/stderr (`-f` to follow) |
-| `raft up` / `raft down` | Whole stack; with `NAME` = per-service power (down stops, does not remove) |
+| `raft up` / `raft down` | Power existing images (optional `up --build`); with `NAME` = per-service (down stops, does not remove) |
 | `raft redeploy <name>` | Refresh a running app, router, dashboard, controller, or **gate** (edge ports; brief downtime) |
 | `raft sync` / `raft render` | Pipeline only (sources / Compose+nginx); not substitutes for redeploy |
 | `raft firewall …` | Ordered gate rules (`host/firewall.yaml`); Save/CLI → reload, never recreate |

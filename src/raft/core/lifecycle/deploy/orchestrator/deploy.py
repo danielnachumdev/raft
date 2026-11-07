@@ -187,9 +187,9 @@ class OrchestratorDeploy:
         if others:
             self.sync(others, force=force_sync)
 
-    def _bring_stack_up(self) -> None:
+    def _bring_stack_up(self, *, build: bool = False) -> None:
         """Cold ``compose up``: pull/mark scale-to-zero apps; start the rest."""
-        ColdStackUp(self).run()
+        ColdStackUp(self).run(build=build)
 
     def _ensure_acme_best_effort(self, app_names: Optional[Sequence[str]] = None) -> None:
         ColdStackUp(self).ensure_acme(app_names)

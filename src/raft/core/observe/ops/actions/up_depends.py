@@ -37,7 +37,7 @@ class UpDepends:
             edges[app.name] = self._edges_for(app.name)
         return edges
 
-    def up_dep(self, name: str) -> str:
+    def up_dep(self, name: str, *, build: bool = False) -> str:
         """Bring up one dependency Compose service; return its compose id."""
         compose_id = self._compose_id(name)
         if compose_id is None:
@@ -45,7 +45,7 @@ class UpDepends:
                 f"cannot bring up dependency {name!r}: not in applied apps",
                 has_fix=False,
             )
-        self.docker.start_service(compose_id)
+        self.docker.start_service(compose_id, build=build)
         ScalingStore(self.stack.root).clear_scaled_to_zero(name)
         return compose_id
 

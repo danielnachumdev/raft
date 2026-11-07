@@ -16,10 +16,10 @@ class ColdStackUp:
     def __init__(self, support) -> None:
         self._support = support
 
-    def run(self) -> None:
+    def run(self, *, build: bool = False) -> None:
         plan = StackUpScalePlan(self._support.stack)
-        logger.info("starting stack")
-        self._compose_up(plan)
+        logger.info("starting stack build=%s", build)
+        self._compose_up(plan, build=build)
         self._support._assert_core_edge_running()
         self._support._mark_gate_nginx_loaded()
         self._support._reload_router_for_host_waits()
@@ -38,13 +38,13 @@ class ColdStackUp:
         except Exception as exc:  # noqa: BLE001 — apply/up must still succeed
             logger.warning("ACME ensure aborted (best-effort): %s", exc)
 
-    def _compose_up(self, plan: StackUpScalePlan) -> None:
+    def _compose_up(self, plan: StackUpScalePlan, *, build: bool) -> None:
         if not plan.has_deferred():
-            self._support.docker.start_stack()
+            self._support.docker.start_stack(build=build)
             return
         self._prepare_deferred_images(plan)
         self._mark_and_park_deferred(plan)
-        self._support.docker.start_stack(plan.start_compose_ids())
+        self._support.docker.start_stack(plan.start_compose_ids(), build=build)
 
     def _mark_and_park_deferred(self, plan: StackUpScalePlan) -> None:
         """Mark deferred apps at zero and park upstreams before router starts."""

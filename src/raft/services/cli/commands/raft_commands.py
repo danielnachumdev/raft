@@ -160,17 +160,27 @@ class RaftCLICommands:
             return
         raise SystemExit(f"unknown resource {resource!r} (try: app)")
 
-    def up(self, name: Optional[str] = None, no_deps: bool = False) -> None:
-        """Bring the stack up, or one Compose service when ``NAME`` is given."""
+    def up(
+        self,
+        name: Optional[str] = None,
+        no_deps: bool = False,
+        build: bool = False,
+    ) -> None:
+        """Bring the stack up, or one Compose service when ``NAME`` is given.
+
+        Default starts existing images. Pass ``--build`` to rebuild on up.
+        """
         if name is None:
             if no_deps:
                 raise OperatorError(
                     "`--no-deps` requires a service name.\n" "Fix: raft up NAME --no-deps",
                     has_fix=False,
                 )
-            Orchestrator(self._stack).up()
+            Orchestrator(self._stack).up(build=build)
             return
-        result = ServiceActions(self._stack).up(name, no_deps=no_deps)
+        result = ServiceActions(self._stack).up(
+            name, no_deps=no_deps, build=build
+        )
         self._say_up_result(result)
 
     def down(self, name: Optional[str] = None) -> None:

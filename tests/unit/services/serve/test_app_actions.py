@@ -23,7 +23,7 @@ class TestServeAppActions(RaftTestCase):
         response = client.post("/api/service/site/up")
         assert response.status_code == 200
         assert response.json()["action"] == "up"
-        actions.up.assert_called_once_with("site", no_deps=False)
+        actions.up.assert_called_once_with("site", no_deps=False, build=False)
 
     def test_api_service_up_no_deps(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))
@@ -38,7 +38,22 @@ class TestServeAppActions(RaftTestCase):
         client = serve_fx.client_with_actions(stack, actions)
         response = client.post("/api/service/site/up?no_deps=true")
         assert response.status_code == 200
-        actions.up.assert_called_once_with("site", no_deps=True)
+        actions.up.assert_called_once_with("site", no_deps=True, build=False)
+
+    def test_api_service_up_build(self) -> None:
+        stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))
+        actions = MagicMock()
+        actions.up.return_value = {
+            "ok": True,
+            "action": "up",
+            "service": "site",
+            "no_deps": False,
+            "started_deps": [],
+        }
+        client = serve_fx.client_with_actions(stack, actions)
+        response = client.post("/api/service/site/up?build=true")
+        assert response.status_code == 200
+        actions.up.assert_called_once_with("site", no_deps=False, build=True)
 
     def test_api_service_down_ok(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("site"),))

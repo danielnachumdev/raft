@@ -51,7 +51,7 @@ class TestServiceActions(RaftTestCase):
         with self._with_app_locks() as locks:
             self._enter(locks)
             result = actions.up("site")
-        docker.start_service.assert_called_once_with("site")
+        docker.start_service.assert_called_once_with("site", build=False)
         assert result == {
             "ok": True,
             "action": "up",
@@ -82,7 +82,7 @@ class TestServiceActions(RaftTestCase):
         with self._with_stack_lock() as locks:
             self._enter(locks)
             actions.up("gate")
-        docker.start_service.assert_called_once_with("raft-gate")
+        docker.start_service.assert_called_once_with("raft-gate", build=False)
 
     def test_stop_edge_uses_stack_lock(self) -> None:
         actions, docker, _orch = self._actions()
@@ -103,7 +103,7 @@ class TestServiceActions(RaftTestCase):
         with self._with_app_locks() as locks:
             self._enter(locks)
             actions.up("site")
-        docker.start_service.assert_called_once_with("site")
+        docker.start_service.assert_called_once_with("site", build=False)
         assert not ScalingStore(self.tmp_path).is_scaled_to_zero("site")
 
     def test_start_clears_scaled_without_scaling_spec(self) -> None:
