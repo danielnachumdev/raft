@@ -35,7 +35,7 @@ class TestDockerLifecycle(DockerTestCase):
 
     def _test_start_stop_and_running_p2(self) -> None:
         self.shell.compose.assert_any_call(
-            "up", "-d", "--build", "--remove-orphans", capture=False, check=False
+            "up", "-d", "--remove-orphans", capture=False, check=False
         )
         self.shell.compose.assert_any_call("down", "--remove-orphans", capture=False, check=False)
         self.shell.docker.assert_called()
@@ -175,11 +175,26 @@ class TestDockerLifecycle(DockerTestCase):
         self.shell.compose.assert_any_call(
             "up",
             "-d",
-            "--build",
             "--remove-orphans",
             "--no-deps",
             "raft-gate",
             "raft-router",
             capture=False,
             check=False,
+        )
+
+    def test_start_stack_skips_build_explicit_rebuild_still_builds(self) -> None:
+        """raft up starts existing images; build_services and redeploy still build."""
+        self.shell.compose.return_value = self.ok()
+        self.docker.start_stack()
+        self.docker.start_stack(("app",))
+        start_calls = [c for c in self.shell.compose.call_args_list if c.args[:1] == ("up",)]
+        assert start_calls
+        for call in start_calls:
+            assert "--build" not in call.args
+        self.docker.build_services(("app",))
+        self.shell.compose.assert_any_call("build", "app", capture=False, check=False)
+        self.docker.rebuild_service("app")
+        self.shell.compose.assert_any_call(
+            "up", "-d", "--build", "--no-deps", "app", capture=False, check=False
         )
