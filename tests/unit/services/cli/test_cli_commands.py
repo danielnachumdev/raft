@@ -261,7 +261,7 @@ class TestCliDispatch(CliTestCase):
         with patch("raft.core.core.ui.OperatorSay.say"), self.patched_deps(ServiceActions=actions):
             assert RaftCLI()._invoke_fire(["up", "app"]) == 0
             assert RaftCLI()._invoke_fire(["down", "app"]) == 0
-        actions.up.assert_called_once_with("app", no_deps=False)
+        actions.up.assert_called_once_with("app", no_deps=False, build=False)
         actions.down.assert_called_once_with("app")
         self.orch.up.assert_not_called()
         self.orch.down.assert_not_called()

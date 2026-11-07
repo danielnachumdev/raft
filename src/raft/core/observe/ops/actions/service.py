@@ -163,7 +163,7 @@ class ServiceActions:
         deps_helper: UpDepends,
         chain: Tuple[str, ...],
         *,
-        build: bool,
+        build: bool = False,
     ) -> Dict[str, Any]:
         with AppsAndStackLocks(self.stack.root, chain):
             started = self._up_dep_names(deps_helper, chain[:-1], build=build)
@@ -180,7 +180,7 @@ class ServiceActions:
         *,
         no_deps: bool,
         started_deps: Tuple[str, ...],
-        build: bool,
+        build: bool = False,
     ) -> Dict[str, Any]:
         if compose_id == self.stack.dashboard:
             self._sync_dashboard_allowlist()

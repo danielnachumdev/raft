@@ -24,7 +24,7 @@ class TestOrchUpScale(OrchestratorTestCase, ControllerTestCase):
         orch.docker.pull_services.assert_called_once_with(())
         orch.docker.build_services.assert_called_once_with(("app",))
         orch.docker.start_stack.assert_called_once_with(
-            ("raft-gate", "raft-router", "raft-controller")
+            ("raft-gate", "raft-router", "raft-controller"), build=False
         )
         assert ScalingStore(self.tmp_path).is_scaled_to_zero("app")
 
@@ -38,7 +38,8 @@ class TestOrchUpScale(OrchestratorTestCase, ControllerTestCase):
         with patch.object(orch, "sync"):
             orch.up()
         orch.docker.start_stack.assert_called_once_with(
-            ("raft-gate", "raft-dashboard", "raft-router", "raft-controller")
+            ("raft-gate", "raft-dashboard", "raft-router", "raft-controller"),
+            build=False,
         )
         assert ScalingStore(self.tmp_path).is_scaled_to_zero("app")
 
@@ -91,7 +92,7 @@ class TestOrchUpScale(OrchestratorTestCase, ControllerTestCase):
         with patch.object(orch, "sync"):
             orch.up()
         orch.docker.pull_services.assert_not_called()
-        orch.docker.start_stack.assert_called_once_with()
+        orch.docker.start_stack.assert_called_once_with(build=False)
 
     def test_start_costops_dep_pulled_not_started(self) -> None:
         self._seed_scaling_with_api()
