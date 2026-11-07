@@ -1,15 +1,15 @@
 ---
-name: Ticket
-about: Scannable planning ticket for raft work (outcome-focused, not a design dump)
+name: Feature request
+about: Scannable planning ticket for new work (outcome-focused, not a design dump)
 title: ""
-labels: ""
+labels: enhancement
 assignees: ""
 ---
 
 ## **Background (Context)**
 
 <!-- Planning ticket for humans and agents—not a full spec. Aim for ~2 minutes to read.
-     Add stock labels (bug / enhancement / documentation / …) only when they fit. -->
+     Keep product-specific paths and API shapes out unless this ticket is a design spike. -->
 
 One short paragraph for follow-ups (link `#issue`); one to two max for standalone work. State the current gap vs desired outcome. Skip architecture recaps already in `AGENTS.md` / `README.md`.
 
@@ -37,21 +37,21 @@ Optional at end: **Out of scope:** …
 
 ## **How Do We Know We Are Done? (Acceptance Criteria)**
 
-Three to six checkboxes; one verifiable outcome each (CLI behavior, UI, tests, docs). Do not copy Requirements verbatim.
+Three to six checkboxes; one verifiable outcome each (CLI / API / UI, tests, docs). Do not copy Requirements verbatim.
 
 - [ ] …
-- [ ] Docs updated if operator-facing
-- [ ] Tests at the right layer (unit / meta / e2e) for the change
+- [ ] Docs updated if operator- or user-facing
+- [ ] Tests at the right layer for the change
 
 ---
 
 <details>
 <summary><strong>Examples (delete before submitting)</strong></summary>
 
-**Fix** — Background: one sentence on broken behavior. Motivation: operator impact. Requirements: `1. Fix …` `2. Add regression test`. AC: repro gone; test green.
-
-**Deliver** — Background: current vs desired. Motivation: why now. Requirements: 2–3 deliver steps; inline out-of-scope. AC: observable CLI/UI/stack behavior.
+**Deliver** — Background: current vs desired. Motivation: why now. Requirements: 2–3 deliver steps; inline out-of-scope. AC: observable behavior.
 
 **Follow-up** — Background: link prior `#issue` in one paragraph. Requirements: only the remaining slice. AC: that slice verified.
+
+**Discover → decide → build** — Background: unknown approach. Requirements: research + lock a decision, then implement. AC: decision recorded; agreed slice shipped.
 
 </details>
