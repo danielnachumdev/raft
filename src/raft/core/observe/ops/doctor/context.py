@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable, Dict, Optional
 
-from raft.core.platform.adapters.docker.compose_status import ComposeStatusTable
 from raft.core.platform.adapters.docker.runtime import ContainerRuntimeGateway, ContainerRuntimeRow
 from raft.core.platform.adapters.docker.stack import DockerStack
 from raft.core.platform.adapters.shell import Shell
@@ -21,9 +20,6 @@ class DoctorContext:
     auth: GitAuthManager
     docker: DockerStack
     on_progress: Optional[Callable[[str], None]] = None
-    _compose_cache: Dict[str, ComposeStatusTable] = field(
-        default_factory=dict, repr=False, compare=False
-    )
     _runtime_cache: Dict[str, Dict[str, ContainerRuntimeRow]] = field(
         default_factory=dict, repr=False, compare=False
     )
@@ -36,26 +32,39 @@ class DoctorContext:
         if active is not None:
             active.set_text(label)
 
-    def compose_status(self) -> ComposeStatusTable:
-        """Doctor-scoped batch compose status (filled once per doctor run)."""
-        cached = self._compose_cache.get("table")
-        if cached is None:
-            cached = self.docker.compose_service_status()
-            self._compose_cache["table"] = cached
-        return cached
-
     def runtime_rows(self) -> Dict[str, ContainerRuntimeRow]:
-        """Engine inspect/stats rows for core services (once per doctor run)."""
+        """Labeled ``docker ps`` + inspect rows (once per doctor run, no stats)."""
         cached = self._runtime_cache.get("rows")
         if cached is None:
-            gateway = ContainerRuntimeGateway(self.shell)
-            cached = gateway.collect(list(self.stack.core_services))
+            cached = self._load_runtime_rows()
             self._runtime_cache["rows"] = cached
         return cached
 
+    def _load_runtime_rows(self) -> Dict[str, ContainerRuntimeRow]:
+        gateway = ContainerRuntimeGateway(self.shell)
+        # State and health come from inspect. Skip ``docker stats`` (unused here).
+        return gateway.collect(list(self.stack.core_services), include_stats=False)
+
     def running_services(self) -> list[str]:
-        return self.compose_status().running_names(self.stack.core_services)
+        """Core services whose inspect status is ``running`` (not restarting)."""
+        rows = self.runtime_rows()
+        return [name for name in self.stack.core_services if _is_running(rows.get(name))]
 
     def service_runtime(self, service: str) -> tuple[str, str]:
-        """``(state, health)`` from the batched compose snapshot."""
-        return self.compose_status().runtime(service)
+        """``(state, health)`` from inspect. Absent containers are ``missing``."""
+        row = self.runtime_rows().get(service)
+        if row is None:
+            return ("missing", "none")
+        return (_engine_status(row), _engine_health(row))
+
+
+def _is_running(row: Optional[ContainerRuntimeRow]) -> bool:
+    return row is not None and row.status.strip().lower() == "running"
+
+
+def _engine_status(row: ContainerRuntimeRow) -> str:
+    return row.status.strip().lower()
+
+
+def _engine_health(row: ContainerRuntimeRow) -> str:
+    return row.health.strip().lower()

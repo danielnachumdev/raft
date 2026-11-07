@@ -28,8 +28,8 @@ class RuntimeChecks:
                     INFRA,
                     "stack",
                     "warn",
-                    f"could not query compose: {exc}",
-                    fix="ensure compose.yaml is valid and docker works",
+                    f"could not query containers: {exc}",
+                    fix="ensure docker works",
                 )
             ]
         return [
@@ -135,7 +135,7 @@ class RuntimeChecks:
             return None
         uptime = CrashLoopDetector.uptime_seconds(row.started_at)
         if not CrashLoopDetector.is_crash_looping(
-            status=row.status,
+            status=cls._crash_status(row.status),
             restart_count=row.restart_count,
             uptime_seconds=uptime,
             oom_killed=row.oom_killed,
@@ -150,6 +150,13 @@ class RuntimeChecks:
                 oom_killed=row.oom_killed,
             ),
         )
+
+    @staticmethod
+    def _crash_status(status: str) -> str:
+        """Keep plain ``restarting`` on the health mapping; count/OOM still loop."""
+        if status.strip().lower() == "restarting":
+            return "running"
+        return status
 
     @staticmethod
     def _bad_health(status: str, health: str) -> _Bad:

@@ -10,6 +10,7 @@ import pytest
 
 from raft.core.platform.adapters.docker.compose_status import ComposeStatusTable
 from raft.core.observe.ops.doctor import CheckResult, Doctor
+from tests.unit.core.observe.ops.doctor.fixtures import wire_labeled_docker_ps
 
 from tests.unit.base import ShellMocks
 from tests.unit.domain_case import DomainTestCase
@@ -41,6 +42,7 @@ class DoctorTestCase(DomainTestCase):
         doctor.sh = shell
         doctor.auth = auth
         doctor.docker = docker
+        wire_labeled_docker_ps(shell, docker)
         return doctor
 
     @staticmethod
@@ -56,7 +58,6 @@ class DoctorTestCase(DomainTestCase):
         )
         if not isinstance(docker.service_runtime.return_value, tuple):
             docker.service_runtime.return_value = ("running", "none")
-
 
     def write_certs(self, *names: str) -> None:
         for name in names:
