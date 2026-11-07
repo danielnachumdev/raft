@@ -56,8 +56,9 @@ class Status:
     ) -> StatusSnapshot:
         """Live host + container snapshot.
 
-        ``include_stats=False`` skips Engine ``docker stats`` so serve can paint
-        actionable up/down rows quickly and overlay CPU/mem from controller JSONL.
+        ``include_stats=False`` skips Engine ``docker stats``. Serve and the
+        default ``raft status`` then overlay CPU/mem from controller JSONL.
+        ``raft status --live`` keeps a live stats snapshot.
         """
         if refresh_apps:
             self._reload_stack()
@@ -278,10 +279,20 @@ class Status:
         )
         return mem, resources.memory.total_bytes, resources.memory.available_bytes
 
+    def sampled_snapshot(self, *, refresh_apps: bool = False) -> StatusSnapshot:
+        """Lite runtime plus a fresh controller sample (no ``docker stats``)."""
+        # Local import: read/__init__ imports Status, so a module-level import cycles.
+        from raft.core.observe.read.status_resources_overlay import StatusResourcesOverlay
+
+        snap = self.collect(refresh_apps=refresh_apps, include_stats=False)
+        return StatusResourcesOverlay(self.stack.root).apply(snap)
+
     def report(self, *, as_json: bool = False, live: bool = False) -> int:
         if as_json and live:
             raise OperatorError("raft status: --json and --live cannot be combined")
         writer = StatusReportWriter()
         if live:
-            return writer.write_live(lambda: self.collect(refresh_apps=True))
-        return writer.write(self.collect(), as_json=as_json)
+            return writer.write_live(
+                lambda: self.collect(refresh_apps=True, include_stats=True)
+            )
+        return writer.write(self.sampled_snapshot(), as_json=as_json)
