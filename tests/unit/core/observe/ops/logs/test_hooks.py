@@ -91,12 +91,29 @@ class TestServiceLogsHooks(RaftTestCase):
         capture = MagicMock()
         capture.ship.side_effect = self._slow_ship(gate)
         started = time.monotonic()
-        with patch.object(ServiceLogsHooks, "_config", return_value=_enabled_cfg(include_edge=False)):
-            with patch.object(ServiceLogsHooks, "_capture", return_value=capture):
-                ServiceLogsHooks.before_stack_down(stack, docker)
+        self._stack_down(stack, docker, capture, include_edge=False)
         elapsed = time.monotonic() - started
         assert capture.ship.call_count == 2
         assert elapsed < 0.35
+
+    def test_stack_down_ships_single_service_inline(self) -> None:
+        """One target ships on the calling thread (no pool)."""
+        stack = StackMakers.make_stack(
+            self.tmp_path, (AppMakers.make_app("demo-api"),)
+        )
+        docker = MagicMock()
+        docker.try_service_container_id.side_effect = lambda sid: f"cid-{sid}"
+        capture = MagicMock()
+        self._stack_down(stack, docker, capture, include_edge=False)
+        capture.ship.assert_called_once_with("demo-api", "cid-demo-api")
+
+    @staticmethod
+    def _stack_down(stack, docker, capture, *, include_edge: bool) -> None:
+        with patch.object(
+            ServiceLogsHooks, "_config", return_value=_enabled_cfg(include_edge=include_edge)
+        ):
+            with patch.object(ServiceLogsHooks, "_capture", return_value=capture):
+                ServiceLogsHooks.before_stack_down(stack, docker)
 
     @staticmethod
     def _slow_ship(gate: threading.Barrier):
