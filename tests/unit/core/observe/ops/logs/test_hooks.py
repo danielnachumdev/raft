@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import threading
+import time
 from unittest.mock import MagicMock, patch
 
 from raft.core.observe.ops.logs.hooks import ServiceLogsHooks
@@ -10,13 +12,16 @@ from raft.core.observe.ops.logs.store import ServiceLogsStore
 from tests.unit.base import RaftTestCase, AppMakers, StackMakers
 
 
-def _enabled_cfg() -> MagicMock:
-    return MagicMock(
+def _enabled_cfg(**overrides) -> MagicMock:
+    cfg = MagicMock(
         enabled=True,
         retention_max_age_days=14,
         retention_max_bytes=1024,
         include_edge=True,
     )
+    for key, value in overrides.items():
+        setattr(cfg, key, value)
+    return cfg
 
 
 class TestServiceLogsHooks(RaftTestCase):
@@ -73,6 +78,34 @@ class TestServiceLogsHooks(RaftTestCase):
             ServiceLogsHooks, "_drain_compose", side_effect=RuntimeError("boom")
         ):
             ServiceLogsHooks.before_compose_recreate(stack, "raft-gate", MagicMock())
+
+    def test_stack_down_ships_services_in_parallel(self) -> None:
+        """Multi-service drain overlaps IO instead of shipping one-by-one."""
+        stack = StackMakers.make_stack(
+            self.tmp_path,
+            (AppMakers.make_app("demo-api"), AppMakers.make_app("demo-web")),
+        )
+        docker = MagicMock()
+        docker.try_service_container_id.side_effect = lambda sid: f"cid-{sid}"
+        gate = threading.Barrier(2, timeout=2)
+        capture = MagicMock()
+        capture.ship.side_effect = self._slow_ship(gate)
+        started = time.monotonic()
+        with patch.object(ServiceLogsHooks, "_config", return_value=_enabled_cfg(include_edge=False)):
+            with patch.object(ServiceLogsHooks, "_capture", return_value=capture):
+                ServiceLogsHooks.before_stack_down(stack, docker)
+        elapsed = time.monotonic() - started
+        assert capture.ship.call_count == 2
+        assert elapsed < 0.35
+
+    @staticmethod
+    def _slow_ship(gate: threading.Barrier):
+        def ship(_key: str, _cid: str) -> int:
+            gate.wait()
+            time.sleep(0.15)
+            return 0
+
+        return ship
 
     def _assert_retained(self, key: str, needle: str) -> None:
         text = (

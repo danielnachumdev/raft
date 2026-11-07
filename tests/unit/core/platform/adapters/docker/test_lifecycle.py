@@ -1,7 +1,6 @@
 """Lifecycle and recreate coverage."""
 
 import threading
-import time
 from contextlib import ExitStack, contextmanager
 from unittest.mock import patch
 
@@ -64,29 +63,22 @@ class TestDockerLifecycle(DockerTestCase):
         ]
         assert labeled_rms
 
-    def test_stop_stack_does_not_wait_for_log_ship(self) -> None:
-        """Compose down runs while the pre-down ship hook is still blocked."""
-        release, entered, finished = (threading.Event() for _ in range(3))
-        self._arm_empty_compose_docker()
-        try:
-            with self._patch_before_down(self._blocked_ship(release, entered, finished)):
-                started = time.monotonic()
-                self.docker.stop_stack()
-                elapsed = time.monotonic() - started
-            assert elapsed < 1.0
-            assert entered.wait(timeout=1.0)
-            assert not finished.is_set()
-            self._assert_compose_down()
-        finally:
-            release.set()
-        assert finished.wait(timeout=1.0)
+    def test_stop_stack_waits_for_log_ship_then_compose_down(self) -> None:
+        """Ship finishes before stop_stack returns; compose down still runs after."""
+        order: list[str] = []
+        self.shell.docker.return_value = self.ok("")
+        self.shell.compose.side_effect = self._compose_records_down(order)
+        with self._patch_before_down(self._records_ship(order)):
+            self.docker.stop_stack()
+        assert order == ["ship", "down"]
+        self._assert_compose_down()
 
     def test_stop_stack_log_ship_failure_does_not_fail_down(self) -> None:
         self._arm_empty_compose_docker()
         logged = threading.Event()
         with self._patch_before_down_failing(logged):
             self.docker.stop_stack()
-            assert logged.wait(timeout=2)
+            assert logged.is_set()
         self._assert_compose_down()
 
     def _arm_empty_compose_docker(self) -> None:
@@ -99,13 +91,19 @@ class TestDockerLifecycle(DockerTestCase):
         )
 
     @staticmethod
-    def _blocked_ship(release, entered, finished):
-        def blocked_ship(*_args: object, **_kwargs: object) -> None:
-            entered.set()
-            release.wait(timeout=5)
-            finished.set()
+    def _records_ship(order: list[str]):
+        def ship(*_args: object, **_kwargs: object) -> None:
+            order.append("ship")
 
-        return blocked_ship
+        return ship
+
+    def _compose_records_down(self, order: list[str]):
+        def compose(*args, **_kwargs):
+            if args[:1] == ("down",):
+                order.append("down")
+            return self.ok()
+
+        return compose
 
     @staticmethod
     @contextmanager

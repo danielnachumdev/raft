@@ -1,8 +1,7 @@
 """Compose up / down / pull / build for the raft stack."""
 
 import logging
-import threading
-from typing import Callable, Optional, Sequence
+from typing import Optional, Sequence
 
 from raft.core.core.errors.checked import CheckedCommands
 from raft.core.core.errors.cta import OperatorError
@@ -45,7 +44,7 @@ class DockerComposeLifecycle:
 
     def stop_stack(self) -> None:
         logger.info("compose down --remove-orphans")
-        self._start_background_log_ship()
+        self._ship_logs_before_down()
         CheckedCommands.run_compose(
             self.sh,
             ("down", "--remove-orphans"),
@@ -58,25 +57,16 @@ class DockerComposeLifecycle:
         if leftover:
             logger.info("cleared leftover project containers after down: %s", leftover)
 
-    def _start_background_log_ship(self) -> None:
-        """Drain service logs without delaying ``compose down``.
+    def _ship_logs_before_down(self) -> None:
+        """Drain service logs (parallel across services) before compose down.
 
-        The worker is a daemon and is never joined. A ship failure stays in
-        the worker so ``raft down`` still brings the stack down.
+        Completes (or fails best-effort) before return so ``raft down`` never
+        exits with a truncated ship. Containers stay available for ``docker logs``.
         """
         from raft.core.observe.ops.logs.hooks import ServiceLogsHooks
 
-        hook = ServiceLogsHooks.before_stack_down
-        threading.Thread(
-            target=self._run_background_log_ship,
-            args=(hook,),
-            name="raft-logs-before-down",
-            daemon=True,
-        ).start()
-
-    def _run_background_log_ship(self, hook: Callable[..., None]) -> None:
         try:
-            hook(self.stack, self)  # type: ignore[arg-type]
+            ServiceLogsHooks.before_stack_down(self.stack, self)  # type: ignore[arg-type]
         except Exception as exc:  # noqa: BLE001 — ship must not fail stack down
             logger.debug("service-logs ship before down skipped err=%s", exc)
 
