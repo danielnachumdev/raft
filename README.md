@@ -93,7 +93,7 @@ CI (or you) points at a commit and applies:
 raft apply --file .raft/app.yaml --ref "$SHA"
 ```
 
-Same command for first boot and later cutovers. raft syncs, renders, and switches traffic through the router. Changing published edge listeners in settings is the exception — that needs `raft redeploy gate` (brief edge downtime).
+Same command for first boot and later cutovers. When to use **apply** vs **up/down** vs **redeploy** (and `update` / `redeploy gate`): short operator user stories in [`AGENTS.md`](AGENTS.md) **Operator user stories (verbs)**.
 
 ## Ops UI
 
@@ -120,11 +120,13 @@ raft serve --stop
 | `raft serve` | Localhost ops dashboard (default `:8787`) |
 | `raft logs [name…]` | Container stdout/stderr (`-f` to follow) |
 | `raft up` / `raft down` | Power existing images (optional `up --build`); with `NAME` = per-service (down stops, does not remove) |
-| `raft redeploy <name>` | Refresh a running app, router, dashboard, controller, or **gate** (edge ports; brief downtime) |
+| `raft redeploy <name>` | Refresh an already-applied unit (app / router / dashboard / controller / **gate**); edge ports → gate (brief downtime) |
 | `raft sync` / `raft render` | Pipeline only (sources / Compose+nginx); not substitutes for redeploy |
 | `raft firewall …` | Ordered gate rules (`host/firewall.yaml`); Save/CLI → reload, never recreate |
 | `raft alerts …` | Alert rules (`host/alerts.yaml`) → notification channels |
 | `raft notifications …` | Notification destinations (`host/notifications.yaml`) CRUD + test-send |
+
+Verb choice user stories (Power / Declare / Refresh): [`AGENTS.md`](AGENTS.md) **Operator user stories (verbs)**.
 
 ### GitOps host config (durable SoT)
 
@@ -146,10 +148,10 @@ On hosts that reconcile from an ops repo (Sync host config), durable operator co
 
 ### Lifecycle glossary
 
+Primary Power / Declare / Refresh stories: [`AGENTS.md`](AGENTS.md). Pipeline side effects only:
+
 | Verb | Meaning |
 |------|---------|
-| **up** / **down** | Power: stack (no args) or one service (`NAME`). Per-service down = Compose stop, not remove. |
-| **redeploy** | Generation refresh / cutover for a running unit. Includes `gate` (container recreate). |
 | **sync** | Clone/update sources for applied apps. Does not cut over traffic by itself. |
 | **render** | Regenerate Compose/nginx under `~/.raft/`. May reload nginx; does not replace redeploy. |
 | **reload** | Automatic side effect of render / firewall Save — not a separate operator verb. |
