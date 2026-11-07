@@ -64,7 +64,7 @@ Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**). Nesting in-process re-
 
 ## Invariants you cannot infer from a quick skim
 
-1. **Ship path:** default `raft apply` **deploys**. Do not teach `--no-deploy` + `redeploy` as the happy path — `redeploy` fails if the service is not already running.
+1. **Ship path:** default `raft apply` **deploys**. Do not teach `--no-deploy` + `redeploy` as the happy path for first register/ship — apply owns manifest identity; redeploy only refreshes an already-applied name (see **Operator user stories**).
 2. **Gate redeploy ≠ reload:** published `edge:` ports → `raft redeploy gate` (brief downtime). Everything else gate-related that only changes generated nginx → **reload**.
 3. **Packaged templates path:** product share lives at `src/raft/core/platform/share/`. `[tool.setuptools.package-data]` **must** list `core/platform/share/**` (not legacy `raft/share/`). Wrong globs → wheels without `compose.yaml` → every CLI command dies (including `raft update`). Meta guard: `tests/meta/test_package_data.py`. Recovery on a broken host: `curl …/install.sh | bash` (update cannot self-heal if stack load fails).
 4. **Console entry:** `raft` → `raft.services.cli.__main__:main`. Also `python -m raft.services.serve` / controller `__main__` where present.
@@ -201,9 +201,36 @@ Upstream files: `generated/nginx/upstreams/<app>-<port>.conf` mounted into the r
 
 ---
 
+## Operator user stories (verbs)
+
+Agent-oriented SoT for **which raft verb to teach**. Operator command table stays in [`README.md`](README.md) **Common commands**.
+
+| Category | Verb | Intent |
+|----------|------|--------|
+| **Power** | `raft up` / `raft down` [`NAME`] | Start/stop **existing** images; no rebuild on `up`. |
+| **Declare** | `raft apply` | Manifest → register + deploy (CI/GitOps ship path). |
+| **Refresh** | `raft redeploy NAME` | Refresh an already-applied name’s generation (cutover when live; may start when down). Not a substitute for apply’s identity/manifest contract. |
+
+Also: `raft update` = update raft itself; published edge listeners changed → `raft redeploy gate` (brief edge downtime). Do not elevate `sync` / `render` / `reload` to primary stories.
+
+### Stories
+
+- As CI/release, I ship a commit with `raft apply --file .raft/app.yaml --ref "$SHA"` (or `--git …`).
+- As an operator, I refresh an already-applied name without re-feeding the manifest → `raft redeploy demo-api` (same idea for gate\|router\|controller\|dashboard when that unit needs a generation refresh).
+- As an operator, I power the stack or one service with existing images → `raft up` / `raft down` [`NAME`].
+- As an operator, I stop a service for maintenance without removing it from the registry → `raft down demo-api`.
+- As an operator, I bring a stopped service back on its existing image → `raft up demo-api`.
+- As a developer, my manifest/ref changed in Git → I re-`raft apply` (not `up` alone).
+- As an operator on first boot / cold stack → I `raft apply` (not `up` alone if images may be stale).
+- As an operator, host GitOps Sync reconciles host YAML; apps still go through `raft apply`.
+- As an operator, I update the raft CLI/tool → `raft update`.
+- As an operator, published edge listeners changed in settings → `raft redeploy gate`.
+
+---
+
 ## Operator ship path (CI / service repos)
 
-Service CI should:
+Service CI should (see **Declare** stories above):
 
 ```bash
 raft apply --file .raft/app.yaml --ref "$SHA" --env …
