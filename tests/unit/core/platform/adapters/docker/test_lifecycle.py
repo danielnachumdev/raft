@@ -1,5 +1,7 @@
 """Lifecycle and recreate coverage."""
 
+import threading
+from contextlib import ExitStack, contextmanager
 from unittest.mock import patch
 
 import pytest
@@ -60,6 +62,86 @@ class TestDockerLifecycle(DockerTestCase):
             if call.args[:3] == ("rm", "-f", "cid1")
         ]
         assert labeled_rms
+
+    def test_stop_stack_waits_for_log_ship_then_compose_down(self) -> None:
+        """Ship finishes before stop_stack returns; compose down still runs after."""
+        order: list[str] = []
+        self.shell.docker.return_value = self.ok("")
+        self.shell.compose.side_effect = self._compose_records_down(order)
+        with self._patch_before_down(self._records_ship(order)):
+            self.docker.stop_stack()
+        assert order == ["ship", "down"]
+        self._assert_compose_down()
+
+    def test_stop_stack_log_ship_failure_does_not_fail_down(self) -> None:
+        self._arm_empty_compose_docker()
+        logged = threading.Event()
+        with self._patch_before_down_failing(logged):
+            self.docker.stop_stack()
+            assert logged.is_set()
+        self._assert_compose_down()
+
+    def _arm_empty_compose_docker(self) -> None:
+        self.shell.compose.return_value = self.ok()
+        self.shell.docker.return_value = self.ok("")
+
+    def _assert_compose_down(self) -> None:
+        self.shell.compose.assert_any_call(
+            "down", "--remove-orphans", capture=False, check=False
+        )
+
+    @staticmethod
+    def _records_ship(order: list[str]):
+        def ship(*_args: object, **_kwargs: object) -> None:
+            order.append("ship")
+
+        return ship
+
+    def _compose_records_down(self, order: list[str]):
+        def compose(*args, **_kwargs):
+            if args[:1] == ("down",):
+                order.append("down")
+            return self.ok()
+
+        return compose
+
+    @staticmethod
+    @contextmanager
+    def _patch_before_down(side_effect):
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "raft.core.observe.ops.logs.hooks.ServiceLogsHooks.before_stack_down",
+                    side_effect=side_effect,
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "raft.core.observe.ops.logs.hooks.ServiceLogsHooks.before_container_remove"
+                )
+            )
+            yield
+
+    @contextmanager
+    def _patch_before_down_failing(self, logged: threading.Event):
+        with self._patch_before_down(self._boom_ship):
+            with patch(
+                "raft.core.platform.adapters.docker.compose_lifecycle.logger.debug",
+                side_effect=self._ship_fail_spy(logged),
+            ):
+                yield
+
+    @staticmethod
+    def _boom_ship(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("ship failed")
+
+    @staticmethod
+    def _ship_fail_spy(logged: threading.Event):
+        def spy(msg: object, *_args: object, **_kwargs: object) -> None:
+            if "ship before down" in str(msg):
+                logged.set()
+
+        return spy
 
     def test_network_holders_uses_router_network(self) -> None:
         with patch.object(self.docker, "router_network", return_value="raft_default"):

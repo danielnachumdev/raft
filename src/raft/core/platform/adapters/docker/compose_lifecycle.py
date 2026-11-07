@@ -44,9 +44,7 @@ class DockerComposeLifecycle:
 
     def stop_stack(self) -> None:
         logger.info("compose down --remove-orphans")
-        from raft.core.observe.ops.logs.hooks import ServiceLogsHooks
-
-        ServiceLogsHooks.before_stack_down(self.stack, self)  # type: ignore[arg-type]
+        self._ship_logs_before_down()
         CheckedCommands.run_compose(
             self.sh,
             ("down", "--remove-orphans"),
@@ -58,6 +56,19 @@ class DockerComposeLifecycle:
         leftover = ComposeProjectCleanup(self.sh).remove_labeled()
         if leftover:
             logger.info("cleared leftover project containers after down: %s", leftover)
+
+    def _ship_logs_before_down(self) -> None:
+        """Drain service logs (parallel across services) before compose down.
+
+        Completes (or fails best-effort) before return so ``raft down`` never
+        exits with a truncated ship. Containers stay available for ``docker logs``.
+        """
+        from raft.core.observe.ops.logs.hooks import ServiceLogsHooks
+
+        try:
+            ServiceLogsHooks.before_stack_down(self.stack, self)  # type: ignore[arg-type]
+        except Exception as exc:  # noqa: BLE001 — ship must not fail stack down
+            logger.debug("service-logs ship before down skipped err=%s", exc)
 
     def network_holders(self) -> list:
         """Names still attached to the compose network (ok when stack is down)."""

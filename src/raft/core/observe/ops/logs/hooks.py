@@ -1,6 +1,7 @@
 """Best-effort final drain before container remove / recreate."""
 
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
@@ -17,6 +18,8 @@ if TYPE_CHECKING:
     from raft.core.platform.adapters.docker.stack import DockerStack
 
 logger = logging.getLogger(__name__)
+
+_STACK_DOWN_SHIP_WORKERS = 8
 
 
 class ServiceLogsHooks:
@@ -100,11 +103,44 @@ class ServiceLogsHooks:
             return
         engine = cls._docker(stack, docker)
         capture = cls._capture(stack.root, cfg, engine, stack=stack)
+        targets = cls._resolve_stack_targets(stack, engine, cfg.include_edge)
+        cls._ship_targets(capture, targets)
+
+    @classmethod
+    def _resolve_stack_targets(
+        cls,
+        stack: Stack,
+        engine: "DockerStack",
+        include_edge: bool,
+    ) -> list[tuple[str, str]]:
+        """Resolve container IDs while services still exist (before compose down)."""
         keys = ServiceLogsKeys(stack)
-        for compose_id in keys.known_compose_ids(include_edge=cfg.include_edge):
+        out: list[tuple[str, str]] = []
+        for compose_id in keys.known_compose_ids(include_edge=include_edge):
             cid = engine.try_service_container_id(compose_id)
             if cid:
-                capture.ship(compose_id, cid)
+                out.append((compose_id, cid))
+        return out
+
+    @classmethod
+    def _ship_targets(
+        cls, capture: ServiceLogsCapture, targets: list[tuple[str, str]]
+    ) -> None:
+        """Ship each service; overlap IO across services, wait for all."""
+        if not targets:
+            return
+        if len(targets) == 1:
+            compose_id, cid = targets[0]
+            capture.ship(compose_id, cid)
+            return
+        workers = min(_STACK_DOWN_SHIP_WORKERS, len(targets))
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = [
+                pool.submit(capture.ship, compose_id, cid)
+                for compose_id, cid in targets
+            ]
+            for fut in as_completed(futures):
+                fut.result()
 
     @staticmethod
     def _config(home: Path) -> ServiceLogsConfig:
