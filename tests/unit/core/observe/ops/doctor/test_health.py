@@ -11,6 +11,7 @@ from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.core.core.models.stack import load_stack
 from raft.core.observe.ops.doctor.checks.runtime import RuntimeChecks
 from raft.core.observe.ops.doctor.context import DoctorContext
+from tests.unit.core.observe.ops.doctor.fixtures import wire_labeled_docker_ps
 from tests.shared.compose_ids import RunningServices
 
 from tests.unit.base import AppliedInventory
@@ -20,12 +21,14 @@ from tests.unit.core.observe.ops.doctor.base import DoctorTestCase
 class TestDoctorHealth(DoctorTestCase):
     def _ctx(self, docker: MagicMock) -> DoctorContext:
         AppliedInventory.write_applied_app(self.tmp_path, "app")
-        return DoctorContext(
+        ctx = DoctorContext(
             stack=load_stack(self.tmp_path),
             shell=MagicMock(),
             auth=MagicMock(),
             docker=docker,
         )
+        wire_labeled_docker_ps(ctx.shell, docker)
+        return ctx
 
     def test_edge_fails_when_unhealthy(self) -> None:
         docker = self.mock_docker(
@@ -134,12 +137,10 @@ class TestDoctorHealth(DoctorTestCase):
         assert ("raft-controller", "running") not in results
 
     @staticmethod
-    def _churn_row(
-        *, restarts: int = 12, age_seconds: int = 45
-    ) -> ContainerRuntimeRow:
-        started = (
-            datetime.now(timezone.utc) - timedelta(seconds=age_seconds)
-        ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    def _churn_row(*, restarts: int = 12, age_seconds: int = 45) -> ContainerRuntimeRow:
+        started = (datetime.now(timezone.utc) - timedelta(seconds=age_seconds)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
         return ContainerRuntimeRow(
             container_id="ctrl",
             status="running",
