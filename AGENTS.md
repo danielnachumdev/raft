@@ -12,6 +12,7 @@ Implementation guide for coding agents changing **raft**. Operator pitch and fea
 | Where is durable state? | **`~/.raft/`** (`RAFT_DATA_HOME`). Never put operator inventory, upstreams, or PEMs in this git repo. |
 | Where is product code? | `src/raft/services/` = runnable fronts (cli, serve, controller). `src/raft/core/` = libraries (models, lifecycle, platform, observe). |
 | Where is the SPA? | Source `src/spa/` only in git. Bake is **Release CD** (and local/CI `npm run build`) into `share/serve/spa/` — hashed assets are **not** committed (`.gitkeep` + gitignore). Operators get UI from the wheel. |
+| Issue templates | [`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/) — feature request (Background / Motivation / Requirements / AC); bug report (Description / Steps to reproduce / Expected / Actual / Environment) |
 | Human samples? | [`examples/`](examples/). |
 | Agent capabilities (capa)? | [`capabilities.yaml`](capabilities.yaml) — install via [`scripts/setup/setup.sh`](scripts/setup/setup.sh) (prereqs: [`scripts/setup/prerequisites.sh`](scripts/setup/prerequisites.sh); [capa.sh](https://capa.sh/)). Do not hand-edit generated `.cursor/` / `.claude/`. |
 | Package layout convention? | Class-first, ~200-line files, ≤20-line methods; see **Code style** and the writing-python skill. |
