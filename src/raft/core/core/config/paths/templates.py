@@ -70,14 +70,9 @@ class ProductTemplateSync:
         existing = InstallStamp().read(package_dir)
         if existing is None:
             return False
-        installed = InstalledVersion()
-        package = installed.package_version().strip()
-        if not package:
+        expected = InstalledVersion().stamp_fields()
+        if not expected.get("package"):
             return False
-        expected = {"package": package}
-        detail = installed.source_detail()
-        if detail and detail.strip():
-            expected["detail"] = detail.strip()
         return existing == expected
 
     @staticmethod

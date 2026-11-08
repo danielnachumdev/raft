@@ -11,7 +11,12 @@ import {
   formatPercent,
 } from "../../shared/format.ts";
 
-export type AboutFactRow = { label: string; value: string; mono?: boolean };
+export type AboutFactRow = {
+  label: string;
+  value: string;
+  mono?: boolean;
+  href?: string;
+};
 
 /** Read-only facts for Settings → About (dummy-safe; no settings.yaml). */
 export function aboutFactRows(
@@ -21,11 +26,16 @@ export function aboutFactRows(
   const mem = host?.memory;
   const disk = host?.disk;
   const load = host?.loadavg;
+  const versionHref =
+    typeof version?.url === "string" && version.url.trim()
+      ? version.url.trim()
+      : undefined;
   const rows: AboutFactRow[] = [
     {
       label: "raft version",
       value: version ? version.line || versionChromeText(version) : "-",
       mono: true,
+      href: versionHref,
     },
     {
       label: "Hostname",

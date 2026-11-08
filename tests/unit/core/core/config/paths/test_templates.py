@@ -20,12 +20,11 @@ from tests.unit.base import RaftTestCase
 
 @contextmanager
 def _installed_version(package: str, detail: str) -> Iterator[None]:
-    with patch(
-        "raft.core.core.config.paths.templates.InstalledVersion.package_version",
-        return_value=package,
-    ), patch(
-        "raft.core.core.config.paths.templates.InstalledVersion.source_detail",
-        return_value=detail,
+    base = "raft.core.core.config.paths.templates.InstalledVersion"
+    with patch(f"{base}.package_version", return_value=package), patch(
+        f"{base}.source_detail", return_value=detail
+    ), patch(f"{base}.commit_id", return_value=None), patch(
+        f"{base}.repo_url", return_value=None
     ):
         yield
 

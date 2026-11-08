@@ -33,4 +33,11 @@ describe("AppShell version chrome", () => {
     assert.match(src, /versionChromeText/);
     assert.match(src, /raft-version/);
   });
+
+  it("links the badge to version.url when present", () => {
+    const src = readFileSync(join(shellRoot, "AppShell.tsx"), "utf8");
+    assert.match(src, /version\.url/);
+    assert.match(src, /topbar-version--link/);
+    assert.match(src, /target="_blank"/);
+  });
 });

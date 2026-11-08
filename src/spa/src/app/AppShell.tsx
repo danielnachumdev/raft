@@ -86,9 +86,22 @@ function TopbarTools(props: { pathname: string }) {
         {ADD_SERVICE_NAV.label}
       </NavLink>
       {version ? (
-        <span className="topbar-version" id="raft-version" title={version.line}>
-          v{versionChromeText(version)}
-        </span>
+        version.url ? (
+          <a
+            className="topbar-version topbar-version--link"
+            id="raft-version"
+            href={version.url}
+            target="_blank"
+            rel="noreferrer"
+            title={version.line}
+          >
+            v{versionChromeText(version)}
+          </a>
+        ) : (
+          <span className="topbar-version" id="raft-version" title={version.line}>
+            v{versionChromeText(version)}
+          </span>
+        )
       ) : null}
       {identity ? (
         <span

@@ -14,10 +14,34 @@ class TestInstallStamp:
     def test_write_and_read_roundtrip(self, tmp_path: Path) -> None:
         pkg = tmp_path / "raft"
         pkg.mkdir()
-        InstallStamp().write(pkg, package="0.12.7", detail="wheel raft-0.12.7.whl")
+        InstallStamp().write(
+            pkg,
+            package="0.12.7",
+            detail="wheel raft-0.12.7.whl",
+            commit=None,
+            repo=None,
+        )
         assert InstallStamp().read(pkg) == {
             "package": "0.12.7",
             "detail": "wheel raft-0.12.7.whl",
+        }
+
+    def test_write_and_read_git_commit(self, tmp_path: Path) -> None:
+        pkg = tmp_path / "raft"
+        pkg.mkdir()
+        sha = "398e4eaf8c6295db20f57acafb9e81395b03a87f"
+        InstallStamp().write(
+            pkg,
+            package="0.1.0",
+            detail="git main@398e4ea",
+            commit=sha,
+            repo="https://github.com/danielnachumdev/raft.git",
+        )
+        assert InstallStamp().read(pkg) == {
+            "package": "0.1.0",
+            "detail": "git main@398e4ea",
+            "commit": sha,
+            "repo": "https://github.com/danielnachumdev/raft.git",
         }
 
     def test_write_omits_empty_detail(self, tmp_path: Path) -> None:
@@ -90,6 +114,8 @@ class TestInstalledVersionStampFallback:
             InstalledVersion,
             "source_detail",
             return_value="wheel raft-0.12.7-py3-none-any.whl",
+        ), patch.object(InstalledVersion, "commit_id", return_value=None), patch.object(
+            InstalledVersion, "repo_url", return_value=None
         ):
             InstalledVersion().write_install_stamp(dest)
         assert InstallStamp().read(dest) == {
