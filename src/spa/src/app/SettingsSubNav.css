@@ -1,0 +1,57 @@
+.settings-subnav {
+  border-top: 1px solid var(--line);
+}
+
+.settings-subnav-inner {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+
+.settings-subnav-nav {
+  display: flex;
+  align-items: stretch;
+  gap: 0.15rem;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.settings-subnav-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.settings-subnav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.35rem;
+  padding: 0.4rem 0.75rem;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.settings-subnav-link:hover {
+  color: var(--ink);
+}
+
+.settings-subnav-link.is-active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+@media (max-width: 719px) {
+  .settings-subnav-inner {
+    padding: 0 0.85rem;
+  }
+
+  .settings-subnav-link {
+    min-height: 2.2rem;
+    padding-inline: 0.65rem;
+    font-size: 0.85rem;
+  }
+}

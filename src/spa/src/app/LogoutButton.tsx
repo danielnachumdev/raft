@@ -1,45 +1,11 @@
-import { useEffect, useState } from "react";
-import { detailFromBody, readJsonBody } from "../shared/api";
+import { runLogout, type LogoutHint } from "./useDashboardSession";
 
-type LogoutHint = {
-  kind: string;
-  path: string;
-  next?: string;
-};
-
-type SessionPayload = {
-  mode: string;
-  logout: LogoutHint;
-};
-
-/** Top-bar control to end password / OAuth / external dashboard sessions. */
-export function LogoutButton(props: { className?: string; id?: string }) {
-  const [hint, setHint] = useState<LogoutHint | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetch("/api/dashboard/session", {
-          credentials: "same-origin",
-        });
-        if (!res.ok) return;
-        const body = (await readJsonBody(res)) as SessionPayload;
-        if (cancelled) return;
-        if (body?.mode && body.mode !== "none" && body.logout?.kind !== "none") {
-          setHint(body.logout);
-        }
-      } catch {
-        /* localhost / auth none — no logout control */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (!hint) return null;
-
+/** Account-menu control to end password / OAuth / external dashboard sessions. */
+export function LogoutButton(props: {
+  hint: LogoutHint;
+  className?: string;
+  id?: string;
+}) {
   const classes = ["btn", "btn-sm", "btn-ghost", props.className]
     .filter(Boolean)
     .join(" ");
@@ -49,35 +15,10 @@ export function LogoutButton(props: { className?: string; id?: string }) {
       type="button"
       className={classes}
       id={props.id ?? "dashboard-logout"}
-      onClick={() => void runLogout(hint)}
+      role="menuitem"
+      onClick={() => void runLogout(props.hint)}
     >
       Log out
     </button>
   );
-}
-
-async function runLogout(hint: LogoutHint): Promise<void> {
-  if (hint.kind === "navigate") {
-    window.location.assign(hint.path);
-    return;
-  }
-  if (hint.kind === "post") {
-    let next = hint.next || "/login";
-    try {
-      const res = await fetch(hint.path, {
-        method: "POST",
-        credentials: "same-origin",
-      });
-      const body = (await readJsonBody(res)) as { next?: string; detail?: string };
-      if (!res.ok) {
-        throw new Error(detailFromBody(body) || `logout ${res.status}`);
-      }
-      if (typeof body?.next === "string" && body.next) {
-        next = body.next;
-      }
-    } catch {
-      /* still leave the session UI */
-    }
-    window.location.assign(next);
-  }
 }

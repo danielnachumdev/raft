@@ -2,15 +2,19 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { InboxBell } from "../features/inbox/InboxBell";
 import { useRbac } from "../features/rbac";
 import { versionChromeText } from "../shared/api/status";
-import { LogoutButton } from "./LogoutButton";
 import { MobileNav } from "./MobileNav";
 import {
   ADD_SERVICE_NAV,
+  anySettingsAllowed,
+  firstSettingsPath,
   isNavActive,
+  isSettingsPath,
   navAllowed,
   SETTINGS_NAV,
   TOPBAR_NAV,
 } from "./navItems";
+import { SettingsSubNav } from "./SettingsSubNav";
+import { UserMenu } from "./UserMenu";
 import { useRaftVersion } from "./useRaftVersion";
 import "./AppShell.css";
 
@@ -30,24 +34,17 @@ export function AppShell() {
             raft
           </Link>
           <nav className="topbar-nav" aria-label="Primary">
-            {nav.map((item, index) => (
+            {nav.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 id={item.id}
                 end
-                className={() => {
-                  const active = isNavActive(pathname, item);
-                  const split =
-                    index > 0 && nav[index - 1].group !== item.group;
-                  return [
-                    "topbar-link",
-                    split ? "topbar-link--group-start" : "",
-                    active ? "is-active" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ");
-                }}
+                className={() =>
+                  isNavActive(pathname, item)
+                    ? "topbar-link is-active"
+                    : "topbar-link"
+                }
               >
                 {item.label}
               </NavLink>
@@ -55,6 +52,7 @@ export function AppShell() {
           </nav>
           <TopbarTools pathname={pathname} />
         </div>
+        <SettingsSubNav />
       </header>
       <main className="page" id="main">
         <Outlet />
@@ -63,13 +61,13 @@ export function AppShell() {
   );
 }
 
-/** Add service CTA, version, Settings gear, logout, and the mobile menu. */
+/** Add service CTA, version, Settings gear, account menu, and the mobile menu. */
 function TopbarTools(props: { pathname: string }) {
   const version = useRaftVersion();
-  const { can, rbac } = useRbac();
-  const settingsActive = isNavActive(props.pathname, SETTINGS_NAV);
-  const showSettings = navAllowed(SETTINGS_NAV, can);
-  const identity = rbac?.identity?.trim() || "";
+  const { can } = useRbac();
+  const showSettings = anySettingsAllowed(can);
+  const settingsTo = firstSettingsPath(can);
+  const settingsActive = isSettingsPath(props.pathname);
   return (
     <div className="topbar-tools">
       <NavLink
@@ -103,21 +101,12 @@ function TopbarTools(props: { pathname: string }) {
           </span>
         )
       ) : null}
-      {identity ? (
-        <span
-          className="topbar-identity"
-          id="dashboard-identity"
-          title={identity}
-        >
-          {identity}
-        </span>
-      ) : null}
       <InboxBell />
       {showSettings ? (
         <NavLink
-          to={SETTINGS_NAV.to}
+          to={settingsTo}
           id={SETTINGS_NAV.id}
-          end
+          end={false}
           aria-label={SETTINGS_NAV.label}
           title={SETTINGS_NAV.label}
           className={() =>
@@ -129,7 +118,7 @@ function TopbarTools(props: { pathname: string }) {
           <GearIcon />
         </NavLink>
       ) : null}
-      <LogoutButton className="topbar-logout-desktop" />
+      <UserMenu />
       <MobileNav key={props.pathname} />
     </div>
   );

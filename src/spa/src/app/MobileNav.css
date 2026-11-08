@@ -138,28 +138,6 @@
   font-weight: 600;
 }
 
-.mobile-nav-footer {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding-top: 0.35rem;
-  border-top: 1px solid var(--line);
-}
-
-.mobile-nav-footer:empty {
-  display: none;
-  padding: 0;
-  border: none;
-}
-
-.mobile-nav-logout {
-  justify-content: flex-start;
-  width: 100%;
-  min-height: 2.35rem;
-  padding: 0.45rem 0.75rem;
-  border-radius: 0.4rem;
-}
-
 @keyframes mobile-nav-in {
   from {
     opacity: 0;

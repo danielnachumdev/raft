@@ -1,11 +1,9 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
 import { jumpToSection } from "../../shared/chrome/scrollSpy";
 import { useScrollSpy } from "../../shared/chrome/useScrollSpy";
 import type { EnabledMap } from "./sectionEnablement";
 import {
   SETTINGS_NAV_GROUPS,
-  SETTINGS_RELATED_PAGES,
   sectionOff,
   settingsNavIds,
 } from "./settingsLayout";
@@ -33,16 +31,6 @@ export function SettingsSectionNav(props: { enabled: EnabledMap }) {
           ))}
         </SectionGroup>
       ))}
-      <SectionGroup label="Related pages">
-        {SETTINGS_RELATED_PAGES.map((page) => (
-          <Link key={page.to} to={page.to}>
-            {page.label}
-            <span className="side-nav-off" aria-hidden="true">
-              →
-            </span>
-          </Link>
-        ))}
-      </SectionGroup>
     </nav>
   );
 }

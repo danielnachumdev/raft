@@ -1,4 +1,4 @@
-export type NavGroup = "monitor" | "configure";
+export type NavGroup = "monitor" | "settings";
 
 export type NavItem = {
   to: string;
@@ -11,7 +11,7 @@ export type NavItem = {
   permission?: string;
 };
 
-/** Primary top-bar destinations, in display order (desktop nav + mobile menu). */
+/** Primary top-bar destinations (desktop + mobile monitor group). */
 export const TOPBAR_NAV: NavItem[] = [
   {
     to: "/",
@@ -27,37 +27,48 @@ export const TOPBAR_NAV: NavItem[] = [
     group: "monitor",
     permission: "events:read",
   },
+];
+
+/** Settings hub sections shown in the settings sub-header (and mobile Settings group). */
+export const SETTINGS_SECTIONS: NavItem[] = [
+  {
+    to: "/settings",
+    label: "General",
+    id: "nav-settings-general",
+    group: "settings",
+    permission: "settings:read",
+  },
   {
     to: "/settings/alerts",
     label: "Alerts",
     id: "nav-alerts",
-    group: "configure",
+    group: "settings",
     permission: "alerts:read",
   },
   {
     to: "/settings/notifications",
     label: "Notifications",
     id: "nav-notifications",
-    group: "configure",
+    group: "settings",
     permission: "notifications:read",
   },
   {
     to: "/settings/edge-access",
     label: "Firewall",
     id: "nav-edge-access",
-    group: "configure",
+    group: "settings",
     permission: "firewall:read",
   },
   {
     to: "/settings/rbac",
     label: "RBAC",
     id: "nav-rbac",
-    group: "configure",
+    group: "settings",
     permission: "rbac:read",
   },
 ];
 
-/** Right-side top-bar tools (Add service CTA, Settings gear). */
+/** Right-side top-bar tools (Add service CTA). */
 export const ADD_SERVICE_NAV: NavItem = {
   to: "/add-service",
   label: "Add service",
@@ -65,16 +76,17 @@ export const ADD_SERVICE_NAV: NavItem = {
   alsoActive: ["/deploy"],
 };
 
+/** Gear entry — highlighted on every ``/settings*`` route. */
 export const SETTINGS_NAV: NavItem = {
   to: "/settings",
   label: "Settings",
   id: "nav-settings",
-  permission: "settings:read",
+  alsoActive: ["/settings/"],
 };
 
 export const NAV_GROUP_LABELS: Record<NavGroup, string> = {
   monitor: "Monitor",
-  configure: "Configure",
+  settings: "Settings",
 };
 
 /** Exact route match, or one of the item's ``alsoActive`` prefixes. */
@@ -84,12 +96,32 @@ export function isNavActive(pathname: string, item: NavItem): boolean {
   return (item.alsoActive ?? []).some((prefix) => path.startsWith(prefix));
 }
 
+/** True for host settings and every settings hub section. */
+export function isSettingsPath(pathname: string): boolean {
+  const path = trimTrailingSlash(pathname);
+  return path === "/settings" || path.startsWith("/settings/");
+}
+
 /** Items without a ``permission`` are always shown. */
 export function navAllowed(
   item: NavItem,
   can: (permission: string) => boolean,
 ): boolean {
   return !item.permission || can(item.permission);
+}
+
+/** First settings section the operator can open (gear target). */
+export function firstSettingsPath(
+  can: (permission: string) => boolean,
+): string {
+  return SETTINGS_SECTIONS.find((item) => navAllowed(item, can))?.to ?? "/settings";
+}
+
+/** True when at least one settings hub section is visible. */
+export function anySettingsAllowed(
+  can: (permission: string) => boolean,
+): boolean {
+  return SETTINGS_SECTIONS.some((item) => navAllowed(item, can));
 }
 
 /** Group consecutive items for the mobile menu headings. */

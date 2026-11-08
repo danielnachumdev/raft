@@ -2,33 +2,48 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   ADD_SERVICE_NAV,
+  anySettingsAllowed,
+  firstSettingsPath,
   groupNav,
   isNavActive,
+  isSettingsPath,
   navAllowed,
   SETTINGS_NAV,
+  SETTINGS_SECTIONS,
   TOPBAR_NAV,
 } from "../../../src/app/navItems.ts";
 
 const item = (id: string) => {
-  const found = TOPBAR_NAV.find((n) => n.id === id);
+  const found = [...TOPBAR_NAV, ...SETTINGS_SECTIONS].find((n) => n.id === id);
   assert.ok(found, id);
   return found;
 };
 
 describe("isNavActive", () => {
-  it("highlights Settings only on /settings itself", () => {
+  it("highlights the Settings gear on every settings hub route", () => {
     assert.equal(isNavActive("/settings", SETTINGS_NAV), true);
     assert.equal(isNavActive("/settings/", SETTINGS_NAV), true);
-    for (const sub of ["/settings/alerts", "/settings/notifications", "/settings/edge-access"]) {
-      assert.equal(isNavActive(sub, SETTINGS_NAV), false, sub);
+    for (const sub of [
+      "/settings/alerts",
+      "/settings/notifications",
+      "/settings/edge-access",
+      "/settings/rbac",
+    ]) {
+      assert.equal(isNavActive(sub, SETTINGS_NAV), true, sub);
     }
   });
 
-  it("keeps exactly one primary item active per configure route", () => {
-    for (const path of ["/settings/alerts", "/settings/notifications", "/settings/edge-access"]) {
-      const active = TOPBAR_NAV.filter((n) => isNavActive(path, n));
+  it("keeps exactly one settings section active per hub route", () => {
+    for (const path of [
+      "/settings",
+      "/settings/alerts",
+      "/settings/notifications",
+      "/settings/edge-access",
+      "/settings/rbac",
+    ]) {
+      const active = SETTINGS_SECTIONS.filter((n) => isNavActive(path, n));
       assert.equal(active.length, 1, path);
-      assert.equal(active[0].to, path);
+      assert.equal(active[0].to, path === "/settings" ? "/settings" : path);
     }
   });
 
@@ -40,36 +55,62 @@ describe("isNavActive", () => {
   });
 });
 
+describe("isSettingsPath", () => {
+  it("matches the settings hub and no other routes", () => {
+    assert.equal(isSettingsPath("/settings"), true);
+    assert.equal(isSettingsPath("/settings/alerts"), true);
+    assert.equal(isSettingsPath("/events"), false);
+    assert.equal(isSettingsPath("/"), false);
+  });
+});
+
 describe("navAllowed", () => {
   it("shows ungated items and checks the permission otherwise", () => {
     const deny = () => false;
     assert.equal(navAllowed(item("nav-status"), deny), true);
     assert.equal(navAllowed(item("nav-rbac"), deny), false);
-    assert.equal(navAllowed(SETTINGS_NAV, (p) => p === "settings:read"), true);
+    assert.equal(navAllowed(item("nav-settings-general"), (p) => p === "settings:read"), true);
+  });
+});
+
+describe("settings hub helpers", () => {
+  it("picks the first allowed settings section for the gear target", () => {
+    assert.equal(firstSettingsPath(() => false), "/settings");
+    assert.equal(
+      firstSettingsPath((p) => p === "firewall:read"),
+      "/settings/edge-access",
+    );
+    assert.equal(anySettingsAllowed(() => false), false);
+    assert.equal(anySettingsAllowed((p) => p === "alerts:read"), true);
   });
 });
 
 describe("groupNav", () => {
-  it("groups consecutive items in display order", () => {
+  it("groups consecutive top-bar items in display order", () => {
     const groups = groupNav(TOPBAR_NAV);
     assert.deepEqual(
       groups.map((g) => [g.group, g.items.map((i) => i.label)]),
-      [
-        ["monitor", ["Status", "Events"]],
-        ["configure", ["Alerts", "Notifications", "Firewall", "RBAC"]],
-      ],
+      [["monitor", ["Status", "Events"]]],
+    );
+  });
+
+  it("groups settings hub sections together", () => {
+    const groups = groupNav(SETTINGS_SECTIONS);
+    assert.deepEqual(
+      groups.map((g) => [g.group, g.items.map((i) => i.label)]),
+      [["settings", ["General", "Alerts", "Notifications", "Firewall", "RBAC"]]],
     );
   });
 
   it("defaults ungrouped items to monitor and starts a new run on change", () => {
     const groups = groupNav([
       { to: "/a", label: "A", id: "a" },
-      { to: "/b", label: "B", id: "b", group: "configure" },
+      { to: "/b", label: "B", id: "b", group: "settings" },
       { to: "/c", label: "C", id: "c" },
     ]);
     assert.deepEqual(
       groups.map((g) => g.group),
-      ["monitor", "configure", "monitor"],
+      ["monitor", "settings", "monitor"],
     );
   });
 });

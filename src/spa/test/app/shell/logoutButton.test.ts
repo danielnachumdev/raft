@@ -7,13 +7,17 @@ import { describe, it } from "node:test";
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../../src/app");
 
 describe("LogoutButton", () => {
-  it("wires session fetch and oauth/password logout paths", () => {
-    const src = readFileSync(join(root, "LogoutButton.tsx"), "utf8");
-    assert.match(src, /\/api\/dashboard\/session/);
-    assert.match(src, /kind === "navigate"/);
-    assert.match(src, /kind === "post"/);
-    assert.match(src, /dashboard-logout/);
+  it("wires oauth/password logout paths through the account menu", () => {
+    const logout = readFileSync(join(root, "LogoutButton.tsx"), "utf8");
+    const session = readFileSync(join(root, "useDashboardSession.ts"), "utf8");
+    const userMenu = readFileSync(join(root, "UserMenu.tsx"), "utf8");
     const shell = readFileSync(join(root, "AppShell.tsx"), "utf8");
-    assert.match(shell, /LogoutButton/);
+    assert.match(session, /\/api\/dashboard\/session/);
+    assert.match(session, /kind === "navigate"/);
+    assert.match(session, /kind === "post"/);
+    assert.match(logout, /dashboard-logout/);
+    assert.match(userMenu, /LogoutButton/);
+    assert.match(userMenu, /dashboard-identity/);
+    assert.match(shell, /UserMenu/);
   });
 });
