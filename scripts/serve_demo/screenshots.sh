@@ -24,6 +24,7 @@ ROUTES=(
   "notifications:/settings/notifications"
   "alerts:/settings/alerts"
   "firewall:/settings/edge-access"
+  "rbac:/settings/rbac"
   "service:/service/$svc"
 )
 

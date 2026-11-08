@@ -11,27 +11,26 @@ import {
 import { createPortal } from "react-dom";
 import { NavLink, useLocation } from "react-router-dom";
 import { useRbac } from "../features/rbac";
-import { LogoutButton } from "./LogoutButton";
 import {
   ADD_SERVICE_NAV,
   groupNav,
   isNavActive,
   NAV_GROUP_LABELS,
   navAllowed,
-  SETTINGS_NAV,
+  SETTINGS_SECTIONS,
   TOPBAR_NAV,
   type NavItem,
 } from "./navItems";
 import "./MobileNav.css";
 
-/** Hamburger + panel with the same destinations as the desktop top-bar nav. */
+/** Hamburger + panel with monitor destinations and the settings hub. */
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
   const { pathname } = useLocation();
   const { can } = useRbac();
   const topNav = TOPBAR_NAV.filter((item) => navAllowed(item, can));
-  const showSettings = navAllowed(SETTINGS_NAV, can);
+  const settingsNav = SETTINGS_SECTIONS.filter((item) => navAllowed(item, can));
   const menuId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -114,27 +113,29 @@ export function MobileNav() {
                       ))}
                     </div>
                   ))}
+                  {settingsNav.length ? (
+                    <div className="mobile-nav-group">
+                      <p className="mobile-nav-group-label">
+                        {NAV_GROUP_LABELS.settings}
+                      </p>
+                      {settingsNav.map((item) => (
+                        <MobileLink
+                          key={item.to}
+                          item={item}
+                          pathname={pathname}
+                          onClick={close}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
                   <div className="mobile-nav-group">
                     <MobileLink
                       item={ADD_SERVICE_NAV}
                       pathname={pathname}
                       onClick={close}
                     />
-                    {showSettings ? (
-                      <MobileLink
-                        item={SETTINGS_NAV}
-                        pathname={pathname}
-                        onClick={close}
-                      />
-                    ) : null}
                   </div>
                 </nav>
-                <div className="mobile-nav-footer">
-                  <LogoutButton
-                    className="mobile-nav-logout"
-                    id="mobile-dashboard-logout"
-                  />
-                </div>
               </div>
             </>,
             document.body,

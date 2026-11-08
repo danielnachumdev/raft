@@ -48,13 +48,6 @@ export const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
   },
 ];
 
-/** Dedicated pages that own the CRUD behind a settings toggle. */
-export const SETTINGS_RELATED_PAGES = [
-  { to: "/settings/alerts", label: "Alert rules" },
-  { to: "/settings/notifications", label: "Notification channels" },
-  { to: "/settings/edge-access", label: "Firewall rules" },
-];
-
 /** Every section anchor id, in nav order. */
 export function settingsNavIds(): string[] {
   return SETTINGS_NAV_GROUPS.flatMap((group) => group.items.map((i) => i.id));

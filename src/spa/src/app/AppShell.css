@@ -86,22 +86,6 @@ body[data-mobile-nav-open] .topbar {
   font-weight: 600;
 }
 
-/* Hairline between nav groups (Monitor | Configure). */
-.topbar-link--group-start {
-  position: relative;
-  margin-left: 0.65rem;
-}
-
-.topbar-link--group-start::before {
-  content: "";
-  position: absolute;
-  left: -0.45rem;
-  top: 25%;
-  bottom: 25%;
-  width: 1px;
-  background: var(--line);
-}
-
 .topbar-link--icon {
   justify-content: center;
   padding-inline: 0.55rem;
@@ -140,16 +124,6 @@ body[data-mobile-nav-open] .topbar {
   text-decoration: underline;
 }
 
-.topbar-identity {
-  max-width: 14rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 0.8rem;
-  color: var(--muted);
-  white-space: nowrap;
-  user-select: text;
-}
-
 @media (max-width: 719px) {
   .topbar-inner {
     padding: 0.5rem 0.85rem;
@@ -168,9 +142,7 @@ body[data-mobile-nav-open] .topbar {
     display: none;
   }
 
-  .topbar-logout-desktop,
-  .topbar-tools .topbar-cta,
-  .topbar-identity {
+  .topbar-tools .topbar-cta {
     display: none;
   }
 }
@@ -178,9 +150,5 @@ body[data-mobile-nav-open] .topbar {
 @media (min-width: 720px) and (max-width: 979px) {
   .topbar-version {
     display: none;
-  }
-
-  .topbar-identity {
-    max-width: 9rem;
   }
 }
