@@ -147,3 +147,11 @@ class TestCoverageGaps(RaftTestCase):
         with pytest.raises(KeyboardInterrupt):
             mapper._fallback_handle([], KeyboardInterrupt())
         assert mapper._map_operator_exc(KeyboardInterrupt()) is None
+
+    def test_exit_mapper_keyboard_interrupt_exits_130(self) -> None:
+        mapper = CliExitMapper()
+        with patch("raft.services.cli.exit_mapper.OperatorSay.say_err") as say:
+            with pytest.raises(SystemExit) as caught:
+                mapper.run_guarded(lambda _argv: (_ for _ in ()).throw(KeyboardInterrupt()), [])
+        assert caught.value.code == 130
+        say.assert_called_once()

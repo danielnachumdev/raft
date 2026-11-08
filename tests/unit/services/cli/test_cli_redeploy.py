@@ -57,6 +57,23 @@ class TestCliRedeploy(CliTestCase):
             assert RaftCLI()._invoke_fire(["redeploy", "dashboard"]) == 0
         say.assert_not_called()
 
+    def test_redeploy_dashboard_coalesced_says_joined(self) -> None:
+        actions = MagicMock()
+        actions.redeploy.return_value = {
+            "ok": True,
+            "action": "redeploy",
+            "service": "raft-dashboard",
+            "started": True,
+            "job_id": "job-1",
+            "coalesced": True,
+        }
+        with patch("raft.core.core.ui.OperatorSay.say") as say, self.patched_deps(
+            ServiceActions=actions
+        ):
+            assert RaftCLI()._invoke_fire(["redeploy", "dashboard"]) == 0
+        say.assert_called_once()
+        assert "Joined" in say.call_args.args[0]
+
     def test_redeploy_gate_dispatch(self) -> None:
         actions = self._actions_ok("raft-gate")
         with patch("raft.core.core.ui.OperatorSay.say"), self.patched_deps(

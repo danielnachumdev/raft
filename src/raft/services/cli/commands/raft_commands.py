@@ -271,7 +271,11 @@ class RaftCLICommands:
             raise DomainErrors.redeploy_requires_app()
         if name in CONTROL_PLANE_REDEPLOY:
             result = ServiceActions(self._stack).redeploy(name)
-            if not result.get("started"):
+            if result.get("coalesced"):
+                OperatorSay.say(
+                    f"Joined in-flight redeploy of {result['service']}."
+                )
+            elif not result.get("started"):
                 OperatorSay.say(f"Redeployed {result['service']}.")
             return
         if name not in self._app_names:

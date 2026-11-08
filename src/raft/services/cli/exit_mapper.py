@@ -24,6 +24,9 @@ class CliExitMapper:
         """Invoke ``invoke``; map operator/subprocess failures to ``SystemExit``."""
         try:
             raise SystemExit(invoke(argv))
+        except KeyboardInterrupt:
+            OperatorSay.say_err("Interrupted.", style="warn")
+            raise SystemExit(130)
         except subprocess.CalledProcessError as exc:
             self._handle(argv, exc)
         except Exception as exc:
