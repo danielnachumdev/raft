@@ -86,3 +86,49 @@ class TestHostOneshotFlight(RaftTestCase):
         with StackLock(self.tmp_path, timeout=1):
             with FifoLock(self.tmp_path, "host-job-redeploy-dashboard", timeout=1):
                 pass
+
+    def test_join_alive_waits_then_clears(self) -> None:
+        state = HostOneshotFlightState(self.tmp_path, "redeploy-dashboard")
+        state.write_job_id("cid-live")
+        alive = MagicMock()
+        alive.running.side_effect = [True, True, False, False]
+        flight = HostOneshotFlight(
+            self.tmp_path,
+            "redeploy-dashboard",
+            oneshot=MagicMock(),
+            alive=alive,
+            state=state,
+        )
+        joined = flight.join_alive(poll_seconds=0.01, timeout=2.0)
+        assert joined is not None
+        assert joined.job_id == "cid-live"
+        assert joined.coalesced is True
+        assert state.read_job_id() is None
+
+    def test_join_alive_none_when_idle(self) -> None:
+        flight = HostOneshotFlight(
+            self.tmp_path,
+            "redeploy-dashboard",
+            oneshot=MagicMock(),
+            alive=MagicMock(running=MagicMock(return_value=False)),
+        )
+        assert flight.join_alive(poll_seconds=0.01, timeout=1.0) is None
+
+    def test_join_alive_times_out(self) -> None:
+        from raft.core.core.errors.cta import OperatorError
+        import pytest
+
+        state = HostOneshotFlightState(self.tmp_path, "redeploy-dashboard")
+        state.write_job_id("cid-stuck")
+        alive = MagicMock()
+        alive.running.return_value = True
+        flight = HostOneshotFlight(
+            self.tmp_path,
+            "redeploy-dashboard",
+            oneshot=MagicMock(),
+            alive=alive,
+            state=state,
+        )
+        with pytest.raises(OperatorError, match="timed out"):
+            flight.join_alive(poll_seconds=0.01, timeout=0.05)
+

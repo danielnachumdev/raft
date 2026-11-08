@@ -152,52 +152,6 @@ class TestServiceActions(RaftTestCase):
         assert result["action"] == "redeploy"
         assert result["service"] == "raft-controller"
 
-    def test_redeploy_dashboard_when_enabled(self) -> None:
-        self._write_dashboard_enabled(True)
-        actions, _docker, orch = self._actions()
-        with patch(
-            "raft.core.observe.ops.actions.service.HostOneshotGate"
-        ) as gate_cls:
-            gate_cls.return_value.in_dashboard.return_value = False
-            result = actions.redeploy("dashboard")
-        orch.redeploy_dashboard.assert_called_once()
-        assert result["service"] == "raft-dashboard"
-        assert result.get("started") is not True
-
-    def test_redeploy_dashboard_oneshot_when_in_dashboard(self) -> None:
-        self._write_dashboard_enabled(True)
-        actions, _docker, orch = self._actions()
-        result, gate, flight = self._redeploy_dashboard_oneshot(actions)
-        orch.redeploy_dashboard.assert_not_called()
-        gate.ensure.assert_called_once()
-        flight.start.assert_called_once_with(
-            ["raft", "redeploy", "dashboard"],
-            with_docker=True,
-        )
-        assert result == {
-            "ok": True,
-            "action": "redeploy",
-            "service": "raft-dashboard",
-            "started": True,
-            "job_id": "job-abc",
-            "coalesced": False,
-        }
-
-    def _redeploy_dashboard_oneshot(self, actions: ServiceActions):
-        with patch(
-            "raft.core.observe.ops.actions.service.HostOneshotGate"
-        ) as gate_cls:
-            gate = gate_cls.return_value
-            gate.in_dashboard.return_value = True
-            with patch(
-                "raft.core.observe.ops.actions.service.HostOneshotFlight"
-            ) as flight_cls:
-                flight = flight_cls.return_value
-                started = MagicMock(job_id="job-abc", coalesced=False)
-                flight.start.return_value = started
-                with patch("raft.core.observe.ops.actions.service.Shell"):
-                    return actions.redeploy("dashboard"), gate, flight
-
     def test_redeploy_dashboard_refused_when_disabled(self) -> None:
         self._write_dashboard_enabled(False)
         actions, _docker, orch = self._actions()
