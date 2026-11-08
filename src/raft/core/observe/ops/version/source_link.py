@@ -21,8 +21,6 @@ class SourceLink:
         if not sha or not all(c.isalnum() for c in sha):
             return None
         slug = self.repo_slug(repo_url)
-        if not slug:
-            return None
         return f"https://github.com/{slug}/commit/{sha}"
 
     def repo_slug(self, repo_url: Optional[str] = None) -> str:

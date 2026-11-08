@@ -69,6 +69,27 @@ class TestStatusRead(RaftTestCase):
             "label": "0.11.0",
         }
 
+    def test_api_payload_includes_version_url_when_present(self) -> None:
+        status = MagicMock()
+        status.collect.return_value = StatusSnapshot(
+            host=status_fx.empty_host_status(), containers=()
+        )
+        href = (
+            "https://github.com/danielnachumdev/raft/commit/"
+            "398e4eaf8c6295db20f57acafb9e81395b03a87f"
+        )
+        base = "raft.core.observe.read.status.InstalledVersion"
+        with patch(f"{base}.package_version", return_value="0.1.0"), patch(
+            f"{base}.line", return_value=f"raft main@398e4ea ({href})"
+        ), patch(f"{base}.chrome_label", return_value="main@398e4ea"), patch(
+            f"{base}.source_url", return_value=href
+        ):
+            payload = StatusRead(
+                StackMakers.make_stack(self.tmp_path), status=status
+            ).api_payload()
+        assert payload["version"]["url"] == href
+        assert payload["version"]["label"] == "main@398e4ea"
+
     def test_api_payload_overlay_resources_sets_resources_as_of(self) -> None:
         ts = self._write_fresh_gate_sample()
         status = MagicMock()

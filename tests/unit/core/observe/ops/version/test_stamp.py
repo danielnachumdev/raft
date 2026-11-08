@@ -114,6 +114,8 @@ class TestInstalledVersionStampFallback:
             InstalledVersion,
             "source_detail",
             return_value="wheel raft-0.12.7-py3-none-any.whl",
+        ), patch.object(InstalledVersion, "commit_id", return_value=None), patch.object(
+            InstalledVersion, "repo_url", return_value=None
         ):
             InstalledVersion().write_install_stamp(dest)
         assert InstallStamp().read(dest) == {

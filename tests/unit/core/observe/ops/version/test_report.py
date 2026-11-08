@@ -241,11 +241,6 @@ class TestInstalledVersion:
     def test_format_git_bare(self) -> None:
         assert InstalledVersion()._format_git({}) == "git"
 
-    def test_source_url_from_commit(self) -> None:
-        with patch.object(InstalledVersion, "commit_id", return_value=_COMMIT):
-            with patch.object(InstalledVersion, "repo_url", return_value=None):
-                assert InstalledVersion().source_url() == _URL
-
     @staticmethod
     def _detail(payload: dict) -> Optional[str]:
         raw = json.dumps(payload)

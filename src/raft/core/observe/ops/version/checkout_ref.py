@@ -15,11 +15,9 @@ class CheckoutRef:
             return None
         short = commit[:7]
         rev = self.ref_name(root)
-        if rev and short:
+        if rev:
             return f"git {rev}@{short}"
-        if short:
-            return f"git @{short}"
-        return None
+        return f"git @{short}"
 
     def commit(self, root: Path) -> Optional[str]:
         """Full ``HEAD`` SHA, or None when git is unavailable / not a repo."""

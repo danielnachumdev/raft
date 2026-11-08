@@ -28,3 +28,12 @@ class TestSourceLink:
             os.environ, {"RAFT_REPO_URL": "git@github.com:acme/demo.git"}, clear=False
         ):
             assert SourceLink().repo_slug(None) == "acme/demo"
+
+    def test_repo_slug_from_path_style_url(self) -> None:
+        assert (
+            SourceLink().repo_slug("https://example.test/acme/demo.git") == "acme/demo"
+        )
+
+    def test_slug_from_text_rejects_short_paths(self) -> None:
+        assert SourceLink._slug_from_text("https://example.test/onlyone") is None
+        assert SourceLink._slug_from_text("") is None
