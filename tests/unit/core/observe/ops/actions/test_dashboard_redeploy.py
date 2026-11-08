@@ -4,12 +4,20 @@ from unittest.mock import MagicMock, patch
 
 from raft.core.observe.ops.actions import ServiceActions
 from raft.core.observe.ops.actions.dashboard_redeploy import DashboardRedeploy
-from raft.core.platform.adapters.docker import HostOneshotGate
+from raft.core.platform.adapters.docker import HostOneshotFlight, HostOneshotGate
 
 from tests.unit.base import RaftTestCase, AppMakers, StackMakers
 
 
 class TestDashboardRedeploy(RaftTestCase):
+    def test_flight_builds_host_oneshot_flight(self) -> None:
+        helper = DashboardRedeploy(
+            StackMakers.make_stack(self.tmp_path, ()), shell=MagicMock()
+        )
+        flight = helper.flight()
+        assert isinstance(flight, HostOneshotFlight)
+        assert flight.kind == HostOneshotFlight.KIND_DASHBOARD_REDEPLOY
+
     def test_start_oneshot_payload(self) -> None:
         helper = DashboardRedeploy(
             StackMakers.make_stack(self.tmp_path, ()), shell=MagicMock()
@@ -31,6 +39,19 @@ class TestDashboardRedeploy(RaftTestCase):
         flight.peek_alive.return_value = None
         with patch.object(helper, "flight", return_value=flight):
             assert helper.join_oneshot("raft-dashboard") is None
+
+    def test_join_oneshot_none_when_join_alive_empty(self) -> None:
+        helper = DashboardRedeploy(
+            StackMakers.make_stack(self.tmp_path, ()), shell=MagicMock()
+        )
+        flight = MagicMock()
+        flight.peek_alive.return_value = "cid-gone"
+        flight.join_alive.return_value = None
+        with patch.object(helper, "flight", return_value=flight):
+            with patch(
+                "raft.core.observe.ops.actions.dashboard_redeploy.OperatorSay.say"
+            ):
+                assert helper.join_oneshot("raft-dashboard") is None
 
     def test_join_oneshot_waits_for_live_job(self) -> None:
         helper = DashboardRedeploy(
