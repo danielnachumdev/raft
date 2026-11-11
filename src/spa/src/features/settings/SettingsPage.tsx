@@ -1,4 +1,5 @@
 import { useLocation } from "react-router-dom";
+import { ModeSwitch } from "../../shared/chrome/ModeSwitch";
 import { SaveBar } from "../../shared/chrome/SaveBar";
 import { SettingsFormSkeleton, showSkeleton } from "../../shared/chrome/skeleton";
 import { ErrorState } from "../../shared/chrome/StateViews";
@@ -16,7 +17,7 @@ import {
   TemporaryOverrideBanner,
   unsavedTemporaryOverrideMessage,
 } from "../../shared/gitops";
-import { useSettingsEditor, type EditorMode } from "./useSettingsEditor";
+import { useSettingsEditor } from "./useSettingsEditor";
 import "./SettingsPage.css";
 
 /** Full ``settings.yaml`` / RaftConfig editor for ``raft serve``. */
@@ -29,12 +30,13 @@ export function SettingsPage() {
   return (
     <div className="settings-page">
       <PageHeader
-        title="Settings"
+        title="General"
         subtitle="Operator settings for this host — edit section by section, or switch to YAML for the whole document."
         actions={
           <>
             <ModeSwitch
               mode={mode}
+              idPrefix="settings"
               disabled={busy || saving || !draft}
               onChange={(next) => void editor.switchMode(next)}
             />
@@ -47,16 +49,6 @@ export function SettingsPage() {
               onClick={() => void editor.load()}
             >
               Reload
-            </button>
-            <button
-              type="button"
-              className={saving ? "btn btn-primary is-loading" : "btn btn-primary"}
-              id="settings-save"
-              disabled={busy || saving || !draft || !editor.dirty}
-              aria-busy={saving}
-              onClick={() => void editor.save()}
-            >
-              {saving ? "Saving…" : "Save"}
             </button>
           </>
         }
@@ -112,30 +104,6 @@ export function SettingsPage() {
           </div>
         </div>
       ) : null}
-    </div>
-  );
-}
-
-function ModeSwitch(props: {
-  mode: EditorMode;
-  disabled: boolean;
-  onChange: (next: EditorMode) => void;
-}) {
-  return (
-    <div className="segmented" role="tablist" aria-label="Editor mode">
-      {(["form", "yaml"] as const).map((value) => (
-        <button
-          key={value}
-          type="button"
-          role="tab"
-          id={`settings-mode-${value}`}
-          aria-selected={props.mode === value}
-          disabled={props.disabled}
-          onClick={() => props.onChange(value)}
-        >
-          {value === "form" ? "Form" : "YAML"}
-        </button>
-      ))}
     </div>
   );
 }

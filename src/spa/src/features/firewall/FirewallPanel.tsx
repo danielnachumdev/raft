@@ -15,7 +15,6 @@ import type {
   FirewallRule,
   FirewallServiceOption,
 } from "./firewallApi";
-import { IconPlus } from "./FirewallIcons";
 import { FirewallImportModal } from "./FirewallImportModal";
 import { FirewallRecommendations } from "./FirewallRecommendations";
 import {
@@ -124,19 +123,7 @@ export function FirewallPanel(props: Props) {
         Export
       </button>
       <button type="button" className="btn" id="firewall-add" disabled={locked} onClick={openCreate}>
-        <IconPlus />
         Add rule
-      </button>
-      <button
-        type="button"
-        className={saving ? "btn btn-primary is-loading" : "btn btn-primary"}
-        id="firewall-save"
-        disabled={locked || !dirty}
-        aria-busy={saving}
-        onClick={() => void persist()}
-      >
-        {saving ? <span className="spinner btn-spinner" aria-hidden="true" /> : null}
-        Save &amp; apply
       </button>
     </>
   );
@@ -171,13 +158,12 @@ export function FirewallPanel(props: Props) {
             title="No firewall rules."
             action={
               <button type="button" className="btn btn-sm" disabled={locked} onClick={openCreate}>
-                <IconPlus />
                 Add rule
               </button>
             }
           >
-            Apply a recommendation, add a rule, or import an export — then Save
-            &amp; apply.
+            Apply a recommendation, add a rule, or import an export — then save
+            from the bar below.
           </EmptyState>
         ) : (
           <FirewallRuleTable

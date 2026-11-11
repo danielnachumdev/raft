@@ -1,5 +1,7 @@
+import { ModeSwitch } from "../../shared/chrome/ModeSwitch";
 import { SaveBar } from "../../shared/chrome/SaveBar";
-import { ErrorState, LoadingState } from "../../shared/chrome/StateViews";
+import { SettingsFormSkeleton, showSkeleton } from "../../shared/chrome/skeleton";
+import { ErrorState } from "../../shared/chrome/StateViews";
 import { useUnsavedGuard } from "../../shared/chrome/useUnsavedGuard";
 import {
   TemporaryOverrideBanner,
@@ -11,7 +13,6 @@ import { RbacYamlPanel } from "./RbacYamlPanel";
 import { RequirePermission } from "./RequirePermission";
 import { useRbac } from "./RbacContext";
 import { useRbacEditor } from "./useRbacEditor";
-import type { EditorMode } from "./rbacDocument";
 import "./RbacSettingsPage.css";
 
 /** Roles and bindings editor (form + YAML). */
@@ -22,7 +23,6 @@ export function RbacSettingsPage() {
   useUnsavedGuard(editor.dirty && canWrite);
 
   const { draft, busy, saving, mode } = editor;
-  const loading = busy && !draft;
 
   return (
     <div className="rbac-page">
@@ -30,10 +30,11 @@ export function RbacSettingsPage() {
         title="RBAC"
         subtitle="Who can use this dashboard and what they can do."
         actions={
-          loading ? undefined : (
+          showSkeleton(busy, draft !== null) ? undefined : (
             <>
               <ModeSwitch
                 mode={mode}
+                idPrefix="rbac"
                 disabled={busy || saving || !draft}
                 onChange={(next) => void editor.switchMode(next)}
               />
@@ -47,26 +48,14 @@ export function RbacSettingsPage() {
               >
                 Reload
               </button>
-              <RequirePermission permission="rbac:write" fallback={null}>
-                <button
-                  type="button"
-                  className={
-                    saving ? "btn btn-primary is-loading" : "btn btn-primary"
-                  }
-                  id="rbac-save"
-                  disabled={busy || saving || !draft || !editor.dirty}
-                  aria-busy={saving}
-                  onClick={() => void editor.save()}
-                >
-                  {saving ? "Saving…" : "Save"}
-                </button>
-              </RequirePermission>
             </>
           )
         }
       />
 
-      {loading ? <LoadingState label="Loading…" id="rbac-loading" /> : null}
+      {showSkeleton(busy, draft !== null) ? (
+        <SettingsFormSkeleton label="Loading RBAC…" id="rbac-loading" />
+      ) : null}
 
       {editor.error ? (
         <ErrorState
@@ -106,30 +95,6 @@ export function RbacSettingsPage() {
           </RequirePermission>
         </div>
       ) : null}
-    </div>
-  );
-}
-
-function ModeSwitch(props: {
-  mode: EditorMode;
-  disabled: boolean;
-  onChange: (next: EditorMode) => void;
-}) {
-  return (
-    <div className="segmented" role="tablist" aria-label="Editor mode">
-      {(["form", "yaml"] as const).map((value) => (
-        <button
-          key={value}
-          type="button"
-          role="tab"
-          id={`rbac-mode-${value}`}
-          aria-selected={props.mode === value}
-          disabled={props.disabled}
-          onClick={() => props.onChange(value)}
-        >
-          {value === "form" ? "Form" : "YAML"}
-        </button>
-      ))}
     </div>
   );
 }

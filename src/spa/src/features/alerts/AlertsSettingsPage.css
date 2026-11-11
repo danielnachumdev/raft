@@ -64,7 +64,7 @@
   font-size: 0.85rem;
 }
 
-.alerts-all-clear p {
+.alerts-all-clear .empty-state-title {
   display: flex;
   align-items: center;
   gap: 0.5rem;

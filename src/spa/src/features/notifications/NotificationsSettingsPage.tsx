@@ -78,10 +78,10 @@ export function NotificationsSettingsPage() {
             <Link
               className={globalEnabled ? "chip chip-ok" : "chip chip-warn"}
               id="notifications-global"
-              title="Global notifications switch in Settings"
+              title="Open the global notifications switch on General"
               to="/settings#settings-notifications"
             >
-              Global notifications {globalEnabled ? "on" : "off"}
+              Global {globalEnabled ? "on" : "off"} — General
             </Link>
           ) : undefined
         }

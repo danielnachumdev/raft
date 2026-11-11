@@ -15,7 +15,7 @@ export type SettingsNavGroup = { label: string; items: SettingsNavItem[] };
 
 export const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
   {
-    label: "General",
+    label: "Basics",
     items: [
       { id: "settings-appearance", label: "Appearance" },
       { id: "settings-updates", label: "Updates" },

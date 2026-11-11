@@ -18,6 +18,7 @@ describe("MobileNav", () => {
     assert.match(mobile, /Escape/);
     assert.match(mobile, /TOPBAR_NAV/);
     assert.match(mobile, /SETTINGS_SECTIONS/);
+    assert.match(mobile, /isSettingsPath/);
     assert.doesNotMatch(mobile, /LogoutButton/);
     assert.match(nav, /nav-status/);
     assert.match(nav, /nav-edge-access/);

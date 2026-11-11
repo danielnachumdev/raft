@@ -23,6 +23,19 @@
   border-bottom: 1px solid var(--line);
 }
 
+/* Sticky side-nav / scroll-margin must clear brand + settings sub-header. */
+body[data-settings-hub] {
+  --topbar-height: calc(
+    var(--topbar-brand-height) + var(--settings-subnav-height)
+  );
+}
+
+@media (max-width: 719px) {
+  body[data-settings-hub] {
+    --settings-subnav-height: 2.2rem;
+  }
+}
+
 /* Keep the hamburger above the portaled backdrop while the menu is open. */
 body[data-mobile-nav-open] .topbar {
   z-index: 45;

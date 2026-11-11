@@ -1,3 +1,4 @@
+import { EmptyState } from "../../shared/chrome/StateViews";
 import type { RbacBinding, RbacDocument } from "./rbacApi";
 import { removeBindingAt, upsertBinding } from "./rbacDocument";
 
@@ -32,24 +33,41 @@ export function RbacBindingsPanel(props: {
       id="rbac-bindings"
       aria-labelledby="rbac-bindings-title"
     >
-      <header className="rbac-section-head">
+      <div className="panel-head">
         <h2 id="rbac-bindings-title">Bindings</h2>
         {props.canWrite ? (
-          <button
-            type="button"
-            className="btn btn-sm"
-            id="rbac-binding-add"
-            onClick={addBinding}
-          >
-            Add binding
-          </button>
+          <div className="panel-head-actions">
+            <button
+              type="button"
+              className="btn btn-sm"
+              id="rbac-binding-add"
+              onClick={addBinding}
+            >
+              Add binding
+            </button>
+          </div>
         ) : null}
-      </header>
+      </div>
 
       {bindings.length === 0 ? (
-        <p className="muted" id="rbac-bindings-empty">
-          No bindings yet.
-        </p>
+        <EmptyState
+          id="rbac-bindings-empty"
+          title="No bindings yet."
+          action={
+            props.canWrite ? (
+              <button
+                type="button"
+                className="btn btn-sm"
+                id="rbac-binding-empty-add"
+                onClick={addBinding}
+              >
+                Add binding
+              </button>
+            ) : undefined
+          }
+        >
+          Map a subject to a role to grant dashboard access.
+        </EmptyState>
       ) : null}
 
       <div className="rbac-bindings-list" id="rbac-bindings-list">

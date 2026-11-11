@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { InboxBell } from "../features/inbox/InboxBell";
 import { useRbac } from "../features/rbac";
@@ -23,6 +24,14 @@ export function AppShell() {
   const { pathname } = useLocation();
   const { can } = useRbac();
   const nav = TOPBAR_NAV.filter((item) => navAllowed(item, can));
+  const settingsHub = isSettingsPath(pathname);
+  useEffect(() => {
+    if (settingsHub) document.body.dataset.settingsHub = "";
+    else delete document.body.dataset.settingsHub;
+    return () => {
+      delete document.body.dataset.settingsHub;
+    };
+  }, [settingsHub]);
   return (
     <>
       <a className="skip-link" href="#main">
