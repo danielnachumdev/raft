@@ -98,18 +98,20 @@ function UserIcon() {
       fill="none"
       aria-hidden="true"
     >
+      {/* Same optical weight/box as GearIcon / BellIcon (18×18, stroke 1.75). */}
+      <circle
+        cx="12"
+        cy="7.5"
+        r="3.75"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
       <path
-        d="M20 21a8 8 0 1 0-16 0"
+        d="M4.75 20.25c1.55-3.6 4.05-5.25 7.25-5.25s5.7 1.65 7.25 5.25"
         stroke="currentColor"
         strokeWidth="1.75"
         strokeLinecap="round"
-      />
-      <circle
-        cx="12"
-        cy="8"
-        r="3.5"
-        stroke="currentColor"
-        strokeWidth="1.75"
+        strokeLinejoin="round"
       />
     </svg>
   );

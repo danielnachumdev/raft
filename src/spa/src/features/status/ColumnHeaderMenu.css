@@ -107,8 +107,8 @@
   padding: 0.55rem 0.6rem;
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 0.4rem;
-  box-shadow: 0 8px 20px var(--shadow);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-float);
   text-transform: none;
   letter-spacing: normal;
   font-weight: 400;
