@@ -21,7 +21,7 @@ export function NotificationsSection(props: {
       hint={
         <>
           Global switch for outbound channels. Manage channel CRUD on{" "}
-          <Link to="/settings/notifications">Settings → Notifications</Link>.
+          <Link to="/settings/notifications">Notifications</Link>.
         </>
       }
     >

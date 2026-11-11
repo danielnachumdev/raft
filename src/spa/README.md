@@ -21,11 +21,11 @@ Every route should read the same way. Reach for these before writing page-local 
 | Mutually exclusive mode switch | `.segmented` with `role="tablist"` + `aria-selected` |
 | List of named entities with actions | `.item-list` > `.item-row` (`.item-row-main`, `.item-row-title`, `.item-row-meta`, `.item-row-actions`; `.is-disabled`) |
 | Loading / failed load / empty | `shared/chrome/StateViews`: `LoadingState`, `ErrorState` (pass `onRetry`), `EmptyState` (title, guidance, optional CTA) |
-| Unsaved draft (Settings, Firewall) | `shared/chrome/SaveBar` (sticky Discard + Save) + `useUnsavedGuard` |
+| Unsaved draft (General, Firewall, RBAC) | sticky `SaveBar` as the only primary Save + `useUnsavedGuard` (header keeps Reload / mode) |
 | Long pages | `.side-nav` sidebar inside `.with-aside` (Settings), or `.jump-nav` strip (Service); both use `useScrollSpy` + `jumpToSection` |
 | Modal footer | `.modal-actions`: Cancel first, then `.btn-primary` (or `.btn-danger` for destructive confirms) |
 
-Top-bar IA: primary nav is grouped **Monitor** (Status, Events) and **Configure** (Alerts, Notifications, Firewall, RBAC); entries with a `permission` hide via `navAllowed` when RBAC denies it. The **Add service** CTA and the **Settings** gear sit on the right, and Settings highlights only on `/settings` itself (`app/navItems.ts`).
+Top-bar IA: primary nav is **Monitor** only (Status, Events). Settings live under the gear hub; on `/settings*` a sticky `SettingsSubNav` lists General / Alerts / Notifications / Firewall / RBAC (`SETTINGS_SECTIONS`). Account identity + logout sit under the user menu. Entries with a `permission` hide via `navAllowed` when RBAC denies it (`app/navItems.ts`).
 
 ## Develop
 

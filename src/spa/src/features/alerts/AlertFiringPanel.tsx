@@ -1,3 +1,4 @@
+import { EmptyState } from "../../shared/chrome/StateViews";
 import { relativeTime } from "../../shared/format";
 import type { AlertStatusPayload } from "./alertsApi";
 
@@ -25,11 +26,15 @@ export function AlertFiringPanel(props: {
         </span>
       </div>
       {instances.length === 0 ? (
-        <div className="empty-state alerts-all-clear" id="alerts-none-firing">
-          <p>
-            <span className="chip chip-ok">all clear</span> Nothing is firing.
-          </p>
-        </div>
+        <EmptyState
+          id="alerts-none-firing"
+          className="alerts-all-clear"
+          title={
+            <>
+              <span className="chip chip-ok">all clear</span> Nothing is firing.
+            </>
+          }
+        />
       ) : (
         <ul className="alert-instance-list">
           {instances.map((inst) => (

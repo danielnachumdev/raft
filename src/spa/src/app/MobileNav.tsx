@@ -15,6 +15,7 @@ import {
   ADD_SERVICE_NAV,
   groupNav,
   isNavActive,
+  isSettingsPath,
   NAV_GROUP_LABELS,
   navAllowed,
   SETTINGS_SECTIONS,
@@ -30,7 +31,10 @@ export function MobileNav() {
   const { pathname } = useLocation();
   const { can } = useRbac();
   const topNav = TOPBAR_NAV.filter((item) => navAllowed(item, can));
-  const settingsNav = SETTINGS_SECTIONS.filter((item) => navAllowed(item, can));
+  // On settings routes the hub sub-header already lists sections — avoid a third nav.
+  const settingsNav = isSettingsPath(pathname)
+    ? []
+    : SETTINGS_SECTIONS.filter((item) => navAllowed(item, can));
   const menuId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);

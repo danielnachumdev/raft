@@ -45,14 +45,16 @@ export function RbacRolesPanel(props: {
 
   return (
     <section className="panel rbac-section" id="rbac-roles" aria-labelledby="rbac-roles-title">
-      <header className="rbac-section-head">
+      <div className="panel-head">
         <h2 id="rbac-roles-title">Roles</h2>
         {props.canWrite ? (
-          <button type="button" className="btn btn-sm" id="rbac-role-add" onClick={addRole}>
-            Add role
-          </button>
+          <div className="panel-head-actions">
+            <button type="button" className="btn btn-sm" id="rbac-role-add" onClick={addRole}>
+              Add role
+            </button>
+          </div>
         ) : null}
-      </header>
+      </div>
 
       <div className="rbac-roles-layout">
         <ul className="rbac-role-list" id="rbac-role-list">

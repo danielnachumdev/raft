@@ -50,7 +50,7 @@ export function InboxPage() {
     <div className="inbox-page">
       <PageHeader
         title="Inbox"
-        subtitle="Operator notices from setup recommendations and similar attention items. Separate from Settings → Notifications (outbound email/Slack channels)."
+        subtitle="Operator notices from setup recommendations and similar attention items. Separate from Notifications (outbound email/Slack channels)."
         actions={
           <div className="btn-group">
             <button
@@ -110,7 +110,7 @@ function InboxList(props: {
         }
       >
         No pending recommendations need attention. Outbound channels stay under
-        Settings → Notifications.
+        Notifications.
       </EmptyState>
     );
   }

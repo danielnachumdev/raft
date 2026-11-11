@@ -170,11 +170,11 @@ export function AlertsSettingsPage() {
           onRetry={() => void load({ quiet: loaded })}
         />
       ) : null}
-      <AlertCallouts status={status} hasChannels={enabledChannels.length > 0} />
 
       {loaded ? (
         <>
           <TemporaryOverrideBanner doc="alerts.yaml" id="alerts-temp-override" />
+          <AlertCallouts status={status} hasChannels={enabledChannels.length > 0} />
           <AlertRecommendations
             items={recommendations}
             busy={formBusy || actions.busyId !== null}

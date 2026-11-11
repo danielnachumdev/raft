@@ -24,7 +24,7 @@ export function AlertsSection(props: {
       hint={
         <>
           How often raft evaluates alert rules. Manage rules under{" "}
-          <Link to="/settings/alerts">Settings → Alerts</Link>.
+          <Link to="/settings/alerts">Alerts</Link>.
         </>
       }
     >
