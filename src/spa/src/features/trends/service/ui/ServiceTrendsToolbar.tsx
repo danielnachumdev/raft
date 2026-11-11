@@ -19,7 +19,7 @@ export function ServiceTrendsToolbar(props: {
   const [restoreOpen, setRestoreOpen] = useState(false);
   const count = props.api.dashboard.panels.length;
   return (
-    <div className="trends-toolbar" role="toolbar" aria-label="Service trends controls">
+    <div className="toolbar trends-toolbar" role="toolbar" aria-label="Service trends controls">
       <div className="trends-toolbar-range">
         <TrendsRangeControls
           range={props.api.dashboard.range}

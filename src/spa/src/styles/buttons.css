@@ -75,10 +75,40 @@
   border-color: var(--line);
 }
 
+/* Inline text action (Clear filters, Show all, Undo) — not a bordered control. */
+.btn-link {
+  display: inline;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--text-sm);
+  line-height: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-link:hover:not(:disabled) {
+  color: var(--accent-hover);
+  background: none;
+  border-color: transparent;
+}
+
+.btn-link:disabled {
+  color: var(--muted);
+  text-decoration: none;
+  cursor: default;
+  opacity: 0.7;
+}
+
 .btn-sm {
   min-height: var(--control-height-sm);
   padding: 0.25rem 0.65rem;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   gap: 0.35rem;
 }
 
@@ -159,7 +189,8 @@
   color: var(--ink);
 }
 
-.segmented > button[aria-selected="true"] {
+.segmented > button[aria-selected="true"],
+.segmented > button[aria-checked="true"] {
   background: var(--panel);
   color: var(--ink);
   font-weight: 600;

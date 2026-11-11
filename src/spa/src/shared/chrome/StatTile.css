@@ -15,7 +15,7 @@
   padding: 0.75rem 0.95rem;
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 0.55rem;
+  border-radius: var(--radius-panel);
 }
 
 .stat-tile-label {
@@ -63,7 +63,7 @@
   color: var(--warn);
 }
 
-.stat-tile-value .status-badge {
+.stat-tile-value .chip-dot {
   font-size: 1rem;
   margin-top: 0.2rem;
 }

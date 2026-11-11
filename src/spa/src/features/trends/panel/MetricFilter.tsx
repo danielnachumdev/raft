@@ -19,7 +19,7 @@ export function MetricFilter(props: {
         <div className="trends-services-actions">
           <button
             type="button"
-            className="trends-clear-all"
+            className="btn-link"
             onClick={props.onClearAll}
             disabled={props.busy || noneSelected}
           >

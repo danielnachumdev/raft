@@ -11,11 +11,12 @@
 }
 
 .channel-settings {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.82rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
   line-height: 1.4;
   padding: 0.5rem 0.55rem;
   border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
   background: var(--input);
   color: var(--ink);
   resize: vertical;
@@ -24,7 +25,7 @@
 
 .channel-form-hint {
   margin: 0.35rem 0 0;
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
 }
 
 .channel-settings-fields {
@@ -37,7 +38,7 @@
 .channel-field-help {
   display: block;
   margin-top: 0.2rem;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   font-weight: 400;
 }
 

@@ -30,7 +30,7 @@ export function DeployRepoPicker(props: {
   } = props;
   const accountReady = Boolean(accountId);
   return (
-    <section className="deploy-panel" id="repo-picker">
+    <section className="panel deploy-panel" id="repo-picker">
       <h2>Pick a repository</h2>
       <p className="muted">
         Repos you own or belong to (org / collaborator). Filter as you type.

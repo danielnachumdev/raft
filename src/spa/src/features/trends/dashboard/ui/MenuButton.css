@@ -43,7 +43,7 @@
   padding: 0.3rem;
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-panel);
   box-shadow: 0 10px 28px var(--shadow-strong);
   transform-origin: top right;
   animation: menu-pop-in 120ms ease-out;

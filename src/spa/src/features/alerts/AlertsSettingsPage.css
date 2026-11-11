@@ -116,13 +116,20 @@
 
 .alert-form .linkish {
   display: inline;
+  min-height: 0;
   padding: 0;
   border: 0;
   background: none;
-  color: var(--accent, var(--link, #2563eb));
+  color: var(--accent);
   font: inherit;
   text-decoration: underline;
   cursor: pointer;
+}
+
+.alert-form .linkish:hover:not(:disabled) {
+  color: var(--accent-hover);
+  background: none;
+  border-color: transparent;
 }
 
 .alert-condition-json[aria-invalid="true"] {

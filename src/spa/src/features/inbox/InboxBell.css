@@ -8,10 +8,10 @@
   right: 0.05rem;
   min-width: 1.1rem;
   padding: 0.05rem 0.28rem;
-  border-radius: 0.55rem;
+  border-radius: var(--radius-panel);
   background: var(--danger);
-  color: #fff;
-  font-size: 0.62rem;
+  color: var(--on-accent);
+  font-size: var(--text-xs);
   font-weight: 700;
   line-height: 1.2;
   text-align: center;

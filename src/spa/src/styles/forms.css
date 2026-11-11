@@ -8,7 +8,7 @@
   color: var(--ink);
   background: var(--input);
   border: 1px solid var(--line);
-  border-radius: 0.35rem;
+  border-radius: var(--radius-sm);
   padding: 0.4rem 0.55rem;
   min-width: 0;
   transition: border-color 120ms ease;

@@ -38,6 +38,7 @@
   --font-mono: "IBM Plex Mono", "Consolas", monospace;
   --radius-sm: 0.35rem;
   --radius-control: 0.4rem;
+  --radius-well: 0.45rem;
   --radius-panel: 0.55rem;
   --control-height: 2.25rem;
   --control-height-sm: 1.85rem;

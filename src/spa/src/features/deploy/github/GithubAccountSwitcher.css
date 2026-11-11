@@ -3,6 +3,7 @@
   margin: 0.75rem 0 0;
   padding: 0;
   border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
 }
 
 .gh-account-item {
@@ -35,59 +36,21 @@
 }
 
 .gh-account-tag {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--muted);
 }
 
 .gh-account-tag.is-expired {
-  color: var(--danger, #b42318);
+  color: var(--danger);
 }
 
-.gh-account-delete,
-.gh-account-add {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
+.gh-account-delete {
   margin: 0.35rem 0.45rem 0.35rem 0;
-  padding: 0;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--muted);
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.gh-account-delete:hover:not(:disabled) {
-  border-color: var(--danger, #b42318);
-  color: var(--danger, #b42318);
-  background: var(--muted-bg);
-}
-
-.gh-account-delete:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 
 .gh-account-add-row {
   justify-content: flex-start;
-}
-
-.gh-account-add {
-  width: auto;
-  gap: 0.4rem;
-  margin: 0.35rem 0.45rem;
-  padding: 0 0.55rem;
-  border-radius: 0.35rem;
-  color: var(--accent);
-  font-size: 0.9rem;
-}
-
-.gh-account-add:hover {
-  border-color: var(--line);
-  color: inherit;
-  background: var(--muted-bg);
+  padding: 0.35rem 0.45rem;
 }
 
 .gh-account-plus,

@@ -54,7 +54,7 @@ export function DeploySession(props: {
   }
   if (oauthError) {
     return (
-      <section className="deploy-panel" id="github-oauth-error">
+      <section className="panel deploy-panel" id="github-oauth-error">
         <h2>GitHub authorization failed</h2>
         <p className="error" role="alert" id="oauth-error-message">
           {oauthError}
@@ -86,7 +86,7 @@ export function DeploySession(props: {
     );
   }
   return (
-    <section className="deploy-panel" id="github-login">
+    <section className="panel deploy-panel" id="github-login">
       <h2>Connect GitHub</h2>
       <p className="muted">{session.hint}</p>
       <p className="muted">
