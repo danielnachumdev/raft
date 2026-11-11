@@ -7,7 +7,7 @@
   padding: 0.7rem 0.8rem 0.6rem;
   background: var(--input);
   border: 1px solid var(--line);
-  border-radius: 0.55rem;
+  border-radius: var(--radius-panel);
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,

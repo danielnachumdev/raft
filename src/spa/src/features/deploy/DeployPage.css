@@ -1,22 +1,12 @@
 .deploy-panel {
-  margin: 0 0 1rem;
-  padding: 1rem 1.1rem 1.15rem;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 0.55rem;
   min-width: 0;
   max-width: 100%;
   overflow-wrap: anywhere;
 }
 
-.deploy-panel h2 {
-  margin: 0 0 0.5rem;
-  font-size: 1.05rem;
-}
-
 .deploy-panel h3 {
   margin: 1rem 0 0.35rem;
-  font-size: 0.95rem;
+  font-size: var(--text-md);
 }
 
 .deploy-cta {

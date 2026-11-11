@@ -31,7 +31,7 @@ export function IdFilter(props: {
         <div className="trends-services-actions">
           <button
             type="button"
-            className="trends-clear-all"
+            className="btn-link"
             onClick={props.onClearAll}
             disabled={props.busy || noneSelected || props.items.length === 0}
           >
@@ -39,7 +39,7 @@ export function IdFilter(props: {
           </button>
           <button
             type="button"
-            className="trends-show-all"
+            className="btn-link"
             onClick={props.onShowAll}
             disabled={
               props.busy || props.showingAll || props.items.length === 0

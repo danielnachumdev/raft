@@ -12,7 +12,7 @@ export function GithubAccountSwitcher(props: {
   const hasExpired = accounts.some((a) => a.expired);
 
   return (
-    <section className="deploy-panel" id="github-session">
+    <section className="panel deploy-panel" id="github-session">
       <h2>Connected accounts</h2>
       <p className="muted">{session.hint}</p>
       {hasExpired ? (
@@ -32,7 +32,7 @@ export function GithubAccountSwitcher(props: {
             </div>
             <button
               type="button"
-              className="gh-account-delete"
+              className="btn-icon is-danger gh-account-delete"
               disabled={busy}
               onClick={() => onDeleteOne(account.id)}
               id={`github-delete-${account.id}`}
@@ -45,7 +45,7 @@ export function GithubAccountSwitcher(props: {
         ))}
         <li className="gh-account-item gh-account-add-row">
           <a
-            className="gh-account-add"
+            className="btn btn-sm"
             href={githubLoginHref({ add: true })}
             id="github-add-account"
             title="Add GitHub account"

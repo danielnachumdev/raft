@@ -118,14 +118,13 @@ function SizeField(props: { value: GraphSize; onChange: (s: GraphSize) => void }
   return (
     <div className="trends-field">
       <span>Width</span>
-      <div className="graph-editor-segment" role="radiogroup" aria-label="Graph width">
+      <div className="segmented" role="radiogroup" aria-label="Graph width">
         {(["half", "full"] as GraphSize[]).map((s) => (
           <button
             key={s}
             type="button"
             role="radio"
             aria-checked={props.value === s}
-            className={props.value === s ? "is-on" : ""}
             onClick={() => props.onChange(s)}
           >
             {s === "half" ? "Half" : "Full"}

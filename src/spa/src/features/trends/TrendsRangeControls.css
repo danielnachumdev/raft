@@ -32,7 +32,7 @@
 }
 
 .trends-range-limit {
-  color: var(--warn, #9a3412);
+  color: var(--warn);
 }
 
 @media (min-width: 520px) {

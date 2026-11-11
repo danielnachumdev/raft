@@ -19,7 +19,7 @@ export function DashboardToolbar(props: {
   const showPicker = props.showPicker !== false;
   const showAdd = props.showAdd !== false;
   return (
-    <div className="trends-toolbar" role="toolbar" aria-label="Dashboard controls">
+    <div className="toolbar trends-toolbar" role="toolbar" aria-label="Dashboard controls">
       {showPicker ? <DashboardPicker api={props.api} /> : null}
       <div className="trends-toolbar-range">
         <TrendsRangeControls

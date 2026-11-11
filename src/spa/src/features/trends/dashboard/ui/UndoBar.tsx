@@ -9,11 +9,11 @@ export function UndoBar(props: {
 }) {
   if (!props.removed) return null;
   return (
-    <div className="trends-undo" role="status">
+    <div className="callout trends-undo" role="status">
       <span>
         Removed <strong>{graphTitle(props.removed.panel)}</strong>.
       </span>
-      <button type="button" className="trends-undo-btn" onClick={props.onUndo}>
+      <button type="button" className="btn-link" onClick={props.onUndo}>
         Undo
       </button>
       <button

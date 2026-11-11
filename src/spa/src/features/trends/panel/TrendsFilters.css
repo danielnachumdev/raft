@@ -28,27 +28,6 @@
   min-width: 0;
 }
 
-.trends-show-all,
-.trends-clear-all {
-  border: none;
-  background: transparent;
-  color: var(--accent);
-  font: inherit;
-  font-size: 0.82rem;
-  padding: 0;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
-}
-
-.trends-show-all:disabled,
-.trends-clear-all:disabled {
-  color: var(--muted);
-  text-decoration: none;
-  cursor: default;
-  opacity: 0.7;
-}
-
 .trends-services-list {
   display: flex;
   flex-direction: column;

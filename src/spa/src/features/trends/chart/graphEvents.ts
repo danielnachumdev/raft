@@ -19,17 +19,17 @@ const RAFT_LEVEL_KINDS = new Set([
   "gate_redeploy",
 ]);
 
-/** Hex strokes (SVG attrs do not always resolve CSS variables). */
+/** Hex strokes matching design tokens (SVG attrs do not resolve CSS vars). */
 const KIND_STROKE: Record<string, string> = {
-  deployment: "#0f6b5c",
-  service_up: "#1a6b45",
-  service_down: "#8b2e1f",
-  scaling: "#3d5a6c",
-  up: "#0e7490",
-  down: "#9a3412",
-  update: "#a16207",
-  gate_redeploy: "#1e3a5f",
-};
+  deployment: "#0f6b5c", // --accent
+  service_up: "#1a6b45", // --ok
+  service_down: "#8b2e1f", // --danger
+  scaling: "#3d5a6c", // --idle
+  up: "#3d5a6c", // --idle
+  down: "#8a6412", // --warn
+  update: "#8a6412", // --warn
+  gate_redeploy: "#3d5a6c", // --idle
+}
 
 /** Keep events that apply to the plotted series (or raft-level / global). */
 export function eventsForSeries(

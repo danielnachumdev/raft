@@ -9,6 +9,19 @@ export function statusToneForCode(status: number): RequestStatusTone {
   return "muted";
 }
 
+/** Shared ``.chip`` classes for an HTTP status cell. */
+export function httpStatusChipClass(tone: RequestStatusTone): string {
+  const toneClass =
+    tone === "ok"
+      ? "chip-ok"
+      : tone === "warn"
+        ? "chip-warn"
+        : tone === "bad"
+          ? "chip-bad"
+          : "";
+  return ["chip", "http-requests-status", toneClass].filter(Boolean).join(" ");
+}
+
 /** Compact cell time: ``HH:MM:SS`` today, ``Oct 18 15:10`` on earlier days. */
 export function formatRequestTime(ts: string | null, now: number = Date.now()): string {
   if (!ts) return "—";

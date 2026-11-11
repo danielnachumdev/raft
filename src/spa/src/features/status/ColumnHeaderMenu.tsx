@@ -194,7 +194,7 @@ function ColumnMenuPanel(props: {
         </label>
         <button
           type="button"
-          className="col-menu-clear"
+          className="btn-link"
           disabled={!value.trim()}
           onClick={() => applyFilter(op, "")}
         >

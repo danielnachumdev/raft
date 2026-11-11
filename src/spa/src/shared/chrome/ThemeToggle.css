@@ -3,19 +3,22 @@
   align-items: center;
   gap: 0.35rem;
   margin: 0;
-  padding: 0.3rem 0.4rem;
+  padding: 0.3rem 0.45rem;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   background: var(--panel);
   color: var(--muted);
   cursor: pointer;
   font: inherit;
   line-height: 1;
+  box-shadow: none;
+  appearance: none;
 }
 
 .theme-toggle:hover {
   border-color: var(--accent);
   color: var(--ink);
+  background: var(--row-hover);
 }
 
 .theme-toggle:focus-visible {
@@ -27,7 +30,9 @@
   display: inline-flex;
   color: var(--muted);
   opacity: 0.55;
-  transition: opacity 0.15s ease, color 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease;
 }
 
 .theme-toggle:not(.is-dark) .theme-toggle__sun,
@@ -40,7 +45,7 @@
   position: relative;
   width: 1.85rem;
   height: 1rem;
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   background: var(--muted-bg);
   border: 1px solid var(--line);
   flex-shrink: 0;

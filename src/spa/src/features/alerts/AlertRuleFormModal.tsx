@@ -155,7 +155,7 @@ export function AlertRuleFormModal(props: Props) {
                 {props.onOpenSyntax ? (
                   <button
                     type="button"
-                    className="linkish"
+                    className="btn btn-ghost btn-sm linkish"
                     id="alert-condition-syntax"
                     disabled={props.busy}
                     onClick={props.onOpenSyntax}

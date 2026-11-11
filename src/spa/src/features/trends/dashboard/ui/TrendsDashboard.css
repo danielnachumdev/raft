@@ -12,15 +12,8 @@
 }
 
 .trends-toolbar {
-  display: flex;
-  flex-wrap: wrap;
   align-items: flex-end;
   gap: 0.75rem 1rem;
-  padding: 0.7rem 0.8rem;
-  margin-bottom: 0.9rem;
-  background: var(--muted-bg);
-  border: 1px solid var(--line);
-  border-radius: 0.55rem;
 }
 
 .trends-dash-picker {
@@ -139,24 +132,11 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin: 0 0 0.85rem;
-  padding: 0.5rem 0.8rem;
-  border: 1px solid var(--idle-border);
-  border-radius: 0.5rem;
+  border-color: var(--idle-border);
+  border-left-color: var(--idle);
   background: var(--idle-bg);
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
   animation: trends-cell-in 180ms ease-out both;
-}
-
-.trends-undo-btn {
-  border: none;
-  background: none;
-  color: var(--accent);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
 }
 
 .trends-undo-close {

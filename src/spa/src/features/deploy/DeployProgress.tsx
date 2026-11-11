@@ -4,7 +4,7 @@ import type { DeployJob } from "./github/index.ts";
 export function DeployProgress(props: { job: DeployJob }) {
   const { job } = props;
   return (
-    <section className="deploy-panel" id="deploy-progress">
+    <section className="panel deploy-panel" id="deploy-progress">
       <h2>Deploy progress</h2>
       <p>
         Status: <strong id="deploy-status">{job.status}</strong>

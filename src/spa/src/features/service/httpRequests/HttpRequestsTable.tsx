@@ -10,6 +10,7 @@ import {
   formatLatencyMs,
   formatRequestTime,
   formatRequestTimeFull,
+  httpStatusChipClass,
   statusToneForCode,
 } from "./statusClass";
 import { useColumnResize } from "./useColumnResize";
@@ -156,7 +157,7 @@ function HttpRequestRowView(props: {
         <code title={path}>{path}</code>
       </td>
       <td>
-        <span className={`http-requests-status tone-${tone}`}>{row.status}</span>
+        <span className={httpStatusChipClass(tone)}>{row.status}</span>
       </td>
       <td>{formatLatencyMs(row.duration_ms)}</td>
       <td>

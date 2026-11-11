@@ -23,7 +23,7 @@ export function StatusPanelControls(props: {
           </span>
           <button
             type="button"
-            className="status-clear"
+            className="btn-link"
             onClick={props.onClear}
           >
             Clear filters
@@ -36,7 +36,7 @@ export function StatusPanelControls(props: {
             <button
               key={key}
               type="button"
-              className="column-filter-chip"
+              className="chip column-filter-chip"
               onClick={() => props.onClearColumnFilter(key)}
               title="Clear column filter"
             >

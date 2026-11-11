@@ -22,7 +22,7 @@ export function ServiceQuickActions(props: Props) {
     <div className="quick-actions" onClick={stopRowNav} onKeyDown={stopRowNav}>
       <Link
         to={serviceLogsPath(props.service)}
-        className="quick-action"
+        className="btn-icon"
         aria-label={`View logs for ${props.name}`}
         title="Logs"
         onClick={stopRowNav}
@@ -77,8 +77,8 @@ function QuickActionButton(props: {
 }) {
   const loading = props.busy === props.action;
   const className = [
-    "quick-action",
-    props.danger ? "quick-action-danger" : "",
+    "btn-icon",
+    props.danger ? "is-danger" : "",
     loading ? "is-loading" : "",
   ]
     .filter(Boolean)

@@ -21,7 +21,7 @@
   max-height: min(36rem, 70vh);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: var(--surface-2, var(--bg));
+  background: var(--muted-bg);
   font-family: var(--font-mono);
   font-size: 0.8rem;
   line-height: 1.45;

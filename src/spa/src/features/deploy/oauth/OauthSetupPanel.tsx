@@ -55,7 +55,7 @@ export function OauthSetupPanel(props: {
   };
 
   return (
-    <section className="deploy-panel oauth-setup" id="github-oauth-setup">
+    <section className="panel deploy-panel oauth-setup" id="github-oauth-setup">
       <h2>Set up GitHub OAuth</h2>
       <TemporaryOverrideBanner
         doc="settings.yaml"
