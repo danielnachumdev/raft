@@ -96,6 +96,10 @@ class DashboardComposeYaml:
     def _data_home_volumes() -> list[str]:
         return [
             "      - .:/raft:ro",
+            # Mutative apply/render from the dashboard needs these writes.
+            "      - ./compose.yaml:/raft/compose.yaml",
+            "      - ./host/gate-nginx.fingerprint:/raft/host/gate-nginx.fingerprint",
+            "      - ./host/router-nginx.fingerprint:/raft/host/router-nginx.fingerprint",
             "      - ./host/settings.yaml:/raft/host/settings.yaml",
             "      - ./host/locks:/raft/host/locks",
             "      - ./host/firewall:/raft/host/firewall",
@@ -107,6 +111,7 @@ class DashboardComposeYaml:
             "      - ./host/logs:/raft/host/logs",
             "      - ./host/acme:/raft/host/acme",
             "      - ./host/secrets:/raft/host/secrets",
+            "      - ./host/inbox:/raft/host/inbox",
             "      - ./services:/raft/services",
             "      - ./generated:/raft/generated",
         ]

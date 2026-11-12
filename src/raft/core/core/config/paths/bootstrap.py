@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Optional
 
+from .bind_mount_fs import BindMountFs
 from .constants import DATA_DIR_RELS, GENERATED_DIRNAME
 from .home import RaftHome
 from .package_root import PackageRootFinder
@@ -16,6 +17,7 @@ class RaftHomeBootstrap:
         self._home = RaftHome()
         self._finder = PackageRootFinder()
         self._templates = ProductTemplateSync()
+        self._fs = BindMountFs()
 
     def ensure(
         self,
@@ -24,7 +26,7 @@ class RaftHomeBootstrap:
         package_root: Optional[Path] = None,
     ) -> Path:
         root = home if home is not None else self._home.resolve()
-        root.mkdir(parents=True, exist_ok=True)
+        self._fs.mkdir(root)
         self._ensure_data_dirs(root)
         pkg = package_root if package_root is not None else self._finder.find()
         self._templates.sync(root, pkg)
@@ -33,7 +35,7 @@ class RaftHomeBootstrap:
 
     def _ensure_data_dirs(self, root: Path) -> None:
         for rel in DATA_DIR_RELS:
-            (root / rel).mkdir(parents=True, exist_ok=True)
+            self._fs.mkdir(root / rel)
 
     def _ensure_compose_stubs(self, root: Path) -> None:
         gen = root / GENERATED_DIRNAME
@@ -48,10 +50,15 @@ class RaftHomeBootstrap:
             "services: {}\n",
         )
 
-    @staticmethod
-    def _write_stub_if_missing(path: Path, text: str) -> None:
-        if not path.is_file():
+    def _write_stub_if_missing(self, path: Path, text: str) -> None:
+        if path.is_file():
+            return
+        try:
             path.write_text(text, encoding="utf-8")
+        except OSError:
+            if path.is_file():
+                return
+            raise
 
     @staticmethod
     def _edge_stub() -> str:

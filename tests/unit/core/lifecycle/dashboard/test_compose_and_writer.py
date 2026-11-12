@@ -34,6 +34,14 @@ class TestDashboardComposeAndWriter(RaftTestCase):
         assert "/etc/hostname:/etc/host_hostname:ro" in text
         assert "RAFT_HOST_DOCKER_BIN" in text
         assert "RAFT_HOST_DOCKER_PLUGIN_DIR" in text
+        assert ".:/raft:ro" in text
+        assert "./compose.yaml:/raft/compose.yaml" in text
+        assert "./host/gate-nginx.fingerprint:/raft/host/gate-nginx.fingerprint" in text
+        assert (
+            "./host/router-nginx.fingerprint:/raft/host/router-nginx.fingerprint"
+            in text
+        )
+        assert "./host/inbox:/raft/host/inbox" in text
         assert "RAFT_SERVE_BIND" not in text
         assert "oauth.env" not in text
         assert 'cpus: "1.0"' in text
