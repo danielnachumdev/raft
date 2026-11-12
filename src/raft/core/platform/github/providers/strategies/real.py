@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from raft.core.core.errors.cta import OperatorError
-from raft.core.core.models.manifest import CONTRACT_REL_PATH
+from raft.core.core.models.contract_path import ContractRelPath
 from ...gateway import GithubApiGateway, GithubHttpError
 from ..provider import GithubProvider
 from ..repo import GithubRepo, filter_repos
@@ -21,22 +21,33 @@ class RealGithubProvider(GithubProvider):
 
     def __init__(self, *, gateway: Optional[GithubApiGateway] = None) -> None:
         self._http = gateway or GithubApiGateway()
+        self._paths = ContractRelPath()
 
     def list_repos(self, token: str, *, query: str = "") -> List[GithubRepo]:
         return filter_repos(self._list_user_repos(token), query)
 
-    def fetch_manifest(self, token: str, full_name: str, ref: str) -> str:
-        raw = self._manifest_body(token, full_name, ref)
+    def fetch_manifest(
+        self,
+        token: str,
+        full_name: str,
+        ref: str,
+        *,
+        path: str = "",
+    ) -> str:
+        rel = self._paths.normalize(path)
+        raw = self._manifest_body(token, full_name, ref, rel=rel)
         if not raw.strip():
             raise OperatorError(
-                f"empty {CONTRACT_REL_PATH.as_posix()} in {full_name}@{ref}\n"
+                f"empty {rel} in {full_name}@{ref}\n"
                 f"Fix: put a valid App manifest at that path",
                 has_fix=False,
             )
         return raw
 
-    def _manifest_body(self, token: str, full_name: str, ref: str) -> str:
-        enc = urllib.parse.quote(CONTRACT_REL_PATH.as_posix())
+    def _manifest_body(
+        self, token: str, full_name: str, ref: str, *, rel: str
+    ) -> str:
+        enc = urllib.parse.quote(rel)
         url = f"{_API}/repos/{full_name}/contents/{enc}?ref={urllib.parse.quote(ref)}"
         try:
             return self._http.get(
@@ -48,8 +59,9 @@ class RealGithubProvider(GithubProvider):
         except GithubHttpError as exc:
             if exc.code == 404:
                 raise OperatorError(
-                    f"no {CONTRACT_REL_PATH.as_posix()} at that ref (or repo not visible)\n"
-                    f"Fix: add .raft/app.yaml on the selected ref",
+                    f"no {rel} at that ref (or repo not visible)\n"
+                    f"Fix: set the manifest path to the App yaml in the repo, "
+                    f"or add {ContractRelPath.DEFAULT} on the selected ref",
                     has_fix=False,
                 ) from exc
             raise self._api_error(exc) from exc

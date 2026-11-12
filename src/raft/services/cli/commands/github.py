@@ -148,9 +148,17 @@ class GithubCLI:
                 f"default={row.get('default_branch')}"
             )
 
-    def deploy(self, full_name: str, ref: str = "", json: bool = False) -> None:
+    def deploy(
+        self,
+        full_name: str,
+        ref: str = "",
+        manifest_path: str = "",
+        json: bool = False,
+    ) -> None:
         """Start a deploy-assist job for ``owner/repo``."""
-        job = self._assist.start_deploy(full_name=full_name, ref=ref)
+        job = self._assist.start_deploy(
+            full_name=full_name, ref=ref, manifest_path=manifest_path
+        )
         if json:
             self._emit(job, as_json=True)
             return

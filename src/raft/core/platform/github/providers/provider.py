@@ -15,8 +15,15 @@ class GithubProvider(ABC):
         """Return repos visible to ``token``, optionally filtered by ``query``."""
 
     @abstractmethod
-    def fetch_manifest(self, token: str, full_name: str, ref: str) -> str:
-        """Return raw ``.raft/app.yaml`` text for ``full_name`` at ``ref``."""
+    def fetch_manifest(
+        self,
+        token: str,
+        full_name: str,
+        ref: str,
+        *,
+        path: str = "",
+    ) -> str:
+        """Return raw App manifest text for ``full_name`` at ``ref``."""
 
     @abstractmethod
     def resolve_local_tree(self, full_name: str) -> Optional[Path]:

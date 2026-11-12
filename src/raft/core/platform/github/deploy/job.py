@@ -15,6 +15,7 @@ from raft.core.lifecycle.apply.service import AppApply
 from raft.core.platform.auth.manager import GitAuthManager
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.app_document import AppDocument
+from raft.core.core.models.contract_path import ContractRelPath
 from raft.core.core.models.stack import Stack, load_stack
 from raft.core.observe.notify.control_events import ControlPlaneEvents
 from raft.core.observe.notify.notifier import Notifier
@@ -45,16 +46,28 @@ class GithubDeployRunner:
         self._next = DeployNextSteps()
         self._ci = ci or GithubCiPrSetup()
         self._notifier = notifier if notifier is not None else Notifier(stack.root)
+        self._paths = ContractRelPath()
 
-    def start(self, account: GithubAccount, repo: GithubRepo, ref: str) -> DeployJob:
-        # Coalesce: one in-flight deploy per full_name (serve is single-process).
+    def start(
+        self,
+        account: GithubAccount,
+        repo: GithubRepo,
+        ref: str,
+        *,
+        manifest_path: str = "",
+    ) -> DeployJob:
+        # Coalesce: one in-flight deploy per full_name+manifest (serve is single-process).
+        rel = self._paths.normalize(manifest_path)
         job, coalesced = self._store.claim_or_create(
-            repo.full_name, ref or repo.default_branch
+            repo.full_name,
+            ref or repo.default_branch,
+            manifest_path=rel,
         )
         if coalesced:
             logger.info(
-                "github deploy coalesce full_name=%s job_id=%s",
+                "github deploy coalesce full_name=%s path=%s job_id=%s",
                 repo.full_name,
+                rel,
                 job.id,
             )
             return job
@@ -92,17 +105,20 @@ class GithubDeployRunner:
         )
 
     def _execute(self, job: DeployJob, account: GithubAccount, repo: GithubRepo) -> None:
+        rel = job.manifest_path or ContractRelPath.DEFAULT
         self._step(job, "Fetch App manifest", "running")
-        text = self._provider.fetch_manifest(account.access_token, repo.full_name, job.ref)
-        self._step(job, "Fetch App manifest", "ok", "found .raft/app.yaml")
+        text = self._provider.fetch_manifest(
+            account.access_token, repo.full_name, job.ref, path=rel
+        )
+        self._step(job, "Fetch App manifest", "ok", f"found {rel}")
         data = self._parse_yaml(text, repo.full_name)
         app_name = self._manifest_name(data)
         job.app_name = app_name
         local = self._provider.resolve_local_tree(repo.full_name)
         if local is not None:
-            self._deploy_local(job, local, data, app_name)
+            self._deploy_local(job, local, data, app_name, rel=rel)
         else:
-            self._deploy_git(job, account, repo, app_name)
+            self._deploy_git(job, account, repo, app_name, rel=rel)
         self._setup_ci_pr(job, account, repo)
         self._fill_next_steps(job, data)
 
@@ -119,7 +135,13 @@ class GithubDeployRunner:
             self._step(job, "CI workflow PR", "failed", str(exc)[:200])
 
     def _deploy_local(
-        self, job: DeployJob, tree: Path, data: dict, app_name: str
+        self,
+        job: DeployJob,
+        tree: Path,
+        data: dict,
+        app_name: str,
+        *,
+        rel: str,
     ) -> None:
         self._step(job, "Stage local tree", "running")
         dest = ServicePaths(self._stack.root, app_name).checkout()
@@ -129,20 +151,27 @@ class GithubDeployRunner:
         shutil.copytree(tree, dest)
         self._step(job, "Stage local tree", "ok", str(dest))
         self._step(job, "Apply + deploy", "running")
-        manifest = dest / ".raft" / "app.yaml"
+        manifest = self._paths.under(dest, rel)
+        manifest.parent.mkdir(parents=True, exist_ok=True)
         self._rewrite_local_manifest(manifest, data, app_name)
         AppApply(load_stack(self._stack.root)).apply_file(manifest, deploy=True)
         self._step(job, "Apply + deploy", "ok", f"applied {app_name}")
 
     def _deploy_git(
-        self, job: DeployJob, account: GithubAccount, repo: GithubRepo, app_name: str
+        self,
+        job: DeployJob,
+        account: GithubAccount,
+        repo: GithubRepo,
+        app_name: str,
+        *,
+        rel: str,
     ) -> None:
         del account
         fp = self._prepare_deploy_key(job, repo, app_name)
         self._step(job, "Apply + deploy", "running")
         try:
             AppApply(load_stack(self._stack.root)).apply_git(
-                repo.ssh_url, ref=job.ref, deploy=True
+                repo.ssh_url, ref=job.ref, deploy=True, manifest_path=rel
             )
         except OperatorError as exc:
             self._auth_failure_steps(job, repo, fp)

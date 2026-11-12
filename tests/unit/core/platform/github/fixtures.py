@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from raft.core.core.errors.cta import OperatorError
-from raft.core.core.models.manifest import CONTRACT_REL_PATH
+from raft.core.core.models.contract_path import ContractRelPath
 from raft.core.platform.github.accounts import GithubAccount
 from raft.core.platform.github.providers import GithubProvider, GithubRepo, filter_repos
 
@@ -68,7 +68,14 @@ class StubLocalGithubProvider(GithubProvider):
         del token
         return filter_repos([self._repo], query)
 
-    def fetch_manifest(self, token: str, full_name: str, ref: str) -> str:
+    def fetch_manifest(
+        self,
+        token: str,
+        full_name: str,
+        ref: str,
+        *,
+        path: str = "",
+    ) -> str:
         del token, ref
         tree = self.resolve_local_tree(full_name)
         if tree is None:
@@ -76,14 +83,15 @@ class StubLocalGithubProvider(GithubProvider):
                 f"unknown repo {full_name!r}\nFix: pick a listed repo",
                 has_fix=False,
             )
-        path = tree / CONTRACT_REL_PATH
-        if not path.is_file():
+        rel = ContractRelPath().normalize(path)
+        file_path = ContractRelPath().under(tree, rel)
+        if not file_path.is_file():
             raise OperatorError(
-                f"no {CONTRACT_REL_PATH.as_posix()} in {full_name}\n"
+                f"no {rel} in {full_name}\n"
                 f"Fix: add that file on the default branch",
                 has_fix=False,
             )
-        return path.read_text(encoding="utf-8")
+        return file_path.read_text(encoding="utf-8")
 
     def resolve_local_tree(self, full_name: str) -> Optional[Path]:
         if full_name != self._full_name:

@@ -14,6 +14,7 @@ from raft.core.core.errors.domain import DomainErrors
 from raft.core.platform.locking import AppAndStackLocks, AppDeployLock
 from raft.core.core.models.app_document import AppDocument
 from raft.core.core.models.depends_cycle import DependsOnCycleGuard
+from raft.core.core.models.contract_path import ContractRelPath
 from raft.core.core.models.manifest import CONTRACT_REL_PATH
 from raft.core.core.models.registry import AppRegistry
 from raft.core.core.models.stack import Stack, load_stack
@@ -27,6 +28,7 @@ class AppApply:
     def __init__(self, stack: Stack) -> None:
         self.stack = stack
         self.sh = Shell(stack.root)
+        self._paths = ContractRelPath()
 
     def apply_file(
         self,
@@ -57,10 +59,12 @@ class AppApply:
         deploy: bool = True,
         force_sync: bool = False,
         env: Optional[Mapping[str, str]] = None,
+        manifest_path: Optional[str] = None,
     ) -> str:
+        rel = self._paths.normalize(manifest_path)
         tmp = GitManifestCheckout(self.stack, self.sh).checkout(repo, ref)
         try:
-            data, manifest = self._parse_git_yaml(tmp, repo, ref, env)
+            data, manifest = self._parse_git_yaml(tmp, repo, ref, env, rel=rel)
             self._stamp_git_spec(data, repo, ref)
             return self._register_manifest(
                 data,
@@ -126,33 +130,37 @@ class AppApply:
         repo: str,
         ref: str,
         env: Optional[Mapping[str, str]],
+        *,
+        rel: str,
     ) -> tuple[dict[str, Any], Path]:
-        manifest = self._require_git_manifest(tmp, repo, ref)
+        manifest = self._require_git_manifest(tmp, repo, ref, rel=rel)
         try:
             data = ManifestYamlLoader(env=self._expansion_env(env)).load(
                 manifest.read_text(encoding="utf-8"),
-                path=f"{repo}@{ref}:{CONTRACT_REL_PATH.as_posix()}",
+                path=f"{repo}@{ref}:{rel}",
             )
         except yaml.YAMLError as exc:
             raise OperatorError(
                 f"invalid App manifest YAML in {repo}@{ref}: {exc}\n"
-                f"Fix: repair .raft/app.yaml in the repo"
+                f"Fix: repair {rel} in the repo"
             ) from exc
         if not isinstance(data, dict):
             raise OperatorError(
                 f"app manifest must be a mapping in {repo}@{ref}\n"
-                f"Fix: repair .raft/app.yaml in the repo"
+                f"Fix: repair {rel} in the repo"
             )
         return data, manifest
 
-    @staticmethod
-    def _require_git_manifest(tmp: Path, repo: str, ref: str) -> Path:
-        manifest = AppDocument.contract_path(tmp)
+    def _require_git_manifest(
+        self, tmp: Path, repo: str, ref: str, *, rel: str
+    ) -> Path:
+        manifest = self._paths.under(tmp, rel)
         if manifest.is_file():
             return manifest
         raise OperatorError(
-            f"no {CONTRACT_REL_PATH.as_posix()} in {repo}@{ref}\n"
-            f"Fix: add that file on the ref, or: raft apply --git {repo} --ref <other>"
+            f"no {rel} in {repo}@{ref}\n"
+            f"Fix: add that file on the ref, or pass --file / a different "
+            f"manifest path (default {CONTRACT_REL_PATH.as_posix()})"
         )
 
     @staticmethod

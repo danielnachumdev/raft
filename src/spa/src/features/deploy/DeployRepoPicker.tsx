@@ -11,6 +11,8 @@ export function DeployRepoPicker(props: {
   onSelect: (r: GithubRepo) => void;
   refValue: string;
   onRef: (r: string) => void;
+  manifestPath: string;
+  onManifestPath: (path: string) => void;
   busy: boolean;
   onDeploy: () => void;
 }) {
@@ -25,6 +27,8 @@ export function DeployRepoPicker(props: {
     onSelect,
     refValue,
     onRef,
+    manifestPath,
+    onManifestPath,
     busy,
     onDeploy,
   } = props;
@@ -104,11 +108,26 @@ export function DeployRepoPicker(props: {
               id="deploy-ref"
             />
           </label>
-          <p className="muted">Uses the standard service manifest.</p>
+          <label className="field">
+            Manifest path
+            <input
+              type="text"
+              value={manifestPath}
+              onChange={(e) => onManifestPath(e.target.value)}
+              id="deploy-manifest-path"
+              placeholder=".raft/app.yaml"
+              spellCheck={false}
+              autoComplete="off"
+            />
+          </label>
+          <p className="muted">
+            Repo-relative path to the App manifest (default{" "}
+            <code>.raft/app.yaml</code>).
+          </p>
           <button
             type="button"
             className="btn btn-primary deploy-cta"
-            disabled={busy}
+            disabled={busy || !manifestPath.trim()}
             onClick={onDeploy}
             id="deploy-confirm-btn"
           >

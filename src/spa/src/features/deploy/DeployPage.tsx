@@ -21,6 +21,7 @@ import {
   selectGithubAccount,
   startGithubDeploy,
   usableAccounts,
+  DEFAULT_MANIFEST_PATH,
   type DeployJob,
   type GithubOauthConfig,
   type GithubRepo,
@@ -45,6 +46,7 @@ export function DeployPage() {
   const [allRepos, setAllRepos] = useState<GithubRepo[]>([]);
   const [selected, setSelected] = useState<GithubRepo | null>(null);
   const [ref, setRef] = useState("main");
+  const [manifestPath, setManifestPath] = useState(DEFAULT_MANIFEST_PATH);
   const [job, setJob] = useState<DeployJob | null>(null);
   const [busy, setBusy] = useState(false);
   const [viewAsId, setViewAsId] = useState("");
@@ -71,6 +73,7 @@ export function DeployPage() {
     setJob(null);
     setAllRepos([]);
     setQuery("");
+    setManifestPath(DEFAULT_MANIFEST_PATH);
   }, []);
 
   useEffect(() => {
@@ -135,7 +138,9 @@ export function DeployPage() {
     setBusy(true);
     setError(null);
     try {
-      setJob(await startGithubDeploy(selected.full_name, ref));
+      setJob(
+        await startGithubDeploy(selected.full_name, ref, manifestPath),
+      );
     } catch (err) {
       setError(userFacingError(err, "Deploy failed to start"));
     } finally {
@@ -246,6 +251,8 @@ export function DeployPage() {
             onSelect={onSelect}
             refValue={ref}
             onRef={setRef}
+            manifestPath={manifestPath}
+            onManifestPath={setManifestPath}
             busy={busy}
             onDeploy={() => void onDeploy()}
           />

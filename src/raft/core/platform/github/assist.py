@@ -108,7 +108,7 @@ class GithubAssistService:
         return {"repos": [self._repo_row(r) for r in rows]}
 
     def start_deploy(
-        self, *, full_name: str, ref: str = ""
+        self, *, full_name: str, ref: str = "", manifest_path: str = ""
     ) -> Dict[str, Any]:
         account = self._active.require()
         name = full_name.strip()
@@ -119,7 +119,12 @@ class GithubAssistService:
                 has_fix=False,
             )
         repo = self._resolve_repo(account.access_token, name)
-        job = self._runner.start(account, repo, ref.strip() or repo.default_branch)
+        job = self._runner.start(
+            account,
+            repo,
+            ref.strip() or repo.default_branch,
+            manifest_path=manifest_path,
+        )
         return job.to_dict()
 
     def deploy_status(self, job_id: str) -> Dict[str, Any]:

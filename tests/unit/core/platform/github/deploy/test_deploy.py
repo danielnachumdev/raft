@@ -61,6 +61,23 @@ class TestDeployJobStore(RaftTestCase):
         assert job.id != other.id
         assert store.active_for("demo/api") is job
 
+    def test_claim_separates_manifest_paths(self) -> None:
+        store = DeployJobStore()
+        first, coalesced = store.claim_or_create(
+            "demo/api", "main", manifest_path="a/.raft/app.yaml"
+        )
+        assert coalesced is False
+        second, again = store.claim_or_create(
+            "demo/api", "main", manifest_path="b/.raft/app.yaml"
+        )
+        assert again is False
+        assert second.id != first.id
+        same, coalesced_same = store.claim_or_create(
+            "demo/api", "main", manifest_path="a/.raft/app.yaml"
+        )
+        assert coalesced_same is True
+        assert same.id == first.id
+
 
 class TestGithubDeployRunner(RaftTestCase):
     def _wait(self, job: DeployJob) -> None:

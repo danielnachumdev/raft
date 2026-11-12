@@ -59,6 +59,20 @@ class TestRealGithubProvider(RaftTestCase):
         with pytest.raises(OperatorError, match="empty"):
             provider.fetch_manifest("tok", "a/b", "main")
 
+    def test_manifest_custom_path_in_contents_url(self) -> None:
+        gateway = MagicMock(spec=GithubApiGateway)
+        gateway.bearer_headers = GithubApiGateway.bearer_headers
+        gateway.get.return_value = MagicMock(body="apiVersion: raft/v1\n")
+        provider = RealGithubProvider(gateway=gateway)
+        provider.fetch_manifest(
+            "tok",
+            "a/b",
+            "main",
+            path="apps/demo/.raft/app.yaml",
+        )
+        url = gateway.get.call_args.args[0]
+        assert "apps/demo/.raft/app.yaml" in url
+
     def test_next_link_parsing(self) -> None:
         assert RealGithubProvider._next_link(None) is None
         link = '<https://api.github.com/x?page=2>; rel="next", <u>; rel="prev"'

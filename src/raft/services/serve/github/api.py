@@ -133,8 +133,13 @@ class ServeGithubApi:
     def api_deploy(self, body: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
         full_name = str(body.get("full_name") or "").strip()
         ref = str(body.get("ref") or "").strip()
+        manifest_path = str(
+            body.get("manifest_path") or body.get("manifestPath") or ""
+        ).strip()
         try:
-            return self._assist.start_deploy(full_name=full_name, ref=ref)
+            return self._assist.start_deploy(
+                full_name=full_name, ref=ref, manifest_path=manifest_path
+            )
         except OperatorError as exc:
             raise self._http(exc) from exc
 

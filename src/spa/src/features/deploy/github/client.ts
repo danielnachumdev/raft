@@ -145,11 +145,16 @@ export async function fetchGithubRepos(): Promise<GithubRepo[]> {
 export async function startGithubDeploy(
   fullName: string,
   ref: string,
+  manifestPath = ".raft/app.yaml",
 ): Promise<DeployJob> {
   const res = await fetch("/api/github/deploy", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ full_name: fullName, ref }),
+    body: JSON.stringify({
+      full_name: fullName,
+      ref,
+      manifest_path: manifestPath.trim() || ".raft/app.yaml",
+    }),
   });
   const body = await readJsonBody(res);
   if (!res.ok) {
