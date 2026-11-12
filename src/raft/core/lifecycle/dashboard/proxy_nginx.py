@@ -87,6 +87,7 @@ class DashboardProxyNginx:
             f"{self._public_api(app_port, '/api/dashboard/login')}"
             f"{self._public_api(app_port, '/api/dashboard/logout')}"
             f"{self._public_api(app_port, '/api/dashboard/session')}"
+            f"{self._public_api(app_port, '/api/github/callback')}"
             f"{self.location_update(app_port, auth=auth)}"
             f"{self._location_slash(app_port, auth=auth)}"
             "        location @raft_dashboard_signin {\n"

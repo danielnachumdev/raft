@@ -62,9 +62,11 @@ export function OauthSetupPanel(props: {
         id="github-oauth-temp-override"
       />
       <p className="muted">
-        Create a GitHub OAuth App for this dashboard, then paste the Client ID
-        and Client Secret below. Login later requests scopes{" "}
-        <code>{hints.scopes}</code>.
+        Create a GitHub OAuth App for this ops UI, then paste the Client ID and
+        Client Secret below. The Authorization callback URL must match exactly
+        (public dashboard host when one is set; otherwise{" "}
+        <code>127.0.0.1</code> for localhost serve / SSH tunnel). Login later
+        requests scopes <code>{hints.scopes}</code>.
       </p>
       <ol className="oauth-setup-steps">
         <li>
@@ -78,7 +80,8 @@ export function OauthSetupPanel(props: {
           >
             Create GitHub OAuth App
           </a>
-          . Text fields may be prefilled; if empty, use the values below.
+          . Text fields may be prefilled; if empty, copy the values below
+          exactly.
         </li>
         <FieldStep
           label="Application name"

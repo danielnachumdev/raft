@@ -33,6 +33,7 @@ class TestDashboardOAuth(RaftTestCase):
         assert "X-Forwarded-Proto $raft_fwd_proto" in text
         assert "location = /api/update" in text
         assert "proxy_read_timeout 600s" in text
+        assert "location = /api/github/callback" in text
 
     def test_proxy_cfg_google_and_oidc(self) -> None:
         google = DashboardOAuthProxyCfg().render(self._oauth_cfg())

@@ -6,6 +6,7 @@ from urllib.parse import parse_qs, urlparse
 
 from raft.core.platform.github.oauth import (
     APPLICATION_NAME,
+    APPLICATION_NAME_PUBLIC,
     GithubOauthAppSetup,
 )
 
@@ -19,6 +20,20 @@ class TestGithubOauthAppSetup:
         assert fields["enable_device_flow"] is False
         assert fields["expire_user_access_tokens"] is False
         assert "localhost raft serve" in fields["description"].lower()
+
+    def test_public_fields_use_dashboard_public_host(self) -> None:
+        fields = GithubOauthAppSetup().public_fields(
+            port=8787,
+            public_host="ops.example.com",
+            tls="origin",
+        )
+        assert fields["application_name"] == APPLICATION_NAME_PUBLIC
+        assert fields["homepage_url"] == "https://ops.example.com/"
+        assert (
+            fields["callback_url"]
+            == "https://ops.example.com/api/github/callback"
+        )
+        assert "public raft dashboard" in fields["description"].lower()
 
     def test_create_app_url_prefills_query_params(self) -> None:
         url = GithubOauthAppSetup().create_app_url(

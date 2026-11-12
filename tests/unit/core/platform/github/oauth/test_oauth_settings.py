@@ -64,6 +64,9 @@ class TestGithubOauth(RaftTestCase):
             store,
         )
         assert "github.com/login/oauth/authorize" in oauth.login_url(port=8787)
+        pending = store.get_pending()
+        assert pending is not None
+        assert pending.redirect_uri == "http://127.0.0.1:8787/api/github/callback"
         assert store.public_snapshot()["login"] == "kept"
         with pytest.raises(OperatorError, match="state mismatch"):
             oauth.complete_oauth(code="c", state="wrong")
@@ -71,6 +74,22 @@ class TestGithubOauth(RaftTestCase):
         snap = store.public_snapshot()
         assert {a["login"] for a in snap["accounts"]} == {"kept", "alice"}
         assert snap["active_account_id"] == done.id
+
+    def test_login_url_uses_public_host_callback(self) -> None:
+        store = GithubAccountStore(self.tmp_path)
+        oauth = GithubOauth(
+            GithubServeConfig(client_id="id", client_secret="sec"),
+            store,
+        )
+        url = oauth.login_url(
+            port=8787, public_host="ops.example.com", tls="origin"
+        )
+        assert "redirect_uri=https%3A%2F%2Fops.example.com%2Fapi%2Fgithub%2Fcallback" in url
+        pending = store.get_pending()
+        assert pending is not None
+        assert pending.redirect_uri == (
+            "https://ops.example.com/api/github/callback"
+        )
 
     def test_token_from_payload(self) -> None:
         with pytest.raises(OperatorError, match="access_token"):

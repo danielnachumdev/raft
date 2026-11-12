@@ -62,6 +62,15 @@ class TestCoverageOauth(RaftTestCase):
         ok.__exit__.return_value = False
         with patch("raft.core.platform.github.gateway.urlopen", return_value=ok):
             assert oauth._exchange_code("c") == "tok"
+            assert (
+                oauth._exchange_code(
+                    "c",
+                    redirect_uri="https://ops.example.com/api/github/callback",
+                )
+                == "tok"
+            )
+        url = oauth.login_url(port=9, select_account=True)
+        assert "prompt=select_account" in url
         user = MagicMock()
         user.read.return_value = b'{"login":"bob"}'
         user.status = 200

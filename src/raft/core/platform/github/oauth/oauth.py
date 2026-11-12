@@ -1,4 +1,4 @@
-"""GitHub OAuth App helpers (localhost callback)."""
+"""GitHub OAuth App helpers (localhost or public dashboard callback)."""
 
 import json
 import time
@@ -9,6 +9,7 @@ from raft.core.core.config.settings.types import GithubServeConfig
 from raft.core.core.errors.cta import OperatorError
 from ..accounts import GithubAccount, GithubAccountStore
 from ..gateway import GithubApiGateway, GithubHttpError
+from .public_base import GithubOauthPublicBase
 
 # Least privilege for private listing + Contents/PRs that add Actions workflows.
 # Deploy keys stay manual (no admin:public_key). ``workflow`` is required to
@@ -34,20 +35,30 @@ class GithubOauth:
         self._cfg = cfg
         self._store = store
         self._http = gateway or GithubApiGateway()
+        self._base = GithubOauthPublicBase()
 
     def login_url(
         self,
         *,
         port: int,
-        redirect_path: str = "/api/github/callback",
+        redirect_path: str = GithubOauthPublicBase.REDIRECT_PATH,
         select_account: bool = False,
+        public_host: Optional[str] = None,
+        tls: str = "off",
+        callback_url: Optional[str] = None,
     ) -> str:
         self._require_oauth_creds()
+        redirect_uri = callback_url or self._callback(
+            port=port,
+            redirect_path=redirect_path,
+            public_host=public_host,
+            tls=tls,
+        )
         state = self._store.mint_oauth_state()
-        self._store.set_pending(state)
+        self._store.set_pending(state, redirect_uri=redirect_uri)
         params = {
             "client_id": self._cfg.client_id,
-            "redirect_uri": f"http://127.0.0.1:{port}{redirect_path}",
+            "redirect_uri": redirect_uri,
             "scope": GITHUB_LOGIN_SCOPES,
             "state": state,
         }
@@ -57,14 +68,26 @@ class GithubOauth:
 
     def complete_oauth(self, *, code: str, state: str) -> GithubAccount:
         self._require_oauth_creds()
-        self._require_pending_state(state)
-        token = self._exchange_code(code)
+        pending = self._require_pending_state(state)
+        token = self._exchange_code(code, redirect_uri=pending.redirect_uri)
         login, github_user_id = self._fetch_user(token)
         return self._store.upsert_account(
             self._new_account(login, token, github_user_id=github_user_id)
         )
 
-    def _require_pending_state(self, state: str) -> None:
+    def _callback(
+        self,
+        *,
+        port: int,
+        redirect_path: str,
+        public_host: Optional[str],
+        tls: str,
+    ) -> str:
+        base = self._base.base(port=port, public_host=public_host, tls=tls)
+        path = redirect_path if redirect_path.startswith("/") else f"/{redirect_path}"
+        return f"{base}{path}"
+
+    def _require_pending_state(self, state: str):
         pending = self._store.get_pending()
         if pending is None or pending.state != state:
             raise OperatorError(
@@ -72,6 +95,7 @@ class GithubOauth:
                 "Fix: start login again from raft serve → Add new service",
                 has_fix=False,
             )
+        return pending
 
     def _new_account(
         self,
@@ -91,14 +115,15 @@ class GithubOauth:
             last_used_at=now,
         )
 
-    def _exchange_code(self, code: str) -> str:
-        body = urlencode(
-            {
-                "client_id": self._cfg.client_id,
-                "client_secret": self._cfg.client_secret,
-                "code": code,
-            }
-        ).encode("utf-8")
+    def _exchange_code(self, code: str, *, redirect_uri: Optional[str] = None) -> str:
+        payload = {
+            "client_id": self._cfg.client_id,
+            "client_secret": self._cfg.client_secret,
+            "code": code,
+        }
+        if redirect_uri:
+            payload["redirect_uri"] = redirect_uri
+        body = urlencode(payload).encode("utf-8")
         try:
             resp = self._http.post(
                 _TOKEN, headers=self._http.json_headers(), body=body
@@ -117,8 +142,8 @@ class GithubOauth:
         if not token:
             raise OperatorError(
                 "GitHub did not return an access_token.\n"
-                "Fix: verify the OAuth App callback is "
-                "http://127.0.0.1:<port>/api/github/callback",
+                "Fix: verify the OAuth App callback URL matches the one "
+                "shown in Add a service → Set up GitHub OAuth",
                 has_fix=False,
             )
         return str(token)

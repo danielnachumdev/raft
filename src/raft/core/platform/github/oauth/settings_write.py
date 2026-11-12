@@ -25,8 +25,14 @@ class GithubSettingsWriter:
         self._setup = GithubOauthAppSetup()
 
     def public_status(self, *, port: int) -> Dict[str, Any]:
-        cfg = SettingsLoader().load(self._home).github
-        out = self._setup.public_fields(port=port)
+        loaded = SettingsLoader().load(self._home)
+        cfg = loaded.github
+        dash = loaded.dashboard
+        out = self._setup.public_fields(
+            port=port,
+            public_host=dash.public_host,
+            tls=dash.tls,
+        )
         out.update(
             {
                 "oauth_configured": self.oauth_ready(cfg),

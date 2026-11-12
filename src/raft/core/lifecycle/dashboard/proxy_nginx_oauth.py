@@ -29,11 +29,19 @@ class DashboardOAuthNginx:
             f"{self._auth_subrequest()}"
             f"{self._oauth_locations()}"
             f"{self._unauthorized_page(unauthorized)}"
+            f"{self._public_github_callback(app_port)}"
             f"{self._parts.location_update(app_port, auth=auth)}"
             f"{self._parts.location_slash(app_port, auth=auth)}"
             f"{self._named_locations()}"
         )
         return self._parts.server(listen, inner)
+
+    def _public_github_callback(self, app_port: int) -> str:
+        return (
+            "        location = /api/github/callback {\n"
+            f"{self._parts.proxy_pass(app_port)}"
+            "        }\n"
+        )
 
     @staticmethod
     def _auth_directives(header: str) -> str:

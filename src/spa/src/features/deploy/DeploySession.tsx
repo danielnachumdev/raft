@@ -60,8 +60,8 @@ export function DeploySession(props: {
           {oauthError}
         </p>
         <p className="muted">
-          Serve stays on localhost. Fix OAuth settings or grant the requested
-          scopes, then try again.
+          Fix the OAuth App callback URL (must match the value shown in setup),
+          grant the requested scopes, then try again.
         </p>
         <a
           className="btn btn-primary deploy-cta"

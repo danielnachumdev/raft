@@ -41,7 +41,8 @@ class ServeGithubApi:
         app.get("/api/github/config", dependencies=[r])(self.api_config)
         app.post("/api/github/config", dependencies=[w])(self.api_save_config)
         app.get("/api/github/login", dependencies=[r])(self.api_login)
-        app.get("/api/github/callback", dependencies=[r])(self.api_callback)
+        # Callback is public: GitHub redirect + OAuth state (not dashboard session).
+        app.get("/api/github/callback")(self.api_callback)
         app.post("/api/github/logout", dependencies=[w])(self.api_logout)
         app.post("/api/github/accounts/select", dependencies=[w])(
             self.api_select_account
