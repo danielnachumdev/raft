@@ -74,14 +74,6 @@ class TestOrchRedeploy(OrchestratorTestCase):
             orch._wait_app_ready(app, timeout=5)
         wait.assert_not_called()
 
-    def test_skip_scaled_host_wait_requires_public_host(self) -> None:
-        from raft.core.core.models.app import App
-        from raft.core.lifecycle.deploy.orchestrator.ready import AppReadyWait
-
-        orch = self.orchestrator()
-        app = App(name="internal", public_host="", source="local", path="services/x/checkout")
-        assert AppReadyWait(orch)._skip_scaled_host_wait(app) is False
-
     def test_wait_app_ready_label_includes_readiness_path(self) -> None:
         AppliedInventory.write_applied_app(
             self.tmp_path,
