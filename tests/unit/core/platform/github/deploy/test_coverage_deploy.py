@@ -54,6 +54,41 @@ class TestCoverageDeploy(RaftTestCase):
         assert job.next_steps
         assert job.next_steps[0]["title"] == "Add deploy key on GitHub"
 
+    def test_deploy_git_apply_failure_sets_env_steps(self) -> None:
+        runner = GithubDeployRunner(
+            StackMakers.make_stack(self.tmp_path), MagicMock(), DeployJobStore()
+        )
+        job = DeployJob(id="z", full_name="o/r", ref="main", app_name="web")
+        err = OperatorError(
+            "env file /home/demo/.raft/services/web/secrets/env not found",
+            has_fix=False,
+        )
+        self._deploy_git_raises(runner, job, err, match="env file")
+        assert job.next_steps
+        assert job.next_steps[0]["title"] == "Env file"
+
+    def _deploy_git_raises(
+        self,
+        runner: GithubDeployRunner,
+        job: DeployJob,
+        err: OperatorError,
+        *,
+        match: str,
+    ) -> None:
+        with patch("raft.core.platform.github.deploy.job.GitAuthManager") as auth_cls, patch(
+            "raft.core.platform.github.deploy.job.AppApply"
+        ) as apply_cls:
+            github_fx.stub_auth(auth_cls)
+            apply_cls.return_value.apply_git.side_effect = err
+            with pytest.raises(OperatorError, match=match):
+                runner._deploy_git(
+                    job,
+                    github_fx.sample_account(),
+                    github_fx.sample_repo(),
+                    "web",
+                    rel=".raft/app.yaml",
+                )
+
     def test_api_callback_oauth(self, monkeypatch: pytest.MonkeyPatch) -> None:
         (self.tmp_path / "host" / "settings.yaml").write_text(
             "github: {clientId: id, clientSecret: sec}\n", encoding="utf-8"

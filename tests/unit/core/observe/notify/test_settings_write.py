@@ -169,3 +169,11 @@ class TestNotificationsSettingsWriter(RaftTestCase):
         with patch.object(Path, "write_text", side_effect=err):
             with pytest.raises(OperatorError, match="read-only"):
                 writer.create(self._channel("ops"))
+
+    def test_persist_non_erofs_oserror_is_actionable(self) -> None:
+        writer = NotificationsSettingsWriter(self.tmp_path)
+        err = OSError(13, "Permission denied")
+        err.errno = 13
+        with patch.object(Path, "write_text", side_effect=err):
+            with pytest.raises(OperatorError, match="check permissions"):
+                writer.create(self._channel("ops"))

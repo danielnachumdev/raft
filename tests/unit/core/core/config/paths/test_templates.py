@@ -1,5 +1,6 @@
 """Product template sync coverage."""
 
+import errno
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
@@ -190,3 +191,67 @@ class TestProductTemplateSync(RaftTestCase):
     @staticmethod
     def _raise_no_dist(_dest: Path) -> None:
         raise FileNotFoundError("no dist")
+
+    def test_replace_python_tree_tolerates_ro(self) -> None:
+        dest = self.tmp_path / "controller" / "raft"
+        dest.mkdir(parents=True)
+        (dest / "keep.txt").write_text("x\n", encoding="utf-8")
+        src = self.tmp_path / "src-raft"
+        src.mkdir()
+        (src / "__init__.py").write_text("", encoding="utf-8")
+        with patch(
+            "shutil.rmtree",
+            side_effect=OSError(errno.EROFS, "Read-only file system"),
+        ):
+            ProductTemplateSync()._replace_python_tree(src, dest)
+        assert (dest / "keep.txt").is_file()
+
+    def test_replace_python_tree_reraises_non_ro(self) -> None:
+        dest = self.tmp_path / "controller" / "raft"
+        dest.mkdir(parents=True)
+        src = self.tmp_path / "src-raft"
+        src.mkdir()
+        (src / "__init__.py").write_text("", encoding="utf-8")
+        with patch(
+            "shutil.rmtree",
+            side_effect=OSError(errno.EIO, "I/O error"),
+        ):
+            with pytest.raises(OSError) as raised:
+                ProductTemplateSync()._replace_python_tree(src, dest)
+        assert raised.value.errno == errno.EIO
+
+    def test_sync_build_pyproject_tolerates_ro_oserror(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        home = self.tmp_path / "home"
+        dest = home / "controller" / "pyproject.toml"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text('name = "kept"\n', encoding="utf-8")
+        syncer = ProductTemplateSync()
+        monkeypatch.setattr(syncer._deps, "find_raft_pyproject", lambda _p: None)
+
+        def raise_ro(_dest: Path) -> None:
+            raise OSError(errno.EROFS, "Read-only file system")
+
+        monkeypatch.setattr(syncer._deps, "write_from_installed", raise_ro)
+        syncer._sync_build_pyproject(
+            home, self.tmp_path / "share", CONTROLLER_BUILD_DIR
+        )
+        assert dest.read_text(encoding="utf-8") == 'name = "kept"\n'
+
+    def test_sync_build_pyproject_reraises_non_ro_oserror(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        home = self.tmp_path / "home"
+        syncer = ProductTemplateSync()
+        monkeypatch.setattr(syncer._deps, "find_raft_pyproject", lambda _p: None)
+
+        def raise_io(_dest: Path) -> None:
+            raise OSError(errno.EIO, "I/O error")
+
+        monkeypatch.setattr(syncer._deps, "write_from_installed", raise_io)
+        with pytest.raises(OSError) as raised:
+            syncer._sync_build_pyproject(
+                home, self.tmp_path / "share", CONTROLLER_BUILD_DIR
+            )
+        assert raised.value.errno == errno.EIO

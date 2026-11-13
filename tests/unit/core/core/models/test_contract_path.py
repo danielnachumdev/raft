@@ -34,3 +34,14 @@ class TestContractRelPath:
         target.parent.mkdir()
         target.write_text("x", encoding="utf-8")
         assert paths.under(root, "nested/app.yaml") == target.resolve()
+
+    def test_under_rejects_symlink_escape(self, tmp_path: Path) -> None:
+        paths = ContractRelPath()
+        root = tmp_path / "repo"
+        root.mkdir()
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        (outside / "app.yaml").write_text("x", encoding="utf-8")
+        (root / "escape").symlink_to(outside)
+        with pytest.raises(OperatorError, match="escapes checkout"):
+            paths.under(root, "escape/app.yaml")

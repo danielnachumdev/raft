@@ -24,20 +24,25 @@ class TestGithubDeployHostGit(RaftTestCase):
         ]
 
     def _assert_apply_argv(self) -> None:
+        ssh = "git@github.com:demo/docket-deploy.git"
         assert GithubDeployHostGit._apply_argv(
-            "git@github.com:demo/docket-deploy.git",
-            ref="main",
-            manifest_path=".raft/app.yaml",
+            ssh, ref="main", manifest_path=".raft/app.yaml"
         ) == [
             "raft",
             "apply",
             "--git",
-            "git@github.com:demo/docket-deploy.git",
+            ssh,
             "--ref",
             "main",
             "--manifest_path",
             ".raft/app.yaml",
         ]
+        self._assert_apply_argv_omits_blank_manifest(ssh)
+
+    def _assert_apply_argv_omits_blank_manifest(self, ssh: str) -> None:
+        assert GithubDeployHostGit._apply_argv(
+            ssh, ref="main", manifest_path="  "
+        ) == ["raft", "apply", "--git", ssh, "--ref", "main"]
 
     def test_prepare_key_runs_oneshot_then_reads_pubkey(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path)

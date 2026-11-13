@@ -54,3 +54,44 @@ class TestBindMountFs:
             side_effect=OSError(errno.EROFS, "Read-only file system"),
         ):
             BindMountFs().mkdir(path)
+
+    def test_mkdir_reraises_non_ro_oserror(self, tmp_path: Path) -> None:
+        path = tmp_path / "missing"
+        with patch.object(
+            Path,
+            "mkdir",
+            side_effect=OSError(errno.EIO, "I/O error"),
+        ):
+            with pytest.raises(OSError) as raised:
+                BindMountFs().mkdir(path)
+        assert raised.value.errno == errno.EIO
+
+    def test_remove_missing_file_and_symlink(self, tmp_path: Path) -> None:
+        BindMountFs().remove(tmp_path / "already-missing")
+        path = tmp_path / "gone.txt"
+        path.write_text("x\n", encoding="utf-8")
+        BindMountFs().remove(path)
+        assert not path.exists()
+        link = tmp_path / "link"
+        target = tmp_path / "target.txt"
+        target.write_text("y\n", encoding="utf-8")
+        link.symlink_to(target)
+        BindMountFs().remove(link)
+        assert not link.exists()
+        assert target.is_file()
+
+    def test_remove_tolerates_ro_and_reraises(self, tmp_path: Path) -> None:
+        stuck = tmp_path / "stuck"
+        stuck.mkdir()
+        with patch(
+            "shutil.rmtree",
+            side_effect=OSError(errno.EROFS, "Read-only file system"),
+        ):
+            BindMountFs().remove(stuck)
+        with patch(
+            "shutil.rmtree",
+            side_effect=OSError(errno.EIO, "I/O error"),
+        ):
+            with pytest.raises(OSError) as raised:
+                BindMountFs().remove(stuck)
+        assert raised.value.errno == errno.EIO

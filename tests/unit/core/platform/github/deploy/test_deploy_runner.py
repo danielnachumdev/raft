@@ -229,6 +229,11 @@ class TestGithubDeployRunner(RaftTestCase):
             )
             == "raft:demo-api@demo-host"
         )
+        assert (
+            GithubDeployRunner._title_from_pubkey("ssh-ed25519 AAAAdemo \u00a0")
+            is None
+        )
+        assert GithubDeployRunner._title_from_pubkey("ssh-ed25519 AAAAdemo") is None
 
     def _write_registry_manifest(self) -> dict:
         apps = self.tmp_path / "services"

@@ -1,10 +1,13 @@
 """Raft data-home path and ensure bootstrap."""
 
+import errno
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 from raft.core.core.config import ensure_raft_home, raft_home
+from raft.core.core.config.paths.bootstrap import RaftHomeBootstrap
 from raft.core.core.config.paths.package_root import PackageRootFinder
 from raft.core.core.errors.operator_error import OperatorError
 
@@ -62,3 +65,22 @@ class TestRaftHome(RaftTestCase, TemplateAsserts):
         orphan.mkdir()
         with pytest.raises(OperatorError, match="package templates"):
             finder.find(orphan)
+
+    def test_write_stub_tolerates_race_then_reraises(self) -> None:
+        boot = RaftHomeBootstrap()
+        raced = self.tmp_path / "raced.yaml"
+        with patch.object(
+            Path,
+            "write_text",
+            side_effect=OSError(errno.EROFS, "Read-only file system"),
+        ), patch.object(Path, "is_file", side_effect=[False, True]):
+            boot._write_stub_if_missing(raced, "new\n")
+        missing = self.tmp_path / "missing.yaml"
+        with patch.object(
+            Path,
+            "write_text",
+            side_effect=OSError(errno.EIO, "I/O error"),
+        ):
+            with pytest.raises(OSError) as raised:
+                boot._write_stub_if_missing(missing, "new\n")
+        assert raised.value.errno == errno.EIO
