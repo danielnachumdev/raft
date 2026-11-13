@@ -175,7 +175,14 @@ class TestDockerLifecycle(DockerTestCase):
             check=False,
         )
         self.shell.compose.assert_any_call(
-            "up", "-d", "--build", "--no-deps", "app", capture=False, check=False
+            "up",
+            "-d",
+            "--build",
+            "--no-deps",
+            "--force-recreate",
+            "app",
+            capture=False,
+            check=False,
         )
 
     def test_service_container_id_missing(self) -> None:
@@ -284,5 +291,12 @@ class TestDockerLifecycle(DockerTestCase):
         self.shell.compose.assert_any_call("build", "app", capture=False, check=False)
         self.docker.rebuild_service("app")
         self.shell.compose.assert_any_call(
-            "up", "-d", "--build", "--no-deps", "app", capture=False, check=False
+            "up",
+            "-d",
+            "--build",
+            "--no-deps",
+            "--force-recreate",
+            "app",
+            capture=False,
+            check=False,
         )
