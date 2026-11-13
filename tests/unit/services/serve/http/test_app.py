@@ -157,6 +157,37 @@ class TestServeAppFactory(RaftTestCase):
         assert asset.status_code == 200
         assert len(asset.content) > 0
 
+    def test_spa_favicon_svg_is_served(self) -> None:
+        client, _ = serve_fx.client_and_status(
+            StackMakers.make_stack(self.tmp_path), serve_fx.empty_snapshot()
+        )
+        index = client.get("/")
+        assert 'rel="icon" href="/favicon.svg"' in index.text
+        favicon = client.get("/favicon.svg")
+        assert favicon.status_code == 200
+        assert "image/svg" in favicon.headers["content-type"]
+        assert b"raft mark" in favicon.content
+        assert b"<svg" in favicon.content
+
+    def test_spa_static_file_rejects_unsafe_paths(self) -> None:
+        from raft.services.serve.http.page import ServePage
+
+        assert ServePage._spa_static_file("../etc/passwd") is None
+        assert ServePage._spa_static_file("/etc/passwd") is None
+        assert ServePage._spa_static_file("\\windows\\system32") is None
+
+    def test_spa_static_file_rejects_symlink_escape(self) -> None:
+        from raft.services.serve.http.page import ServePage
+        from raft.services.serve.http.paths import ServePaths
+
+        spa = self.tmp_path / "spa"
+        spa.mkdir()
+        outside = self.tmp_path / "secret.txt"
+        outside.write_text("leak", encoding="utf-8")
+        (spa / "escape").symlink_to(outside)
+        with patch.object(ServePaths, "spa_dir", return_value=spa):
+            assert ServePage._spa_static_file("escape") is None
+
     def test_factory_builds_default_status(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path)
         with patch("raft.core.observe.read.status.Status") as status_cls:
