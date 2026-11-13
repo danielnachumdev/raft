@@ -1,5 +1,6 @@
 """Shared nginx location fragments for dashboard proxy configs."""
 
+from .browser_security import BrowserSecurityHeaders
 from .update_proxy_timeout import UPDATE_PROXY_TIMEOUT
 
 
@@ -19,6 +20,11 @@ class DashboardNginxParts:
             f"{inner}"
             "    }\n"
         )
+
+    @staticmethod
+    def static_html_security_headers() -> str:
+        """Headers for nginx-aliased HTML (login / unauthorized)."""
+        return BrowserSecurityHeaders().nginx_add_header_lines(inline_html=True)
 
     def location_slash(self, app_port: int, *, auth: str) -> str:
         return (

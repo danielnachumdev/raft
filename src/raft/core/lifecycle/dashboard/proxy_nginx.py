@@ -4,6 +4,7 @@ from pathlib import Path
 
 from raft.core.core.config.settings.dashboard_config import DashboardConfig
 
+from .browser_security import BrowserSecurityHeaders
 from .proxy_nginx_oauth import DashboardOAuthNginx
 from .proxy_nginx_parts import DashboardNginxParts
 
@@ -55,6 +56,7 @@ class DashboardProxyNginx:
             "http {\n"
             f"{self._http_temp_paths()}"
             f"{self._fwd_proto_map()}"
+            f"{BrowserSecurityHeaders.nginx_hsts_map()}"
             f"{server_body}"
             "}\n"
         )
@@ -177,12 +179,13 @@ class DashboardProxyNginx:
             "        }\n"
         )
 
-    @staticmethod
-    def _login_page(login: Path) -> str:
+    def _login_page(self, login: Path) -> str:
+        # Static alias bypasses FastAPI — set headers here (inline CSP).
         return (
             "        location = /login {\n"
             "            default_type text/html;\n"
             f"            alias {login};\n"
+            f"{self._parts.static_html_security_headers()}"
             "        }\n"
         )
 

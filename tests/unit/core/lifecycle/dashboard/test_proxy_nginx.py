@@ -19,20 +19,14 @@ class TestDashboardProxyNginx(RaftTestCase):
         assert "auth_request" not in text
         assert "proxy_pass http://127.0.0.1:18787" in text
         assert "map $http_x_forwarded_proto $raft_fwd_proto" in text
+        assert "map $raft_fwd_proto $raft_hsts" in text
+        assert 'https   "max-age=15552000"' in text
         assert "X-Forwarded-Proto $raft_fwd_proto" in text
         assert "location = /api/update" in text
         assert "proxy_read_timeout 600s" in text
 
     def test_password_gates_spa(self) -> None:
-        cfg = DashboardConfig(
-            auth=DashboardAuthConfig(mode="password", password_hash="x")
-        )
-        text = DashboardProxyNginx().render(
-            cfg,
-            listen=8787,
-            app_port=18787,
-            login_html=Path("/opt/dashboard/login.html"),
-        )
+        text = self._password_nginx()
         assert "auth_request /_raft_dashboard_auth" in text
         assert "server_tokens off" in text
         assert "absolute_redirect off" in text
@@ -44,6 +38,25 @@ class TestDashboardProxyNginx(RaftTestCase):
         assert "location = /api/github/callback" in text
         assert "/api/dashboard/auth" in text
         assert "return 302 /login" in text
+
+    def test_password_login_static_security_headers(self) -> None:
+        text = self._password_nginx()
+        assert "add_header X-Frame-Options DENY always" in text
+        assert "unsafe-inline" in text
+        assert "add_header Strict-Transport-Security $raft_hsts always" in text
+        assert "frame-ancestors 'none'" in text
+
+    @staticmethod
+    def _password_nginx() -> str:
+        cfg = DashboardConfig(
+            auth=DashboardAuthConfig(mode="password", password_hash="x")
+        )
+        return DashboardProxyNginx().render(
+            cfg,
+            listen=8787,
+            app_port=18787,
+            login_html=Path("/opt/dashboard/login.html"),
+        )
 
     def test_external_gates_spa(self) -> None:
         cfg = DashboardConfig(
