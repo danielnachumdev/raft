@@ -1,6 +1,4 @@
-"""Early CommandProgress for doctor/update before RaftCLICommands init."""
-
-from __future__ import annotations
+"""Early CommandProgress for long verbs before RaftCLICommands init."""
 
 from typing import ClassVar, List
 from unittest.mock import patch
@@ -65,6 +63,37 @@ class TestCommandProgress:
             assert progress is not None
             assert progress._prefix == "raft purge"
             assert progress._default_label == "purging"
+
+    def test_enters_spinner_for_redeploy(self) -> None:
+        with CommandProgress(["redeploy", "demo-api"]) as progress:
+            assert progress is not None
+            assert progress._prefix == "raft redeploy"
+            assert progress._default_label == "redeploying"
+
+    def test_enters_spinner_for_render(self) -> None:
+        with CommandProgress(["render"]) as progress:
+            assert progress is not None
+            assert progress._prefix == "raft render"
+            assert progress._default_label == "rendering"
+
+    def test_enters_spinner_for_apply_sync_up_down(self) -> None:
+        for verb, label in (
+            ("apply", "applying"),
+            ("sync", "syncing"),
+            ("up", "starting"),
+            ("down", "stopping"),
+            ("delete", "deleting"),
+            ("uninstall", "uninstalling"),
+        ):
+            with CommandProgress([verb]) as progress:
+                assert progress is not None
+                assert progress._prefix == f"raft {verb}"
+                assert progress._default_label == label
+
+    def test_quiet_for_get_and_logs(self) -> None:
+        for verb in ("get", "logs", "serve", "status"):
+            with CommandProgress([verb]) as progress:
+                assert progress is None
 
     def test_main_starts_spinner_before_raftcli_init(self) -> None:
         order = _SpinnerProbeCLI.order

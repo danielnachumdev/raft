@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 from raft.core.core.errors.domain import DomainErrors
+from raft.core.core.ui.progress import TerminalProgress
 
 from .exclusive import ExclusiveLock
 from .fifo_held import ThreadHeldFifos
@@ -117,6 +118,9 @@ class FifoLock:
         if not self.waited:
             logger.info("waiting for fifo-%s lock", self.kind)
             self.waited = True
+            progress = TerminalProgress.active()
+            if progress is not None:
+                progress.set_text(f"waiting for fifo-{self.kind} lock")
         time.sleep(_POLL_INTERVAL_SECONDS)
 
     def _log_acquired(self) -> None:

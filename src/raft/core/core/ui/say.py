@@ -5,6 +5,7 @@ import sys
 from typing import Optional
 
 from .color import TerminalColor
+from .progress import TerminalProgress
 
 _log = logging.getLogger("raft")
 
@@ -14,12 +15,14 @@ class OperatorSay:
 
     @classmethod
     def say(cls, message: str = "", *, style: Optional[str] = None) -> None:
+        TerminalProgress.finish_active()
         print(TerminalColor.styled(message, style, sys.stdout), flush=True)
         if message:
             _log.info("%s", message)
 
     @classmethod
     def say_err(cls, message: str, *, style: str = "error") -> None:
+        TerminalProgress.finish_active()
         print(
             TerminalColor.styled(message, style, sys.stderr),
             file=sys.stderr,

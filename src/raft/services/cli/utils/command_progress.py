@@ -6,17 +6,26 @@ from raft.core.core.ui.progress import TerminalProgress
 
 
 class CommandProgress:
-    """Context manager: start the doctor/update spinner before stack/logging setup.
+    """Context manager: start a spinner before stack/logging setup.
 
-    ``RaftCLICommands.__init__`` may spend seconds on log retention prune. Entering the
-    spinner here means the TTY shows activity during that work. Doctor/update
-    reuse ``TerminalProgress.current()`` instead of nesting a second spinner.
+    ``RaftCLICommands.__init__`` may spend seconds on log retention prune.
+    Entering the spinner here means the TTY shows activity during that work.
+    Long verbs reuse ``TerminalProgress.current()`` instead of nesting a second
+    spinner. Instant verbs (status/get/logs/…) stay quiet on purpose.
     """
 
     _SPECS = {
         "doctor": ("raft doctor", "checking"),
         "purge": ("raft purge", "purging"),
         "update": ("raft update", "updating"),
+        "apply": ("raft apply", "applying"),
+        "delete": ("raft delete", "deleting"),
+        "up": ("raft up", "starting"),
+        "down": ("raft down", "stopping"),
+        "render": ("raft render", "rendering"),
+        "sync": ("raft sync", "syncing"),
+        "redeploy": ("raft redeploy", "redeploying"),
+        "uninstall": ("raft uninstall", "uninstalling"),
     }
 
     def __init__(self, command: Sequence[str]) -> None:

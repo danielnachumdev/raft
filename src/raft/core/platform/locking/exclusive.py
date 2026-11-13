@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Optional
 
 from raft.core.core.errors.domain import DomainErrors
+from raft.core.core.ui.progress import TerminalProgress
+
 from .held import HeldLock, ThreadHeldLocks
 from .timeout import LockTimeout
 
@@ -95,4 +97,7 @@ class ExclusiveLock:
         if not self.waited:
             logger.info("waiting for %s lock", self.kind)
             self.waited = True
+            progress = TerminalProgress.active()
+            if progress is not None:
+                progress.set_text(f"waiting for {self.kind} lock")
         time.sleep(_POLL_INTERVAL_SECONDS)
