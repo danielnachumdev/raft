@@ -11,12 +11,10 @@ from raft.core.platform.adapters.shell import Shell
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.app import EDGE_GROUP
 from raft.core.core.models.stack import Stack
-from raft.core.core.models.state.scaling_store import ScalingStore
+from .absent import AbsentStatus
 from .allocated import StatusAllocated
 from .formatters import StatusFormatters
 from .models import (
-    STATUS_NOT_RUNNING,
-    STATUS_SCALED_TO_ZERO,
     AllocatedResources,
     ContainerStatus,
     HostStatus,
@@ -140,9 +138,7 @@ class Status:
         )
 
     def _absent_status(self, app_name: Optional[str]) -> str:
-        if app_name and ScalingStore(self.stack.root).is_scaled_to_zero(app_name):
-            return STATUS_SCALED_TO_ZERO
-        return STATUS_NOT_RUNNING
+        return AbsentStatus.for_app(self.stack.root, app_name)
 
     def _present_container(
         self,

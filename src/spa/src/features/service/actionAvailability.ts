@@ -7,11 +7,17 @@ export type ActionAvailability = Record<
   { enabled: boolean; hint: string }
 >;
 
-const STOPPED = new Set(["exited", "not running", "dead", "created"]);
+const STOPPED = new Set([
+  "exited",
+  "not running",
+  "manual-stop",
+  "dead",
+  "created",
+]);
 
 const HINTS: Record<ServiceAction, string> = {
-  up: "Bring this service up with Compose (clears scale-to-zero idle).",
-  down: "Bring this service down with Compose (scale-to-zero apps are marked idle).",
+  up: "Bring this service up with Compose (clears manual-stop / scale-to-zero).",
+  down: "Bring this service down with Compose (marks manual-stop; scaling apps stay idle).",
   redeploy:
     "Refresh generation: cut over a running app, recreate the router/gate, or rebuild the dashboard. Controller redeploy is refused. Gate redeploy briefly drops the public edge.",
 };

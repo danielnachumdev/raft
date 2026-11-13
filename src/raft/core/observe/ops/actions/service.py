@@ -7,6 +7,7 @@ from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.app import App
 from raft.core.core.models.stack import Stack
 from raft.core.core.models.state.graph_event_store import GraphEventStore
+from raft.core.core.models.state.manual_stop_store import ManualStopStore
 from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.core.lifecycle.dashboard.rbac_allowlist_sync import RbacAllowlistSync
 from raft.core.lifecycle.deploy.orchestrator import Orchestrator
@@ -72,6 +73,7 @@ class ServiceActions:
         with self._locks(app):
             self._docker_stack().stop_service(compose_id)
             if app is not None:
+                self._mark_manual_stop(app)
                 self._mark_scaled_to_zero(app)
             self._record_down_event(compose_id, app)
         return self._ok("down", compose_id)
@@ -139,7 +141,7 @@ class ServiceActions:
         with AppsAndStackLocks(self.stack.root, chain):
             started = self._up_dep_names(deps_helper, chain[:-1], build=build)
             self._docker_stack().start_service(compose_id, build=build)
-            self._clear_scaled_to_zero(app)
+            self._clear_stop_markers(app)
             deps_helper.restore_upstreams(chain)
             self._record_up_event(compose_id, app)
         return self._ok("up", compose_id, no_deps=False, started_deps=started)
@@ -158,7 +160,7 @@ class ServiceActions:
         with self._locks(app):
             self._docker_stack().start_service(compose_id, build=build)
             if app is not None:
-                self._clear_scaled_to_zero(app)
+                self._clear_stop_markers(app)
             self._record_up_event(compose_id, app)
         return self._ok(
             "up", compose_id, no_deps=no_deps, started_deps=started_deps
@@ -207,12 +209,19 @@ class ServiceActions:
             return self._purge
         return Purge(self.stack)
 
+    def _clear_stop_markers(self, app: App) -> None:
+        ManualStopStore(self.stack.root).clear(app.name)
+        self._clear_scaled_to_zero(app)
+
     def _clear_scaled_to_zero(self, app: App) -> None:
         store = ScalingStore(self.stack.root)
         if not store.is_scaled_to_zero(app.name):
             return
         min_up = self._min_up_seconds(app)
         store.mark_awake(app.name, min_up_seconds=min_up)
+
+    def _mark_manual_stop(self, app: App) -> None:
+        ManualStopStore(self.stack.root).mark(app.name)
 
     def _mark_scaled_to_zero(self, app: App) -> None:
         if self._scaling_spec(app) is None:

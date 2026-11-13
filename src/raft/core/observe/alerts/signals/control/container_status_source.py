@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Mapping
 
 from raft.core.core.config.paths.metrics_paths import MetricsPaths
+from raft.core.core.models.state.manual_stop_store import ManualStopStore
 from raft.core.core.models.state.scaling_store import ScalingStore
 from ...model.issues import ValidationIssue
 from ..catalog_entries import container_status_catalog
@@ -49,24 +50,29 @@ class ContainerStatusSource(SignalSource):
         path = MetricsPaths(ctx.home).resources()
         samples = self._cache.samples(ctx, path, window_seconds=window)
         target = str(select.get("target"))
-        scaling = ScalingStore(ctx.home)
         if target == "*":
             return [
                 self._series(name, samples, wildcard=True)
-                for name in self._wildcard_names(ctx, scaling)
+                for name in self._wildcard_names(ctx)
             ]
-        if scaling.is_scaled_to_zero(target):
+        if self._intentionally_absent(ctx.home, target):
             return []
         return [self._series(target, samples, wildcard=False)]
 
-    @staticmethod
-    def _wildcard_names(ctx: SignalContext, scaling: ScalingStore) -> List[str]:
-        """Control plane first, then Apps that are not intentionally scaled to zero."""
+    @classmethod
+    def _wildcard_names(cls, ctx: SignalContext) -> List[str]:
+        """Control plane first, then Apps that are not intentionally absent."""
         names = list(ctx.control_plane_names)
         names.extend(
-            n for n in ctx.app_names if not scaling.is_scaled_to_zero(n)
+            n for n in ctx.app_names if not cls._intentionally_absent(ctx.home, n)
         )
         return names
+
+    @staticmethod
+    def _intentionally_absent(home, name: str) -> bool:
+        return ScalingStore(home).is_scaled_to_zero(name) or ManualStopStore(
+            home
+        ).is_manual_stop(name)
 
     def describe(self, select: Mapping[str, Any]) -> str:
         return f"{select.get('target')} status"

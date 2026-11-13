@@ -13,6 +13,7 @@ from raft.core.core.ui import BOLD, CYAN, DIM, TerminalColor
 from .formatters import StatusFormatters
 from .models import (
     STATUS_CRASH_LOOPING,
+    STATUS_MANUAL_STOP,
     STATUS_SCALED_TO_ZERO,
     ContainerStatus,
     HostStatus,
@@ -22,6 +23,9 @@ from .models import (
 _DEFAULT_LIVE_INTERVAL = 1.0
 _SCALED_HINT = (
     "  scaled-to-zero means idle scale-to-zero (intentional; traffic wakes the app)."
+)
+_MANUAL_STOP_HINT = (
+    "  manual-stop means an operator Down (intentional; not treated as not-running)."
 )
 _CRASH_HINT = (
     "  crash-looping means Engine RestartCount≥3 with uptime under 10m "
@@ -188,6 +192,11 @@ class StatusReportWriter:
         print(limits, file=stream)
         if any(c.status == STATUS_SCALED_TO_ZERO for c in containers):
             print(TerminalColor.paint(_SCALED_HINT, CYAN, stream=stream, color=color), file=stream)
+        if any(c.status == STATUS_MANUAL_STOP for c in containers):
+            print(
+                TerminalColor.paint(_MANUAL_STOP_HINT, CYAN, stream=stream, color=color),
+                file=stream,
+            )
         if any(c.status == STATUS_CRASH_LOOPING for c in containers):
             print(TerminalColor.paint(_CRASH_HINT, CYAN, stream=stream, color=color), file=stream)
         if live_footer:

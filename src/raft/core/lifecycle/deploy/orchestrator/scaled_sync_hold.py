@@ -3,6 +3,7 @@
 import logging
 
 from raft.core.core.errors.cta import OperatorError
+from raft.core.core.models.state.manual_stop_store import ManualStopStore
 from raft.core.core.models.state.scaling_store import ScalingStore
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,8 @@ class ScaledSyncHold:
         logger.info("holding scaledToZero for %s through sync/render", app.name)
 
     def clear_before_start(self, app) -> None:
-        """Mark awake after sync so readiness waits and compose start are not skipped."""
+        """Clear manual-stop + scaledToZero so readiness waits and compose start run."""
+        ManualStopStore(self._support.stack.root).clear(app.name)
         store = ScalingStore(self._support.stack.root)
         if not store.is_scaled_to_zero(app.name):
             return

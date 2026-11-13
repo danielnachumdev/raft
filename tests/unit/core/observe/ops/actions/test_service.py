@@ -14,6 +14,7 @@ from raft.core.core.models.state.graph_event_kinds import (
     KIND_SERVICE_DOWN,
 )
 from raft.core.core.models.state.graph_event_store import GraphEventStore
+from raft.core.core.models.state.manual_stop_store import ManualStopStore
 from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.core.observe.ops.actions import ServiceActions
 
@@ -71,6 +72,7 @@ class TestServiceActions(RaftTestCase):
             result = actions.down("site")
         docker.stop_service.assert_called_once_with("site")
         assert result["action"] == "down"
+        assert ManualStopStore(self.tmp_path).is_manual_stop("site")
         events = GraphEventStore(self.tmp_path).events_in_window(from_ts=_EPOCH)
         assert len(events) == 1
         assert events[0].kind == KIND_SERVICE_DOWN
@@ -99,22 +101,26 @@ class TestServiceActions(RaftTestCase):
     def test_start_clears_scaled_to_zero(self) -> None:
         AppliedInventory.write_applied_app(self.tmp_path, "site", extra={"scaling": _SCALING})
         ScalingStore(self.tmp_path).mark_scaled_to_zero("site")
+        ManualStopStore(self.tmp_path).mark("site")
         actions, docker, _orch = self._actions(apps=(AppMakers.make_app("site"),))
         with self._with_app_locks() as locks:
             self._enter(locks)
             actions.up("site")
         docker.start_service.assert_called_once_with("site", build=False)
         assert not ScalingStore(self.tmp_path).is_scaled_to_zero("site")
+        assert not ManualStopStore(self.tmp_path).is_manual_stop("site")
 
     def test_start_clears_scaled_without_scaling_spec(self) -> None:
         """Store flag can linger; clear with default min_up when no scaling block."""
         AppliedInventory.write_applied_app(self.tmp_path, "site")
         ScalingStore(self.tmp_path).mark_scaled_to_zero("site")
+        ManualStopStore(self.tmp_path).mark("site")
         actions, _docker, _orch = self._actions(apps=(AppMakers.make_app("site"),))
         with self._with_app_locks() as locks:
             self._enter(locks)
             actions.up("site")
         assert not ScalingStore(self.tmp_path).is_scaled_to_zero("site")
+        assert not ManualStopStore(self.tmp_path).is_manual_stop("site")
 
     def test_stop_marks_scaled_to_zero_when_scaling(self) -> None:
         AppliedInventory.write_applied_app(self.tmp_path, "site", extra={"scaling": _SCALING})
@@ -124,6 +130,16 @@ class TestServiceActions(RaftTestCase):
             actions.down("site")
         docker.stop_service.assert_called_once_with("site")
         assert ScalingStore(self.tmp_path).is_scaled_to_zero("site")
+        assert ManualStopStore(self.tmp_path).is_manual_stop("site")
+
+    def test_stop_marks_manual_stop_without_scaling(self) -> None:
+        actions, docker, _orch = self._actions()
+        with self._with_app_locks() as locks:
+            self._enter(locks)
+            actions.down("site")
+        docker.stop_service.assert_called_once_with("site")
+        assert ManualStopStore(self.tmp_path).is_manual_stop("site")
+        assert not ScalingStore(self.tmp_path).is_scaled_to_zero("site")
 
     def test_redeploy_app_delegates(self) -> None:
         actions, _docker, orch = self._actions()

@@ -7,6 +7,7 @@ const STATUS_TONES: Record<string, StatusTone> = {
   running: "ok",
   starting: "warn",
   "scaled-to-zero": "idle",
+  "manual-stop": "idle",
   unhealthy: "bad",
   "crash-looping": "bad",
   "not running": "bad",

@@ -4,6 +4,7 @@ export function isIdleContainerStatus(status: string): boolean {
   const key = status.trim().toLowerCase();
   return (
     key === "scaled-to-zero" ||
+    key === "manual-stop" ||
     key === "not running" ||
     key === "exited" ||
     key === "dead"
