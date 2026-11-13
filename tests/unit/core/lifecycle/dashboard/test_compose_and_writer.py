@@ -57,6 +57,10 @@ class TestDashboardComposeAndWriter(RaftTestCase):
             in text
         )
         assert "./host/inbox:/raft/host/inbox" in text
+        assert "./host/notifications.yaml:/raft/host/notifications.yaml" in text
+        assert "./host/firewall.yaml:/raft/host/firewall.yaml" in text
+        assert "./host/alerts.yaml:/raft/host/alerts.yaml" in text
+        assert "./host/rbac.yaml:/raft/host/rbac.yaml" in text
 
     def _assert_compose_resources(self, text: str) -> None:
         assert 'cpus: "1.0"' in text

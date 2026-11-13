@@ -121,11 +121,16 @@ class DashboardComposeYaml:
     @staticmethod
     def _writable_host_volumes() -> list[str]:
         # Mutative apply/render from the dashboard needs these writes.
+        # Flat GitOps docs must be file mounts — parent ``.:/raft:ro`` hides them.
         return [
             "      - ./compose.yaml:/raft/compose.yaml",
             "      - ./host/gate-nginx.fingerprint:/raft/host/gate-nginx.fingerprint",
             "      - ./host/router-nginx.fingerprint:/raft/host/router-nginx.fingerprint",
             "      - ./host/settings.yaml:/raft/host/settings.yaml",
+            "      - ./host/notifications.yaml:/raft/host/notifications.yaml",
+            "      - ./host/firewall.yaml:/raft/host/firewall.yaml",
+            "      - ./host/alerts.yaml:/raft/host/alerts.yaml",
+            "      - ./host/rbac.yaml:/raft/host/rbac.yaml",
             "      - ./host/locks:/raft/host/locks",
             "      - ./host/firewall:/raft/host/firewall",
             "      - ./host/alerts:/raft/host/alerts",
