@@ -145,6 +145,7 @@ class TestReadinessStrategy(RaftTestCase):
         assert "nc -z" in t.healthcheck_test()[1]
         lines = t.healthcheck_compose_lines()
         assert "      start_period: 45s" in lines
+        assert "      timeout: 5s" in lines
         assert "      retries: 15" in lines
 
     def _assert_tcp_custom_timing(self) -> None:

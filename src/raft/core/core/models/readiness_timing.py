@@ -3,7 +3,9 @@
 # Compose healthcheck defaults (cold start / migrations need a long start_period).
 DEFAULT_START_PERIOD_SECONDS = 45.0
 DEFAULT_INTERVAL_SECONDS = 2.0
-DEFAULT_PROBE_TIMEOUT_SECONDS = 2.0
+# Slim images often probe via venv python; cold start under host load can
+# exceed 2s even when the App answers in milliseconds.
+DEFAULT_PROBE_TIMEOUT_SECONDS = 5.0
 DEFAULT_RETRIES = 15
 # Extra seconds after start_period + probe budget so raft does not race Compose.
 _TIMEOUT_BUFFER_SECONDS = 15.0

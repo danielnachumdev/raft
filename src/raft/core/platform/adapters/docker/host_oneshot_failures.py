@@ -37,9 +37,11 @@ class HostOneshotFailures:
     def _readiness_timeout_message() -> str:
         return (
             "App readiness wait timed out.\n"
-            "Fix: confirm the App serves its readiness path, check "
-            "`docker compose ps` health, raise readiness.timeoutSeconds "
-            "if cold starts need longer, then continue installation."
+            "Fix: confirm the App serves its readiness path on the "
+            "public host, check `docker compose ps` health (not just "
+            "container running), raise readiness.timeoutSeconds / "
+            "startPeriodSeconds if cold starts need longer, then "
+            "continue installation."
         )
 
     @staticmethod

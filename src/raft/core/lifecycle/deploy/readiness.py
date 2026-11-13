@@ -69,13 +69,18 @@ class ReadinessStrategy:
         assert self.port is not None
         path = self.path if self.path.startswith("/") else f"/{self.path}"
         url = f"http://127.0.0.1:{self.port.container_port}{path}"
+        # Leave ~1s of Compose probe budget for process start under host load.
+        secs = max(1, int(self.probe_timeout_seconds) - 1)
         # Pick one tool so fallbacks cannot stack past probe timeout.
-        py = f'import urllib.request; urllib.request.urlopen("{url}", timeout=1)'
+        py = (
+            f'import urllib.request; '
+            f'urllib.request.urlopen("{url}", timeout={secs})'
+        )
         return (
             f"if command -v wget >/dev/null 2>&1; then "
-            f"wget -qO- --timeout=1 '{url}' >/dev/null; "
+            f"wget -qO- --timeout={secs} '{url}' >/dev/null; "
             f"elif command -v curl >/dev/null 2>&1; then "
-            f"curl -fsS --max-time 1 '{url}' >/dev/null; "
+            f"curl -fsS --max-time {secs} '{url}' >/dev/null; "
             f"elif command -v python3 >/dev/null 2>&1; then "
             f"python3 -c '{py}'; "
             f"elif command -v python >/dev/null 2>&1; then "
