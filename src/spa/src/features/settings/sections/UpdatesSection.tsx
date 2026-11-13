@@ -37,7 +37,7 @@ export function UpdatesSection() {
     <SectionCard
       id="settings-updates"
       title="Updates"
-      hint="Check whether a newer release is available on this host."
+      hint="Compare the installed raft with the latest GitHub Release and update in place."
     >
       <div className="settings-updates">
         <p className="settings-updates-status" id="settings-updates-status">
@@ -136,5 +136,5 @@ function statusLabel(
   if (phase === "error" && error) return error;
   if (phase === "success" && result) return updateSuccessMessage(result);
   if (status) return status.message;
-  return "Check whether a newer release is available on this host.";
+  return "Not checked yet.";
 }

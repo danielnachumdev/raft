@@ -25,6 +25,11 @@
   border-bottom: 0;
 }
 
+/* Metrics and timestamps stay on one line so rows keep an even height. */
+.status-table td:not(:first-child) {
+  white-space: nowrap;
+}
+
 .status-name-body > span:first-child {
   font-weight: 600;
 }
@@ -106,7 +111,41 @@
   min-width: 0;
 }
 
+/* Below desktop the table scrolls sideways: pin the row identity (and, when
+   there is room, the row actions) so neither scrolls out of reach. */
+@media (max-width: 1099px) {
+  .status-table :is(th, td):first-child,
+  .status-table :is(th, td).actions-col {
+    position: sticky;
+    z-index: 1;
+    background: var(--panel);
+  }
+
+  .status-table :is(th, td):first-child {
+    left: 0;
+    box-shadow: inset -1px 0 0 var(--line);
+  }
+
+  .status-table :is(th, td).actions-col {
+    right: 0;
+    box-shadow: inset 1px 0 0 var(--line);
+  }
+
+  .status-table th:is(:first-child, .actions-col) {
+    z-index: 2;
+  }
+
+  .status-row:hover td:is(:first-child, .actions-col) {
+    background: var(--row-hover);
+  }
+}
+
 @media (max-width: 719px) {
+  .status-table :is(th, td).actions-col {
+    position: static;
+    box-shadow: none;
+  }
+
   .status-table {
     min-width: 36rem;
     font-size: 0.82rem;

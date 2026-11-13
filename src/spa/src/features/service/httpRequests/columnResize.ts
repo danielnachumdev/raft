@@ -9,7 +9,7 @@ export const HTTP_REQUEST_COLUMNS = [
   { key: "client", label: "Client", defaultWidth: 112 },
   { key: "host", label: "Host", defaultWidth: 140 },
   { key: "ua", label: "User-Agent", defaultWidth: 170 },
-  { key: "firewall", label: "Firewall", defaultWidth: 150 },
+  { key: "firewall", label: "Firewall", defaultWidth: 184 },
 ] as const;
 
 export type HttpRequestColumnKey = (typeof HTTP_REQUEST_COLUMNS)[number]["key"];
