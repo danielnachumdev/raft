@@ -69,15 +69,12 @@ class ReadinessStrategy:
         assert self.port is not None
         path = self.path if self.path.startswith("/") else f"/{self.path}"
         url = f"http://127.0.0.1:{self.port.container_port}{path}"
-        py = (
-            "import urllib.request; "
-            f"urllib.request.urlopen('{url}')"
-        )
+        py = f"import urllib.request; urllib.request.urlopen('{url}')"
         return (
             f"wget -qO- '{url}' >/dev/null 2>&1 || "
             f"curl -fsS '{url}' >/dev/null 2>&1 || "
-            f"python3 -c \"{py}\" || "
-            f"python -c \"{py}\" || "
+            f'python3 -c "{py}" || '
+            f'python -c "{py}" || '
             "exit 1"
         )
 
@@ -86,7 +83,7 @@ class ReadinessStrategy:
         test = self.healthcheck_test()
         if test is None:
             return []
-        quoted = ", ".join(f'"{part}"' for part in test)
+        quoted = ", ".join(self._compose_flow_string(part) for part in test)
         return [
             "    healthcheck:",
             f"      test: [{quoted}]",
@@ -97,6 +94,11 @@ class ReadinessStrategy:
             # health "starting" long enough for cutover TCP waits.
             f"      start_period: {ReadinessTiming.format_duration_seconds(self.start_period_seconds)}",
         ]
+
+    @staticmethod
+    def _compose_flow_string(part: str) -> str:
+        escaped = part.replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{escaped}"'
 
     def timing_summary(self) -> str:
         return (
