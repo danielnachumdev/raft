@@ -8,6 +8,10 @@ from tests.unit.base import RaftTestCase, StackMakers
 
 class TestGithubDeployHostGit(RaftTestCase):
     def test_auth_and_apply_argv(self) -> None:
+        self._assert_auth_argv()
+        self._assert_apply_argv()
+
+    def _assert_auth_argv(self) -> None:
         assert GithubDeployHostGit._auth_argv(
             "docket", "git@github.com:demo/docket-deploy.git"
         ) == [
@@ -18,6 +22,8 @@ class TestGithubDeployHostGit(RaftTestCase):
             "--repo",
             "git@github.com:demo/docket-deploy.git",
         ]
+
+    def _assert_apply_argv(self) -> None:
         assert GithubDeployHostGit._apply_argv(
             "git@github.com:demo/docket-deploy.git",
             ref="main",

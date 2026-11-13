@@ -26,6 +26,11 @@ class TestDashboardComposeAndWriter(RaftTestCase):
         text = DashboardComposeYaml().build(
             DashboardConfig(enabled=True, port=8787)
         )
+        self._assert_compose_runtime(text)
+        self._assert_compose_volumes(text)
+        self._assert_compose_resources(text)
+
+    def _assert_compose_runtime(self, text: str) -> None:
         assert "raft-dashboard" in text
         assert "127.0.0.1:8787:8787" in text
         assert 'RAFT_DASHBOARD_APP_PORT: "18787"' in text
@@ -34,12 +39,16 @@ class TestDashboardComposeAndWriter(RaftTestCase):
         assert 'RAFT_HOST_GID: "${RAFT_HOST_GID:-0}"' in text
         assert 'HOME: "${RAFT_HOST_HOME}"' in text
         assert 'RAFT_SSH_DIR: "${RAFT_HOST_HOME}/.ssh"' in text
-        assert '"${RAFT_HOST_HOME}/.local:${RAFT_HOST_HOME}/.local:ro"' in text
-        assert '"${RAFT_HOST_HOME}/.ssh:${RAFT_HOST_HOME}/.ssh"' in text
         assert 'user: "${RAFT_HOST_UID:-0}:${RAFT_HOST_GID:-0}"' in text
-        assert "/etc/hostname:/etc/host_hostname:ro" in text
         assert "RAFT_HOST_DOCKER_BIN" in text
         assert "RAFT_HOST_DOCKER_PLUGIN_DIR" in text
+        assert "RAFT_SERVE_BIND" not in text
+        assert "oauth.env" not in text
+
+    def _assert_compose_volumes(self, text: str) -> None:
+        assert '"${RAFT_HOST_HOME}/.local:${RAFT_HOST_HOME}/.local:ro"' in text
+        assert '"${RAFT_HOST_HOME}/.ssh:${RAFT_HOST_HOME}/.ssh"' in text
+        assert "/etc/hostname:/etc/host_hostname:ro" in text
         assert ".:/raft:ro" in text
         assert "./compose.yaml:/raft/compose.yaml" in text
         assert "./host/gate-nginx.fingerprint:/raft/host/gate-nginx.fingerprint" in text
@@ -48,8 +57,8 @@ class TestDashboardComposeAndWriter(RaftTestCase):
             in text
         )
         assert "./host/inbox:/raft/host/inbox" in text
-        assert "RAFT_SERVE_BIND" not in text
-        assert "oauth.env" not in text
+
+    def _assert_compose_resources(self, text: str) -> None:
         assert 'cpus: "1.0"' in text
         assert "memory: 256M" in text
 

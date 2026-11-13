@@ -50,16 +50,20 @@ class TestCoverageOauth(RaftTestCase):
                 oauth._exchange_code("c")
 
     def test_oauth_exchange_ok_and_fetch(self) -> None:
-        oauth = GithubOauth(
+        oauth = self._oauth()
+        self._assert_exchange_ok(oauth)
+        url = oauth.login_url(port=9, select_account=True)
+        assert "prompt=select_account" in url
+        self._assert_fetch_user(oauth)
+
+    def _oauth(self) -> GithubOauth:
+        return GithubOauth(
             GithubServeConfig(client_id="id", client_secret="sec"),
             GithubAccountStore(self.tmp_path),
         )
-        ok = MagicMock()
-        ok.read.return_value = b'{"access_token":"tok"}'
-        ok.status = 200
-        ok.headers = {}
-        ok.__enter__.return_value = ok
-        ok.__exit__.return_value = False
+
+    def _assert_exchange_ok(self, oauth: GithubOauth) -> None:
+        ok = self._json_response(b'{"access_token":"tok"}')
         with patch("raft.core.platform.github.gateway.urlopen", return_value=ok):
             assert oauth._exchange_code("c") == "tok"
             assert (
@@ -69,16 +73,21 @@ class TestCoverageOauth(RaftTestCase):
                 )
                 == "tok"
             )
-        url = oauth.login_url(port=9, select_account=True)
-        assert "prompt=select_account" in url
-        user = MagicMock()
-        user.read.return_value = b'{"login":"bob"}'
-        user.status = 200
-        user.headers = {}
-        user.__enter__.return_value = user
-        user.__exit__.return_value = False
+
+    def _assert_fetch_user(self, oauth: GithubOauth) -> None:
+        user = self._json_response(b'{"login":"bob"}')
         with patch("raft.core.platform.github.gateway.urlopen", return_value=user):
             assert oauth._fetch_user("tok") == ("bob", None)
+
+    @staticmethod
+    def _json_response(body: bytes) -> MagicMock:
+        resp = MagicMock()
+        resp.read.return_value = body
+        resp.status = 200
+        resp.headers = {}
+        resp.__enter__.return_value = resp
+        resp.__exit__.return_value = False
+        return resp
 
     def test_oauth_fetch_user_missing(self) -> None:
         oauth = GithubOauth(
@@ -127,7 +136,7 @@ class TestCoverageOauth(RaftTestCase):
         assert runner._fingerprint("nospaceblob")
         assert runner._fingerprint(None) == ""
         with patch(
-            "raft.core.platform.github.deploy.job.base64.b64decode",
+            "raft.core.platform.github.deploy.job_manifest.base64.b64decode",
             side_effect=ValueError("bad"),
         ):
             assert "unparsed" in runner._fingerprint("ssh-ed25519 AAAA")

@@ -49,28 +49,45 @@ class DashboardProxyNginx:
             return DashboardOAuthNginx().server(cfg, listen=listen, app_port=app_port)
         return self._open(listen=listen, app_port=app_port)
 
+    def _wrap(self, server_body: str) -> str:
+        return (
+            f"{self._nginx_preamble()}"
+            "http {\n"
+            f"{self._http_temp_paths()}"
+            f"{self._fwd_proto_map()}"
+            f"{server_body}"
+            "}\n"
+        )
+
     @staticmethod
-    def _wrap(server_body: str) -> str:
+    def _nginx_preamble() -> str:
         return (
             "pid /tmp/raft-dashboard-nginx.pid;\n"
             # /tmp — host-UID workers cannot reopen /dev/stderr after setpriv drop.
             "error_log /tmp/raft-dashboard-nginx-error.log warn;\n"
             "worker_processes 1;\n"
             "events { worker_connections 128; }\n"
-            "http {\n"
+        )
+
+    @staticmethod
+    def _http_temp_paths() -> str:
+        return (
             "    access_log /tmp/raft-dashboard-nginx-access.log;\n"
             "    client_body_temp_path /tmp/nginx_client_body;\n"
             "    proxy_temp_path /tmp/nginx_proxy;\n"
             "    fastcgi_temp_path /tmp/nginx_fastcgi;\n"
             "    uwsgi_temp_path /tmp/nginx_uwsgi;\n"
             "    scgi_temp_path /tmp/nginx_scgi;\n"
+        )
+
+    @staticmethod
+    def _fwd_proto_map() -> str:
+        return (
             "    # Prefer edge proto (gate TLS) over local http listen.\n"
             "    map $http_x_forwarded_proto $raft_fwd_proto {\n"
             "        default $http_x_forwarded_proto;\n"
             "        ''      $scheme;\n"
             "    }\n"
-            f"{server_body}"
-            "}\n"
         )
 
     def _open(self, *, listen: int, app_port: int) -> str:

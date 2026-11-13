@@ -1,14 +1,10 @@
 """Deploy job runner (AppApply / auth reuse + CI PR setup)."""
 
-import base64
-import hashlib
 import logging
 import shutil
 import threading
 from pathlib import Path
 from typing import Optional
-
-import yaml
 
 from raft.core.core.config.paths.service_paths import ServicePaths
 from raft.core.lifecycle.apply.service import AppApply
@@ -23,6 +19,8 @@ from ..accounts import GithubAccount
 from ..providers import GithubProvider, GithubRepo
 from .ci_pr import GithubCiPrSetup
 from .host_git import GithubDeployHostGit
+from .job_failures import GithubDeployFailures
+from .job_manifest import GithubDeployManifest
 from .models import DeployJob, DeployJobStore, DeployStep
 from .next_steps import DeployNextSteps
 
@@ -49,6 +47,8 @@ class GithubDeployRunner:
         self._notifier = notifier if notifier is not None else Notifier(stack.root)
         self._paths = ContractRelPath()
         self._host_git = GithubDeployHostGit(stack)
+        self._failures = GithubDeployFailures()
+        self._manifest = GithubDeployManifest()
 
     def start(
         self,
@@ -58,7 +58,6 @@ class GithubDeployRunner:
         *,
         manifest_path: str = "",
     ) -> DeployJob:
-        # Coalesce: one in-flight deploy per full_name+manifest (serve is single-process).
         rel = self._paths.normalize(manifest_path)
         job, coalesced = self._store.claim_or_create(
             repo.full_name,
@@ -66,21 +65,27 @@ class GithubDeployRunner:
             manifest_path=rel,
         )
         if coalesced:
-            logger.info(
-                "github deploy coalesce full_name=%s path=%s job_id=%s",
-                repo.full_name,
-                rel,
-                job.id,
-            )
-            return job
+            return self._log_coalesce(job, repo.full_name, rel)
+        self._spawn(job.id, account, repo)
+        return job
+
+    def _log_coalesce(self, job: DeployJob, full_name: str, rel: str) -> DeployJob:
+        logger.info(
+            "github deploy coalesce full_name=%s path=%s job_id=%s",
+            full_name,
+            rel,
+            job.id,
+        )
+        return job
+
+    def _spawn(self, job_id: str, account: GithubAccount, repo: GithubRepo) -> None:
         thread = threading.Thread(
             target=self._run,
-            args=(job.id, account, repo),
-            name=f"github-deploy-{job.id}",
+            args=(job_id, account, repo),
+            name=f"github-deploy-{job_id}",
             daemon=True,
         )
         thread.start()
-        return job
 
     def _run(self, job_id: str, account: GithubAccount, repo: GithubRepo) -> None:
         job = self._store.get(job_id)
@@ -113,8 +118,8 @@ class GithubDeployRunner:
             account.access_token, repo.full_name, job.ref, path=rel
         )
         self._step(job, "Fetch App manifest", "ok", f"found {rel}")
-        data = self._parse_yaml(text, repo.full_name)
-        app_name = self._manifest_name(data)
+        data = self._manifest.parse_yaml(text, repo.full_name)
+        app_name = self._manifest.manifest_name(data)
         job.app_name = app_name
         local = self._provider.resolve_local_tree(repo.full_name)
         if local is not None:
@@ -152,14 +157,25 @@ class GithubDeployRunner:
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(tree, dest)
         self._step(job, "Stage local tree", "ok", str(dest))
+        self._apply_local_manifest(job, dest, data, app_name, rel=rel)
+
+    def _apply_local_manifest(
+        self,
+        job: DeployJob,
+        dest: Path,
+        data: dict,
+        app_name: str,
+        *,
+        rel: str,
+    ) -> None:
         self._step(job, "Apply + deploy", "running")
         manifest = self._paths.under(dest, rel)
         manifest.parent.mkdir(parents=True, exist_ok=True)
-        self._rewrite_local_manifest(manifest, data, app_name)
+        self._manifest.rewrite_local(manifest, data, app_name)
         try:
             AppApply(load_stack(self._stack.root)).apply_file(manifest, deploy=True)
         except OperatorError as exc:
-            self._apply_failure_steps(job, str(exc))
+            self._failures.apply_steps(job, str(exc))
             raise
         self._step(job, "Apply + deploy", "ok", f"applied {app_name}")
 
@@ -178,16 +194,21 @@ class GithubDeployRunner:
         try:
             self._apply_git(repo.ssh_url, ref=job.ref, rel=rel)
         except OperatorError as exc:
-            detail = str(exc)
-            if self._is_deploy_key_failure(detail):
-                self._auth_failure_steps(job, fp)
-                raise OperatorError(
-                    self._auth_failure_message(detail, fp),
-                    has_fix=False,
-                ) from exc
-            self._apply_failure_steps(job, detail)
-            raise
+            self._handle_git_apply_error(job, exc, fp)
         self._step(job, "Apply + deploy", "ok", f"applied {app_name}")
+
+    def _handle_git_apply_error(
+        self, job: DeployJob, exc: OperatorError, fp: str
+    ) -> None:
+        detail = str(exc)
+        if self._failures.is_deploy_key_failure(detail):
+            self._failures.auth_steps(job, fp)
+            raise OperatorError(
+                self._failures.auth_message(detail, fp),
+                has_fix=False,
+            ) from exc
+        self._failures.apply_steps(job, detail)
+        raise
 
     def _apply_git(self, ssh_url: str, *, ref: str, rel: str) -> None:
         if self._host_git.in_dashboard():
@@ -206,142 +227,42 @@ class GithubDeployRunner:
             auth.setup(app_name, repo=repo.ssh_url)
             pubkey = auth.show_pubkey(app_name)
         job.deploy_pubkey = GitAuthManager._pubkey_for_paste(pubkey)
-        job.deploy_key_title = self._title_from_pubkey(pubkey) or f"raft:{app_name}"
-        job.deploy_key_url = self._deploy_key_url(job)
-        fp = self._fingerprint(pubkey)
+        job.deploy_key_title = self._manifest.title_from_pubkey(pubkey) or f"raft:{app_name}"
+        job.deploy_key_url = self._failures.deploy_key_url(job)
+        fp = self._manifest.fingerprint(pubkey)
         self._step(job, "Prepare deploy key", "ok", f"fingerprint {fp}")
         return fp
-
-    def _auth_failure_steps(self, job: DeployJob, fp: str) -> None:
-        url = job.deploy_key_url or self._deploy_key_url(job)
-        job.deploy_key_url = url
-        body = (
-            "Copy Title + Key below into the repo Deploy keys form "
-            f"(read-only), then press Continue installation. Fingerprint: {fp}."
-        )
-        if url:
-            body = f"{body} Link: {url}"
-        job.next_steps = [{"title": "Add deploy key on GitHub", "body": body}]
-
-    def _apply_failure_steps(self, job: DeployJob, detail: str) -> None:
-        lower = detail.lower()
-        app = job.app_name or "<app>"
-        if "env file" in lower and "not found" in lower:
-            job.next_steps = [
-                {
-                    "title": "Env file",
-                    "body": (
-                        f"Create ~/.raft/services/{app}/secrets/env "
-                        "(mode 0600; dir 0700) with the secrets this App "
-                        "expects, then press Continue installation. Raft "
-                        "does not write secret values for you."
-                    ),
-                }
-            ]
-            return
-        if "origin" in lower and (
-            "cert" in lower or "pem" in lower or "tls" in lower
-        ):
-            job.next_steps = [
-                {
-                    "title": "Origin TLS material",
-                    "body": (
-                        f"Install origin.pem + origin.key under "
-                        f"services/{app}/certs/, then press Continue "
-                        "installation."
-                    ),
-                }
-            ]
-
-    @staticmethod
-    def _is_deploy_key_failure(detail: str) -> bool:
-        lower = detail.lower()
-        return "permission denied (publickey)" in lower or (
-            "deploy key" in lower and "rejected" in lower
-        )
-
-    @staticmethod
-    def _auth_failure_message(detail: str, fp: str) -> str:
-        text = detail.strip()
-        if GithubDeployRunner._is_deploy_key_failure(text):
-            return text
-        return (
-            f"{text}\n"
-            "Add the deploy public key shown in the UI "
-            f"(fingerprint {fp}), then continue installation."
-        )
-
-    @staticmethod
-    def _title_from_pubkey(pubkey: str) -> Optional[str]:
-        parts = pubkey.split()
-        if len(parts) >= 3:
-            return " ".join(parts[2:]).strip() or None
-        return None
 
     def _fill_next_steps(self, job: DeployJob, data: dict) -> None:
         if not job.app_name:
             return
         path = ServicePaths(self._stack.root, job.app_name).app_yaml()
-        data = self._registry_or(data, path)
+        data = self._manifest.registry_or(data, path)
         app, spec = AppDocument.parse(data, path=path if path.is_file() else Path("."))
         steps = self._next.build(
             app,
             spec,
             deploy_pubkey=job.deploy_pubkey,
-            deploy_key_url=self._deploy_key_url(job),
-            key_fingerprint=self._fingerprint(job.deploy_pubkey) if job.deploy_pubkey else None,
+            deploy_key_url=self._failures.deploy_key_url(job),
+            key_fingerprint=(
+                self._manifest.fingerprint(job.deploy_pubkey)
+                if job.deploy_pubkey
+                else None
+            ),
         )
         steps.extend(self._next.ci_steps(job.ci_pr))
         job.next_steps = steps
 
-    @staticmethod
-    def _registry_or(data: dict, path: Path) -> dict:
-        if path.is_file():
-            return yaml.safe_load(path.read_text(encoding="utf-8")) or data
-        return data
-
-    @staticmethod
-    def _deploy_key_url(job: DeployJob) -> Optional[str]:
-        if "/" not in job.full_name:
-            return None
-        return f"https://github.com/{job.full_name}/settings/keys/new"
-
-    @staticmethod
-    def _rewrite_local_manifest(path: Path, data: dict, app_name: str) -> None:
-        spec = data.setdefault("spec", {})
-        if not isinstance(spec, dict):
-            raise OperatorError("manifest spec must be a mapping", has_fix=False)
-        spec["source"] = "local"
-        spec["path"] = f"services/{app_name}/checkout"
-        path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
-
-    @staticmethod
-    def _parse_yaml(text: str, full_name: str) -> dict:
-        try:
-            data = yaml.safe_load(text)
-        except yaml.YAMLError as exc:
-            raise OperatorError(
-                f"invalid App manifest YAML in {full_name}: {exc}\n"
-                f"Fix: repair .raft/app.yaml",
-                has_fix=False,
-            ) from exc
-        if not isinstance(data, dict):
-            raise OperatorError(
-                f"app manifest must be a mapping in {full_name}\n"
-                f"Fix: repair .raft/app.yaml",
-                has_fix=False,
-            )
-        return data
-
-    @staticmethod
-    def _manifest_name(data: dict) -> str:
-        meta = data.get("metadata")
-        if not isinstance(meta, dict) or not str(meta.get("name", "")).strip():
-            raise OperatorError(
-                "manifest metadata.name is required\nFix: set metadata.name in .raft/app.yaml",
-                has_fix=False,
-            )
-        return str(meta["name"]).strip()
+    # Compat wrappers used by unit tests / callers that touch class methods.
+    _parse_yaml = staticmethod(GithubDeployManifest.parse_yaml)
+    _manifest_name = staticmethod(GithubDeployManifest.manifest_name)
+    _rewrite_local_manifest = staticmethod(GithubDeployManifest.rewrite_local)
+    _registry_or = staticmethod(GithubDeployManifest.registry_or)
+    _title_from_pubkey = staticmethod(GithubDeployManifest.title_from_pubkey)
+    _fingerprint = staticmethod(GithubDeployManifest.fingerprint)
+    _deploy_key_url = staticmethod(GithubDeployFailures.deploy_key_url)
+    _is_deploy_key_failure = staticmethod(GithubDeployFailures.is_deploy_key_failure)
+    _auth_failure_message = staticmethod(GithubDeployFailures.auth_message)
 
     @staticmethod
     def _step(job: DeployJob, name: str, status: str, detail: str = "") -> None:
@@ -351,15 +272,3 @@ class GithubDeployRunner:
                 step.detail = detail
                 return
         job.steps.append(DeployStep(name=name, status=status, detail=detail))
-
-    @staticmethod
-    def _fingerprint(pubkey: Optional[str]) -> str:
-        if not pubkey:
-            return ""
-        parts = pubkey.split()
-        blob = parts[1] if len(parts) >= 2 else pubkey
-        try:
-            raw = hashlib.sha256(base64.b64decode(blob + "==")).digest()
-        except Exception:
-            return "SHA256:(unparsed)"
-        return "SHA256:" + base64.b64encode(raw).decode("ascii").rstrip("=")

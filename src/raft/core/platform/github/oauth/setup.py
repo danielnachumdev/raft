@@ -36,9 +36,18 @@ class GithubOauthAppSetup:
         homepage, callback = self._base.urls(
             port=port, public_host=public_host, tls=tls
         )
+        name, description = self._labels(public_host)
+        return self._fields_dict(name, homepage, description, callback)
+
+    def _labels(self, public_host: Optional[str]) -> tuple[str, str]:
         public = self._base.is_public(public_host)
         name = APPLICATION_NAME_PUBLIC if public else APPLICATION_NAME
         description = DESCRIPTION_PUBLIC if public else DESCRIPTION
+        return name, description
+
+    def _fields_dict(
+        self, name: str, homepage: str, description: str, callback: str
+    ) -> Dict[str, Any]:
         return {
             "application_name": name,
             "homepage_url": homepage,

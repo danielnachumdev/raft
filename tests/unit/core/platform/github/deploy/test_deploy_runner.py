@@ -1,0 +1,256 @@
+"""GitHub deploy runner unit tests."""
+
+from __future__ import annotations
+
+import threading
+import time
+from unittest.mock import MagicMock, patch
+
+import yaml
+
+from raft.core.platform.github.deploy import GithubDeployRunner
+from raft.core.platform.github.deploy import DeployJob, DeployJobStore
+
+from tests.unit.base import AppliedInventory, RaftTestCase, StackMakers
+from tests.unit.core.platform.github import fixtures as github_fx
+
+
+class TestGithubDeployRunner(RaftTestCase):
+    def _wait(self, job: DeployJob) -> None:
+        for _ in range(80):
+            time.sleep(0.05)
+            if job.status in {"succeeded", "failed"}:
+                return
+
+    def _provider(self, *, with_manifest: bool = True, name: str = "http-only-site"):
+        tree = self.tmp_path / "fixture-tree"
+        if with_manifest:
+            github_fx.write_local_app_tree(tree, name=name)
+        else:
+            tree.mkdir(parents=True, exist_ok=True)
+        return github_fx.StubLocalGithubProvider(tree, full_name=f"demo/{name}")
+
+    def test_local_deploy_succeeds(self) -> None:
+        stack = StackMakers.make_stack(self.tmp_path)
+        provider = self._provider()
+        runner = GithubDeployRunner(stack, provider, DeployJobStore())
+        repo = provider.list_repos("t")[0]
+        with patch("raft.core.platform.github.deploy.job.AppApply") as apply_cls, patch(
+            "raft.core.platform.github.deploy.job.GithubCiPrSetup.ensure"
+        ) as ensure:
+            apply_cls.return_value.apply_file.return_value = "http-only-site"
+            from raft.core.platform.github.deploy import CiPrResult
+
+            ensure.return_value = CiPrResult(
+                status="opened", detail="ok", pr_url="https://github.com/o/r/pull/1"
+            )
+            job = runner.start(github_fx.sample_account(), repo, "main")
+            self._wait(job)
+        self._assert_local_deploy_ok(job)
+
+    def _assert_local_deploy_ok(self, job: DeployJob) -> None:
+        assert job.status == "succeeded"
+        assert job.app_name == "http-only-site"
+        assert job.ci_pr and job.ci_pr["status"] == "opened"
+        assert (
+            self.tmp_path
+            / "services"
+            / "http-only-site"
+            / "checkout"
+            / ".raft"
+            / "app.yaml"
+        ).is_file()
+
+    def test_start_coalesces_inflight_same_full_name(self) -> None:
+        store = DeployJobStore()
+        provider = self._provider()
+        runner = GithubDeployRunner(
+            StackMakers.make_stack(self.tmp_path), provider, store
+        )
+        repo = provider.list_repos("t")[0]
+        first = self._start_blocked_deploy(runner, repo)
+        second = runner.start(github_fx.sample_account(), repo, "main")
+        assert first.id == second.id
+        assert store.active_for(repo.full_name) is first
+        self._release_blocked_deploy()
+        self._wait(first)
+        assert first.status == "succeeded"
+
+    def _start_blocked_deploy(self, runner, repo) -> DeployJob:
+        self._deploy_started = threading.Event()
+        self._deploy_release = threading.Event()
+
+        def _block_execute(job, account, repo_arg) -> None:
+            del job, account, repo_arg
+            self._deploy_started.set()
+            self._deploy_release.wait(timeout=5)
+
+        self._deploy_patch = patch.object(
+            runner, "_execute", side_effect=_block_execute
+        )
+        self._deploy_patch.start()
+        first = runner.start(github_fx.sample_account(), repo, "main")
+        assert self._deploy_started.wait(timeout=2)
+        return first
+
+    def _release_blocked_deploy(self) -> None:
+        self._deploy_release.set()
+        self._deploy_patch.stop()
+
+    def test_missing_manifest_fails(self) -> None:
+        runner = GithubDeployRunner(
+            StackMakers.make_stack(self.tmp_path),
+            self._provider(with_manifest=False, name="no-manifest"),
+            DeployJobStore(),
+        )
+        repo = runner._provider.list_repos("t")[0]
+        job = runner.start(github_fx.sample_account(), repo, "main")
+        self._wait(job)
+        assert job.status == "failed"
+        assert job.error and ".raft/app.yaml" in job.error
+
+    def test_source_conflict_surfaces_on_job(self) -> None:
+        AppliedInventory.write_applied_app(
+            self.tmp_path,
+            "http-only-site",
+            source="git",
+            repo="git@github.com:other-org/other-api.git",
+            public_host="other.test",
+        )
+        job = self._start_local_deploy("demo/http-only-site")
+        self._wait(job)
+        assert job.status == "failed"
+        assert job.error and "different source" in job.error
+        assert "raft delete http-only-site" in job.error
+        assert "Fix:" in job.error
+
+    def _start_local_deploy(self, full_name: str) -> DeployJob:
+        name = full_name.split("/", 1)[1]
+        provider = self._provider(name=name)
+        runner = GithubDeployRunner(
+            StackMakers.make_stack(self.tmp_path),
+            provider,
+            DeployJobStore(),
+        )
+        repo = next(r for r in provider.list_repos("t") if r.full_name == full_name)
+        return runner.start(github_fx.sample_account(), repo, "main")
+
+    def test_fill_next_steps_from_registry(self) -> None:
+        stack = StackMakers.make_stack(self.tmp_path)
+        manifest = self._write_registry_manifest()
+        runner = GithubDeployRunner(stack, self._provider(), DeployJobStore())
+        job = DeployJob(
+            id="x", full_name="demo/http-only-site", ref="main", app_name="http-only-site"
+        )
+        runner._fill_next_steps(job, manifest)
+        assert any(s["title"] == "DNS" for s in job.next_steps)
+
+    def test_deploy_key_url_requires_slash(self) -> None:
+        job = DeployJob(id="x", full_name="noslash", ref="main")
+        assert GithubDeployRunner._deploy_key_url(job) is None
+        job.full_name = "o/r"
+        assert "settings/keys/new" in GithubDeployRunner._deploy_key_url(job)
+
+    def test_git_deploy_uses_host_oneshot_in_dashboard(self) -> None:
+        runner, job, repo, host = self._dashboard_git_fixture()
+        with patch("raft.core.platform.github.deploy.job.AppApply") as apply_cls:
+            runner._deploy_git(
+                job, github_fx.sample_account(), repo, "docket", rel=".raft/app.yaml"
+            )
+            apply_cls.assert_not_called()
+        self._assert_dashboard_git_calls(host, job)
+
+    def _dashboard_git_fixture(self):
+        runner = GithubDeployRunner(
+            StackMakers.make_stack(self.tmp_path), self._provider(), DeployJobStore()
+        )
+        job = DeployJob(
+            id="h",
+            full_name="demo/docket-deploy",
+            ref="main",
+            app_name="docket",
+            manifest_path=".raft/app.yaml",
+        )
+        host = self._mock_dashboard_host()
+        runner._host_git = host
+        return runner, job, self._docket_repo(), host
+
+    @staticmethod
+    def _docket_repo():
+        return github_fx.sample_repo(
+            full_name="demo/docket-deploy",
+            name="docket-deploy",
+            owner="demo",
+            ssh_url="git@github.com:demo/docket-deploy.git",
+            html_url="https://github.com/demo/docket-deploy",
+            clone_url="https://github.com/demo/docket-deploy.git",
+        )
+
+    @staticmethod
+    def _mock_dashboard_host():
+        host = MagicMock()
+        host.in_dashboard.return_value = True
+        host.prepare_key.return_value = "ssh-ed25519 AAAA host"
+        return host
+
+    def _assert_dashboard_git_calls(self, host, job: DeployJob) -> None:
+        host.prepare_key.assert_called_once_with(
+            "docket", "git@github.com:demo/docket-deploy.git"
+        )
+        host.apply_git.assert_called_once_with(
+            "git@github.com:demo/docket-deploy.git",
+            ref="main",
+            manifest_path=".raft/app.yaml",
+        )
+        assert job.deploy_pubkey and "AAAA" in job.deploy_pubkey
+        assert job.deploy_key_title
+        assert job.deploy_key_url and "settings/keys/new" in job.deploy_key_url
+
+    def test_auth_failure_message_keeps_actionable_detail(self) -> None:
+        msg = GithubDeployRunner._auth_failure_message(
+            "GitHub rejected the SSH deploy key (publickey).\nFix: paste the key.",
+            "SHA256:demo",
+        )
+        assert "fingerprint" not in msg
+        assert "publickey" in msg
+        wrapped = GithubDeployRunner._auth_failure_message("clone failed", "SHA256:demo")
+        assert "fingerprint SHA256:demo" in wrapped
+        assert GithubDeployRunner._is_deploy_key_failure(
+            "Permission denied (publickey)"
+        )
+        assert not GithubDeployRunner._is_deploy_key_failure(
+            "Cloudflare Origin certs missing"
+        )
+
+    def test_title_from_pubkey_uses_comment(self) -> None:
+        assert (
+            GithubDeployRunner._title_from_pubkey(
+                "ssh-ed25519 AAAAdemo raft:demo-api@demo-host"
+            )
+            == "raft:demo-api@demo-host"
+        )
+
+    def _write_registry_manifest(self) -> dict:
+        apps = self.tmp_path / "services"
+        apps.mkdir(parents=True, exist_ok=True)
+        manifest = self._registry_manifest_doc()
+        (apps / "http-only-site.yaml").write_text(
+            yaml.safe_dump(manifest), encoding="utf-8"
+        )
+        (self.tmp_path / "services" / "http-only-site").mkdir(parents=True, exist_ok=True)
+        return manifest
+
+    @staticmethod
+    def _registry_manifest_doc() -> dict:
+        return {
+            "apiVersion": "raft/v1",
+            "kind": "App",
+            "metadata": {"name": "http-only-site"},
+            "spec": {
+                "publicHost": "site.example.com",
+                "source": "local",
+                "path": "services/http-only-site/checkout",
+                "ports": [{"name": "http", "containerPort": 80, "expose": "http"}],
+                "readiness": {"type": "http", "port": "http", "path": "/"},
+            },
+        }

@@ -46,12 +46,26 @@ class DashboardComposeYaml:
         ]
 
     def _runtime_block(self, cfg: DashboardConfig, port: int) -> list[str]:
-        lines = [
+        return [
+            *self._env_block(cfg, port),
+            "    ports:",
+            f'      - "127.0.0.1:{port}:{port}"',
+        ]
+
+    def _env_block(self, cfg: DashboardConfig, port: int) -> list[str]:
+        return [
             "    environment:",
             "      RAFT_DATA_HOME: /raft",
             # nginx listens on dashboard.port; uvicorn stays on loopback inside.
             f'      RAFT_SERVE_PORT: "{port}"',
             '      RAFT_DASHBOARD_APP_PORT: "18787"',
+            *self._host_identity_env(),
+            *self._oauth_env_file(cfg),
+        ]
+
+    @staticmethod
+    def _host_identity_env() -> list[str]:
+        return [
             # Absolute host home for Settings → Update (Docker one-shot + identity).
             '      RAFT_HOST_HOME: "${RAFT_HOST_HOME}"',
             '      RAFT_HOST_UID: "${RAFT_HOST_UID:-0}"',
@@ -65,11 +79,7 @@ class DashboardComposeYaml:
             '"${RAFT_HOST_DOCKER_BIN:-/usr/bin/docker}"',
             '      RAFT_HOST_DOCKER_PLUGIN_DIR: '
             '"${RAFT_HOST_DOCKER_PLUGIN_DIR:-/usr/libexec/docker/cli-plugins}"',
-            *self._oauth_env_file(cfg),
-            "    ports:",
-            f'      - "127.0.0.1:{port}:{port}"',
         ]
-        return lines
 
     @staticmethod
     def _oauth_env_file(cfg: DashboardConfig) -> list[str]:
@@ -100,11 +110,18 @@ class DashboardComposeYaml:
             '      - "${RAFT_HOST_HOME}/.ssh:${RAFT_HOST_HOME}/.ssh"',
         ]
 
-    @staticmethod
-    def _data_home_volumes() -> list[str]:
+    def _data_home_volumes(self) -> list[str]:
         return [
             "      - .:/raft:ro",
-            # Mutative apply/render from the dashboard needs these writes.
+            *self._writable_host_volumes(),
+            "      - ./services:/raft/services",
+            "      - ./generated:/raft/generated",
+        ]
+
+    @staticmethod
+    def _writable_host_volumes() -> list[str]:
+        # Mutative apply/render from the dashboard needs these writes.
+        return [
             "      - ./compose.yaml:/raft/compose.yaml",
             "      - ./host/gate-nginx.fingerprint:/raft/host/gate-nginx.fingerprint",
             "      - ./host/router-nginx.fingerprint:/raft/host/router-nginx.fingerprint",
@@ -120,8 +137,6 @@ class DashboardComposeYaml:
             "      - ./host/acme:/raft/host/acme",
             "      - ./host/secrets:/raft/host/secrets",
             "      - ./host/inbox:/raft/host/inbox",
-            "      - ./services:/raft/services",
-            "      - ./generated:/raft/generated",
         ]
 
     @staticmethod
