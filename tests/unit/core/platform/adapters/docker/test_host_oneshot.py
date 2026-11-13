@@ -138,8 +138,26 @@ class TestHostOneshot:
             "Run `raft doctor` for a full check.\n"
         )
         msg = HostOneshot._failure_message(exc)
-        assert "Cloudflare Origin certs missing" in msg
+        assert "Origin TLS certificates are missing" in msg
         assert "Run `raft doctor`" not in msg
+
+    def test_failure_message_env_file_missing_is_actionable(self) -> None:
+        exc = RuntimeError("ignored")
+        exc.stderr = (
+            "env file /home/raft/.raft/services/demo-api/secrets/env not found: "
+            "stat: no such file or directory\n"
+            "docker compose failed while trying to rebuild service demo-api.\n"
+            "\n"
+            "Fix:\n"
+            "  1. raft doctor\n"
+            "  2. docker compose -f ~/.raft/compose.yaml ps\n"
+            "  3. docker compose -f ~/.raft/compose.yaml logs --tail=80 gate router\n"
+            "--- demo-api (absent) ---\n"
+        )
+        msg = HostOneshot._failure_message(exc)
+        assert "App env file is missing" in msg
+        assert "demo-api/secrets/env" in msg
+        assert "docker compose -f" not in msg
 
     def test_failure_message_uses_output(self) -> None:
         exc = RuntimeError("ignored")

@@ -137,12 +137,9 @@ class HostOneshot:
     @staticmethod
     def _failure_message(exc: BaseException) -> str:
         detail = HostOneshot._failure_detail(exc)
-        if "Permission denied (publickey)" in detail:
-            return (
-                "GitHub rejected the SSH deploy key (publickey).\n"
-                "Fix: add the public key shown in the UI as a read-only "
-                "Deploy key, then continue installation."
-            )
+        known = HostOneshot._known_failure_message(detail)
+        if known is not None:
+            return known
         summary = HostOneshot._failure_summary(detail)
         return (
             "host Docker one-shot failed: "
@@ -152,13 +149,79 @@ class HostOneshot:
         )
 
     @staticmethod
+    def _known_failure_message(detail: str) -> Optional[str]:
+        lower = detail.lower()
+        if "permission denied (publickey)" in lower:
+            return (
+                "GitHub rejected the SSH deploy key (publickey).\n"
+                "Fix: add the public key shown in the UI as a read-only "
+                "Deploy key, then continue installation."
+            )
+        if "env file" in lower and "not found" in lower:
+            path = HostOneshot._env_path_from_detail(detail) or (
+                "~/.raft/services/<app>/secrets/env"
+            )
+            return (
+                f"App env file is missing: {path}\n"
+                "Fix: create that file (mode 0600; secrets dir 0700) with the "
+                "secrets the App expects, then continue installation."
+            )
+        if "origin" in lower and (
+            "cert" in lower or "pem" in lower or "tls" in lower
+        ):
+            return (
+                "Origin TLS certificates are missing for this App.\n"
+                "Fix: install origin.pem + origin.key under "
+                "services/<app>/certs/, then continue installation."
+            )
+        return None
+
+    @staticmethod
+    def _env_path_from_detail(detail: str) -> Optional[str]:
+        for line in detail.splitlines():
+            text = line.strip()
+            if "env file" in text.lower() and "not found" in text.lower():
+                # "env file /path/to/env not found: ..."
+                if text.lower().startswith("env file "):
+                    rest = text[9:]
+                    cut = rest.lower().find(" not found")
+                    if cut > 0:
+                        return rest[:cut].strip()
+        return None
+
+    @staticmethod
     def _failure_summary(detail: str) -> str:
         lines = [ln.strip() for ln in detail.splitlines() if ln.strip()]
         while lines and lines[-1].lower().startswith("run `raft doctor`"):
             lines.pop()
+        lines = HostOneshot._drop_fix_tail(lines)
         if not lines:
             return "unknown error"
-        return "\n".join(lines[-3:])
+        return "\n".join(lines[:3])
+
+    @staticmethod
+    def _drop_fix_tail(lines: list[str]) -> list[str]:
+        out: list[str] = []
+        for ln in lines:
+            low = ln.lower()
+            if low in {"fix:", "fix"} or low.startswith("fix:"):
+                break
+            if low.startswith("hint:"):
+                break
+            if HostOneshot._is_fix_step_line(ln):
+                break
+            if ln.startswith("---") and ln.endswith("---"):
+                break
+            out.append(ln)
+        return out
+
+    @staticmethod
+    def _is_fix_step_line(line: str) -> bool:
+        stripped = line.lstrip()
+        if len(stripped) < 3 or not stripped[0].isdigit():
+            return False
+        dot = stripped.find(".")
+        return 0 < dot <= 3 and stripped[dot : dot + 2] == ". "
 
     @staticmethod
     def _failure_detail(exc: BaseException) -> str:

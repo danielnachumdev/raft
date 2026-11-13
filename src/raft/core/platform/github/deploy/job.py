@@ -156,7 +156,11 @@ class GithubDeployRunner:
         manifest = self._paths.under(dest, rel)
         manifest.parent.mkdir(parents=True, exist_ok=True)
         self._rewrite_local_manifest(manifest, data, app_name)
-        AppApply(load_stack(self._stack.root)).apply_file(manifest, deploy=True)
+        try:
+            AppApply(load_stack(self._stack.root)).apply_file(manifest, deploy=True)
+        except OperatorError as exc:
+            self._apply_failure_steps(job, str(exc))
+            raise
         self._step(job, "Apply + deploy", "ok", f"applied {app_name}")
 
     def _deploy_git(
@@ -181,6 +185,7 @@ class GithubDeployRunner:
                     self._auth_failure_message(detail, fp),
                     has_fix=False,
                 ) from exc
+            self._apply_failure_steps(job, detail)
             raise
         self._step(job, "Apply + deploy", "ok", f"applied {app_name}")
 
@@ -217,6 +222,36 @@ class GithubDeployRunner:
         if url:
             body = f"{body} Link: {url}"
         job.next_steps = [{"title": "Add deploy key on GitHub", "body": body}]
+
+    def _apply_failure_steps(self, job: DeployJob, detail: str) -> None:
+        lower = detail.lower()
+        app = job.app_name or "<app>"
+        if "env file" in lower and "not found" in lower:
+            job.next_steps = [
+                {
+                    "title": "Env file",
+                    "body": (
+                        f"Create ~/.raft/services/{app}/secrets/env "
+                        "(mode 0600; dir 0700) with the secrets this App "
+                        "expects, then press Continue installation. Raft "
+                        "does not write secret values for you."
+                    ),
+                }
+            ]
+            return
+        if "origin" in lower and (
+            "cert" in lower or "pem" in lower or "tls" in lower
+        ):
+            job.next_steps = [
+                {
+                    "title": "Origin TLS material",
+                    "body": (
+                        f"Install origin.pem + origin.key under "
+                        f"services/{app}/certs/, then press Continue "
+                        "installation."
+                    ),
+                }
+            ]
 
     @staticmethod
     def _is_deploy_key_failure(detail: str) -> bool:

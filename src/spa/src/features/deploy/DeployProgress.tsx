@@ -11,7 +11,10 @@ export function DeployProgress(props: {
   const { job, busy = false, onContinue } = props;
   const inFlight = isDeployInFlight(job);
   const showLogs = job.status === "succeeded" && Boolean(job.app_name);
-  const showKeyPanel = Boolean(job.deploy_pubkey) && job.status === "failed";
+  const showKeyPanel =
+    Boolean(job.deploy_pubkey) &&
+    job.status === "failed" &&
+    /publickey|deploy key/i.test(job.error || "");
   const canContinue = job.status === "failed" && Boolean(onContinue);
   const extraSteps = showKeyPanel
     ? job.next_steps.filter(
