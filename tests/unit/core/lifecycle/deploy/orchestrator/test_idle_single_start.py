@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pytest
 
 from raft.core.core.errors.cta import OperatorError
+from raft.core.core.models.state.manual_stop_store import ManualStopStore
 from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.core.core.models.stack import load_stack
 from raft.core.lifecycle.deploy.orchestrator.scaled_sync_hold import ScaledSyncHold
@@ -63,6 +64,12 @@ class TestIdleSingleStartStory(OrchestratorTestCase):
         assert not ScalingStore(self.tmp_path).is_scaled_to_zero("app")
         ScaledSyncHold(self.orch).clear_before_start(app)
         assert not ScalingStore(self.tmp_path).is_scaled_to_zero("app")
+
+    def test_clear_before_start_clears_manual_stop(self) -> None:
+        app = self.orch.stack.app("app")
+        ManualStopStore(self.tmp_path).mark("app")
+        ScaledSyncHold(self.orch).clear_before_start(app)
+        assert not ManualStopStore(self.tmp_path).is_manual_stop("app")
 
     def test_redeploy_skips_tmp_when_not_running(self) -> None:
         self.set_edge_only()

@@ -7,6 +7,7 @@ from raft.core.core.models.app_document import AppDocument
 from raft.core.core.models.depends import AppDependsGraph, DependsOnError, DependsOnSpec
 from raft.core.core.models.registry import AppRegistry
 from raft.core.core.models.stack import Stack
+from raft.core.core.models.state.manual_stop_store import ManualStopStore
 from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.core.platform.adapters.docker import DockerStack
 from raft.core.platform.adapters.nginx import NginxUpstreams
@@ -46,6 +47,7 @@ class UpDepends:
                 has_fix=False,
             )
         self.docker.start_service(compose_id, build=build)
+        ManualStopStore(self.stack.root).clear(name)
         ScalingStore(self.stack.root).clear_scaled_to_zero(name)
         return compose_id
 

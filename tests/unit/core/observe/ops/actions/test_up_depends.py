@@ -7,6 +7,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from raft.core.core.errors.cta import OperatorError
+from raft.core.core.models.state.manual_stop_store import ManualStopStore
+from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.core.observe.ops.actions.up_depends import UpDepends
 
 from tests.unit.base import RaftTestCase, AppMakers, AppliedInventory, StackMakers
@@ -23,6 +25,16 @@ class TestUpDepends(RaftTestCase):
         helper = self._helper()
         with pytest.raises(OperatorError, match="not in applied apps"):
             helper.up_dep("missing")
+
+    def test_up_dep_clears_manual_stop_and_scaled(self) -> None:
+        AppliedInventory.write_applied_app(self.tmp_path, "demo-api")
+        ManualStopStore(self.tmp_path).mark("demo-api")
+        ScalingStore(self.tmp_path).mark_scaled_to_zero("demo-api")
+        helper = self._helper()
+        assert helper.up_dep("demo-api") == "demo-api"
+        helper.docker.start_service.assert_called_once_with("demo-api", build=False)
+        assert not ManualStopStore(self.tmp_path).is_manual_stop("demo-api")
+        assert not ScalingStore(self.tmp_path).is_scaled_to_zero("demo-api")
 
     def test_restore_upstreams_skips_unknown_names(self) -> None:
         helper = self._helper()

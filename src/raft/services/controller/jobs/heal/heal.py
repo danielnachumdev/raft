@@ -11,6 +11,7 @@ from raft.core.core.config.settings.types import HealingConfig
 from raft.core.lifecycle.deploy.orchestrator import Orchestrator
 from raft.core.core.errors.cta import OperatorError
 from raft.core.platform.locking import AppAndStackLocks
+from raft.core.core.models.state.manual_stop_store import ManualStopStore
 from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.core.core.models.stack import Stack
 from raft.core.observe.notify.control_events import ControlPlaneEvents
@@ -71,8 +72,7 @@ class Healer:
         self.on_needs_heal()
 
     def _consider(self, name: str, compose_id: str, when: float) -> bool:
-        if ScalingStore(self.home).is_scaled_to_zero(name):
-            logger.debug("heal skip scaled-to-zero app=%s", name)
+        if self._intentionally_stopped(name):
             self.fail_counts.pop(name, None)
             return False
         status, health = self.docker.service_runtime(compose_id)
@@ -82,6 +82,15 @@ class Healer:
             return False
         self._record_fail_and_act(name, compose_id, status, health, when)
         return True
+
+    def _intentionally_stopped(self, name: str) -> bool:
+        if ScalingStore(self.home).is_scaled_to_zero(name):
+            logger.debug("heal skip scaled-to-zero app=%s", name)
+            return True
+        if ManualStopStore(self.home).is_manual_stop(name):
+            logger.debug("heal skip manual-stop app=%s", name)
+            return True
+        return False
 
     def _record_fail_and_act(
         self, name: str, compose_id: str, status: str, health: str, when: float

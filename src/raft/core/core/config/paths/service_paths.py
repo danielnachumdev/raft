@@ -10,6 +10,7 @@ from .constants import (
     CHECKOUT_DIRNAME,
     DEPLOY_DIRNAME,
     LOGS_DIRNAME,
+    MANUAL_STOP_FILENAME,
     SCALING_DIRNAME,
     SCALING_STATE_FILENAME,
     SECRETS_DIRNAME,
@@ -59,6 +60,10 @@ class ServicePaths:
 
     def scaling_markers(self) -> Path:
         return self.scaling() / "markers"
+
+    def manual_stop(self) -> Path:
+        """Operator Down marker (presence = intentional manual stop)."""
+        return self.root() / MANUAL_STOP_FILENAME
 
     def logs(self) -> Path:
         return self.root() / LOGS_DIRNAME

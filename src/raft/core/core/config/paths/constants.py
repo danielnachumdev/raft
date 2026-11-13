@@ -21,6 +21,7 @@ SCALING_DIRNAME = "scaling"
 ACME_DIRNAME = "acme"
 APP_MANIFEST_FILENAME = "app.yaml"
 SCALING_STATE_FILENAME = "state.json"
+MANUAL_STOP_FILENAME = "manual-stop"
 ACME_STATE_FILENAME = "state.json"
 
 # Export alias used by checkout path helpers.

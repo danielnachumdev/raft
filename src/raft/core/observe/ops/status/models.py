@@ -8,6 +8,7 @@ from typing import Any, Optional
 # Human STATUS column when a Compose service has no container.
 STATUS_NOT_RUNNING = "not running"
 STATUS_SCALED_TO_ZERO = "scaled-to-zero"
+STATUS_MANUAL_STOP = "manual-stop"
 # Present container: Docker health is unhealthy / healthcheck still starting.
 STATUS_UNHEALTHY = "unhealthy"
 STATUS_STARTING = "starting"

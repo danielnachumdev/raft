@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 from raft.core.core.config.settings.types import HealingConfig
 from raft.services.controller.jobs.heal import Healer
 from raft.core.core.errors.cta import OperatorError
+from raft.core.core.models.state.manual_stop_store import ManualStopStore
 from raft.core.core.models.state.scaling_store import ScalingStore
 
 from tests.unit.base import AppliedInventory
@@ -37,6 +38,16 @@ class TestHealerDependsOn(ControllerTestCase):
             tmp_path, api_status="exited", api_health="none"
         )
         ScalingStore(home).mark_scaled_to_zero("api")
+        with self.with_heal_locks():
+            healer.tick(now=1.0)
+        docker.start_service.assert_not_called()
+        assert healer.restart_counts.get(self.APP, 0) == 0
+
+    def test_defer_when_dep_manual_stop(self, tmp_path: Path) -> None:
+        home, docker, healer = self._dep_healer(
+            tmp_path, api_status="exited", api_health="none"
+        )
+        ManualStopStore(home).mark("api")
         with self.with_heal_locks():
             healer.tick(now=1.0)
         docker.start_service.assert_not_called()

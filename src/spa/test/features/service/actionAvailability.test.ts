@@ -11,7 +11,13 @@ describe("actionAvailability", () => {
   });
 
   it("disables down for stopped services", () => {
-    for (const status of ["exited", "Not running", "dead", "created"]) {
+    for (const status of [
+      "exited",
+      "Not running",
+      "manual-stop",
+      "dead",
+      "created",
+    ]) {
       const a = actionAvailability(status);
       assert.equal(a.down.enabled, false, status);
       assert.equal(a.up.enabled, true, status);

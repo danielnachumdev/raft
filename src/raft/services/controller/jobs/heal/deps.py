@@ -9,6 +9,7 @@ from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.app_document import AppDocument
 from raft.core.core.models.depends import AppDependsGraph, DependsOnError
 from raft.core.core.models.registry import AppRegistry
+from raft.core.core.models.state.manual_stop_store import ManualStopStore
 from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.core.core.models.stack import Stack
 from raft.core.platform.locking import AppAndStackLocks
@@ -58,8 +59,7 @@ class HealDepends:
         return spec.depend_names()
 
     def ensure_one_dep(self, dep: str, for_app: str) -> bool:
-        if ScalingStore(self.home).is_scaled_to_zero(dep):
-            logger.info("heal defer app=%s dep=%s scaled-to-zero", for_app, dep)
+        if self._intentionally_stopped(dep, for_app):
             return False
         compose_id = self.compose_id(dep)
         if compose_id is None:
@@ -84,3 +84,12 @@ class HealDepends:
             if app.name == name:
                 return app.compose_id
         return None
+
+    def _intentionally_stopped(self, dep: str, for_app: str) -> bool:
+        if ScalingStore(self.home).is_scaled_to_zero(dep):
+            logger.info("heal defer app=%s dep=%s scaled-to-zero", for_app, dep)
+            return True
+        if ManualStopStore(self.home).is_manual_stop(dep):
+            logger.info("heal defer app=%s dep=%s manual-stop", for_app, dep)
+            return True
+        return False

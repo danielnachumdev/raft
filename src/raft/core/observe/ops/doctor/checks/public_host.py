@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from raft.core.core.models.state.manual_stop_store import ManualStopStore
 from raft.core.core.models.state.scaling_store import ScalingStore
 
 from raft.core.platform.adapters.http import HttpProbe
@@ -22,17 +23,32 @@ class PublicHostChecks:
 
     def _probe(self, ctx: DoctorContext, http: HttpProbe, app) -> CheckResult:
         host = app.public_host
-        if ScalingStore(ctx.stack.root).is_scaled_to_zero(app.name):
+        intentional = self._intentional_host_ok(ctx, app, host)
+        if intentional is not None:
+            return intentional
+        path = self._readiness_path(ctx, app)
+        if http.public_host_ok(app, path=path):
+            return CheckResult(app.compose_id, "host", "ok", f"Host {host}{path}")
+        return self._host_fail(ctx, app, host, path=path)
+
+    @staticmethod
+    def _intentional_host_ok(ctx: DoctorContext, app, host: str):
+        root = ctx.stack.root
+        if ManualStopStore(root).is_manual_stop(app.name):
+            return CheckResult(
+                app.compose_id,
+                "host",
+                "ok",
+                f"Host {host} (manual stop)",
+            )
+        if ScalingStore(root).is_scaled_to_zero(app.name):
             return CheckResult(
                 app.compose_id,
                 "host",
                 "ok",
                 f"Host {host} (scaled to zero)",
             )
-        path = self._readiness_path(ctx, app)
-        if http.public_host_ok(app, path=path):
-            return CheckResult(app.compose_id, "host", "ok", f"Host {host}{path}")
-        return self._host_fail(ctx, app, host, path=path)
+        return None
 
     def _host_fail(self, ctx: DoctorContext, app, host: str, *, path: str) -> CheckResult:
         detail = f"Host {host}{path} not OK on {ctx.stack.public_base_url}"

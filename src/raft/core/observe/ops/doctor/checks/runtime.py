@@ -6,6 +6,7 @@ import shutil
 from typing import Optional, Tuple
 
 from raft.core.platform.adapters.docker.crash_loop import CrashLoopDetector
+from raft.core.core.models.state.manual_stop_store import ManualStopStore
 from raft.core.core.models.state.scaling_store import ScalingStore
 
 from ..context import DoctorContext
@@ -34,7 +35,7 @@ class RuntimeChecks:
             ]
         return [
             *self._edge_running(ctx, running),
-            *self._scaled_apps(ctx),
+            *self._intentional_absent_apps(ctx),
             *self._health_for_running(ctx, running),
             self._stack_summary(ctx, running),
         ]
@@ -72,35 +73,28 @@ class RuntimeChecks:
             )
         return CheckResult(name, "running", "warn", "not running", fix="raft up")
 
-    @staticmethod
-    def _scaled_apps(ctx: DoctorContext) -> list[CheckResult]:
-        store = ScalingStore(ctx.stack.root)
-        return [
-            CheckResult(
-                app.compose_id,
-                "scaling",
-                "ok",
-                "scaled to zero (intentional)",
-            )
-            for app in ctx.stack.apps
-            if store.is_scaled_to_zero(app.name)
-        ]
-
     @classmethod
-    def _health_for_running(
-        cls, ctx: DoctorContext, running: set[str]
-    ) -> list[CheckResult]:
-        """Fail/warn when a running app or controller is unhealthy/crash-looping."""
-        skip = set(cls._edge_always_probe(ctx)) | cls._scaled_compose_ids(ctx)
+    def _intentional_absent_apps(cls, ctx: DoctorContext) -> list[CheckResult]:
+        root = ctx.stack.root
+        scaling = ScalingStore(root)
+        manual = ManualStopStore(root)
         results: list[CheckResult] = []
-        watched = running | cls._restarting_services(ctx, skip)
-        for service in sorted(watched):
-            if service in skip:
-                continue
-            result = cls._health_result(ctx, service)
-            if result.status != "ok":
-                results.append(result)
+        for app in ctx.stack.apps:
+            note = cls._intentional_note(app.name, scaling, manual)
+            if note is not None:
+                check, detail = note
+                results.append(CheckResult(app.compose_id, check, "ok", detail))
         return results
+
+    @staticmethod
+    def _intentional_note(
+        name: str, scaling: ScalingStore, manual: ManualStopStore
+    ) -> Optional[Tuple[str, str]]:
+        if manual.is_manual_stop(name):
+            return ("lifecycle", "manual stop (intentional)")
+        if scaling.is_scaled_to_zero(name):
+            return ("scaling", "scaled to zero (intentional)")
+        return None
 
     @staticmethod
     def _restarting_services(ctx: DoctorContext, skip: set[str]) -> set[str]:
@@ -178,7 +172,7 @@ class RuntimeChecks:
     @classmethod
     def _stack_summary(cls, ctx: DoctorContext, running: set[str]) -> CheckResult:
         expected = list(ctx.stack.core_services)
-        intentional = cls._scaled_compose_ids(ctx)
+        intentional = cls._intentional_compose_ids(ctx)
         missing = [s for s in expected if s not in running and s not in intentional]
         if not missing:
             live = [s for s in expected if s in running]
@@ -195,11 +189,29 @@ class RuntimeChecks:
             fix="raft up   # or redeploy the missing service",
         )
 
+    @classmethod
+    def _health_for_running(
+        cls, ctx: DoctorContext, running: set[str]
+    ) -> list[CheckResult]:
+        """Fail/warn when a running app or controller is unhealthy/crash-looping."""
+        skip = set(cls._edge_always_probe(ctx)) | cls._intentional_compose_ids(ctx)
+        results: list[CheckResult] = []
+        watched = running | cls._restarting_services(ctx, skip)
+        for service in sorted(watched):
+            if service in skip:
+                continue
+            result = cls._health_result(ctx, service)
+            if result.status != "ok":
+                results.append(result)
+        return results
+
     @staticmethod
-    def _scaled_compose_ids(ctx: DoctorContext) -> set[str]:
-        store = ScalingStore(ctx.stack.root)
+    def _intentional_compose_ids(ctx: DoctorContext) -> set[str]:
+        root = ctx.stack.root
+        scaling = ScalingStore(root)
+        manual = ManualStopStore(root)
         return {
             app.compose_id
             for app in ctx.stack.apps
-            if store.is_scaled_to_zero(app.name)
+            if scaling.is_scaled_to_zero(app.name) or manual.is_manual_stop(app.name)
         }

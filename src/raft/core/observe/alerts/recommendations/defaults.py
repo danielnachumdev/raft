@@ -37,14 +37,15 @@ _NOT_RUNNING: Dict[str, Any] = {
         "Watch control.container_status for every service (target *) — "
         "Apps plus gate/router/controller/dashboard. "
         f"Match state in [{STATUS_NOT_RUNNING}, exited, dead] for 2m. "
-        "Scaled-to-zero Apps are skipped by the signal source."
+        "Scaled-to-zero and manual-stop Apps are skipped by the signal source."
     ),
     "rule_id": "any-service-not-running",
     "name": "Any service not running",
     "severity": "error",
     "description": (
         "Fires when any service container is not running "
-        "(Apps and control plane; excludes intentional scale-to-zero)."
+        "(Apps and control plane; excludes intentional scale-to-zero "
+        "and manual-stop)."
     ),
     "for": "2m",
     "signal": "control.container_status",
