@@ -151,7 +151,8 @@ class DeployNextSteps:
         if not pubkey and not fingerprint:
             return []
         lines = [
-            "Add this public key as a read-only Deploy key on the GitHub repo.",
+            "Copy Title + Key into the repo Deploy keys form (read-only), "
+            "then continue installation.",
         ]
         if fingerprint:
             lines.append(f"Fingerprint: {fingerprint}")

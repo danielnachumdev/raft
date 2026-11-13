@@ -258,7 +258,13 @@ export function DeployPage() {
             busy={busy}
             onDeploy={() => void onDeploy()}
           />
-          {job ? <DeployProgress job={job} /> : null}
+          {job ? (
+            <DeployProgress
+              job={job}
+              busy={busy}
+              onContinue={() => void onDeploy()}
+            />
+          ) : null}
         </>
       ) : null}
     </div>

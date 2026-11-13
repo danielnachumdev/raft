@@ -174,11 +174,14 @@ class GithubDeployRunner:
         try:
             self._apply_git(repo.ssh_url, ref=job.ref, rel=rel)
         except OperatorError as exc:
-            self._auth_failure_steps(job, repo, fp)
-            raise OperatorError(
-                self._auth_failure_message(str(exc), fp),
-                has_fix=False,
-            ) from exc
+            detail = str(exc)
+            if self._is_deploy_key_failure(detail):
+                self._auth_failure_steps(job, fp)
+                raise OperatorError(
+                    self._auth_failure_message(detail, fp),
+                    has_fix=False,
+                ) from exc
+            raise
         self._step(job, "Apply + deploy", "ok", f"applied {app_name}")
 
     def _apply_git(self, ssh_url: str, *, ref: str, rel: str) -> None:
@@ -198,34 +201,47 @@ class GithubDeployRunner:
             auth.setup(app_name, repo=repo.ssh_url)
             pubkey = auth.show_pubkey(app_name)
         job.deploy_pubkey = GitAuthManager._pubkey_for_paste(pubkey)
+        job.deploy_key_title = self._title_from_pubkey(pubkey) or f"raft:{app_name}"
         job.deploy_key_url = self._deploy_key_url(job)
         fp = self._fingerprint(pubkey)
         self._step(job, "Prepare deploy key", "ok", f"fingerprint {fp}")
         return fp
 
-    def _auth_failure_steps(self, job: DeployJob, repo: GithubRepo, fp: str) -> None:
-        del repo
+    def _auth_failure_steps(self, job: DeployJob, fp: str) -> None:
         url = job.deploy_key_url or self._deploy_key_url(job)
         job.deploy_key_url = url
         body = (
-            "Open Deploy keys on the repo, paste the public key from this "
-            f"panel (read-only), then retry. Fingerprint: {fp}."
+            "Copy Title + Key below into the repo Deploy keys form "
+            f"(read-only), then press Continue installation. Fingerprint: {fp}."
         )
         if url:
             body = f"{body} Link: {url}"
         job.next_steps = [{"title": "Add deploy key on GitHub", "body": body}]
 
     @staticmethod
+    def _is_deploy_key_failure(detail: str) -> bool:
+        lower = detail.lower()
+        return "permission denied (publickey)" in lower or (
+            "deploy key" in lower and "rejected" in lower
+        )
+
+    @staticmethod
     def _auth_failure_message(detail: str, fp: str) -> str:
         text = detail.strip()
-        lower = text.lower()
-        if "deploy key" in lower or "publickey" in lower:
+        if GithubDeployRunner._is_deploy_key_failure(text):
             return text
         return (
             f"{text}\n"
             "Add the deploy public key shown in the UI "
-            f"(fingerprint {fp}) then retry."
+            f"(fingerprint {fp}), then continue installation."
         )
+
+    @staticmethod
+    def _title_from_pubkey(pubkey: str) -> Optional[str]:
+        parts = pubkey.split()
+        if len(parts) >= 3:
+            return " ".join(parts[2:]).strip() or None
+        return None
 
     def _fill_next_steps(self, job: DeployJob, data: dict) -> None:
         if not job.app_name:

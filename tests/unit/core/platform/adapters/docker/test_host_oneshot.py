@@ -127,8 +127,19 @@ class TestHostOneshot:
         exc = RuntimeError("ignored")
         exc.stderr = "git@github.com: Permission denied (publickey).\n"
         msg = HostOneshot._failure_message(exc)
-        assert "Deploy keys" in msg
+        assert "continue installation" in msg
         assert "host Docker one-shot failed" not in msg
+
+    def test_failure_message_keeps_real_error_not_doctor_nudge(self) -> None:
+        exc = RuntimeError("ignored")
+        exc.stderr = (
+            "cannot deploy/reload gate: Cloudflare Origin certs missing:\n"
+            "    fix: install Cloudflare Origin PEMs\n"
+            "Run `raft doctor` for a full check.\n"
+        )
+        msg = HostOneshot._failure_message(exc)
+        assert "Cloudflare Origin certs missing" in msg
+        assert "Run `raft doctor`" not in msg
 
     def test_failure_message_uses_output(self) -> None:
         exc = RuntimeError("ignored")

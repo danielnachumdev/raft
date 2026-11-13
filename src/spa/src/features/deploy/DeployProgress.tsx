@@ -1,10 +1,17 @@
 import { ServiceLogs } from "../logs/ServiceLogs";
+import { CopyableValue } from "./oauth/OauthSetupCopy";
 import type { DeployJob } from "./github/index.ts";
 
-export function DeployProgress(props: { job: DeployJob }) {
-  const { job } = props;
+export function DeployProgress(props: {
+  job: DeployJob;
+  busy?: boolean;
+  onContinue?: () => void;
+}) {
+  const { job, busy = false, onContinue } = props;
   const showLogs = job.status === "succeeded" && Boolean(job.app_name);
-  const extraSteps = job.deploy_pubkey
+  const showKeyPanel = Boolean(job.deploy_pubkey) && job.status === "failed";
+  const canContinue = job.status === "failed" && Boolean(onContinue);
+  const extraSteps = showKeyPanel
     ? job.next_steps.filter(
         (step) => !/deploy key/i.test(step.title) && !/deploy key/i.test(step.body),
       )
@@ -51,15 +58,28 @@ export function DeployProgress(props: { job: DeployJob }) {
           {job.error}
         </p>
       ) : null}
-      {job.deploy_pubkey ? (
+      {showKeyPanel ? (
         <div className="deploy-pubkey" id="deploy-pubkey">
           <h3>Add this deploy key on GitHub</h3>
           <p className="muted">
-            Private repos need this read-only key before raft can clone over
-            SSH. Paste it under Deploy keys, then retry deploy.
+            GitHub cannot pre-fill Deploy keys. Copy Title and Key, open the
+            form, paste both (read-only), then continue installation.
           </p>
-          {job.deploy_key_url ? (
-            <p>
+          {job.deploy_key_title ? (
+            <label className="field deploy-key-field" htmlFor="deploy-key-title">
+              Title
+              <CopyableValue
+                id="deploy-key-title"
+                value={job.deploy_key_title}
+              />
+            </label>
+          ) : null}
+          <label className="field deploy-key-field" htmlFor="deploy-key-pubkey">
+            Key
+            <CopyableValue id="deploy-key-pubkey" value={job.deploy_pubkey!} />
+          </label>
+          <div className="deploy-key-actions">
+            {job.deploy_key_url ? (
               <a
                 className="btn btn-primary deploy-cta"
                 href={job.deploy_key_url}
@@ -69,10 +89,33 @@ export function DeployProgress(props: { job: DeployJob }) {
               >
                 Open Deploy keys on GitHub
               </a>
-            </p>
-          ) : null}
-          <code className="deploy-pubkey-value">{job.deploy_pubkey}</code>
+            ) : null}
+            {canContinue ? (
+              <button
+                type="button"
+                className="btn btn-primary"
+                id="deploy-continue"
+                disabled={busy}
+                onClick={() => onContinue?.()}
+              >
+                Continue installation
+              </button>
+            ) : null}
+          </div>
         </div>
+      ) : null}
+      {!showKeyPanel && canContinue ? (
+        <p className="deploy-key-actions">
+          <button
+            type="button"
+            className="btn btn-primary"
+            id="deploy-continue"
+            disabled={busy}
+            onClick={() => onContinue?.()}
+          >
+            Continue installation
+          </button>
+        </p>
       ) : null}
       {extraSteps.length > 0 ? (
         <div className="next-steps" id="next-steps">

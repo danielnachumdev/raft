@@ -140,16 +140,25 @@ class HostOneshot:
         if "Permission denied (publickey)" in detail:
             return (
                 "GitHub rejected the SSH deploy key (publickey).\n"
-                "Fix: open the repo’s Deploy keys settings, paste the public "
-                "key shown in the UI (read-only), then retry deploy."
+                "Fix: add the public key shown in the UI as a read-only "
+                "Deploy key, then continue installation."
             )
-        tail = detail.splitlines()[-1] if detail else "unknown error"
+        summary = HostOneshot._failure_summary(detail)
         return (
             "host Docker one-shot failed: "
-            f"{tail}\n"
+            f"{summary}\n"
             "Fix: check Docker, RAFT_HOST_HOME, and outbound network, "
-            "then retry from the dashboard or run the command on the host"
+            "then continue from the dashboard or run the command on the host"
         )
+
+    @staticmethod
+    def _failure_summary(detail: str) -> str:
+        lines = [ln.strip() for ln in detail.splitlines() if ln.strip()]
+        while lines and lines[-1].lower().startswith("run `raft doctor`"):
+            lines.pop()
+        if not lines:
+            return "unknown error"
+        return "\n".join(lines[-3:])
 
     @staticmethod
     def _failure_detail(exc: BaseException) -> str:
