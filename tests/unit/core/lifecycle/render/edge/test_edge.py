@@ -132,6 +132,7 @@ class TestReadinessStrategy(RaftTestCase):
         shell = s.healthcheck_test()[1]
         assert "/ready" in shell
         assert "wget" in shell and "curl" in shell and "python3" in shell
+        assert "/dev/tcp/" in shell and "bash" in shell
 
     def _smtp_spec(self, **ready_kw) -> AppSpec:
         return AppSpec(

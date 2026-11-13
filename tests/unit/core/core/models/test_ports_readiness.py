@@ -92,7 +92,7 @@ class TestPortsAndReadinessCoverage(RaftTestCase):
 
     def _assert_readiness_defaults(self, ports) -> None:
         r = ReadinessParser().parse({"readiness": {"type": "none"}}, ports, PATH)
-        assert r.type == "none" and r.timeout_seconds == 120.0
+        assert r.type == "none" and r.timeout_seconds == 180.0
         assert r.start_period_seconds == 45.0
         assert (
             ReadinessParser().parse({"readiness": {"type": "http", "path": "ready"}}, ports, PATH).path
@@ -116,10 +116,10 @@ class TestPortsAndReadinessCoverage(RaftTestCase):
         defaults = ReadinessParser().parse(
             {"readiness": {"type": "tcp", "port": "http"}}, self._http_ports(), PATH
         )
-        assert defaults.timeout_seconds == 120.0
+        assert defaults.timeout_seconds == 180.0
         assert defaults.start_period_seconds == 45.0
         assert defaults.interval_seconds == 2.0 and defaults.retries == 15
-        assert "timeoutSeconds=120s" in defaults.timing_summary()
+        assert "timeoutSeconds=180s" in defaults.timing_summary()
 
     def test_readiness_timing_custom_and_auto_bump(self) -> None:
         ports = self._http_ports()

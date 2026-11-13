@@ -76,11 +76,16 @@ class ReadinessStrategy:
             f'import urllib.request; '
             f'urllib.request.urlopen("{url}", timeout={secs})'
         )
+        port = self.port.container_port
+        # bash /dev/tcp is a cheap listen check before venv python (cold
+        # start every interval can starve the App on small hosts).
         return (
             f"if command -v wget >/dev/null 2>&1; then "
             f"wget -qO- --timeout={secs} '{url}' >/dev/null; "
             f"elif command -v curl >/dev/null 2>&1; then "
             f"curl -fsS --max-time {secs} '{url}' >/dev/null; "
+            f"elif command -v bash >/dev/null 2>&1; then "
+            f"bash -c 'exec 3<>/dev/tcp/127.0.0.1/{port}' ; "
             f"elif command -v python3 >/dev/null 2>&1; then "
             f"python3 -c '{py}'; "
             f"elif command -v python >/dev/null 2>&1; then "

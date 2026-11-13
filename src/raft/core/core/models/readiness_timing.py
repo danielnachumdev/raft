@@ -10,7 +10,8 @@ DEFAULT_RETRIES = 15
 # Extra seconds after start_period + probe budget so raft does not race Compose.
 _TIMEOUT_BUFFER_SECONDS = 15.0
 # Floor for the raft wait budget when the formula would be lower.
-DEFAULT_TIMEOUT_SECONDS = 120.0
+# Cold starts (migrations + import) on small hosts often exceed 2 minutes.
+DEFAULT_TIMEOUT_SECONDS = 180.0
 
 
 class ReadinessTiming:
@@ -37,7 +38,7 @@ class ReadinessTiming:
         interval_seconds: float = DEFAULT_INTERVAL_SECONDS,
         retries: int = DEFAULT_RETRIES,
     ) -> float:
-        """Default raft wait: at least 120s, and never below the Compose probe budget."""
+        """Default raft wait: at least 180s, and never below the Compose probe budget."""
         return max(
             DEFAULT_TIMEOUT_SECONDS,
             ReadinessTiming.recommended_timeout_seconds(
