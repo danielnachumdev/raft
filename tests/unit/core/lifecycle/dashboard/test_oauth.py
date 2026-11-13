@@ -28,9 +28,12 @@ class TestDashboardOAuth(RaftTestCase):
         assert "/oauth2/auth" in text
         assert "location /oauth2/" in text
         assert "location = /unauthorized" in text
+        assert "add_header X-Frame-Options DENY always" in text
+        assert "add_header Strict-Transport-Security $raft_hsts always" in text
         assert "return 302 /oauth2/start" in text
         assert "X-Raft-Identity" in text
         assert "X-Forwarded-Proto $raft_fwd_proto" in text
+        assert "map $raft_fwd_proto $raft_hsts" in text
         assert "location = /api/update" in text
         assert "proxy_read_timeout 600s" in text
         assert "location = /api/github/callback" in text

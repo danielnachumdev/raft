@@ -97,11 +97,12 @@ class DashboardOAuthNginx:
             "        }\n"
         )
 
-    @staticmethod
-    def _unauthorized_page(path: Path) -> str:
+    def _unauthorized_page(self, path: Path) -> str:
+        # Static alias bypasses FastAPI — set headers here (inline CSP).
         return (
             "        location = /unauthorized {\n"
             "            default_type text/html;\n"
             f"            alias {path};\n"
+            f"{self._parts.static_html_security_headers()}"
             "        }\n"
         )

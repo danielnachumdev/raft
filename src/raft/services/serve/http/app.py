@@ -24,6 +24,7 @@ from ..update import ServeUpdateApi
 from .downloads import ServeDownloads
 from .page import ServePage
 from .paths import ServePaths
+from .security_middleware import SecurityHeadersMiddleware
 
 _DEFAULT_PORT = 8787
 
@@ -77,6 +78,8 @@ class ServeAppFactory:
             name="assets",
         )
         self._register_spa(app, page)
+        # Last added = outermost so auth denials also get security headers.
+        app.add_middleware(SecurityHeadersMiddleware)
         return app
 
     def _components(self):
