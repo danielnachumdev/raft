@@ -15,6 +15,7 @@ from .utils.argv import ApplyEnvArgvBridge
 from .utils.command_progress import CommandProgress
 from .utils.fire_run import FireRunner
 from .utils.logs_argv import LogsArgvNormalizer
+from .utils.signal_guard import CliSignalGuard
 from .utils.version_argv import VersionArgv
 
 
@@ -29,7 +30,8 @@ class RaftCLI:
         """Bootstrap logging, open a request trace, then run one CLI invocation."""
         self._ensure_logging_bootstrap()
         with TraceContext():
-            self._exits.run_guarded(self._invoke_fire, argv)
+            with CliSignalGuard():
+                self._exits.run_guarded(self._invoke_fire, argv)
 
     def _invoke_fire(self, argv: Optional[list[str]] = None) -> int:
         """Normalize argv and dispatch to ``RaftCLICommands`` via Fire."""

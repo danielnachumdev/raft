@@ -1,4 +1,9 @@
-"""Subprocess gateway for docker / compose / git."""
+"""Subprocess gateway for docker / compose / git.
+
+Children run in a new session (``start_new_session=True``) so interrupt
+handling can SIGTERM/SIGKILL the child's process group via
+``ActiveShellChild`` without relying on the terminal foreground group.
+"""
 
 import logging
 import os
@@ -6,6 +11,8 @@ import shutil
 import subprocess
 from pathlib import Path
 from typing import Optional
+
+from .active_child import ActiveShellChild
 
 logger = logging.getLogger(__name__)
 
@@ -67,19 +74,60 @@ class Shell:
         timeout: Optional[float],
         check: bool,
     ) -> subprocess.CompletedProcess[str]:
+        proc = self._spawn(
+            args,
+            workdir=workdir,
+            capture=capture,
+            input_text=input_text,
+        )
+        ActiveShellChild.register(proc)
         try:
-            return subprocess.run(
-                args,
-                cwd=workdir,
-                check=False,
-                text=True,
-                input=input_text,
-                capture_output=capture,
-                env=self._run_env(),
-                timeout=timeout,
-            )
+            return self._communicate(args, proc, input_text=input_text, timeout=timeout, check=check)
+        finally:
+            ActiveShellChild.clear(proc)
+
+    def _spawn(
+        self,
+        args: list[str],
+        *,
+        workdir: Path,
+        capture: bool,
+        input_text: Optional[str],
+    ) -> subprocess.Popen[str]:
+        return subprocess.Popen(
+            args,
+            cwd=workdir,
+            text=True,
+            stdin=subprocess.PIPE if input_text is not None else None,
+            stdout=subprocess.PIPE if capture else None,
+            stderr=subprocess.PIPE if capture else None,
+            env=self._run_env(),
+            start_new_session=True,
+        )
+
+    def _communicate(
+        self,
+        args: list[str],
+        proc: subprocess.Popen[str],
+        *,
+        input_text: Optional[str],
+        timeout: Optional[float],
+        check: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        try:
+            stdout, stderr = proc.communicate(input=input_text, timeout=timeout)
         except subprocess.TimeoutExpired as exc:
+            ActiveShellChild.terminate(proc)
             return self._timeout_result(args, exc, timeout=timeout, check=check)
+        except KeyboardInterrupt:
+            ActiveShellChild.terminate(proc)
+            raise
+        return subprocess.CompletedProcess(
+            args=args,
+            returncode=proc.returncode or 0,
+            stdout=stdout or "",
+            stderr=stderr or "",
+        )
 
     @staticmethod
     def _run_env() -> dict:
@@ -153,7 +201,7 @@ class Shell:
         """Start a process with stdout piped (stderr merged) for line streaming."""
         workdir = cwd or self.cwd
         logger.debug("popen cwd=%s cmd=%s", workdir, args)
-        return subprocess.Popen(
+        proc = subprocess.Popen(
             args,
             cwd=workdir,
             text=True,
@@ -161,7 +209,10 @@ class Shell:
             stderr=subprocess.STDOUT,
             env=self._run_env(),
             bufsize=1,
+            start_new_session=True,
         )
+        ActiveShellChild.register(proc)
+        return proc
 
     @staticmethod
     def _timeout_result(
