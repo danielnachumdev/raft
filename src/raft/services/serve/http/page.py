@@ -1,6 +1,7 @@
 """Serve SPA shell (static) and JSON status / metrics / action APIs."""
 
 
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException
@@ -67,9 +68,16 @@ class ServePage:
         self._logs = logs or Logs(stack)
 
     def index(self, full_path: str = "") -> FileResponse:
-        """SPA shell for ``/`` and client routes (not ``/api/*``)."""
+        """SPA shell for ``/`` and client routes (not ``/api/*``).
+
+        Root files from the Vite bake (e.g. ``favicon.svg``) are served as
+        static assets; everything else falls back to ``index.html``.
+        """
         if self._is_api_path(full_path):
             raise HTTPException(status_code=404, detail="Not Found")
+        static = self._spa_static_file(full_path)
+        if static is not None:
+            return FileResponse(static)
         return FileResponse(ServePaths.spa_index(), media_type="text/html")
 
     def api_status(self) -> Dict[str, Any]:
@@ -252,6 +260,23 @@ class ServePage:
     @staticmethod
     def _is_api_path(full_path: str) -> bool:
         return full_path == "api" or full_path.startswith("api/")
+
+    @staticmethod
+    def _spa_static_file(full_path: str) -> Optional[Path]:
+        """Return a baked SPA root file when ``full_path`` names one safely."""
+        if not full_path or full_path in (".", "index.html"):
+            return None
+        if ".." in full_path or full_path.startswith(("/", "\\")):
+            return None
+        root = ServePaths.spa_dir().resolve()
+        candidate = (root / full_path).resolve()
+        try:
+            candidate.relative_to(root)
+        except ValueError:
+            return None
+        if candidate.is_file():
+            return candidate
+        return None
 
     @staticmethod
     def _split_services(raw: Optional[str]) -> Optional[List[str]]:

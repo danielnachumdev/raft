@@ -157,6 +157,18 @@ class TestServeAppFactory(RaftTestCase):
         assert asset.status_code == 200
         assert len(asset.content) > 0
 
+    def test_spa_favicon_svg_is_served(self) -> None:
+        client, _ = serve_fx.client_and_status(
+            StackMakers.make_stack(self.tmp_path), serve_fx.empty_snapshot()
+        )
+        index = client.get("/")
+        assert 'rel="icon" href="/favicon.svg"' in index.text
+        favicon = client.get("/favicon.svg")
+        assert favicon.status_code == 200
+        assert "image/svg" in favicon.headers["content-type"]
+        assert b"raft mark" in favicon.content
+        assert b"<svg" in favicon.content
+
     def test_factory_builds_default_status(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path)
         with patch("raft.core.observe.read.status.Status") as status_cls:
