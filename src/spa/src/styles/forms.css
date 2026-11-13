@@ -107,6 +107,15 @@
   color: var(--muted);
 }
 
+/* iOS Safari zooms the page when a focused control is under 16px. */
+@media (pointer: coarse) {
+  :where(input, select, textarea),
+  :is(.field-caps, .trends-field) :is(select, input),
+  .trends-services-search {
+    font-size: max(16px, 1em);
+  }
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));

@@ -68,6 +68,14 @@
   --yh-bool: #6b4a12;
 }
 
+/* Touch screens: grow hit targets toward the ~44px guideline. */
+@media (pointer: coarse) {
+  :root {
+    --control-height: 2.6rem;
+    --control-height-sm: 2.25rem;
+  }
+}
+
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #161411;

@@ -122,7 +122,7 @@ export function FirewallPanel(props: Props) {
       <button type="button" className="btn" id="firewall-export" disabled={locked} onClick={() => void onExportClick()}>
         Export
       </button>
-      <button type="button" className="btn" id="firewall-add" disabled={locked} onClick={openCreate}>
+      <button type="button" className="btn btn-primary" id="firewall-add" disabled={locked} onClick={openCreate}>
         Add rule
       </button>
     </>

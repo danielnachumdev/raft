@@ -222,8 +222,13 @@
     padding: 0.6rem;
   }
 
+  .trends-toolbar-range {
+    flex-basis: 100%;
+  }
+
+  /* Share the row with the options menu instead of orphaning it. */
   .trends-add-graph {
-    width: 100%;
+    flex: 1 1 auto;
   }
 
   .trends-graph-handle {
