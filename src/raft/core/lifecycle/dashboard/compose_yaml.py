@@ -40,7 +40,8 @@ class DashboardComposeYaml:
             "    build:",
             "      context: ./dashboard",
             "    working_dir: /raft",
-            '    user: "${RAFT_HOST_UID:-0}:${RAFT_HOST_GID:-0}"',
+            # Root entrypoint mints a passwd row for the host UID then setpriv-drops
+            # (OpenSSH/ssh-keygen refuse UIDs with no /etc/passwd entry).
             "    group_add:",
             '      - "${RAFT_DOCKER_GID:-0}"',
         ]
@@ -54,6 +55,9 @@ class DashboardComposeYaml:
             '      RAFT_DASHBOARD_APP_PORT: "18787"',
             # Absolute host home for Settings → Update (Docker one-shot + identity).
             '      RAFT_HOST_HOME: "${RAFT_HOST_HOME}"',
+            '      RAFT_HOST_UID: "${RAFT_HOST_UID:-0}"',
+            '      RAFT_HOST_GID: "${RAFT_HOST_GID:-0}"',
+            '      RAFT_DOCKER_GID: "${RAFT_DOCKER_GID:-0}"',
             # Host UID has no passwd home in-image; share operator SSH with the host CLI.
             '      HOME: "${RAFT_HOST_HOME}"',
             '      RAFT_SSH_DIR: "${RAFT_HOST_HOME}/.ssh"',

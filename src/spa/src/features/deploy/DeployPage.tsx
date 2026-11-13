@@ -186,7 +186,7 @@ export function DeployPage() {
     if (viewAsId || ids.length !== 1 || autoPickedRef.current === ids[0]) return;
     autoPickedRef.current = ids[0];
     void onViewAs(ids[0]);
-  });
+  }, [browseIdsKey, viewAsId]);
 
   const onOauthSaved = async () => {
     navigate("/deploy", { replace: true });

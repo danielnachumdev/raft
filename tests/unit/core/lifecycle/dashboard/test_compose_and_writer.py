@@ -30,10 +30,13 @@ class TestDashboardComposeAndWriter(RaftTestCase):
         assert "127.0.0.1:8787:8787" in text
         assert 'RAFT_DASHBOARD_APP_PORT: "18787"' in text
         assert 'RAFT_HOST_HOME: "${RAFT_HOST_HOME}"' in text
+        assert 'RAFT_HOST_UID: "${RAFT_HOST_UID:-0}"' in text
+        assert 'RAFT_HOST_GID: "${RAFT_HOST_GID:-0}"' in text
         assert 'HOME: "${RAFT_HOST_HOME}"' in text
         assert 'RAFT_SSH_DIR: "${RAFT_HOST_HOME}/.ssh"' in text
         assert '"${RAFT_HOST_HOME}/.local:${RAFT_HOST_HOME}/.local:ro"' in text
         assert '"${RAFT_HOST_HOME}/.ssh:${RAFT_HOST_HOME}/.ssh"' in text
+        assert 'user: "${RAFT_HOST_UID' not in text
         assert "/etc/hostname:/etc/host_hostname:ro" in text
         assert "RAFT_HOST_DOCKER_BIN" in text
         assert "RAFT_HOST_DOCKER_PLUGIN_DIR" in text

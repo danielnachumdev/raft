@@ -7,7 +7,7 @@ ARG TARGETARCH
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends ca-certificates curl git \
-      nginx-light openssh-client; \
+      nginx-light openssh-client passwd; \
     case "${TARGETARCH}" in \
       amd64) DOCKER_ARCH=x86_64; COMPOSE_ARCH=x86_64; OAUTH_ARCH=amd64 ;; \
       arm64) DOCKER_ARCH=aarch64; COMPOSE_ARCH=aarch64; OAUTH_ARCH=arm64 ;; \
