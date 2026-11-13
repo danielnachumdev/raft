@@ -21,6 +21,7 @@ _PUBLIC_PATHS = frozenset(
         "/api/dashboard/logout",
         "/api/dashboard/auth",
         "/api/dashboard/session",
+        "/api/github/callback",
     }
 )
 _MUTATIVE = frozenset({"POST", "PUT", "PATCH", "DELETE"})

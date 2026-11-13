@@ -40,10 +40,54 @@ class TestCoverageDeploy(RaftTestCase):
             "raft.core.platform.github.deploy.job.AppApply"
         ) as apply_cls:
             github_fx.stub_auth(auth_cls)
-            apply_cls.return_value.apply_git.side_effect = OperatorError("no", has_fix=False)
-            with pytest.raises(OperatorError, match="deploy public key"):
-                runner._deploy_git(job, github_fx.sample_account(), github_fx.sample_repo(), "web")
+            apply_cls.return_value.apply_git.side_effect = OperatorError(
+                "Permission denied (publickey)", has_fix=False
+            )
+            with pytest.raises(OperatorError, match="publickey"):
+                runner._deploy_git(
+                    job,
+                    github_fx.sample_account(),
+                    github_fx.sample_repo(),
+                    "web",
+                    rel=".raft/app.yaml",
+                )
         assert job.next_steps
+        assert job.next_steps[0]["title"] == "Add deploy key on GitHub"
+
+    def test_deploy_git_apply_failure_sets_env_steps(self) -> None:
+        runner = GithubDeployRunner(
+            StackMakers.make_stack(self.tmp_path), MagicMock(), DeployJobStore()
+        )
+        job = DeployJob(id="z", full_name="o/r", ref="main", app_name="web")
+        err = OperatorError(
+            "env file /home/demo/.raft/services/web/secrets/env not found",
+            has_fix=False,
+        )
+        self._deploy_git_raises(runner, job, err, match="env file")
+        assert job.next_steps
+        assert job.next_steps[0]["title"] == "Env file"
+
+    def _deploy_git_raises(
+        self,
+        runner: GithubDeployRunner,
+        job: DeployJob,
+        err: OperatorError,
+        *,
+        match: str,
+    ) -> None:
+        with patch("raft.core.platform.github.deploy.job.GitAuthManager") as auth_cls, patch(
+            "raft.core.platform.github.deploy.job.AppApply"
+        ) as apply_cls:
+            github_fx.stub_auth(auth_cls)
+            apply_cls.return_value.apply_git.side_effect = err
+            with pytest.raises(OperatorError, match=match):
+                runner._deploy_git(
+                    job,
+                    github_fx.sample_account(),
+                    github_fx.sample_repo(),
+                    "web",
+                    rel=".raft/app.yaml",
+                )
 
     def test_api_callback_oauth(self, monkeypatch: pytest.MonkeyPatch) -> None:
         (self.tmp_path / "host" / "settings.yaml").write_text(
@@ -154,20 +198,27 @@ class TestCoverageDeploy(RaftTestCase):
         runner = GithubDeployRunner(stack, MagicMock(), DeployJobStore())
         runner._fill_next_steps(DeployJob(id="1", full_name="o/r", ref="m"), {})
         tree = self._stage_local_tree(stack)
+        self._assert_rewrite_rejects_bad_spec(runner, tree)
+        job = DeployJob(id="2", full_name="o/r", ref="m", app_name="web")
+        self._deploy_local_twice(runner, job, tree)
+
+    def _assert_rewrite_rejects_bad_spec(self, runner, tree: Path) -> None:
         with pytest.raises(OperatorError):
             runner._rewrite_local_manifest(
                 tree / ".raft" / "app.yaml",
                 {"metadata": {"name": "web"}, "spec": []},
                 "web",
             )
-        job = DeployJob(id="2", full_name="o/r", ref="m", app_name="web")
+
+    def _deploy_local_twice(self, runner, job: DeployJob, tree: Path) -> None:
+        data = {"metadata": {"name": "web"}, "spec": {}}
         with patch("raft.core.platform.github.deploy.job.AppApply") as apply_cls:
             apply_cls.return_value.apply_file.return_value = "web"
-            runner._deploy_local(job, tree, {"metadata": {"name": "web"}, "spec": {}}, "web")
+            runner._deploy_local(job, tree, data, "web", rel=".raft/app.yaml")
         # Second deploy hits rmtree of an existing checkout.
         with patch("raft.core.platform.github.deploy.job.AppApply") as apply_cls:
             apply_cls.return_value.apply_file.return_value = "web"
-            runner._deploy_local(job, tree, {"metadata": {"name": "web"}, "spec": {}}, "web")
+            runner._deploy_local(job, tree, data, "web", rel=".raft/app.yaml")
 
     def test_registry_or_loads_existing_file(self) -> None:
         path = self.tmp_path / "reg.yaml"

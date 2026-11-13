@@ -41,7 +41,8 @@ class ServeGithubApi:
         app.get("/api/github/config", dependencies=[r])(self.api_config)
         app.post("/api/github/config", dependencies=[w])(self.api_save_config)
         app.get("/api/github/login", dependencies=[r])(self.api_login)
-        app.get("/api/github/callback", dependencies=[r])(self.api_callback)
+        # Callback is public: GitHub redirect + OAuth state (not dashboard session).
+        app.get("/api/github/callback")(self.api_callback)
         app.post("/api/github/logout", dependencies=[w])(self.api_logout)
         app.post("/api/github/accounts/select", dependencies=[w])(
             self.api_select_account
@@ -132,8 +133,13 @@ class ServeGithubApi:
     def api_deploy(self, body: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
         full_name = str(body.get("full_name") or "").strip()
         ref = str(body.get("ref") or "").strip()
+        manifest_path = str(
+            body.get("manifest_path") or body.get("manifestPath") or ""
+        ).strip()
         try:
-            return self._assist.start_deploy(full_name=full_name, ref=ref)
+            return self._assist.start_deploy(
+                full_name=full_name, ref=ref, manifest_path=manifest_path
+            )
         except OperatorError as exc:
             raise self._http(exc) from exc
 

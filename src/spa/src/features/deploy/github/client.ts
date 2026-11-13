@@ -57,7 +57,12 @@ const reposProxy = new CachedResourceProxy(
   },
 );
 
-export async function fetchGithubSession(): Promise<GithubSession> {
+export async function fetchGithubSession(
+  options?: { refresh?: boolean },
+): Promise<GithubSession> {
+  if (options?.refresh) {
+    return sessionProxy.refresh();
+  }
   return sessionProxy.read();
 }
 
@@ -138,18 +143,28 @@ export async function saveGithubConfig(input: {
 }
 
 /** Fetch the selected account’s owned/member repos (affiliation-scoped). */
-export async function fetchGithubRepos(): Promise<GithubRepo[]> {
+export async function fetchGithubRepos(
+  options?: { refresh?: boolean },
+): Promise<GithubRepo[]> {
+  if (options?.refresh) {
+    return reposProxy.refresh();
+  }
   return reposProxy.read();
 }
 
 export async function startGithubDeploy(
   fullName: string,
   ref: string,
+  manifestPath = ".raft/app.yaml",
 ): Promise<DeployJob> {
   const res = await fetch("/api/github/deploy", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ full_name: fullName, ref }),
+    body: JSON.stringify({
+      full_name: fullName,
+      ref,
+      manifest_path: manifestPath.trim() || ".raft/app.yaml",
+    }),
   });
   const body = await readJsonBody(res);
   if (!res.ok) {

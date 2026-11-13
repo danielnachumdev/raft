@@ -4,7 +4,7 @@ const OAUTH_APP_NEW = "https://github.com/settings/applications/new";
 
 export const DEFAULT_APPLICATION_NAME = "raft dashboard";
 export const DEFAULT_DESCRIPTION =
-  "Dashboard GitHub login to pick a repo and deploy.";
+  "Raft ops UI — temporary GitHub login to pick a repo and deploy.";
 
 /** Concrete OAuth App form values shown in the serve setup checklist. */
 export type OauthSetupHints = {
@@ -34,19 +34,29 @@ export function buildOauthAppCreateUrl(input: {
   return `${OAUTH_APP_NEW}?${params.toString()}`;
 }
 
+/** Prefer the page origin for public dashboards; else localhost serve. */
+export function defaultOauthOrigin(port = 8787): string {
+  if (typeof window !== "undefined" && window.location?.origin) {
+    const origin = window.location.origin.replace(/\/$/, "");
+    if (!/127\.0\.0\.1|localhost/i.test(origin)) {
+      return origin;
+    }
+  }
+  return `http://127.0.0.1:${port}`;
+}
+
 export function resolveOauthSetupHints(
   config: GithubOauthConfig | null,
   session: GithubSession | null,
   port = 8787,
 ): OauthSetupHints {
+  const origin = defaultOauthOrigin(port);
   const homepage =
-    config?.homepage_url ||
-    session?.homepage_url ||
-    `http://127.0.0.1:${port}/`;
+    config?.homepage_url || session?.homepage_url || `${origin}/`;
   const callback =
     config?.callback_url ||
     session?.callback_url ||
-    `http://127.0.0.1:${port}/api/github/callback`;
+    `${origin}/api/github/callback`;
   const application_name =
     config?.application_name ||
     session?.application_name ||

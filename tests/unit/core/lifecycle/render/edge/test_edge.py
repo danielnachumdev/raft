@@ -128,8 +128,11 @@ class TestReadinessStrategy(RaftTestCase):
             readiness=ReadinessSpec(type="http", port="http", path="/ready"),
         )
         s = ReadinessStrategy.from_spec(http)
-        assert s.healthcheck_test()[1] == "wget"
-        assert "/ready" in s.healthcheck_test()[-1]
+        assert s.healthcheck_test()[0] == "CMD-SHELL"
+        shell = s.healthcheck_test()[1]
+        assert "/ready" in shell
+        assert "wget" in shell and "curl" in shell and "python3" in shell
+        assert "/dev/tcp/" in shell and "bash" in shell
 
     def _smtp_spec(self, **ready_kw) -> AppSpec:
         return AppSpec(
@@ -143,6 +146,7 @@ class TestReadinessStrategy(RaftTestCase):
         assert "nc -z" in t.healthcheck_test()[1]
         lines = t.healthcheck_compose_lines()
         assert "      start_period: 45s" in lines
+        assert "      timeout: 5s" in lines
         assert "      retries: 15" in lines
 
     def _assert_tcp_custom_timing(self) -> None:

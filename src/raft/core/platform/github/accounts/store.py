@@ -51,11 +51,18 @@ class GithubAccountStore:
         active.last_used_at = time.time()
         self._write_ledger(ledger)
 
-    def set_pending(self, state: str, *, ttl_seconds: float = 600) -> None:
+    def set_pending(
+        self,
+        state: str,
+        *,
+        ttl_seconds: float = 600,
+        redirect_uri: Optional[str] = None,
+    ) -> None:
         ledger = self._load_ledger()
         ledger["pending"] = GithubPendingOauth(
             state=state,
             expires_at=time.time() + ttl_seconds,
+            redirect_uri=redirect_uri,
         )
         self._write_ledger(ledger)
 

@@ -1,14 +1,19 @@
 name: raft
 
+# nginx workers briefly double on reload; 32M OOMs and looks like crash-loop.
 x-resources-edge: &resources-edge
   deploy:
     resources:
       limits:
         cpus: "0.25"
-        memory: 32M
+        memory: 64M
       reservations:
         cpus: "0.05"
-        memory: 16M
+        memory: 24M
+  ulimits:
+    nofile:
+      soft: 4096
+      hard: 8192
 
 # Controller runs Python + docker CLI against the socket; needs more RAM than nginx.
 # 192M gives headroom above log/metrics fetch bounds (still small on a 2Gi host).

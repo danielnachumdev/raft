@@ -30,6 +30,18 @@ class TestAccountsCoverage(RaftTestCase):
         assert GithubPendingOauth.from_raw({"state": "s"}) is None
         pending = GithubPendingOauth(state="s", expires_at=time.time() - 1)
         assert pending.is_expired() is True
+        bare = GithubPendingOauth(state="s", expires_at=time.time() + 10)
+        assert "redirect_uri" not in bare.to_storage()
+        with_uri = GithubPendingOauth(
+            state="s",
+            expires_at=time.time() + 10,
+            redirect_uri="https://ops.example.com/api/github/callback",
+        )
+        stored = with_uri.to_storage()
+        assert stored["redirect_uri"].endswith("/api/github/callback")
+        loaded = GithubPendingOauth.from_raw(stored)
+        assert loaded is not None
+        assert loaded.redirect_uri == stored["redirect_uri"]
         with pytest.raises(OperatorError, match="login"):
             GithubOauth._user_from_payload(["no"])
 

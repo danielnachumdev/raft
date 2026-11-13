@@ -1,5 +1,6 @@
 """Persist notification channel CRUD into ``~/.raft/host/notifications.yaml``."""
 
+import errno
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional
@@ -193,6 +194,23 @@ class NotificationsSettingsWriter:
         payload = NotificationsDocument(config=cfg).to_export()
         self._path.parent.mkdir(parents=True, exist_ok=True)
         text = yaml.safe_dump(payload, sort_keys=False)
-        self._path.write_text(text, encoding="utf-8")
-        os.chmod(self._path, 0o600)
+        try:
+            self._path.write_text(text, encoding="utf-8")
+            os.chmod(self._path, 0o600)
+        except OSError as exc:
+            self._raise_persist_os_error(exc)
         self._gitops.clear_cache()
+
+    def _raise_persist_os_error(self, exc: OSError) -> None:
+        if exc.errno == errno.EROFS:
+            raise OperatorError(
+                "cannot write host/notifications.yaml "
+                "(dashboard data home is read-only).\n"
+                "Fix: raft update && raft redeploy dashboard, then retry",
+                has_fix=False,
+            ) from exc
+        raise OperatorError(
+            f"cannot write host/notifications.yaml: {exc}.\n"
+            "Fix: check permissions on ~/.raft/host/notifications.yaml",
+            has_fix=False,
+        ) from exc

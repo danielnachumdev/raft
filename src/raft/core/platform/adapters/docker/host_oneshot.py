@@ -8,6 +8,7 @@ from typing import List, Optional, Sequence
 from raft.core.core.errors.cta import OperatorError
 from raft.core.platform.adapters.shell import Shell
 
+from .host_oneshot_failures import HostOneshotFailures
 from .host_oneshot_ids import HostOneshotIds
 from .host_oneshot_mounts import HostOneshotDockerMounts
 
@@ -35,6 +36,7 @@ class HostOneshot:
             docker_gid=docker_gid,
             image=image,
         )
+        self._failures = HostOneshotFailures()
 
     def run(
         self,
@@ -56,7 +58,7 @@ class HostOneshot:
         try:
             self._shell.run(cmd, timeout=timeout, capture=True)
         except Exception as exc:
-            raise OperatorError(self._failure_message(exc)) from exc
+            raise OperatorError(self._failures.message(exc)) from exc
         logger.info("host oneshot finished home=%s", self._ids.host_home)
 
     def start(self, argv: Sequence[str], *, with_docker: bool = True) -> str:
@@ -74,7 +76,7 @@ class HostOneshot:
         try:
             completed = self._shell.run(cmd, timeout=60.0, capture=True)
         except Exception as exc:
-            raise OperatorError(self._failure_message(exc)) from exc
+            raise OperatorError(self._failures.message(exc)) from exc
         job_id = self._parse_container_id(completed.stdout)
         logger.info("host oneshot detached id=%s", job_id)
         return job_id
@@ -123,6 +125,11 @@ class HostOneshot:
             f"HOME={home}",
             "-e",
             f"PATH={self._ids.path_env}",
+            # Host passwd/group so OpenSSH/ssh-keygen accept the mapped UID.
+            "-v",
+            "/etc/passwd:/etc/passwd:ro",
+            "-v",
+            "/etc/group:/etc/group:ro",
             "-v",
             f"{home}:{home}",
             "-w",
@@ -131,18 +138,4 @@ class HostOneshot:
 
     @staticmethod
     def _failure_message(exc: BaseException) -> str:
-        detail = str(exc).strip()
-        stderr = getattr(exc, "stderr", None)
-        if isinstance(stderr, str) and stderr.strip():
-            detail = stderr.strip()
-        elif getattr(exc, "output", None):
-            out = getattr(exc, "output", "")
-            if isinstance(out, str) and out.strip():
-                detail = out.strip()
-        tail = detail.splitlines()[-1] if detail else "unknown error"
-        return (
-            "host Docker one-shot failed: "
-            f"{tail}\n"
-            "Fix: check Docker, RAFT_HOST_HOME, and outbound network, "
-            "then retry from the dashboard or run the command on the host"
-        )
+        return HostOneshotFailures().message(exc)

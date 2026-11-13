@@ -1,8 +1,26 @@
 import { ServiceLogs } from "../logs/ServiceLogs";
+import { isDeployInFlight } from "./model/jobPersistence";
+import { CopyableValue } from "./oauth/OauthSetupCopy";
 import type { DeployJob } from "./github/index.ts";
 
-export function DeployProgress(props: { job: DeployJob }) {
-  const { job } = props;
+export function DeployProgress(props: {
+  job: DeployJob;
+  busy?: boolean;
+  onContinue?: () => void;
+}) {
+  const { job, busy = false, onContinue } = props;
+  const inFlight = isDeployInFlight(job);
+  const showLogs = job.status === "succeeded" && Boolean(job.app_name);
+  const showKeyPanel =
+    Boolean(job.deploy_pubkey) &&
+    job.status === "failed" &&
+    /publickey|deploy key/i.test(job.error || "");
+  const canContinue = job.status === "failed" && Boolean(onContinue);
+  const extraSteps = showKeyPanel
+    ? job.next_steps.filter(
+        (step) => !/deploy key/i.test(step.title) && !/deploy key/i.test(step.body),
+      )
+    : job.next_steps;
   return (
     <section className="panel deploy-panel" id="deploy-progress">
       <h2>Deploy progress</h2>
@@ -15,6 +33,20 @@ export function DeployProgress(props: { job: DeployJob }) {
           </>
         ) : null}
       </p>
+      {inFlight ? (
+        <div className="deploy-busy" id="deploy-busy" role="status">
+          <span className="spinner" aria-hidden="true" />
+          <div>
+            <p>
+              Installing… You can leave this page; raft keeps working in the
+              background.
+            </p>
+            <p className="muted">
+              Return here anytime for steps, errors, and logs.
+            </p>
+          </div>
+        </div>
+      ) : null}
       <ul className="deploy-steps">
         {job.steps.map((step) => (
           <li key={step.name}>
@@ -45,20 +77,71 @@ export function DeployProgress(props: { job: DeployJob }) {
           {job.error}
         </p>
       ) : null}
-      {job.deploy_pubkey ? (
+      {showKeyPanel ? (
         <div className="deploy-pubkey" id="deploy-pubkey">
+          <h3>Add this deploy key on GitHub</h3>
           <p className="muted">
-            Public deploy key (safe to copy; never share private keys):
+            GitHub cannot pre-fill Deploy keys. Copy Title and Key, open the
+            form, paste both (read-only), then continue installation.
           </p>
-          <code className="deploy-pubkey-value">{job.deploy_pubkey}</code>
+          {job.deploy_key_title ? (
+            <label className="field deploy-key-field" htmlFor="deploy-key-title">
+              Title
+              <CopyableValue
+                id="deploy-key-title"
+                value={job.deploy_key_title}
+              />
+            </label>
+          ) : null}
+          <label className="field deploy-key-field" htmlFor="deploy-key-pubkey">
+            Key
+            <CopyableValue id="deploy-key-pubkey" value={job.deploy_pubkey!} />
+          </label>
+          <div className="deploy-key-actions">
+            {job.deploy_key_url ? (
+              <a
+                className="btn btn-primary deploy-cta"
+                href={job.deploy_key_url}
+                target="_blank"
+                rel="noreferrer"
+                id="deploy-key-open"
+              >
+                Open Deploy keys on GitHub
+              </a>
+            ) : null}
+            {canContinue ? (
+              <button
+                type="button"
+                className="btn btn-primary"
+                id="deploy-continue"
+                disabled={busy}
+                onClick={() => onContinue?.()}
+              >
+                Continue installation
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : null}
-      {job.next_steps.length > 0 ? (
+      {!showKeyPanel && canContinue ? (
+        <p className="deploy-key-actions">
+          <button
+            type="button"
+            className="btn btn-primary"
+            id="deploy-continue"
+            disabled={busy}
+            onClick={() => onContinue?.()}
+          >
+            Continue installation
+          </button>
+        </p>
+      ) : null}
+      {extraSteps.length > 0 ? (
         <div className="next-steps" id="next-steps">
           <h3>Additional steps</h3>
           <p className="muted">Follow these steps to finish the deploy.</p>
           <ul>
-            {job.next_steps.map((step) => (
+            {extraSteps.map((step) => (
               <li key={step.title}>
                 <strong>{step.title}</strong>
                 <p>{step.body}</p>
@@ -67,11 +150,19 @@ export function DeployProgress(props: { job: DeployJob }) {
           </ul>
         </div>
       ) : null}
-      {job.app_name ? (
+      {showLogs ? (
         <div className="deploy-logs" id="deploy-logs">
           <h3>Deployment logs</h3>
           <p className="muted">Container stdout/stderr for {job.app_name}.</p>
-          <ServiceLogs service={job.app_name} />
+          <ServiceLogs service={job.app_name!} running />
+        </div>
+      ) : job.app_name ? (
+        <div className="deploy-logs" id="deploy-logs-pending">
+          <h3>Deployment logs</h3>
+          <p className="muted">
+            Container logs appear here after the App applies successfully.
+            Until then, use the step list and messages above.
+          </p>
         </div>
       ) : null}
     </section>

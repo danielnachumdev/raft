@@ -46,24 +46,40 @@ class DashboardComposeYaml:
         ]
 
     def _runtime_block(self, cfg: DashboardConfig, port: int) -> list[str]:
-        lines = [
+        return [
+            *self._env_block(cfg, port),
+            "    ports:",
+            f'      - "127.0.0.1:{port}:{port}"',
+        ]
+
+    def _env_block(self, cfg: DashboardConfig, port: int) -> list[str]:
+        return [
             "    environment:",
             "      RAFT_DATA_HOME: /raft",
             # nginx listens on dashboard.port; uvicorn stays on loopback inside.
             f'      RAFT_SERVE_PORT: "{port}"',
             '      RAFT_DASHBOARD_APP_PORT: "18787"',
+            *self._host_identity_env(),
+            *self._oauth_env_file(cfg),
+        ]
+
+    @staticmethod
+    def _host_identity_env() -> list[str]:
+        return [
             # Absolute host home for Settings → Update (Docker one-shot + identity).
             '      RAFT_HOST_HOME: "${RAFT_HOST_HOME}"',
+            '      RAFT_HOST_UID: "${RAFT_HOST_UID:-0}"',
+            '      RAFT_HOST_GID: "${RAFT_HOST_GID:-0}"',
+            '      RAFT_DOCKER_GID: "${RAFT_DOCKER_GID:-0}"',
+            # Host UID has no passwd home in-image; share operator SSH with the host CLI.
+            '      HOME: "${RAFT_HOST_HOME}"',
+            '      RAFT_SSH_DIR: "${RAFT_HOST_HOME}/.ssh"',
             # Host paths for self-Redeploy one-shot (docker run -v is host-scoped).
             '      RAFT_HOST_DOCKER_BIN: '
             '"${RAFT_HOST_DOCKER_BIN:-/usr/bin/docker}"',
             '      RAFT_HOST_DOCKER_PLUGIN_DIR: '
             '"${RAFT_HOST_DOCKER_PLUGIN_DIR:-/usr/libexec/docker/cli-plugins}"',
-            *self._oauth_env_file(cfg),
-            "    ports:",
-            f'      - "127.0.0.1:{port}:{port}"',
         ]
-        return lines
 
     @staticmethod
     def _oauth_env_file(cfg: DashboardConfig) -> list[str]:
@@ -90,13 +106,42 @@ class DashboardComposeYaml:
             "      - /etc/hostname:/etc/host_hostname:ro",
             # Host uv-tool env (read-only) so Update can verify the host CLI.
             '      - "${RAFT_HOST_HOME}/.local:${RAFT_HOST_HOME}/.local:ro"',
+            # Deploy-key mint + git SSH (must exist on host before compose up).
+            '      - "${RAFT_HOST_HOME}/.ssh:${RAFT_HOST_HOME}/.ssh"',
+        ]
+
+    def _data_home_volumes(self) -> list[str]:
+        return [
+            "      - .:/raft:ro",
+            *self._writable_host_volumes(),
+            "      - ./services:/raft/services",
+            "      - ./generated:/raft/generated",
+        ]
+
+    def _writable_host_volumes(self) -> list[str]:
+        # Mutative apply/render from the dashboard needs these writes.
+        # Flat GitOps docs must be file mounts — parent ``.:/raft:ro`` hides them.
+        return [
+            *self._writable_gitops_file_volumes(),
+            *self._writable_host_dir_volumes(),
         ]
 
     @staticmethod
-    def _data_home_volumes() -> list[str]:
+    def _writable_gitops_file_volumes() -> list[str]:
         return [
-            "      - .:/raft:ro",
+            "      - ./compose.yaml:/raft/compose.yaml",
+            "      - ./host/gate-nginx.fingerprint:/raft/host/gate-nginx.fingerprint",
+            "      - ./host/router-nginx.fingerprint:/raft/host/router-nginx.fingerprint",
             "      - ./host/settings.yaml:/raft/host/settings.yaml",
+            "      - ./host/notifications.yaml:/raft/host/notifications.yaml",
+            "      - ./host/firewall.yaml:/raft/host/firewall.yaml",
+            "      - ./host/alerts.yaml:/raft/host/alerts.yaml",
+            "      - ./host/rbac.yaml:/raft/host/rbac.yaml",
+        ]
+
+    @staticmethod
+    def _writable_host_dir_volumes() -> list[str]:
+        return [
             "      - ./host/locks:/raft/host/locks",
             "      - ./host/firewall:/raft/host/firewall",
             "      - ./host/alerts:/raft/host/alerts",
@@ -107,8 +152,7 @@ class DashboardComposeYaml:
             "      - ./host/logs:/raft/host/logs",
             "      - ./host/acme:/raft/host/acme",
             "      - ./host/secrets:/raft/host/secrets",
-            "      - ./services:/raft/services",
-            "      - ./generated:/raft/generated",
+            "      - ./host/inbox:/raft/host/inbox",
         ]
 
     @staticmethod

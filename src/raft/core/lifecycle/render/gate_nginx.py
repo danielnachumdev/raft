@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from raft.core.core.config.paths import GENERATED_DIRNAME
+from raft.core.core.config.paths.bind_mount_fs import BindMountFs
 
 _GATE_NGINX_SUBDIRS = ("gate-tls", "gate-http", "gate-stream")
 GATE_NGINX_RELOAD_STAMP = Path("host") / "gate-nginx.fingerprint"
@@ -37,7 +38,7 @@ class GateNginxStamp:
     def write(self, fingerprint: str) -> None:
         """Record that gate nginx has loaded this fingerprint (reload or cold start)."""
         path = self.root / GATE_NGINX_RELOAD_STAMP
-        path.parent.mkdir(parents=True, exist_ok=True)
+        BindMountFs().mkdir(path.parent)
         path.write_text(fingerprint + "\n", encoding="utf-8")
 
     @staticmethod

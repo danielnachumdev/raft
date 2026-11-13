@@ -41,6 +41,62 @@
   max-width: 100%;
 }
 
+.deploy-key-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.75rem 0 0;
+}
+
+.deploy-key-field .oauth-setup-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+
+.deploy-key-field .oauth-setup-value code {
+  flex: 1 1 12rem;
+  min-width: 0;
+  padding: 0.55rem;
+  overflow-x: auto;
+  background: var(--muted-bg);
+  font-size: 0.78rem;
+  word-break: break-all;
+}
+
+.deploy-key-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+}
+
+.deploy-busy {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: 0.75rem 0 0;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  background: var(--muted-bg);
+}
+
+.deploy-busy p {
+  margin: 0;
+}
+
+.deploy-busy .muted {
+  margin-top: 0.25rem;
+}
+
+.deploy-busy .spinner {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
 .repo-list {
   list-style: none;
   margin: 0.5rem 0 0;

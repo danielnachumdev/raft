@@ -43,6 +43,28 @@ class TestGithubSettingsWriter(RaftTestCase):
         assert status["enable_device_flow"] is False
         assert status["expire_user_access_tokens"] is False
 
+    def test_public_status_follows_dashboard_public_host(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._clear_env(monkeypatch)
+        path = self.tmp_path / "host" / "settings.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            "edge: {http: 80}\n"
+            "dashboard:\n"
+            "  publicHost: ops.example.com\n"
+            "  tls: origin\n"
+            "  auth:\n"
+            "    mode: oauth\n",
+            encoding="utf-8",
+        )
+        status = GithubSettingsWriter(self.tmp_path).public_status(port=8787)
+        assert status["homepage_url"] == "https://ops.example.com/"
+        assert status["callback_url"] == (
+            "https://ops.example.com/api/github/callback"
+        )
+        assert status["application_name"] == "raft dashboard"
+
     def test_reject_empty(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._clear_env(monkeypatch)
         writer = GithubSettingsWriter(self.tmp_path)

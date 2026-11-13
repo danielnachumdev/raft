@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -160,3 +161,19 @@ class TestNotificationsSettingsWriter(RaftTestCase):
             writer.update("ops", "nope")  # type: ignore[arg-type]
         with pytest.raises(OperatorError, match="settings must be"):
             writer.update("ops", {"settings": []})
+
+    def test_persist_erofs_is_actionable(self) -> None:
+        writer = NotificationsSettingsWriter(self.tmp_path)
+        err = OSError(30, "Read-only file system")
+        err.errno = 30
+        with patch.object(Path, "write_text", side_effect=err):
+            with pytest.raises(OperatorError, match="read-only"):
+                writer.create(self._channel("ops"))
+
+    def test_persist_non_erofs_oserror_is_actionable(self) -> None:
+        writer = NotificationsSettingsWriter(self.tmp_path)
+        err = OSError(13, "Permission denied")
+        err.errno = 13
+        with patch.object(Path, "write_text", side_effect=err):
+            with pytest.raises(OperatorError, match="check permissions"):
+                writer.create(self._channel("ops"))

@@ -31,3 +31,4 @@ export type {
   GithubRepo,
   GithubSession,
 } from "./types.ts";
+export { DEFAULT_MANIFEST_PATH } from "./types.ts";

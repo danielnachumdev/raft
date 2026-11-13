@@ -100,6 +100,7 @@ class RaftCLICommands:
         force_sync: bool = False,
         env_file: Optional[str] = None,
         env: Optional[Union[str, Sequence[str]]] = None,
+        manifest_path: Optional[str] = None,
     ) -> None:
         """Register an App from ``--file`` or ``--git``; preprocess, then deploy."""
         apply_env = ApplyEnvCli.build(env_file=env_file, env=env)
@@ -110,6 +111,7 @@ class RaftCLICommands:
             deploy=not no_deploy,
             force_sync=force_sync,
             env=apply_env,
+            manifest_path=manifest_path,
         )
 
     def _apply_source(
@@ -121,6 +123,7 @@ class RaftCLICommands:
         deploy: bool,
         force_sync: bool,
         env: dict[str, str],
+        manifest_path: Optional[str] = None,
     ) -> None:
         applier = AppApply(self._stack)
         if file is not None:
@@ -129,7 +132,14 @@ class RaftCLICommands:
             )
             return
         if git:
-            applier.apply_git(git, ref=ref or "main", deploy=deploy, force_sync=force_sync, env=env)
+            applier.apply_git(
+                git,
+                ref=ref or "main",
+                deploy=deploy,
+                force_sync=force_sync,
+                env=env,
+                manifest_path=manifest_path,
+            )
             return
         raise DomainErrors.apply_requires_source()
 

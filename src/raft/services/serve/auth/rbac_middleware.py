@@ -44,6 +44,8 @@ class DashboardRbacMiddleware:
             return None
         if path.startswith("/api/dashboard/"):
             return None
+        if path == "/api/github/callback":
+            return None
         subject = getattr(request.state, "rbac_subject", None)
         if not subject:
             if self._cfg.auth.mode == "none":

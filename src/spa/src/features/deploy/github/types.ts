@@ -73,12 +73,17 @@ export type DeployJob = {
   id: string;
   full_name: string;
   ref: string;
+  manifest_path?: string;
   status: string;
   error: string | null;
   app_name: string | null;
   steps: DeployStep[];
   next_steps: DeployNextStep[];
   deploy_pubkey: string | null;
+  deploy_key_title?: string | null;
+  deploy_key_url?: string | null;
   ci_pr: CiPrInfo | null;
   created_at: number;
 };
+
+export const DEFAULT_MANIFEST_PATH = ".raft/app.yaml";

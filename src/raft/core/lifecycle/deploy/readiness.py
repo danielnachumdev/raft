@@ -56,13 +56,7 @@ class ReadinessStrategy:
         if self.kind == "none" or self.port is None:
             return None
         if self.kind == "http":
-            path = self.path if self.path.startswith("/") else f"/{self.path}"
-            return [
-                "CMD",
-                "wget",
-                "-qO-",
-                f"http://127.0.0.1:{self.port.container_port}{path}",
-            ]
+            return ["CMD-SHELL", self._http_healthcheck_shell()]
         if self.kind == "tcp":
             return [
                 "CMD-SHELL",
@@ -70,15 +64,45 @@ class ReadinessStrategy:
             ]
         raise ValueError(f"unknown readiness kind {self.kind!r}")
 
+    def _http_healthcheck_shell(self) -> str:
+        """Probe without requiring wget (many slim images omit it)."""
+        assert self.port is not None
+        path = self.path if self.path.startswith("/") else f"/{self.path}"
+        url = f"http://127.0.0.1:{self.port.container_port}{path}"
+        # Leave ~1s of Compose probe budget for process start under host load.
+        secs = max(1, int(self.probe_timeout_seconds) - 1)
+        return self._http_probe_chain(url, secs, self.port.container_port)
+
+    @staticmethod
+    def _http_probe_chain(url: str, secs: int, port: int) -> str:
+        # Pick one tool so fallbacks cannot stack past probe timeout.
+        # bash /dev/tcp is cheap before venv python (cold start can starve Apps).
+        py = (
+            f'import urllib.request; '
+            f'urllib.request.urlopen("{url}", timeout={secs})'
+        )
+        return (
+            f"if command -v wget >/dev/null 2>&1; then "
+            f"wget -qO- --timeout={secs} '{url}' >/dev/null; "
+            f"elif command -v curl >/dev/null 2>&1; then "
+            f"curl -fsS --max-time {secs} '{url}' >/dev/null; "
+            f"elif command -v bash >/dev/null 2>&1; then "
+            f"bash -c 'exec 3<>/dev/tcp/127.0.0.1/{port}' ; "
+            f"elif command -v python3 >/dev/null 2>&1; then "
+            f"python3 -c '{py}'; "
+            f"elif command -v python >/dev/null 2>&1; then "
+            f"python -c '{py}'; "
+            f"else exit 1; fi"
+        )
+
     def healthcheck_compose_lines(self) -> list[str]:
         """Compose ``healthcheck:`` block lines (indented under the service)."""
         test = self.healthcheck_test()
         if test is None:
             return []
-        quoted = ", ".join(f'"{part}"' for part in test)
         return [
             "    healthcheck:",
-            f"      test: [{quoted}]",
+            f"      test: [{self._compose_test_flow(test)}]",
             f"      interval: {ReadinessTiming.format_duration_seconds(self.interval_seconds)}",
             f"      timeout: {ReadinessTiming.format_duration_seconds(self.probe_timeout_seconds)}",
             f"      retries: {self.retries}",
@@ -86,6 +110,17 @@ class ReadinessStrategy:
             # health "starting" long enough for cutover TCP waits.
             f"      start_period: {ReadinessTiming.format_duration_seconds(self.start_period_seconds)}",
         ]
+
+    @staticmethod
+    def _compose_test_flow(test: list[str]) -> str:
+        """Emit Compose flow entries; shell bodies use YAML single quotes."""
+        parts: list[str] = []
+        for part in test:
+            if part in {"CMD", "CMD-SHELL"} or "'" not in part and '"' not in part:
+                parts.append(f'"{part}"')
+                continue
+            parts.append("'" + part.replace("'", "''") + "'")
+        return ", ".join(parts)
 
     def timing_summary(self) -> str:
         return (

@@ -9,6 +9,7 @@ import {
 import {
   DEFAULT_APPLICATION_NAME,
   buildOauthAppCreateUrl,
+  defaultOauthOrigin,
   resolveOauthSetupHints,
 } from "../../../../src/features/deploy/oauth/oauthSetupHints.ts";
 
@@ -78,10 +79,10 @@ describe("oauthSetupHints", () => {
       {
         oauth_configured: false,
         client_id_set: false,
-        callback_url: "http://127.0.0.1:9/api/github/callback",
-        homepage_url: "http://127.0.0.1:9/",
+        callback_url: "https://ops.example.com/api/github/callback",
+        homepage_url: "https://ops.example.com/",
         application_name: DEFAULT_APPLICATION_NAME,
-        description: "Localhost raft serve ops UI — temporary GitHub login.",
+        description: "Public raft dashboard — temporary GitHub login.",
         oauth_app_url: "https://github.com/settings/applications/new?x=1",
         settings_path: "/tmp/settings.yaml",
         enable_device_flow: false,
@@ -90,9 +91,17 @@ describe("oauthSetupHints", () => {
       null,
     );
     assert.equal(hints.application_name, DEFAULT_APPLICATION_NAME);
-    assert.equal(hints.homepage_url, "http://127.0.0.1:9/");
+    assert.equal(hints.homepage_url, "https://ops.example.com/");
+    assert.equal(
+      hints.callback_url,
+      "https://ops.example.com/api/github/callback",
+    );
     assert.equal(hints.enable_device_flow, false);
     assert.equal(hints.expire_user_access_tokens, false);
     assert.match(hints.oauth_app_url, /applications\/new/);
+  });
+
+  it("falls back to localhost origin when window is loopback", () => {
+    assert.equal(defaultOauthOrigin(8787), "http://127.0.0.1:8787");
   });
 });

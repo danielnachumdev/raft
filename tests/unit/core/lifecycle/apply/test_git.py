@@ -52,6 +52,33 @@ class TestApplyGit(ApplyTestCase):
             == "gitapp"
         )
 
+    def test_apply_git_custom_manifest_path(self) -> None:
+        stack = load_stack(self.tmp_path)
+        shell = MagicMock()
+        shell.git.side_effect = self._clone_nested_manifest
+        name = self.applier(stack, shell).apply_git(
+            "git@github.com:org/demo.git",
+            deploy=False,
+            manifest_path="apps/demo/.raft/app.yaml",
+        )
+        assert name == "nested-demo"
+
+    @staticmethod
+    def _clone_nested_manifest(*args, **kwargs) -> None:
+        target = Path(args[-1])
+        nested = target / "apps" / "demo" / ".raft"
+        nested.mkdir(parents=True, exist_ok=True)
+        (nested / "app.yaml").write_text(
+            "apiVersion: raft/v1\n"
+            "kind: App\n"
+            "metadata:\n  name: nested-demo\n"
+            "spec:\n"
+            "  source: git\n"
+            "  ports: []\n"
+            "  readiness: {type: none}\n",
+            encoding="utf-8",
+        )
+
     def test_apply_git_missing_manifest_and_bad_docs(self) -> None:
         stack = load_stack(self.tmp_path)
         self._raise_on_clone(stack, lambda t: None, match="app.yaml")

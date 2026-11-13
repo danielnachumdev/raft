@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from raft.core.core.config.paths import GENERATED_DIRNAME
+from raft.core.core.config.paths.bind_mount_fs import BindMountFs
 
 ROUTER_NGINX_RELOAD_STAMP = Path("host") / "router-nginx.fingerprint"
 
@@ -34,7 +35,7 @@ class RouterNginxStamp:
 
     def write(self, fingerprint: str) -> None:
         path = self.root / ROUTER_NGINX_RELOAD_STAMP
-        path.parent.mkdir(parents=True, exist_ok=True)
+        BindMountFs().mkdir(path.parent)
         path.write_text(fingerprint + "\n", encoding="utf-8")
 
     @staticmethod

@@ -65,7 +65,13 @@ class GithubAssistService:
     def login_url(self, *, port: Optional[int] = None, add: bool = False) -> str:
         bind = self._port if port is None else port
         select = add or bool(self._accounts.public_snapshot().get("accounts"))
-        return self._oauth.login_url(port=bind, select_account=select)
+        dash = SettingsLoader().load(self.stack.root).dashboard
+        return self._oauth.login_url(
+            port=bind,
+            select_account=select,
+            public_host=dash.public_host,
+            tls=dash.tls,
+        )
 
     def complete_oauth(self, *, code: str, state: str) -> Dict[str, Any]:
         account = self._oauth.complete_oauth(code=code, state=state)
@@ -102,7 +108,7 @@ class GithubAssistService:
         return {"repos": [self._repo_row(r) for r in rows]}
 
     def start_deploy(
-        self, *, full_name: str, ref: str = ""
+        self, *, full_name: str, ref: str = "", manifest_path: str = ""
     ) -> Dict[str, Any]:
         account = self._active.require()
         name = full_name.strip()
@@ -113,7 +119,12 @@ class GithubAssistService:
                 has_fix=False,
             )
         repo = self._resolve_repo(account.access_token, name)
-        job = self._runner.start(account, repo, ref.strip() or repo.default_branch)
+        job = self._runner.start(
+            account,
+            repo,
+            ref.strip() or repo.default_branch,
+            manifest_path=manifest_path,
+        )
         return job.to_dict()
 
     def deploy_status(self, job_id: str) -> Dict[str, Any]:
@@ -149,13 +160,19 @@ class GithubAssistService:
     def _login_hint(self) -> str:
         if not GithubSettingsWriter.oauth_ready(self._cfg):
             return (
-                "GitHub OAuth is not configured. Create an OAuth App, save "
-                "client id/secret (settings.yaml or raft github config save), "
-                "then continue."
+                "GitHub OAuth is not configured. Create an OAuth App using the "
+                "homepage/callback URLs shown in setup, save client id/secret "
+                "(settings.yaml or raft github config save), then continue."
             )
+        dash = SettingsLoader().load(self.stack.root).dashboard
+        where = (
+            "public dashboard"
+            if dash.public_host
+            else "localhost serve / SSH tunnel"
+        )
         return (
             "Temporary GitHub login lists repos you own or belong to, then raft "
-            "drives apply. Serve remains localhost/tunnel admin. "
+            f"drives apply via the {where}. "
             f"OAuth scopes: {GITHUB_LOGIN_SCOPES}."
         )
 

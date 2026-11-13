@@ -16,9 +16,9 @@ STATUS_CRASH_LOOPING = "crash-looping"
 
 # Matches ``x-resources-edge`` in ``share/compose.yaml``.
 EDGE_CPUS_LIMIT = "0.25"
-EDGE_MEMORY_LIMIT = "32M"
+EDGE_MEMORY_LIMIT = "64M"
 EDGE_CPUS_RESERVATION = "0.05"
-EDGE_MEMORY_RESERVATION = "16M"
+EDGE_MEMORY_RESERVATION = "24M"
 
 # Matches ``x-resources-controller`` in ``share/compose.yaml``.
 CONTROLLER_CPUS_LIMIT = "0.25"

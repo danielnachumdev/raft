@@ -103,6 +103,8 @@ class TestHostOneshot:
         args = oneshot.docker_argv(["true"], with_docker=False, detach=False)
         assert "1001:1002" in args
         assert DEFAULT_HOST_ONESHOT_IMAGE in args
+        assert "/etc/passwd:/etc/passwd:ro" in args
+        assert "/etc/group:/etc/group:ro" in args
 
     def test_resolve_id_falls_back_when_env_not_digit(self, monkeypatch) -> None:
         monkeypatch.setenv("RAFT_HOST_UID", "not-a-number")
@@ -120,6 +122,56 @@ class TestHostOneshot:
         msg = HostOneshot._failure_message(exc)
         assert "bad pull" in msg
         assert "ignored" not in msg
+
+    def test_failure_message_publickey_is_actionable(self) -> None:
+        exc = RuntimeError("ignored")
+        exc.stderr = "git@github.com: Permission denied (publickey).\n"
+        msg = HostOneshot._failure_message(exc)
+        assert "continue installation" in msg
+        assert "host Docker one-shot failed" not in msg
+
+    def test_failure_message_keeps_real_error_not_doctor_nudge(self) -> None:
+        exc = RuntimeError("ignored")
+        exc.stderr = (
+            "cannot deploy/reload gate: Cloudflare Origin certs missing:\n"
+            "    fix: install Cloudflare Origin PEMs\n"
+            "Run `raft doctor` for a full check.\n"
+        )
+        msg = HostOneshot._failure_message(exc)
+        assert "Origin TLS certificates are missing" in msg
+        assert "Run `raft doctor`" not in msg
+
+    def test_failure_message_env_file_missing_is_actionable(self) -> None:
+        exc = RuntimeError("ignored")
+        exc.stderr = (
+            "env file /home/raft/.raft/services/demo-api/secrets/env not found: "
+            "stat: no such file or directory\n"
+            "docker compose failed while trying to rebuild service demo-api.\n"
+            "\n"
+            "Fix:\n"
+            "  1. raft doctor\n"
+            "  2. docker compose -f ~/.raft/compose.yaml ps\n"
+            "  3. docker compose -f ~/.raft/compose.yaml logs --tail=80 gate router\n"
+            "--- demo-api (absent) ---\n"
+        )
+        msg = HostOneshot._failure_message(exc)
+        assert "App env file is missing" in msg
+        assert "demo-api/secrets/env" in msg
+        assert "docker compose -f" not in msg
+
+    def test_failure_message_readiness_timeout_is_actionable(self) -> None:
+        exc = RuntimeError("ignored")
+        exc.stderr = (
+            "Image raft-demo-api Building\n"
+            "Image raft-demo-api Built\n"
+            "Container raft-demo-api-1 Started\n"
+            "timed out waiting for: Host demo.example.com/ "
+            "(waited 120s of 120s budget)\n"
+            "Fix: check readiness/health for demo-api; raft doctor.\n"
+        )
+        msg = HostOneshot._failure_message(exc)
+        assert "App readiness wait timed out" in msg
+        assert "Image raft-demo-api Building" not in msg
 
     def test_failure_message_uses_output(self) -> None:
         exc = RuntimeError("ignored")
