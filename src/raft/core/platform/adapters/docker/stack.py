@@ -79,7 +79,7 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
         try:
             CheckedCommands.run_compose(
                 self.sh,
-                ("up", "-d", "--build", "--no-deps", service),
+                ("up", "-d", "--build", "--no-deps", "--force-recreate", service),
                 action=f"rebuild service {service}",
                 stream=True,
             )

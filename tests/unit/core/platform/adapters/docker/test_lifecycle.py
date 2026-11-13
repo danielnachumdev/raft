@@ -166,17 +166,10 @@ class TestDockerLifecycle(DockerTestCase):
         self.docker.recreate_router()
         self.docker.rebuild_service("app")
         self.shell.compose.assert_any_call(
-            "up",
-            "-d",
-            "--no-deps",
-            "--force-recreate",
-            "raft-router",
-            capture=False,
-            check=False,
+            "up", "-d", "--no-deps", "--force-recreate", "raft-router",
+            capture=False, check=False,
         )
-        self.shell.compose.assert_any_call(
-            "up", "-d", "--build", "--no-deps", "app", capture=False, check=False
-        )
+        self._assert_rebuild_force_recreates("app")
 
     def test_service_container_id_missing(self) -> None:
         self.shell.compose.return_value = self.ok("  \n")
@@ -267,6 +260,10 @@ class TestDockerLifecycle(DockerTestCase):
 
     def test_start_stack_skips_build_explicit_rebuild_still_builds(self) -> None:
         """Default up skips --build; build=True and redeploy still build."""
+        self._assert_default_up_skips_build()
+        self._assert_explicit_build_and_rebuild()
+
+    def _assert_default_up_skips_build(self) -> None:
         self.shell.compose.return_value = self.ok()
         self.docker.start_stack()
         self.docker.start_stack(("app",))
@@ -274,6 +271,8 @@ class TestDockerLifecycle(DockerTestCase):
         assert start_calls
         for call in start_calls:
             assert "--build" not in call.args
+
+    def _assert_explicit_build_and_rebuild(self) -> None:
         self.shell.compose.reset_mock()
         self.docker.start_stack(build=True)
         self.docker.start_stack(("app",), build=True)
@@ -283,6 +282,10 @@ class TestDockerLifecycle(DockerTestCase):
         self.docker.build_services(("app",))
         self.shell.compose.assert_any_call("build", "app", capture=False, check=False)
         self.docker.rebuild_service("app")
+        self._assert_rebuild_force_recreates("app")
+
+    def _assert_rebuild_force_recreates(self, service: str) -> None:
         self.shell.compose.assert_any_call(
-            "up", "-d", "--build", "--no-deps", "app", capture=False, check=False
+            "up", "-d", "--build", "--no-deps", "--force-recreate", service,
+            capture=False, check=False,
         )
