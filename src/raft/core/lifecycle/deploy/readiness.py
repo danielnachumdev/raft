@@ -71,14 +71,16 @@ class ReadinessStrategy:
         url = f"http://127.0.0.1:{self.port.container_port}{path}"
         # Leave ~1s of Compose probe budget for process start under host load.
         secs = max(1, int(self.probe_timeout_seconds) - 1)
+        return self._http_probe_chain(url, secs, self.port.container_port)
+
+    @staticmethod
+    def _http_probe_chain(url: str, secs: int, port: int) -> str:
         # Pick one tool so fallbacks cannot stack past probe timeout.
+        # bash /dev/tcp is cheap before venv python (cold start can starve Apps).
         py = (
             f'import urllib.request; '
             f'urllib.request.urlopen("{url}", timeout={secs})'
         )
-        port = self.port.container_port
-        # bash /dev/tcp is a cheap listen check before venv python (cold
-        # start every interval can starve the App on small hosts).
         return (
             f"if command -v wget >/dev/null 2>&1; then "
             f"wget -qO- --timeout={secs} '{url}' >/dev/null; "
