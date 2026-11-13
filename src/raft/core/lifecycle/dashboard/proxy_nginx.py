@@ -53,11 +53,12 @@ class DashboardProxyNginx:
     def _wrap(server_body: str) -> str:
         return (
             "pid /tmp/raft-dashboard-nginx.pid;\n"
-            "error_log /dev/stderr warn;\n"
+            # /tmp — host-UID workers cannot reopen /dev/stderr after setpriv drop.
+            "error_log /tmp/raft-dashboard-nginx-error.log warn;\n"
             "worker_processes 1;\n"
             "events { worker_connections 128; }\n"
             "http {\n"
-            "    access_log /dev/stdout;\n"
+            "    access_log /tmp/raft-dashboard-nginx-access.log;\n"
             "    client_body_temp_path /tmp/nginx_client_body;\n"
             "    proxy_temp_path /tmp/nginx_proxy;\n"
             "    fastcgi_temp_path /tmp/nginx_fastcgi;\n"
