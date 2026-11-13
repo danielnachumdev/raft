@@ -88,6 +88,25 @@ class TestFifoLock(RaftTestCase):
         release.set()
         t.join(timeout=2)
 
+    def test_busy_updates_active_progress(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        held = threading.Event()
+        release = threading.Event()
+        t = threading.Thread(target=self._hold_fifo, args=(held, release))
+        t.start()
+        assert held.wait(timeout=2)
+        progress = type("P", (), {"texts": []})()
+        progress.set_text = lambda text: progress.texts.append(text)
+        monkeypatch.setattr(
+            "raft.core.platform.locking.fifo_lock.TerminalProgress.active",
+            classmethod(lambda cls: progress),
+        )
+        with pytest.raises(OperatorError):
+            with FifoLock(self.root, "slow", timeout=0.15):
+                pass
+        release.set()
+        t.join(timeout=2)
+        assert any("waiting for fifo-slow lock" in text for text in progress.texts)
+
     def _hold_fifo(self, held: threading.Event, release: threading.Event) -> None:
         with FifoLock(self.root, "slow", timeout=5):
             held.set()

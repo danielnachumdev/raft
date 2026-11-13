@@ -51,6 +51,23 @@ class TestExclusiveLock(RaftTestCase):
         finally:
             holder.stop()
 
+    def test_busy_updates_active_progress(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        path = self.paths.stack()
+        holder = LockHoldThread(path).start()
+        progress = type("P", (), {"texts": []})()
+        progress.set_text = lambda text: progress.texts.append(text)
+        monkeypatch.setattr(
+            "raft.core.platform.locking.exclusive.TerminalProgress.active",
+            classmethod(lambda cls: progress),
+        )
+        try:
+            with pytest.raises(OperatorError):
+                with ExclusiveLock(path, kind="stack", timeout=0.15):
+                    pass
+        finally:
+            holder.stop()
+        assert any("waiting for stack lock" in t for t in progress.texts)
+
     def test_waiter_runs_after_holder(self, caplog: pytest.LogCaptureFixture) -> None:
         path = self.paths.stack()
         order: list[str] = []

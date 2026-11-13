@@ -63,3 +63,19 @@ class TestActiveShellChild:
             side_effect=ProcessLookupError,
         ):
             ActiveShellChild._signal_group(proc, signal.SIGTERM)
+
+    def test_clear_ignores_other_proc(self) -> None:
+        kept = MagicMock()
+        other = MagicMock()
+        ActiveShellChild.register(kept)
+        ActiveShellChild.clear(other)
+        assert ActiveShellChild._current is kept
+
+    def test_signal_group_logs_permission_error(self) -> None:
+        proc = MagicMock()
+        proc.pid = 3
+        with patch(
+            "raft.core.platform.adapters.shell.active_child.os.killpg",
+            side_effect=PermissionError,
+        ):
+            ActiveShellChild._signal_group(proc, signal.SIGTERM)
