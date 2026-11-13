@@ -74,13 +74,65 @@ class TestOrchRedeploy(OrchestratorTestCase):
             orch._wait_app_ready(app, timeout=5)
         wait.assert_not_called()
 
-    def test_skip_scaled_host_wait_requires_public_host(self) -> None:
+    def test_wait_app_ready_skips_scaled_to_zero_compose(self) -> None:
+        """Idle scale-to-zero must skip compose readiness (not only Host probes)."""
+        from raft.core.core.models.state.scaling_store import ScalingStore
+
+        self._seed_expose_none_tcp()
+        orch = self.orchestrator()
+        ScalingStore(self.tmp_path).mark_scaled_to_zero("app")
+        app = orch.stack.app("app")
+        with patch("raft.core.lifecycle.deploy.orchestrator.ready.WaitUntil") as wait:
+            orch._wait_app_ready(app, timeout=5)
+        wait.assert_not_called()
+
+    def test_wait_app_ready_skips_manual_stop(self) -> None:
+        from raft.core.core.models.state.manual_stop_store import ManualStopStore
+
+        self._seed_expose_none_tcp()
+        orch = self.orchestrator()
+        ManualStopStore(self.tmp_path).mark("app")
+        app = orch.stack.app("app")
+        with patch("raft.core.lifecycle.deploy.orchestrator.ready.WaitUntil") as wait:
+            orch._wait_app_ready(app, timeout=5)
+        wait.assert_not_called()
+
+    def test_skip_intentional_down_false_when_awake(self) -> None:
         from raft.core.core.models.app import App
         from raft.core.lifecycle.deploy.orchestrator.ready import AppReadyWait
 
         orch = self.orchestrator()
         app = App(name="internal", public_host="", source="local", path="services/x/checkout")
-        assert AppReadyWait(orch)._skip_scaled_host_wait(app) is False
+        assert AppReadyWait(orch)._skip_intentional_down(app) is False
+
+    def test_redeploy_router_skips_wait_for_intentional_down(self) -> None:
+        from raft.core.core.models.state.manual_stop_store import ManualStopStore
+        from raft.core.core.models.state.scaling_store import ScalingStore
+        from raft.core.core.models.stack import load_stack
+        from raft.core.lifecycle.deploy.orchestrator import Orchestrator
+
+        AppliedInventory.write_applied_app(
+            self.tmp_path,
+            "live",
+            public_host="live.test",
+            extra={"readiness": {"type": "http", "port": "http", "path": "/"}},
+        )
+        self._seed_expose_none_tcp()
+        orch = Orchestrator(load_stack(self.tmp_path))
+        orch.docker = MagicMock()
+        orch.nginx = MagicMock()
+        orch.http = MagicMock()
+        orch.syncer = MagicMock()
+        self.set_edge_only(orch=orch)
+        ScalingStore(self.tmp_path).mark_scaled_to_zero("app")
+        ManualStopStore(self.tmp_path).mark("app")
+        self.stub_http_ready(orch.http)
+        with patch("raft.core.lifecycle.deploy.orchestrator.ready.WaitUntil") as wait:
+            with patch("raft.core.lifecycle.deploy.orchestrator.service.OperatorSay"):
+                orch.redeploy_router()
+        labels = [call.args[0] for call in wait.call_args_list]
+        assert any("live.test" in label for label in labels)
+        assert not any("compose readiness for app" in label for label in labels)
 
     def test_wait_app_ready_label_includes_readiness_path(self) -> None:
         AppliedInventory.write_applied_app(

@@ -3,6 +3,7 @@
 import logging
 from typing import Optional
 
+from raft.core.core.models.state.manual_stop_store import ManualStopStore
 from raft.core.core.models.state.scaling_store import ScalingStore
 from ..readiness import ReadinessStrategy
 from ..wait import WaitUntil
@@ -11,13 +12,13 @@ logger = logging.getLogger(__name__)
 
 
 class AppReadyWait:
-    """Wait until an app's readiness strategy succeeds (or skip when scaled)."""
+    """Wait until an app's readiness strategy succeeds (or skip when intentional-down)."""
 
     def __init__(self, support) -> None:
         self._support = support
 
     def run(self, app, *, timeout: Optional[float] = None) -> None:
-        if self._skip_scaled_host_wait(app):
+        if self._skip_intentional_down(app):
             return
         strategy = ReadinessStrategy.from_spec(self._support.stack.spec_for(app))
         predicate = strategy.wait_predicate(
@@ -37,14 +38,16 @@ class AppReadyWait:
             diagnostics=lambda: self._support.docker.diagnostics_for(app.compose_id),
         ).run()
 
-    def _skip_scaled_host_wait(self, app) -> bool:
-        """Gate holds scaled apps; doctor skips Host too — don't fail ``raft up`` on 404."""
-        if not app.public_host:
-            return False
-        if not ScalingStore(self._support.stack.root).is_scaled_to_zero(app.name):
-            return False
-        logger.info("skip Host readiness for %s (scaled to zero)", app.name)
-        return True
+    def _skip_intentional_down(self, app) -> bool:
+        """Idle scale-to-zero and operator Down — do not wait (compose or Host)."""
+        root = self._support.stack.root
+        if ScalingStore(root).is_scaled_to_zero(app.name):
+            logger.info("skip readiness for %s (scaled to zero)", app.name)
+            return True
+        if ManualStopStore(root).is_manual_stop(app.name):
+            logger.info("skip readiness for %s (manual stop)", app.name)
+            return True
+        return False
 
     @staticmethod
     def _fix(app, strategy) -> str:

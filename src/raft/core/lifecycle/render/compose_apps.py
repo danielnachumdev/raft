@@ -4,6 +4,8 @@ from raft.core.lifecycle.deploy.readiness import ReadinessStrategy
 from raft.core.core.models.app import App
 from raft.core.core.models.manifest import AppSpec
 from raft.core.core.models.stack import Stack
+from raft.core.core.models.state.manual_stop_store import ManualStopStore
+from raft.core.core.models.state.scaling_store import ScalingStore
 from .edge.fragments import EdgeFragments
 from .env_file_path import ComposeEnvFilePath
 
@@ -53,14 +55,29 @@ class ComposeAppsYaml:
             "# Source: ~/.raft/services/*/app.yaml (applied App manifests)",
             "services:",
             f"  {self.stack.router}:",
-            "    depends_on:",
         ]
-        for app in self.stack.apps:
+        deps = self._router_dependency_apps()
+        if not deps:
+            return lines
+        lines.append("    depends_on:")
+        for app in deps:
             lines.append(f"      {app.compose_id}:")
             lines.append(
                 f"        condition: {self._router_dep_condition(specs[app.name])}"
             )
         return lines
+
+    def _router_dependency_apps(self) -> list[App]:
+        """Omit scaled-to-zero and operator manual-stop apps from router depends_on."""
+        root = self.stack.root
+        scaling = ScalingStore(root)
+        manual = ManualStopStore(root)
+        return [
+            app
+            for app in self.stack.apps
+            if not scaling.is_scaled_to_zero(app.name)
+            and not manual.is_manual_stop(app.name)
+        ]
 
     @staticmethod
     def _router_dep_condition(spec: AppSpec) -> str:

@@ -197,6 +197,44 @@ class TestStackRenderer(ManifestTestCase):
         )
         assert "/tmp/outside-raft.env" in text
 
+    def test_router_depends_on_skips_intentional_down_apps(self) -> None:
+        """Router must not wait on scaled-to-zero / manually stopped apps."""
+        from raft.core.core.models.state.manual_stop_store import ManualStopStore
+        from raft.core.core.models.state.scaling_store import ScalingStore
+
+        AppliedInventory.write_applied_app(
+            self.tmp_path,
+            "live",
+            source="docker",
+            image="nginx",
+            public_host="live.test",
+            build_context=None,
+        )
+        AppliedInventory.write_applied_app(
+            self.tmp_path,
+            "parked",
+            source="docker",
+            image="nginx",
+            public_host="parked.test",
+            build_context=None,
+        )
+        AppliedInventory.write_applied_app(
+            self.tmp_path,
+            "stopped",
+            source="docker",
+            image="nginx",
+            public_host="stopped.test",
+            build_context=None,
+        )
+        ScalingStore(self.tmp_path).mark_scaled_to_zero("parked")
+        ManualStopStore(self.tmp_path).mark("stopped")
+        text = GeneratedArtifacts(self.render_applied()).path("compose.apps.yaml").read_text(
+            encoding="utf-8"
+        )
+        assert "      live:\n        condition: service_healthy" in text
+        assert "      parked:\n        condition:" not in text
+        assert "      stopped:\n        condition:" not in text
+
     def _seed_redis_and_front(self, env_file: str) -> None:
         AppliedInventory.write_applied_app(
             self.tmp_path,
