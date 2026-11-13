@@ -128,8 +128,10 @@ class TestReadinessStrategy(RaftTestCase):
             readiness=ReadinessSpec(type="http", port="http", path="/ready"),
         )
         s = ReadinessStrategy.from_spec(http)
-        assert s.healthcheck_test()[1] == "wget"
-        assert "/ready" in s.healthcheck_test()[-1]
+        assert s.healthcheck_test()[0] == "CMD-SHELL"
+        shell = s.healthcheck_test()[1]
+        assert "/ready" in shell
+        assert "wget" in shell and "curl" in shell and "python3" in shell
 
     def _smtp_spec(self, **ready_kw) -> AppSpec:
         return AppSpec(

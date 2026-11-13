@@ -159,6 +159,20 @@ class TestHostOneshot:
         assert "demo-api/secrets/env" in msg
         assert "docker compose -f" not in msg
 
+    def test_failure_message_readiness_timeout_is_actionable(self) -> None:
+        exc = RuntimeError("ignored")
+        exc.stderr = (
+            "Image raft-demo-api Building\n"
+            "Image raft-demo-api Built\n"
+            "Container raft-demo-api-1 Started\n"
+            "timed out waiting for: Host demo.example.com/ "
+            "(waited 120s of 120s budget)\n"
+            "Fix: check readiness/health for demo-api; raft doctor.\n"
+        )
+        msg = HostOneshot._failure_message(exc)
+        assert "App readiness wait timed out" in msg
+        assert "Image raft-demo-api Building" not in msg
+
     def test_failure_message_uses_output(self) -> None:
         exc = RuntimeError("ignored")
         exc.stderr = None

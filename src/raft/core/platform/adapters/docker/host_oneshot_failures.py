@@ -29,7 +29,18 @@ class HostOneshotFailures:
             "cert" in lower or "pem" in lower or "tls" in lower
         ):
             return self._origin_tls_message()
+        if "timed out waiting" in lower:
+            return self._readiness_timeout_message()
         return None
+
+    @staticmethod
+    def _readiness_timeout_message() -> str:
+        return (
+            "App readiness wait timed out.\n"
+            "Fix: confirm the App serves its readiness path, check "
+            "`docker compose ps` health, raise readiness.timeoutSeconds "
+            "if cold starts need longer, then continue installation."
+        )
 
     @staticmethod
     def _publickey_message() -> str:
@@ -75,7 +86,26 @@ class HostOneshotFailures:
         lines = self.drop_fix_tail(lines)
         if not lines:
             return "unknown error"
-        return "\n".join(lines[:3])
+        preferred = [ln for ln in lines if self.looks_like_error(ln)]
+        pick = preferred[-3:] if preferred else lines[-3:]
+        return "\n".join(pick)
+
+    @staticmethod
+    def looks_like_error(line: str) -> bool:
+        low = line.lower()
+        if low.startswith("image ") or " building" in low:
+            return False
+        tokens = (
+            "timed out",
+            "failed",
+            "error",
+            "not found",
+            "denied",
+            "unhealthy",
+            "cannot ",
+            "fix:",
+        )
+        return any(token in low for token in tokens)
 
     def drop_fix_tail(self, lines: list[str]) -> list[str]:
         out: list[str] = []

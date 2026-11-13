@@ -56,19 +56,30 @@ class ReadinessStrategy:
         if self.kind == "none" or self.port is None:
             return None
         if self.kind == "http":
-            path = self.path if self.path.startswith("/") else f"/{self.path}"
-            return [
-                "CMD",
-                "wget",
-                "-qO-",
-                f"http://127.0.0.1:{self.port.container_port}{path}",
-            ]
+            return ["CMD-SHELL", self._http_healthcheck_shell()]
         if self.kind == "tcp":
             return [
                 "CMD-SHELL",
                 f"nc -z 127.0.0.1 {self.port.container_port} || exit 1",
             ]
         raise ValueError(f"unknown readiness kind {self.kind!r}")
+
+    def _http_healthcheck_shell(self) -> str:
+        """Probe without requiring wget (many slim images omit it)."""
+        assert self.port is not None
+        path = self.path if self.path.startswith("/") else f"/{self.path}"
+        url = f"http://127.0.0.1:{self.port.container_port}{path}"
+        py = (
+            "import urllib.request; "
+            f"urllib.request.urlopen('{url}')"
+        )
+        return (
+            f"wget -qO- '{url}' >/dev/null 2>&1 || "
+            f"curl -fsS '{url}' >/dev/null 2>&1 || "
+            f"python3 -c \"{py}\" || "
+            f"python -c \"{py}\" || "
+            "exit 1"
+        )
 
     def healthcheck_compose_lines(self) -> list[str]:
         """Compose ``healthcheck:`` block lines (indented under the service)."""
