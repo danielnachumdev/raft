@@ -69,12 +69,13 @@ class ReadinessStrategy:
         assert self.port is not None
         path = self.path if self.path.startswith("/") else f"/{self.path}"
         url = f"http://127.0.0.1:{self.port.container_port}{path}"
-        py = f"import urllib.request; urllib.request.urlopen('{url}')"
+        # Single-quoted -c args so Compose/YAML double-quotes do not strip them.
+        py = f'import urllib.request; urllib.request.urlopen("{url}", timeout=1)'
         return (
             f"wget -qO- '{url}' >/dev/null 2>&1 || "
-            f"curl -fsS '{url}' >/dev/null 2>&1 || "
-            f'python3 -c "{py}" || '
-            f'python -c "{py}" || '
+            f"curl -fsS --max-time 1 '{url}' >/dev/null 2>&1 || "
+            f"python3 -c '{py}' || "
+            f"python -c '{py}' || "
             "exit 1"
         )
 
@@ -83,10 +84,9 @@ class ReadinessStrategy:
         test = self.healthcheck_test()
         if test is None:
             return []
-        quoted = ", ".join(self._compose_flow_string(part) for part in test)
         return [
             "    healthcheck:",
-            f"      test: [{quoted}]",
+            f"      test: [{self._compose_test_flow(test)}]",
             f"      interval: {ReadinessTiming.format_duration_seconds(self.interval_seconds)}",
             f"      timeout: {ReadinessTiming.format_duration_seconds(self.probe_timeout_seconds)}",
             f"      retries: {self.retries}",
@@ -96,9 +96,15 @@ class ReadinessStrategy:
         ]
 
     @staticmethod
-    def _compose_flow_string(part: str) -> str:
-        escaped = part.replace("\\", "\\\\").replace('"', '\\"')
-        return f'"{escaped}"'
+    def _compose_test_flow(test: list[str]) -> str:
+        """Emit Compose flow entries; shell bodies use YAML single quotes."""
+        parts: list[str] = []
+        for part in test:
+            if part in {"CMD", "CMD-SHELL"} or "'" not in part and '"' not in part:
+                parts.append(f'"{part}"')
+                continue
+            parts.append("'" + part.replace("'", "''") + "'")
+        return ", ".join(parts)
 
     def timing_summary(self) -> str:
         return (
