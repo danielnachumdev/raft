@@ -28,6 +28,7 @@ class DeployJob:
     steps: List[DeployStep] = field(default_factory=list)
     next_steps: List[Dict[str, str]] = field(default_factory=list)
     deploy_pubkey: Optional[str] = None
+    deploy_key_url: Optional[str] = None
     ci_pr: Optional[Dict[str, Any]] = None
     created_at: float = field(default_factory=time.time)
 
@@ -46,6 +47,7 @@ class DeployJob:
             ],
             "next_steps": self.next_steps,
             "deploy_pubkey": self.deploy_pubkey,
+            "deploy_key_url": self.deploy_key_url,
             "ci_pr": self.ci_pr,
             "created_at": self.created_at,
         }

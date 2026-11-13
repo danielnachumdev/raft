@@ -136,14 +136,13 @@ class HostOneshot:
 
     @staticmethod
     def _failure_message(exc: BaseException) -> str:
-        detail = str(exc).strip()
-        stderr = getattr(exc, "stderr", None)
-        if isinstance(stderr, str) and stderr.strip():
-            detail = stderr.strip()
-        elif getattr(exc, "output", None):
-            out = getattr(exc, "output", "")
-            if isinstance(out, str) and out.strip():
-                detail = out.strip()
+        detail = HostOneshot._failure_detail(exc)
+        if "Permission denied (publickey)" in detail:
+            return (
+                "GitHub rejected the SSH deploy key (publickey).\n"
+                "Fix: open the repo’s Deploy keys settings, paste the public "
+                "key shown in the UI (read-only), then retry deploy."
+            )
         tail = detail.splitlines()[-1] if detail else "unknown error"
         return (
             "host Docker one-shot failed: "
@@ -151,3 +150,14 @@ class HostOneshot:
             "Fix: check Docker, RAFT_HOST_HOME, and outbound network, "
             "then retry from the dashboard or run the command on the host"
         )
+
+    @staticmethod
+    def _failure_detail(exc: BaseException) -> str:
+        detail = str(exc).strip()
+        stderr = getattr(exc, "stderr", None)
+        if isinstance(stderr, str) and stderr.strip():
+            return stderr.strip()
+        out = getattr(exc, "output", None)
+        if isinstance(out, str) and out.strip():
+            return out.strip()
+        return detail

@@ -3,6 +3,12 @@ import type { DeployJob } from "./github/index.ts";
 
 export function DeployProgress(props: { job: DeployJob }) {
   const { job } = props;
+  const showLogs = job.status === "succeeded" && Boolean(job.app_name);
+  const extraSteps = job.deploy_pubkey
+    ? job.next_steps.filter(
+        (step) => !/deploy key/i.test(step.title) && !/deploy key/i.test(step.body),
+      )
+    : job.next_steps;
   return (
     <section className="panel deploy-panel" id="deploy-progress">
       <h2>Deploy progress</h2>
@@ -47,18 +53,33 @@ export function DeployProgress(props: { job: DeployJob }) {
       ) : null}
       {job.deploy_pubkey ? (
         <div className="deploy-pubkey" id="deploy-pubkey">
+          <h3>Add this deploy key on GitHub</h3>
           <p className="muted">
-            Public deploy key (safe to copy; never share private keys):
+            Private repos need this read-only key before raft can clone over
+            SSH. Paste it under Deploy keys, then retry deploy.
           </p>
+          {job.deploy_key_url ? (
+            <p>
+              <a
+                className="btn btn-primary deploy-cta"
+                href={job.deploy_key_url}
+                target="_blank"
+                rel="noreferrer"
+                id="deploy-key-open"
+              >
+                Open Deploy keys on GitHub
+              </a>
+            </p>
+          ) : null}
           <code className="deploy-pubkey-value">{job.deploy_pubkey}</code>
         </div>
       ) : null}
-      {job.next_steps.length > 0 ? (
+      {extraSteps.length > 0 ? (
         <div className="next-steps" id="next-steps">
           <h3>Additional steps</h3>
           <p className="muted">Follow these steps to finish the deploy.</p>
           <ul>
-            {job.next_steps.map((step) => (
+            {extraSteps.map((step) => (
               <li key={step.title}>
                 <strong>{step.title}</strong>
                 <p>{step.body}</p>
@@ -67,11 +88,19 @@ export function DeployProgress(props: { job: DeployJob }) {
           </ul>
         </div>
       ) : null}
-      {job.app_name ? (
+      {showLogs ? (
         <div className="deploy-logs" id="deploy-logs">
           <h3>Deployment logs</h3>
           <p className="muted">Container stdout/stderr for {job.app_name}.</p>
-          <ServiceLogs service={job.app_name} />
+          <ServiceLogs service={job.app_name!} running />
+        </div>
+      ) : job.app_name ? (
+        <div className="deploy-logs" id="deploy-logs-pending">
+          <h3>Deployment logs</h3>
+          <p className="muted">
+            Container logs appear here after the App applies successfully.
+            Until then, use the step list and messages above.
+          </p>
         </div>
       ) : null}
     </section>

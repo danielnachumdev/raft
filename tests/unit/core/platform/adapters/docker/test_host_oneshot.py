@@ -123,6 +123,13 @@ class TestHostOneshot:
         assert "bad pull" in msg
         assert "ignored" not in msg
 
+    def test_failure_message_publickey_is_actionable(self) -> None:
+        exc = RuntimeError("ignored")
+        exc.stderr = "git@github.com: Permission denied (publickey).\n"
+        msg = HostOneshot._failure_message(exc)
+        assert "Deploy keys" in msg
+        assert "host Docker one-shot failed" not in msg
+
     def test_failure_message_uses_output(self) -> None:
         exc = RuntimeError("ignored")
         exc.stderr = None

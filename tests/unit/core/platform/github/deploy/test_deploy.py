@@ -32,7 +32,13 @@ class TestDeployNextSteps(RaftTestCase):
             app, spec, deploy_pubkey="ssh-ed25519 AAAA", key_fingerprint="SHA256:x"
         )
         titles = {s["title"] for s in steps}
-        assert {"DNS", "Origin TLS material", "Env file", "Host volumes", "Deploy key"} <= titles
+        assert {
+            "DNS",
+            "Origin TLS material",
+            "Env file",
+            "Host volumes",
+            "Add deploy key on GitHub",
+        } <= titles
         acme = DeployNextSteps().build(app, AppSpec(ports=(), tls="acme"))
         assert any(s["title"] == "ACME prerequisites" for s in acme)
         bare = DeployNextSteps().build(
@@ -242,6 +248,17 @@ class TestGithubDeployRunner(RaftTestCase):
             manifest_path=".raft/app.yaml",
         )
         assert job.deploy_pubkey and "AAAA" in job.deploy_pubkey
+        assert job.deploy_key_url and "settings/keys/new" in job.deploy_key_url
+
+    def test_auth_failure_message_keeps_actionable_detail(self) -> None:
+        msg = GithubDeployRunner._auth_failure_message(
+            "GitHub rejected the SSH deploy key (publickey).\nFix: paste the key.",
+            "SHA256:demo",
+        )
+        assert "fingerprint" not in msg
+        assert "publickey" in msg
+        wrapped = GithubDeployRunner._auth_failure_message("clone failed", "SHA256:demo")
+        assert "fingerprint SHA256:demo" in wrapped
 
     def _write_registry_manifest(self) -> dict:
         apps = self.tmp_path / "services"

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { PageHeader } from "../../app/PageHeader";
 import { DeployProgress } from "./DeployProgress";
@@ -54,14 +54,26 @@ export function DeployPage() {
   const browseAccounts = usableAccounts(session);
   const browseIdsKey = browseAccounts.map((a) => a.id).join(",");
 
-  const refreshSession = useCallback(async () => {
+  const refreshSession = useCallback(async (opts?: { refresh?: boolean }) => {
     setError(null);
     try {
       const [nextSession, nextConfig] = await Promise.all([
-        fetchGithubSession(),
+        fetchGithubSession({ refresh: opts?.refresh ?? true }),
         fetchGithubConfig(),
       ]);
-      setSession(nextSession);
+      const usable = usableAccounts(nextSession);
+      const activeId = nextSession.active_account_id || "";
+      const activeOk = usable.some((account) => account.id === activeId);
+      if (usable.length > 0 && !activeOk) {
+        const picked = await selectGithubAccount(usable[0].id);
+        setSession(picked);
+        setViewAsId(usable[0].id);
+      } else {
+        setSession(nextSession);
+        if (activeOk) {
+          setViewAsId(activeId);
+        }
+      }
       setConfig(nextConfig);
     } catch {
       setError("Failed to load GitHub session.");
@@ -77,7 +89,7 @@ export function DeployPage() {
   }, []);
 
   useEffect(() => {
-    void refreshSession();
+    void refreshSession({ refresh: true });
   }, [refreshSession]);
 
   useEffect(() => {
@@ -89,18 +101,16 @@ export function DeployPage() {
   }, [browseIdsKey, viewAsId, clearRepoSelection]);
 
   useEffect(() => {
-    if (!viewAsId || !session?.authenticated) {
-      setAllRepos([]);
-      return;
-    }
-    if (session.active_account_id !== viewAsId) {
+    const activeId = session?.active_account_id || "";
+    const usableIds = new Set(browseIdsKey ? browseIdsKey.split(",") : []);
+    if (!viewAsId || !usableIds.has(activeId) || activeId !== viewAsId) {
       setAllRepos([]);
       return;
     }
     let cancelled = false;
     void (async () => {
       try {
-        const list = await fetchGithubRepos();
+        const list = await fetchGithubRepos({ refresh: true });
         if (!cancelled) setAllRepos(list);
       } catch (err) {
         if (!cancelled) {
@@ -111,7 +121,7 @@ export function DeployPage() {
     return () => {
       cancelled = true;
     };
-  }, [session?.authenticated, session?.active_account_id, viewAsId]);
+  }, [browseIdsKey, session?.active_account_id, viewAsId]);
 
   const repos = filterGithubRepos(allRepos, query);
 
@@ -179,14 +189,6 @@ export function DeployPage() {
       setBusy(false);
     }
   };
-
-  const autoPickedRef = useRef("");
-  useEffect(() => {
-    const ids = browseIdsKey ? browseIdsKey.split(",") : [];
-    if (viewAsId || ids.length !== 1 || autoPickedRef.current === ids[0]) return;
-    autoPickedRef.current = ids[0];
-    void onViewAs(ids[0]);
-  }, [browseIdsKey, viewAsId]);
 
   const onOauthSaved = async () => {
     navigate("/deploy", { replace: true });

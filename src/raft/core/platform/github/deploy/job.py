@@ -176,9 +176,7 @@ class GithubDeployRunner:
         except OperatorError as exc:
             self._auth_failure_steps(job, repo, fp)
             raise OperatorError(
-                f"{exc}\n"
-                f"If the repo is private, add the deploy public key shown in the UI "
-                f"(fingerprint {fp}) then retry.",
+                self._auth_failure_message(str(exc), fp),
                 has_fix=False,
             ) from exc
         self._step(job, "Apply + deploy", "ok", f"applied {app_name}")
@@ -200,22 +198,34 @@ class GithubDeployRunner:
             auth.setup(app_name, repo=repo.ssh_url)
             pubkey = auth.show_pubkey(app_name)
         job.deploy_pubkey = GitAuthManager._pubkey_for_paste(pubkey)
+        job.deploy_key_url = self._deploy_key_url(job)
         fp = self._fingerprint(pubkey)
         self._step(job, "Prepare deploy key", "ok", f"fingerprint {fp}")
         return fp
 
+    def _auth_failure_steps(self, job: DeployJob, repo: GithubRepo, fp: str) -> None:
+        del repo
+        url = job.deploy_key_url or self._deploy_key_url(job)
+        job.deploy_key_url = url
+        body = (
+            "Open Deploy keys on the repo, paste the public key from this "
+            f"panel (read-only), then retry. Fingerprint: {fp}."
+        )
+        if url:
+            body = f"{body} Link: {url}"
+        job.next_steps = [{"title": "Add deploy key on GitHub", "body": body}]
+
     @staticmethod
-    def _auth_failure_steps(job: DeployJob, repo: GithubRepo, fp: str) -> None:
-        job.next_steps = [
-            {
-                "title": "Deploy key",
-                "body": (
-                    f"Add this read-only public key on GitHub "
-                    f"({repo.html_url}/settings/keys/new), then retry deploy. "
-                    f"Fingerprint: {fp}"
-                ),
-            }
-        ]
+    def _auth_failure_message(detail: str, fp: str) -> str:
+        text = detail.strip()
+        lower = text.lower()
+        if "deploy key" in lower or "publickey" in lower:
+            return text
+        return (
+            f"{text}\n"
+            "Add the deploy public key shown in the UI "
+            f"(fingerprint {fp}) then retry."
+        )
 
     def _fill_next_steps(self, job: DeployJob, data: dict) -> None:
         if not job.app_name:
