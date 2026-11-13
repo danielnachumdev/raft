@@ -40,6 +40,15 @@ class DockerMessages:
         )
 
     @staticmethod
+    def looks_like_upstream_host_not_found(value: object) -> bool:
+        """True when nginx -t/reload raced Compose DNS for a static upstream."""
+        if isinstance(value, BaseException):
+            text = CtaFormatter.exc_blob(value)
+        else:
+            text = str(value or "")
+        return "host not found in upstream" in text.lower()
+
+    @staticmethod
     def docker_daemon_message(*, detail: str = "") -> str:
         return CtaFormatter.format(
             "cannot talk to the Docker daemon.",
