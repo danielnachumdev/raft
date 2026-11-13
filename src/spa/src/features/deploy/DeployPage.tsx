@@ -1,10 +1,18 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { PageHeader } from "../../app/PageHeader";
+import { toast } from "../../shared/chrome/toast";
+import { userFacingError } from "../../shared/userFacingError.ts";
 import { DeployProgress } from "./DeployProgress";
 import { DeployRepoPicker } from "./DeployRepoPicker";
 import { DeploySession } from "./DeploySession";
 import { DeploySteps } from "./DeploySteps";
+import {
+  clearPersistedDeployJob,
+  isDeployInFlight,
+  persistDeployJob,
+  readPersistedDeployJobId,
+} from "./model/jobPersistence";
 import { currentStep } from "./model/wizardSteps";
 import {
   accountCount,
@@ -29,7 +37,6 @@ import {
 } from "./github/index.ts";
 import "./DeployPage.css";
 import "./AddServicePage.css";
-import { userFacingError } from "../../shared/userFacingError.ts";
 
 const POLL_MS = 1000;
 
@@ -50,9 +57,12 @@ export function DeployPage() {
   const [job, setJob] = useState<DeployJob | null>(null);
   const [busy, setBusy] = useState(false);
   const [viewAsId, setViewAsId] = useState("");
+  const prevJobStatus = useRef<string | null>(null);
   const needsSetup = needsOauthSetup(session, oauthError);
   const browseAccounts = usableAccounts(session);
   const browseIdsKey = browseAccounts.map((a) => a.id).join(",");
+  const installing = isDeployInFlight(job);
+  const controlsBusy = busy || installing;
 
   const refreshSession = useCallback(async (opts?: { refresh?: boolean }) => {
     setError(null);
@@ -83,6 +93,8 @@ export function DeployPage() {
   const clearRepoSelection = useCallback(() => {
     setSelected(null);
     setJob(null);
+    clearPersistedDeployJob();
+    prevJobStatus.current = null;
     setAllRepos([]);
     setQuery("");
     setManifestPath(DEFAULT_MANIFEST_PATH);
@@ -91,6 +103,60 @@ export function DeployPage() {
   useEffect(() => {
     void refreshSession({ refresh: true });
   }, [refreshSession]);
+
+  useEffect(() => {
+    const id = readPersistedDeployJobId();
+    if (!id) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const restored = await fetchDeployJob(id);
+        if (cancelled) return;
+        setJob(restored);
+        persistDeployJob(restored);
+        if (isDeployInFlight(restored)) {
+          toast.regular({
+            message: `Resuming installation for ${restored.full_name}…`,
+            href: "/deploy",
+            linkLabel: "View progress",
+          });
+        }
+      } catch {
+        if (!cancelled) clearPersistedDeployJob();
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!job) {
+      prevJobStatus.current = null;
+      return;
+    }
+    persistDeployJob(job);
+    const prev = prevJobStatus.current;
+    prevJobStatus.current = job.status;
+    if (prev !== "pending" && prev !== "running") return;
+    if (job.status === "succeeded") {
+      toast.good({
+        message: job.app_name
+          ? `Installed ${job.app_name}.`
+          : `Installed ${job.full_name}.`,
+        href: job.app_name ? `/service/${encodeURIComponent(job.app_name)}` : "/deploy",
+        linkLabel: job.app_name ? "View service" : "View progress",
+      });
+      return;
+    }
+    if (job.status === "failed") {
+      toast.bad({
+        message: `Installation needs attention for ${job.full_name}.`,
+        href: "/deploy",
+        linkLabel: "View details",
+      });
+    }
+  }, [job]);
 
   useEffect(() => {
     const ids = new Set(browseIdsKey ? browseIdsKey.split(",") : []);
@@ -141,6 +207,8 @@ export function DeployPage() {
     setSelected(repo);
     setRef(repo.default_branch || "main");
     setJob(null);
+    clearPersistedDeployJob();
+    prevJobStatus.current = null;
   };
 
   const onDeploy = async () => {
@@ -148,9 +216,20 @@ export function DeployPage() {
     setBusy(true);
     setError(null);
     try {
-      setJob(
-        await startGithubDeploy(selected.full_name, ref, manifestPath),
+      const next = await startGithubDeploy(
+        selected.full_name,
+        ref,
+        manifestPath,
       );
+      prevJobStatus.current = next.status;
+      setJob(next);
+      persistDeployJob(next);
+      toast.regular({
+        message: `Installing ${next.full_name}… You can leave this page.`,
+        href: "/deploy",
+        linkLabel: "Open progress",
+        durationMs: 6500,
+      });
     } catch (err) {
       setError(userFacingError(err, "Deploy failed to start"));
     } finally {
@@ -232,7 +311,7 @@ export function DeployPage() {
         oauthError={oauthError}
         needsSetup={needsSetup}
         forceInstructions={showInstructions}
-        busy={busy}
+        busy={controlsBusy}
         onDeleteOne={(id) => void onDeleteOne(id)}
         onBusy={setBusy}
         onSaved={() => void onOauthSaved()}
@@ -255,13 +334,13 @@ export function DeployPage() {
             onRef={setRef}
             manifestPath={manifestPath}
             onManifestPath={setManifestPath}
-            busy={busy}
+            busy={controlsBusy}
             onDeploy={() => void onDeploy()}
           />
           {job ? (
             <DeployProgress
               job={job}
-              busy={busy}
+              busy={controlsBusy}
               onContinue={() => void onDeploy()}
             />
           ) : null}

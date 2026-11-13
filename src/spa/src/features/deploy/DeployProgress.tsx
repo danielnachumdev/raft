@@ -1,4 +1,5 @@
 import { ServiceLogs } from "../logs/ServiceLogs";
+import { isDeployInFlight } from "./model/jobPersistence";
 import { CopyableValue } from "./oauth/OauthSetupCopy";
 import type { DeployJob } from "./github/index.ts";
 
@@ -8,6 +9,7 @@ export function DeployProgress(props: {
   onContinue?: () => void;
 }) {
   const { job, busy = false, onContinue } = props;
+  const inFlight = isDeployInFlight(job);
   const showLogs = job.status === "succeeded" && Boolean(job.app_name);
   const showKeyPanel = Boolean(job.deploy_pubkey) && job.status === "failed";
   const canContinue = job.status === "failed" && Boolean(onContinue);
@@ -28,6 +30,20 @@ export function DeployProgress(props: {
           </>
         ) : null}
       </p>
+      {inFlight ? (
+        <div className="deploy-busy" id="deploy-busy" role="status">
+          <span className="spinner" aria-hidden="true" />
+          <div>
+            <p>
+              Installing… You can leave this page; raft keeps working in the
+              background.
+            </p>
+            <p className="muted">
+              Return here anytime for steps, errors, and logs.
+            </p>
+          </div>
+        </div>
+      ) : null}
       <ul className="deploy-steps">
         {job.steps.map((step) => (
           <li key={step.name}>

@@ -131,7 +131,14 @@ export function DeployRepoPicker(props: {
             onClick={onDeploy}
             id="deploy-confirm-btn"
           >
-            Deploy {selected.full_name}
+            {busy ? (
+              <>
+                <span className="spinner btn-spinner" aria-hidden="true" />
+                Installing…
+              </>
+            ) : (
+              <>Deploy {selected.full_name}</>
+            )}
           </button>
         </div>
       ) : null}
