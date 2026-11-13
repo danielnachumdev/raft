@@ -22,6 +22,7 @@ from raft.core.observe.notify.notifier import Notifier
 from ..accounts import GithubAccount
 from ..providers import GithubProvider, GithubRepo
 from .ci_pr import GithubCiPrSetup
+from .host_git import GithubDeployHostGit
 from .models import DeployJob, DeployJobStore, DeployStep
 from .next_steps import DeployNextSteps
 
@@ -47,6 +48,7 @@ class GithubDeployRunner:
         self._ci = ci or GithubCiPrSetup()
         self._notifier = notifier if notifier is not None else Notifier(stack.root)
         self._paths = ContractRelPath()
+        self._host_git = GithubDeployHostGit(stack)
 
     def start(
         self,
@@ -170,9 +172,7 @@ class GithubDeployRunner:
         fp = self._prepare_deploy_key(job, repo, app_name)
         self._step(job, "Apply + deploy", "running")
         try:
-            AppApply(load_stack(self._stack.root)).apply_git(
-                repo.ssh_url, ref=job.ref, deploy=True, manifest_path=rel
-            )
+            self._apply_git(repo.ssh_url, ref=job.ref, rel=rel)
         except OperatorError as exc:
             self._auth_failure_steps(job, repo, fp)
             raise OperatorError(
@@ -183,11 +183,22 @@ class GithubDeployRunner:
             ) from exc
         self._step(job, "Apply + deploy", "ok", f"applied {app_name}")
 
+    def _apply_git(self, ssh_url: str, *, ref: str, rel: str) -> None:
+        if self._host_git.in_dashboard():
+            self._host_git.apply_git(ssh_url, ref=ref, manifest_path=rel)
+            return
+        AppApply(load_stack(self._stack.root)).apply_git(
+            ssh_url, ref=ref, deploy=True, manifest_path=rel
+        )
+
     def _prepare_deploy_key(self, job: DeployJob, repo: GithubRepo, app_name: str) -> str:
         self._step(job, "Prepare deploy key", "running")
-        auth = GitAuthManager(load_stack(self._stack.root))
-        auth.setup(app_name, repo=repo.ssh_url)
-        pubkey = auth.show_pubkey(app_name)
+        if self._host_git.in_dashboard():
+            pubkey = self._host_git.prepare_key(app_name, repo.ssh_url)
+        else:
+            auth = GitAuthManager(load_stack(self._stack.root))
+            auth.setup(app_name, repo=repo.ssh_url)
+            pubkey = auth.show_pubkey(app_name)
         job.deploy_pubkey = GitAuthManager._pubkey_for_paste(pubkey)
         fp = self._fingerprint(pubkey)
         self._step(job, "Prepare deploy key", "ok", f"fingerprint {fp}")

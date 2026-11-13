@@ -103,6 +103,8 @@ class TestHostOneshot:
         args = oneshot.docker_argv(["true"], with_docker=False, detach=False)
         assert "1001:1002" in args
         assert DEFAULT_HOST_ONESHOT_IMAGE in args
+        assert "/etc/passwd:/etc/passwd:ro" in args
+        assert "/etc/group:/etc/group:ro" in args
 
     def test_resolve_id_falls_back_when_env_not_digit(self, monkeypatch) -> None:
         monkeypatch.setenv("RAFT_HOST_UID", "not-a-number")

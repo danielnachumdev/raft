@@ -42,7 +42,13 @@ class TestCoverageDeploy(RaftTestCase):
             github_fx.stub_auth(auth_cls)
             apply_cls.return_value.apply_git.side_effect = OperatorError("no", has_fix=False)
             with pytest.raises(OperatorError, match="deploy public key"):
-                runner._deploy_git(job, github_fx.sample_account(), github_fx.sample_repo(), "web")
+                runner._deploy_git(
+                    job,
+                    github_fx.sample_account(),
+                    github_fx.sample_repo(),
+                    "web",
+                    rel=".raft/app.yaml",
+                )
         assert job.next_steps
 
     def test_api_callback_oauth(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -163,11 +169,23 @@ class TestCoverageDeploy(RaftTestCase):
         job = DeployJob(id="2", full_name="o/r", ref="m", app_name="web")
         with patch("raft.core.platform.github.deploy.job.AppApply") as apply_cls:
             apply_cls.return_value.apply_file.return_value = "web"
-            runner._deploy_local(job, tree, {"metadata": {"name": "web"}, "spec": {}}, "web")
+            runner._deploy_local(
+                job,
+                tree,
+                {"metadata": {"name": "web"}, "spec": {}},
+                "web",
+                rel=".raft/app.yaml",
+            )
         # Second deploy hits rmtree of an existing checkout.
         with patch("raft.core.platform.github.deploy.job.AppApply") as apply_cls:
             apply_cls.return_value.apply_file.return_value = "web"
-            runner._deploy_local(job, tree, {"metadata": {"name": "web"}, "spec": {}}, "web")
+            runner._deploy_local(
+                job,
+                tree,
+                {"metadata": {"name": "web"}, "spec": {}},
+                "web",
+                rel=".raft/app.yaml",
+            )
 
     def test_registry_or_loads_existing_file(self) -> None:
         path = self.tmp_path / "reg.yaml"

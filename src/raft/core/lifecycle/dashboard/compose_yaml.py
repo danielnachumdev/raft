@@ -40,8 +40,7 @@ class DashboardComposeYaml:
             "    build:",
             "      context: ./dashboard",
             "    working_dir: /raft",
-            # Root entrypoint mints a passwd row for the host UID then setpriv-drops
-            # (OpenSSH/ssh-keygen refuse UIDs with no /etc/passwd entry).
+            '    user: "${RAFT_HOST_UID:-0}:${RAFT_HOST_GID:-0}"',
             "    group_add:",
             '      - "${RAFT_DOCKER_GID:-0}"',
         ]

@@ -123,6 +123,11 @@ class HostOneshot:
             f"HOME={home}",
             "-e",
             f"PATH={self._ids.path_env}",
+            # Host passwd/group so OpenSSH/ssh-keygen accept the mapped UID.
+            "-v",
+            "/etc/passwd:/etc/passwd:ro",
+            "-v",
+            "/etc/group:/etc/group:ro",
             "-v",
             f"{home}:{home}",
             "-w",

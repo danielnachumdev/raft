@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import threading
 import time
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import yaml
 
@@ -205,6 +205,43 @@ class TestGithubDeployRunner(RaftTestCase):
         assert GithubDeployRunner._deploy_key_url(job) is None
         job.full_name = "o/r"
         assert "settings/keys/new" in GithubDeployRunner._deploy_key_url(job)
+
+    def test_git_deploy_uses_host_oneshot_in_dashboard(self) -> None:
+        stack = StackMakers.make_stack(self.tmp_path)
+        runner = GithubDeployRunner(stack, self._provider(), DeployJobStore())
+        job = DeployJob(
+            id="h",
+            full_name="demo/docket-deploy",
+            ref="main",
+            app_name="docket",
+            manifest_path=".raft/app.yaml",
+        )
+        repo = github_fx.sample_repo(
+            full_name="demo/docket-deploy",
+            name="docket-deploy",
+            owner="demo",
+            ssh_url="git@github.com:demo/docket-deploy.git",
+            html_url="https://github.com/demo/docket-deploy",
+            clone_url="https://github.com/demo/docket-deploy.git",
+        )
+        host = MagicMock()
+        host.in_dashboard.return_value = True
+        host.prepare_key.return_value = "ssh-ed25519 AAAA host"
+        runner._host_git = host
+        with patch("raft.core.platform.github.deploy.job.AppApply") as apply_cls:
+            runner._deploy_git(
+                job, github_fx.sample_account(), repo, "docket", rel=".raft/app.yaml"
+            )
+            apply_cls.assert_not_called()
+        host.prepare_key.assert_called_once_with(
+            "docket", "git@github.com:demo/docket-deploy.git"
+        )
+        host.apply_git.assert_called_once_with(
+            "git@github.com:demo/docket-deploy.git",
+            ref="main",
+            manifest_path=".raft/app.yaml",
+        )
+        assert job.deploy_pubkey and "AAAA" in job.deploy_pubkey
 
     def _write_registry_manifest(self) -> dict:
         apps = self.tmp_path / "services"
