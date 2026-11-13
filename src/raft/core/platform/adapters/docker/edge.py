@@ -9,6 +9,7 @@ from raft.core.core.models.app import App
 from raft.core.core.models.ports import PortSpec
 from raft.core.core.models.stack import Stack
 from ..shell import Shell
+from .router_nginx_reload import RouterNginxReload
 
 logger = logging.getLogger(__name__)
 
@@ -57,26 +58,9 @@ class DockerEdge:
         return ok
 
     def reload_router_nginx(self) -> None:
-        logger.info("nginx -t && reload on router")
-        result = self.sh.compose(
-            "exec", "-T", self.stack.router, "nginx", "-t", capture=True, check=False
-        )
-        if result.returncode != 0:
-            detail = (result.stderr or result.stdout or "").strip()
-            raise DockerMessages.nginx_rejected("router", detail)
-        reload = self.sh.compose(
-            "exec",
-            "-T",
-            self.stack.router,
-            "nginx",
-            "-s",
-            "reload",
-            capture=True,
-            check=False,
-        )
-        if reload.returncode != 0:
-            detail = (reload.stderr or reload.stdout or "").strip()
-            raise DockerMessages.nginx_reload_failed("router", detail)
+        # Static upstream ``server hostname:port`` resolves at -t/reload time.
+        # Compose DNS can lag container start; retry host-not-found races.
+        RouterNginxReload(self.sh, self.stack.router).run()
 
     def nginx_test_and_reload(self) -> None:
         """Reload router nginx (alias kept for call sites / tests)."""
