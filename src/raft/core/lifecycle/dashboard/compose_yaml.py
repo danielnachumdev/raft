@@ -54,6 +54,9 @@ class DashboardComposeYaml:
             '      RAFT_DASHBOARD_APP_PORT: "18787"',
             # Absolute host home for Settings → Update (Docker one-shot + identity).
             '      RAFT_HOST_HOME: "${RAFT_HOST_HOME}"',
+            # Host UID has no passwd home in-image; share operator SSH with the host CLI.
+            '      HOME: "${RAFT_HOST_HOME}"',
+            '      RAFT_SSH_DIR: "${RAFT_HOST_HOME}/.ssh"',
             # Host paths for self-Redeploy one-shot (docker run -v is host-scoped).
             '      RAFT_HOST_DOCKER_BIN: '
             '"${RAFT_HOST_DOCKER_BIN:-/usr/bin/docker}"',
@@ -90,6 +93,8 @@ class DashboardComposeYaml:
             "      - /etc/hostname:/etc/host_hostname:ro",
             # Host uv-tool env (read-only) so Update can verify the host CLI.
             '      - "${RAFT_HOST_HOME}/.local:${RAFT_HOST_HOME}/.local:ro"',
+            # Deploy-key mint + git SSH (must exist on host before compose up).
+            '      - "${RAFT_HOST_HOME}/.ssh:${RAFT_HOST_HOME}/.ssh"',
         ]
 
     @staticmethod
