@@ -22,12 +22,24 @@ class TestDashboardProcess(RaftTestCase):
         assert "listen" in text and "absolute_redirect off" in text
 
     def test_wait_ready_ok_and_timeout(self) -> None:
+        alive = MagicMock()
+        alive.poll.return_value = None
         with socket.socket() as sock:
             sock.bind(("127.0.0.1", 0))
             sock.listen(1)
-            DashboardProcess._wait_ready(sock.getsockname()[1], timeout=1.0)
+            DashboardProcess._wait_ready(
+                sock.getsockname()[1], alive, timeout=1.0
+            )
         with pytest.raises(RuntimeError, match="did not listen"):
-            DashboardProcess._wait_ready(1, timeout=0.05)
+            DashboardProcess._wait_ready(1, alive, timeout=0.05)
+
+    def test_wait_ready_fails_fast_on_early_exit(self) -> None:
+        dead = MagicMock()
+        dead.poll.return_value = 1
+        with pytest.raises(
+            RuntimeError, match=r"exited code=1 before listen on 1"
+        ):
+            DashboardProcess._wait_ready(1, dead, timeout=30.0)
 
     def test_start_helpers_and_ports(self) -> None:
         proc, _ = self._proc_with_conf()

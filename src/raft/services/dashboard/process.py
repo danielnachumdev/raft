@@ -41,7 +41,7 @@ class DashboardProcess:
         if cfg.auth.mode == "oauth":
             self._oauth = DashboardOAuthProxyProcess().start(cfg)
         self._app = self._start_app(app_port=app_port)
-        self._wait_ready(app_port)
+        self._wait_ready(app_port, self._app)
         self._nginx = self._start_nginx()
         self._install_signals()
         code = self._wait_either()
@@ -113,16 +113,35 @@ class DashboardProcess:
                 proc.kill()
 
     @staticmethod
-    def _wait_ready(port: int, *, timeout: float = _APP_WAIT_SECONDS) -> None:
+    def _wait_ready(
+        port: int,
+        app: subprocess.Popen,
+        *,
+        timeout: float = _APP_WAIT_SECONDS,
+    ) -> None:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
-            with socket.socket() as sock:
-                sock.settimeout(0.2)
-                if sock.connect_ex(("127.0.0.1", port)) == 0:
-                    DashboardProcess._log(f"app ready on :{port}")
-                    return
+            DashboardProcess._raise_if_app_exited(app, port)
+            if DashboardProcess._port_is_open(port):
+                DashboardProcess._log(f"app ready on :{port}")
+                return
             time.sleep(0.1)
         raise RuntimeError(f"dashboard app did not listen on {port}")
+
+    @staticmethod
+    def _raise_if_app_exited(app: subprocess.Popen, port: int) -> None:
+        code = app.poll()
+        if code is None:
+            return
+        raise RuntimeError(
+            f"dashboard app exited code={code} before listen on {port}"
+        )
+
+    @staticmethod
+    def _port_is_open(port: int) -> bool:
+        with socket.socket() as sock:
+            sock.settimeout(0.2)
+            return sock.connect_ex(("127.0.0.1", port)) == 0
 
     @staticmethod
     def _listen_port(settings_port: int) -> int:
