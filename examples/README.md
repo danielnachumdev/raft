@@ -11,7 +11,8 @@ These folders are **operator-facing samples**, not the minimal trees under `test
 | [`settings.yaml`](settings.yaml) | Operator settings (`logging`, `edge`, `healing`, `metrics`, `serviceLogs`, `acme`, `github`, `dashboard`, …) → `~/.raft/host/settings.yaml` |
 | [`notifications/notifications.yaml`](notifications/notifications.yaml) | Notification destinations → `~/.raft/host/notifications.yaml` |
 | [`rbac/rbac.yaml`](rbac/rbac.yaml) | Roles/bindings sample → `~/.raft/host/rbac.yaml` (`ops@example.com`) |
-| [`http-only-site/`](http-only-site/) | Single Host-routed HTTP app (`tls: off`); richest field comments + optional `${{ if }}` scaling snippet |
+| [`http-only-site/`](http-only-site/) | Single Host-routed HTTP app (`tls: off`); richest field comments + optional `${{ if }}` scaling snippet + sample edge HTML under `.raft/` |
+| [`edge-pages/`](edge-pages/) | Override `unavailablePage` / `forbiddenPage` / `maintenancePage` / `scaling.holdingPage` (snippet + links to sample HTML) |
 | [`https-acme-site/`](https-acme-site/) | Direct HTTPS via `tls: acme` (Let's Encrypt on the gate; DNS + ports 80/443 + `acme.email`) |
 | [`https-origin-site/`](https-origin-site/) | HTTPS via `tls: origin` (Cloudflare Origin PEMs on the host) |
 | [`http-plus-stream/`](http-plus-stream/) | HTTP + gate `expose: stream` (needs `edge.streams`) |
@@ -40,6 +41,8 @@ raft apply --file examples/<folder>/.raft/app.yaml --ref "$SHA"
 raft doctor
 ```
 
-Use `--no-deploy` only when you intentionally register without starting (e.g. several apps, then one `raft up`). Do not treat `--no-deploy` + `raft redeploy` as the default path — `redeploy` needs the app service already running.
+Use `--no-deploy` only when you intentionally register without starting (e.g. several apps, then one `raft up`). Do not treat `--no-deploy` + `raft redeploy` as the default ship path — `apply` owns first register/deploy; `redeploy` refreshes an already-applied name (cutover when live; may start when down).
+
+During a live apply/redeploy cutover, STATUS is **`redeploying`** and visitors see **maintenance** HTML on upstream failure (override with `spec.maintenancePage`). See [`edge-pages/`](edge-pages/).
 
 After changing gate-published ports in settings, run `raft redeploy gate`.

@@ -31,7 +31,7 @@ gate → router → apps
 
 | Layer | Compose id (typical) | Role | Mutative ops |
 |-------|----------------------|------|----------------|
-| **gate** | `raft-gate` | Public listeners from settings; TLS; ACME HTTP-01; offline; scale holding/wake; **ordered edge firewall**; HTTP access log + stub_status | **reload** when generated gate nginx changes; **`raft redeploy gate`** only for published ports (brief edge downtime) |
+| **gate** | `raft-gate` | Public listeners from settings; TLS; ACME HTTP-01; unavailable/forbidden/maintenance edge HTML (per-App overrides); scale holding/wake; **ordered edge firewall**; HTTP access log + stub_status | **reload** when generated gate nginx changes; **`raft redeploy gate`** only for published ports (brief edge downtime) |
 | **router** | `raft-router` | Host → upstream | `raft redeploy router` / reload on cutover |
 | **apps** | `GROUP-NAME` / name | One Compose service per applied App | `apply` / `redeploy <name>` |
 
@@ -89,7 +89,9 @@ Align with the README table; detail for agents:
 | Manifest apply + deploy / cutover | **Shipped** | `seamless` default; `inplace` optional |
 | Manifest preprocess `${VAR}` / `${{ if }}` | **Shipped** | Apply-time only; not re-run on render |
 | TLS `off` / `origin` / `acme` | **Shipped** | ACME = HTTP-01 only; no DNS-01/wildcards |
-| Scale-to-zero | **Shipped** | HTTP + `publicHost`; holding on gate; wake diagnostic id |
+| Scale-to-zero | **Shipped** | HTTP + `publicHost`; holding on gate (`holdingPage` override); wake diagnostic id |
+| Edge visitor HTML overrides | **Shipped** | `unavailablePage` / `forbiddenPage` / `maintenancePage` (+ `scaling.holdingPage`); require `publicHost`; samples in `examples/edge-pages/` + `examples/http-only-site/.raft/` |
+| Intentional STATUS markers | **Shipped** | Live cutover → `redeploying` + maintenance.html chooser; operator Down → `manual-stop` (heal/alerts skip like scaled-to-zero) |
 | Multi-app `group` / `dependsOn` / volumes / `envFile` / `expose: none` | **Shipped** | |
 | Worker Apps (`ports: []`) | **Shipped** | `readiness: none`; no scaling/TLS origin\|acme |
 | Doctor / status / logs / purge | **Shipped** | |
@@ -217,8 +219,10 @@ Also: `raft update` = update raft itself; published edge listeners changed → `
 
 - As CI/release, I ship a commit with `raft apply --file .raft/app.yaml --ref "$SHA"` (or `--git …`).
 - As an operator, I refresh an already-applied name without re-feeding the manifest → `raft redeploy demo-api` (same idea for gate\|router\|controller\|dashboard when that unit needs a generation refresh).
+- As an operator during a live apply/redeploy cutover, I expect STATUS `redeploying` and visitors to see maintenance HTML (not unavailable) if the upstream fails mid-window.
+- As an operator, I brand edge visitor pages per App → ship HTML under the app root and set `unavailablePage` / `forbiddenPage` / `maintenancePage` (and optional `scaling.holdingPage`).
 - As an operator, I power the stack or one service with existing images → `raft up` / `raft down` [`NAME`].
-- As an operator, I stop a service for maintenance without removing it from the registry → `raft down demo-api`.
+- As an operator, I stop a service for maintenance without removing it from the registry → `raft down demo-api` (STATUS `manual-stop`, not not-running).
 - As an operator, I bring a stopped service back on its existing image → `raft up demo-api`.
 - As a developer, my manifest/ref changed in Git → I re-`raft apply` (not `up` alone).
 - As an operator on first boot / cold stack → I `raft apply` (not `up` alone if images may be stale).

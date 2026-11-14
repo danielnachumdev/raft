@@ -50,6 +50,8 @@ You keep services in their own repos. On the VPS you `apply` a manifest. raft sy
 | Alert rules (metrics/control-plane → notifications) + default setup recommendations | ✅ |
 | GitOps-first host config (flat YAML + temporary serve/CLI overrides) | ✅ |
 | RBAC via `rbac.yaml` (oauth/external + password usernames) | ✅ |
+| Overridable edge visitor pages (unavailable / forbidden / maintenance) | ✅ |
+| Redeploying status + maintenance HTML during live cutover | ✅ |
 | Operator system event timeline (CLI + serve) | ✅ |
 | Always-on dashboard Compose service (`raft-dashboard`) | ✅ |
 | Firewall-derived alert signals | 📋 |
@@ -95,9 +97,26 @@ raft apply --file .raft/app.yaml --ref "$SHA"
 
 Same command for first boot and later cutovers. When to use **apply** vs **up/down** vs **redeploy** (and `update` / `redeploy gate`): short operator user stories in [`AGENTS.md`](AGENTS.md) **Operator user stories (verbs)**.
 
+## Edge visitor pages + intentional status
+
+Public Host traffic can see stock gate HTML when the upstream is down, the firewall denies, or scale-to-zero is waking the app. Apps may **override** those pages with HTML shipped in the service tree (paths relative to the app root; require `spec.publicHost`):
+
+| Spec key | Visitor case |
+|----------|----------------|
+| `unavailablePage` | Upstream 502/503/504 while **not** mid-cutover → HTTP 503 |
+| `forbiddenPage` | Ordered edge firewall deny → HTTP 403 |
+| `maintenancePage` | Upstream failure during intentional live apply/redeploy |
+| `scaling.holdingPage` | Scale-to-zero wake holding (under `spec.scaling`) |
+
+Samples + snippet: [`examples/edge-pages/`](examples/edge-pages/) and [`examples/http-only-site/.raft/`](examples/http-only-site/.raft/) (`unavailable.html`, `forbidden.html`, `maintenance.html`, `holding.html`). Stock defaults live in the gate image when you omit the keys.
+
+**Live cutover:** `raft apply` / `raft redeploy <name>` set STATUS **`redeploying`** for the window; visitors get **maintenance** (not unavailable) if the upstream fails while the marker is set. Heal/alerts treat it as intentional (same idea as scale-to-zero).
+
+**Operator Down:** `raft down <name>` → STATUS **`manual-stop`** (intentional; not treated as not-running). Bring it back with `raft up <name>` (existing image) or re-`apply` / `redeploy` when the generation should refresh.
+
 ## Ops UI
 
-When a terminal snapshot is not enough, run **`raft serve`**. One localhost process: live tables, quick actions, logs, and trends. It never listens on the public gate — open it on the host, or forward `127.0.0.1:8787` from wherever you operate.
+When a terminal snapshot is not enough, run **`raft serve`**. One localhost process: live tables, quick actions, logs, and trends (installable as a PWA from a supporting browser). It never listens on the public gate — open it on the host, or forward `127.0.0.1:8787` from wherever you operate.
 
 <p align="center">
  <img src="assets/service-detail.png" alt="raft serve service detail: actions, logs, overview, limits, and runtime trends" width="900" />
@@ -120,7 +139,7 @@ raft serve --stop
 | `raft serve` | Localhost ops dashboard (default `:8787`) |
 | `raft logs [name…]` | Container stdout/stderr (`-f` to follow) |
 | `raft up` / `raft down` | Power existing images (optional `up --build`); with `NAME` = per-service (down stops, does not remove) |
-| `raft redeploy <name>` | Refresh an already-applied unit (app / router / dashboard / controller / **gate**); edge ports → gate (brief downtime) |
+| `raft redeploy <name>` | Refresh an already-applied unit (app / router / dashboard / controller / **gate**); live app cutover → STATUS `redeploying` + maintenance HTML; edge ports → gate (brief downtime) |
 | `raft sync` / `raft render` | Pipeline only (sources / Compose+nginx); not substitutes for redeploy |
 | `raft firewall …` | Ordered gate rules (`host/firewall.yaml`); Save/CLI → reload, never recreate |
 | `raft alerts …` | Alert rules (`host/alerts.yaml`) → notification channels |
