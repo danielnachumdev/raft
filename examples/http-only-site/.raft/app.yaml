@@ -132,7 +132,8 @@ spec:
   #   minUpSeconds: 60
   #   holdingPage: .raft/holding.html   # optional; relative to app root
   #
-  # Optional edge HTML overrides (require publicHost; relative to app root):
+  # Optional edge HTML overrides (require publicHost; relative to app root).
+  # Demo files ship next to this manifest; primer: examples/edge-pages/.
   # unavailablePage: .raft/unavailable.html  # upstream 502/503/504 → HTTP 503
   # forbiddenPage: .raft/forbidden.html      # firewall deny → HTTP 403
   # maintenancePage: .raft/maintenance.html  # intentional redeploy 502/503 → maintenance
