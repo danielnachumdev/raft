@@ -169,7 +169,7 @@ class TestServeAppFactory(RaftTestCase):
         assert b"raft mark" in favicon.content
         assert b"<svg" in favicon.content
 
-    def test_spa_pwa_manifest_and_service_worker_are_served(self) -> None:
+    def test_spa_pwa_manifest_is_served(self) -> None:
         client, _ = serve_fx.client_and_status(
             StackMakers.make_stack(self.tmp_path), serve_fx.empty_snapshot()
         )
@@ -184,6 +184,11 @@ class TestServeAppFactory(RaftTestCase):
         assert body["short_name"] == "raft"
         assert body["theme_color"] == "#0f6b5c"
         assert body["background_color"] == "#f3efe6"
+
+    def test_spa_pwa_service_worker_and_icon_are_served(self) -> None:
+        client, _ = serve_fx.client_and_status(
+            StackMakers.make_stack(self.tmp_path), serve_fx.empty_snapshot()
+        )
         sw = client.get("/sw.js")
         assert sw.status_code == 200
         assert "javascript" in sw.headers["content-type"]
