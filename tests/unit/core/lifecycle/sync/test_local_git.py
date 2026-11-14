@@ -211,25 +211,27 @@ class TestSyncLocalGit(SyncTestCase):
         self.git_syncer(repo="git@example.com:org/svc.git", ref="v1.2.3")
         self.ensure_git_checkout()
         tag_sha = "cccccccccccc3333333333333333333333333333"
+        self.shell.git.side_effect = self._local_only_ref_git("v1.2.3", tag_sha)
+        self.syncer.sync([self.app], ref_override="v1.2.3")
+        checkout = [c for c in ShellMocks.git_call_args(self.shell) if c and c[0] == "checkout"][0]
+        assert tag_sha in checkout
 
+    def _local_only_ref_git(self, ref: str, sha: str):
         def git(*args, **kwargs):
             result = MagicMock(returncode=0, stdout="")
             if args[:2] == ("status", "--porcelain"):
                 result.stdout = ""
             elif args[:2] == ("rev-parse", "--verify"):
                 wanted = args[2]
-                if wanted == "origin/v1.2.3":
+                if wanted == f"origin/{ref}":
                     result.returncode = 1
-                elif wanted == "v1.2.3":
-                    result.stdout = f"{tag_sha}\n"
+                elif wanted == ref:
+                    result.stdout = f"{sha}\n"
                 else:
                     result.returncode = 1
             return result
 
-        self.shell.git.side_effect = git
-        self.syncer.sync([self.app], ref_override="v1.2.3")
-        checkout = [c for c in ShellMocks.git_call_args(self.shell) if c and c[0] == "checkout"][0]
-        assert tag_sha in checkout
+        return git
 
     def test_sync_git_resolves_qualified_origin_ref_literally(self) -> None:
         self.git_syncer(repo="git@example.com:org/svc.git")
