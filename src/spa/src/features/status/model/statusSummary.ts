@@ -21,9 +21,12 @@ export function summarizeStatus(rows: StatusRow[]): StatusSummary {
     attentionNames: [],
   };
   for (const row of rows) {
+    const key = row.status.trim().toLowerCase();
     const tone = statusTone(row.status);
     if (tone === "ok") summary.running += 1;
     if (tone === "idle") summary.idle += 1;
+    // Intentional cutover: yellow badge, but not Needs attention.
+    if (key === "redeploying") continue;
     if (tone === "bad" || tone === "warn") {
       summary.attention += 1;
       summary.attentionNames.push(row.name);
