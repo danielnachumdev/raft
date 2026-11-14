@@ -171,6 +171,101 @@ class TestSyncLocalGit(SyncTestCase):
 
         return git
 
+    def test_sync_git_prefers_origin_over_stale_local(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Bare branch names must track origin/<ref> after fetch (issue #471)."""
+        self.git_syncer(repo="git@example.com:org/svc.git", ref="main")
+        self.ensure_git_checkout()
+        old_sha = "aaaaaaaaaaaa1111111111111111111111111111"
+        new_sha = "bbbbbbbbbbbb2222222222222222222222222222"
+        self.shell.git.side_effect = self._stale_local_main_git(old_sha, new_sha)
+        with caplog.at_level("WARNING"):
+            self.syncer.sync([self.app], ref_override="main")
+        checkout = [c for c in ShellMocks.git_call_args(self.shell) if c and c[0] == "checkout"][0]
+        assert new_sha in checkout
+        assert old_sha not in checkout
+        assert any(
+            "differs from origin/main" in r.getMessage() for r in caplog.records
+        )
+
+    def _stale_local_main_git(self, old_sha: str, new_sha: str):
+        def git(*args, **kwargs):
+            result = MagicMock(returncode=0, stdout="")
+            if args[:2] == ("status", "--porcelain"):
+                result.stdout = ""
+            elif args[:2] == ("rev-parse", "--verify"):
+                wanted = args[2]
+                if wanted == "main":
+                    result.stdout = f"{old_sha}\n"
+                elif wanted == "origin/main":
+                    result.stdout = f"{new_sha}\n"
+                else:
+                    result.returncode = 1
+            return result
+
+        return git
+
+    def test_sync_git_falls_back_to_local_when_origin_missing(self) -> None:
+        """Tags (and other local-only refs) still resolve when origin/<ref> is absent."""
+        self.git_syncer(repo="git@example.com:org/svc.git", ref="v1.2.3")
+        self.ensure_git_checkout()
+        tag_sha = "cccccccccccc3333333333333333333333333333"
+
+        def git(*args, **kwargs):
+            result = MagicMock(returncode=0, stdout="")
+            if args[:2] == ("status", "--porcelain"):
+                result.stdout = ""
+            elif args[:2] == ("rev-parse", "--verify"):
+                wanted = args[2]
+                if wanted == "origin/v1.2.3":
+                    result.returncode = 1
+                elif wanted == "v1.2.3":
+                    result.stdout = f"{tag_sha}\n"
+                else:
+                    result.returncode = 1
+            return result
+
+        self.shell.git.side_effect = git
+        self.syncer.sync([self.app], ref_override="v1.2.3")
+        checkout = [c for c in ShellMocks.git_call_args(self.shell) if c and c[0] == "checkout"][0]
+        assert tag_sha in checkout
+
+    def test_sync_git_resolves_qualified_origin_ref_literally(self) -> None:
+        self.git_syncer(repo="git@example.com:org/svc.git")
+        self.ensure_git_checkout()
+        tip = "dddddddddddd4444444444444444444444444444"
+
+        def git(*args, **kwargs):
+            result = MagicMock(returncode=0, stdout="")
+            if args[:2] == ("status", "--porcelain"):
+                result.stdout = ""
+            elif args[:2] == ("rev-parse", "--verify"):
+                wanted = args[2]
+                if wanted == "origin/main":
+                    result.stdout = f"{tip}\n"
+                else:
+                    result.returncode = 1
+            return result
+
+        self.shell.git.side_effect = git
+        self.syncer.sync([self.app], ref_override="origin/main")
+        checkout = [c for c in ShellMocks.git_call_args(self.shell) if c and c[0] == "checkout"][0]
+        assert tip in checkout
+
+    def test_sync_git_unresolvable_literal_sha(self) -> None:
+        self.git_syncer(repo="git@example.com:org/svc.git")
+        self.ensure_git_checkout()
+
+        def git(*args, **kwargs):
+            result = MagicMock(stdout="")
+            result.returncode = 1 if args[:2] == ("rev-parse", "--verify") else 0
+            return result
+
+        self.shell.git.side_effect = git
+        with pytest.raises(RuntimeError, match="cannot resolve ref"):
+            self.syncer.sync([self.app], ref_override="abcdef1")
+
     def test_sync_git_unresolvable_ref(self) -> None:
         self.git_syncer(repo="git@example.com:org/svc.git", ref="nope")
         self.ensure_git_checkout()

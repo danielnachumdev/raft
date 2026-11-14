@@ -96,14 +96,61 @@ class GitCheckoutService:
             )
 
     def _resolve_ref(self, app: App, dest: Path, wanted: str) -> str:
-        checked = self._git.rev_parse(dest, wanted)
-        if checked.returncode != 0:
-            checked = self._git.rev_parse(dest, f"origin/{wanted}")
-        if checked.returncode == 0:
-            return checked.stdout.strip()
+        if self._resolve_as_literal(wanted):
+            return self._require_sha(app, dest, wanted)
+        remote = f"origin/{wanted}"
+        remote_sha = self._parsed_sha(dest, remote)
+        if remote_sha is not None:
+            self._warn_if_local_diverged(app, dest, wanted, remote_sha)
+            return remote_sha
+        local_sha = self._parsed_sha(dest, wanted)
+        if local_sha is not None:
+            return local_sha
         raise OperatorError(
             f"cannot resolve ref {wanted!r} in {app.repo}.\n"
             f"Fix: raft sync {app.name} --ref <existing-branch-or-tag>"
+        )
+
+    @staticmethod
+    def _resolve_as_literal(wanted: str) -> bool:
+        if wanted.startswith(("origin/", "refs/")):
+            return True
+        return GitCheckoutService._looks_like_sha(wanted)
+
+    @staticmethod
+    def _looks_like_sha(ref: str) -> bool:
+        if not 7 <= len(ref) <= 40:
+            return False
+        return all(c in "0123456789abcdef" for c in ref.lower())
+
+    def _require_sha(self, app: App, dest: Path, ref: str) -> str:
+        sha = self._parsed_sha(dest, ref)
+        if sha is not None:
+            return sha
+        raise OperatorError(
+            f"cannot resolve ref {ref!r} in {app.repo}.\n"
+            f"Fix: raft sync {app.name} --ref <existing-branch-or-tag>"
+        )
+
+    def _parsed_sha(self, dest: Path, ref: str) -> str | None:
+        checked = self._git.rev_parse(dest, ref)
+        if checked.returncode != 0:
+            return None
+        return checked.stdout.strip()
+
+    def _warn_if_local_diverged(
+        self, app: App, dest: Path, wanted: str, remote_sha: str
+    ) -> None:
+        local_sha = self._parsed_sha(dest, wanted)
+        if local_sha is None or local_sha == remote_sha:
+            return
+        logger.warning(
+            "sync %s: local %s (%s) differs from origin/%s (%s); using remote tip",
+            app.name,
+            wanted,
+            local_sha[:12],
+            wanted,
+            remote_sha[:12],
         )
 
     def _checkout_sha(
