@@ -23,7 +23,8 @@ class TestServeAppFactory(RaftTestCase):
         status.collect.assert_not_called()
         assert 'id="root"' in body
         assert "/assets/" in body
-        assert "raft dashboard" in body
+        assert "<title>Raft</title>" in body
+        assert 'content="Raft — operator dashboard' in body
 
     def test_api_status_returns_json_from_collect(self) -> None:
         client, status = serve_fx.client_and_status(
@@ -180,8 +181,8 @@ class TestServeAppFactory(RaftTestCase):
         assert manifest.status_code == 200
         assert "manifest" in manifest.headers["content-type"]
         body = manifest.json()
-        assert body["name"] == "Raft ops"
-        assert body["short_name"] == "raft"
+        assert body["name"] == "Raft"
+        assert body["short_name"] == "Raft"
         assert body["theme_color"] == "#0f6b5c"
         assert body["background_color"] == "#f3efe6"
 

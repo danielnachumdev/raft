@@ -81,7 +81,7 @@ export type StatusPayload = {
 export const STATUS_POLL_MS = 2000;
 
 /** Fixed browser tab title — never includes hostname or service name. */
-export const DASHBOARD_DOCUMENT_TITLE = "raft dashboard";
+export const DASHBOARD_DOCUMENT_TITLE = "Raft";
 
 export function servicePath(service: string): string {
   return `/service/${encodeURIComponent(service)}`;

@@ -20,8 +20,8 @@ export default defineConfig({
       ],
       manifest: {
         id: "/",
-        name: "Raft ops",
-        short_name: "raft",
+        name: "Raft",
+        short_name: "Raft",
         description: "Operator dashboard for the raft control plane.",
         theme_color: "#0f6b5c",
         background_color: "#f3efe6",

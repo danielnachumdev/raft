@@ -8,8 +8,8 @@ import { DASHBOARD_DOCUMENT_TITLE } from "../../../src/shared/api/status.ts";
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
 describe("dashboard document title", () => {
-  it("is always exactly raft dashboard", () => {
-    assert.equal(DASHBOARD_DOCUMENT_TITLE, "raft dashboard");
+  it("is always exactly Raft", () => {
+    assert.equal(DASHBOARD_DOCUMENT_TITLE, "Raft");
   });
 
   it("hardcodes the title in index.html and status/service pages", () => {
@@ -26,7 +26,7 @@ describe("dashboard document title", () => {
       join(root, "src/shared/api/status.ts"),
       "utf8",
     );
-    assert.match(index, /<title>raft dashboard<\/title>/);
+    assert.match(index, /<title>Raft<\/title>/);
     assert.match(dashboard, /DASHBOARD_DOCUMENT_TITLE/);
     assert.doesNotMatch(dashboard, /Host <code>/);
     assert.match(service, /DASHBOARD_DOCUMENT_TITLE/);

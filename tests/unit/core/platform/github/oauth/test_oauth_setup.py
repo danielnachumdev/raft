@@ -19,7 +19,7 @@ class TestGithubOauthAppSetup:
         assert fields["callback_url"] == "http://127.0.0.1:8787/api/github/callback"
         assert fields["enable_device_flow"] is False
         assert fields["expire_user_access_tokens"] is False
-        assert "localhost raft serve" in fields["description"].lower()
+        assert "localhost raft" in fields["description"].lower()
 
     def test_public_fields_use_dashboard_public_host(self) -> None:
         fields = GithubOauthAppSetup().public_fields(
