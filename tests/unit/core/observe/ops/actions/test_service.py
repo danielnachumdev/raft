@@ -143,19 +143,22 @@ class TestServiceActions(RaftTestCase):
 
     def test_redeploy_app_delegates(self) -> None:
         actions, _docker, orch = self._actions()
-        result = actions.redeploy("site")
+        with self._not_in_dashboard():
+            result = actions.redeploy("site")
         orch.redeploy_app.assert_called_once_with("site")
         assert result["action"] == "redeploy"
 
     def test_redeploy_router(self) -> None:
         actions, _docker, orch = self._actions()
-        result = actions.redeploy("router")
+        with self._not_in_dashboard():
+            result = actions.redeploy("router")
         orch.redeploy_router.assert_called_once()
         assert result["service"] == "raft-router"
 
     def test_redeploy_gate_calls_redeploy(self) -> None:
         actions, _docker, orch = self._actions()
-        result = actions.redeploy("gate")
+        with self._not_in_dashboard():
+            result = actions.redeploy("gate")
         orch.redeploy_gate.assert_called_once()
         orch.redeploy.assert_not_called()
         assert result["action"] == "redeploy"
@@ -163,10 +166,18 @@ class TestServiceActions(RaftTestCase):
 
     def test_redeploy_controller(self) -> None:
         actions, _docker, orch = self._actions()
-        result = actions.redeploy("controller")
+        with self._not_in_dashboard():
+            result = actions.redeploy("controller")
         orch.redeploy_controller.assert_called_once()
         assert result["action"] == "redeploy"
         assert result["service"] == "raft-controller"
+
+    @staticmethod
+    def _not_in_dashboard():
+        return patch(
+            "raft.core.observe.ops.actions.service.HostOneshotGate.in_dashboard",
+            return_value=False,
+        )
 
     def test_redeploy_dashboard_refused_when_disabled(self) -> None:
         self._write_dashboard_enabled(False)
@@ -197,7 +208,8 @@ class TestServiceActions(RaftTestCase):
                     with self._with_app_locks() as locks:
                         self._enter(locks)
                         actions.up("site")
-                        actions.redeploy("site")
+                        with self._not_in_dashboard():
+                            actions.redeploy("site")
         docker_cls.assert_called()
         orch_cls.assert_called_once_with(stack)
 
