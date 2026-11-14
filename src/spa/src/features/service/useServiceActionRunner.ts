@@ -3,8 +3,8 @@ import type { ServiceAction } from "../../shared/api";
 import { fetchService, postServiceAction, servicePath } from "../../shared/api";
 import { toast } from "../../shared/chrome/toast";
 import {
-  dashboardRedeployTimeoutMessage,
-  isAsyncDashboardRedeploy,
+  asyncRedeployTimeoutMessage,
+  isAsyncRedeploy,
   isDashboardService,
   waitForDashboardReconnect,
 } from "./dashboardRedeploy";
@@ -85,8 +85,8 @@ async function runAction(
   onDone: () => void,
 ): Promise<void> {
   const result = await postServiceAction(service, action);
-  if (isAsyncDashboardRedeploy(service, action, result)) {
-    await finishDashboardRedeploy(service, onDone);
+  if (isAsyncRedeploy(action, result)) {
+    await finishAsyncRedeploy(service, onDone);
     return;
   }
   toast.good({
@@ -97,16 +97,27 @@ async function runAction(
   onDone();
 }
 
-async function finishDashboardRedeploy(
+async function finishAsyncRedeploy(
   service: string,
   onDone: () => void,
 ): Promise<void> {
   toast.good({ message: "Redeploying…" });
+  // Apps stop during inplace; require a down observation so a stale
+  // "running" sample right after enqueue is not treated as success.
+  // Dashboard self-redeploy drops the API (probe throws) — accept first up.
+  let sawDown = isDashboardService(service);
   const outcome = await waitForDashboardReconnect({
-    probe: () => probeDashboardHealthy(service),
+    probe: async () => {
+      const up = await probeServiceRunning(service);
+      if (!up) {
+        sawDown = true;
+        return false;
+      }
+      return sawDown;
+    },
   });
   if (outcome === "timeout") {
-    toast.bad(dashboardRedeployTimeoutMessage());
+    toast.bad(asyncRedeployTimeoutMessage(service));
     return;
   }
   toast.good({
@@ -115,10 +126,12 @@ async function finishDashboardRedeploy(
     linkLabel: "View service",
   });
   onDone();
-  window.location.reload();
+  if (isDashboardService(service)) {
+    window.location.reload();
+  }
 }
 
-async function probeDashboardHealthy(service: string): Promise<boolean> {
+async function probeServiceRunning(service: string): Promise<boolean> {
   const detail = await fetchService(service);
   const status = (detail.presentation?.status || "").toLowerCase();
   return status === "running" || status.startsWith("up");

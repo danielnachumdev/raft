@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  asyncRedeployTimeoutMessage,
   dashboardRedeployTimeoutMessage,
   isAsyncDashboardRedeploy,
+  isAsyncRedeploy,
   isDashboardService,
   waitForDashboardReconnect,
 } from "../../../src/features/service/dashboardRedeploy.ts";
@@ -16,6 +18,23 @@ describe("dashboardRedeploy", () => {
 
   it("requires started flag for async redeploy", () => {
     assert.equal(
+      isAsyncRedeploy("redeploy", {
+        ok: true,
+        action: "redeploy",
+        service: "demo-api",
+        started: true,
+      }),
+      true,
+    );
+    assert.equal(
+      isAsyncRedeploy("redeploy", {
+        ok: true,
+        action: "redeploy",
+        service: "demo-api",
+      }),
+      false,
+    );
+    assert.equal(
       isAsyncDashboardRedeploy("raft-dashboard", "redeploy", {
         ok: true,
         action: "redeploy",
@@ -23,14 +42,6 @@ describe("dashboardRedeploy", () => {
         started: true,
       }),
       true,
-    );
-    assert.equal(
-      isAsyncDashboardRedeploy("raft-dashboard", "redeploy", {
-        ok: true,
-        action: "redeploy",
-        service: "raft-dashboard",
-      }),
-      false,
     );
     assert.equal(
       isAsyncDashboardRedeploy("demo-api", "redeploy", {
@@ -41,6 +52,11 @@ describe("dashboardRedeploy", () => {
       }),
       false,
     );
+  });
+
+  it("timeout message includes service name for apps", () => {
+    assert.match(asyncRedeployTimeoutMessage("demo-api"), /demo-api/);
+    assert.match(asyncRedeployTimeoutMessage("dashboard"), /Events/);
   });
 
   it("polls until healthy", async () => {

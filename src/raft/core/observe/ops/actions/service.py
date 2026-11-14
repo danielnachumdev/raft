@@ -90,8 +90,14 @@ class ServiceActions:
     def _redeploy_via_host(
         self, compose_id: str, app: Optional[App]
     ) -> Dict[str, Any]:
-        HostServiceRedeploy(self.stack).run(compose_id, app)
-        return self._ok("redeploy", compose_id)
+        result = HostServiceRedeploy(self.stack).start(compose_id, app)
+        logger.info(
+            "host redeploy oneshot id=%s coalesced=%s service=%s",
+            result.get("job_id"),
+            result.get("coalesced"),
+            compose_id,
+        )
+        return result
 
     def _redeploy_local(
         self, compose_id: str, app: Optional[App]
