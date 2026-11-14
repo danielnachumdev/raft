@@ -1,8 +1,11 @@
 """Render nginx access-module directives from an :class:`AclPolicy`."""
 
-from raft.core.core.models.acl_policy import AclPolicy
+from typing import Optional
 
-FORBIDDEN_ALIAS = "/usr/share/nginx/errors/forbidden.html"
+from raft.core.core.models.acl_policy import AclPolicy
+from raft.core.lifecycle.render.edge_html_pages import DEFAULT_FORBIDDEN_ALIAS
+
+FORBIDDEN_ALIAS = DEFAULT_FORBIDDEN_ALIAS
 
 
 class AclNginxText:
@@ -27,12 +30,15 @@ class AclNginxText:
         return "\n".join(lines) + "\n"
 
     @staticmethod
-    def forbidden_location(*, indent: str = "    ") -> str:
+    def forbidden_location(
+        *, indent: str = "    ", alias: Optional[str] = None
+    ) -> str:
+        target = alias if alias else FORBIDDEN_ALIAS
         return (
             f"{indent}location = /_raft_forbidden {{\n"
             f"{indent}    internal;\n"
             f"{indent}    default_type text/html;\n"
-            f"{indent}    alias {FORBIDDEN_ALIAS};\n"
+            f"{indent}    alias {target};\n"
             f"{indent}}}\n"
         )
 

@@ -124,7 +124,7 @@ class GeneratedWriter:
             + "    include /etc/nginx/gate/acme_challenge.inc;\n\n"
             + AclProxyLocation.location_slash(acl_include=acl)
             + "\n"
-            + AclProxyLocation.offline_and_forbidden(acl_include=acl)
+            + AclProxyLocation.unavailable_and_forbidden(acl_include=acl)
             + "}\n"
         )
 

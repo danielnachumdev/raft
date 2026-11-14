@@ -13,6 +13,7 @@ from raft.core.core.models.app_document import AppDocument
 from raft.core.core.models.manifest import AppSpec
 from raft.core.core.models.registry import AppRegistry
 from raft.core.core.models.stack import Stack
+from .edge_html_pages import EdgeHtmlPages
 from .fragment_collector import FragmentCollector
 from .generated_writer import GeneratedWriter
 from .scaling_holding import ScalingHoldingPages
@@ -74,6 +75,7 @@ class StackRenderer:
         )
         self._ensure_dirs()
         ScalingHoldingPages().install(self.stack.root, apps, resolved)
+        EdgeHtmlPages().install(self.stack.root, apps, resolved)
         GeneratedWriter(self.stack, self.edge).write_all(resolved, fragments)
         logger.info(
             "rendered %s apps → %s",
