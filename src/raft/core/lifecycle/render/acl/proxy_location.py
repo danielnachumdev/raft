@@ -53,7 +53,9 @@ class AclProxyLocation:
             f"{inner}proxy_read_timeout {read_timeout};\n"
             f"{send}"
             f"{inner}proxy_intercept_errors on;\n"
-            f"{inner}error_page 502 503 504 /offline.html;\n"
+            # Force 503 so CDNs (e.g. Cloudflare) pass through offline.html
+            # instead of replacing origin 502 bodies with their own error page.
+            f"{inner}error_page 502 503 504 =503 /offline.html;\n"
             f"{indent}}}\n"
         )
 
