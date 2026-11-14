@@ -56,7 +56,7 @@ class AcmeHttpRedirect:
 
     @staticmethod
     def _forbidden(app: App, spec: AppSpec, *, acl_include: str) -> str:
-        _, forbid = EdgeHtmlPages.aliases_for(app, spec)
+        _, forbid, _ = EdgeHtmlPages.aliases_for(app, spec)
         if not acl_include and forbid is None:
             return ""
         return AclNginxText.forbidden_location(alias=forbid)

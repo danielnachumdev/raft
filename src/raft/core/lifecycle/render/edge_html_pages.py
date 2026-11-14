@@ -13,32 +13,26 @@ logger = logging.getLogger(__name__)
 
 UNAVAILABLE_SUBDIR = Path("unavailable")
 FORBIDDEN_SUBDIR = Path("forbidden")
+MAINTENANCE_SUBDIR = Path("maintenance")
 CONTAINER_UNAVAILABLE_DIR = "/etc/nginx/http-generated/unavailable"
 CONTAINER_FORBIDDEN_DIR = "/etc/nginx/http-generated/forbidden"
+CONTAINER_MAINTENANCE_DIR = "/etc/nginx/http-generated/maintenance"
 DEFAULT_UNAVAILABLE_ROOT = "/usr/share/nginx/errors"
 DEFAULT_FORBIDDEN_ALIAS = "/usr/share/nginx/errors/forbidden.html"
 
 
 class EdgeHtmlPages:
-    """Copy ``unavailablePage`` / ``forbiddenPage`` into the gate-http bind mount."""
+    """Copy edge HTML overrides into the gate-http bind mount."""
 
     def install(self, root: Path, apps: list[App], specs: dict[str, AppSpec]) -> None:
-        self._install_kind(
-            root,
-            apps,
-            specs,
-            subdir=UNAVAILABLE_SUBDIR,
-            attr="unavailable_page",
-            label="unavailablePage",
-        )
-        self._install_kind(
-            root,
-            apps,
-            specs,
-            subdir=FORBIDDEN_SUBDIR,
-            attr="forbidden_page",
-            label="forbiddenPage",
-        )
+        for subdir, attr, label in (
+            (UNAVAILABLE_SUBDIR, "unavailable_page", "unavailablePage"),
+            (FORBIDDEN_SUBDIR, "forbidden_page", "forbiddenPage"),
+            (MAINTENANCE_SUBDIR, "maintenance_page", "maintenancePage"),
+        ):
+            self._install_kind(
+                root, apps, specs, subdir=subdir, attr=attr, label=label
+            )
 
     @classmethod
     def host_dir(cls, root: Path, *, subdir: Path) -> Path:
@@ -53,10 +47,17 @@ class EdgeHtmlPages:
         return f"{CONTAINER_FORBIDDEN_DIR}/{app_name}.html"
 
     @classmethod
-    def aliases_for(cls, app: App, spec: AppSpec) -> tuple[Optional[str], Optional[str]]:
+    def maintenance_alias(cls, app_name: str) -> str:
+        return f"{CONTAINER_MAINTENANCE_DIR}/{app_name}.html"
+
+    @classmethod
+    def aliases_for(
+        cls, app: App, spec: AppSpec
+    ) -> tuple[Optional[str], Optional[str], Optional[str]]:
         unavail = cls.unavailable_alias(app.name) if spec.unavailable_page else None
         forbid = cls.forbidden_alias(app.name) if spec.forbidden_page else None
-        return unavail, forbid
+        maint = cls.maintenance_alias(app.name) if spec.maintenance_page else None
+        return unavail, forbid, maint
 
     def _install_kind(
         self,

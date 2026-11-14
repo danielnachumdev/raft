@@ -4,6 +4,7 @@ from .graph_event_kinds import KIND_UPDATE
 from .graph_event_store import GraphEventStore
 from .manual_stop_store import ManualStopStore
 from .ops_event_store import OpsEventStore
+from .redeploying_store import RedeployingStore
 from .scaling_store import AppScalingState, ScalingStore
 from .wake_progress import WakeProgress
 
@@ -13,6 +14,7 @@ __all__ = [
     "KIND_UPDATE",
     "ManualStopStore",
     "OpsEventStore",
+    "RedeployingStore",
     "ScalingStore",
     "WakeProgress",
 ]

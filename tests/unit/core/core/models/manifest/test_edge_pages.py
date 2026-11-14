@@ -22,11 +22,13 @@ class TestEdgePageFields(ManifestTestCase):
         text += (
             "\n  unavailablePage: .raft/unavailable.html\n"
             "  forbiddenPage: .raft/forbidden.html\n"
+            "  maintenancePage: .raft/maintenance.html\n"
         )
         path.write_text(text, encoding="utf-8")
         spec = AppDocument.load_contract(checkout)
         assert spec.unavailable_page == ".raft/unavailable.html"
         assert spec.forbidden_page == ".raft/forbidden.html"
+        assert spec.maintenance_page == ".raft/maintenance.html"
 
     def test_snake_aliases(self) -> None:
         checkout = self.tmp_path / "app"
@@ -37,11 +39,13 @@ class TestEdgePageFields(ManifestTestCase):
         text += (
             "\n  unavailable_page: .raft/u.html\n"
             "  forbidden_page: .raft/f.html\n"
+            "  maintenance_page: .raft/m.html\n"
         )
         path.write_text(text, encoding="utf-8")
         spec = AppDocument.load_contract(checkout)
         assert spec.unavailable_page == ".raft/u.html"
         assert spec.forbidden_page == ".raft/f.html"
+        assert spec.maintenance_page == ".raft/m.html"
 
     def test_rejects_without_public_host(self) -> None:
         path = self.tmp_path / "worker.yaml"

@@ -135,5 +135,6 @@ spec:
   # Optional edge HTML overrides (require publicHost; relative to app root):
   # unavailablePage: .raft/unavailable.html  # upstream 502/503/504 → HTTP 503
   # forbiddenPage: .raft/forbidden.html      # firewall deny → HTTP 403
+  # maintenancePage: .raft/maintenance.html  # intentional redeploy 502/503 → maintenance
   #
   # Optional keys via ${{ if }}: see optional-block.snippet.yaml.

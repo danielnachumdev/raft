@@ -8,6 +8,7 @@ import pytest
 from raft.core.core.config.settings.types import HealingConfig
 from raft.services.controller.jobs.heal import Healer
 from raft.core.core.models.state.manual_stop_store import ManualStopStore
+from raft.core.core.models.state.redeploying_store import RedeployingStore
 from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.core.core.errors.cta import OperatorError
 
@@ -145,6 +146,14 @@ class TestHealer(ControllerTestCase):
     def test_skips_manual_stop(self, tmp_path: Path) -> None:
         home = self.applied_home(tmp_path)
         ManualStopStore(home).mark(self.APP)
+        docker = MagicMock()
+        Healer(home, HealingConfig(enabled=True, fail_threshold=1), docker).tick(now=1.0)
+        docker.service_runtime.assert_not_called()
+        docker.start_service.assert_not_called()
+
+    def test_skips_redeploying(self, tmp_path: Path) -> None:
+        home = self.applied_home(tmp_path)
+        RedeployingStore(home).mark(self.APP)
         docker = MagicMock()
         Healer(home, HealingConfig(enabled=True, fail_threshold=1), docker).tick(now=1.0)
         docker.service_runtime.assert_not_called()

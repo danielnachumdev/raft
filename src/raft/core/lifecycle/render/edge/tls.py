@@ -125,37 +125,17 @@ class TlsEdge:
     ) -> str:
         names = " ".join(spec.server_names(app.public_host))
         head = TlsEdge._tls_server_head(app, names=names, stem=stem)
-        unavail, forbid = EdgeHtmlPages.aliases_for(app, spec)
-        if TlsEdge._use_shared_proxy_include(
-            acl_include,
-            proxy_read_timeout,
-            proxy_send_timeout,
-            edge_pages=bool(unavail or forbid),
-        ):
-            return head + "    include /etc/nginx/gate/proxy_router.inc;\n}\n"
+        unavail, forbid, maint = EdgeHtmlPages.aliases_for(app, spec)
+        # Always expand: shared proxy_router.inc cannot choose maintenance.html.
         return TlsEdge._expanded_tls_proxy(
             head,
             acl_include,
             proxy_read_timeout,
             proxy_send_timeout,
+            app_name=app.name,
             unavailable_alias=unavail,
             forbidden_alias=forbid,
-        )
-
-    @staticmethod
-    def _use_shared_proxy_include(
-        acl_include: str,
-        proxy_read_timeout: str,
-        proxy_send_timeout: Optional[str],
-        *,
-        edge_pages: bool = False,
-    ) -> bool:
-        # Shared include is stock-only; expand for ACL, timeouts, or edge pages.
-        return (
-            not acl_include
-            and not edge_pages
-            and proxy_read_timeout == _DEFAULT_READ
-            and not proxy_send_timeout
+            maintenance_alias=maint,
         )
 
     @staticmethod
@@ -165,8 +145,10 @@ class TlsEdge:
         proxy_read_timeout: str,
         proxy_send_timeout: Optional[str],
         *,
+        app_name: str,
         unavailable_alias: Optional[str] = None,
         forbidden_alias: Optional[str] = None,
+        maintenance_alias: Optional[str] = None,
     ) -> str:
         return (
             head
@@ -176,12 +158,15 @@ class TlsEdge:
                 acl_include=acl_include,
                 read_timeout=proxy_read_timeout,
                 send_timeout=proxy_send_timeout,
+                app_name=app_name,
             )
             + "\n"
             + AclProxyLocation.unavailable_and_forbidden(
                 acl_include=acl_include,
                 unavailable_alias=unavailable_alias,
                 forbidden_alias=forbidden_alias,
+                maintenance_alias=maintenance_alias,
+                app_name=app_name,
             )
             + "}\n"
         )

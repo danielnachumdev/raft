@@ -14,6 +14,7 @@ from .formatters import StatusFormatters
 from .models import (
     STATUS_CRASH_LOOPING,
     STATUS_MANUAL_STOP,
+    STATUS_REDEPLOYING,
     STATUS_SCALED_TO_ZERO,
     ContainerStatus,
     HostStatus,
@@ -26,6 +27,10 @@ _SCALED_HINT = (
 )
 _MANUAL_STOP_HINT = (
     "  manual-stop means an operator Down (intentional; not treated as not-running)."
+)
+_REDEPLOYING_HINT = (
+    "  redeploying means a live apply/redeploy cutover is in flight "
+    "(intentional; not treated as not-running)."
 )
 _CRASH_HINT = (
     "  crash-looping means Engine RestartCount≥3 with uptime under 10m "
@@ -190,17 +195,25 @@ class StatusReportWriter:
             color=color,
         )
         print(limits, file=stream)
-        if any(c.status == STATUS_SCALED_TO_ZERO for c in containers):
-            print(TerminalColor.paint(_SCALED_HINT, CYAN, stream=stream, color=color), file=stream)
-        if any(c.status == STATUS_MANUAL_STOP for c in containers):
-            print(
-                TerminalColor.paint(_MANUAL_STOP_HINT, CYAN, stream=stream, color=color),
-                file=stream,
-            )
-        if any(c.status == STATUS_CRASH_LOOPING for c in containers):
-            print(TerminalColor.paint(_CRASH_HINT, CYAN, stream=stream, color=color), file=stream)
+        self._write_status_footnotes(stream, containers, color=color)
         if live_footer:
             print(TerminalColor.paint("  Ctrl+C to exit", DIM, stream=stream, color=color), file=stream)
+
+    def _write_status_footnotes(
+        self,
+        stream: TextIO,
+        containers: tuple[ContainerStatus, ...],
+        *,
+        color: bool,
+    ) -> None:
+        for status, hint in (
+            (STATUS_SCALED_TO_ZERO, _SCALED_HINT),
+            (STATUS_MANUAL_STOP, _MANUAL_STOP_HINT),
+            (STATUS_REDEPLOYING, _REDEPLOYING_HINT),
+            (STATUS_CRASH_LOOPING, _CRASH_HINT),
+        ):
+            if any(c.status == status for c in containers):
+                print(TerminalColor.paint(hint, CYAN, stream=stream, color=color), file=stream)
 
     @staticmethod
     def _limits_hint(*, live_footer: bool) -> str:

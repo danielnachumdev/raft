@@ -17,6 +17,8 @@ class TestInPlaceDeployment(RaftTestCase):
         assert InPlaceDeployment().type_id == "inplace"
 
     def test_deploy_when_up_rebuilds_local(self, tmp_path: Path) -> None:
+        from raft.core.core.models.state.redeploying_store import RedeployingStore
+
         ctx = self._ctx(tmp_path, source="local")
         InPlaceDeployment().deploy_when_up(ctx)
         ctx.support.nginx.point_absent.assert_called_once_with(ctx.app, reload=True)
@@ -24,6 +26,18 @@ class TestInPlaceDeployment(RaftTestCase):
         ctx.support.docker.rebuild_service.assert_called_once_with("demo-api")
         ctx.support.docker.recreate_pulled_service.assert_not_called()
         ctx.support.finish_app_deploy.assert_called_once()
+        assert not RedeployingStore(tmp_path).is_redeploying("demo-api")
+
+    def test_deploy_when_up_clears_marker_on_failure(self, tmp_path: Path) -> None:
+        from raft.core.core.models.state.redeploying_store import RedeployingStore
+
+        ctx = self._ctx(tmp_path, source="local")
+        ctx.support.docker.stop_service.side_effect = RuntimeError("stop boom")
+        try:
+            InPlaceDeployment().deploy_when_up(ctx)
+        except RuntimeError:
+            pass
+        assert not RedeployingStore(tmp_path).is_redeploying("demo-api")
 
     def test_deploy_when_up_recreates_docker(self, tmp_path: Path) -> None:
         ctx = self._ctx(tmp_path, source="docker")

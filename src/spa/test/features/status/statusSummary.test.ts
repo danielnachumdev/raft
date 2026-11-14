@@ -26,13 +26,18 @@ describe("summarizeStatus", () => {
       row("demo-worker", "exited"),
       row("demo-batch", "scaled-to-zero"),
       row("demo-cron", "starting"),
+      row("demo-cutover", "redeploying"),
       row("demo-new", "created"),
     ]);
-    assert.equal(summary.total, 6);
+    assert.equal(summary.total, 7);
     assert.equal(summary.running, 2);
     assert.equal(summary.idle, 1);
-    assert.equal(summary.attention, 2);
-    assert.deepEqual(summary.attentionNames, ["demo-worker", "demo-cron"]);
+    assert.equal(summary.attention, 3);
+    assert.deepEqual(summary.attentionNames, [
+      "demo-worker",
+      "demo-cron",
+      "demo-cutover",
+    ]);
   });
 
   it("handles an empty stack", () => {

@@ -2,6 +2,7 @@
 
 import logging
 
+from ...redeploying_window import RedeployingWindow
 from ..method import DeploymentContext, DeploymentMethod
 
 logger = logging.getLogger(__name__)
@@ -17,10 +18,11 @@ class InPlaceDeployment(DeploymentMethod):
     def deploy_when_up(self, ctx: DeploymentContext) -> None:
         logger.info("in-place deploy for %s (brief downtime)", ctx.app.name)
         self._sync(ctx)
-        self._drop_tmp_if_any(ctx)
-        self._stop_old(ctx)
-        self._start_new(ctx)
-        ctx.support.finish_app_deploy(ctx.app, done="redeployed")
+        with RedeployingWindow(ctx.support.stack.root, ctx.app.name):
+            self._drop_tmp_if_any(ctx)
+            self._stop_old(ctx)
+            self._start_new(ctx)
+            ctx.support.finish_app_deploy(ctx.app, done="redeployed")
 
     def deploy_when_down(self, ctx: DeploymentContext) -> None:
         ctx.support.deploy_single_generation(

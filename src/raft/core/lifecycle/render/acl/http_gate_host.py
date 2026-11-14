@@ -21,8 +21,8 @@ class HttpGateHost:
     ) -> EdgeFragments:
         if not app.public_host or edge.http is None:
             return EdgeFragments()
-        if not self._needs_host_server(spec, acl_include=acl_include):
-            return EdgeFragments()
+        # Always emit Host HTTP so redeploy marker → maintenance.html works
+        # (shared default_server has no per-app Host context).
         if not any(port.expose == "http" for port in spec.ports):
             return EdgeFragments()
         return EdgeFragments(
@@ -30,12 +30,6 @@ class HttpGateHost:
                 self._server_block(app, spec, listen=edge.http, acl_include=acl_include)
             ]
         )
-
-    @staticmethod
-    def _needs_host_server(spec: AppSpec, *, acl_include: str) -> bool:
-        if acl_include:
-            return True
-        return bool(spec.unavailable_page or spec.forbidden_page)
 
     def _server_block(
         self, app: App, spec: AppSpec, *, listen: int, acl_include: str
@@ -56,14 +50,16 @@ class HttpGateHost:
 
     @staticmethod
     def _locations(app: App, spec: AppSpec, *, acl_include: str) -> str:
-        unavail, forbid = EdgeHtmlPages.aliases_for(app, spec)
+        unavail, forbid, maint = EdgeHtmlPages.aliases_for(app, spec)
         pages = AclProxyLocation.unavailable_and_forbidden(
             acl_include=acl_include,
             unavailable_alias=unavail,
             forbidden_alias=forbid,
+            maintenance_alias=maint,
+            app_name=app.name,
         )
         return (
-            f"{AclProxyLocation.location_slash(acl_include=acl_include)}"
+            f"{AclProxyLocation.location_slash(acl_include=acl_include, app_name=app.name)}"
             "\n"
             f"{pages}"
         )

@@ -8,11 +8,12 @@ from raft.core.core.errors.cta import OperatorError
 _FIELD_KEYS = (
     ("unavailablePage", "unavailable_page"),
     ("forbiddenPage", "forbidden_page"),
+    ("maintenancePage", "maintenance_page"),
 )
 
 
 class AppEdgePageFields:
-    """Parse ``unavailablePage`` / ``forbiddenPage`` (require ``publicHost``)."""
+    """Parse edge HTML page fields (each requires ``publicHost``)."""
 
     @classmethod
     def parse(
@@ -23,12 +24,10 @@ class AppEdgePageFields:
         public_host: str,
     ) -> dict[str, Optional[str]]:
         return {
-            "unavailable_page": cls._optional_page(
-                spec, path, public_host=public_host, camel="unavailablePage"
-            ),
-            "forbidden_page": cls._optional_page(
-                spec, path, public_host=public_host, camel="forbiddenPage"
-            ),
+            snake: cls._optional_page(
+                spec, path, public_host=public_host, camel=camel
+            )
+            for camel, snake in _FIELD_KEYS
         }
 
     @classmethod
