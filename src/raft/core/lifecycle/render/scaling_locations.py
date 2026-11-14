@@ -5,6 +5,7 @@ from typing import Optional
 from raft.core.core.models.app import App
 from raft.core.core.models.manifest import AppSpec
 from .acl.nginx_text import AclNginxText
+from .edge_down_pages import EdgeDownPages
 from .edge_html_pages import EdgeHtmlPages
 from .scaling_holding import ScalingHoldingPages
 
@@ -22,15 +23,15 @@ class ScalingGateLocations:
         markers = MARKERS_DIR_TMPL.format(name=app.name)
         zero = f"{markers}/{app.name}.zero"
         timeout = f"{markers}/{app.name}.timeout"
-        unavail, forbid = EdgeHtmlPages.aliases_for(app, spec)
+        unavail, forbid, maint = EdgeHtmlPages.aliases_for(app, spec)
         return (
             self._acme_challenge_include()
             + self._live_location(app, zero, timeout, acl_include=acl_include)
             + self._internal_mirrors(app)
-            + self._holding_locations(app, spec, unavailable_alias=unavail)
-            + self._forbidden_location(
-                acl_include, forbidden_alias=forbid
+            + self._holding_locations(
+                app, spec, unavailable_alias=unavail, maintenance_alias=maint
             )
+            + self._forbidden_location(acl_include, forbidden_alias=forbid)
         )
 
     @staticmethod
@@ -53,7 +54,7 @@ class ScalingGateLocations:
             f"        mirror /_raft_activity_{app.name};\n"
             "        mirror_request_body off;\n"
         )
-        return head + self._proxy_headers() + "    }\n\n"
+        return head + self._proxy_headers(app.name) + "    }\n\n"
 
     @staticmethod
     def _forbidden_location(
@@ -61,12 +62,10 @@ class ScalingGateLocations:
     ) -> str:
         if not acl_include and forbidden_alias is None:
             return ""
-        return (
-            AclNginxText.forbidden_location(alias=forbidden_alias) + "\n"
-        )
+        return AclNginxText.forbidden_location(alias=forbidden_alias) + "\n"
 
     @staticmethod
-    def _proxy_headers() -> str:
+    def _proxy_headers(app_name: str) -> str:
         return (
             "        set $router_upstream http://raft-router:80;\n"
             "        proxy_pass $router_upstream;\n"
@@ -78,7 +77,7 @@ class ScalingGateLocations:
             "        proxy_connect_timeout 3s;\n"
             "        proxy_read_timeout 60s;\n"
             "        proxy_intercept_errors on;\n"
-            "        error_page 502 503 504 =503 /unavailable.html;\n"
+            f"{EdgeDownPages.error_page_line(app_name=app_name)}"
         )
 
     def _holding_locations(
@@ -87,6 +86,7 @@ class ScalingGateLocations:
         spec: AppSpec,
         *,
         unavailable_alias: Optional[str],
+        maintenance_alias: Optional[str],
     ) -> str:
         hold = f"/_raft_hold_{app.name}"
         timed = f"/_raft_timeout_{app.name}"
@@ -95,7 +95,11 @@ class ScalingGateLocations:
             self._static_mirror_page(hold, wake, self._holding_alias(app, spec))
             + self._static_mirror_page(timed, wake, DEFAULT_TIMEOUT_ALIAS, ssi=True)
             + self._timeout_diag_location(app)
-            + self._unavailable_location(unavailable_alias)
+            + EdgeDownPages.chooser_and_pages(
+                app.name,
+                unavailable_alias=unavailable_alias,
+                maintenance_alias=maintenance_alias,
+            )
         )
 
     @staticmethod
@@ -134,23 +138,6 @@ class ScalingGateLocations:
             f"        alias {path};\n"
             "    }\n"
             "\n"
-        )
-
-    @staticmethod
-    def _unavailable_location(alias: Optional[str]) -> str:
-        if alias:
-            return (
-                "    location = /unavailable.html {\n"
-                "        internal;\n"
-                "        default_type text/html;\n"
-                f"        alias {alias};\n"
-                "    }\n"
-            )
-        return (
-            "    location = /unavailable.html {\n"
-            "        internal;\n"
-            "        root /usr/share/nginx/errors;\n"
-            "    }\n"
         )
 
     @staticmethod

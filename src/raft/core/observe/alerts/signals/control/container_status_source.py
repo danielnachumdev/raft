@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Mapping
 
 from raft.core.core.config.paths.metrics_paths import MetricsPaths
 from raft.core.core.models.state.manual_stop_store import ManualStopStore
+from raft.core.core.models.state.redeploying_store import RedeployingStore
 from raft.core.core.models.state.scaling_store import ScalingStore
 from ...model.issues import ValidationIssue
 from ..catalog_entries import container_status_catalog
@@ -70,6 +71,8 @@ class ContainerStatusSource(SignalSource):
 
     @staticmethod
     def _intentionally_absent(home, name: str) -> bool:
+        if RedeployingStore(home).is_redeploying(name):
+            return True
         return ScalingStore(home).is_scaled_to_zero(name) or ManualStopStore(
             home
         ).is_manual_stop(name)

@@ -50,6 +50,7 @@ class AppSpec:
     deployment: DeploymentSpec = DeploymentSpec()
     unavailable_page: Optional[str] = None
     forbidden_page: Optional[str] = None
+    maintenance_page: Optional[str] = None
 
     def depend_names(self) -> tuple[str, ...]:
         """Compose / wake / heal order — names only (ignore ``scaleWithParent``)."""

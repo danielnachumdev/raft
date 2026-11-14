@@ -8,6 +8,8 @@ const STATUS_TONES: Record<string, StatusTone> = {
   starting: "warn",
   "scaled-to-zero": "idle",
   "manual-stop": "idle",
+  // Yellow chip for visibility; Needs attention excludes this in summarizeStatus.
+  redeploying: "warn",
   unhealthy: "bad",
   "crash-looping": "bad",
   "not running": "bad",

@@ -43,6 +43,23 @@ class TestEdgeHtmlPages(RaftTestCase):
         self.render_applied(edge=_EDGE)
         assert not dest.is_file()
 
+    def test_installs_maintenance_override(self) -> None:
+        AppliedInventory.write_applied_app(
+            self.tmp_path,
+            "web",
+            public_host="web.test",
+            extra={"maintenancePage": ".raft/maintenance.html"},
+        )
+        raft = self.tmp_path / "services" / "web" / "checkout" / ".raft"
+        raft.mkdir(parents=True, exist_ok=True)
+        (raft / "maintenance.html").write_text("<html>m</html>", encoding="utf-8")
+        gen = self.render_applied(edge=_EDGE)
+        dest = gen / "nginx/gate-http/maintenance/web.html"
+        assert dest.is_file() and "m" in dest.read_text(encoding="utf-8")
+        conf = (gen / "nginx/gate-http/listeners.conf").read_text(encoding="utf-8")
+        assert EdgeHtmlPages.maintenance_alias("web") in conf
+        assert "acl-host:web" in conf
+
     def test_missing_checkout_errors(self) -> None:
         app = App(
             name="web",
@@ -94,7 +111,11 @@ class TestEdgeHtmlPages(RaftTestCase):
 
     def _assert_host_skips(self, host: HttpGateHost, app: App) -> None:
         plain = AppSpec(ports=_PORTS)
-        assert host.contribute(app, plain, edge=_EDGE, acl_include="").gate_http == []
+        # Plain Host HTTP always gets a server (redeploy → maintenance.html).
+        assert host.contribute(app, plain, edge=_EDGE, acl_include="").gate_http
+        assert "/_raft_edge_down" in host.contribute(
+            app, plain, edge=_EDGE, acl_include=""
+        ).gate_http[0]
         stream = AppSpec(
             ports=(PortSpec(name="smtp", container_port=25, expose="stream"),),
             unavailable_page=".raft/u.html",
@@ -126,7 +147,9 @@ class TestEdgeHtmlPages(RaftTestCase):
     def _assert_aliases(conf: str) -> None:
         assert EdgeHtmlPages.unavailable_alias("web") in conf
         assert EdgeHtmlPages.forbidden_alias("web") in conf
-        assert "error_page 502 503 504 =503 /unavailable.html;" in conf
+        assert "error_page 502 503 504 =503 /_raft_edge_down;" in conf
+        assert "/maintenance.html" in conf
+        assert "deploy/redeploying" in conf
 
     def _render_with_unavailable(self) -> Path:
         AppliedInventory.write_applied_app(

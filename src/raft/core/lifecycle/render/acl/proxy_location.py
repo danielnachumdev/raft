@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from raft.core.lifecycle.render.edge_html_pages import DEFAULT_UNAVAILABLE_ROOT
+from raft.core.lifecycle.render.edge_down_pages import EdgeDownPages
 
 from .nginx_text import AclNginxText
 
@@ -10,7 +10,7 @@ _DEFAULT_READ = "60s"
 
 
 class AclProxyLocation:
-    """Render proxy-to-router location + optional forbidden handler."""
+    """Render proxy-to-router location + optional forbidden / edge-down handlers."""
 
     @staticmethod
     def location_slash(
@@ -19,11 +19,12 @@ class AclProxyLocation:
         indent: str = "    ",
         read_timeout: str = _DEFAULT_READ,
         send_timeout: Optional[str] = None,
+        app_name: Optional[str] = None,
     ) -> str:
         inner = indent + "    "
         send = AclProxyLocation._send_line(inner, send_timeout)
         return AclProxyLocation._slash_block(
-            indent, inner, acl_include, read_timeout, send
+            indent, inner, acl_include, read_timeout, send, app_name=app_name
         )
 
     @staticmethod
@@ -39,6 +40,8 @@ class AclProxyLocation:
         acl_include: str,
         read_timeout: str,
         send: str,
+        *,
+        app_name: Optional[str],
     ) -> str:
         return (
             f"{indent}location / {{\n"
@@ -55,9 +58,8 @@ class AclProxyLocation:
             f"{inner}proxy_read_timeout {read_timeout};\n"
             f"{send}"
             f"{inner}proxy_intercept_errors on;\n"
-            # Force 503 so CDNs (e.g. Cloudflare) pass through unavailable.html
-            # instead of replacing origin 502 bodies with their own error page.
-            f"{inner}error_page 502 503 504 =503 /unavailable.html;\n"
+            # Force 503 so CDNs pass through origin HTML instead of their 502 page.
+            f"{EdgeDownPages.error_page_line(app_name=app_name, indent=inner)}"
             f"{indent}}}\n"
         )
 
@@ -68,6 +70,8 @@ class AclProxyLocation:
         indent: str = "    ",
         unavailable_alias: Optional[str] = None,
         forbidden_alias: Optional[str] = None,
+        maintenance_alias: Optional[str] = None,
+        app_name: Optional[str] = None,
     ) -> str:
         emit_forbidden = bool(acl_include) or forbidden_alias is not None
         forbidden = ""
@@ -75,23 +79,27 @@ class AclProxyLocation:
             forbidden = AclNginxText.forbidden_location(
                 indent=indent, alias=forbidden_alias
             )
-        return forbidden + AclProxyLocation._unavailable_location(
-            indent=indent, alias=unavailable_alias
+        down = AclProxyLocation._down_pages(
+            app_name=app_name,
+            unavailable_alias=unavailable_alias,
+            maintenance_alias=maintenance_alias,
+            indent=indent,
         )
+        return forbidden + down
 
     @staticmethod
-    def _unavailable_location(*, indent: str, alias: Optional[str]) -> str:
-        if alias:
-            return (
-                f"{indent}location = /unavailable.html {{\n"
-                f"{indent}    internal;\n"
-                f"{indent}    default_type text/html;\n"
-                f"{indent}    alias {alias};\n"
-                f"{indent}}}\n"
+    def _down_pages(
+        *,
+        app_name: Optional[str],
+        unavailable_alias: Optional[str],
+        maintenance_alias: Optional[str],
+        indent: str,
+    ) -> str:
+        if app_name:
+            return EdgeDownPages.chooser_and_pages(
+                app_name,
+                unavailable_alias=unavailable_alias,
+                maintenance_alias=maintenance_alias,
+                indent=indent,
             )
-        return (
-            f"{indent}location = /unavailable.html {{\n"
-            f"{indent}    internal;\n"
-            f"{indent}    root {DEFAULT_UNAVAILABLE_ROOT};\n"
-            f"{indent}}}\n"
-        )
+        return EdgeDownPages.stock_unavailable_only(indent=indent)

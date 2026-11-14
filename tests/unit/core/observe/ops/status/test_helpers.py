@@ -4,21 +4,23 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+from raft.core.observe.ops.status.container_rows import StatusContainerRows
 from raft.core.observe.ops.status.formatters import StatusFormatters
-from raft.core.observe.ops.status.service import Status
 
 
 class TestStatusHelpers:
     def test_parse_started_at(self) -> None:
         started = datetime.now(timezone.utc) - timedelta(hours=2, minutes=5)
-        secs = Status._parse_started_at(started.isoformat().replace("+00:00", "Z"))
+        secs = StatusContainerRows._uptime(
+            started.isoformat().replace("+00:00", "Z")
+        )
         assert secs is not None
         assert 7400 <= secs <= 7600
-        assert Status._parse_started_at("") is None
-        assert Status._parse_started_at("0001-01-01T00:00:00Z") is None
-        assert Status._parse_started_at("not-a-date") is None
+        assert StatusContainerRows._uptime("") is None
+        assert StatusContainerRows._uptime("0001-01-01T00:00:00Z") is None
+        assert StatusContainerRows._uptime("not-a-date") is None
         naive = (datetime.now(timezone.utc) - timedelta(seconds=30)).replace(tzinfo=None)
-        assert Status._parse_started_at(naive.isoformat()) is not None
+        assert StatusContainerRows._uptime(naive.isoformat()) is not None
 
     def test_formatters(self) -> None:
         assert StatusFormatters.bytes(None) == "-"

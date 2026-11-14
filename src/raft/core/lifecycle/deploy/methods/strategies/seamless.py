@@ -3,6 +3,7 @@
 import logging
 
 from ...cutover import DEPLOY_CUTOVER, CutoverSession
+from ...redeploying_window import RedeployingWindow
 from ..method import DeploymentContext, DeploymentMethod
 
 logger = logging.getLogger(__name__)
@@ -19,8 +20,9 @@ class SeamlessDeployment(DeploymentMethod):
         self._sync(ctx)
         session = self._session(ctx)
         logger.info("redeploy cutover for %s (%s)", ctx.app.name, ctx.app.public_host)
-        self._run_cutover(session, ctx.app.name)
-        ctx.support.finish_app_deploy(ctx.app, done="redeployed")
+        with RedeployingWindow(ctx.support.stack.root, ctx.app.name):
+            self._run_cutover(session, ctx.app.name)
+            ctx.support.finish_app_deploy(ctx.app, done="redeployed")
 
     def deploy_when_down(self, ctx: DeploymentContext) -> None:
         ctx.support.deploy_single_generation(

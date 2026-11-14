@@ -10,6 +10,7 @@ from raft.core.core.models.app_document import AppDocument
 from raft.core.core.models.depends import AppDependsGraph, DependsOnError
 from raft.core.core.models.registry import AppRegistry
 from raft.core.core.models.state.manual_stop_store import ManualStopStore
+from raft.core.core.models.state.redeploying_store import RedeployingStore
 from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.core.core.models.stack import Stack
 from raft.core.platform.locking import AppAndStackLocks
@@ -86,6 +87,9 @@ class HealDepends:
         return None
 
     def _intentionally_stopped(self, dep: str, for_app: str) -> bool:
+        if RedeployingStore(self.home).is_redeploying(dep):
+            logger.info("heal defer app=%s dep=%s redeploying", for_app, dep)
+            return True
         if ScalingStore(self.home).is_scaled_to_zero(dep):
             logger.info("heal defer app=%s dep=%s scaled-to-zero", for_app, dep)
             return True

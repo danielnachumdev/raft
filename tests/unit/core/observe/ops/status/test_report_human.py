@@ -7,6 +7,7 @@ from io import StringIO
 from unittest.mock import patch
 
 from raft.core.observe.ops.status import Status
+from raft.core.observe.ops.status.container_rows import StatusContainerRows
 from raft.core.observe.ops.status.models import AllocatedResources
 from raft.core.observe.ops.status.report import StatusReportWriter
 
@@ -86,9 +87,10 @@ class TestStatusReportHuman(StatusTestCase):
         assert MemoryUsage(1, 2, 3.0).to_dict()["used_percent"] == 3.0
 
     def test_inspect_memory_fills_limit_and_bad_pids(self) -> None:
-        assert Status._pids(None) is None and Status._pids("nope") is None
-        assert Status._pids("7") == 7
-        row = Status._container_row(
+        assert StatusContainerRows._pids(None) is None
+        assert StatusContainerRows._pids("nope") is None
+        assert StatusContainerRows._pids("7") == 7
+        row = StatusContainerRows._row(
             "app",
             "app",
             "app",

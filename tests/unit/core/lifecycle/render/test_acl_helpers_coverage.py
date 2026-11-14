@@ -55,12 +55,11 @@ class TestAclHelpersCoverage(RaftTestCase):
         self._write_demo_and_worker()
         host = HttpGateHost()
         app, app_spec = self._load_app("demo-api")
-        assert (
-            host.contribute(
-                app, app_spec, edge=EdgeConfig(http=80), acl_include=""
-            ).gate_http
-            == []
-        )
+        # Host HTTP apps always get a server (redeploy → maintenance.html).
+        blocks = host.contribute(
+            app, app_spec, edge=EdgeConfig(http=80), acl_include=""
+        ).gate_http
+        assert blocks and "/_raft_edge_down" in blocks[0]
         wapp, wspec = self._load_app("worker")
         assert (
             host.contribute(

@@ -3,8 +3,9 @@
 Usage: RAFT_DATA_HOME=/tmp/raft-demo/home uv run python scripts/serve_demo/serve.py --port 8821
 
 Patches ``Status.collect`` so every applied App gets a canned runtime row
-(running / unhealthy / scaled-to-zero) and the host reports ``demo-host``.
-Pair with ``seed_home.py``; never point ``RAFT_DATA_HOME`` at a real home.
+(running / unhealthy / redeploying / scaled-to-zero) and the host reports
+``demo-host``. Pair with ``seed_home.py``; never point ``RAFT_DATA_HOME`` at a
+real home.
 """
 
 import os
@@ -28,7 +29,7 @@ FAKE = {
     "raft-router": ("running", 0.6, 9, 32),
     "raft-controller": ("running", 2.4, 54, 192),
     "demo-api": ("running", 27.5, 210, 512),
-    "demo-web": ("running", 9.1, 140, 512),
+    "demo-web": ("redeploying", 9.1, 140, 512),
     "demo-db": ("unhealthy", 5.3, 300, 1024),
     "demo-worker": ("running", 52.0, 260, 512),
     "demo-docs": ("scaled-to-zero", None, None, 256),
@@ -38,7 +39,7 @@ FAKE = {
 def _container(svc, role, app, group, allocated):
     key = next((k for k in FAKE if svc == k or svc.endswith("-" + k) or svc.startswith(k)), None)
     status, cpu, used, limit = FAKE.get(key, ("not running", None, None, 256))
-    up = status == "running" or status == "unhealthy"
+    up = status in ("running", "unhealthy", "redeploying")
     mib = 1024 * 1024
     return ContainerStatus(
         service=svc, role=role, app=app, group=group, status=status,

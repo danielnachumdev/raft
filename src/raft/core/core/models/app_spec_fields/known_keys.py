@@ -42,6 +42,8 @@ KNOWN_SPEC_KEYS = frozenset(
         "unavailable_page",
         "forbiddenPage",
         "forbidden_page",
+        "maintenancePage",
+        "maintenance_page",
     }
 )
 

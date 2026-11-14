@@ -1,24 +1,18 @@
 """Collect point-in-time host + raft container resource usage."""
 
-from __future__ import annotations
+from typing import Optional, Tuple
 
-from typing import Any, Optional, Tuple
-
-from raft.core.platform.adapters.docker.crash_loop import CrashLoopDetector
-from raft.core.platform.adapters.docker.runtime import ContainerRuntimeGateway, ContainerRuntimeRow
-from raft.core.platform.adapters.host import DockerStatsText, HostGateway, HostResources
+from raft.core.platform.adapters.docker.runtime import ContainerRuntimeGateway
+from raft.core.platform.adapters.host import HostGateway, HostResources
 from raft.core.platform.adapters.shell import Shell
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.app import EDGE_GROUP
 from raft.core.core.models.stack import Stack
-from .absent import AbsentStatus
 from .allocated import StatusAllocated
-from .formatters import StatusFormatters
+from .container_rows import StatusContainerRows
 from .models import (
     AllocatedResources,
-    ContainerStatus,
     HostStatus,
-    IoPair,
     MemoryUsage,
     StatusSnapshot,
 )
@@ -64,8 +58,9 @@ class Status:
         runtime = self._containers.collect(
             [t[0] for t in targets], include_stats=include_stats
         )
+        rows = StatusContainerRows(self.stack.root)
         containers = tuple(
-            self._one_container(service, role, app_name, group, allocated, runtime)
+            rows.build(service, role, app_name, group, allocated, runtime)
             for service, role, app_name, group, allocated in targets
         )
         return StatusSnapshot(host=self._host_status(self._host), containers=containers)
@@ -102,144 +97,6 @@ class Status:
             (name, roles[name], None, EDGE_GROUP, allocated[name])
             for name in self.stack.control_plane_services
         ]
-
-    def _one_container(
-        self,
-        service: str,
-        role: str,
-        app_name: Optional[str],
-        group: Optional[str],
-        allocated: AllocatedResources,
-        runtime: dict[str, ContainerRuntimeRow],
-    ) -> ContainerStatus:
-        row = runtime.get(service)
-        if row is None:
-            return self._absent_container(service, role, app_name, group, allocated)
-        return self._present_container(service, role, app_name, group, allocated, row)
-
-    def _absent_container(
-        self,
-        service: str,
-        role: str,
-        app_name: Optional[str],
-        group: Optional[str],
-        allocated: AllocatedResources,
-    ) -> ContainerStatus:
-        return self._container_row(
-            service,
-            role,
-            app_name,
-            group,
-            allocated,
-            status=self._absent_status(app_name),
-            uptime_seconds=None,
-            stats_row=None,
-            inspect_memory=None,
-        )
-
-    def _absent_status(self, app_name: Optional[str]) -> str:
-        return AbsentStatus.for_app(self.stack.root, app_name)
-
-    def _present_container(
-        self,
-        service: str,
-        role: str,
-        app_name: Optional[str],
-        group: Optional[str],
-        allocated: AllocatedResources,
-        row: ContainerRuntimeRow,
-    ) -> ContainerStatus:
-        uptime = self._parse_started_at(row.started_at)
-        return self._container_row(
-            service,
-            role,
-            app_name,
-            group,
-            allocated,
-            status=StatusFormatters.container_status(
-                row.status,
-                row.health,
-                restart_count=row.restart_count,
-                uptime_seconds=uptime,
-                oom_killed=row.oom_killed,
-            ),
-            uptime_seconds=uptime,
-            stats_row=row.stats,
-            inspect_memory=row.memory_bytes,
-        )
-
-    @classmethod
-    def _container_row(
-        cls,
-        service,
-        role,
-        app_name,
-        group,
-        allocated,
-        *,
-        status: str,
-        uptime_seconds: Optional[float],
-        stats_row: Optional[dict[str, Any]],
-        inspect_memory: Optional[int],
-    ) -> ContainerStatus:
-        cpu, mem_pct, used, limit, net, block, pids = cls._row_metrics(stats_row)
-        if limit is None and inspect_memory and inspect_memory > 0:
-            limit = inspect_memory
-        return ContainerStatus(
-            service=service,
-            role=role,
-            app=app_name,
-            group=group,
-            status=status,
-            uptime_seconds=uptime_seconds,
-            cpu_percent=cpu,
-            memory=MemoryUsage(used_bytes=used, limit_bytes=limit, used_percent=mem_pct),
-            allocated=allocated,
-            network=net,
-            block_io=block,
-            pids=pids,
-        )
-
-    @staticmethod
-    def _row_metrics(
-        stats_row: Optional[dict[str, Any]],
-    ) -> tuple[
-        Optional[float],
-        Optional[float],
-        Optional[int],
-        Optional[int],
-        IoPair,
-        IoPair,
-        Optional[int],
-    ]:
-        if not stats_row:
-            empty = IoPair(None, None)
-            return None, None, None, None, empty, empty, None
-        used, limit = DockerStatsText.parse_pair(str(stats_row.get("MemUsage", "")))
-        rx, tx = DockerStatsText.parse_pair(str(stats_row.get("NetIO", "")))
-        rd, wr = DockerStatsText.parse_pair(str(stats_row.get("BlockIO", "")))
-        return (
-            DockerStatsText.parse_percent(str(stats_row.get("CPUPerc", ""))),
-            DockerStatsText.parse_percent(str(stats_row.get("MemPerc", ""))),
-            used,
-            limit,
-            IoPair(rx, tx),
-            IoPair(rd, wr),
-            Status._pids(stats_row.get("PIDs")),
-        )
-
-    @staticmethod
-    def _pids(raw: Any) -> Optional[int]:
-        if raw is None:
-            return None
-        try:
-            return int(str(raw).strip())
-        except ValueError:
-            return None
-
-    @staticmethod
-    def _parse_started_at(raw: str) -> Optional[float]:
-        return CrashLoopDetector.uptime_seconds(raw)
 
     @staticmethod
     def _host_status(gateway: HostGateway) -> HostStatus:

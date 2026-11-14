@@ -26,13 +26,23 @@ describe("summarizeStatus", () => {
       row("demo-worker", "exited"),
       row("demo-batch", "scaled-to-zero"),
       row("demo-cron", "starting"),
+      row("demo-cutover", "redeploying"),
       row("demo-new", "created"),
     ]);
-    assert.equal(summary.total, 6);
+    assert.equal(summary.total, 7);
     assert.equal(summary.running, 2);
     assert.equal(summary.idle, 1);
     assert.equal(summary.attention, 2);
     assert.deepEqual(summary.attentionNames, ["demo-worker", "demo-cron"]);
+  });
+
+  it("excludes redeploying from Needs attention despite warn tone", () => {
+    const summary = summarizeStatus([
+      row("demo-web", "redeploying"),
+      row("demo-db", "unhealthy"),
+    ]);
+    assert.equal(summary.attention, 1);
+    assert.deepEqual(summary.attentionNames, ["demo-db"]);
   });
 
   it("handles an empty stack", () => {

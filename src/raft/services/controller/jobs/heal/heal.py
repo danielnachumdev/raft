@@ -12,6 +12,7 @@ from raft.core.lifecycle.deploy.orchestrator import Orchestrator
 from raft.core.core.errors.cta import OperatorError
 from raft.core.platform.locking import AppAndStackLocks
 from raft.core.core.models.state.manual_stop_store import ManualStopStore
+from raft.core.core.models.state.redeploying_store import RedeployingStore
 from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.core.core.models.stack import Stack
 from raft.core.observe.notify.control_events import ControlPlaneEvents
@@ -84,6 +85,9 @@ class Healer:
         return True
 
     def _intentionally_stopped(self, name: str) -> bool:
+        if RedeployingStore(self.home).is_redeploying(name):
+            logger.debug("heal skip redeploying app=%s", name)
+            return True
         if ScalingStore(self.home).is_scaled_to_zero(name):
             logger.debug("heal skip scaled-to-zero app=%s", name)
             return True

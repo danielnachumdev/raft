@@ -7,6 +7,7 @@ from typing import Any, List, Sequence
 
 from raft.core.core.config.paths.metrics_paths import MetricsPaths
 from raft.core.core.models.state.manual_stop_store import ManualStopStore
+from raft.core.core.models.state.redeploying_store import RedeployingStore
 from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.core.observe.alerts.signals.context import SignalContext
 from raft.core.observe.alerts.signals.control.container_status_source import (
@@ -72,6 +73,27 @@ class TestContainerStatusWildcardStory(RaftTestCase):
             ],
         )
         ManualStopStore(home).mark("demo-api")
+        ctx = _ctx(home, apps=["demo-api", "demo-web"])
+        assert (
+            ContainerStatusSource().query(
+                {"target": "demo-api"}, window_seconds=300, ctx=ctx
+            )
+            == []
+        )
+        subjects = {s.subject for s in _star(ctx)}
+        assert "demo-api" not in subjects
+        assert "demo-web" in subjects
+
+    def test_skips_redeploying_target_and_wildcard(self) -> None:
+        home = Path(self.tmp_path)
+        _write_resources(
+            home,
+            [
+                {"service": "demo-api", "status": "not running"},
+                {"service": "demo-web", "status": "running"},
+            ],
+        )
+        RedeployingStore(home).mark("demo-api")
         ctx = _ctx(home, apps=["demo-api", "demo-web"])
         assert (
             ContainerStatusSource().query(
