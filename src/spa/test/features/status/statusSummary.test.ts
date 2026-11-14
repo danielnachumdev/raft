@@ -31,13 +31,9 @@ describe("summarizeStatus", () => {
     ]);
     assert.equal(summary.total, 7);
     assert.equal(summary.running, 2);
-    assert.equal(summary.idle, 1);
-    assert.equal(summary.attention, 3);
-    assert.deepEqual(summary.attentionNames, [
-      "demo-worker",
-      "demo-cron",
-      "demo-cutover",
-    ]);
+    assert.equal(summary.idle, 2);
+    assert.equal(summary.attention, 2);
+    assert.deepEqual(summary.attentionNames, ["demo-worker", "demo-cron"]);
   });
 
   it("handles an empty stack", () => {

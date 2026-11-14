@@ -8,7 +8,8 @@ const STATUS_TONES: Record<string, StatusTone> = {
   starting: "warn",
   "scaled-to-zero": "idle",
   "manual-stop": "idle",
-  redeploying: "warn",
+  // Intentional live cutover — not Needs attention (same bucket as scaled/manual-stop).
+  redeploying: "idle",
   unhealthy: "bad",
   "crash-looping": "bad",
   "not running": "bad",
