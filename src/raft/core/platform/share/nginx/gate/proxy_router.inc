@@ -13,7 +13,9 @@ location / {
     proxy_connect_timeout 3s;
     proxy_read_timeout 60s;
     proxy_intercept_errors on;
-    error_page 502 503 504 /offline.html;
+    # Force 503 so CDNs (e.g. Cloudflare) pass through offline.html
+    # instead of replacing origin 502 bodies with their own error page.
+    error_page 502 503 504 =503 /offline.html;
 }
 
 location = /offline.html {

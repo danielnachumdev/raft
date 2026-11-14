@@ -68,7 +68,7 @@ class ScalingGateLocations:
             "        proxy_connect_timeout 3s;\n"
             "        proxy_read_timeout 60s;\n"
             "        proxy_intercept_errors on;\n"
-            "        error_page 502 503 504 /offline.html;\n"
+            "        error_page 502 503 504 =503 /offline.html;\n"
         )
 
     def _holding_locations(self, app: App, spec: AppSpec) -> str:

@@ -6,9 +6,10 @@ class NginxUpstreamText:
 
     # Compose DNS names fail nginx -t when the service is absent (scaled-to-zero /
     # inplace stop). Park on loopback marked ``down`` so the router never opens a
-    # real connection — clients get an immediate 502, and gate ``error_page`` can
-    # serve offline.html. A bare ``127.0.0.1:<listen-port>`` would accept into the
-    # router's own ``listen`` and self-proxy (hang / CF error page instead).
+    # real connection — immediate 502, then gate ``error_page … =503`` serves
+    # offline.html (503 so CDNs like Cloudflare do not replace the body). A bare
+    # ``127.0.0.1:<listen-port>`` would accept into the router's own ``listen``
+    # and self-proxy instead.
     ABSENT_HOSTNAME = "127.0.0.1"
 
     @classmethod
