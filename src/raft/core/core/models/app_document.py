@@ -18,6 +18,7 @@ from .app_spec_fields import (
 )
 from .depends_fields import DependsOnFields
 from .deployment_spec_parser import DeploymentSpecParser
+from .edge_page_fields import AppEdgePageFields
 from .manifest import (
     CONTRACT_API_VERSION,
     CONTRACT_KIND,
@@ -209,6 +210,7 @@ class AppDocument:
             "group": group,
             "scaling": ScalingSpecParser.parse(spec, ports, path),
             "deployment": DeploymentSpecParser.parse(spec, path),
+            **AppEdgePageFields.parse(spec, path, public_host=public_host),
         }
 
     @staticmethod

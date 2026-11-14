@@ -96,11 +96,13 @@ class FragmentCollector:
         self, app: App, app_spec: AppSpec, *, acl_include: str
     ) -> EdgeFragments:
         assert self._policy is not None
-        if not self._policy.needs_host_gate_server(app.name):
-            return EdgeFragments()
         if app_spec.scaling is not None:
             return EdgeFragments()
         if self._acme_owns_http(app, app_spec):
+            return EdgeFragments()
+        needs_acl = self._policy.needs_host_gate_server(app.name)
+        needs_pages = bool(app_spec.unavailable_page or app_spec.forbidden_page)
+        if not needs_acl and not needs_pages:
             return EdgeFragments()
         return self._http_acl_host.contribute(
             app, app_spec, edge=self._edge, acl_include=acl_include

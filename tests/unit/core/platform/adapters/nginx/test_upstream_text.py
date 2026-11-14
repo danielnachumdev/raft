@@ -6,7 +6,7 @@ from raft.core.platform.adapters.nginx import NginxUpstreamText
 class TestNginxUpstreamTextAbsentPark:
     def test_absent_server_is_marked_down(self) -> None:
         # Bare 127.0.0.1:80 accepts into raft-router's own listen and loops;
-        # ``down`` forces 502 so gate error_page can serve offline.html.
+        # ``down`` forces 502 so gate error_page can serve unavailable.html.
         line = NginxUpstreamText.server_directive(
             NginxUpstreamText.ABSENT_HOSTNAME, 80
         )

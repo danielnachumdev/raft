@@ -6,6 +6,7 @@ from typing import Optional
 
 from raft.core.lifecycle.acme.paths import AcmePaths
 from raft.core.lifecycle.render.acl.proxy_location import AclProxyLocation
+from raft.core.lifecycle.render.edge_html_pages import EdgeHtmlPages
 from raft.core.core.config.settings.types import EdgeConfig
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.models.app import App
@@ -124,12 +125,21 @@ class TlsEdge:
     ) -> str:
         names = " ".join(spec.server_names(app.public_host))
         head = TlsEdge._tls_server_head(app, names=names, stem=stem)
+        unavail, forbid = EdgeHtmlPages.aliases_for(app, spec)
         if TlsEdge._use_shared_proxy_include(
-            acl_include, proxy_read_timeout, proxy_send_timeout
+            acl_include,
+            proxy_read_timeout,
+            proxy_send_timeout,
+            edge_pages=bool(unavail or forbid),
         ):
             return head + "    include /etc/nginx/gate/proxy_router.inc;\n}\n"
         return TlsEdge._expanded_tls_proxy(
-            head, acl_include, proxy_read_timeout, proxy_send_timeout
+            head,
+            acl_include,
+            proxy_read_timeout,
+            proxy_send_timeout,
+            unavailable_alias=unavail,
+            forbidden_alias=forbid,
         )
 
     @staticmethod
@@ -137,10 +147,13 @@ class TlsEdge:
         acl_include: str,
         proxy_read_timeout: str,
         proxy_send_timeout: Optional[str],
+        *,
+        edge_pages: bool = False,
     ) -> bool:
-        # Shared include is 60s-only; expand when ACL or long timeouts apply.
+        # Shared include is stock-only; expand for ACL, timeouts, or edge pages.
         return (
             not acl_include
+            and not edge_pages
             and proxy_read_timeout == _DEFAULT_READ
             and not proxy_send_timeout
         )
@@ -151,6 +164,9 @@ class TlsEdge:
         acl_include: str,
         proxy_read_timeout: str,
         proxy_send_timeout: Optional[str],
+        *,
+        unavailable_alias: Optional[str] = None,
+        forbidden_alias: Optional[str] = None,
     ) -> str:
         return (
             head
@@ -162,7 +178,11 @@ class TlsEdge:
                 send_timeout=proxy_send_timeout,
             )
             + "\n"
-            + AclProxyLocation.offline_and_forbidden(acl_include=acl_include)
+            + AclProxyLocation.unavailable_and_forbidden(
+                acl_include=acl_include,
+                unavailable_alias=unavailable_alias,
+                forbidden_alias=forbidden_alias,
+            )
             + "}\n"
         )
 

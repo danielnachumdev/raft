@@ -87,12 +87,15 @@ class FirewallCompiler:
         return f"raft_fw_drop_{safe}"
 
     @staticmethod
-    def forbidden_location(*, indent: str = "    ") -> str:
+    def forbidden_location(
+        *, indent: str = "    ", alias: Optional[str] = None
+    ) -> str:
+        target = alias if alias else FORBIDDEN_ALIAS
         return (
             f"{indent}location = /_raft_forbidden {{\n"
             f"{indent}    internal;\n"
             f"{indent}    default_type text/html;\n"
-            f"{indent}    alias {FORBIDDEN_ALIAS};\n"
+            f"{indent}    alias {target};\n"
             f"{indent}}}\n"
         )
 

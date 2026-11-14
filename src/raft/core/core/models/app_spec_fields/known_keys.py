@@ -38,6 +38,10 @@ KNOWN_SPEC_KEYS = frozenset(
         "volumes",
         "group",
         "groups",
+        "unavailablePage",
+        "unavailable_page",
+        "forbiddenPage",
+        "forbidden_page",
     }
 )
 

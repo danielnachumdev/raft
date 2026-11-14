@@ -5,6 +5,7 @@ Import cutover/orchestrator consumers from owning modules when needed so
 """
 
 from .compose_apps import ComposeAppsYaml, compose_str
+from .edge_html_pages import EdgeHtmlPages
 from .env_file_path import ComposeEnvFilePath
 from .fragment_collector import FragmentCollector
 from .gate_nginx import GateNginxStamp
@@ -16,6 +17,7 @@ from .stack_renderer import StackRenderer
 __all__ = [
     "ComposeAppsYaml",
     "ComposeEnvFilePath",
+    "EdgeHtmlPages",
     "FragmentCollector",
     "GateNginxStamp",
     "RouterNginxStamp",

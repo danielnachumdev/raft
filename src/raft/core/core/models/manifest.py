@@ -48,6 +48,8 @@ class AppSpec:
     volumes: tuple[VolumeSpec, ...] = ()
     scaling: Optional[ScalingSpec] = None
     deployment: DeploymentSpec = DeploymentSpec()
+    unavailable_page: Optional[str] = None
+    forbidden_page: Optional[str] = None
 
     def depend_names(self) -> tuple[str, ...]:
         """Compose / wake / heal order — names only (ignore ``scaleWithParent``)."""

@@ -1,8 +1,11 @@
 """nginx location blocks for scale-to-zero holding / wake / activity."""
 
+from typing import Optional
+
 from raft.core.core.models.app import App
 from raft.core.core.models.manifest import AppSpec
 from .acl.nginx_text import AclNginxText
+from .edge_html_pages import EdgeHtmlPages
 from .scaling_holding import ScalingHoldingPages
 
 CONTROLLER_WAKE_UPSTREAM = "http://raft-controller:8090"
@@ -19,12 +22,15 @@ class ScalingGateLocations:
         markers = MARKERS_DIR_TMPL.format(name=app.name)
         zero = f"{markers}/{app.name}.zero"
         timeout = f"{markers}/{app.name}.timeout"
+        unavail, forbid = EdgeHtmlPages.aliases_for(app, spec)
         return (
             self._acme_challenge_include()
             + self._live_location(app, zero, timeout, acl_include=acl_include)
             + self._internal_mirrors(app)
-            + self._holding_locations(app, spec)
-            + self._forbidden_location(acl_include)
+            + self._holding_locations(app, spec, unavailable_alias=unavail)
+            + self._forbidden_location(
+                acl_include, forbidden_alias=forbid
+            )
         )
 
     @staticmethod
@@ -50,10 +56,14 @@ class ScalingGateLocations:
         return head + self._proxy_headers() + "    }\n\n"
 
     @staticmethod
-    def _forbidden_location(acl_include: str) -> str:
-        if not acl_include:
+    def _forbidden_location(
+        acl_include: str, *, forbidden_alias: Optional[str]
+    ) -> str:
+        if not acl_include and forbidden_alias is None:
             return ""
-        return AclNginxText.forbidden_location() + "\n"
+        return (
+            AclNginxText.forbidden_location(alias=forbidden_alias) + "\n"
+        )
 
     @staticmethod
     def _proxy_headers() -> str:
@@ -68,10 +78,16 @@ class ScalingGateLocations:
             "        proxy_connect_timeout 3s;\n"
             "        proxy_read_timeout 60s;\n"
             "        proxy_intercept_errors on;\n"
-            "        error_page 502 503 504 =503 /offline.html;\n"
+            "        error_page 502 503 504 =503 /unavailable.html;\n"
         )
 
-    def _holding_locations(self, app: App, spec: AppSpec) -> str:
+    def _holding_locations(
+        self,
+        app: App,
+        spec: AppSpec,
+        *,
+        unavailable_alias: Optional[str],
+    ) -> str:
         hold = f"/_raft_hold_{app.name}"
         timed = f"/_raft_timeout_{app.name}"
         wake = f"/_raft_wake_{app.name}"
@@ -79,7 +95,7 @@ class ScalingGateLocations:
             self._static_mirror_page(hold, wake, self._holding_alias(app, spec))
             + self._static_mirror_page(timed, wake, DEFAULT_TIMEOUT_ALIAS, ssi=True)
             + self._timeout_diag_location(app)
-            + self._offline_location()
+            + self._unavailable_location(unavailable_alias)
         )
 
     @staticmethod
@@ -121,9 +137,17 @@ class ScalingGateLocations:
         )
 
     @staticmethod
-    def _offline_location() -> str:
+    def _unavailable_location(alias: Optional[str]) -> str:
+        if alias:
+            return (
+                "    location = /unavailable.html {\n"
+                "        internal;\n"
+                "        default_type text/html;\n"
+                f"        alias {alias};\n"
+                "    }\n"
+            )
         return (
-            "    location = /offline.html {\n"
+            "    location = /unavailable.html {\n"
             "        internal;\n"
             "        root /usr/share/nginx/errors;\n"
             "    }\n"
