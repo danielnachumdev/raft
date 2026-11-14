@@ -39,8 +39,8 @@ export function AppShell() {
       </a>
       <header className="topbar">
         <div className="topbar-inner">
-          <Link className="topbar-brand" to="/" aria-label="raft home">
-            raft
+          <Link className="topbar-brand" to="/" aria-label="Raft home">
+            Raft
           </Link>
           <nav className="topbar-nav" aria-label="Primary">
             {nav.map((item) => (

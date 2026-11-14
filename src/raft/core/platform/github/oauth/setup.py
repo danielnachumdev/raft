@@ -12,8 +12,7 @@ SETUP_DOCS_URL = "https://github.com/danielnachumdev/raft/blob/main/README.md"
 APPLICATION_NAME = "raft serve"
 APPLICATION_NAME_PUBLIC = "raft dashboard"
 DESCRIPTION = (
-    "Localhost raft serve ops UI — temporary GitHub login to pick a repo "
-    "and deploy."
+    "Localhost Raft — temporary GitHub login to pick a repo and deploy."
 )
 DESCRIPTION_PUBLIC = (
     "Public raft dashboard — temporary GitHub login to pick a repo and deploy."
