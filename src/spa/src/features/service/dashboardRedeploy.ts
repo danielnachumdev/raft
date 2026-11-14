@@ -1,10 +1,10 @@
-/** Always-on dashboard self-Redeploy: reconnect poll after 202 started. */
+/** Detached host Redeploy: poll after API returns ``started: true``. */
 
 import type { ServiceActionResult } from "../../shared/api";
 
 export const DASHBOARD_COMPOSE_ID = "raft-dashboard";
 
-/** Rebuild + edge reload can take several minutes on a cold image pull. */
+/** Rebuild + readiness can take several minutes on a cold image pull. */
 export const DASHBOARD_REDEPLOY_TIMEOUT_MS = 600_000;
 export const DASHBOARD_REDEPLOY_POLL_MS = 2_000;
 
@@ -14,15 +14,22 @@ export function isDashboardService(service: string): boolean {
   return service === DASHBOARD_COMPOSE_ID || service === "dashboard";
 }
 
+/** Detached oneshot from always-on dashboard (app or dashboard self-redeploy). */
+export function isAsyncRedeploy(
+  action: string,
+  result: ServiceActionResult,
+): boolean {
+  return action === "redeploy" && result.started === true;
+}
+
+/** @deprecated Prefer ``isAsyncRedeploy``; kept for dashboard-only call sites. */
 export function isAsyncDashboardRedeploy(
   service: string,
   action: string,
   result: ServiceActionResult,
 ): boolean {
   return (
-    action === "redeploy" &&
-    isDashboardService(service) &&
-    result.started === true
+    isAsyncRedeploy(action, result) && isDashboardService(service)
   );
 }
 
@@ -53,6 +60,13 @@ export function dashboardRedeployTimeoutMessage(): string {
   return (
     "Dashboard redeploy is taking longer than expected. Check Events."
   );
+}
+
+export function asyncRedeployTimeoutMessage(service: string): string {
+  if (isDashboardService(service)) {
+    return dashboardRedeployTimeoutMessage();
+  }
+  return `Redeploy of ${service} is taking longer than expected. Check Events.`;
 }
 
 function defaultSleep(ms: number): Promise<void> {

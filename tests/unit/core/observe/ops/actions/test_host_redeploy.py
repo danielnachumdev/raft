@@ -1,9 +1,10 @@
-"""HostServiceRedeploy argv + sync oneshot for dashboard app redeploy."""
+"""HostServiceRedeploy argv + detached oneshot for dashboard app redeploy."""
 
 from unittest.mock import MagicMock, patch
 
 from raft.core.observe.ops.actions.host_redeploy import HostServiceRedeploy
 from raft.core.observe.ops.actions import ServiceActions
+from raft.core.platform.adapters.docker import HostOneshotStart
 from tests.unit.base import RaftTestCase, AppMakers, StackMakers
 
 
@@ -20,20 +21,30 @@ class TestHostServiceRedeploy(RaftTestCase):
             "redeploy",
             "controller",
         ]
+        assert host.flight_kind("docket") == "redeploy-docket"
 
-    def test_run_ensures_and_oneshot(self) -> None:
+    def test_start_ensures_and_detaches(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("docket"),))
-        oneshot = MagicMock()
         gate = MagicMock()
-        host = HostServiceRedeploy(stack, oneshot=oneshot, gate=gate)
-        app = stack.apps[0]
-        host.run(app.compose_id, app)
-        gate.ensure.assert_called_once()
-        oneshot.run.assert_called_once_with(
-            ["raft", "redeploy", "docket"],
-            timeout=HostServiceRedeploy._TIMEOUT,
-            with_docker=True,
+        flight = MagicMock()
+        flight.start.return_value = HostOneshotStart(
+            job_id="abc123", coalesced=False
         )
+        host = HostServiceRedeploy(stack, gate=gate, flight=flight)
+        app = stack.apps[0]
+        result = host.start(app.compose_id, app)
+        gate.ensure.assert_called_once()
+        flight.start.assert_called_once_with(
+            ["raft", "redeploy", "docket"], with_docker=True
+        )
+        assert result == {
+            "ok": True,
+            "action": "redeploy",
+            "service": "docket",
+            "started": True,
+            "job_id": "abc123",
+            "coalesced": False,
+        }
 
 
 class TestServiceActionsHostRedeploy(RaftTestCase):
@@ -46,29 +57,47 @@ class TestServiceActionsHostRedeploy(RaftTestCase):
 
     def test_app_redeploy_uses_host_oneshot_in_dashboard(self) -> None:
         actions, orch = self._actions()
+        payload = {
+            "ok": True,
+            "action": "redeploy",
+            "service": "docket",
+            "started": True,
+            "job_id": "jid",
+            "coalesced": False,
+        }
         with self._patched_host(in_dashboard=True) as host:
+            host.start.return_value = payload
             result = actions.redeploy("docket")
-        host.run.assert_called_once()
-        args = host.run.call_args[0]
+        host.start.assert_called_once()
+        args = host.start.call_args[0]
         assert args[0] == "docket"
         assert args[1].name == "docket"
         orch.redeploy_app.assert_not_called()
-        assert result == {"ok": True, "action": "redeploy", "service": "docket"}
+        assert result == payload
 
     def test_gate_redeploy_uses_host_oneshot_in_dashboard(self) -> None:
         actions, orch = self._actions()
         with self._patched_host(in_dashboard=True) as host:
+            host.start.return_value = {
+                "ok": True,
+                "action": "redeploy",
+                "service": actions.stack.gate,
+                "started": True,
+                "job_id": "g1",
+                "coalesced": True,
+            }
             result = actions.redeploy("gate")
-        host.run.assert_called_once()
-        assert host.run.call_args[0][0] == actions.stack.gate
+        host.start.assert_called_once()
+        assert host.start.call_args[0][0] == actions.stack.gate
         orch.redeploy_gate.assert_not_called()
+        assert result["started"] is True
         assert result["service"] == "raft-gate"
 
     def test_app_redeploy_local_when_not_dashboard(self) -> None:
         actions, orch = self._actions()
         with self._patched_host(in_dashboard=False) as host:
             result = actions.redeploy("docket")
-        host.run.assert_not_called()
+        host.start.assert_not_called()
         orch.redeploy_app.assert_called_once_with("docket")
         assert result["action"] == "redeploy"
 
