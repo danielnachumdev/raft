@@ -39,6 +39,20 @@ class TestHostServiceRedeploy(RaftTestCase):
         assert result["job_id"] == "abc123"
         assert result["coalesced"] is False
 
+    def test_start_builds_flight_when_not_injected(self) -> None:
+        stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("docket"),))
+        gate = MagicMock()
+        flight = MagicMock()
+        flight.start.return_value = HostOneshotStart(job_id="x", coalesced=True)
+        with patch(
+            "raft.core.observe.ops.actions.host_redeploy.HostOneshotFlight",
+            return_value=flight,
+        ) as flight_cls:
+            host = HostServiceRedeploy(stack, gate=gate)
+            result = host.start(stack.apps[0].compose_id, stack.apps[0])
+        flight_cls.assert_called_once()
+        assert result["coalesced"] is True
+
 
 class TestServiceActionsHostRedeploy(RaftTestCase):
     def _actions(self) -> tuple[ServiceActions, MagicMock]:
