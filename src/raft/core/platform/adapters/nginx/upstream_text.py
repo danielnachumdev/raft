@@ -2,26 +2,36 @@
 
 
 class NginxUpstreamText:
-    """Build ``upstream`` blocks; park absent hosts on loopback for nginx -t."""
+    """Build ``upstream`` blocks; park absent hosts for nginx -t / reload."""
 
-    # Static ``server hostname:port`` fails nginx -t when the Compose DNS name
-    # is absent (scaled-to-zero). Park those upstreams on loopback so router
-    # can start/reload; gate holding pages handle visitor traffic.
+    # Compose DNS names fail nginx -t when the service is absent (scaled-to-zero /
+    # inplace stop). Park on loopback marked ``down`` so the router never opens a
+    # real connection — clients get an immediate 502, and gate ``error_page`` can
+    # serve offline.html. A bare ``127.0.0.1:<listen-port>`` would accept into the
+    # router's own ``listen`` and self-proxy (hang / CF error page instead).
     ABSENT_HOSTNAME = "127.0.0.1"
 
     @classmethod
     def hostname_for(cls, compose_id: str, *, absent: bool) -> str:
         return cls.ABSENT_HOSTNAME if absent else compose_id
 
-    @staticmethod
+    @classmethod
+    def server_directive(cls, hostname: str, container_port: int) -> str:
+        if hostname == cls.ABSENT_HOSTNAME:
+            return f"server {cls.ABSENT_HOSTNAME}:{container_port} down;"
+        return f"server {hostname}:{container_port};"
+
+    @classmethod
     def block(
+        cls,
         name: str,
         hostname: str,
         container_port: int,
         *,
         managed_header: bool = True,
     ) -> str:
-        body = f"upstream {name} {{\n" f"    server {hostname}:{container_port};\n" "}\n"
+        directive = cls.server_directive(hostname, container_port)
+        body = f"upstream {name} {{\n    {directive}\n}}\n"
         if not managed_header:
             return body
         return "# Managed by raft — do not hand-edit while deploying.\n" + body

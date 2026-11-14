@@ -48,7 +48,7 @@ class NginxUpstreams:
                 self._assert_router_sees(app, target_hostname, p)
 
     def point_absent(self, app: App, *, reload: bool = False) -> None:
-        """Park HTTP upstreams on loopback so nginx can start without the app."""
+        """Park HTTP upstreams as nginx ``down`` so reload works and visitors 502."""
         self.point_at(app, NginxUpstreamText.ABSENT_HOSTNAME, reload=reload)
 
     def point_steady(self, app: App, *, reload: bool = False) -> None:

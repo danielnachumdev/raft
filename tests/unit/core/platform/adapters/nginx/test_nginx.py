@@ -45,7 +45,7 @@ class TestNginxUpstreams(AdapterTestCase):
         nginx.point_absent(self.app)
         UpstreamFile.assert_contains(
             self.stack.upstream_file(self.app, port),
-            f"server {NginxUpstreamText.ABSENT_HOSTNAME}:80",
+            f"server {NginxUpstreamText.ABSENT_HOSTNAME}:80 down;",
         )
         nginx.point_steady(self.app)
         UpstreamFile.assert_contains(self.stack.upstream_file(self.app, port), "server app:80")

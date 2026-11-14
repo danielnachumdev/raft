@@ -29,7 +29,7 @@ class TestScaledUpstreamRender(RaftTestCase):
         ScalingStore(self.tmp_path).mark_scaled_to_zero("web")
         StackRenderer(load_stack(self.tmp_path)).render()
         path = self.tmp_path / "generated" / "nginx" / "upstreams" / "web-http.conf"
-        FileText.contains(path, f"server {NginxUpstreamText.ABSENT_HOSTNAME}:80")
+        FileText.contains(path, f"server {NginxUpstreamText.ABSENT_HOSTNAME}:80 down;")
         assert "server web:80" not in path.read_text(encoding="utf-8")
 
     def test_render_keeps_compose_hostname_when_awake(self) -> None:
