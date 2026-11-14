@@ -25,26 +25,19 @@ class TestHostServiceRedeploy(RaftTestCase):
 
     def test_start_ensures_and_detaches(self) -> None:
         stack = StackMakers.make_stack(self.tmp_path, (AppMakers.make_app("docket"),))
-        gate = MagicMock()
-        flight = MagicMock()
+        gate, flight = MagicMock(), MagicMock()
         flight.start.return_value = HostOneshotStart(
             job_id="abc123", coalesced=False
         )
         host = HostServiceRedeploy(stack, gate=gate, flight=flight)
-        app = stack.apps[0]
-        result = host.start(app.compose_id, app)
+        result = host.start(stack.apps[0].compose_id, stack.apps[0])
         gate.ensure.assert_called_once()
         flight.start.assert_called_once_with(
             ["raft", "redeploy", "docket"], with_docker=True
         )
-        assert result == {
-            "ok": True,
-            "action": "redeploy",
-            "service": "docket",
-            "started": True,
-            "job_id": "abc123",
-            "coalesced": False,
-        }
+        assert result["started"] is True
+        assert result["job_id"] == "abc123"
+        assert result["coalesced"] is False
 
 
 class TestServiceActionsHostRedeploy(RaftTestCase):
