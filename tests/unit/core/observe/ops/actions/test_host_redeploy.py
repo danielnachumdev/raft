@@ -103,10 +103,22 @@ class TestServiceActionsHostRedeploy(RaftTestCase):
     def test_app_redeploy_local_when_not_dashboard(self) -> None:
         actions, orch = self._actions()
         with self._patched_host(in_dashboard=False) as host:
+            host.join.return_value = None
             result = actions.redeploy("docket")
         host.start.assert_not_called()
+        host.join.assert_called_once()
         orch.redeploy_app.assert_called_once_with("docket")
         assert result["action"] == "redeploy"
+
+    def test_dashboard_argv_and_flight_kind(self) -> None:
+        stack = StackMakers.make_stack(self.tmp_path, ())
+        host = HostServiceRedeploy(stack, shell=MagicMock())
+        assert host.argv(stack.dashboard, None) == [
+            "raft",
+            "redeploy",
+            "dashboard",
+        ]
+        assert host.flight_kind("dashboard") == "redeploy-dashboard"
 
     def _patched_host(self, *, in_dashboard: bool):
         from contextlib import contextmanager
@@ -120,6 +132,8 @@ class TestServiceActionsHostRedeploy(RaftTestCase):
                     "raft.core.observe.ops.actions.service.HostServiceRedeploy"
                 ) as host_cls:
                     gate_cls.return_value.in_dashboard.return_value = in_dashboard
-                    yield host_cls.return_value
+                    host = host_cls.return_value
+                    host.join.return_value = None
+                    yield host
 
         return _cm()

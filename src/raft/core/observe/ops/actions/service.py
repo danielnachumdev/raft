@@ -11,7 +11,6 @@ from raft.core.core.models.state.manual_stop_store import ManualStopStore
 from raft.core.core.models.state.scaling_store import ScalingStore
 from raft.core.lifecycle.dashboard.rbac_allowlist_sync import RbacAllowlistSync
 from raft.core.lifecycle.deploy.orchestrator import Orchestrator
-from raft.core.observe.ops.actions.dashboard_redeploy import DashboardRedeploy
 from raft.core.observe.ops.actions.host_redeploy import HostServiceRedeploy
 from raft.core.observe.ops.actions.up_depends import UpDepends
 from raft.core.observe.ops.logs.targets import LogsTargets
@@ -80,17 +79,25 @@ class ServiceActions:
         return self._ok("down", compose_id)
 
     def redeploy(self, name: str) -> Dict[str, Any]:
+        """Redeploy any service: oneshot from UI, join-or-local from host CLI."""
         compose_id, app = self._resolve(name)
         if compose_id == self.stack.dashboard:
-            return self._redeploy_dashboard(compose_id)
+            self._ensure_dashboard_enabled()
+        host = HostServiceRedeploy(self.stack)
         if HostOneshotGate().in_dashboard():
-            return self._redeploy_via_host(compose_id, app)
+            return self._redeploy_via_host(host, compose_id, app)
+        joined = host.join(compose_id, app)
+        if joined is not None:
+            return joined
         return self._redeploy_local(compose_id, app)
 
     def _redeploy_via_host(
-        self, compose_id: str, app: Optional[App]
+        self,
+        host: HostServiceRedeploy,
+        compose_id: str,
+        app: Optional[App],
     ) -> Dict[str, Any]:
-        result = HostServiceRedeploy(self.stack).start(compose_id, app)
+        result = host.start(compose_id, app)
         logger.info(
             "host redeploy oneshot id=%s coalesced=%s service=%s",
             result.get("job_id"),
@@ -103,7 +110,9 @@ class ServiceActions:
         self, compose_id: str, app: Optional[App]
     ) -> Dict[str, Any]:
         orch = self._orchestrator()
-        if compose_id == self.stack.gate:
+        if compose_id == self.stack.dashboard:
+            orch.redeploy_dashboard()
+        elif compose_id == self.stack.gate:
             orch.redeploy_gate()
         elif compose_id == self.stack.router:
             orch.redeploy_router()
@@ -112,25 +121,6 @@ class ServiceActions:
         else:
             assert app is not None
             orch.redeploy_app(app.name)
-        return self._ok("redeploy", compose_id)
-
-    def _redeploy_dashboard(self, compose_id: str) -> Dict[str, Any]:
-        self._ensure_dashboard_enabled()
-        helper = DashboardRedeploy(self.stack)
-        gate = HostOneshotGate()
-        if gate.in_dashboard():
-            result = helper.start_oneshot(compose_id, gate)
-            logger.info(
-                "dashboard self-redeploy oneshot id=%s coalesced=%s service=%s",
-                result.get("job_id"),
-                result.get("coalesced"),
-                compose_id,
-            )
-            return result
-        joined = helper.join_oneshot(compose_id)
-        if joined is not None:
-            return joined
-        self._orchestrator().redeploy_dashboard()
         return self._ok("redeploy", compose_id)
 
     def _ensure_dashboard_enabled(self) -> None:

@@ -53,12 +53,12 @@ Overlapping apply/redeploy/render tears tmp names, upstreams, and `generated/`. 
 | `settings.lock` | full settings document, `host/notifications.yaml`, github OAuth settings writers | No torn settings/notifications YAML |
 | `dashboard.lock` | Dashboard settings helpers writing `host/settings.yaml` `dashboard:` | Dashboard settings writers do not tear each other |
 | `fifo-<kind>/` (ticket FCFS) | `FifoLock` — `update` (`SelfUpdate`); short claim for host-job flights | True arrival-order grant (not plain flock); mint tickets under `seq.lock` |
-| `host-job-<kind>.flight.json` | `HostOneshotFlight` (dashboard self-redeploy oneshot) | Coalesce concurrent detached starts to one in-flight `job_id` |
+| `host-job-<kind>.flight.json` | `HostOneshotFlight` (`redeploy-<name>` oneshot) | Coalesce concurrent detached starts to one in-flight `job_id` |
 | `inbox.lock` | serve writes to `host/inbox/` read-state | Operator inbox read/unread writers do not tear each other |
 
 Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**). Nesting in-process re-enters. `doctor` / `status` do not take these locks.
 
-**Host oneshot / self-redeploy deadlock rule:** claim flight under a short `FifoLock`, record/`docker run -d`, **release before** the child takes `stack.lock`. Never hold `fifo-host-job-*` across a rebuild. Concurrent in-dashboard Redeploy returns the same `job_id` (`coalesced`) while the oneshot container is alive — SPA busy-state is UX only. Detached workers get `RAFT_HOST_ONESHOT_KIND=<kind>` and must **not** `join_alive` that flight (flight state is their own container — self-wait until timeout). Host CLI without that env still joins an in-flight UI oneshot. GitHub assist deploys coalesce per `full_name` in-process (one pending/running job).
+**Host oneshot / redeploy flight rule (all services):** from the dashboard UI → detach `raft redeploy <name>` (oneshot); from host CLI → never oneshot. Both paths share `HostOneshotFlight` per `redeploy-<name>`: UI starts coalesce on one `job_id`; CLI **joins** a living flight instead of a second rebuild. Claim flight under a short `FifoLock`, record/`docker run -d`, **release before** the child takes `stack.lock`. Detached workers get `RAFT_HOST_ONESHOT_KIND=<kind>` and must **not** `join_alive` (self-deadlock). GitHub assist deploys coalesce per `full_name` in-process (one pending/running job).
 
 ---
 
