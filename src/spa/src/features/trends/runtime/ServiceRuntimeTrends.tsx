@@ -34,7 +34,7 @@ export function ServiceRuntimeTrends(props: { service: string }) {
   const [range, setRange] = useState<TrendsRangeState>(defaultRangeState);
   const query = useMemo(() => toQuery(range), [range]);
   const rolling = isRollingWindow(query);
-  const nowMs = useLiveNow(rolling);
+  const nowMs = useLiveNow(rolling, query.window);
   const [metricId, setMetricId] = useState<RuntimeMetricId>("cpu_percent");
   const [series, setSeries] = useState<MetricsSeries | null>(null);
   const [events, setEvents] = useState<GraphEvent[]>([]);

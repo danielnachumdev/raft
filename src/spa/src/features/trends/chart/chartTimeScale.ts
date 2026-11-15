@@ -1,5 +1,7 @@
 /** Time-domain X axis + gap breaks for Trends / Runtime charts. */
 
+import { localeFormats } from "../../../shared/localeFormats.ts";
+
 /** Default controller metrics interval (settings metrics.intervalSeconds). */
 export const DEFAULT_SAMPLE_INTERVAL_MS = 60_000;
 
@@ -38,6 +40,17 @@ export function chartEndMs(args: {
   return toEpochMs(args.rangeEndIso ?? "") ?? args.nowMs;
 }
 
+/** Rough plot width; one live tick per ~pixel of axis travel is plenty. */
+const LIVE_TICK_PX = 600;
+export const LIVE_TICK_MIN_MS = 1000;
+export const LIVE_TICK_MAX_MS = 15_000;
+
+/** Rolling-clock period for a window: ~1px of crawl per tick, clamped. */
+export function liveNowIntervalMs(windowSeconds: number): number {
+  const ms = Math.round((windowSeconds * 1000) / LIVE_TICK_PX);
+  return Math.min(LIVE_TICK_MAX_MS, Math.max(LIVE_TICK_MIN_MS, ms));
+}
+
 /** Drop samples that have scrolled out of the visible window. */
 export function clipRowsToDomain<T extends { ts: number }>(
   rows: T[],
@@ -46,6 +59,24 @@ export function clipRowsToDomain<T extends { ts: number }>(
   return rows.filter(
     (row) => row.ts >= domain.startMs && row.ts <= domain.endMs,
   );
+}
+
+/**
+ * ``clipRowsToDomain`` that returns ``prev`` when the visible slice did not
+ * change, so a crawling rolling window keeps the same array identity (Recharts
+ * re-derives its whole state whenever ``data`` changes identity).
+ */
+export function clipRowsStable<T extends { ts: number }>(
+  rows: T[],
+  domain: TimeDomain,
+  prev: T[] | null,
+): T[] {
+  const next = clipRowsToDomain(rows, domain);
+  return prev !== null && sameSlice(prev, next) ? prev : next;
+}
+
+function sameSlice<T>(a: T[], b: T[]): boolean {
+  return a.length === b.length && a[0] === b[0] && a[a.length - 1] === b[b.length - 1];
 }
 
 /**
@@ -157,15 +188,15 @@ export function formatTickTime(ms: number, spanMs?: number): string {
   const d = new Date(ms);
   if (Number.isNaN(d.getTime())) return String(ms);
   if (spanMs !== undefined && spanMs > 24 * 60 * 60_000) {
-    return d.toLocaleDateString([], { month: "short", day: "numeric" });
+    return localeFormats.monthDay.format(d);
   }
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return localeFormats.hourMinute.format(d);
 }
 
 export function formatTooltipTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString();
+  return localeFormats.dateTime.format(d);
 }
 
 function bridgeKey(
@@ -228,5 +259,5 @@ function baseRow(
   ts: number,
   t: string,
 ): Record<string, string | number | null> {
-  return { ts, t, label: formatTickTime(ts) };
+  return { ts, t };
 }

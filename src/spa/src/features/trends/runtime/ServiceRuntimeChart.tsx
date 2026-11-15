@@ -1,10 +1,6 @@
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, YAxis } from "recharts";
 import type { GraphEvent } from "../../../shared/api";
-import {
-  clipRowsToDomain,
-  formatTooltipTime,
-  windowDomain,
-} from "../chart/chartTimeScale";
+import { formatTooltipTime } from "../chart/chartTimeScale";
 import { graphEventMarkers } from "../chart/GraphEventMarkers";
 import {
   formatMetricTick,
@@ -15,6 +11,7 @@ import type { RuntimeMetricDef } from "../runtimeMetrics";
 import { isolatedSeriesDot } from "../chart/isolatedSeriesDot";
 import { timeScaleXAxis } from "../chart/TimeScaleXAxis";
 import { useChartHover } from "../chart/useChartHover";
+import { useStableClip } from "../chart/useStableClip";
 import type { ChartRow } from "./runtimeTrendsPoll";
 import "../chart/TrendsChart.css";
 const SERIES_ID = "value";
@@ -29,10 +26,7 @@ export function ServiceRuntimeChart(props: {
   const hover = useChartHover();
   const suffix = yAxisSuffix(props.metric.typeId);
   const endMs = props.rangeEndMs ?? Date.now();
-  const rows = clipRowsToDomain(
-    props.rows,
-    windowDomain(props.windowSec, endMs),
-  );
+  const rows = useStableClip(props.rows, props.windowSec, endMs);
   return (
     <div
       className="trends-chart"

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   DASHBOARD_DOCUMENT_TITLE,
@@ -12,8 +12,8 @@ import { DashboardSection } from "./DashboardSection";
 import { DeferredTrends } from "./DeferredTrends";
 import { PageHeader } from "./PageHeader";
 import { RegistryIssues } from "./RegistryIssues";
+import { StatusMetaLabel } from "./StatusMetaLabel";
 import { StatusSummary } from "./StatusSummary";
-import { statusMetaLabel } from "./statusMeta";
 import { bindStatusPolling, tabIsVisible } from "./statusPolling";
 
 /** Main dashboard: cached paint, quiet poll while visible, then background refresh. */
@@ -23,7 +23,6 @@ export function Dashboard() {
   const [busy, setBusy] = useState(() => peekStatus() === null);
   const [updating, setUpdating] = useState(false);
   const [fetchedAt, setFetchedAt] = useState<number | null>(null);
-  const [now, setNow] = useState(() => Date.now());
   const [statusLive, setStatusLive] = useState(() => tabIsVisible());
   const dataRef = useRef<StatusPayload | null>(null);
   const inFlightRef = useRef(false);
@@ -66,17 +65,14 @@ export function Dashboard() {
   }, [load]);
 
   useEffect(() => {
-    if (fetchedAt === null) return;
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, [fetchedAt]);
-
-  useEffect(() => {
     document.title = DASHBOARD_DOCUMENT_TITLE;
   }, []);
 
-  const metaLabel = statusMetaLabel({ updating, fetchedAt, now });
-  const quietReload = () => void load({ quiet: true });
+  const quietReload = useCallback(() => void load({ quiet: true }), [load]);
+  const summaryRows = useMemo(
+    () => (data ? [...data.control_plane, ...data.apps] : []),
+    [data],
+  );
 
   return (
     <>
@@ -88,11 +84,7 @@ export function Dashboard() {
               isLive={statusLive}
               label={statusLive ? "Live" : "Paused · tab hidden"}
             />
-            {metaLabel ? (
-              <span className="muted" aria-live="polite">
-                {metaLabel}
-              </span>
-            ) : null}
+            <StatusMetaLabel updating={updating} fetchedAt={fetchedAt} />
           </>
         }
         actions={
@@ -131,12 +123,12 @@ export function Dashboard() {
 
       {data ? (
         <>
-          <StatusSummary rows={[...data.control_plane, ...data.apps]} />
+          <StatusSummary rows={summaryRows} />
           <DashboardSection
             title="Apps"
             id="status-apps"
             rows={data.apps}
-            empty={<AppsEmpty />}
+            empty={APPS_EMPTY}
             storageKey="raft-serve-status-apps"
             onActionDone={quietReload}
           />
@@ -171,3 +163,6 @@ function AppsEmpty() {
     </EmptyState>
   );
 }
+
+/** Module-level so memoized ``DashboardSection`` keeps equal props across renders. */
+const APPS_EMPTY = <AppsEmpty />;

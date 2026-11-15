@@ -1,5 +1,6 @@
 /** Pure presentation helpers for the ops event timeline. */
 
+import { localeFormats } from "../../shared/localeFormats.ts";
 import type { OpsEventRow } from "./eventsApi";
 
 export type EventsQuery = { hours: number; kind: string; service: string };
@@ -59,16 +60,12 @@ export function groupEventsByDay(rows: OpsEventRow[], now: number): EventDayGrou
 export function formatClock(iso: string): string {
   const ms = Date.parse(iso);
   if (Number.isNaN(ms)) return iso;
-  return new Date(ms).toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+  return localeFormats.clock.format(ms);
 }
 
 export function formatFull(iso: string): string {
   const ms = Date.parse(iso);
-  return Number.isNaN(ms) ? iso : new Date(ms).toLocaleString();
+  return Number.isNaN(ms) ? iso : localeFormats.dateTime.format(ms);
 }
 
 function sortNewestFirst(rows: OpsEventRow[]): OpsEventRow[] {
@@ -87,11 +84,7 @@ function dayLabel(key: string, now: number): string {
   if (key === localDayKey(new Date(now).toISOString())) return "Today";
   if (key === localDayKey(new Date(now - 86_400_000).toISOString())) return "Yesterday";
   const [y, m, d] = key.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
+  return localeFormats.weekdayMonthDay.format(new Date(y, m - 1, d));
 }
 
 function pad(n: number): string {

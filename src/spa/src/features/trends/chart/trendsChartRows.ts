@@ -20,7 +20,6 @@ export const RIGHT_AXIS = "right";
 export type ChartRow = {
   ts: number;
   t: string;
-  label: string;
   [key: string]: string | number | null;
 };
 

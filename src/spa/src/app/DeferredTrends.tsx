@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, memo, Suspense, useEffect, useState } from "react";
 import { ChartFrameSkeleton } from "../shared/chrome/skeleton";
 import { trendsDeferDelayMs, trendsDeferPhase } from "./trendsDefer";
 
@@ -9,7 +9,9 @@ const TrendsDashboard = lazy(() =>
 );
 
 /** Mount Trends only after first status paint (lazy + macrotask deferral). */
-export function DeferredTrends(props: { hasStatusData: boolean }) {
+export const DeferredTrends = memo(function DeferredTrends(props: {
+  hasStatusData: boolean;
+}) {
   const [idleElapsed, setIdleElapsed] = useState(false);
   const delayMs = trendsDeferDelayMs(props.hasStatusData);
 
@@ -38,4 +40,4 @@ export function DeferredTrends(props: { hasStatusData: boolean }) {
       <TrendsDashboard />
     </Suspense>
   );
-}
+});

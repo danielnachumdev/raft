@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   CartesianGrid,
   LineChart,
@@ -6,11 +7,7 @@ import {
   YAxis,
 } from "recharts";
 import type { GraphEvent, MetricsSeries } from "../../../shared/api";
-import {
-  clipRowsToDomain,
-  formatTooltipTime,
-  windowDomain,
-} from "./chartTimeScale";
+import { formatTooltipTime } from "./chartTimeScale";
 import { graphEventMarkers } from "./GraphEventMarkers";
 import { eventsForSeries, seriesForEventFilter } from "./graphEvents";
 import {
@@ -26,17 +23,14 @@ import { trendsLegend } from "./TrendsLegend";
 import { trendPlotLines } from "./trendPlotLines";
 import { useChartHover } from "./useChartHover";
 import {
-  aggregatePlots,
-  buildAggregateRows,
-  buildPerServiceRows,
   LEFT_AXIS,
   needsSplitAxes,
   RIGHT_AXIS,
-  toPlotSeries,
   typeIdsForMetrics,
   type ChartRow,
   type PlotSeries,
 } from "./trendsChartRows";
+import { useTrendsChartRows } from "./useTrendsChartRows";
 import "./TrendsChart.css";
 
 export { tooltipItemSortKey } from "./tooltipItemSort";
@@ -60,25 +54,33 @@ export function TrendsChart(props: {
 }) {
   const hover = useChartHover();
   const metrics = props.metrics;
-  if (!metrics.length) return null;
-  const eventSeries = seriesForEventFilter(
-    props.allSeries ?? props.series,
-    props.series,
-  );
-  const markers = eventsForSeries(props.events, eventSeries);
-  const plots = props.aggregate
-    ? aggregatePlots(metrics)
-    : toPlotSeries(props.series, metrics);
   const endMs = props.rangeEndMs ?? Date.now();
-  const domain = windowDomain(props.windowSeconds, endMs);
-  const rows = clipRowsToDomain(
-    props.aggregate
-      ? buildAggregateRows(props.series, plots)
-      : buildPerServiceRows(props.series, plots),
-    domain,
+  const { plots, rows, labels, types } = useTrendsChartRows({
+    series: props.series,
+    metrics,
+    aggregate: props.aggregate,
+    windowSeconds: props.windowSeconds,
+    endMs,
+  });
+  const markers = useMemo(
+    () =>
+      eventsForSeries(
+        props.events,
+        seriesForEventFilter(props.allSeries ?? props.series, props.series),
+      ),
+    [props.events, props.allSeries, props.series],
   );
-  const labels = Object.fromEntries(plots.map((p) => [p.chartKey, p.label]));
-  const types = Object.fromEntries(plots.map((p) => [p.chartKey, p.typeId]));
+  const linePlots = useMemo(
+    () =>
+      plots.map((p) => ({
+        chartKey: p.chartKey,
+        label: p.label,
+        axis: p.axis,
+        ...paletteStyle(p, metrics, props.palette),
+      })),
+    [plots, metrics, props.palette],
+  );
+  if (!metrics.length) return null;
   const axisTypes = typeIdsForMetrics(metrics);
   // Same-type → one axis; cross-type → dual axes (also in avg views).
   const splitAxes = needsSplitAxes(props.series, metrics);
@@ -146,12 +148,7 @@ export function TrendsChart(props: {
           {trendPlotLines({
             aggregate: false,
             avgLabel: "",
-            plots: plots.map((p) => ({
-              chartKey: p.chartKey,
-              label: p.label,
-              axis: p.axis,
-              ...paletteStyle(p, metrics, props.palette),
-            })),
+            plots: linePlots,
             rows,
             splitAxes,
             serviceAxis: LEFT_AXIS,
