@@ -163,10 +163,9 @@ class HostOneshot:
             return []
         flags: List[str] = []
         for key in sorted(env):
-            value = env[key]
-            if not key or value is None:
+            if not key:
                 continue
-            flags.extend(["-e", f"{key}={value}"])
+            flags.extend(["-e", f"{key}={env[key]}"])
         return flags
 
     @staticmethod
