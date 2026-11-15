@@ -83,7 +83,9 @@ class TestDockerLifecyclePull(DockerTestCase):
         self.shell.compose.assert_any_call(
             "pull", "--ignore-buildable", "app", "api", capture=False, check=False
         )
-        self.shell.compose.assert_any_call("build", "app", capture=False, check=False)
+        self.shell.compose.assert_any_call(
+            "build", "--pull", "app", capture=False, check=False
+        )
 
     def test_pull_services_skips_when_pin_present(self) -> None:
         self._stack_demo_api_docker()

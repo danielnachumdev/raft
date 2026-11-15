@@ -134,12 +134,12 @@ class ComposeAppsYaml:
                 f"{app.name}: build context {ctx} is outside raft data home"
             ) from exc
         build_path = rel.as_posix()
+        lines.append("    build:")
+        lines.append(f"      context: ./{build_path}")
         if c.dockerfile:
-            lines.append("    build:")
-            lines.append(f"      context: ./{build_path}")
             lines.append(f"      dockerfile: {c.dockerfile}")
-        else:
-            lines.append(f"    build: ./{build_path}")
+        lines.append("      pull: true")
+
 
     @staticmethod
     def _append_ports(
