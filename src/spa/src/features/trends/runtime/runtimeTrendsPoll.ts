@@ -13,7 +13,6 @@ import { runtimePointValue, type RuntimeMetricId } from "../runtimeMetrics";
 export type ChartRow = {
   ts: number;
   t: string;
-  label: string;
   value: number | null;
 };
 

@@ -59,7 +59,7 @@ export function useDashboardMetrics(
       : base;
   }, [range, servicesKey]);
   const rolling = isRollingWindow(query);
-  const nowMs = useLiveNow(rolling);
+  const nowMs = useLiveNow(rolling, query.window);
   const cacheKey = `${planesCacheKey(planes, metricsCacheKey(query))}:svc:${servicesKey}`;
   const seed = peekMetrics(cacheKey);
   const [series, setSeries] = useState<MetricsSeries[]>(seed?.series ?? []);

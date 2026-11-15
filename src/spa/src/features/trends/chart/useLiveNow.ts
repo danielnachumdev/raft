@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
+import { liveNowIntervalMs } from "./chartTimeScale";
 
-/** Wall-clock ms that advances while ``enabled`` (live rolling charts). */
-export function useLiveNow(enabled: boolean, intervalMs = 1000): number {
+/**
+ * Wall-clock ms that advances while ``enabled`` (live rolling charts).
+ * Ticks scale with ``windowSeconds`` so long windows do not re-render every
+ * chart each second for sub-pixel axis movement.
+ */
+export function useLiveNow(enabled: boolean, windowSeconds: number): number {
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const intervalMs = liveNowIntervalMs(windowSeconds);
   useEffect(() => {
     if (!enabled) return;
     const tick = () => setNowMs(Date.now());

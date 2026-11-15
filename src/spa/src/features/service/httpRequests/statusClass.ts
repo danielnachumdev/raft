@@ -1,5 +1,7 @@
 /** Map HTTP status codes to table tone classes. */
 
+import { localeFormats } from "../../../shared/localeFormats.ts";
+
 export type RequestStatusTone = "ok" | "warn" | "bad" | "muted";
 
 export function statusToneForCode(status: number): RequestStatusTone {
@@ -29,16 +31,16 @@ export function formatRequestTime(ts: string | null, now: number = Date.now()): 
   if (Number.isNaN(parsed)) return ts;
   const at = new Date(parsed);
   if (at.toDateString() === new Date(now).toDateString()) {
-    return at.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+    return localeFormats.clock24.format(at);
   }
-  return at.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+  return localeFormats.monthDayTime24.format(at);
 }
 
 /** Full local timestamp for tooltips. */
 export function formatRequestTimeFull(ts: string | null): string {
   if (!ts) return "";
   const parsed = Date.parse(ts);
-  return Number.isNaN(parsed) ? ts : new Date(parsed).toLocaleString();
+  return Number.isNaN(parsed) ? ts : localeFormats.dateTime.format(parsed);
 }
 
 export function formatLatencyMs(ms: number): string {
