@@ -20,6 +20,7 @@ import { useDashboardMetrics } from "../../../features/trends/dashboard/ui/useDa
 import type { DashboardStoreApi } from "../../../features/trends/dashboard/ui/useDashboardStore";
 import { useGraphDrag } from "../../../features/trends/dashboard/ui/useGraphDrag";
 import "../../../features/trends/dashboard/ui/TrendsDashboard.css";
+import { useInViewport } from "../../chrome/useInViewport";
 import type { DashboardKitContract } from "../model/types.ts";
 import { KitHead } from "./KitHead";
 import { kitGraphActions, noopDrag, pinSaveDraft } from "./kitActions";
@@ -46,10 +47,17 @@ export function DashboardKit(props: DashboardKitProps) {
   const { dashboard, edit } = api;
   const chrome = props.chrome ?? {};
   const planes = planesForGraphs(dashboard.panels);
-  const data = useDashboardMetrics(dashboard.range, planes, props.scope?.services);
-  const palette = useMemo(() => seriesPalette(data.available), [data.available]);
   const [editor, setEditor] = useState<EditorTarget | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [gridRef, gridVisible] = useInViewport<HTMLDivElement>();
+  const chartsVisible = gridVisible || editor !== null || expandedId !== null;
+  const data = useDashboardMetrics(
+    dashboard.range,
+    planes,
+    props.scope?.services,
+    chartsVisible,
+  );
+  const palette = useMemo(() => seriesPalette(data.available), [data.available]);
   const drag = useGraphDrag((from, to) => {
     if (editable) edit((d) => movePanelTo(d, from, to));
   });
@@ -110,7 +118,7 @@ export function DashboardKit(props: DashboardKitProps) {
           onRestoreDefaults={() => edit(props.restoreDefaults)}
         />
       ) : (
-        <div className="trends-grid" key={dashboard.id}>
+        <div className="trends-grid" key={dashboard.id} ref={gridRef}>
           {dashboard.panels.map((panel, i) => (
             <GraphCell
               key={panel.id}

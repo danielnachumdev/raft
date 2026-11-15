@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useInViewport } from "../../../shared/chrome/useInViewport";
 import { DownloadMenu } from "../../../shared/export/DownloadMenu";
 import { metricsDownloadUrl } from "../../../shared/export/urls";
 import {
@@ -34,7 +35,8 @@ export function ServiceRuntimeTrends(props: { service: string }) {
   const [range, setRange] = useState<TrendsRangeState>(defaultRangeState);
   const query = useMemo(() => toQuery(range), [range]);
   const rolling = isRollingWindow(query);
-  const nowMs = useLiveNow(rolling, query.window);
+  const [sectionRef, visible] = useInViewport<HTMLElement>();
+  const nowMs = useLiveNow(rolling, query.window, visible);
   const [metricId, setMetricId] = useState<RuntimeMetricId>("cpu_percent");
   const [series, setSeries] = useState<MetricsSeries | null>(null);
   const [events, setEvents] = useState<GraphEvent[]>([]);
@@ -106,7 +108,7 @@ export function ServiceRuntimeTrends(props: { service: string }) {
   const cold = busy && series === null && !error;
 
   return (
-    <section className="panel service-runtime-trends">
+    <section className="panel service-runtime-trends" ref={sectionRef}>
       <div className="panel-head">
         <h2>Runtime trends</h2>
         <p className="muted panel-kind" aria-live="polite">

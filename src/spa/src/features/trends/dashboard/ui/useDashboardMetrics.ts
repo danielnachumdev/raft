@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  METRICS_POLL_MS,
   type GraphEvent,
   type MetricsAvailable,
   type MetricsBounds,
@@ -14,7 +13,6 @@ import {
   applyPayloadMeta,
   fetchPlanes,
   planesCacheKey,
-  pollPlanes,
   type PlaneCursors,
 } from "../../panel/trendsPoll";
 import {
@@ -25,6 +23,7 @@ import {
   type TrendsRangeState,
 } from "../../range/index.ts";
 import type { MetricPlane } from "../../runtimeMetrics";
+import { useLivePlanesPoll } from "./useLivePlanesPoll";
 
 export type DashboardMetrics = {
   series: MetricsSeries[];
@@ -43,11 +42,13 @@ export type DashboardMetrics = {
  * One full fetch + live poll per metric plane for the whole dashboard;
  * every graph filters the shared series client-side.
  * Optional ``services`` scopes the request (service inspection page).
+ * ``visible`` false (charts scrolled away) pauses the rolling clock and poll.
  */
 export function useDashboardMetrics(
   range: TrendsRangeState,
   planeList: MetricPlane[],
   services?: string[],
+  visible: boolean = true,
 ): DashboardMetrics {
   const planesKey = planeList.join("+");
   const planes = useMemo(() => planesKey.split("+") as MetricPlane[], [planesKey]);
@@ -59,7 +60,7 @@ export function useDashboardMetrics(
       : base;
   }, [range, servicesKey]);
   const rolling = isRollingWindow(query);
-  const nowMs = useLiveNow(rolling, query.window);
+  const nowMs = useLiveNow(rolling, query.window, visible);
   const cacheKey = `${planesCacheKey(planes, metricsCacheKey(query))}:svc:${servicesKey}`;
   const seed = peekMetrics(cacheKey);
   const [series, setSeries] = useState<MetricsSeries[]>(seed?.series ?? []);
@@ -110,13 +111,15 @@ export function useDashboardMetrics(
   }, [cacheKey, planes, query]);
 
   const live = isLiveQuery(query);
-  useEffect(() => {
-    if (busy || !live) return;
-    const id = window.setInterval(() => {
-      void pollPlanes(query, planes, cursors, setSeries, setAvailable, setCursors, setEvents);
-    }, METRICS_POLL_MS);
-    return () => window.clearInterval(id);
-  }, [query, cursors, busy, planes, live]);
+  useLivePlanesPoll({
+    query,
+    planes,
+    cursors,
+    busy,
+    live,
+    visible,
+    setters: { setSeries, setAvailable, setCursors, setEvents },
+  });
 
   const scopedAvailable = useMemo(
     () => scopeAvailable(available, servicesKey),
