@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { FlashValue } from "../shared/chrome/FlashValue";
 import { solidFlash } from "../shared/chrome/flashValue";
 import { StatTile, StatTiles } from "../shared/chrome/StatTile";
@@ -7,7 +8,7 @@ import { summarizeStatus } from "../features/status/model/statusSummary";
 const COUNT_FLASH = solidFlash({ intensity: 0.5 });
 
 /** At-a-glance health tiles above the status tables. */
-export function StatusSummary(props: { rows: StatusRow[] }) {
+export const StatusSummary = memo(function StatusSummary(props: { rows: StatusRow[] }) {
   const s = summarizeStatus(props.rows);
   const names = s.attentionNames.slice(0, 3).join(", ");
   const more = s.attentionNames.length > 3 ? ` +${s.attentionNames.length - 3}` : "";
@@ -52,4 +53,4 @@ export function StatusSummary(props: { rows: StatusRow[] }) {
       />
     </StatTiles>
   );
-}
+});

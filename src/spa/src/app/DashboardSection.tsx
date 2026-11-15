@@ -1,8 +1,8 @@
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 import type { StatusRow } from "../shared/api/index.ts";
 import { StatusTable } from "../features/status/StatusTable";
 
-export function DashboardSection(props: {
+export const DashboardSection = memo(function DashboardSection(props: {
   title: string;
   rows: StatusRow[];
   empty: ReactNode;
@@ -28,4 +28,4 @@ export function DashboardSection(props: {
       />
     </section>
   );
-}
+});
