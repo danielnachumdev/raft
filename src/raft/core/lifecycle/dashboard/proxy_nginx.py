@@ -55,6 +55,7 @@ class DashboardProxyNginx:
             f"{self._nginx_preamble()}"
             "http {\n"
             f"{self._http_temp_paths()}"
+            f"{self._gzip()}"
             f"{self._fwd_proto_map()}"
             f"{BrowserSecurityHeaders.nginx_hsts_map()}"
             f"{server_body}"
@@ -80,6 +81,18 @@ class DashboardProxyNginx:
             "    fastcgi_temp_path /tmp/nginx_fastcgi;\n"
             "    uwsgi_temp_path /tmp/nginx_uwsgi;\n"
             "    scgi_temp_path /tmp/nginx_scgi;\n"
+        )
+
+    @staticmethod
+    def _gzip() -> str:
+        # No text/html or text/event-stream: log follow SSE must stay unbuffered.
+        return (
+            "    gzip on;\n"
+            "    gzip_proxied any;\n"
+            "    gzip_min_length 1024;\n"
+            "    gzip_vary on;\n"
+            "    gzip_types application/json application/javascript text/css "
+            "image/svg+xml;\n"
         )
 
     @staticmethod

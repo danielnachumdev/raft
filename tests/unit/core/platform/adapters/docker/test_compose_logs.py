@@ -42,10 +42,13 @@ class TestDockerComposeLogs(DockerTestCase):
         return _Out()
 
     def test_container_logs_since(self) -> None:
-        proc = MagicMock()
-        proc.stdout = self._logs_stdout(["2026-10-14T12:00:00Z line\n"])
-        proc.poll.return_value = 0
-        self.shell.popen.return_value = proc
+        procs = []
+        for _ in range(2):  # tail slice starts after cursor → --since fallback
+            proc = MagicMock()
+            proc.stdout = self._logs_stdout(["2026-10-14T12:00:00Z line\n"])
+            proc.poll.return_value = 0
+            procs.append(proc)
+        self.shell.popen.side_effect = procs
         text = self.docker.container_logs_since("cid", since="2026-10-14T11:00:00Z")
         assert "line" in text
         args = self.shell.popen.call_args.args[0]

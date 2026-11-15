@@ -25,6 +25,18 @@ class TestDashboardProxyNginx(RaftTestCase):
         assert "location = /api/update" in text
         assert "proxy_read_timeout 600s" in text
 
+    def test_gzip_json_and_assets_but_not_sse_or_html(self) -> None:
+        text = DashboardProxyNginx().render(
+            DashboardConfig(), listen=8787, app_port=18787
+        )
+        assert "gzip on;" in text
+        assert "gzip_proxied any;" in text
+        types = next(line for line in text.splitlines() if "gzip_types" in line)
+        assert "application/json" in types
+        assert "application/javascript" in types
+        assert "text/event-stream" not in types
+        assert "text/html" not in types
+
     def test_password_gates_spa(self) -> None:
         text = self._password_nginx()
         assert "auth_request /_raft_dashboard_auth" in text
