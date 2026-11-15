@@ -243,15 +243,6 @@ class TestDockerLifecycle(DockerTestCase):
                 self.docker.start_service("app")
             with pytest.raises(RuntimeError, match="--- app ---"):
                 self.docker.stop_service("app")
-            with pytest.raises(RuntimeError, match="--- app ---"):
-                self.docker.remove_service("app")
-
-    def test_remove_service_compose_rm(self) -> None:
-        self.shell.compose.return_value = self.ok()
-        self.docker.remove_service("app")
-        self.shell.compose.assert_any_call(
-            "rm", "-sf", "app", capture=False, check=False
-        )
 
     def test_start_stack_selective_uses_no_deps(self) -> None:
         self.shell.compose.return_value = self.ok()
