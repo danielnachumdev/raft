@@ -1,20 +1,28 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { liveNowIntervalMs } from "./chartTimeScale";
+import { liveClockRunning } from "./liveClock";
 
 /**
- * Wall-clock ms that advances while ``enabled`` (live rolling charts).
+ * Wall-clock ms that advances while ``enabled`` (live rolling charts) and
+ * ``visible`` (charts near the viewport).
  * Ticks scale with ``windowSeconds`` so long windows do not re-render every
- * chart each second for sub-pixel axis movement.
+ * chart each second for sub-pixel axis movement; ticks are transitions so the
+ * chart re-layout yields to pointer input.
  */
-export function useLiveNow(enabled: boolean, windowSeconds: number): number {
+export function useLiveNow(
+  enabled: boolean,
+  windowSeconds: number,
+  visible: boolean = true,
+): number {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const intervalMs = liveNowIntervalMs(windowSeconds);
+  const running = liveClockRunning(enabled, visible);
   useEffect(() => {
-    if (!enabled) return;
-    const tick = () => setNowMs(Date.now());
+    if (!running) return;
+    const tick = () => startTransition(() => setNowMs(Date.now()));
     tick();
     const id = window.setInterval(tick, intervalMs);
     return () => window.clearInterval(id);
-  }, [enabled, intervalMs]);
+  }, [running, intervalMs]);
   return nowMs;
 }

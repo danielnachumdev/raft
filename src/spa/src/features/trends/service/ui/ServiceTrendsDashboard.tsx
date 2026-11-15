@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { LiveIndicator } from "../../../../shared/chrome/LiveIndicator";
+import { useInViewport } from "../../../../shared/chrome/useInViewport";
 import { DownloadMenu } from "../../../../shared/export/DownloadMenu";
 import { metricsDownloadUrl } from "../../../../shared/export/urls";
 import {
@@ -40,10 +41,12 @@ export function ServiceTrendsDashboard(props: { service: string }) {
   const { dashboard, edit } = api;
   const planes = planesForGraphs(dashboard.panels);
   const services = useMemo(() => [service], [service]);
-  const data = useDashboardMetrics(dashboard.range, planes, services);
-  const palette = useMemo(() => seriesPalette(data.available), [data.available]);
   const [editor, setEditor] = useState<EditorTarget | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [gridRef, gridVisible] = useInViewport<HTMLDivElement>();
+  const chartsVisible = gridVisible || editor !== null || expandedId !== null;
+  const data = useDashboardMetrics(dashboard.range, planes, services, chartsVisible);
+  const palette = useMemo(() => seriesPalette(data.available), [data.available]);
   const drag = useGraphDrag((from, to) => edit((d) => movePanelTo(d, from, to)));
   const openAdd = () =>
     setEditor({ mode: "add", draft: blankServiceDraft(service) });
@@ -98,7 +101,7 @@ export function ServiceTrendsDashboard(props: { service: string }) {
           }
         />
       ) : (
-        <div className="trends-grid" key={service}>
+        <div className="trends-grid" key={service} ref={gridRef}>
           {dashboard.panels.map((panel, i) => (
             <GraphCell
               key={panel.id}

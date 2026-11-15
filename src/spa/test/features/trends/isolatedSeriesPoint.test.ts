@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   isIsolatedSeriesPoint,
   isNumericPoint,
+  isolatedPointIndices,
 } from "../../../src/features/trends/chart/isolatedSeriesPoint.ts";
 
 describe("isNumericPoint", () => {
@@ -56,5 +57,38 @@ describe("isIsolatedSeriesPoint", () => {
     assert.equal(isIsolatedSeriesPoint(rows, "v0", 0), true);
     assert.equal(isIsolatedSeriesPoint(rows, "v1", 1), true);
     assert.equal(isIsolatedSeriesPoint(rows, "v0", 2), true);
+  });
+});
+
+describe("isolatedPointIndices", () => {
+  it("is empty for a fully connected series", () => {
+    const rows = [{ v: 1 }, { v: 2 }, { v: 3 }];
+    assert.equal(isolatedPointIndices(rows, "v").size, 0);
+  });
+
+  it("lists only samples with no numeric neighbors", () => {
+    const rows = [
+      { v: 1 },
+      { v: null },
+      { v: 2 },
+      { v: 3 },
+      { v: null },
+      { v: 4 },
+    ];
+    assert.deepEqual([...isolatedPointIndices(rows, "v")], [0, 5]);
+  });
+
+  it("covers a single-sample series and missing keys", () => {
+    assert.deepEqual([...isolatedPointIndices([{ v: 7 }], "v")], [0]);
+    assert.equal(isolatedPointIndices([{ v: 7 }], "other").size, 0);
+    assert.equal(isolatedPointIndices([], "v").size, 0);
+  });
+
+  it("memoizes per rows array and series key", () => {
+    const rows = [{ a: 1, b: null }, { a: null, b: 2 }];
+    const first = isolatedPointIndices(rows, "a");
+    assert.equal(isolatedPointIndices(rows, "a"), first);
+    assert.notEqual(isolatedPointIndices(rows, "b"), first);
+    assert.notEqual(isolatedPointIndices([...rows], "a"), first);
   });
 });
