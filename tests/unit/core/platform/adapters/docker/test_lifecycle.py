@@ -280,7 +280,9 @@ class TestDockerLifecycle(DockerTestCase):
         built = [c for c in self.shell.compose.call_args_list if c.args[:1] == ("up",)]
         assert all("--build" in c.args for c in built)
         self.docker.build_services(("app",))
-        self.shell.compose.assert_any_call("build", "app", capture=False, check=False)
+        self.shell.compose.assert_any_call(
+            "build", "--pull", "app", capture=False, check=False
+        )
         self.docker.rebuild_service("app")
         self._assert_rebuild_force_recreates("app")
 

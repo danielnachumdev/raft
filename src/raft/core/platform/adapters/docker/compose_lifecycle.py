@@ -119,11 +119,13 @@ class DockerComposeLifecycle:
     def build_services(self, services: Sequence[str]) -> None:
         if not services:
             return
-        logger.info("compose build %s", " ".join(services))
+        # Always --pull so git-build Apps that FROM registry tags (e.g. :latest)
+        # cannot assemble a new API layer with a stale locally-cached web base.
+        logger.info("compose build --pull %s", " ".join(services))
         try:
             CheckedCommands.run_compose(
                 self.sh,
-                ("build", *services),
+                ("build", "--pull", *services),
                 action="build service images",
                 stream=True,
             )

@@ -138,8 +138,12 @@ class ComposeAppsYaml:
             lines.append("    build:")
             lines.append(f"      context: ./{build_path}")
             lines.append(f"      dockerfile: {c.dockerfile}")
+            # Refresh FROM bases (GHCR :latest/:main) on every build.
+            lines.append("      pull: true")
         else:
-            lines.append(f"    build: ./{build_path}")
+            lines.append("    build:")
+            lines.append(f"      context: ./{build_path}")
+            lines.append("      pull: true")
 
     @staticmethod
     def _append_ports(
