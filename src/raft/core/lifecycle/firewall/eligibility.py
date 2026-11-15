@@ -30,7 +30,14 @@ class FirewallEligibility:
                 "reason": f"app '{name}' is not applied",
                 "fix": "raft apply --file … then open Firewall again",
             }
-        _, spec = self._load_spec(app)
+        loaded = self._load_spec(app)
+        if loaded is None:
+            return {
+                "supported": False,
+                "reason": f"app '{name}' is missing its applied manifest",
+                "fix": "raft apply … or raft delete to clear leftovers",
+            }
+        _, spec = loaded
         return self._meta_for_spec(app, spec)
 
     def _dashboard_meta(self) -> dict[str, Any]:
@@ -59,11 +66,14 @@ class FirewallEligibility:
             "exposes": sorted({p.expose for p in spec.ports}),
         }
 
-    def _load_spec(self, app: App) -> tuple[App, AppSpec]:
-        return AppDocument.load(
-            AppRegistry(self._stack.root).path_for(app.name),
-            expect_name=app.name,
-        )
+    def _load_spec(self, app: App) -> Optional[tuple[App, AppSpec]]:
+        try:
+            return AppDocument.load(
+                AppRegistry(self._stack.root).path_for(app.name),
+                expect_name=app.name,
+            )
+        except (OperatorError, OSError, ValueError):
+            return None
 
     def _find_app(self, name: str) -> Optional[App]:
         for app in self._stack.apps:

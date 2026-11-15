@@ -29,6 +29,15 @@ class FirewallService:
         self._recommendations = FirewallRecommendations(stack.root)
         self._inspection = InspectionFirewall(stack)
 
+    def bind_stack(self, stack: Stack) -> None:
+        """Adopt a reloaded registry (serve out-of-band apply/delete)."""
+        self._stack = stack
+        self._orch = Orchestrator(stack)
+        self._writer = FirewallDocumentWriter(stack.root)
+        self._eligibility = FirewallEligibility(stack)
+        self._recommendations = FirewallRecommendations(stack.root)
+        self._inspection = InspectionFirewall(stack)
+
     def get(self) -> Dict[str, Any]:
         return FirewallEffective(self._stack.root).document.to_public()
 
@@ -48,6 +57,7 @@ class FirewallService:
         return self.put(document.to_export())
 
     def services(self) -> Dict[str, Any]:
+        self.bind_stack(Stack.load_apps(self._stack.root))
         apps = []
         for app in self._stack.apps:
             meta = self._eligibility.meta(app.name)

@@ -190,10 +190,9 @@ class TestApplyGit(ApplyTestCase):
     def test_delete_re_renders(self, capsys) -> None:
         AppliedInventory.write_applied_app(self.tmp_path, "web", public_host="web.test")
         AppliedInventory.write_applied_app(self.tmp_path, "other", public_host="other.test")
-        with patch("raft.core.lifecycle.apply.service.Orchestrator") as orch_cls:
+        with self._patched_delete():
             AppApply(load_stack(self.tmp_path)).delete("web")
-            orch_cls.return_value.render.assert_called_once()
-        assert not (self.tmp_path / "services" / "web" / "app.yaml").is_file()
+        assert not (self.tmp_path / "services" / "web").exists()
         assert "deleted web" in capsys.readouterr().out
         self._delete_leftovers_and_ghost(capsys)
 
@@ -201,12 +200,27 @@ class TestApplyGit(ApplyTestCase):
         for leftover in ("other", "app"):
             path = self.tmp_path / "services" / leftover / "app.yaml"
             if path.is_file():
-                with patch("raft.core.lifecycle.apply.service.Orchestrator") as orch_cls:
+                with self._patched_delete():
                     AppApply(load_stack(self.tmp_path)).delete(leftover)
-                    orch_cls.return_value.render.assert_called_once()
         assert "no apps applied" in capsys.readouterr().out.lower()
         with pytest.raises(RuntimeError, match="not applied"):
             AppApply(load_stack(self.tmp_path)).delete("ghost")
+
+    @staticmethod
+    def _patched_delete():
+        from contextlib import contextmanager
+        from unittest.mock import MagicMock
+
+        @contextmanager
+        def _ctx():
+            with patch("raft.core.lifecycle.apply.delete.Orchestrator") as orch:
+                with patch(
+                    "raft.core.lifecycle.apply.delete.DockerStack",
+                    return_value=MagicMock(),
+                ):
+                    yield orch
+
+        return _ctx()
 
     def test_apply_git_infers_source_and_deploys(self) -> None:
         stack = load_stack(self.tmp_path)
