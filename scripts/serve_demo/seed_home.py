@@ -1,12 +1,15 @@
 """Fabricate a PII-safe demo data home for ``raft serve`` screenshots.
 
-Usage: python3 scripts/serve_demo/seed_home.py /tmp/raft-demo/home
+Usage: python3 scripts/serve_demo/seed_home.py /tmp/raft-demo/home [--extra-apps N]
 
 Writes demo Apps (``demo-*``), settings with notification channels, an ordered
 firewall, alert rules, an ops event timeline, 3h of metrics JSONL, and a gate
 access log. Only documentation hosts/CIDRs (``*.demo.example``, RFC 5737).
+``--extra-apps N`` adds N more HTTP Apps (``demo-svcNN``) with metrics, for
+production-scale SPA perf checks.
 """
 
+import argparse
 import json
 import math
 import random
@@ -14,9 +17,11 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-if len(sys.argv) != 2:
-    sys.exit("usage: seed_home.py DATA_HOME")
-home = Path(sys.argv[1]).expanduser().resolve()
+parser = argparse.ArgumentParser(description="Seed a PII-safe demo data home.")
+parser.add_argument("home")
+parser.add_argument("--extra-apps", type=int, default=0)
+args = parser.parse_args()
+home = Path(args.home).expanduser().resolve()
 if home == (Path.home() / ".raft").resolve():
     sys.exit("refusing to seed the real ~/.raft; pass a throwaway directory")
 random.seed(7)
@@ -40,6 +45,9 @@ APPS = {
     "demo-worker": (None, None, None, []),
     "demo-docs": (None, "docs.demo.example", 80, []),
 }
+EXTRA = [f"demo-svc{k:02d}" for k in range(1, args.extra_apps + 1)]
+for name in EXTRA:
+    APPS[name] = (None, f"{name}.demo.example", 8000, [])
 for name, (group, host, port, deps) in APPS.items():
     lines = ["apiVersion: raft/v1", "kind: App", "metadata:", f"  name: {name}"]
     lines += ["spec:"] + ([f"  group: {group}"] if group else []) + [ "  source: docker", f"  image: ghcr.io/example/{name}", "  ref: latest", "  tls: off"]
@@ -180,6 +188,7 @@ write("host/events/ops.jsonl", "\n".join(ops) + "\n")
 step = timedelta(seconds=30)
 n = int(3 * 3600 / 30)
 SERVICES = [("shop-demo-api", "shop"), ("shop-demo-web", "shop"), ("shop-demo-db", "shop"), ("demo-worker", None)]
+SERVICES += [(name, None) for name in EXTRA]
 net = {s: [0.0, 0.0] for s, _ in SERVICES}
 
 
@@ -202,6 +211,9 @@ for i in range(n):
         "demo-worker": wave(i, 40, 35, 70, 2.0) + random.uniform(-3, 3),
     }
     rps = {"shop-demo-api": wave(i, 160, 10, 22) + random.uniform(-1, 1), "shop-demo-web": wave(i, 160, 28, 46, 0.4)}
+    for k, name in enumerate(EXTRA):
+        cpu[name] = wave(i, 60 + 7 * k, 3, 25, k * 0.7) + random.uniform(-1, 1)
+        rps[name] = wave(i, 100 + 9 * k, 1, 8, k * 0.3)
     containers = []
     for svc, group in SERVICES:
         rx = (rps.get(svc, 2) * 2400 + random.uniform(0, 800)) * 30
@@ -219,7 +231,7 @@ for i in range(n):
     res.append({"ts": ts, "host": {"loadavg": [round(1.2 + 0.6 * inc, 2), 1.0, 0.9], "cpus": 4,
                 "memory": {"used_percent": 61.0 + 3 * inc, "used_bytes": 5 * 1024**3}}, "containers": containers})
     by = {}
-    for svc in ("shop-demo-api", "shop-demo-web"):
+    for svc in ("shop-demo-api", "shop-demo-web", *EXTRA):
         base = 140 if svc == "shop-demo-api" else 45
         p95 = base + wave(i, 80, 0, base * 0.4) + (650 * inc if svc == "shop-demo-api" else 0)
         reqs = rps[svc] * 30

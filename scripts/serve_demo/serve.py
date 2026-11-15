@@ -33,6 +33,7 @@ FAKE = {
     "demo-db": ("unhealthy", 5.3, 300, 1024),
     "demo-worker": ("running", 52.0, 260, 512),
     "demo-docs": ("scaled-to-zero", None, None, 256),
+    "demo-svc": ("running", 4.2, 96, 256),  # seed_home.py --extra-apps
 }
 
 
