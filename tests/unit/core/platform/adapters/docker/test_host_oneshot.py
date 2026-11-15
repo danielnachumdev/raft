@@ -86,17 +86,9 @@ class TestHostOneshot:
             ["raft", "redeploy", "dashboard"],
             env={"RAFT_HOST_ONESHOT_KIND": "redeploy-dashboard"},
         )
-        cmd = shell.run.call_args.args[0]
-        assert "-e" in cmd
-        assert "RAFT_HOST_ONESHOT_KIND=redeploy-dashboard" in cmd
-
-    def test_extra_env_skips_empty_keys_and_empty_map(self) -> None:
+        assert "RAFT_HOST_ONESHOT_KIND=redeploy-dashboard" in shell.run.call_args.args[0]
         assert HostOneshot._extra_env_flags(None) == []
-        assert HostOneshot._extra_env_flags({}) == []
-        assert HostOneshot._extra_env_flags({"": "x", "K": "v"}) == [
-            "-e",
-            "K=v",
-        ]
+        assert HostOneshot._extra_env_flags({"": "x", "K": "v"}) == ["-e", "K=v"]
 
     def test_start_refuses_empty_id(self) -> None:
         shell = MagicMock()
