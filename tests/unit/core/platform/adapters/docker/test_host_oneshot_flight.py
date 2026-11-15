@@ -13,29 +13,23 @@ from tests.unit.base import RaftTestCase
 
 
 class TestHostOneshotFlight(RaftTestCase):
-    def test_start_fresh_records_job(self) -> None:
-        oneshot = MagicMock()
-        oneshot.start.return_value = "cid-fresh"
-        alive = MagicMock()
+    @staticmethod
+    def _idle_mocks(cid: str) -> tuple[MagicMock, MagicMock]:
+        oneshot, alive = MagicMock(), MagicMock()
+        oneshot.start.return_value = cid
         alive.running.return_value = False
-        flight = HostOneshotFlight(
-            self.tmp_path,
-            HostOneshotFlight.KIND_DASHBOARD_REDEPLOY,
-            oneshot=oneshot,
-            alive=alive,
-        )
+        return oneshot, alive
+
+    def test_start_fresh_records_job(self) -> None:
+        oneshot, alive = self._idle_mocks("cid-fresh")
+        kind = HostOneshotFlight.KIND_DASHBOARD_REDEPLOY
+        flight = HostOneshotFlight(self.tmp_path, kind, oneshot=oneshot, alive=alive)
         started = flight.start(["raft", "redeploy", "dashboard"])
-        assert started.job_id == "cid-fresh"
-        assert started.coalesced is False
+        assert (started.job_id, started.coalesced) == ("cid-fresh", False)
         oneshot.start.assert_called_once_with(
-            ["raft", "redeploy", "dashboard"],
-            with_docker=True,
-            env={KIND_ENV: HostOneshotFlight.KIND_DASHBOARD_REDEPLOY},
+            ["raft", "redeploy", "dashboard"], with_docker=True, env={KIND_ENV: kind}
         )
-        state = HostOneshotFlightState(
-            self.tmp_path, HostOneshotFlight.KIND_DASHBOARD_REDEPLOY
-        )
-        assert state.read_job_id() == "cid-fresh"
+        assert HostOneshotFlightState(self.tmp_path, kind).read_job_id() == "cid-fresh"
 
     def test_is_worker_matches_kind_env(self, monkeypatch) -> None:
         flight = HostOneshotFlight(

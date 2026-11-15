@@ -51,27 +51,29 @@ class HostServiceRedeploy:
     def join(
         self, compose_id: str, app: Optional[App]
     ) -> Optional[Dict[str, Any]]:
-        """Wait for an in-flight oneshot instead of queueing a second rebuild.
+        """Join a living oneshot, or None when idle / this process is the worker."""
+        return self._join_flight(self.cli_name(compose_id, app), compose_id)
 
-        Workers return ``None`` so they perform the rebuild (flight state is
-        their own container id).
-        """
-        name = self.cli_name(compose_id, app)
+    def _join_flight(
+        self, name: str, compose_id: str
+    ) -> Optional[Dict[str, Any]]:
         flight = self._flight_for(name)
         if flight.is_worker():
             return None
         job_id = flight.peek_alive()
         if job_id is None:
             return None
+        self._say_waiting(name, job_id)
+        started = flight.join_alive(job_id)
+        return None if started is None else self.payload(compose_id, started)
+
+    @staticmethod
+    def _say_waiting(name: str, job_id: str) -> None:
         OperatorSay.say(
             f"{name} redeploy already in progress; waiting for job "
             f"{job_id[:12]}…",
             style="warn",
         )
-        started = flight.join_alive(job_id)
-        if started is None:
-            return None
-        return self.payload(compose_id, started)
 
     def argv(self, compose_id: str, app: Optional[App]) -> list[str]:
         return ["raft", "redeploy", self.cli_name(compose_id, app)]
