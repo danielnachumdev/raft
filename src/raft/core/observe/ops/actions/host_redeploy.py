@@ -1,9 +1,10 @@
-"""Detach ``raft redeploy <name>`` on the host from the always-on dashboard."""
+"""Host oneshot start / join for any service redeploy (UI vs CLI)."""
 
 from typing import Any, Dict, Optional
 
 from raft.core.core.models.app import App
 from raft.core.core.models.stack import Stack
+from raft.core.core.ui import OperatorSay
 from raft.core.platform.adapters.docker import (
     HostOneshotFlight,
     HostOneshotGate,
@@ -13,14 +14,16 @@ from raft.core.platform.adapters.shell import Shell
 
 
 class HostServiceRedeploy:
-    """Detached host oneshot for app / edge / controller redeploy (not dashboard).
+    """Single flight path for app / edge / dashboard / controller redeploy.
 
-    Always-on dashboard lacks a real passwd row for OpenSSH/git; host oneshot
-    mounts operator ``HOME`` + ``/etc/passwd`` (same as GithubDeployHostGit).
+    From the always-on dashboard: detach ``raft redeploy <name>`` on the host
+    (operator ``HOME`` + docker.sock; avoids blocking the serve request and
+    lets the dashboard container die during its own rebuild). Concurrent UI
+    starts coalesce on the same ``job_id``.
 
-    Sync ``run`` blocked the serve HTTP request past CDN/proxy timeouts, so the
-    UI failed while the rebuild continued. Detach + coalesce like dashboard
-    self-redeploy; SPA polls until the service is running again.
+    From host CLI: never detach — ``join`` a living oneshot for that name, or
+    rebuild in-process. Detached workers set ``RAFT_HOST_ONESHOT_KIND`` and
+    must not join their own flight (self-deadlock).
     """
 
     def __init__(
@@ -44,6 +47,33 @@ class HostServiceRedeploy:
             self.argv(compose_id, app), with_docker=True
         )
         return self.payload(compose_id, started)
+
+    def join(
+        self, compose_id: str, app: Optional[App]
+    ) -> Optional[Dict[str, Any]]:
+        """Join a living oneshot, or None when idle / this process is the worker."""
+        return self._join_flight(self.cli_name(compose_id, app), compose_id)
+
+    def _join_flight(
+        self, name: str, compose_id: str
+    ) -> Optional[Dict[str, Any]]:
+        flight = self._flight_for(name)
+        if flight.is_worker():
+            return None
+        job_id = flight.peek_alive()
+        if job_id is None:
+            return None
+        self._say_waiting(name, job_id)
+        started = flight.join_alive(job_id)
+        return None if started is None else self.payload(compose_id, started)
+
+    @staticmethod
+    def _say_waiting(name: str, job_id: str) -> None:
+        OperatorSay.say(
+            f"{name} redeploy already in progress; waiting for job "
+            f"{job_id[:12]}…",
+            style="warn",
+        )
 
     def argv(self, compose_id: str, app: Optional[App]) -> list[str]:
         return ["raft", "redeploy", self.cli_name(compose_id, app)]

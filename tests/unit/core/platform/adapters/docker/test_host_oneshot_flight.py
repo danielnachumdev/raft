@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock
 
 from raft.core.platform.adapters.docker import HostOneshotFlight
+from raft.core.platform.adapters.docker.host_oneshot_flight import KIND_ENV
 from raft.core.platform.adapters.docker.host_oneshot_flight_state import (
     HostOneshotFlightState,
 )
@@ -12,25 +13,54 @@ from tests.unit.base import RaftTestCase
 
 
 class TestHostOneshotFlight(RaftTestCase):
-    def test_start_fresh_records_job(self) -> None:
-        oneshot = MagicMock()
-        oneshot.start.return_value = "cid-fresh"
-        alive = MagicMock()
+    @staticmethod
+    def _idle_mocks(cid: str) -> tuple[MagicMock, MagicMock]:
+        oneshot, alive = MagicMock(), MagicMock()
+        oneshot.start.return_value = cid
         alive.running.return_value = False
+        return oneshot, alive
+
+    def test_start_fresh_records_job(self) -> None:
+        oneshot, alive = self._idle_mocks("cid-fresh")
+        kind = HostOneshotFlight.KIND_DASHBOARD_REDEPLOY
+        flight = HostOneshotFlight(self.tmp_path, kind, oneshot=oneshot, alive=alive)
+        started = flight.start(["raft", "redeploy", "dashboard"])
+        assert (started.job_id, started.coalesced) == ("cid-fresh", False)
+        oneshot.start.assert_called_once_with(
+            ["raft", "redeploy", "dashboard"], with_docker=True, env={KIND_ENV: kind}
+        )
+        assert HostOneshotFlightState(self.tmp_path, kind).read_job_id() == "cid-fresh"
+
+    def test_is_worker_matches_kind_env(self, monkeypatch) -> None:
         flight = HostOneshotFlight(
             self.tmp_path,
             HostOneshotFlight.KIND_DASHBOARD_REDEPLOY,
-            oneshot=oneshot,
+            oneshot=MagicMock(),
+            alive=MagicMock(),
+        )
+        monkeypatch.delenv(KIND_ENV, raising=False)
+        assert flight.is_worker() is False
+        monkeypatch.setenv(KIND_ENV, "other-kind")
+        assert flight.is_worker() is False
+        monkeypatch.setenv(KIND_ENV, HostOneshotFlight.KIND_DASHBOARD_REDEPLOY)
+        assert flight.is_worker() is True
+
+    def test_join_alive_skips_when_worker(self, monkeypatch) -> None:
+        state = HostOneshotFlightState(self.tmp_path, "redeploy-dashboard")
+        state.write_job_id("cid-self")
+        alive = MagicMock()
+        alive.running.return_value = True
+        flight = HostOneshotFlight(
+            self.tmp_path,
+            "redeploy-dashboard",
+            oneshot=MagicMock(),
             alive=alive,
+            state=state,
         )
-        started = flight.start(["raft", "redeploy", "dashboard"])
-        assert started.job_id == "cid-fresh"
-        assert started.coalesced is False
-        oneshot.start.assert_called_once()
-        state = HostOneshotFlightState(
-            self.tmp_path, HostOneshotFlight.KIND_DASHBOARD_REDEPLOY
-        )
-        assert state.read_job_id() == "cid-fresh"
+        monkeypatch.setenv(KIND_ENV, "redeploy-dashboard")
+        assert flight.join_alive(poll_seconds=0.01, timeout=2.0) is None
+        alive.running.assert_not_called()
+        assert state.read_job_id() == "cid-self"
 
     def test_second_start_coalesces_while_alive(self) -> None:
         oneshot = MagicMock()
