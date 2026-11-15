@@ -1,6 +1,6 @@
 """Apply refuses cross-source takeover of metadata.name."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import yaml
 
@@ -56,8 +56,12 @@ class TestApplySourceOwnership(ApplyTestCase):
             path="services/demo-api/checkout",
             public_host="demo-api.test",
         )
-        with patch("raft.core.lifecycle.apply.service.Orchestrator"):
-            AppApply(load_stack(self.tmp_path)).delete("demo-api")
+        with patch("raft.core.lifecycle.apply.delete.Orchestrator"):
+            with patch(
+                "raft.core.lifecycle.apply.delete.DockerStack",
+                return_value=MagicMock(),
+            ):
+                AppApply(load_stack(self.tmp_path)).delete("demo-api")
         path = self._write_manifest(self._docker_manifest("demo-api"))
         name = AppApply(load_stack(self.tmp_path)).apply_file(path, deploy=False)
         assert name == "demo-api"

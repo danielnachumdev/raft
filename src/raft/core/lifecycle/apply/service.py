@@ -11,7 +11,7 @@ from raft.core.platform.adapters.shell import Shell
 from raft.core.lifecycle.deploy.orchestrator import Orchestrator
 from raft.core.core.errors.cta import OperatorError
 from raft.core.core.errors.domain import DomainErrors
-from raft.core.platform.locking import AppAndStackLocks, AppDeployLock
+from raft.core.platform.locking import AppDeployLock
 from raft.core.core.models.app_document import AppDocument
 from raft.core.core.models.depends_cycle import DependsOnCycleGuard
 from raft.core.core.models.contract_path import ContractRelPath
@@ -20,6 +20,7 @@ from raft.core.core.models.registry import AppRegistry
 from raft.core.core.models.stack import Stack, load_stack
 from raft.core.platform.secrets import AppSecretsLayout
 from raft.core.core.ui import OperatorSay
+from .delete import AppDelete
 from .git_checkout import GitManifestCheckout
 from .preprocess.yaml_loader import ManifestYamlLoader
 
@@ -78,14 +79,8 @@ class AppApply:
             shutil.rmtree(tmp, ignore_errors=True)
 
     def delete(self, name: str) -> None:
-        with AppAndStackLocks(self.stack.root, name):
-            if not AppRegistry(self.stack.root).delete(name):
-                known = ", ".join(a.name for a in self.stack.apps) or "(none)"
-                raise DomainErrors.app_not_applied(name, known)
-            OperatorSay.say(f"deleted {name} from registry", style="ok")
-            fresh = load_stack(self.stack.root)
-            Orchestrator(fresh).render()
-            self._announce_delete_render(name, fresh)
+        """Remove registry + durable tree + Compose unit + local deploy key."""
+        AppDelete(self.stack).run(name)
 
     def _register_manifest(
         self,
@@ -199,17 +194,6 @@ class AppApply:
             OperatorSay.say(f"applied {name} from {from_label} → {rel}", style="ok")
         else:
             OperatorSay.say(f"applied {name} → {rel}", style="ok")
-
-    @staticmethod
-    def _announce_delete_render(name: str, fresh: Stack) -> None:
-        if fresh.apps:
-            OperatorSay.say(
-                "re-rendered generated/; remove the Compose service if it is still running "
-                f"(docker compose -f {fresh.root / 'compose.yaml'} rm -sf {name})",
-                style="info",
-            )
-        else:
-            OperatorSay.say("re-rendered generated/ (no apps applied)", style="info")
 
     def _deploy(
         self,

@@ -130,6 +130,19 @@ class DockerComposeLifecycle:
         except OperatorError as exc:
             raise self.enrich_compose_failure(exc, services=services) from exc
 
+    def remove_service(self, service: str) -> None:
+        """Stop and delete a Compose service unit (``rm -sf``)."""
+        logger.info("compose rm -sf %s", service)
+        try:
+            CheckedCommands.run_compose(
+                self.sh,
+                ("rm", "-sf", service),
+                action=f"remove service {service}",
+                stream=True,
+            )
+        except OperatorError as exc:
+            raise self.enrich_compose_failure(exc, services=(service,)) from exc
+
     @staticmethod
     def _start_stack_args(
         services: Optional[Sequence[str]], *, build: bool = False
