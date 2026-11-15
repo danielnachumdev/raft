@@ -76,6 +76,20 @@ class TestHostOneshot:
         assert cmd[:4] == ["docker", "run", "-d", "--rm"]
         assert cmd[-3:] == ["raft", "redeploy", "dashboard"]
 
+    def test_start_injects_extra_env(self) -> None:
+        shell = MagicMock()
+        shell.run.return_value = MagicMock(stdout="cid\n")
+        oneshot = HostOneshot(
+            shell, host_home="/home/demo", uid=1, gid=1, image="img"
+        )
+        oneshot.start(
+            ["raft", "redeploy", "dashboard"],
+            env={"RAFT_HOST_ONESHOT_KIND": "redeploy-dashboard"},
+        )
+        cmd = shell.run.call_args.args[0]
+        assert "-e" in cmd
+        assert "RAFT_HOST_ONESHOT_KIND=redeploy-dashboard" in cmd
+
     def test_start_refuses_empty_id(self) -> None:
         shell = MagicMock()
         shell.run.return_value = MagicMock(stdout="\n")

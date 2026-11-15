@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Optional, Sequence
+from typing import List, Mapping, Optional, Sequence
 
 from raft.core.core.errors.cta import OperatorError
 from raft.core.platform.adapters.shell import Shell
@@ -44,8 +44,11 @@ class HostOneshot:
         *,
         timeout: float,
         with_docker: bool = False,
+        env: Optional[Mapping[str, str]] = None,
     ) -> None:
-        cmd = self.docker_argv(argv, with_docker=with_docker, detach=False)
+        cmd = self.docker_argv(
+            argv, with_docker=with_docker, detach=False, env=env
+        )
         logger.info(
             "host oneshot run home=%s user=%s:%s image=%s docker=%s cmd=%s",
             self._ids.host_home,
@@ -61,9 +64,17 @@ class HostOneshot:
             raise OperatorError(self._failures.message(exc)) from exc
         logger.info("host oneshot finished home=%s", self._ids.host_home)
 
-    def start(self, argv: Sequence[str], *, with_docker: bool = True) -> str:
+    def start(
+        self,
+        argv: Sequence[str],
+        *,
+        with_docker: bool = True,
+        env: Optional[Mapping[str, str]] = None,
+    ) -> str:
         """Detach (``docker run -d``); return container id. Job outlives caller."""
-        cmd = self.docker_argv(argv, with_docker=with_docker, detach=True)
+        cmd = self.docker_argv(
+            argv, with_docker=with_docker, detach=True, env=env
+        )
         logger.info(
             "host oneshot start home=%s user=%s:%s image=%s docker=%s cmd=%s",
             self._ids.host_home,
@@ -99,19 +110,29 @@ class HostOneshot:
         *,
         with_docker: bool,
         detach: bool,
+        env: Optional[Mapping[str, str]] = None,
     ) -> List[str]:
         return [
-            *self._docker_prefix(with_docker=with_docker, detach=detach),
+            *self._docker_prefix(
+                with_docker=with_docker, detach=detach, env=env
+            ),
             self._ids.image,
             *argv,
         ]
 
-    def _docker_prefix(self, *, with_docker: bool, detach: bool) -> List[str]:
+    def _docker_prefix(
+        self,
+        *,
+        with_docker: bool,
+        detach: bool,
+        env: Optional[Mapping[str, str]] = None,
+    ) -> List[str]:
         prefix = ["docker", "run"]
         if detach:
             prefix.append("-d")
         prefix.append("--rm")
         prefix.extend(self._user_home_flags())
+        prefix.extend(self._extra_env_flags(env))
         if with_docker:
             prefix.extend(HostOneshotDockerMounts(self._ids.docker_gid).flags())
         return prefix
@@ -135,6 +156,18 @@ class HostOneshot:
             "-w",
             home,
         ]
+
+    @staticmethod
+    def _extra_env_flags(env: Optional[Mapping[str, str]]) -> List[str]:
+        if not env:
+            return []
+        flags: List[str] = []
+        for key in sorted(env):
+            value = env[key]
+            if not key or value is None:
+                continue
+            flags.extend(["-e", f"{key}={value}"])
+        return flags
 
     @staticmethod
     def _failure_message(exc: BaseException) -> str:

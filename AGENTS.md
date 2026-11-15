@@ -58,7 +58,7 @@ Overlapping apply/redeploy/render tears tmp names, upstreams, and `generated/`. 
 
 Wait up to `RAFT_LOCK_TIMEOUT_SECONDS` (default **300**). Nesting in-process re-enters. `doctor` / `status` do not take these locks.
 
-**Host oneshot / self-redeploy deadlock rule:** claim flight under a short `FifoLock`, record/`docker run -d`, **release before** the child takes `stack.lock`. Never hold `fifo-host-job-*` across a rebuild. Concurrent in-dashboard Redeploy returns the same `job_id` (`coalesced`) while the oneshot container is alive — SPA busy-state is UX only. GitHub assist deploys coalesce per `full_name` in-process (one pending/running job).
+**Host oneshot / self-redeploy deadlock rule:** claim flight under a short `FifoLock`, record/`docker run -d`, **release before** the child takes `stack.lock`. Never hold `fifo-host-job-*` across a rebuild. Concurrent in-dashboard Redeploy returns the same `job_id` (`coalesced`) while the oneshot container is alive — SPA busy-state is UX only. Detached workers get `RAFT_HOST_ONESHOT_KIND=<kind>` and must **not** `join_alive` that flight (flight state is their own container — self-wait until timeout). Host CLI without that env still joins an in-flight UI oneshot. GitHub assist deploys coalesce per `full_name` in-process (one pending/running job).
 
 ---
 

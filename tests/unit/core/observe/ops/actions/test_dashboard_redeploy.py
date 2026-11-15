@@ -36,6 +36,7 @@ class TestDashboardRedeploy(RaftTestCase):
             StackMakers.make_stack(self.tmp_path, ()), shell=MagicMock()
         )
         flight = MagicMock()
+        flight.is_worker.return_value = False
         flight.peek_alive.return_value = None
         with patch.object(helper, "flight", return_value=flight):
             assert helper.join_oneshot("raft-dashboard") is None
@@ -45,6 +46,7 @@ class TestDashboardRedeploy(RaftTestCase):
             StackMakers.make_stack(self.tmp_path, ()), shell=MagicMock()
         )
         flight = MagicMock()
+        flight.is_worker.return_value = False
         flight.peek_alive.return_value = "cid-gone"
         flight.join_alive.return_value = None
         with patch.object(helper, "flight", return_value=flight):
@@ -58,6 +60,7 @@ class TestDashboardRedeploy(RaftTestCase):
             StackMakers.make_stack(self.tmp_path, ()), shell=MagicMock()
         )
         flight = MagicMock()
+        flight.is_worker.return_value = False
         flight.peek_alive.return_value = "cid-live-xyz"
         flight.join_alive.return_value = MagicMock(
             job_id="cid-live-xyz", coalesced=True
@@ -69,6 +72,22 @@ class TestDashboardRedeploy(RaftTestCase):
                 result = helper.join_oneshot("raft-dashboard")
         assert result is not None
         assert result["coalesced"] is True
+
+    def test_join_oneshot_skips_when_this_process_is_worker(self) -> None:
+        helper = DashboardRedeploy(
+            StackMakers.make_stack(self.tmp_path, ()), shell=MagicMock()
+        )
+        flight = MagicMock()
+        flight.is_worker.return_value = True
+        flight.peek_alive.return_value = "cid-self"
+        with patch.object(helper, "flight", return_value=flight):
+            with patch(
+                "raft.core.observe.ops.actions.dashboard_redeploy.OperatorSay.say"
+            ) as say:
+                assert helper.join_oneshot("raft-dashboard") is None
+        flight.peek_alive.assert_not_called()
+        flight.join_alive.assert_not_called()
+        say.assert_not_called()
 
 
 class TestServiceActionsDashboard(RaftTestCase):
@@ -105,6 +124,17 @@ class TestServiceActionsDashboard(RaftTestCase):
         orch.redeploy_dashboard.assert_not_called()
         helper.start_oneshot.assert_called_once_with("raft-dashboard", gate)
         assert result == payload
+
+    def test_redeploy_worker_rebuilds_instead_of_joining_self(self) -> None:
+        """Detached oneshot must rebuild; joining its own job_id deadlocks."""
+        self._write_enabled(True)
+        actions, _docker, orch = self._actions()
+        with self._patched(in_dashboard=False, join=None) as (_gate, helper):
+            helper.join_oneshot.return_value = None
+            result = actions.redeploy("dashboard")
+        helper.join_oneshot.assert_called_once_with("raft-dashboard")
+        orch.redeploy_dashboard.assert_called_once()
+        assert result["service"] == "raft-dashboard"
 
     def _payload(self, *, coalesced: bool, job_id: str) -> dict:
         return {

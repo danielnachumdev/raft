@@ -35,8 +35,14 @@ class DashboardRedeploy:
         return self.payload(compose_id, started)
 
     def join_oneshot(self, compose_id: str) -> Optional[Dict[str, Any]]:
-        """Wait for an in-flight UI oneshot instead of queueing a second rebuild."""
+        """Wait for an in-flight UI oneshot instead of queueing a second rebuild.
+
+        The detached worker itself must not join: flight state points at its
+        own container, which would self-deadlock until the coalesce timeout.
+        """
         flight = self.flight()
+        if flight.is_worker():
+            return None
         job_id = flight.peek_alive()
         if job_id is None:
             return None

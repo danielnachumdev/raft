@@ -1,6 +1,7 @@
 """Single-flight coalesce for detached ``HostOneshot.start`` jobs."""
 
 import logging
+import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,6 +17,9 @@ from .host_oneshot_alive import HostOneshotAlive
 from .host_oneshot_flight_state import HostOneshotFlightState
 
 logger = logging.getLogger(__name__)
+
+# Injected into detached flight workers so they rebuild instead of joining self.
+KIND_ENV = "RAFT_HOST_ONESHOT_KIND"
 
 
 @dataclass(frozen=True)
@@ -38,6 +42,9 @@ class HostOneshotFlight:
     that same id (``coalesced=True``) instead of spawning another oneshot.
     Host CLI callers can ``join_alive`` to wait for that job instead of
     queueing a second rebuild behind ``stack.lock``.
+
+    Detached workers get ``RAFT_HOST_ONESHOT_KIND=<kind>`` so they recognize
+    themselves and do not ``join_alive`` their own container (self-deadlock).
     """
 
     KIND_DASHBOARD_REDEPLOY = HostJobKinds.DASHBOARD_REDEPLOY
@@ -58,6 +65,10 @@ class HostOneshotFlight:
         self._oneshot = oneshot or HostOneshot(self._shell)
         self._alive = alive or HostOneshotAlive(self._shell)
         self._state = state or HostOneshotFlightState(root, kind)
+
+    def is_worker(self) -> bool:
+        """True when this process is the detached oneshot for ``self.kind``."""
+        return (os.environ.get(KIND_ENV) or "").strip() == self.kind
 
     def start(
         self, argv: Sequence[str], *, with_docker: bool = True
@@ -80,7 +91,13 @@ class HostOneshotFlight:
         poll_seconds: float = 2.0,
         timeout: Optional[float] = None,
     ) -> Optional[HostOneshotStart]:
-        """Wait out a living oneshot; ``None`` when nothing is in flight."""
+        """Wait out a living oneshot; ``None`` when nothing is in flight.
+
+        Workers (``is_worker``) return ``None`` immediately so they perform the
+        rebuild instead of waiting for their own container id.
+        """
+        if self.is_worker():
+            return None
         cid = job_id or self.peek_alive()
         if cid is None:
             return None
@@ -130,7 +147,11 @@ class HostOneshotFlight:
     def _start_fresh(
         self, argv: Sequence[str], *, with_docker: bool
     ) -> HostOneshotStart:
-        job_id = self._oneshot.start(argv, with_docker=with_docker)
+        job_id = self._oneshot.start(
+            argv,
+            with_docker=with_docker,
+            env={KIND_ENV: self.kind},
+        )
         self._state.write_job_id(job_id)
         logger.info(
             "host oneshot flight started kind=%s job_id=%s",
