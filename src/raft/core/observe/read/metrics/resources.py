@@ -55,7 +55,12 @@ class MetricsRead:
         )
         since_ts = MetricsJsonlReader.parse_ts(since) if since else None
         samples = self._reader.samples_in_window(
-            from_ts=resolved.from_ts, since=since_ts, to_ts=resolved.to_ts
+            from_ts=resolved.from_ts,
+            since=since_ts,
+            to_ts=resolved.to_ts,
+            bucket_seconds=resolved.bucket_seconds(
+                max_points, since=since_ts, earliest=query.earliest
+            ),
         )
         return self._finish_payload(samples, resolved, query, services, max_points)
 

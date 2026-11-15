@@ -2,7 +2,10 @@
 
 from unittest.mock import MagicMock
 
-from raft.core.platform.adapters.docker.bounded_logs import BoundedDockerLogs
+from raft.core.platform.adapters.docker.bounded_logs import (
+    LOG_FETCH_RECENT_TAIL,
+    BoundedDockerLogs,
+)
 
 
 class _Stdout:
@@ -22,6 +25,14 @@ class _Stdout:
             self._blank_then = ""
             return out
         return ""
+
+
+def _proc(lines: list[str]) -> MagicMock:
+    proc = MagicMock()
+    proc.stdout = _Stdout(lines)
+    proc.poll.return_value = 0
+    proc.args = ["docker", "logs"]
+    return proc
 
 
 class TestBoundedDockerLogs:
@@ -48,15 +59,60 @@ class TestBoundedDockerLogs:
             "cid",
         ]
 
-    def test_since_omits_tail(self) -> None:
+    def test_since_uses_tail_when_it_reaches_cursor(self) -> None:
         shell = MagicMock()
-        proc = MagicMock()
-        proc.stdout = _Stdout(["2026-10-14T12:00:00Z a\n"])
-        proc.poll.return_value = 0
-        proc.args = ["docker", "logs"]
-        shell.popen.return_value = proc
-        BoundedDockerLogs(shell).fetch("cid", since="2026-10-14T11:00:00Z")
-        assert "--tail" not in shell.popen.call_args.args[0]
+        shell.popen.return_value = _proc(
+            ["2026-10-14T10:59:59.5Z old\n", "2026-10-14T12:00:00Z a\n"]
+        )
+        text = BoundedDockerLogs(shell).fetch(
+            "cid", since="2026-10-14T11:00:00.000000000Z", bootstrap_tail=50
+        )
+        assert "a" in text
+        assert shell.popen.call_count == 1
+        args = shell.popen.call_args.args[0]
+        assert args[args.index("--tail") + 1] == "50"
+
+    def test_recent_tail_is_capped(self) -> None:
+        shell = MagicMock()
+        shell.popen.return_value = _proc(["2026-10-14T10:00:00Z a\n"])
+        BoundedDockerLogs(shell).fetch(
+            "cid", since="2026-10-14T11:00:00Z", bootstrap_tail=100_000
+        )
+        args = shell.popen.call_args.args[0]
+        assert args[args.index("--tail") + 1] == str(LOG_FETCH_RECENT_TAIL)
+
+    def test_since_falls_back_when_tail_starts_after_cursor(self) -> None:
+        shell = MagicMock()
+        shell.popen.side_effect = [
+            _proc(["2026-10-14T12:00:00Z newest\n"]),
+            _proc(["2026-10-14T11:30:00Z gap\n", "2026-10-14T12:00:00Z newest\n"]),
+        ]
+        text = BoundedDockerLogs(shell).fetch("cid", since="2026-10-14T11:00:00Z")
+        assert "gap" in text
+        assert shell.popen.call_count == 2
+        since_args = shell.popen.call_args.args[0]
+        assert "--tail" not in since_args
+        assert since_args[since_args.index("--since") + 1] == "2026-10-14T11:00:00Z"
+
+    def test_since_falls_back_when_tail_is_truncated(self) -> None:
+        shell = MagicMock()
+        shell.popen.side_effect = [
+            _proc(["2026-10-14T10:00:00Z " + ("x" * 50) + "\n"]),
+            _proc(["2026-10-14T12:00:00Z a\n"]),
+        ]
+        text = BoundedDockerLogs(shell).fetch(
+            "cid", since="2026-10-14T11:00:00Z", max_bytes=40
+        )
+        assert text == "2026-10-14T12:00:00Z a"
+        assert shell.popen.call_count == 2
+
+    def test_since_falls_back_when_tail_command_fails(self) -> None:
+        shell = MagicMock()
+        failed = _proc(["2026-10-14T10:00:00Z a\n"])
+        failed.poll.return_value = 1
+        shell.popen.side_effect = [failed, _proc(["2026-10-14T12:00:00Z b\n"])]
+        text = BoundedDockerLogs(shell).fetch("cid", since="2026-10-14T11:00:00Z")
+        assert "b" in text
 
     def test_max_bytes_exact_fill_exits_loop(self) -> None:
         shell = MagicMock()
@@ -66,7 +122,7 @@ class TestBoundedDockerLogs:
         proc.poll.return_value = 0
         proc.args = ["docker", "logs"]
         shell.popen.return_value = proc
-        text = BoundedDockerLogs(shell).fetch("cid", since="t", max_bytes=10)
+        text = BoundedDockerLogs(shell).fetch("cid", since="", max_bytes=10)
         assert text == "1234567890"
         assert "SHOULD" not in text
 
@@ -82,7 +138,7 @@ class TestBoundedDockerLogs:
         proc.poll.return_value = None
         proc.args = ["docker", "logs"]
         shell.popen.return_value = proc
-        text = BoundedDockerLogs(shell).fetch("cid", since="t", max_bytes=40)
+        text = BoundedDockerLogs(shell).fetch("cid", since="", max_bytes=40)
         assert "short" in text
         assert "xxx" not in text
         proc.kill.assert_called()
@@ -95,7 +151,7 @@ class TestBoundedDockerLogs:
         proc.poll.return_value = None
         proc.args = ["docker", "logs", "cid"]
         shell.popen.return_value = proc
-        text = BoundedDockerLogs(shell).fetch("cid", since="t", timeout=0.05, max_bytes=9999)
+        text = BoundedDockerLogs(shell).fetch("cid", since="", timeout=0.05, max_bytes=9999)
         assert text == ""
         proc.kill.assert_called()
 
@@ -129,10 +185,10 @@ class TestBoundedDockerLogs:
         proc = MagicMock()
         proc.stdout = _Stdout([], blank_then="2026-10-14T12:00:00Z late\n")
         # First blank: still running; after late line: exited.
-        proc.poll.side_effect = [None, 0, 0]
+        proc.poll.side_effect = [None, 0, 0, 0]
         proc.args = ["docker", "logs"]
         shell.popen.return_value = proc
-        text = BoundedDockerLogs(shell).fetch("cid", since="t", timeout=2.0)
+        text = BoundedDockerLogs(shell).fetch("cid", since="", timeout=2.0)
         assert "late" in text
 
     def test_null_stdout(self) -> None:
@@ -142,4 +198,4 @@ class TestBoundedDockerLogs:
         proc.poll.return_value = 0
         proc.args = ["docker", "logs"]
         shell.popen.return_value = proc
-        assert BoundedDockerLogs(shell).fetch("cid", since="t") == ""
+        assert BoundedDockerLogs(shell).fetch("cid", since="") == ""

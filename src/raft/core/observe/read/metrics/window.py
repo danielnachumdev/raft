@@ -10,6 +10,7 @@ from .jsonl import MetricsJsonlReader
 MIN_WINDOW_SECONDS = 60
 DEFAULT_WINDOW_SECONDS = 3600
 DEFAULT_MAX_POINTS = 480
+BUCKET_OVERSAMPLE = 2
 PRESET_WINDOW_SECONDS = (900, 3600, 21600, 86400, 604800)
 WINDOW_CHOICES = PRESET_WINDOW_SECONDS
 
@@ -40,6 +41,24 @@ class ResolvedMetricsRange:
     window_seconds: int
     clamped: bool
     clamp_message: Optional[str]
+
+    def bucket_seconds(
+        self,
+        max_points: int,
+        *,
+        since: Optional[datetime] = None,
+        earliest: Optional[datetime] = None,
+    ) -> float:
+        """Sampling bucket for a full fetch; ``0`` keeps every sample.
+
+        Spans only retained data (``earliest``) and oversamples so per-series
+        index downsampling still makes the final ``max_points`` cut.
+        """
+        if since is not None or max_points < 1:
+            return 0.0
+        start = max(self.from_ts, earliest) if earliest else self.from_ts
+        span = (self.to_ts - start).total_seconds()
+        return max(0.0, span / float(max_points * BUCKET_OVERSAMPLE))
 
 
 class MetricsRangeQuery:

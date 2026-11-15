@@ -3,9 +3,11 @@
 import logging
 import subprocess
 import time
+from dataclasses import dataclass
 from typing import Optional
 
 from ..shell import Shell
+from .logs_tail_coverage import LogsTailCoverage
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +15,15 @@ logger = logging.getLogger(__name__)
 DEFAULT_LOG_FETCH_TIMEOUT_SECONDS = 15.0
 DEFAULT_LOG_FETCH_MAX_BYTES = 512 * 1024
 DEFAULT_LOG_FETCH_BOOTSTRAP_TAIL = 2000
+# Shipper revisits each service every few seconds; a short tail usually reaches
+# the cursor, and ``docker logs`` cost grows with every line it emits.
+LOG_FETCH_RECENT_TAIL = 500
+
+
+@dataclass(frozen=True)
+class StreamedLogs:
+    text: str
+    complete: bool
 
 
 class BoundedDockerLogs:
@@ -33,14 +44,34 @@ class BoundedDockerLogs:
         """Return ``docker logs --timestamps`` text capped by time and bytes.
 
         Empty ``since`` uses ``--tail`` so a first ship cannot dump container
-        history. With ``since``, output is streamed and truncated at
-        ``max_bytes`` on a complete line so the cursor can advance and the
-        next tick continues without re-holding the backlog in memory.
+        history. With ``since``, a ``--tail`` slice is tried first: json-file
+        ``--since`` re-scans the whole log file (seconds on large logs), while
+        ``--tail`` reads from the end. Only when that slice does not reach back
+        to ``since`` is the full ``--since`` stream used, truncated at
+        ``max_bytes`` on a complete line so the cursor can advance.
         """
         if not name:
             return ""
+        cursor = since.strip()
+        if cursor:
+            recent = self._tail_reaching(
+                name, cursor, tail=bootstrap_tail, timeout=timeout, max_bytes=max_bytes
+            )
+            if recent is not None:
+                return recent
         args = self._args(name, since=since, bootstrap_tail=bootstrap_tail)
-        return self._stream(args, timeout=timeout, max_bytes=max_bytes)
+        return self._stream(args, timeout=timeout, max_bytes=max_bytes).text
+
+    def _tail_reaching(
+        self, name: str, cursor: str, *, tail: int, timeout: float, max_bytes: int
+    ) -> Optional[str]:
+        args = self._args(
+            name, since="", bootstrap_tail=min(tail, LOG_FETCH_RECENT_TAIL)
+        )
+        result = self._stream(args, timeout=timeout, max_bytes=max_bytes)
+        if result.complete and LogsTailCoverage.reaches(result.text, cursor):
+            return result.text
+        return None
 
     @staticmethod
     def _args(name: str, *, since: str, bootstrap_tail: int) -> list[str]:
@@ -53,7 +84,9 @@ class BoundedDockerLogs:
         args.append(name)
         return args
 
-    def _stream(self, args: list[str], *, timeout: float, max_bytes: int) -> str:
+    def _stream(
+        self, args: list[str], *, timeout: float, max_bytes: int
+    ) -> StreamedLogs:
         proc = self._sh.popen(args)
         limit = max(0.1, timeout)
         chunks: list[str] = []
@@ -65,9 +98,13 @@ class BoundedDockerLogs:
                 deadline=time.monotonic() + limit,
                 timeout=limit,
             )
+            complete = not truncated and total < max_bytes and proc.poll() == 0
         finally:
             self._stop(proc)
-        return self._finish(chunks, truncated=truncated, total=total, max_bytes=max_bytes, args=args)
+        text = self._finish(
+            chunks, truncated=truncated, total=total, max_bytes=max_bytes, args=args
+        )
+        return StreamedLogs(text=text, complete=complete)
 
     def _finish(
         self,
