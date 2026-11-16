@@ -288,6 +288,9 @@ class TestDockerLifecycle(DockerTestCase):
 
     def _assert_rebuild_force_recreates(self, service: str) -> None:
         self.shell.compose.assert_any_call(
-            "up", "-d", "--build", "--no-deps", "--force-recreate", service,
+            "build", "--pull", service, capture=False, check=False,
+        )
+        self.shell.compose.assert_any_call(
+            "up", "-d", "--no-deps", "--no-build", "--force-recreate", service,
             capture=False, check=False,
         )
