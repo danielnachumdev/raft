@@ -60,6 +60,14 @@ class TestDockerLifecyclePull(DockerTestCase):
             "tag", f"{_DEMO}:abc", f"{_DEMO}:main", capture=True, check=False
         )
 
+    def test_prepare_pulled_image_always_pulls_when_local(self) -> None:
+        self.shell.docker.return_value = self.ok("sha256:local\n")
+        app = AppMakers.make_app("demo-api", source="docker", image=_DEMO, ref="main")
+        self.docker.prepare_pulled_image(app, pull_ref=f"{_DEMO}:abc")
+        self.shell.docker.assert_any_call(
+            "pull", f"{_DEMO}:abc", capture=True, check=False
+        )
+
     def test_recreate_pulled_service_unauthorized(self) -> None:
         def docker(*args, **_kwargs):
             if args[:2] == ("image", "inspect"):

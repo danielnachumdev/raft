@@ -74,17 +74,15 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
         )
 
     def rebuild_service(self, service: str) -> None:
+        """``compose build --pull`` then recreate without a second build.
+
+        Split from ``up --build`` so registry ``FROM`` tags (e.g. ``:latest``)
+        are refreshed the same way as :meth:`build_services`, and so callers can
+        prepare the image while an old container is still serving.
+        """
         logger.info("rebuild service %s", service)
-        self._drain_compose(service)
-        try:
-            CheckedCommands.run_compose(
-                self.sh,
-                ("up", "-d", "--build", "--no-deps", "--force-recreate", service),
-                action=f"rebuild service {service}",
-                stream=True,
-            )
-        except OperatorError as exc:
-            raise self.enrich_compose_failure(exc, services=(service,)) from exc
+        self.build_services((service,))
+        self.recreate_service(service)
 
     def recreate_pulled_service(self, app: App, *, pull_ref: str) -> None:
         pin = app.compose_pin_image
@@ -94,10 +92,18 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
             app.compose_id,
             pin,
         )
-        self._pull_and_tag(app, pull_ref=pull_ref, pin=pin)
-        self._force_recreate_service(app.compose_id)
+        # Cold/ensure paths may skip pull when the pin ref is already local.
+        self._pull_and_tag(app, pull_ref=pull_ref, pin=pin, always=False)
+        self.recreate_service(app.compose_id)
 
-    def _force_recreate_service(self, compose_id: str) -> None:
+    def prepare_pulled_image(self, app: App, *, pull_ref: str) -> None:
+        """Always pull ``pull_ref`` and retag to the compose pin (no bounce)."""
+        pin = app.compose_pin_image
+        logger.info("prepare pulled image %s (pin %s)", pull_ref, pin)
+        self._pull_and_tag(app, pull_ref=pull_ref, pin=pin, always=True)
+
+    def recreate_service(self, compose_id: str) -> None:
+        """Force-recreate a compose unit from the already-built/pinned image."""
         self._drain_compose(compose_id)
         try:
             CheckedCommands.run_compose(
@@ -121,8 +127,10 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
 
         ServiceLogsHooks.before_compose_recreate(self.stack, compose_id, self)
 
-    def _pull_and_tag(self, app: App, *, pull_ref: str, pin: str) -> None:
-        self._pull_if_missing(app, pull_ref)
+    def _pull_and_tag(
+        self, app: App, *, pull_ref: str, pin: str, always: bool = False
+    ) -> None:
+        self._pull_image(app, pull_ref, always=always)
         if pull_ref != pin:
             CheckedCommands.run_docker(
                 self.sh,
@@ -130,8 +138,8 @@ class DockerStack(DockerComposeLifecycle, DockerInspect, DockerImages, DockerEdg
                 action=f"tag {pull_ref} as {pin}",
             )
 
-    def _pull_if_missing(self, app: App, pull_ref: str) -> None:
-        if self.image_present(pull_ref):
+    def _pull_image(self, app: App, pull_ref: str, *, always: bool = False) -> None:
+        if not always and self.image_present(pull_ref):
             logger.info("image %s already present; skip pull", pull_ref)
             return
         result = self.sh.docker("pull", pull_ref, capture=True, check=False)

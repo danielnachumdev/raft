@@ -46,8 +46,10 @@ class TestDeploymentMethodSelection(OrchestratorTestCase):
         self.stub_http_ready(orch.http)
         with patch.object(orch, "sync"):
             orch.redeploy_app("app")
+        orch.docker.build_services.assert_called_once_with(("app",))
         orch.docker.stop_service.assert_called_once_with("app")
-        orch.docker.rebuild_service.assert_called_once_with("app")
+        orch.docker.recreate_service.assert_called_once_with("app")
+        orch.docker.rebuild_service.assert_not_called()
         orch.docker.run_tmp.assert_not_called()
         orch.docker.remove_container.assert_called_once()
 

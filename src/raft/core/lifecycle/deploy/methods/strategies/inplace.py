@@ -9,7 +9,11 @@ logger = logging.getLogger(__name__)
 
 
 class InPlaceDeployment(DeploymentMethod):
-    """Resource-focused: never run ``*_tmp`` beside the live generation."""
+    """Resource-focused: never run ``*_tmp`` beside the live generation.
+
+    Image prepare (``compose build --pull`` or registry pull) runs **before**
+    stopping the live unit so a failed prepare leaves the old container up.
+    """
 
     @property
     def type_id(self) -> str:
@@ -20,8 +24,9 @@ class InPlaceDeployment(DeploymentMethod):
         self._sync(ctx)
         with RedeployingWindow(ctx.support.stack.root, ctx.app.name):
             self._drop_tmp_if_any(ctx)
+            self._prepare_image(ctx)
             self._stop_old(ctx)
-            self._start_new(ctx)
+            self._activate_prepared(ctx)
             ctx.support.finish_app_deploy(ctx.app, done="redeployed")
 
     def deploy_when_down(self, ctx: DeploymentContext) -> None:
@@ -41,27 +46,31 @@ class InPlaceDeployment(DeploymentMethod):
     def _drop_tmp_if_any(self, ctx: DeploymentContext) -> None:
         ctx.support.docker.remove_container(ctx.app.tmp_container)
 
+    def _prepare_image(self, ctx: DeploymentContext) -> None:
+        """Build or pull the new image while the old container still serves."""
+        app = ctx.app
+        if app.source == "docker":
+            pull_ref = app.image_ref(self._wanted_tag(ctx))
+            logger.info(
+                "pull steady image for %s (%s) before stop", app.name, pull_ref
+            )
+            ctx.support.docker.prepare_pulled_image(app, pull_ref=pull_ref)
+            return
+        logger.info("build steady service %s before stop (new code)", app.name)
+        ctx.support.docker.build_services((app.compose_id,))
+
     def _stop_old(self, ctx: DeploymentContext) -> None:
-        logger.info("stop %s before in-place rebuild", ctx.app.compose_id)
+        logger.info("stop %s before in-place recreate", ctx.app.compose_id)
         # Park before stop so a router reload cannot resolve a missing Compose DNS name.
         ctx.support.nginx.point_absent(ctx.app, reload=True)
         ctx.support.docker.stop_service(ctx.app.compose_id)
 
-    def _start_new(self, ctx: DeploymentContext) -> None:
-        self._rebuild_steady(ctx)
+    def _activate_prepared(self, ctx: DeploymentContext) -> None:
+        logger.info("recreate prepared service %s", ctx.app.name)
+        ctx.support.docker.recreate_service(ctx.app.compose_id)
         ctx.support.nginx.point_at(ctx.app, ctx.app.compose_id)
         ctx.support.docker.nginx_test_and_reload()
         ctx.support._wait_app_ready(ctx.app)
-
-    def _rebuild_steady(self, ctx: DeploymentContext) -> None:
-        app = ctx.app
-        if app.source == "docker":
-            pull_ref = app.image_ref(self._wanted_tag(ctx))
-            logger.info("pull/recreate steady %s (%s)", app.name, pull_ref)
-            ctx.support.docker.recreate_pulled_service(app, pull_ref=pull_ref)
-            return
-        logger.info("rebuild steady service %s (new code)", app.name)
-        ctx.support.docker.rebuild_service(app.compose_id)
 
     def _wanted_tag(self, ctx: DeploymentContext) -> str:
         state = ctx.support.stack.ref_state_file(ctx.app)
