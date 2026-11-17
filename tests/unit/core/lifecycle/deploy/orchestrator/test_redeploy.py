@@ -88,6 +88,23 @@ class TestOrchRedeploy(OrchestratorTestCase):
             orch._wait_app_ready(app, timeout=5)
         assert wait.call_args.args[0] == "Host app.test/health"
 
+    def test_wait_app_ready_accepts_router_host_when_public_fails(self) -> None:
+        """#474: public Host probe can fail while router Host already serves."""
+        AppliedInventory.write_applied_app(
+            self.tmp_path,
+            "app",
+            public_host="demo.example.com",
+            extra={"readiness": {"type": "http", "port": "http", "path": "/"}},
+        )
+        orch = self.orchestrator()
+        orch.http.public_host_ok.return_value = False
+        orch.docker.router_serves_host.return_value = True
+        app = orch.stack.app("app")
+        with patch("raft.core.lifecycle.deploy.orchestrator.ready.WaitUntil") as wait:
+            orch._wait_app_ready(app, timeout=5)
+        assert wait.call_args.args[1]() is True
+        orch.docker.router_serves_host.assert_called_with(app.public_host, path="/")
+
     def test_wait_app_ready_label_for_published_tcp(self) -> None:
         self._test_wait_app_ready_label_for_published_tcp_p1()
         self._test_wait_app_ready_label_for_published_tcp_p2()

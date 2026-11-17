@@ -138,15 +138,32 @@ class ReadinessStrategy:
         *,
         tcp_ok: Optional[Callable[[int], bool]] = None,
         compose_ready: Optional[Callable[[], bool]] = None,
+        host_ready: Optional[Callable[[], bool]] = None,
     ) -> Optional[Callable[[], bool]]:
         if self.kind == "none":
             return None
         if self.kind == "http":
-            probe_path = self.path
-            return lambda: http.public_host_ok(app, path=probe_path)
+            return self._http_wait_predicate(app, http, host_ready=host_ready)
         if self.kind == "tcp":
             return self._tcp_wait_predicate(http, tcp_ok=tcp_ok, compose_ready=compose_ready)
         raise ValueError(f"unknown readiness kind {self.kind!r}")
+
+    def _http_wait_predicate(
+        self,
+        app: App,
+        http: HttpProbe,
+        *,
+        host_ready: Optional[Callable[[], bool]],
+    ) -> Callable[[], bool]:
+        """Public edge Host, or in-network Host via router (oneshot-safe)."""
+        path = self.path
+
+        def check() -> bool:
+            if http.public_host_ok(app, path=path):
+                return True
+            return bool(host_ready and host_ready())
+
+        return check
 
     def _tcp_wait_predicate(
         self,
