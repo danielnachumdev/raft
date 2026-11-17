@@ -46,12 +46,22 @@ class TestAdapterCoverage(RaftTestCase):
         )
         assert strategy.wait_predicate(app, stack, http)() is True
         http.public_host_ok.assert_called_with(app, path="/health")
+        self._assert_http_host_ready_fallback(app, stack, http, strategy)
         tcp = ReadinessStrategy(
             kind="tcp",
             port=PortSpec(name="smtp", container_port=25, expose="stream", public_port=25),
         )
         assert tcp.wait_predicate(app, stack, http)() is True
         assert tcp.wait_predicate(app, stack, http, tcp_ok=lambda p: p == 25)() is True
+
+    def _assert_http_host_ready_fallback(self, app, stack, http, strategy) -> None:
+        """Public edge can fail while in-network Host is already OK (#474)."""
+        http.public_host_ok.return_value = False
+        assert strategy.wait_predicate(app, stack, http)() is False
+        assert (
+            strategy.wait_predicate(app, stack, http, host_ready=lambda: True)()
+            is True
+        )
 
     def _assert_internal_tcp(self, app, stack, http) -> None:
         internal = ReadinessStrategy(

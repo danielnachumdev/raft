@@ -26,6 +26,24 @@ class TestInPlaceDeployment(RaftTestCase):
         self._assert_local_prepare_path(ctx)
         assert not RedeployingStore(tmp_path).is_redeploying("demo-api")
 
+    def test_deploy_when_up_clears_marker_before_ready_wait(
+        self, tmp_path: Path
+    ) -> None:
+        """False-failure mode: Host wait must not run under redeploying marker."""
+        from raft.core.core.models.state.redeploying_store import RedeployingStore
+
+        ctx = self._ctx(tmp_path, source="local")
+        seen: list[bool] = []
+
+        def _capture_ready(_app) -> None:
+            seen.append(RedeployingStore(tmp_path).is_redeploying("demo-api"))
+
+        ctx.support._wait_app_ready.side_effect = _capture_ready
+        InPlaceDeployment().deploy_when_up(ctx)
+        assert seen == [False]
+        ctx.support._wait_app_ready.assert_called_once_with(ctx.app)
+        ctx.support.finish_app_deploy.assert_called_once()
+
     def test_deploy_when_up_keeps_live_on_prepare_failure(self, tmp_path: Path) -> None:
         from raft.core.core.models.state.redeploying_store import RedeployingStore
 

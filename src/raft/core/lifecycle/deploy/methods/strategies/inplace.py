@@ -26,8 +26,11 @@ class InPlaceDeployment(DeploymentMethod):
             self._drop_tmp_if_any(ctx)
             self._prepare_image(ctx)
             self._stop_old(ctx)
-            self._activate_prepared(ctx)
-            ctx.support.finish_app_deploy(ctx.app, done="redeployed")
+            self._cutover_prepared(ctx)
+        # Clear maintenance marker before Host readiness — gate 503 HTML must
+        # not keep public Host looking down after traffic is restored.
+        ctx.support._wait_app_ready(ctx.app)
+        ctx.support.finish_app_deploy(ctx.app, done="redeployed")
 
     def deploy_when_down(self, ctx: DeploymentContext) -> None:
         ctx.support.deploy_single_generation(
@@ -65,12 +68,12 @@ class InPlaceDeployment(DeploymentMethod):
         ctx.support.nginx.point_absent(ctx.app, reload=True)
         ctx.support.docker.stop_service(ctx.app.compose_id)
 
-    def _activate_prepared(self, ctx: DeploymentContext) -> None:
+    def _cutover_prepared(self, ctx: DeploymentContext) -> None:
+        """Recreate + restore upstream; readiness waits outside RedeployingWindow."""
         logger.info("recreate prepared service %s", ctx.app.name)
         ctx.support.docker.recreate_service(ctx.app.compose_id)
         ctx.support.nginx.point_at(ctx.app, ctx.app.compose_id)
         ctx.support.docker.nginx_test_and_reload()
-        ctx.support._wait_app_ready(ctx.app)
 
     def _wanted_tag(self, ctx: DeploymentContext) -> str:
         state = ctx.support.stack.ref_state_file(ctx.app)

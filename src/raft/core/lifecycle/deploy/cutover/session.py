@@ -51,6 +51,7 @@ class CutoverSession:
             self.stack,
             self.http,
             compose_ready=lambda: self.docker.service_is_ready(self.app.compose_id),
+            host_ready=self._host_ready(strategy),
         )
         if predicate is None:
             return
@@ -63,6 +64,13 @@ class CutoverSession:
             fix=self._ready_fix(strategy),
             diagnostics=self._app_diagnostics,
         ).run()
+
+    def _host_ready(self, strategy: ReadinessStrategy):
+        if strategy.kind != "http" or not self.app.public_host:
+            return None
+        path = strategy.path
+        host = self.app.public_host
+        return lambda: self.docker.router_serves_host(host, path=path)
 
     def _ready_fix(self, strategy: ReadinessStrategy) -> str:
         return (

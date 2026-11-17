@@ -26,6 +26,7 @@ class AppReadyWait:
             self._support.stack,
             self._support.http,
             compose_ready=lambda: self._support.docker.service_is_ready(app.compose_id),
+            host_ready=self._host_ready(app, strategy),
         )
         if predicate is None:
             return
@@ -37,6 +38,14 @@ class AppReadyWait:
             fix=self._fix(app, strategy),
             diagnostics=lambda: self._support.docker.diagnostics_for(app.compose_id),
         ).run()
+
+    def _host_ready(self, app, strategy: ReadinessStrategy):
+        """In-network Host probe (router); works from host oneshot containers."""
+        if strategy.kind != "http" or not app.public_host:
+            return None
+        path = strategy.path
+        host = app.public_host
+        return lambda: self._support.docker.router_serves_host(host, path=path)
 
     def _skip_intentional_down(self, app) -> bool:
         """Idle scale-to-zero and operator Down — do not wait (compose or Host)."""
