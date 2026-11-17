@@ -11,9 +11,9 @@ requires-python = ">=3.11"
 dependencies = [
     "fire>=0.7.1",
     "PyYAML>=6.0",
-    "fastapi>=0.162.0",
+    "fastapi>=0.162.7",
     "uvicorn>=0.30.0",
-    "acme>=5.9.0",
+    "acme>=5.10.0",
     "sqlalchemy>=2.1.8",
     "alembic>=1.20.1",
 ]
