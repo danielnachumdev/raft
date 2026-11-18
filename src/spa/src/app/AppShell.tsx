@@ -3,7 +3,6 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { InboxBell } from "../features/inbox/InboxBell";
 import { useRbac } from "../features/rbac";
 import { versionChromeText } from "../shared/api/status";
-import { MobileNav } from "./MobileNav";
 import {
   ADD_SERVICE_NAV,
   anySettingsAllowed,
@@ -70,7 +69,7 @@ export function AppShell() {
   );
 }
 
-/** Add service CTA, version, Settings gear, account menu, and the mobile menu. */
+/** Add service CTA, version, inbox, account menu, and Settings gear (rightmost). */
 function TopbarTools(props: { pathname: string }) {
   const version = useRaftVersion();
   const { can } = useRbac();
@@ -111,6 +110,7 @@ function TopbarTools(props: { pathname: string }) {
         )
       ) : null}
       <InboxBell />
+      <UserMenu />
       {showSettings ? (
         <NavLink
           to={settingsTo}
@@ -127,8 +127,6 @@ function TopbarTools(props: { pathname: string }) {
           <GearIcon />
         </NavLink>
       ) : null}
-      <UserMenu />
-      <MobileNav key={props.pathname} />
     </div>
   );
 }

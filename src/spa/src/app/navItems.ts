@@ -1,69 +1,59 @@
-export type NavGroup = "monitor" | "settings";
-
 export type NavItem = {
   to: string;
   label: string;
   id: string;
   /** Extra path prefixes that keep this item highlighted. */
   alsoActive?: string[];
-  group?: NavGroup;
   /** RBAC permission required to show this nav entry. */
   permission?: string;
 };
 
-/** Primary top-bar destinations (desktop + mobile monitor group). */
+/** Primary top-bar destinations. */
 export const TOPBAR_NAV: NavItem[] = [
   {
     to: "/",
     label: "Status",
     id: "nav-status",
     alsoActive: ["/service/"],
-    group: "monitor",
   },
   {
     to: "/events",
     label: "Events",
     id: "nav-events",
-    group: "monitor",
     permission: "events:read",
   },
 ];
 
-/** Settings hub sections shown in the settings sub-header (and mobile Settings group). */
+/** Settings hub sections shown in the settings sub-header. */
 export const SETTINGS_SECTIONS: NavItem[] = [
   {
     to: "/settings",
     label: "General",
     id: "nav-settings-general",
-    group: "settings",
     permission: "settings:read",
   },
   {
     to: "/settings/alerts",
     label: "Alerts",
     id: "nav-alerts",
-    group: "settings",
     permission: "alerts:read",
   },
   {
     to: "/settings/notifications",
     label: "Notifications",
     id: "nav-notifications",
-    group: "settings",
     permission: "notifications:read",
   },
   {
     to: "/settings/edge-access",
     label: "Firewall",
     id: "nav-edge-access",
-    group: "settings",
     permission: "firewall:read",
   },
   {
     to: "/settings/rbac",
     label: "RBAC",
     id: "nav-rbac",
-    group: "settings",
     permission: "rbac:read",
   },
 ];
@@ -82,11 +72,6 @@ export const SETTINGS_NAV: NavItem = {
   label: "Settings",
   id: "nav-settings",
   alsoActive: ["/settings/"],
-};
-
-export const NAV_GROUP_LABELS: Record<NavGroup, string> = {
-  monitor: "Monitor",
-  settings: "Settings",
 };
 
 /** Exact route match, or one of the item's ``alsoActive`` prefixes. */
@@ -122,18 +107,6 @@ export function anySettingsAllowed(
   can: (permission: string) => boolean,
 ): boolean {
   return SETTINGS_SECTIONS.some((item) => navAllowed(item, can));
-}
-
-/** Group consecutive items for the mobile menu headings. */
-export function groupNav(items: NavItem[]): { group: NavGroup; items: NavItem[] }[] {
-  const out: { group: NavGroup; items: NavItem[] }[] = [];
-  for (const item of items) {
-    const group = item.group ?? "monitor";
-    const last = out[out.length - 1];
-    if (last && last.group === group) last.items.push(item);
-    else out.push({ group, items: [item] });
-  }
-  return out;
 }
 
 function trimTrailingSlash(path: string): string {
