@@ -36,11 +36,6 @@ body[data-settings-hub] {
   }
 }
 
-/* Keep the hamburger above the portaled backdrop while the menu is open. */
-body[data-mobile-nav-open] .topbar {
-  z-index: 45;
-}
-
 .topbar-inner {
   display: flex;
   align-items: center;
@@ -165,10 +160,6 @@ body[data-mobile-nav-open] .topbar {
 
   .topbar-tools {
     margin-left: auto;
-  }
-
-  .topbar-nav {
-    display: none;
   }
 
   .topbar-tools .topbar-cta {

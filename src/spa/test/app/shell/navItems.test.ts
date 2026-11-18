@@ -4,7 +4,6 @@ import {
   ADD_SERVICE_NAV,
   anySettingsAllowed,
   firstSettingsPath,
-  groupNav,
   isNavActive,
   isSettingsPath,
   navAllowed,
@@ -82,35 +81,5 @@ describe("settings hub helpers", () => {
     );
     assert.equal(anySettingsAllowed(() => false), false);
     assert.equal(anySettingsAllowed((p) => p === "alerts:read"), true);
-  });
-});
-
-describe("groupNav", () => {
-  it("groups consecutive top-bar items in display order", () => {
-    const groups = groupNav(TOPBAR_NAV);
-    assert.deepEqual(
-      groups.map((g) => [g.group, g.items.map((i) => i.label)]),
-      [["monitor", ["Status", "Events"]]],
-    );
-  });
-
-  it("groups settings hub sections together", () => {
-    const groups = groupNav(SETTINGS_SECTIONS);
-    assert.deepEqual(
-      groups.map((g) => [g.group, g.items.map((i) => i.label)]),
-      [["settings", ["General", "Alerts", "Notifications", "Firewall", "RBAC"]]],
-    );
-  });
-
-  it("defaults ungrouped items to monitor and starts a new run on change", () => {
-    const groups = groupNav([
-      { to: "/a", label: "A", id: "a" },
-      { to: "/b", label: "B", id: "b", group: "settings" },
-      { to: "/c", label: "C", id: "c" },
-    ]);
-    assert.deepEqual(
-      groups.map((g) => g.group),
-      ["monitor", "settings", "monitor"],
-    );
   });
 });
