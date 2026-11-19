@@ -241,7 +241,7 @@ class AcmeE2EStack:
 
 def _edge_and_pebble() -> dict:
     gate = {
-        "image": "nginx:alpine",
+        "image": "nginx:1.31.9-alpine",
         "ports": ["127.0.0.1::80", "127.0.0.1::443"],
         "extra_hosts": ["raft-controller:host-gateway"],
         "volumes": _gate_volumes(),

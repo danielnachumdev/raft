@@ -4,7 +4,7 @@
 # GHCR pins (mirrored by ci_seed_mirror.yml) and retag Hub-facing names.
 #
 # Pins (keep in sync with ci_seed_mirror.yml):
-#   ghcr.io/danielnachumdev/raft/ci-seed-nginx:alpine
+#   ghcr.io/danielnachumdev/raft/ci-seed-nginx:1.31.9-alpine
 #   ghcr.io/danielnachumdev/raft/ci-seed-redis:7-alpine
 #   ghcr.io/danielnachumdev/raft/ci-seed-http-echo:1.0.0
 #
@@ -21,7 +21,7 @@ GHCR_OWNER="${CI_SEED_GHCR_OWNER:-danielnachumdev}"
 GHCR_REPO="${CI_SEED_GHCR_REPO:-raft}"
 GHCR_PREFIX="ghcr.io/${GHCR_OWNER}/${GHCR_REPO}"
 
-NGINX_GHCR="${GHCR_PREFIX}/ci-seed-nginx:alpine"
+NGINX_GHCR="${GHCR_PREFIX}/ci-seed-nginx:1.31.9-alpine"
 REDIS_GHCR="${GHCR_PREFIX}/ci-seed-redis:7-alpine"
 HTTP_ECHO_GHCR="${GHCR_PREFIX}/ci-seed-http-echo:1.0.0"
 
@@ -111,12 +111,12 @@ retag_from() {
 }
 
 seed_nginx() {
-  if image_present "nginx:alpine"; then
-    echo "already present: nginx:alpine"
+  if image_present "nginx:1.31.9-alpine"; then
+    echo "already present: nginx:1.31.9-alpine"
     return 0
   fi
   pull_ghcr_pin "$NGINX_GHCR"
-  retag_from "$NGINX_GHCR" "nginx:alpine"
+  retag_from "$NGINX_GHCR" "nginx:1.31.9-alpine"
 }
 
 seed_redis() {
