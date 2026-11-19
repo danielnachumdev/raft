@@ -203,7 +203,7 @@ def _edge_services() -> dict:
 
 def _gate_service() -> dict:
     return {
-        "image": "nginx:alpine",
+        "image": "nginx:1.31.9-alpine",
         "ports": ["127.0.0.1::80"],
         "extra_hosts": ["raft-controller:host-gateway"],
         "volumes": _gate_volumes(),
@@ -227,7 +227,7 @@ def _gate_volumes() -> list:
 
 def _router_service() -> dict:
     return {
-        "image": "nginx:alpine",
+        "image": "nginx:1.31.9-alpine",
         "expose": ["80"],
         "volumes": [
             "./nginx/router/default.conf:/etc/nginx/conf.d/default.conf:ro",

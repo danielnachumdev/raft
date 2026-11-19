@@ -1,7 +1,7 @@
 # Mirror CI E2E seed images to GHCR under this repo (leave anonymous ECR Public).
 #
 # Pins (linked to this repo; GITHUB_TOKEN pulls with packages:read on E2E):
-#   ghcr.io/danielnachumdev/raft/ci-seed-nginx:alpine
+#   ghcr.io/danielnachumdev/raft/ci-seed-nginx:1.31.9-alpine
 #   ghcr.io/danielnachumdev/raft/ci-seed-redis:7-alpine
 #   ghcr.io/danielnachumdev/raft/ci-seed-http-echo:1.0.0
 #
@@ -49,7 +49,7 @@ env:
   GHCR_OWNER: danielnachumdev
   GHCR_REPO: raft
   # Keep in sync with .github/workflows/ci_seed_docker_images.sh
-  NGINX_TAG: alpine
+  NGINX_TAG: 1.31.9-alpine
   REDIS_TAG: 7-alpine
   HTTP_ECHO_TAG: "1.0.0"
 

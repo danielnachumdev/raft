@@ -37,7 +37,7 @@ include:
 
 services:
   raft-gate:
-    image: nginx:alpine
+    image: nginx:1.31.9-alpine
     volumes:
       - ./nginx/gate/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/gate/proxy_router.inc:/etc/nginx/gate/proxy_router.inc:ro
@@ -55,7 +55,7 @@ services:
     <<: *resources-edge
 
   raft-router:
-    image: nginx:alpine
+    image: nginx:1.31.9-alpine
     expose:
       - "80"
     volumes:
